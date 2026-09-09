@@ -50,7 +50,19 @@ public class GateStructure : Structure
 
     [RelatedEntityField(typeof(Location))]
     public Location? AnchorPoint { get; set; }
-    
+
+    // Optional second physical anchor: a separately-built, separately-scanned open state.
+    // Its presence (via GateBlockSnapshot rows with State=OPEN) overrides the procedurally
+    // derived open animation - see docs/features/gate-structure-animation/
+    // ROTATION_GAP_FILL_DESIGN.md. Uses the same ReferencePoint1/ReferencePoint2 basis as
+    // AnchorPoint, just a different physical origin for the scan.
+    [NavigationPair(nameof(OpenAnchorPoint))]
+    [RelatedEntityField(typeof(Location))]
+    public int? OpenAnchorPointId { get; set; }
+
+    [RelatedEntityField(typeof(Location))]
+    public Location? OpenAnchorPoint { get; set; }
+
     [NavigationPair(nameof(ReferencePoint1))]
     [RelatedEntityField(typeof(Location))]
     public int? ReferencePoint1Id { get; set; }
@@ -175,4 +187,8 @@ public class GateStructure : Structure
 
     // === Navigation Properties ===
     public virtual ICollection<GateBlockSnapshot> BlockSnapshots { get; set; } = new List<GateBlockSnapshot>();
+
+    // Optional, separately-scanned fully-open shape - see OpenAnchorPointId above and
+    // docs/features/gate-structure-animation/ROTATION_GAP_FILL_DESIGN.md.
+    public virtual ICollection<GateOpenedBlockSnapshot> OpenedBlockSnapshots { get; set; } = new List<GateOpenedBlockSnapshot>();
 }

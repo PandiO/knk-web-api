@@ -48,6 +48,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
     public virtual DbSet<GateBlockSnapshot> GateBlockSnapshots { get; set; } = null!;
+    public virtual DbSet<GateOpenedBlockSnapshot> GateOpenedBlockSnapshots { get; set; } = null!;
     public virtual DbSet<ItemBlueprint> ItemBlueprints { get; set; } = null!;
     public virtual DbSet<MinecraftMaterialRef> MinecraftMaterialRefs { get; set; } = null!;
     public virtual DbSet<MinecraftBlockRef> MinecraftBlockRefs { get; set; } = null!;
@@ -415,6 +416,11 @@ public partial class KnKDbContext : DbContext
                 .HasForeignKey(g => g.AnchorPointId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            entity.HasOne(g => g.OpenAnchorPoint)
+                .WithMany()
+                .HasForeignKey(g => g.OpenAnchorPointId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             entity.HasOne(g => g.ReferencePoint1)
                 .WithMany()
                 .HasForeignKey(g => g.ReferencePoint1Id)
@@ -465,6 +471,12 @@ public partial class KnKDbContext : DbContext
                 .WithOne(bs => bs.GateStructure)
                 .HasForeignKey(bs => bs.GateStructureId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // One-to-many relationship with GateOpenedBlockSnapshot
+            entity.HasMany(g => g.OpenedBlockSnapshots)
+                .WithOne(bs => bs.GateStructure)
+                .HasForeignKey(bs => bs.GateStructureId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // GateBlockSnapshot configuration
@@ -480,18 +492,47 @@ public partial class KnKDbContext : DbContext
             
             entity.HasIndex(e => new { e.GateStructureId, e.SortOrder })
                 .HasDatabaseName("IX_GateBlockSnapshot_GateId_SortOrder");
-            
+
             entity.HasIndex(e => new { e.WorldX, e.WorldY, e.WorldZ })
                 .HasDatabaseName("IX_GateBlockSnapshot_WorldCoordinates");
-            
+
             // Required fields
             entity.Property(e => e.MaterialName)
                 .IsRequired()
                 .HasMaxLength(191);
-            
+
             entity.Property(e => e.BlockDataJson)
                 .HasMaxLength(1000);
-            
+
+            entity.Property(e => e.TileEntityJson)
+                .HasMaxLength(2000);
+        });
+
+        // GateOpenedBlockSnapshot configuration - mirrors GateBlockSnapshot above exactly,
+        // its own table rather than a shared one, per docs/features/gate-structure-animation/
+        // ROTATION_GAP_FILL_DESIGN.md.
+        modelBuilder.Entity<GateOpenedBlockSnapshot>(entity =>
+        {
+            entity.ToTable("gate_opened_block_snapshots");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => e.GateStructureId)
+                .HasDatabaseName("IX_GateOpenedBlockSnapshot_GateStructureId");
+
+            entity.HasIndex(e => new { e.GateStructureId, e.SortOrder })
+                .HasDatabaseName("IX_GateOpenedBlockSnapshot_GateId_SortOrder");
+
+            entity.HasIndex(e => new { e.WorldX, e.WorldY, e.WorldZ })
+                .HasDatabaseName("IX_GateOpenedBlockSnapshot_WorldCoordinates");
+
+            entity.Property(e => e.MaterialName)
+                .IsRequired()
+                .HasMaxLength(191);
+
+            entity.Property(e => e.BlockDataJson)
+                .HasMaxLength(1000);
+
             entity.Property(e => e.TileEntityJson)
                 .HasMaxLength(2000);
         });

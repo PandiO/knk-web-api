@@ -1,0 +1,51 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using knkwebapi_v2.Attributes;
+
+namespace knkwebapi_v2.Models;
+
+// Mirrors GateBlockSnapshot exactly, but captures a gate's fully-open shape instead of its
+// closed one. Kept as its own entity/table (rather than a State discriminator column shared
+// with GateBlockSnapshot) so it fits the FormWizard/FormConfig convention of one
+// WorldTask-backed scan per property - see docs/features/gate-structure-animation/
+// ROTATION_GAP_FILL_DESIGN.md. A gate's OpenedBlockSnapshots, if any, override its
+// procedurally-derived open animation.
+[FormConfigurableEntity("GateOpenedBlockSnapshot")]
+public class GateOpenedBlockSnapshot
+{
+    public int Id { get; set; }
+
+    // Foreign key to parent GateStructure
+    [RelatedEntityField(typeof(GateStructure))]
+    public int GateStructureId { get; set; }
+
+    // Position relative to OpenAnchorPoint
+    public int RelativeX { get; set; }
+    public int RelativeY { get; set; }
+    public int RelativeZ { get; set; }
+
+    // World coordinates (for faster lookup)
+    public int WorldX { get; set; }
+    public int WorldY { get; set; }
+    public int WorldZ { get; set; }
+
+    // Material information
+    [MaxLength(191)]
+    [Required]
+    public string MaterialName { get; set; } = null!;
+
+    // Block state data (JSON)
+    [MaxLength(1000)]
+    public string BlockDataJson { get; set; } = "{}";
+
+    // Tile entity data (JSON) - for chests, signs, etc.
+    [MaxLength(2000)]
+    public string TileEntityJson { get; set; } = "{}";
+
+    // Animation sequence order (hinge → outward)
+    public int SortOrder { get; set; }
+
+    // Navigation property
+    [RelatedEntityField(typeof(GateStructure))]
+    public virtual GateStructure GateStructure { get; set; } = null!;
+}
