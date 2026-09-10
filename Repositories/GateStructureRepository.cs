@@ -29,6 +29,7 @@ namespace knkwebapi_v2.Repositories
         {
             return await BuildGateQuery()
                 .Include(gs => gs.BlockSnapshots)
+                .Include(gs => gs.OpenedBlockSnapshots)
                 .FirstOrDefaultAsync(gs => gs.Id == id);
         }
 
@@ -162,8 +163,40 @@ namespace knkwebapi_v2.Repositories
             var snapshots = await _context.Set<GateBlockSnapshot>()
                 .Where(bs => bs.GateStructureId == gateId)
                 .ToListAsync();
-            
+
             _context.Set<GateBlockSnapshot>().RemoveRange(snapshots);
+            await _context.SaveChangesAsync();
+        }
+
+        // Opened-block snapshot operations - mirrors the block snapshot operations above
+        // exactly, for the separately-scanned fully-open shape. See ROTATION_GAP_FILL_DESIGN.md.
+        public async Task<IEnumerable<GateOpenedBlockSnapshot>> GetOpenedBlockSnapshotsByGateIdAsync(int gateId)
+        {
+            return await _context.Set<GateOpenedBlockSnapshot>()
+                .Where(bs => bs.GateStructureId == gateId)
+                .OrderBy(bs => bs.SortOrder)
+                .ToListAsync();
+        }
+
+        public async Task AddOpenedBlockSnapshotAsync(GateOpenedBlockSnapshot snapshot)
+        {
+            await _context.Set<GateOpenedBlockSnapshot>().AddAsync(snapshot);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task AddOpenedBlockSnapshotsAsync(IEnumerable<GateOpenedBlockSnapshot> snapshots)
+        {
+            await _context.Set<GateOpenedBlockSnapshot>().AddRangeAsync(snapshots);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteOpenedBlockSnapshotsByGateIdAsync(int gateId)
+        {
+            var snapshots = await _context.Set<GateOpenedBlockSnapshot>()
+                .Where(bs => bs.GateStructureId == gateId)
+                .ToListAsync();
+
+            _context.Set<GateOpenedBlockSnapshot>().RemoveRange(snapshots);
             await _context.SaveChangesAsync();
         }
 
@@ -214,6 +247,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(gs => gs.IconMaterial)
                 .Include(gs => gs.FallbackMaterial)
                 .Include(gs => gs.AnchorPoint)
+                .Include(gs => gs.OpenAnchorPoint)
                 .Include(gs => gs.ReferencePoint1)
                 .Include(gs => gs.ReferencePoint2)
                 .Include(gs => gs.HingeAxis)
@@ -261,6 +295,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(gs => gs.IconMaterial)
                 .Include(gs => gs.FallbackMaterial)
                 .Include(gs => gs.AnchorPoint)
+                .Include(gs => gs.OpenAnchorPoint)
                 .Include(gs => gs.ReferencePoint1)
                 .Include(gs => gs.ReferencePoint2)
                 .Include(gs => gs.HingeAxis)

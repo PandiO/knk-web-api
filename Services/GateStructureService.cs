@@ -119,7 +119,8 @@ namespace knkwebapi_v2.Services
 
             // Delete associated block snapshots first
             await _repo.DeleteBlockSnapshotsByGateIdAsync(id);
-            
+            await _repo.DeleteOpenedBlockSnapshotsByGateIdAsync(id);
+
             await _repo.DeleteGateStructureAsync(id);
         }
 
@@ -245,6 +246,65 @@ namespace knkwebapi_v2.Services
             await _repo.DeleteBlockSnapshotsByGateIdAsync(gateId);
         }
 
+        public async Task<IEnumerable<GateOpenedBlockSnapshotDto>> GetOpenedBlockSnapshotsAsync(int gateId)
+        {
+            if (gateId <= 0)
+                throw new ArgumentException("Invalid gateId.", nameof(gateId));
+
+            var snapshots = await _repo.GetOpenedBlockSnapshotsByGateIdAsync(gateId);
+            return _mapper.Map<IEnumerable<GateOpenedBlockSnapshotDto>>(snapshots);
+        }
+
+        public async Task AddOpenedBlockSnapshotsAsync(int gateId, IEnumerable<GateOpenedBlockSnapshotDto> snapshots)
+        {
+            if (gateId <= 0)
+                throw new ArgumentException("Invalid gateId.", nameof(gateId));
+            if (snapshots == null || !snapshots.Any())
+                throw new ArgumentException("Snapshots collection cannot be null or empty.", nameof(snapshots));
+
+            var existing = await _repo.GetByIdAsync(gateId);
+            if (existing == null)
+                throw new KeyNotFoundException($"GateStructure with id {gateId} not found.");
+
+            var snapshotEntities = _mapper.Map<IEnumerable<GateOpenedBlockSnapshot>>(snapshots);
+
+            foreach (var snapshot in snapshotEntities)
+            {
+                snapshot.GateStructureId = gateId;
+            }
+
+            await _repo.AddOpenedBlockSnapshotsAsync(snapshotEntities);
+        }
+
+        public async Task AddOpenedBlockSnapshotsAsync(int gateId, IEnumerable<GateOpenedBlockSnapshotCreateDto> snapshots)
+        {
+            if (gateId <= 0)
+                throw new ArgumentException("Invalid gateId.", nameof(gateId));
+            if (snapshots == null || !snapshots.Any())
+                throw new ArgumentException("Snapshots collection cannot be null or empty.", nameof(snapshots));
+
+            var existing = await _repo.GetByIdAsync(gateId);
+            if (existing == null)
+                throw new KeyNotFoundException($"GateStructure with id {gateId} not found.");
+
+            var snapshotEntities = _mapper.Map<IEnumerable<GateOpenedBlockSnapshot>>(snapshots);
+
+            foreach (var snapshot in snapshotEntities)
+            {
+                snapshot.GateStructureId = gateId;
+            }
+
+            await _repo.AddOpenedBlockSnapshotsAsync(snapshotEntities);
+        }
+
+        public async Task ClearOpenedBlockSnapshotsAsync(int gateId)
+        {
+            if (gateId <= 0)
+                throw new ArgumentException("Invalid gateId.", nameof(gateId));
+
+            await _repo.DeleteOpenedBlockSnapshotsByGateIdAsync(gateId);
+        }
+
         private async Task ApplyLocationReferencesAsync(GateStructure gateStructure, GateStructureDto gateStructureDto, bool isCreate = false)
         {
             gateStructure.LocationId = await ResolveLocationReferenceAsync(
@@ -256,6 +316,11 @@ namespace knkwebapi_v2.Services
                 gateStructureDto.AnchorPointId,
                 gateStructureDto.AnchorPoint,
                 "AnchorPoint");
+
+            gateStructure.OpenAnchorPointId = await ResolveLocationReferenceAsync(
+                gateStructureDto.OpenAnchorPointId,
+                gateStructureDto.OpenAnchorPoint,
+                "OpenAnchorPoint");
 
             gateStructure.ReferencePoint1Id = await ResolveLocationReferenceAsync(
                 gateStructureDto.ReferencePoint1Id,

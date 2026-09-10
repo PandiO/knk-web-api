@@ -217,6 +217,19 @@ namespace knkwebapi_v2.Services
                     throw new InvalidOperationException($"Gate block scan result could not be applied: {scanError}");
                 }
             }
+            else if (entity.TaskType == WorldTaskTypes.GateOpenedBlockScan)
+            {
+                var scanError = await TryApplyGateOpenedBlockScanResultAsync(entity, dto.OutputJson);
+                if (scanError != null)
+                {
+                    entity.Status = "Failed";
+                    entity.ErrorMessage = scanError;
+                    entity.UpdatedAt = DateTime.UtcNow;
+                    await _taskRepo.UpdateAsync(entity);
+
+                    throw new InvalidOperationException($"Gate opened-block scan result could not be applied: {scanError}");
+                }
+            }
 
             entity.Status = "Completed";
             entity.OutputJson = dto.OutputJson;
@@ -378,6 +391,54 @@ namespace knkwebapi_v2.Services
                 catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException)
                 {
                     return $"Could not persist gate block snapshots: {ex.Message}";
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Parses a GateOpenedBlockScan result and persists the scanned snapshots on the target
+        /// gate's OpenedBlockSnapshots. Mirrors TryApplyGateBlockScanResultAsync exactly, but
+        /// targets the separate GateOpenedBlockSnapshot table - see
+        /// docs/features/gate-structure-animation/ROTATION_GAP_FILL_DESIGN.md, Decision 6.
+        /// Returns null on success, or an error message if the result should fail the task instead.
+        /// </summary>
+        private async Task<string?> TryApplyGateOpenedBlockScanResultAsync(WorldTask entity, string? outputJson)
+        {
+            if (string.IsNullOrWhiteSpace(outputJson))
+                return "GateOpenedBlockScan task completed without an output payload.";
+
+            GateOpenedBlockScanResultDto? result;
+            try
+            {
+                result = JsonSerializer.Deserialize<GateOpenedBlockScanResultDto>(outputJson);
+            }
+            catch (JsonException ex)
+            {
+                return $"Could not parse GateOpenedBlockScan result: {ex.Message}";
+            }
+
+            if (result == null)
+                return "GateOpenedBlockScan result payload was empty.";
+
+            if (result.Status == GateBlockScanStatus.Failed)
+                return result.ErrorMessage ?? "Gate opened-block scan reported failure.";
+
+            var gateStructureId = ExtractGateStructureId(entity.InputJson);
+            if (gateStructureId is null || gateStructureId <= 0)
+                return "GateOpenedBlockScan task InputJson did not contain a valid gateStructureId.";
+
+            if (result.Snapshots.Count > 0)
+            {
+                try
+                {
+                    await _gateStructureService.ClearOpenedBlockSnapshotsAsync(gateStructureId.Value);
+                    await _gateStructureService.AddOpenedBlockSnapshotsAsync(gateStructureId.Value, result.Snapshots);
+                }
+                catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException)
+                {
+                    return $"Could not persist gate opened-block snapshots: {ex.Message}";
                 }
             }
 

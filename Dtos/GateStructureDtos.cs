@@ -261,6 +261,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("blockSnapshots")]
         public List<GateBlockSnapshotDto>? BlockSnapshots { get; set; }
 
+        // Optional, separately-scanned fully-open shape - its presence overrides the
+        // procedurally-derived open animation. See ROTATION_GAP_FILL_DESIGN.md.
+        [JsonPropertyName("openedBlockSnapshots")]
+        public List<GateOpenedBlockSnapshotDto>? OpenedBlockSnapshots { get; set; }
+
         [JsonPropertyName("street")]
         public GateStructureStreetDto? Street { get; set; }
 
@@ -634,6 +639,15 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("anchorPoint")]
         public LocationDto? AnchorPoint { get; set; }
 
+        // Optional second physical anchor for a separately-scanned open state - see
+        // docs/features/gate-structure-animation/ROTATION_GAP_FILL_DESIGN.md.
+        [JsonPropertyName("openAnchorPointId")]
+        [JsonConverter(typeof(NullableIntConverter))]
+        public int? OpenAnchorPointId { get; set; }
+
+        [JsonPropertyName("openAnchorPoint")]
+        public LocationDto? OpenAnchorPoint { get; set; }
+
         [JsonPropertyName("referencePoint1Id")]
         [JsonConverter(typeof(NullableIntConverter))]
         public int? ReferencePoint1Id { get; set; }
@@ -819,6 +833,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("blockSnapshots")]
         public List<GateBlockSnapshotDto>? BlockSnapshots { get; set; }
 
+        // Optional, separately-scanned fully-open shape - its presence overrides the
+        // procedurally-derived open animation. See ROTATION_GAP_FILL_DESIGN.md.
+        [JsonPropertyName("openedBlockSnapshots")]
+        public List<GateOpenedBlockSnapshotDto>? OpenedBlockSnapshots { get; set; }
+
         [JsonPropertyName("street")]
         public GateStructureStreetDto? Street { get; set; }
 
@@ -928,6 +947,80 @@ namespace knkwebapi_v2.Dtos
     }
 
     public class GateBlockSnapshotCreateDto
+    {
+        [JsonPropertyName("relativeX")]
+        public int RelativeX { get; set; }
+
+        [JsonPropertyName("relativeY")]
+        public int RelativeY { get; set; }
+
+        [JsonPropertyName("relativeZ")]
+        public int RelativeZ { get; set; }
+
+        [JsonPropertyName("worldX")]
+        public int WorldX { get; set; }
+
+        [JsonPropertyName("worldY")]
+        public int WorldY { get; set; }
+
+        [JsonPropertyName("worldZ")]
+        public int WorldZ { get; set; }
+
+        [JsonPropertyName("materialName")]
+        public string MaterialName { get; set; } = null!;
+
+        [JsonPropertyName("blockDataJson")]
+        public string BlockDataJson { get; set; } = "{}";
+
+        [JsonPropertyName("tileEntityJson")]
+        public string TileEntityJson { get; set; } = "{}";
+
+        [JsonPropertyName("sortOrder")]
+        public int SortOrder { get; set; }
+    }
+
+    // GateOpenedBlockSnapshot DTO - mirrors GateBlockSnapshotDto exactly, for the separately-
+    // scanned fully-open shape. See ROTATION_GAP_FILL_DESIGN.md.
+    public class GateOpenedBlockSnapshotDto
+    {
+        [JsonPropertyName("id")]
+        public int? Id { get; set; }
+
+        [JsonPropertyName("gateStructureId")]
+        public int GateStructureId { get; set; }
+
+        [JsonPropertyName("relativeX")]
+        public int RelativeX { get; set; }
+
+        [JsonPropertyName("relativeY")]
+        public int RelativeY { get; set; }
+
+        [JsonPropertyName("relativeZ")]
+        public int RelativeZ { get; set; }
+
+        [JsonPropertyName("worldX")]
+        public int WorldX { get; set; }
+
+        [JsonPropertyName("worldY")]
+        public int WorldY { get; set; }
+
+        [JsonPropertyName("worldZ")]
+        public int WorldZ { get; set; }
+
+        [JsonPropertyName("materialName")]
+        public string MaterialName { get; set; } = null!;
+
+        [JsonPropertyName("blockDataJson")]
+        public string BlockDataJson { get; set; } = "{}";
+
+        [JsonPropertyName("tileEntityJson")]
+        public string TileEntityJson { get; set; } = "{}";
+
+        [JsonPropertyName("sortOrder")]
+        public int SortOrder { get; set; }
+    }
+
+    public class GateOpenedBlockSnapshotCreateDto
     {
         [JsonPropertyName("relativeX")]
         public int RelativeX { get; set; }

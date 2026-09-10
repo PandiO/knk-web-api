@@ -26,5 +26,12 @@ namespace knkwebapi_v2.Repositories
         Task AddBlockSnapshotAsync(GateBlockSnapshot snapshot);
         Task AddBlockSnapshotsAsync(IEnumerable<GateBlockSnapshot> snapshots);
         Task DeleteBlockSnapshotsByGateIdAsync(int gateId);
+
+        // Opened-block snapshot operations - mirrors the block snapshot operations above
+        // exactly, for the separately-scanned fully-open shape. See ROTATION_GAP_FILL_DESIGN.md.
+        Task<IEnumerable<GateOpenedBlockSnapshot>> GetOpenedBlockSnapshotsByGateIdAsync(int gateId);
+        Task AddOpenedBlockSnapshotAsync(GateOpenedBlockSnapshot snapshot);
+        Task AddOpenedBlockSnapshotsAsync(IEnumerable<GateOpenedBlockSnapshot> snapshots);
+        Task DeleteOpenedBlockSnapshotsByGateIdAsync(int gateId);
     }
 }

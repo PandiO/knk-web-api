@@ -88,6 +88,8 @@ namespace knkwebapi_v2.Mapping
                 // Geometry Definition (PLANE_GRID mode)
                 .ForMember(dest => dest.AnchorPointId, opt => opt.MapFrom(src => src.AnchorPointId))
                 .ForMember(dest => dest.AnchorPoint, opt => opt.MapFrom(src => src.AnchorPoint))
+                .ForMember(dest => dest.OpenAnchorPointId, opt => opt.MapFrom(src => src.OpenAnchorPointId))
+                .ForMember(dest => dest.OpenAnchorPoint, opt => opt.MapFrom(src => src.OpenAnchorPoint))
                 .ForMember(dest => dest.ReferencePoint1Id, opt => opt.MapFrom(src => src.ReferencePoint1Id))
                 .ForMember(dest => dest.ReferencePoint1, opt => opt.MapFrom(src => src.ReferencePoint1))
                 .ForMember(dest => dest.ReferencePoint2Id, opt => opt.MapFrom(src => src.ReferencePoint2Id))
@@ -155,6 +157,7 @@ namespace knkwebapi_v2.Mapping
 
                 // Navigation Properties
                 .ForMember(dest => dest.BlockSnapshots, opt => opt.MapFrom(src => src.BlockSnapshots))
+                .ForMember(dest => dest.OpenedBlockSnapshots, opt => opt.MapFrom(src => src.OpenedBlockSnapshots))
                 .ForMember(dest => dest.Street, opt => opt.MapFrom(s => s.Street == null ? null : new GateStructureStreetDto
                 {
                     Id = s.Street.Id,
@@ -225,6 +228,7 @@ namespace knkwebapi_v2.Mapping
                 
                 // Geometry (PLANE_GRID)
                 .ForMember(dest => dest.AnchorPointId, opt => opt.MapFrom(src => src.AnchorPointId))
+                .ForMember(dest => dest.OpenAnchorPointId, opt => opt.MapFrom(src => src.OpenAnchorPointId))
                 .ForMember(dest => dest.ReferencePoint1Id, opt => opt.MapFrom(src => src.ReferencePoint1Id))
                 .ForMember(dest => dest.ReferencePoint2Id, opt => opt.MapFrom(src => src.ReferencePoint2Id))
                 .ForMember(dest => dest.GeometryWidth, opt => opt.MapFrom(src => src.GeometryWidth ?? 0))
@@ -284,10 +288,12 @@ namespace knkwebapi_v2.Mapping
                 
                 // Ignore navigation properties
                 .ForMember(dest => dest.BlockSnapshots, opt => opt.Ignore())
+                .ForMember(dest => dest.OpenedBlockSnapshots, opt => opt.Ignore())
                 .ForMember(dest => dest.Street, opt => opt.Ignore())
                 .ForMember(dest => dest.District, opt => opt.Ignore())
                 .ForMember(dest => dest.Location, opt => opt.Ignore())
                 .ForMember(dest => dest.AnchorPoint, opt => opt.Ignore())
+                .ForMember(dest => dest.OpenAnchorPoint, opt => opt.Ignore())
                 .ForMember(dest => dest.ReferencePoint1, opt => opt.Ignore())
                 .ForMember(dest => dest.ReferencePoint2, opt => opt.Ignore())
                 .ForMember(dest => dest.HingeAxis, opt => opt.Ignore())
@@ -322,6 +328,16 @@ namespace knkwebapi_v2.Mapping
             CreateMap<GateBlockSnapshot, GateBlockSnapshotDto>();
             CreateMap<GateBlockSnapshotDto, GateBlockSnapshot>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id ?? 0))
+                .ForMember(dest => dest.GateStructure, opt => opt.Ignore());
+
+            // GateOpenedBlockSnapshot <-> GateOpenedBlockSnapshotDto - mirrors the
+            // GateBlockSnapshot mappings above exactly. See ROTATION_GAP_FILL_DESIGN.md.
+            CreateMap<GateOpenedBlockSnapshot, GateOpenedBlockSnapshotDto>();
+            CreateMap<GateOpenedBlockSnapshotDto, GateOpenedBlockSnapshot>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id ?? 0))
+                .ForMember(dest => dest.GateStructure, opt => opt.Ignore());
+            CreateMap<GateOpenedBlockSnapshotCreateDto, GateOpenedBlockSnapshot>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.GateStructure, opt => opt.Ignore());
 
             // PagedQuery DTO conversions

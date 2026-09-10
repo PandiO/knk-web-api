@@ -291,6 +291,59 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        // Opened-block snapshot endpoints - mirror the snapshot endpoints above exactly, for
+        // the separately-scanned fully-open shape. See ROTATION_GAP_FILL_DESIGN.md.
+        [HttpGet("{id:int}/openedSnapshots")]
+        public async Task<IActionResult> GetOpenedSnapshots(int id)
+        {
+            if (id <= 0) return BadRequest("Invalid gateId.");
+            try
+            {
+                var snapshots = await _service.GetOpenedBlockSnapshotsAsync(id);
+                return Ok(snapshots);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("{id:int}/openedSnapshots/bulk")]
+        public async Task<IActionResult> AddOpenedSnapshots(int id, [FromBody] IEnumerable<GateOpenedBlockSnapshotCreateDto> snapshots)
+        {
+            if (id <= 0) return BadRequest("Invalid gateId.");
+            if (snapshots == null || !snapshots.Any()) return BadRequest("Snapshots collection cannot be null or empty.");
+
+            try
+            {
+                await _service.AddOpenedBlockSnapshotsAsync(id, snapshots);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("{id:int}/openedSnapshots")]
+        public async Task<IActionResult> ClearOpenedSnapshots(int id)
+        {
+            if (id <= 0) return BadRequest("Invalid gateId.");
+            try
+            {
+                await _service.ClearOpenedBlockSnapshotsAsync(id);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         private static string? ValidateGatePayload(GateStructureDto gateStructureDto)
         {
             if (string.IsNullOrWhiteSpace(gateStructureDto.FaceDirection) ||
