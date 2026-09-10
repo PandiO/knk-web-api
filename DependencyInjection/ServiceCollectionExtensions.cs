@@ -134,6 +134,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IValidationMethod, LocationInsideRegionValidator>();
             services.AddScoped<IValidationMethod, RegionContainmentValidator>();
             services.AddScoped<IValidationMethod, ConditionalRequiredValidator>();
+            services.AddScoped<IValidationMethod, ConditionalValueMatchValidator>();
 
             // convention-based registrations for other services/repositories in the same assembly
             var asm = Assembly.GetExecutingAssembly();
