@@ -15,9 +15,10 @@ public class GateOpenedBlockSnapshot
 {
     public int Id { get; set; }
 
-    // Foreign key to parent GateStructure
-    [RelatedEntityField(typeof(GateStructure))]
-    public int GateStructureId { get; set; }
+    // Foreign key to parent GateDoor (moved from GateStructure by item 5's multi-door support -
+    // see GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md - a scan targets one door, not a whole structure)
+    [RelatedEntityField(typeof(GateDoor))]
+    public int GateDoorId { get; set; }
 
     // Position relative to OpenAnchorPoint
     public int RelativeX { get; set; }
@@ -46,6 +47,6 @@ public class GateOpenedBlockSnapshot
     public int SortOrder { get; set; }
 
     // Navigation property
-    [RelatedEntityField(typeof(GateStructure))]
-    public virtual GateStructure GateStructure { get; set; } = null!;
+    [RelatedEntityField(typeof(GateDoor))]
+    public virtual GateDoor GateDoor { get; set; } = null!;
 }

@@ -61,21 +61,14 @@ namespace knkwebapi_v2.Services
 
         public async Task<GateStructureDto> CreateAsync(GateStructureDto gateStructureDto)
         {
-            if (gateStructureDto == null) 
+            if (gateStructureDto == null)
                 throw new ArgumentNullException(nameof(gateStructureDto));
-            if (string.IsNullOrWhiteSpace(gateStructureDto.Name)) 
+            if (string.IsNullOrWhiteSpace(gateStructureDto.Name))
                 throw new ArgumentException("GateStructure name is required.", nameof(gateStructureDto));
-            if (gateStructureDto.StreetId <= 0) 
+            if (gateStructureDto.StreetId <= 0)
                 throw new ArgumentException("Valid StreetId is required.", nameof(gateStructureDto));
-            if (gateStructureDto.DistrictId <= 0) 
+            if (gateStructureDto.DistrictId <= 0)
                 throw new ArgumentException("Valid DistrictId is required.", nameof(gateStructureDto));
-
-            // Validate health values
-            if (gateStructureDto.HealthCurrent.HasValue && gateStructureDto.HealthMax.HasValue)
-            {
-                if (gateStructureDto.HealthCurrent.Value > gateStructureDto.HealthMax.Value)
-                    throw new ArgumentException("HealthCurrent cannot exceed HealthMax.", nameof(gateStructureDto));
-            }
 
             var gateStructure = _mapper.Map<GateStructure>(gateStructureDto);
             await ApplyLocationReferencesAsync(gateStructure, gateStructureDto, isCreate: true);
@@ -85,23 +78,16 @@ namespace knkwebapi_v2.Services
 
         public async Task UpdateAsync(int id, GateStructureDto gateStructureDto)
         {
-            if (gateStructureDto == null) 
+            if (gateStructureDto == null)
                 throw new ArgumentNullException(nameof(gateStructureDto));
-            if (id <= 0) 
+            if (id <= 0)
                 throw new ArgumentException("Invalid id.", nameof(id));
-            if (string.IsNullOrWhiteSpace(gateStructureDto.Name)) 
+            if (string.IsNullOrWhiteSpace(gateStructureDto.Name))
                 throw new ArgumentException("GateStructure name is required.", nameof(gateStructureDto));
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null)
                 throw new KeyNotFoundException($"GateStructure with id {id} not found.");
-
-            // Validate health values
-            if (gateStructureDto.HealthCurrent.HasValue && gateStructureDto.HealthMax.HasValue)
-            {
-                if (gateStructureDto.HealthCurrent.Value > gateStructureDto.HealthMax.Value)
-                    throw new ArgumentException("HealthCurrent cannot exceed HealthMax.", nameof(gateStructureDto));
-            }
 
             _mapper.Map(gateStructureDto, existing);
             await ApplyLocationReferencesAsync(existing, gateStructureDto);
@@ -117,10 +103,7 @@ namespace knkwebapi_v2.Services
             if (existing == null)
                 throw new KeyNotFoundException($"GateStructure with id {id} not found.");
 
-            // Delete associated block snapshots first
-            await _repo.DeleteBlockSnapshotsByGateIdAsync(id);
-            await _repo.DeleteOpenedBlockSnapshotsByGateIdAsync(id);
-
+            // GateDoors (and their block snapshots) cascade-delete at the DB level.
             await _repo.DeleteGateStructureAsync(id);
         }
 
@@ -139,31 +122,10 @@ namespace knkwebapi_v2.Services
             };
         }
 
-        public async Task<IEnumerable<GateStructureDto>> GetActiveGatesAsync()
+        public async Task UpdateOverridesAsync(int id, GateStructureOverridesUpdateDto overridesDto)
         {
-            var gates = await _repo.GetActiveGatesAsync();
-            return _mapper.Map<IEnumerable<GateStructureDto>>(gates);
-        }
-
-        public async Task UpdateHealthAsync(int id, double newHealth)
-        {
-            if (id <= 0)
-                throw new ArgumentException("Invalid id.", nameof(id));
-            if (newHealth < 0)
-                throw new ArgumentException("Health cannot be negative.", nameof(newHealth));
-
-            var existing = await _repo.GetByIdAsync(id);
-            if (existing == null)
-                throw new KeyNotFoundException($"GateStructure with id {id} not found.");
-
-            if (newHealth > existing.HealthMax)
-                throw new ArgumentException($"Health cannot exceed HealthMax ({existing.HealthMax}).", nameof(newHealth));
-
-            await _repo.UpdateGateHealthAsync(id, newHealth);
-        }
-
-        public async Task UpdateStateAsync(int id, bool isOpened, bool isDestroyed, bool isJammed)
-        {
+            if (overridesDto == null)
+                throw new ArgumentNullException(nameof(overridesDto));
             if (id <= 0)
                 throw new ArgumentException("Invalid id.", nameof(id));
 
@@ -171,138 +133,37 @@ namespace knkwebapi_v2.Services
             if (existing == null)
                 throw new KeyNotFoundException($"GateStructure with id {id} not found.");
 
-            await _repo.UpdateGateStateAsync(id, isOpened, isDestroyed, isJammed);
+            // Each override field: an explicit "clear" flag nulls it out (reverting every door
+            // to its own value); otherwise a provided value sets it; a field mentioned as neither
+            // is left untouched. See decision 5.0-B.
+            ApplyOverride(overridesDto.ClearIsActiveOverride, overridesDto.IsActiveOverride, v => existing.IsActiveOverride = v);
+            ApplyOverride(overridesDto.ClearCanRespawnOverride, overridesDto.CanRespawnOverride, v => existing.CanRespawnOverride = v);
+            ApplyOverride(overridesDto.ClearIsDestroyedOverride, overridesDto.IsDestroyedOverride, v => existing.IsDestroyedOverride = v);
+            ApplyOverride(overridesDto.ClearIsInvincibleOverride, overridesDto.IsInvincibleOverride, v => existing.IsInvincibleOverride = v);
+            ApplyOverride(overridesDto.ClearOpenedStateOverride, overridesDto.OpenedStateOverride, v => existing.OpenedStateOverride = v);
+            ApplyOverride(overridesDto.ClearAllowPassThroughOverride, overridesDto.AllowPassThroughOverride, v => existing.AllowPassThroughOverride = v);
+            ApplyOverride(overridesDto.ClearPassThroughDurationSecondsOverride, overridesDto.PassThroughDurationSecondsOverride, v => existing.PassThroughDurationSecondsOverride = v);
+            ApplyOverride(overridesDto.ClearShowHealthDisplayOverride, overridesDto.ShowHealthDisplayOverride, v => existing.ShowHealthDisplayOverride = v);
+            ApplyOverride(overridesDto.ClearHealthDisplayModeOverride, overridesDto.HealthDisplayModeOverride, v => existing.HealthDisplayModeOverride = v);
+            ApplyOverride(overridesDto.ClearHealthDisplayYOffsetOverride, overridesDto.HealthDisplayYOffsetOverride, v => existing.HealthDisplayYOffsetOverride = v);
+            ApplyOverride(overridesDto.ClearGateNameDisplayModeOverride, overridesDto.GateNameDisplayModeOverride, v => existing.GateNameDisplayModeOverride = v);
+            ApplyOverride(overridesDto.ClearStatusDisplayModeOverride, overridesDto.StatusDisplayModeOverride, v => existing.StatusDisplayModeOverride = v);
+            ApplyOverride(overridesDto.ClearAllowContinuousDamageOverride, overridesDto.AllowContinuousDamageOverride, v => existing.AllowContinuousDamageOverride = v);
+            ApplyOverride(overridesDto.ClearContinuousDamageMultiplierOverride, overridesDto.ContinuousDamageMultiplierOverride, v => existing.ContinuousDamageMultiplierOverride = v);
+
+            await _repo.UpdateGateStructureAsync(existing);
         }
 
-        public async Task UpdateOperationalSettingsAsync(int id, bool isActive, bool isInvincible)
+        private static void ApplyOverride<T>(bool clear, T? value, Action<T?> setter) where T : struct
         {
-            if (id <= 0)
-                throw new ArgumentException("Invalid id.", nameof(id));
-
-            var existing = await _repo.GetByIdAsync(id);
-            if (existing == null)
-                throw new KeyNotFoundException($"GateStructure with id {id} not found.");
-
-            await _repo.UpdateGateOperationalSettingsAsync(id, isActive, isInvincible);
-        }
-
-        public async Task<IEnumerable<GateBlockSnapshotDto>> GetBlockSnapshotsAsync(int gateId)
-        {
-            if (gateId <= 0)
-                throw new ArgumentException("Invalid gateId.", nameof(gateId));
-
-            var snapshots = await _repo.GetBlockSnapshotsByGateIdAsync(gateId);
-            return _mapper.Map<IEnumerable<GateBlockSnapshotDto>>(snapshots);
-        }
-
-        public async Task AddBlockSnapshotsAsync(int gateId, IEnumerable<GateBlockSnapshotDto> snapshots)
-        {
-            if (gateId <= 0)
-                throw new ArgumentException("Invalid gateId.", nameof(gateId));
-            if (snapshots == null || !snapshots.Any())
-                throw new ArgumentException("Snapshots collection cannot be null or empty.", nameof(snapshots));
-
-            var existing = await _repo.GetByIdAsync(gateId);
-            if (existing == null)
-                throw new KeyNotFoundException($"GateStructure with id {gateId} not found.");
-
-            var snapshotEntities = _mapper.Map<IEnumerable<GateBlockSnapshot>>(snapshots);
-            
-            // Ensure all snapshots have the correct GateStructureId
-            foreach (var snapshot in snapshotEntities)
+            if (clear)
             {
-                snapshot.GateStructureId = gateId;
+                setter(null);
             }
-
-            await _repo.AddBlockSnapshotsAsync(snapshotEntities);
-        }
-
-        public async Task AddBlockSnapshotsAsync(int gateId, IEnumerable<GateBlockSnapshotCreateDto> snapshots)
-        {
-            if (gateId <= 0)
-                throw new ArgumentException("Invalid gateId.", nameof(gateId));
-            if (snapshots == null || !snapshots.Any())
-                throw new ArgumentException("Snapshots collection cannot be null or empty.", nameof(snapshots));
-
-            var existing = await _repo.GetByIdAsync(gateId);
-            if (existing == null)
-                throw new KeyNotFoundException($"GateStructure with id {gateId} not found.");
-
-            var snapshotEntities = _mapper.Map<IEnumerable<GateBlockSnapshot>>(snapshots);
-
-            foreach (var snapshot in snapshotEntities)
+            else if (value.HasValue)
             {
-                snapshot.GateStructureId = gateId;
+                setter(value);
             }
-
-            await _repo.AddBlockSnapshotsAsync(snapshotEntities);
-        }
-
-        public async Task ClearBlockSnapshotsAsync(int gateId)
-        {
-            if (gateId <= 0)
-                throw new ArgumentException("Invalid gateId.", nameof(gateId));
-
-            await _repo.DeleteBlockSnapshotsByGateIdAsync(gateId);
-        }
-
-        public async Task<IEnumerable<GateOpenedBlockSnapshotDto>> GetOpenedBlockSnapshotsAsync(int gateId)
-        {
-            if (gateId <= 0)
-                throw new ArgumentException("Invalid gateId.", nameof(gateId));
-
-            var snapshots = await _repo.GetOpenedBlockSnapshotsByGateIdAsync(gateId);
-            return _mapper.Map<IEnumerable<GateOpenedBlockSnapshotDto>>(snapshots);
-        }
-
-        public async Task AddOpenedBlockSnapshotsAsync(int gateId, IEnumerable<GateOpenedBlockSnapshotDto> snapshots)
-        {
-            if (gateId <= 0)
-                throw new ArgumentException("Invalid gateId.", nameof(gateId));
-            if (snapshots == null || !snapshots.Any())
-                throw new ArgumentException("Snapshots collection cannot be null or empty.", nameof(snapshots));
-
-            var existing = await _repo.GetByIdAsync(gateId);
-            if (existing == null)
-                throw new KeyNotFoundException($"GateStructure with id {gateId} not found.");
-
-            var snapshotEntities = _mapper.Map<IEnumerable<GateOpenedBlockSnapshot>>(snapshots);
-
-            foreach (var snapshot in snapshotEntities)
-            {
-                snapshot.GateStructureId = gateId;
-            }
-
-            await _repo.AddOpenedBlockSnapshotsAsync(snapshotEntities);
-        }
-
-        public async Task AddOpenedBlockSnapshotsAsync(int gateId, IEnumerable<GateOpenedBlockSnapshotCreateDto> snapshots)
-        {
-            if (gateId <= 0)
-                throw new ArgumentException("Invalid gateId.", nameof(gateId));
-            if (snapshots == null || !snapshots.Any())
-                throw new ArgumentException("Snapshots collection cannot be null or empty.", nameof(snapshots));
-
-            var existing = await _repo.GetByIdAsync(gateId);
-            if (existing == null)
-                throw new KeyNotFoundException($"GateStructure with id {gateId} not found.");
-
-            var snapshotEntities = _mapper.Map<IEnumerable<GateOpenedBlockSnapshot>>(snapshots);
-
-            foreach (var snapshot in snapshotEntities)
-            {
-                snapshot.GateStructureId = gateId;
-            }
-
-            await _repo.AddOpenedBlockSnapshotsAsync(snapshotEntities);
-        }
-
-        public async Task ClearOpenedBlockSnapshotsAsync(int gateId)
-        {
-            if (gateId <= 0)
-                throw new ArgumentException("Invalid gateId.", nameof(gateId));
-
-            await _repo.DeleteOpenedBlockSnapshotsByGateIdAsync(gateId);
         }
 
         private async Task ApplyLocationReferencesAsync(GateStructure gateStructure, GateStructureDto gateStructureDto, bool isCreate = false)
@@ -311,46 +172,6 @@ namespace knkwebapi_v2.Services
                 gateStructureDto.LocationId,
                 gateStructureDto.Location,
                 "Location");
-
-            gateStructure.AnchorPointId = await ResolveLocationReferenceAsync(
-                gateStructureDto.AnchorPointId,
-                gateStructureDto.AnchorPoint,
-                "AnchorPoint");
-
-            gateStructure.OpenAnchorPointId = await ResolveLocationReferenceAsync(
-                gateStructureDto.OpenAnchorPointId,
-                gateStructureDto.OpenAnchorPoint,
-                "OpenAnchorPoint");
-
-            gateStructure.ReferencePoint1Id = await ResolveLocationReferenceAsync(
-                gateStructureDto.ReferencePoint1Id,
-                gateStructureDto.ReferencePoint1,
-                "ReferencePoint1");
-
-            gateStructure.ReferencePoint2Id = await ResolveLocationReferenceAsync(
-                gateStructureDto.ReferencePoint2Id,
-                gateStructureDto.ReferencePoint2,
-                "ReferencePoint2");
-
-            gateStructure.HingeAxisId = await ResolveLocationReferenceAsync(
-                gateStructureDto.HingeAxisId,
-                gateStructureDto.HingeAxis,
-                "HingeAxis");
-
-            gateStructure.LeftDoorSeedBlockId = await ResolveLocationReferenceAsync(
-                gateStructureDto.LeftDoorSeedBlockId,
-                gateStructureDto.LeftDoorSeedBlock,
-                "LeftDoorSeedBlock");
-
-            gateStructure.RightDoorSeedBlockId = await ResolveLocationReferenceAsync(
-                gateStructureDto.RightDoorSeedBlockId,
-                gateStructureDto.RightDoorSeedBlock,
-                "RightDoorSeedBlock");
-
-            gateStructure.InfoDisplayLocationId = await ResolveLocationReferenceAsync(
-                gateStructureDto.InfoDisplayLocationId,
-                gateStructureDto.InfoDisplayLocation,
-                "InfoDisplayLocation");
 
             var hasGuardInput = gateStructureDto.GuardSpawnLocationIds != null || gateStructureDto.GuardSpawnLocations != null;
             if (!isCreate && !hasGuardInput)

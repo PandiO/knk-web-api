@@ -47,6 +47,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<District> Districts { get; set; } = null!;
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
+    public virtual DbSet<GateDoor> GateDoors { get; set; } = null!;
     public virtual DbSet<GateBlockSnapshot> GateBlockSnapshots { get; set; } = null!;
     public virtual DbSet<GateOpenedBlockSnapshot> GateOpenedBlockSnapshots { get; set; } = null!;
     public virtual DbSet<ItemBlueprint> ItemBlueprints { get; set; } = null!;
@@ -383,67 +384,16 @@ public partial class KnKDbContext : DbContext
         {
             entity.ToTable("gate_structures");
 
-            // Persist enums as strings for DB readability and stable API semantics.
-            entity.Property(e => e.GateType).HasConversion<string>().HasMaxLength(50);
-            entity.Property(e => e.GeometryDefinitionMode).HasConversion<string>().HasMaxLength(50);
-            entity.Property(e => e.MotionType).HasConversion<string>().HasMaxLength(50);
-            entity.Property(e => e.TileEntityPolicy).HasConversion<string>().HasMaxLength(50);
-            entity.Property(e => e.HealthDisplayMode).HasConversion<string>().HasMaxLength(50);
-            
-            // Indexes
-            entity.HasIndex(e => e.IsActive)
-                .HasDatabaseName("IX_GateStructure_IsActive");
-            
-            entity.HasIndex(e => e.GateType)
-                .HasDatabaseName("IX_GateStructure_GateType");
-            
-            entity.HasIndex(e => e.IsOpened)
-                .HasDatabaseName("IX_GateStructure_IsOpened");
-            
+            // Persist override enums as strings, matching the non-nullable enum convention below.
+            entity.Property(e => e.OpenedStateOverride).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.HealthDisplayModeOverride).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.GateNameDisplayModeOverride).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.StatusDisplayModeOverride).HasConversion<string>().HasMaxLength(50);
+
             // Foreign key relationships
             entity.HasOne(g => g.IconMaterial)
                 .WithMany()
                 .HasForeignKey(g => g.IconMaterialRefId)
-                .OnDelete(DeleteBehavior.Restrict);
-            
-            entity.HasOne(g => g.FallbackMaterial)
-                .WithMany()
-                .HasForeignKey(g => g.FallbackMaterialRefId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(g => g.AnchorPoint)
-                .WithMany()
-                .HasForeignKey(g => g.AnchorPointId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(g => g.OpenAnchorPoint)
-                .WithMany()
-                .HasForeignKey(g => g.OpenAnchorPointId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(g => g.ReferencePoint1)
-                .WithMany()
-                .HasForeignKey(g => g.ReferencePoint1Id)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(g => g.ReferencePoint2)
-                .WithMany()
-                .HasForeignKey(g => g.ReferencePoint2Id)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(g => g.HingeAxis)
-                .WithMany()
-                .HasForeignKey(g => g.HingeAxisId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(g => g.LeftDoorSeedBlock)
-                .WithMany()
-                .HasForeignKey(g => g.LeftDoorSeedBlockId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(g => g.RightDoorSeedBlock)
-                .WithMany()
-                .HasForeignKey(g => g.RightDoorSeedBlockId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasMany(g => g.GuardSpawnLocations)
@@ -465,17 +415,111 @@ public partial class KnKDbContext : DbContext
                         j.HasKey("GateStructureId", "LocationId");
                         j.ToTable("gate_structure_guard_spawn_locations");
                     });
-            
+
+            // One-to-many relationship with GateDoor
+            entity.HasMany(g => g.GateDoors)
+                .WithOne(d => d.GateStructure)
+                .HasForeignKey(d => d.GateStructureId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // GateDoor configuration - most of what used to be per-GateStructure geometry/animation/
+        // state configuration now lives here; see GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md item 5.
+        modelBuilder.Entity<GateDoor>(entity =>
+        {
+            entity.ToTable("gate_doors");
+
+            // Persist enums as strings for DB readability and stable API semantics.
+            entity.Property(e => e.GateType).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.GeometryDefinitionMode).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.MotionType).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.TileEntityPolicy).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.HealthDisplayMode).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.OpenedState).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.FaceDirection).HasConversion<string>().HasMaxLength(50);
+            // GateNameDisplayMode/StatusDisplayMode intentionally NOT string-converted here,
+            // matching the original GateStructure config (which never applied .HasConversion
+            // <string>() to these two, unlike its other enums) - the migration's data backfill
+            // copies these columns' existing int values straight across, so changing the storage
+            // representation here would corrupt every existing gate's display-mode setting.
+            // DoorNameDisplayMode (a brand-new field) kept int-backed too, for consistency with
+            // its two siblings above.
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(191);
+
+            // Indexes
+            entity.HasIndex(e => e.IsActive)
+                .HasDatabaseName("IX_GateDoor_IsActive");
+
+            entity.HasIndex(e => e.GateType)
+                .HasDatabaseName("IX_GateDoor_GateType");
+
+            entity.HasIndex(e => e.OpenedState)
+                .HasDatabaseName("IX_GateDoor_OpenedState");
+
+            // Name is unique within its parent structure, not globally (decision 5.0-D).
+            entity.HasIndex(e => new { e.GateStructureId, e.Name })
+                .IsUnique()
+                .HasDatabaseName("IX_GateDoor_GateStructureId_Name");
+
+            // Foreign key relationships
+            entity.HasOne(d => d.FallbackMaterial)
+                .WithMany()
+                .HasForeignKey(d => d.FallbackMaterialRefId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.AnchorPoint)
+                .WithMany()
+                .HasForeignKey(d => d.AnchorPointId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.OpenAnchorPoint)
+                .WithMany()
+                .HasForeignKey(d => d.OpenAnchorPointId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.ReferencePoint1)
+                .WithMany()
+                .HasForeignKey(d => d.ReferencePoint1Id)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.ReferencePoint2)
+                .WithMany()
+                .HasForeignKey(d => d.ReferencePoint2Id)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.HingeAxis)
+                .WithMany()
+                .HasForeignKey(d => d.HingeAxisId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.LeftDoorSeedBlock)
+                .WithMany()
+                .HasForeignKey(d => d.LeftDoorSeedBlockId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.RightDoorSeedBlock)
+                .WithMany()
+                .HasForeignKey(d => d.RightDoorSeedBlockId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.InfoDisplayLocation)
+                .WithMany()
+                .HasForeignKey(d => d.InfoDisplayLocationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // One-to-many relationship with GateBlockSnapshot
-            entity.HasMany(g => g.BlockSnapshots)
-                .WithOne(bs => bs.GateStructure)
-                .HasForeignKey(bs => bs.GateStructureId)
+            entity.HasMany(d => d.BlockSnapshots)
+                .WithOne(bs => bs.GateDoor)
+                .HasForeignKey(bs => bs.GateDoorId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // One-to-many relationship with GateOpenedBlockSnapshot
-            entity.HasMany(g => g.OpenedBlockSnapshots)
-                .WithOne(bs => bs.GateStructure)
-                .HasForeignKey(bs => bs.GateStructureId)
+            entity.HasMany(d => d.OpenedBlockSnapshots)
+                .WithOne(bs => bs.GateDoor)
+                .HasForeignKey(bs => bs.GateDoorId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -483,15 +527,15 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<GateBlockSnapshot>(entity =>
         {
             entity.ToTable("gate_block_snapshots");
-            
+
             entity.HasKey(e => e.Id);
-            
+
             // Indexes for performance
-            entity.HasIndex(e => e.GateStructureId)
-                .HasDatabaseName("IX_GateBlockSnapshot_GateStructureId");
-            
-            entity.HasIndex(e => new { e.GateStructureId, e.SortOrder })
-                .HasDatabaseName("IX_GateBlockSnapshot_GateId_SortOrder");
+            entity.HasIndex(e => e.GateDoorId)
+                .HasDatabaseName("IX_GateBlockSnapshot_GateDoorId");
+
+            entity.HasIndex(e => new { e.GateDoorId, e.SortOrder })
+                .HasDatabaseName("IX_GateBlockSnapshot_GateDoorId_SortOrder");
 
             entity.HasIndex(e => new { e.WorldX, e.WorldY, e.WorldZ })
                 .HasDatabaseName("IX_GateBlockSnapshot_WorldCoordinates");
@@ -517,11 +561,11 @@ public partial class KnKDbContext : DbContext
 
             entity.HasKey(e => e.Id);
 
-            entity.HasIndex(e => e.GateStructureId)
-                .HasDatabaseName("IX_GateOpenedBlockSnapshot_GateStructureId");
+            entity.HasIndex(e => e.GateDoorId)
+                .HasDatabaseName("IX_GateOpenedBlockSnapshot_GateDoorId");
 
-            entity.HasIndex(e => new { e.GateStructureId, e.SortOrder })
-                .HasDatabaseName("IX_GateOpenedBlockSnapshot_GateId_SortOrder");
+            entity.HasIndex(e => new { e.GateDoorId, e.SortOrder })
+                .HasDatabaseName("IX_GateOpenedBlockSnapshot_GateDoorId_SortOrder");
 
             entity.HasIndex(e => new { e.WorldX, e.WorldY, e.WorldZ })
                 .HasDatabaseName("IX_GateOpenedBlockSnapshot_WorldCoordinates");

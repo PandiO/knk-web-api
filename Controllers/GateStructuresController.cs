@@ -16,18 +16,6 @@ namespace KnKWebAPI.Controllers
     {
         private readonly IGateStructureService _service;
 
-        private static readonly HashSet<string> ValidFaceDirections = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "north",
-            "north-east",
-            "east",
-            "south-east",
-            "south",
-            "south-west",
-            "west",
-            "north-west"
-        };
-
         public GateStructuresController(IGateStructureService service)
         {
             _service = service;
@@ -67,6 +55,8 @@ namespace KnKWebAPI.Controllers
                 Filters = new Dictionary<string, string>()
             };
 
+            // isActive/gateType/isOpened filter on whether at least one of the structure's
+            // doors matches (item 5's multi-door support moved these fields to GateDoor).
             if (streetId.HasValue) query.Filters["streetId"] = streetId.Value.ToString();
             if (districtId.HasValue) query.Filters["districtId"] = districtId.Value.ToString();
             if (isActive.HasValue) query.Filters["isActive"] = isActive.Value.ToString();
@@ -177,166 +167,24 @@ namespace KnKWebAPI.Controllers
             return Ok(result);
         }
 
-        [HttpPut("{id:int}/state")]
-        public async Task<IActionResult> UpdateState(int id, [FromBody] GateStateUpdateDto request)
+        // Sets/clears the structure-level cascading overrides (decision 5.0-B). Permission
+        // model for who may call this is still open - see
+        // GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md item 5.3 "still open" #5 - intended for
+        // admin commands/permissions and the future Siege capture event.
+        [HttpPatch("{id:int}/overrides")]
+        public async Task<IActionResult> UpdateOverrides(int id, [FromBody] GateStructureOverridesUpdateDto request)
         {
             if (id <= 0) return BadRequest("Invalid id.");
             if (request == null) return BadRequest();
 
             try
             {
-                await _service.UpdateStateAsync(id, request.IsOpened, request.IsDestroyed, request.IsJammed);
+                await _service.UpdateOverridesAsync(id, request);
                 return NoContent();
             }
             catch (KeyNotFoundException)
             {
                 return NotFound();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPut("{id:int}/health")]
-        public async Task<IActionResult> UpdateHealth(int id, [FromBody] GateHealthUpdateDto request)
-        {
-            if (id <= 0) return BadRequest("Invalid id.");
-            if (request == null) return BadRequest();
-
-            try
-            {
-                await _service.UpdateHealthAsync(id, request.HealthCurrent);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPut("{id:int}/operational-settings")]
-        public async Task<IActionResult> UpdateOperationalSettings(int id, [FromBody] GateOperationalSettingsUpdateDto request)
-        {
-            if (id <= 0) return BadRequest("Invalid id.");
-            if (request == null) return BadRequest();
-
-            try
-            {
-                await _service.UpdateOperationalSettingsAsync(id, request.IsActive, request.IsInvincible);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpGet("{id:int}/snapshots")]
-        public async Task<IActionResult> GetSnapshots(int id)
-        {
-            if (id <= 0) return BadRequest("Invalid gateId.");
-            try
-            {
-                var snapshots = await _service.GetBlockSnapshotsAsync(id);
-                return Ok(snapshots);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPost("{id:int}/snapshots/bulk")]
-        public async Task<IActionResult> AddSnapshots(int id, [FromBody] IEnumerable<GateBlockSnapshotCreateDto> snapshots)
-        {
-            if (id <= 0) return BadRequest("Invalid gateId.");
-            if (snapshots == null || !snapshots.Any()) return BadRequest("Snapshots collection cannot be null or empty.");
-
-            try
-            {
-                await _service.AddBlockSnapshotsAsync(id, snapshots);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpDelete("{id:int}/snapshots")]
-        public async Task<IActionResult> ClearSnapshots(int id)
-        {
-            if (id <= 0) return BadRequest("Invalid gateId.");
-            try
-            {
-                await _service.ClearBlockSnapshotsAsync(id);
-                return NoContent();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        // Opened-block snapshot endpoints - mirror the snapshot endpoints above exactly, for
-        // the separately-scanned fully-open shape. See ROTATION_GAP_FILL_DESIGN.md.
-        [HttpGet("{id:int}/openedSnapshots")]
-        public async Task<IActionResult> GetOpenedSnapshots(int id)
-        {
-            if (id <= 0) return BadRequest("Invalid gateId.");
-            try
-            {
-                var snapshots = await _service.GetOpenedBlockSnapshotsAsync(id);
-                return Ok(snapshots);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPost("{id:int}/openedSnapshots/bulk")]
-        public async Task<IActionResult> AddOpenedSnapshots(int id, [FromBody] IEnumerable<GateOpenedBlockSnapshotCreateDto> snapshots)
-        {
-            if (id <= 0) return BadRequest("Invalid gateId.");
-            if (snapshots == null || !snapshots.Any()) return BadRequest("Snapshots collection cannot be null or empty.");
-
-            try
-            {
-                await _service.AddOpenedBlockSnapshotsAsync(id, snapshots);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpDelete("{id:int}/openedSnapshots")]
-        public async Task<IActionResult> ClearOpenedSnapshots(int id)
-        {
-            if (id <= 0) return BadRequest("Invalid gateId.");
-            try
-            {
-                await _service.ClearOpenedBlockSnapshotsAsync(id);
-                return NoContent();
             }
             catch (ArgumentException ex)
             {
@@ -346,56 +194,28 @@ namespace KnKWebAPI.Controllers
 
         private static string? ValidateGatePayload(GateStructureDto gateStructureDto)
         {
-            if (string.IsNullOrWhiteSpace(gateStructureDto.FaceDirection) ||
-                !ValidFaceDirections.Contains(gateStructureDto.FaceDirection))
+            if (gateStructureDto.OpenedStateOverride.HasValue &&
+                !Enum.IsDefined(typeof(GateDoorOpenState), gateStructureDto.OpenedStateOverride.Value))
             {
-                return $"Invalid FaceDirection. Must be one of: {string.Join(", ", ValidFaceDirections)}";
+                return "Invalid OpenedStateOverride.";
             }
 
-            if (!Enum.IsDefined(typeof(GateType), gateStructureDto.GateType))
+            if (gateStructureDto.HealthDisplayModeOverride.HasValue &&
+                !Enum.IsDefined(typeof(HealthDisplayMode), gateStructureDto.HealthDisplayModeOverride.Value))
             {
-                return "Invalid GateType.";
+                return "Invalid HealthDisplayModeOverride.";
             }
 
-            if (!Enum.IsDefined(typeof(MotionType), gateStructureDto.MotionType))
+            if (gateStructureDto.GateNameDisplayModeOverride.HasValue &&
+                !Enum.IsDefined(typeof(GateInfoDisplayMode), gateStructureDto.GateNameDisplayModeOverride.Value))
             {
-                return "Invalid MotionType.";
+                return "Invalid GateNameDisplayModeOverride.";
             }
 
-            if (!Enum.IsDefined(typeof(GeometryDefinitionMode), gateStructureDto.GeometryDefinitionMode))
+            if (gateStructureDto.StatusDisplayModeOverride.HasValue &&
+                !Enum.IsDefined(typeof(GateInfoDisplayMode), gateStructureDto.StatusDisplayModeOverride.Value))
             {
-                return "Invalid GeometryDefinitionMode.";
-            }
-
-            if (!Enum.IsDefined(typeof(TileEntityPolicy), gateStructureDto.TileEntityPolicy))
-            {
-                return "Invalid TileEntityPolicy.";
-            }
-
-            if (!Enum.IsDefined(typeof(HealthDisplayMode), gateStructureDto.HealthDisplayMode))
-            {
-                return "Invalid HealthDisplayMode.";
-            }
-
-            if (!Enum.IsDefined(typeof(GateInfoDisplayMode), gateStructureDto.GateNameDisplayMode))
-            {
-                return "Invalid GateNameDisplayMode.";
-            }
-
-            if (!Enum.IsDefined(typeof(GateInfoDisplayMode), gateStructureDto.StatusDisplayMode))
-            {
-                return "Invalid StatusDisplayMode.";
-            }
-
-            if (gateStructureDto.AnimationDurationTicks.HasValue && gateStructureDto.AnimationDurationTicks <= 0)
-            {
-                return "AnimationDurationTicks must be greater than 0.";
-            }
-
-            if (gateStructureDto.HealthCurrent.HasValue && gateStructureDto.HealthMax.HasValue &&
-                gateStructureDto.HealthCurrent > gateStructureDto.HealthMax)
-            {
-                return "HealthCurrent cannot exceed HealthMax.";
+                return "Invalid StatusDisplayModeOverride.";
             }
 
             return null;

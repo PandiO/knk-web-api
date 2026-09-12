@@ -14,24 +14,8 @@ namespace knkwebapi_v2.Services
         Task UpdateAsync(int id, GateStructureDto gateStructureDto);
         Task DeleteAsync(int id);
         Task<PagedResultDto<GateStructureListDto>> SearchAsync(PagedQueryDto query);
-        
-        // Gate-specific operations
-        Task<IEnumerable<GateStructureDto>> GetActiveGatesAsync();
-        Task UpdateHealthAsync(int id, double newHealth);
-        Task UpdateStateAsync(int id, bool isOpened, bool isDestroyed, bool isJammed);
-        Task UpdateOperationalSettingsAsync(int id, bool isActive, bool isInvincible);
-        
-        // Block snapshot operations
-        Task<IEnumerable<GateBlockSnapshotDto>> GetBlockSnapshotsAsync(int gateId);
-        Task AddBlockSnapshotsAsync(int gateId, IEnumerable<GateBlockSnapshotDto> snapshots);
-        Task AddBlockSnapshotsAsync(int gateId, IEnumerable<GateBlockSnapshotCreateDto> snapshots);
-        Task ClearBlockSnapshotsAsync(int gateId);
 
-        // Opened-block snapshot operations - mirrors the block snapshot operations above
-        // exactly, for the separately-scanned fully-open shape. See ROTATION_GAP_FILL_DESIGN.md.
-        Task<IEnumerable<GateOpenedBlockSnapshotDto>> GetOpenedBlockSnapshotsAsync(int gateId);
-        Task AddOpenedBlockSnapshotsAsync(int gateId, IEnumerable<GateOpenedBlockSnapshotDto> snapshots);
-        Task AddOpenedBlockSnapshotsAsync(int gateId, IEnumerable<GateOpenedBlockSnapshotCreateDto> snapshots);
-        Task ClearOpenedBlockSnapshotsAsync(int gateId);
+        // Structure-level cascading overrides (decision 5.0-B)
+        Task UpdateOverridesAsync(int id, GateStructureOverridesUpdateDto overridesDto);
     }
 }

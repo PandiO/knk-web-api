@@ -28,8 +28,8 @@ namespace knkwebapi_v2.Repositories
         public async Task<GateStructure?> GetByIdWithSnapshotsAsync(int id)
         {
             return await BuildGateQuery()
-                .Include(gs => gs.BlockSnapshots)
-                .Include(gs => gs.OpenedBlockSnapshots)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.BlockSnapshots)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.OpenedBlockSnapshots)
                 .FirstOrDefaultAsync(gs => gs.Id == id);
         }
 
@@ -63,13 +63,6 @@ namespace knkwebapi_v2.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<GateStructure>> GetActiveGatesAsync()
-        {
-            return await BuildGateQuery()
-                .Where(gs => gs.IsActive)
-                .ToListAsync();
-        }
-
         public async Task<bool> IsGateNameUniqueAsync(string name, int domainId, int? excludeId = null)
         {
             var query = _context.Set<GateStructure>()
@@ -83,123 +76,6 @@ namespace knkwebapi_v2.Repositories
             return !await query.AnyAsync();
         }
 
-        public async Task<GateStructure?> FindGateByRegionAsync(string regionId)
-        {
-            return await BuildGateQuery()
-                .FirstOrDefaultAsync(gs => 
-                    gs.RegionClosedId == regionId || 
-                    gs.RegionOpenedId == regionId);
-        }
-
-        public async Task UpdateGateHealthAsync(int id, double newHealth)
-        {
-            var gate = await _context.Set<GateStructure>().FindAsync(id);
-            if (gate != null)
-            {
-                gate.HealthCurrent = newHealth;
-                if (newHealth <= 0)
-                {
-                    gate.IsDestroyed = true;
-                }
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task UpdateGateStateAsync(int id, bool isOpened, bool isDestroyed, bool isJammed)
-        {
-            var gate = await _context.Set<GateStructure>().FindAsync(id);
-            if (gate != null)
-            {
-                // Respawning is the destroyed -> not destroyed transition; restore full health.
-                bool isRespawning = gate.IsDestroyed && !isDestroyed;
-
-                gate.IsOpened = isOpened;
-                gate.IsDestroyed = isDestroyed;
-                gate.IsJammed = isJammed;
-
-                if (isRespawning)
-                {
-                    gate.HealthCurrent = gate.HealthMax;
-                }
-
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task UpdateGateOperationalSettingsAsync(int id, bool isActive, bool isInvincible)
-        {
-            var gate = await _context.Set<GateStructure>().FindAsync(id);
-            if (gate != null)
-            {
-                gate.IsActive = isActive;
-                gate.IsInvincible = isInvincible;
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        // Block snapshot operations
-        public async Task<IEnumerable<GateBlockSnapshot>> GetBlockSnapshotsByGateIdAsync(int gateId)
-        {
-            return await _context.Set<GateBlockSnapshot>()
-                .Where(bs => bs.GateStructureId == gateId)
-                .OrderBy(bs => bs.SortOrder)
-                .ToListAsync();
-        }
-
-        public async Task AddBlockSnapshotAsync(GateBlockSnapshot snapshot)
-        {
-            await _context.Set<GateBlockSnapshot>().AddAsync(snapshot);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task AddBlockSnapshotsAsync(IEnumerable<GateBlockSnapshot> snapshots)
-        {
-            await _context.Set<GateBlockSnapshot>().AddRangeAsync(snapshots);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteBlockSnapshotsByGateIdAsync(int gateId)
-        {
-            var snapshots = await _context.Set<GateBlockSnapshot>()
-                .Where(bs => bs.GateStructureId == gateId)
-                .ToListAsync();
-
-            _context.Set<GateBlockSnapshot>().RemoveRange(snapshots);
-            await _context.SaveChangesAsync();
-        }
-
-        // Opened-block snapshot operations - mirrors the block snapshot operations above
-        // exactly, for the separately-scanned fully-open shape. See ROTATION_GAP_FILL_DESIGN.md.
-        public async Task<IEnumerable<GateOpenedBlockSnapshot>> GetOpenedBlockSnapshotsByGateIdAsync(int gateId)
-        {
-            return await _context.Set<GateOpenedBlockSnapshot>()
-                .Where(bs => bs.GateStructureId == gateId)
-                .OrderBy(bs => bs.SortOrder)
-                .ToListAsync();
-        }
-
-        public async Task AddOpenedBlockSnapshotAsync(GateOpenedBlockSnapshot snapshot)
-        {
-            await _context.Set<GateOpenedBlockSnapshot>().AddAsync(snapshot);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task AddOpenedBlockSnapshotsAsync(IEnumerable<GateOpenedBlockSnapshot> snapshots)
-        {
-            await _context.Set<GateOpenedBlockSnapshot>().AddRangeAsync(snapshots);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteOpenedBlockSnapshotsByGateIdAsync(int gateId)
-        {
-            var snapshots = await _context.Set<GateOpenedBlockSnapshot>()
-                .Where(bs => bs.GateStructureId == gateId)
-                .ToListAsync();
-
-            _context.Set<GateOpenedBlockSnapshot>().RemoveRange(snapshots);
-            await _context.SaveChangesAsync();
-        }
-
         public async Task<PagedResult<GateStructure>> SearchAsync(PagedQuery query)
         {
             var queryable = _context.Set<GateStructure>().AsQueryable();
@@ -207,7 +83,7 @@ namespace knkwebapi_v2.Repositories
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
             {
                 var searchLower = query.SearchTerm.ToLower();
-                queryable = queryable.Where(gs => gs.Name.ToLower().Contains(searchLower) || 
+                queryable = queryable.Where(gs => gs.Name.ToLower().Contains(searchLower) ||
                                                    gs.Description.ToLower().Contains(searchLower));
             }
 
@@ -221,18 +97,21 @@ namespace knkwebapi_v2.Repositories
                 {
                     queryable = queryable.Where(gs => gs.DistrictId == districtId);
                 }
+                // isActive/gateType/isOpened are now per-door fields (item 5's multi-door
+                // support) - a structure matches if at least one of its doors matches.
                 if (query.Filters.TryGetValue("isActive", out var isActiveStr) && bool.TryParse(isActiveStr, out var isActive))
                 {
-                    queryable = queryable.Where(gs => gs.IsActive == isActive);
+                    queryable = queryable.Where(gs => gs.GateDoors.Any(d => d.IsActive == isActive));
                 }
                 if (query.Filters.TryGetValue("gateType", out var gateType) &&
                     System.Enum.TryParse<GateType>(gateType, true, out var parsedGateType))
                 {
-                    queryable = queryable.Where(gs => gs.GateType == parsedGateType);
+                    queryable = queryable.Where(gs => gs.GateDoors.Any(d => d.GateType == parsedGateType));
                 }
                 if (query.Filters.TryGetValue("isOpened", out var isOpenedStr) && bool.TryParse(isOpenedStr, out var isOpened))
                 {
-                    queryable = queryable.Where(gs => gs.IsOpened == isOpened);
+                    var matchState = isOpened ? GateDoorOpenState.OPEN : GateDoorOpenState.CLOSED;
+                    queryable = queryable.Where(gs => gs.GateDoors.Any(d => d.OpenedState == matchState));
                 }
             }
 
@@ -245,16 +124,8 @@ namespace knkwebapi_v2.Repositories
                 .Include(gs => gs.Street)
                 .Include(gs => gs.District)
                 .Include(gs => gs.IconMaterial)
-                .Include(gs => gs.FallbackMaterial)
-                .Include(gs => gs.AnchorPoint)
-                .Include(gs => gs.OpenAnchorPoint)
-                .Include(gs => gs.ReferencePoint1)
-                .Include(gs => gs.ReferencePoint2)
-                .Include(gs => gs.HingeAxis)
-                .Include(gs => gs.LeftDoorSeedBlock)
-                .Include(gs => gs.RightDoorSeedBlock)
-                .Include(gs => gs.InfoDisplayLocation)
                 .Include(gs => gs.GuardSpawnLocations)
+                .Include(gs => gs.GateDoors)
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .ToListAsync();
@@ -279,9 +150,6 @@ namespace knkwebapi_v2.Repositories
                 "id" => sortDescending ? queryable.OrderByDescending(gs => gs.Id) : queryable.OrderBy(gs => gs.Id),
                 "housenumber" => sortDescending ? queryable.OrderByDescending(gs => gs.HouseNumber) : queryable.OrderBy(gs => gs.HouseNumber),
                 "createdat" => sortDescending ? queryable.OrderByDescending(gs => gs.CreatedAt) : queryable.OrderBy(gs => gs.CreatedAt),
-                "isactive" => sortDescending ? queryable.OrderByDescending(gs => gs.IsActive) : queryable.OrderBy(gs => gs.IsActive),
-                "gatetype" => sortDescending ? queryable.OrderByDescending(gs => gs.GateType) : queryable.OrderBy(gs => gs.GateType),
-                "healthcurrent" => sortDescending ? queryable.OrderByDescending(gs => gs.HealthCurrent) : queryable.OrderBy(gs => gs.HealthCurrent),
                 _ => queryable.OrderBy(gs => gs.Name)
             };
         }
@@ -293,16 +161,16 @@ namespace knkwebapi_v2.Repositories
                 .Include(gs => gs.Street)
                 .Include(gs => gs.District)
                 .Include(gs => gs.IconMaterial)
-                .Include(gs => gs.FallbackMaterial)
-                .Include(gs => gs.AnchorPoint)
-                .Include(gs => gs.OpenAnchorPoint)
-                .Include(gs => gs.ReferencePoint1)
-                .Include(gs => gs.ReferencePoint2)
-                .Include(gs => gs.HingeAxis)
-                .Include(gs => gs.LeftDoorSeedBlock)
-                .Include(gs => gs.RightDoorSeedBlock)
-                .Include(gs => gs.InfoDisplayLocation)
-                .Include(gs => gs.GuardSpawnLocations);
+                .Include(gs => gs.GuardSpawnLocations)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.AnchorPoint)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.OpenAnchorPoint)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.ReferencePoint1)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.ReferencePoint2)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.HingeAxis)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.LeftDoorSeedBlock)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.RightDoorSeedBlock)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.InfoDisplayLocation)
+                .Include(gs => gs.GateDoors).ThenInclude(d => d.FallbackMaterial);
         }
     }
 }

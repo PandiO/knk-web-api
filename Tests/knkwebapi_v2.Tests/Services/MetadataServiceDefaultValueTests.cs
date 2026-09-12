@@ -21,27 +21,27 @@ public class MetadataServiceDefaultValueTests
             BindingFlags.Instance | BindingFlags.NonPublic);
 
         getFieldMetadata.Should().NotBeNull();
-        var fields = getFieldMetadata!.Invoke(service, new object[] { typeof(GateStructure) })
+        var fields = getFieldMetadata!.Invoke(service, new object[] { typeof(GateDoor) })
             .Should().BeAssignableTo<List<FieldMetadataDto>>().Subject;
 
-        fields.Single(field => field.FieldName == nameof(GateStructure.RegionClosedId))
+        fields.Single(field => field.FieldName == nameof(GateDoor.RegionClosedId))
             .Should().Match<FieldMetadataDto>(field => field.HasDefaultValue && field.DefaultValue == string.Empty);
-        fields.Single(field => field.FieldName == nameof(GateStructure.RegionOpenedId))
+        fields.Single(field => field.FieldName == nameof(GateDoor.RegionOpenedId))
             .Should().Match<FieldMetadataDto>(field => field.HasDefaultValue && field.DefaultValue == string.Empty);
-        fields.Single(field => field.FieldName == nameof(GateStructure.Name)).HasDefaultValue
+        fields.Single(field => field.FieldName == nameof(GateDoor.Name)).HasDefaultValue
             .Should().BeFalse();
 
         var validationResult = new FormTemplateValidationService().ValidateField(
             new FormField
             {
-                FieldName = nameof(GateStructure.RegionClosedId),
+                FieldName = nameof(GateDoor.RegionClosedId),
                 Label = "Closed Region Id",
                 FieldType = FieldType.String,
                 Required = false
             },
             new EntityMetadataDto
             {
-                EntityName = nameof(GateStructure),
+                EntityName = nameof(GateDoor),
                 Fields = fields
             });
 

@@ -13,7 +13,7 @@ public class GateStructureMappingProfileTests
         configuration.AddProfile<GateStructureMappingProfile>()).CreateMapper();
 
     [Fact]
-    public void MapToEntity_WhenOptionalRegionAndJsonFieldsAreNull_UsesEmptyStrings()
+    public void MapToEntity_WhenWgRegionIdIsNull_UsesEmptyString()
     {
         var dto = new GateStructureDto
         {
@@ -21,23 +21,11 @@ public class GateStructureMappingProfileTests
             Description = "Test Gate",
             StreetId = 4,
             DistrictId = 8,
-            WgRegionId = null!,
-            RegionClosedId = null!,
-            RegionOpenedId = null!,
-            SeedBlocks = null!,
-            ScanMaterialWhitelist = null!,
-            ScanMaterialBlacklist = null!,
-            PassThroughConditionsJson = null!
+            WgRegionId = null!
         };
 
         var entity = _mapper.Map<GateStructure>(dto);
 
         entity.WgRegionId.Should().BeEmpty();
-        entity.RegionClosedId.Should().BeEmpty();
-        entity.RegionOpenedId.Should().BeEmpty();
-        entity.SeedBlocks.Should().BeEmpty();
-        entity.ScanMaterialWhitelist.Should().BeEmpty();
-        entity.ScanMaterialBlacklist.Should().BeEmpty();
-        entity.PassThroughConditionsJson.Should().BeEmpty();
     }
 }

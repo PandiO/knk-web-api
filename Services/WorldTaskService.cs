@@ -13,18 +13,18 @@ namespace knkwebapi_v2.Services
     {
         private readonly IWorldTaskRepository _taskRepo;
         private readonly IWorkflowRepository _workflowRepo;
-        private readonly IGateStructureService _gateStructureService;
+        private readonly IGateDoorService _gateDoorService;
         private readonly IMapper _mapper;
 
         public WorldTaskService(
             IWorldTaskRepository taskRepo,
             IWorkflowRepository workflowRepo,
-            IGateStructureService gateStructureService,
+            IGateDoorService gateDoorService,
             IMapper mapper)
         {
             _taskRepo = taskRepo;
             _workflowRepo = workflowRepo;
-            _gateStructureService = gateStructureService;
+            _gateDoorService = gateDoorService;
             _mapper = mapper;
         }
 
@@ -353,7 +353,7 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>
-        /// Parses a GateBlockScan result and persists the scanned snapshots on the target gate.
+        /// Parses a GateBlockScan result and persists the scanned snapshots on the target door.
         /// Returns null on success, or an error message if the result should fail the task instead.
         /// </summary>
         private async Task<string?> TryApplyGateBlockScanResultAsync(WorldTask entity, string? outputJson)
@@ -377,16 +377,16 @@ namespace knkwebapi_v2.Services
             if (result.Status == GateBlockScanStatus.Failed)
                 return result.ErrorMessage ?? "Gate block scan reported failure.";
 
-            var gateStructureId = ExtractGateStructureId(entity.InputJson);
-            if (gateStructureId is null || gateStructureId <= 0)
-                return "GateBlockScan task InputJson did not contain a valid gateStructureId.";
+            var gateDoorId = ExtractGateDoorId(entity.InputJson);
+            if (gateDoorId is null || gateDoorId <= 0)
+                return "GateBlockScan task InputJson did not contain a valid gateDoorId.";
 
             if (result.Snapshots.Count > 0)
             {
                 try
                 {
-                    await _gateStructureService.ClearBlockSnapshotsAsync(gateStructureId.Value);
-                    await _gateStructureService.AddBlockSnapshotsAsync(gateStructureId.Value, result.Snapshots);
+                    await _gateDoorService.ClearBlockSnapshotsAsync(gateDoorId.Value);
+                    await _gateDoorService.AddBlockSnapshotsAsync(gateDoorId.Value, result.Snapshots);
                 }
                 catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException)
                 {
@@ -399,7 +399,7 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// Parses a GateOpenedBlockScan result and persists the scanned snapshots on the target
-        /// gate's OpenedBlockSnapshots. Mirrors TryApplyGateBlockScanResultAsync exactly, but
+        /// door's OpenedBlockSnapshots. Mirrors TryApplyGateBlockScanResultAsync exactly, but
         /// targets the separate GateOpenedBlockSnapshot table - see
         /// docs/features/gate-structure-animation/ROTATION_GAP_FILL_DESIGN.md, Decision 6.
         /// Returns null on success, or an error message if the result should fail the task instead.
@@ -425,16 +425,16 @@ namespace knkwebapi_v2.Services
             if (result.Status == GateBlockScanStatus.Failed)
                 return result.ErrorMessage ?? "Gate opened-block scan reported failure.";
 
-            var gateStructureId = ExtractGateStructureId(entity.InputJson);
-            if (gateStructureId is null || gateStructureId <= 0)
-                return "GateOpenedBlockScan task InputJson did not contain a valid gateStructureId.";
+            var gateDoorId = ExtractGateDoorId(entity.InputJson);
+            if (gateDoorId is null || gateDoorId <= 0)
+                return "GateOpenedBlockScan task InputJson did not contain a valid gateDoorId.";
 
             if (result.Snapshots.Count > 0)
             {
                 try
                 {
-                    await _gateStructureService.ClearOpenedBlockSnapshotsAsync(gateStructureId.Value);
-                    await _gateStructureService.AddOpenedBlockSnapshotsAsync(gateStructureId.Value, result.Snapshots);
+                    await _gateDoorService.ClearOpenedBlockSnapshotsAsync(gateDoorId.Value);
+                    await _gateDoorService.AddOpenedBlockSnapshotsAsync(gateDoorId.Value, result.Snapshots);
                 }
                 catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException)
                 {
@@ -445,7 +445,9 @@ namespace knkwebapi_v2.Services
             return null;
         }
 
-        private static int? ExtractGateStructureId(string? inputJson)
+        // Reads "gateDoorId" from a scan task's InputJson (moved from "gateStructureId" by item
+        // 5's multi-door support - a scan targets one door, not a whole structure).
+        private static int? ExtractGateDoorId(string? inputJson)
         {
             if (string.IsNullOrWhiteSpace(inputJson)) return null;
 
@@ -456,7 +458,7 @@ namespace knkwebapi_v2.Services
 
                 foreach (var prop in doc.RootElement.EnumerateObject())
                 {
-                    if (string.Equals(prop.Name, "gateStructureId", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(prop.Name, "gateDoorId", StringComparison.OrdinalIgnoreCase))
                     {
                         return prop.Value.TryGetInt32(out var value) ? value : null;
                     }
