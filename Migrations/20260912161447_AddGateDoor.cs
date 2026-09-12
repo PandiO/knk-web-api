@@ -26,97 +26,154 @@ namespace knkwebapi_v2.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_block_snapshots_gate_structures_GateStructureId",
-                table: "gate_block_snapshots");
+            // The live dev DB has drifted from what this migration's scaffolded DropForeignKey/
+            // DropIndex calls assumed (confirmed by inspecting information_schema directly): none of
+            // the location/material-ref foreign keys or their indexes below actually exist on
+            // gate_structures/gate_block_snapshots/gate_opened_block_snapshots in this environment,
+            // even though the columns and EF's migration history say they should. Guard every drop
+            // on an information_schema existence check so this migration is idempotent/portable
+            // across a fresh DB (where these constraints genuinely exist) and this drifted one alike,
+            // rather than assuming either state.
+            migrationBuilder.Sql(@"
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_block_snapshots' AND CONSTRAINT_NAME = 'FK_gate_block_snapshots_gate_structures_GateStructureId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_block_snapshots` DROP FOREIGN KEY `FK_gate_block_snapshots_gate_structures_GateStructureId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_opened_block_snapshots_gate_structures_GateStructureId",
-                table: "gate_opened_block_snapshots");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_opened_block_snapshots' AND CONSTRAINT_NAME = 'FK_gate_opened_block_snapshots_gate_structures_GateStructureId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_opened_block_snapshots` DROP FOREIGN KEY `FK_gate_opened_block_snapshots_gate_structures_GateStructureId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_locations_AnchorPointId",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_locations_AnchorPointId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_locations_AnchorPointId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_locations_HingeAxisId",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_locations_HingeAxisId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_locations_HingeAxisId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_locations_InfoDisplayLocationId",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_locations_InfoDisplayLocationId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_locations_InfoDisplayLocationId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_locations_LeftDoorSeedBlockId",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_locations_LeftDoorSeedBlockId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_locations_LeftDoorSeedBlockId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_locations_OpenAnchorPointId",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_locations_OpenAnchorPointId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_locations_OpenAnchorPointId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_locations_ReferencePoint1Id",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_locations_ReferencePoint1Id' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_locations_ReferencePoint1Id`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_locations_ReferencePoint2Id",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_locations_ReferencePoint2Id' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_locations_ReferencePoint2Id`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_locations_RightDoorSeedBlockId",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_locations_RightDoorSeedBlockId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_locations_RightDoorSeedBlockId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_gate_structures_minecraftmaterialrefs_FallbackMaterialRefId",
-                table: "gate_structures");
+                SET @fk_exists := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND CONSTRAINT_NAME = 'FK_gate_structures_minecraftmaterialrefs_FallbackMaterialRefId' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+                SET @sql := IF(@fk_exists > 0, 'ALTER TABLE `gate_structures` DROP FOREIGN KEY `FK_gate_structures_minecraftmaterialrefs_FallbackMaterialRefId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_AnchorPointId",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_GateStructure_GateType');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_GateStructure_GateType`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_FallbackMaterialRefId",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_GateStructure_IsActive');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_GateStructure_IsActive`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_HingeAxisId",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_GateStructure_IsOpened');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_GateStructure_IsOpened`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_InfoDisplayLocationId",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_AnchorPointId');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_AnchorPointId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_LeftDoorSeedBlockId",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_FallbackMaterialRefId');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_FallbackMaterialRefId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_OpenAnchorPointId",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_HingeAxisId');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_HingeAxisId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_ReferencePoint1Id",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_InfoDisplayLocationId');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_InfoDisplayLocationId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_ReferencePoint2Id",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_LeftDoorSeedBlockId');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_LeftDoorSeedBlockId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_gate_structures_RightDoorSeedBlockId",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_OpenAnchorPointId');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_OpenAnchorPointId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_GateStructure_GateType",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_ReferencePoint1Id');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_ReferencePoint1Id`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_GateStructure_IsActive",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_ReferencePoint2Id');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_ReferencePoint2Id`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
 
-            migrationBuilder.DropIndex(
-                name: "IX_GateStructure_IsOpened",
-                table: "gate_structures");
+                SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gate_structures' AND INDEX_NAME = 'IX_gate_structures_RightDoorSeedBlockId');
+                SET @sql := IF(@idx_exists > 0, 'ALTER TABLE `gate_structures` DROP INDEX `IX_gate_structures_RightDoorSeedBlockId`', 'DO 0');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
+
+            ");
 
             // --- Create gate_doors BEFORE dropping the per-door columns from gate_structures,
             // so the data migration below can copy every existing structure's current values
@@ -365,12 +422,12 @@ namespace knkwebapi_v2.Migrations
                     AllowContinuousDamage, ContinuousDamageMultiplier, ContinuousDamageDurationSeconds
                 )
                 SELECT
-                    Id, Id, Name,
-                    HealthCurrent, HealthMax, RespawnRateSeconds,
-                    IsActive, CanRespawn, IsDestroyed, IsInvincible,
-                    CASE WHEN IsJammed = 1 THEN 'JAMMED' WHEN IsOpened = 1 THEN 'OPEN' ELSE 'CLOSED' END,
-                    GateType, GeometryDefinitionMode, MotionType, AnimationDurationTicks, AnimationTickRate,
-                    CASE FaceDirection
+                    gs.Id, gs.Id, d.Name,
+                    gs.HealthCurrent, gs.HealthMax, gs.RespawnRateSeconds,
+                    gs.IsActive, gs.CanRespawn, gs.IsDestroyed, gs.IsInvincible,
+                    CASE WHEN gs.IsJammed = 1 THEN 'JAMMED' WHEN gs.IsOpened = 1 THEN 'OPEN' ELSE 'CLOSED' END,
+                    gs.GateType, gs.GeometryDefinitionMode, gs.MotionType, gs.AnimationDurationTicks, gs.AnimationTickRate,
+                    CASE gs.FaceDirection
                         WHEN 'north' THEN 'NORTH'
                         WHEN 'north-east' THEN 'NORTH_EAST'
                         WHEN 'east' THEN 'EAST'
@@ -381,17 +438,18 @@ namespace knkwebapi_v2.Migrations
                         WHEN 'north-west' THEN 'NORTH_WEST'
                         ELSE 'NORTH'
                     END,
-                    AnchorPointId, OpenAnchorPointId, ReferencePoint1Id, ReferencePoint2Id,
-                    GeometryWidth, GeometryHeight, GeometryDepth, MotionDistanceBlocks, ClipToGeometryBounds,
-                    SeedBlocks, ScanMaxBlocks, ScanMaxRadius, ScanMaterialWhitelist, ScanMaterialBlacklist, ScanPlaneConstraint,
-                    FallbackMaterialRefId, TileEntityPolicy,
-                    RotationMaxAngleDegrees, HingeAxisId, MirrorRotation, LeftDoorSeedBlockId, RightDoorSeedBlockId,
-                    RegionClosedId, RegionOpenedId,
-                    AllowPassThrough, PassThroughDurationSeconds, PassThroughConditionsJson,
-                    InfoDisplayLocationId, ShowHealthDisplay, HealthDisplayMode, HealthDisplayYOffset,
-                    GateNameDisplayMode, StatusDisplayMode, 0,
-                    AllowContinuousDamage, ContinuousDamageMultiplier, ContinuousDamageDurationSeconds
-                FROM gate_structures;
+                    gs.AnchorPointId, gs.OpenAnchorPointId, gs.ReferencePoint1Id, gs.ReferencePoint2Id,
+                    gs.GeometryWidth, gs.GeometryHeight, gs.GeometryDepth, gs.MotionDistanceBlocks, gs.ClipToGeometryBounds,
+                    gs.SeedBlocks, gs.ScanMaxBlocks, gs.ScanMaxRadius, gs.ScanMaterialWhitelist, gs.ScanMaterialBlacklist, gs.ScanPlaneConstraint,
+                    gs.FallbackMaterialRefId, gs.TileEntityPolicy,
+                    gs.RotationMaxAngleDegrees, gs.HingeAxisId, gs.MirrorRotation, gs.LeftDoorSeedBlockId, gs.RightDoorSeedBlockId,
+                    gs.RegionClosedId, gs.RegionOpenedId,
+                    gs.AllowPassThrough, gs.PassThroughDurationSeconds, gs.PassThroughConditionsJson,
+                    gs.InfoDisplayLocationId, gs.ShowHealthDisplay, gs.HealthDisplayMode, gs.HealthDisplayYOffset,
+                    gs.GateNameDisplayMode, gs.StatusDisplayMode, 0,
+                    gs.AllowContinuousDamage, gs.ContinuousDamageMultiplier, gs.ContinuousDamageDurationSeconds
+                FROM gate_structures gs
+                JOIN domains d ON d.Id = gs.Id;
             ");
 
             // Now safe to drop the per-door columns from gate_structures - their data has been
