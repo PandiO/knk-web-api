@@ -151,14 +151,17 @@ public class GateDoor
     [RelatedEntityField(typeof(Location))]
     public Location? RightDoorSeedBlock { get; set; }
 
-    // === WorldGuard-named-but-repurposed (currently unused; item 6 repurposes/renames these
-    // to hold captured non-rectangular region vertex data - see
-    // GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md item 6.2) ===
+    // === Region-based geometry (GeometryDefinitionMode.REGION; item 6) ===
+    // Captured WorldEdit polygon/cuboid vertex data (JSON, shape documented in
+    // WORLDGUARD_REGION_FEASIBILITY.md §9.1) for the door's closed/open footprint. Renamed and
+    // repurposed from the legacy-project WorldGuard-region-name fields RegionClosedId/
+    // RegionOpenedId (item 6.2) - this column no longer names a WorldGuard region, so the old
+    // WG-entry-flag sync in the plugin's GateAnimationTask was removed rather than fed JSON.
     [DefaultValue("")]
-    public string RegionClosedId { get; set; } = string.Empty;
+    public string ClosedRegionData { get; set; } = string.Empty;
 
     [DefaultValue("")]
-    public string RegionOpenedId { get; set; } = string.Empty;
+    public string OpenedRegionData { get; set; } = string.Empty;
 
     // === Pass-Through System (per-door value; cascade-overridable) ===
     public bool AllowPassThrough { get; set; } = false;

@@ -76,14 +76,6 @@ namespace knkwebapi_v2.Repositories
             return !await query.AnyAsync();
         }
 
-        public async Task<GateDoor?> FindDoorByRegionAsync(string regionId)
-        {
-            return await BuildDoorQuery()
-                .FirstOrDefaultAsync(d =>
-                    d.RegionClosedId == regionId ||
-                    d.RegionOpenedId == regionId);
-        }
-
         public async Task UpdateHealthAsync(int id, double newHealth)
         {
             var door = await _context.Set<GateDoor>().FindAsync(id);

@@ -14,7 +14,6 @@ namespace knkwebapi_v2.Repositories
         // Door-specific operations
         Task<IEnumerable<GateDoor>> GetActiveDoorsAsync();
         Task<bool> IsDoorNameUniqueAsync(int gateStructureId, string name, int? excludeId = null);
-        Task<GateDoor?> FindDoorByRegionAsync(string regionId);
         Task UpdateHealthAsync(int id, double newHealth);
         Task UpdateStateAsync(int id, GateDoorOpenState openedState, bool isDestroyed);
         Task UpdateOperationalSettingsAsync(int id, bool isActive, bool isInvincible);

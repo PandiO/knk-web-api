@@ -11,7 +11,8 @@ public enum GateType
 public enum GeometryDefinitionMode
 {
     PLANE_GRID,
-    FLOOD_FILL
+    FLOOD_FILL,
+    REGION
 }
 
 public enum MotionType

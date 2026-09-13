@@ -13,7 +13,7 @@ namespace knkwebapi_v2.Tests.Services;
 public class MetadataServiceDefaultValueTests
 {
     [Fact]
-    public void GateRegionIds_HaveExplicitEmptyDefaults_WithoutMakingNameOptional()
+    public void GateRegionData_HaveExplicitEmptyDefaults_WithoutMakingNameOptional()
     {
         var service = new MetadataService(Mock.Of<IServiceScopeFactory>());
         var getFieldMetadata = typeof(MetadataService).GetMethod(
@@ -24,9 +24,9 @@ public class MetadataServiceDefaultValueTests
         var fields = getFieldMetadata!.Invoke(service, new object[] { typeof(GateDoor) })
             .Should().BeAssignableTo<List<FieldMetadataDto>>().Subject;
 
-        fields.Single(field => field.FieldName == nameof(GateDoor.RegionClosedId))
+        fields.Single(field => field.FieldName == nameof(GateDoor.ClosedRegionData))
             .Should().Match<FieldMetadataDto>(field => field.HasDefaultValue && field.DefaultValue == string.Empty);
-        fields.Single(field => field.FieldName == nameof(GateDoor.RegionOpenedId))
+        fields.Single(field => field.FieldName == nameof(GateDoor.OpenedRegionData))
             .Should().Match<FieldMetadataDto>(field => field.HasDefaultValue && field.DefaultValue == string.Empty);
         fields.Single(field => field.FieldName == nameof(GateDoor.Name)).HasDefaultValue
             .Should().BeFalse();
@@ -34,8 +34,8 @@ public class MetadataServiceDefaultValueTests
         var validationResult = new FormTemplateValidationService().ValidateField(
             new FormField
             {
-                FieldName = nameof(GateDoor.RegionClosedId),
-                Label = "Closed Region Id",
+                FieldName = nameof(GateDoor.ClosedRegionData),
+                Label = "Closed Region Data",
                 FieldType = FieldType.String,
                 Required = false
             },

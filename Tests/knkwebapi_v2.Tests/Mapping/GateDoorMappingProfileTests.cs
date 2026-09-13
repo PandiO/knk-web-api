@@ -22,8 +22,8 @@ public class GateDoorMappingProfileTests
         {
             GateStructureId = 4,
             Name = "Test Door",
-            RegionClosedId = null!,
-            RegionOpenedId = null!,
+            ClosedRegionData = null!,
+            OpenedRegionData = null!,
             SeedBlocks = null!,
             ScanMaterialWhitelist = null!,
             ScanMaterialBlacklist = null!,
@@ -32,8 +32,8 @@ public class GateDoorMappingProfileTests
 
         var entity = _mapper.Map<GateDoor>(dto);
 
-        entity.RegionClosedId.Should().BeEmpty();
-        entity.RegionOpenedId.Should().BeEmpty();
+        entity.ClosedRegionData.Should().BeEmpty();
+        entity.OpenedRegionData.Should().BeEmpty();
         entity.SeedBlocks.Should().BeEmpty();
         entity.ScanMaterialWhitelist.Should().BeEmpty();
         entity.ScanMaterialBlacklist.Should().BeEmpty();

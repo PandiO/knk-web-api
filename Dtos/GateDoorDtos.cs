@@ -196,12 +196,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("rightDoorSeedBlock")]
         public LocationDto? RightDoorSeedBlock { get; set; }
 
-        // === WorldGuard-named-but-repurposed (currently unused; see item 6) ===
-        [JsonPropertyName("regionClosedId")]
-        public string RegionClosedId { get; set; } = string.Empty;
+        // === Region-based geometry (GeometryDefinitionMode.REGION; item 6) ===
+        [JsonPropertyName("closedRegionData")]
+        public string ClosedRegionData { get; set; } = string.Empty;
 
-        [JsonPropertyName("regionOpenedId")]
-        public string RegionOpenedId { get; set; } = string.Empty;
+        [JsonPropertyName("openedRegionData")]
+        public string OpenedRegionData { get; set; } = string.Empty;
 
         // === Pass-Through System (cascade-overridable) ===
         [JsonPropertyName("allowPassThrough")]
