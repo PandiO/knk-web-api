@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
@@ -16,11 +18,28 @@ namespace knkwebapi_v2.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<FormSubmissionProgress>> GetByEntityTypeNameAsync(string entityTypeName, int? userId)
+        /// <summary>
+        /// When propertyName/propertyValue are both supplied, additionally filters to rows whose
+        /// saved field data (CurrentStepDataJson, or any step inside the step-partitioned
+        /// AllStepsDataJson) contains that property with a matching value. Used to find drafts
+        /// "for" a specific parent entity - e.g. GateDoor drafts whose GateStructureId matches a
+        /// given GateStructure - since there's no relational column for that link, only whatever
+        /// the wizard already saved into the JSON blobs.
+        ///
+        /// Filtered in-memory (after the DB-level EntityTypeName/UserId filter) rather than via a
+        /// SQL JSON path: CurrentStepDataJson/AllStepsDataJson are plain longtext columns (no JSON
+        /// column type, no EF JSON-function usage anywhere in this codebase), and AllStepsDataJson
+        /// is step-partitioned ({"Step0": {...}, "Step1": {...}}) with the step key holding a given
+        /// field unknown ahead of time, so a fixed JSON path can't reliably express "search every
+        /// step" the way this in-memory walk does.
+        /// </summary>
+        public async Task<IEnumerable<FormSubmissionProgress>> GetByEntityTypeNameAsync(
+            string entityTypeName, int? userId, string? propertyName = null, string? propertyValue = null)
         {
             var query = _context.FormSubmissionProgresses
                 .Include(p => p.FormConfiguration)
                 .Include(p => p.ParentProgress)
+                .Include(p => p.User)
                 .Where(p => p.FormConfiguration.EntityTypeName == entityTypeName);
 
             if (userId.HasValue)
@@ -28,7 +47,116 @@ namespace knkwebapi_v2.Repositories
                 query = query.Where(p => p.UserId == userId.Value);
             }
 
-            return await query.ToListAsync();
+            var results = await query.ToListAsync();
+
+            if (!string.IsNullOrWhiteSpace(propertyName) && propertyValue != null)
+            {
+                results = results.Where(p => MatchesProperty(p, propertyName, propertyValue)).ToList();
+            }
+
+            return results;
+        }
+
+        private static bool MatchesProperty(FormSubmissionProgress progress, string propertyName, string propertyValue)
+        {
+            return JsonObjectContainsMatch(progress.CurrentStepDataJson, propertyName, propertyValue)
+                || JsonStepsContainMatch(progress.AllStepsDataJson, propertyName, propertyValue);
+        }
+
+        private static bool JsonObjectContainsMatch(string? json, string propertyName, string propertyValue)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                return ObjectHasMatchingProperty(doc.RootElement, propertyName, propertyValue);
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        private static bool JsonStepsContainMatch(string? json, string propertyName, string propertyValue)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    return false;
+                }
+
+                foreach (var step in doc.RootElement.EnumerateObject())
+                {
+                    if (ObjectHasMatchingProperty(step.Value, propertyName, propertyValue))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        private static bool ObjectHasMatchingProperty(JsonElement element, string propertyName, string propertyValue)
+        {
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            foreach (var property in element.EnumerateObject())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return ValueMatches(property.Value, propertyValue);
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Matches a bare primitive value directly, or an object value via its own "id" property
+        /// (the shape an Object-type field's value takes, e.g. { id: 14, name: "...", ... }).
+        /// </summary>
+        private static bool ValueMatches(JsonElement value, string propertyValue)
+        {
+            switch (value.ValueKind)
+            {
+                case JsonValueKind.String:
+                    return string.Equals(value.GetString(), propertyValue, StringComparison.OrdinalIgnoreCase);
+                case JsonValueKind.Number:
+                    return value.ToString() == propertyValue;
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    return string.Equals(value.ToString(), propertyValue, StringComparison.OrdinalIgnoreCase);
+                case JsonValueKind.Object:
+                    foreach (var nested in value.EnumerateObject())
+                    {
+                        if (string.Equals(nested.Name, "id", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return ValueMatches(nested.Value, propertyValue);
+                        }
+                    }
+                    return false;
+                default:
+                    return false;
+            }
         }
         
         public async Task<IEnumerable<FormSubmissionProgress>> GetByUserIdAsync(int userId)

@@ -6,7 +6,8 @@ namespace knkwebapi_v2.Repositories
 {
     public interface IFormSubmissionProgressRepository
     {
-        Task<IEnumerable<FormSubmissionProgress>> GetByEntityTypeNameAsync(string entityTypeName, int? userId);
+        Task<IEnumerable<FormSubmissionProgress>> GetByEntityTypeNameAsync(
+            string entityTypeName, int? userId, string? propertyName = null, string? propertyValue = null);
         Task<IEnumerable<FormSubmissionProgress>> GetByUserIdAsync(int userId);
         Task<FormSubmissionProgress?> GetByIdAsync(int id);
         Task AddAsync(FormSubmissionProgress progress);

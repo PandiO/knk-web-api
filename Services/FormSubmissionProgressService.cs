@@ -36,10 +36,11 @@ namespace knkwebapi_v2.Services
             return _mapper.Map<IEnumerable<FormSubmissionProgressDto>>(list);
         }
 
-        public async Task<IEnumerable<FormSubmissionProgressSummaryDto>> GetSummaryByEntityTypeNameAsync(string entityTypeName, int? userId)
+        public async Task<IEnumerable<FormSubmissionProgressSummaryDto>> GetSummaryByEntityTypeNameAsync(
+            string entityTypeName, int? userId, string? propertyName = null, string? propertyValue = null)
         {
             if (string.IsNullOrWhiteSpace(entityTypeName)) return new List<FormSubmissionProgressSummaryDto>();
-            var list = await _repo.GetByEntityTypeNameAsync(entityTypeName, userId);
+            var list = await _repo.GetByEntityTypeNameAsync(entityTypeName, userId, propertyName, propertyValue);
             return _mapper.Map<IEnumerable<FormSubmissionProgressSummaryDto>>(list);
         }
 

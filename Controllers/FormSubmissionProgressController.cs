@@ -18,8 +18,17 @@ namespace KnKWebAPI.Controllers
             _service = service;
         }
 
+        /// <summary>
+        /// propertyName/propertyValue optionally filter to rows whose saved field data contains
+        /// that property with a matching value - e.g. entityTypeName=GateDoor,
+        /// propertyName=GateStructureId, propertyValue=14 finds every GateDoor submission (drafts
+        /// included) saved for that specific structure. See
+        /// FormSubmissionProgressRepository.GetByEntityTypeNameAsync for how the match works.
+        /// </summary>
         [HttpGet("entity")]
-        public async Task<IActionResult> GetByEntityTypeName(string entityTypeName, int? userId, bool? isSummary = false)
+        public async Task<IActionResult> GetByEntityTypeName(
+            string entityTypeName, int? userId, bool? isSummary = false,
+            string? propertyName = null, string? propertyValue = null)
         {
             if (string.IsNullOrWhiteSpace(entityTypeName))
             {
@@ -27,7 +36,7 @@ namespace KnKWebAPI.Controllers
             }
             if (isSummary == true)
             {
-                var summaries = await _service.GetSummaryByEntityTypeNameAsync(entityTypeName, userId);
+                var summaries = await _service.GetSummaryByEntityTypeNameAsync(entityTypeName, userId, propertyName, propertyValue);
                 return Ok(summaries);
             }
             else

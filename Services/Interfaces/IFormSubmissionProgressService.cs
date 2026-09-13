@@ -7,7 +7,8 @@ namespace knkwebapi_v2.Services
     public interface IFormSubmissionProgressService
     {
         Task<IEnumerable<FormSubmissionProgressDto>> GetByEntityTypeNameAsync(string entityTypeName, int? userId);
-        Task<IEnumerable<FormSubmissionProgressSummaryDto>> GetSummaryByEntityTypeNameAsync(string entityTypeName, int? userId);
+        Task<IEnumerable<FormSubmissionProgressSummaryDto>> GetSummaryByEntityTypeNameAsync(
+            string entityTypeName, int? userId, string? propertyName = null, string? propertyValue = null);
         Task<IEnumerable<FormSubmissionProgressDto>> GetByUserIdAsync(int userId);
         Task<FormSubmissionProgressDto?> GetByIdAsync(int id);
         Task<FormSubmissionProgressDto> SaveProgressAsync(FormSubmissionProgressDto progress);

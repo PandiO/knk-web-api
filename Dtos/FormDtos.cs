@@ -231,6 +231,8 @@ namespace knkwebapi_v2.Dtos
         public string FormConfigurationName { get; set; } = null!;
         [JsonPropertyName("userId")]
         public string? UserId { get; set; }
+        [JsonPropertyName("createdByUsername")]
+        public string? CreatedByUsername { get; set; }
         [JsonPropertyName("entityTypeName")]
         public string? EntityTypeName { get; set; }
         [JsonPropertyName("entityId")]
