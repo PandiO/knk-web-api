@@ -17,6 +17,7 @@ namespace knkwebapi_v2.Repositories
         Task UpdateHealthAsync(int id, double newHealth);
         Task UpdateStateAsync(int id, GateDoorOpenState openedState, bool isDestroyed);
         Task UpdateOperationalSettingsAsync(int id, bool isActive, bool isInvincible);
+        Task UpdateRegionDataAsync(int id, bool isOpenedRegion, string regionData);
 
         // Block snapshot operations
         Task<IEnumerable<GateBlockSnapshot>> GetBlockSnapshotsByDoorIdAsync(int gateDoorId);

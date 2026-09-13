@@ -121,6 +121,19 @@ namespace knkwebapi_v2.Repositories
             }
         }
 
+        public async Task UpdateRegionDataAsync(int id, bool isOpenedRegion, string regionData)
+        {
+            var door = await _context.Set<GateDoor>().FindAsync(id);
+            if (door != null)
+            {
+                if (isOpenedRegion)
+                    door.OpenedRegionData = regionData;
+                else
+                    door.ClosedRegionData = regionData;
+                await _context.SaveChangesAsync();
+            }
+        }
+
         // Block snapshot operations
         public async Task<IEnumerable<GateBlockSnapshot>> GetBlockSnapshotsByDoorIdAsync(int gateDoorId)
         {

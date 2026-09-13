@@ -323,4 +323,17 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("healthCurrent")]
         public double HealthCurrent { get; set; }
     }
+
+    // Item 6.3: captures a WorldEdit-drawn region (polygon or cuboid) against one of a door's
+    // two region slots. RegionData is the raw vertex JSON documented in
+    // WORLDGUARD_REGION_FEASIBILITY.md §9.1 - this endpoint stores it opaquely, no server-side
+    // parsing/validation of its contents.
+    public class GateDoorRegionUpdateDto
+    {
+        [JsonPropertyName("isOpenedRegion")]
+        public bool IsOpenedRegion { get; set; }
+
+        [JsonPropertyName("regionData")]
+        public string RegionData { get; set; } = string.Empty;
+    }
 }

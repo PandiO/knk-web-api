@@ -163,6 +163,18 @@ namespace knkwebapi_v2.Services
             await _repo.UpdateOperationalSettingsAsync(id, isActive, isInvincible);
         }
 
+        public async Task UpdateRegionDataAsync(int id, bool isOpenedRegion, string regionData)
+        {
+            if (id <= 0)
+                throw new ArgumentException("Invalid id.", nameof(id));
+
+            var existing = await _repo.GetByIdAsync(id);
+            if (existing == null)
+                throw new KeyNotFoundException($"GateDoor with id {id} not found.");
+
+            await _repo.UpdateRegionDataAsync(id, isOpenedRegion, regionData ?? string.Empty);
+        }
+
         public async Task<IEnumerable<GateBlockSnapshotDto>> GetBlockSnapshotsAsync(int gateDoorId)
         {
             if (gateDoorId <= 0)

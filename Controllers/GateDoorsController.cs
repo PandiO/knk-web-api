@@ -185,6 +185,27 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [HttpPut("GateDoors/{id:int}/region")]
+        public async Task<IActionResult> UpdateRegionData(int id, [FromBody] GateDoorRegionUpdateDto request)
+        {
+            if (id <= 0) return BadRequest("Invalid id.");
+            if (request == null) return BadRequest();
+
+            try
+            {
+                await _service.UpdateRegionDataAsync(id, request.IsOpenedRegion, request.RegionData);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         [HttpGet("GateDoors/{id:int}/snapshots")]
         public async Task<IActionResult> GetSnapshots(int id)
         {
