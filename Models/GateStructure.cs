@@ -50,5 +50,6 @@ public class GateStructure : Structure
     public double? ContinuousDamageMultiplierOverride { get; set; }
 
     // === Navigation Properties ===
+    [RelatedEntityField(typeof(GateDoor))]
     public virtual ICollection<GateDoor> GateDoors { get; set; } = new List<GateDoor>();
 }
