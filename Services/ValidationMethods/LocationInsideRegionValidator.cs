@@ -158,7 +158,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
                     return new ValidationMethodResult
                     {
                         IsValid = false,
-                        Message = "Cannot verify the location's region boundary right now: the Minecraft server or knk-plugin-v2 is not running or unreachable. Start the server and plugin, then use \"Re-run validation\".",
+                        Message = "Cannot verify the location's region boundary right now: the Minecraft server or knk-plugin is not running or unreachable. Start the server and plugin, then use \"Re-run validation\".",
                         Metadata = new Dictionary<string, object> { { "failureReason", "PluginUnreachable" } }
                     };
                 }
