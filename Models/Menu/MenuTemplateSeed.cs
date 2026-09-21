@@ -121,5 +121,63 @@ public static class MenuTemplateSeed
                 },
             },
         };
+
+        // A second seed, alongside (not replacing) example.placeholder above: that one's
+        // single-item HIDE-overflow section can't demonstrate pagination at all. This one
+        // exists purely so InventoryMenu Phase 2's pagination (IMPLEMENTATION_PLAN.md -
+        // "Overflow/pagination implemented on the base class") has something real to show on
+        // a live server: a 3x2 (capacity 6) SCROLL section with 10 items spans two pages.
+        yield return new MenuTemplate
+        {
+            Key = "example.pagination",
+            Name = "Example Pagination Menu",
+            Description = "Phase 2 smoke-test seed exercising SCROLL overflow/pagination - not real menu content.",
+            Height = 3,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Content",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 3,
+                    Height = 2,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ListMode = MenuListMode.Grid,
+                    Priority = MenuRenderPriority.Medium,
+                    Items = PaginationDemoItems(10),
+                },
+            },
+        };
+    }
+
+    private static List<MenuItemTemplate> PaginationDemoItems(int count)
+    {
+        var items = new List<MenuItemTemplate>();
+        for (var i = 0; i < count; i++)
+        {
+            items.Add(new MenuItemTemplate
+            {
+                SortOrder = i,
+                Amount = 1,
+                DisplayMode = MenuDisplayMode.Normal,
+                VariableBindings =
+                {
+                    new VariableBinding
+                    {
+                        TargetProperty = "Name",
+                        SortOrder = 0,
+                        Expression = $"Item {i + 1}",
+                        RefreshPolicy = VariableRefreshPolicy.Static,
+                    },
+                },
+            });
+        }
+        return items;
     }
 }
