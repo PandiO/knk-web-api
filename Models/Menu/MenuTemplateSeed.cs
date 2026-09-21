@@ -154,6 +154,101 @@ public static class MenuTemplateSeed
                 },
             },
         };
+
+        // A third seed, alongside the two above: exercises IMPLEMENTATION_PLAN.md Phase 4's
+        // visibilityPermission/actionPermission gating, closing reconciliation gap #10 for
+        // real (v2's debug-only Caches button had no permission gate at all). "Debug Tools"
+        // below literally recreates that item behind a whole-section VisibilityPermission;
+        // "Content" demonstrates DESIGN_REVIEW.md §2.4's other case - an item visible to
+        // everyone but only actionable by permission holders - via ActionPermission alone.
+        //
+        // Both permission nodes are deliberately left unregistered in plugin.yml, so Bukkit's
+        // own fallback for an unregistered permission string applies: true for ops, false for
+        // everyone else. That makes /op the live-test toggle on a dev server with no
+        // permissions plugin installed, consistent with DESIGN_REVIEW.md's PermissionsEx-
+        // independence rationale (no hard dependency on a specific permission plugin either
+        // way).
+        yield return new MenuTemplate
+        {
+            Key = "example.permissions",
+            Name = "Example Permissions Menu",
+            Description = "Phase 4 smoke-test seed exercising visibilityPermission/actionPermission gating - not real menu content.",
+            Height = 3,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Content",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Hide,
+                    ListMode = MenuListMode.Default,
+                    Priority = MenuRenderPriority.Medium,
+                    Items =
+                    {
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            ActionPermission = "knk.menu.example.permissions.act",
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Preview (everyone sees this, only permission holders can act)",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                        },
+                    },
+                },
+                new MenuSectionTemplate
+                {
+                    Name = "Debug Tools",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 1,
+                    DisplaySlot = 9,
+                    Width = 9,
+                    Height = 1,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Hide,
+                    ListMode = MenuListMode.Default,
+                    Priority = MenuRenderPriority.Medium,
+                    VisibilityPermission = "knk.menu.example.permissions.debug",
+                    Items =
+                    {
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Caches",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        };
     }
 
     private static List<MenuItemTemplate> PaginationDemoItems(int count)
