@@ -325,6 +325,157 @@ public static class MenuTemplateSeed
                 },
             },
         };
+
+        // Phase 6 smoke-test seed (IMPLEMENTATION_PLAN.md, DESIGN_REVIEW.md §2.2):
+        // demonstrates the item-level-vs-action-level condition composition decided
+        // for this phase (see ACTIVE_SESSIONS.md's Phase 6 entry, open question 3).
+        // Both demo permission nodes are deliberately left unregistered in plugin.yml,
+        // reusing Phase 4's example.permissions convention of relying on Bukkit's own
+        // unregistered-permission-defaults-to-op fallback (no permissions plugin is
+        // installed on the dev server) - a non-op player is denied, an op player is
+        // allowed, with no seed/config change needed to demonstrate both outcomes.
+        yield return new MenuTemplate
+        {
+            Key = "example.conditions",
+            Name = "Example Conditional Actions Menu",
+            Description = "Phase 6 smoke-test seed exercising click-time ActionRegistry/ConditionRegistry evaluation - not real menu content.",
+            Height = 3,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Content",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Hide,
+                    ListMode = MenuListMode.Default,
+                    Priority = MenuRenderPriority.Medium,
+                    Items =
+                    {
+                        // Item-level gate: the condition sits on the item itself
+                        // (ActionBindingId null), so failing it blocks every action
+                        // on the item - the menu.close action never runs and the
+                        // menu stays open. Re-evaluated fresh against the live
+                        // player on every click (never a render-time cached value),
+                        // so granting/revoking the node between opening the menu
+                        // and clicking is reflected immediately - the staleness fix
+                        // DESIGN_REVIEW.md §2.2 is about.
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Item-level gate demo",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Lore",
+                                    SortOrder = 0,
+                                    Expression = "Needs knk.menu.example.conditions.itemgate to close the menu",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                            Actions =
+                            {
+                                new ActionBinding
+                                {
+                                    ActionTypeId = "menu.close",
+                                    ParamsJson = "{}",
+                                    SortOrder = 0,
+                                },
+                            },
+                            Conditions =
+                            {
+                                new ConditionBinding
+                                {
+                                    ConditionTypeId = "permission-node",
+                                    ParamsJson = "{\"node\":\"knk.menu.example.conditions.itemgate\"}",
+                                    SortOrder = 0,
+                                },
+                            },
+                        },
+                        // Action-level gate: no item-level condition, but the first
+                        // action carries its own condition (ActionBindingId set) -
+                        // failing it skips just that action, not the item's other
+                        // action. Clicking without the node still closes the menu
+                        // (the second action's "always" condition passes) while
+                        // showing the first action's denial message - proof that
+                        // per-action conditions are independent, not all-or-nothing
+                        // for the whole click.
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 1,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Action-level gate demo",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Lore",
+                                    SortOrder = 0,
+                                    Expression = "Always closes; needs knk.menu.example.conditions.actiongate for the gated action to also run",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                            Actions =
+                            {
+                                new ActionBinding
+                                {
+                                    ActionTypeId = "menu.close",
+                                    ParamsJson = "{}",
+                                    SortOrder = 0,
+                                    Conditions =
+                                    {
+                                        new ConditionBinding
+                                        {
+                                            ConditionTypeId = "permission-node",
+                                            ParamsJson = "{\"node\":\"knk.menu.example.conditions.actiongate\"}",
+                                            SortOrder = 0,
+                                        },
+                                    },
+                                },
+                                new ActionBinding
+                                {
+                                    ActionTypeId = "menu.close",
+                                    ParamsJson = "{}",
+                                    SortOrder = 1,
+                                    Conditions =
+                                    {
+                                        new ConditionBinding
+                                        {
+                                            ConditionTypeId = "always",
+                                            ParamsJson = "{}",
+                                            SortOrder = 0,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        };
     }
 
     private static List<MenuItemTemplate> SearchDemoItems()
