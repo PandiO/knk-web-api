@@ -29,11 +29,24 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("iconMaterialRef")]
         public MinecraftMaterialRefDto? IconMaterialRef { get; set; }
 
-        // Read-only for now (Phase 1, docs/specs/items/IMPLEMENTATION_PLAN.md §6/§4.2): the CategoryTag
-        // join entity exists and is populated here for visibility, but write-side (create/update) support
-        // is deferred to Phase 2 alongside Category's own Tags FormConfiguration step.
+        // Read: populated with the related Tag for display. Write (Phase 2,
+        // docs/specs/items/IMPLEMENTATION_PLAN.md §6/§4.2): the FormWizard M2M step engine submits this
+        // field as an array of join entries keyed by TagId (CategoryTag carries no extra columns beyond
+        // its two FKs) - CategoryId/Tag are ignored on write and reconciled by CategoryService.
         [JsonPropertyName("tags")]
-        public List<TagNavDto> Tags { get; set; } = new();
+        public List<CategoryTagDto> Tags { get; set; } = new();
+    }
+
+    public class CategoryTagDto
+    {
+        [JsonPropertyName("categoryId")]
+        public int CategoryId { get; set; }
+
+        [JsonPropertyName("tagId")]
+        public int TagId { get; set; }
+
+        [JsonPropertyName("tag")]
+        public TagNavDto? Tag { get; set; }
     }
 
     public class RelatedCategoryDto

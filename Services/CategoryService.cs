@@ -16,17 +16,20 @@ namespace knkwebapi_v2.Services
         private readonly ICategoryRepository _repo;
         private readonly IMinecraftMaterialRefRepository _materialRepo;
         private readonly IMinecraftMaterialCatalogService _catalog;
+        private readonly ITagRepository _tagRepo;
         private readonly IMapper _mapper;
 
         public CategoryService(
             ICategoryRepository repo,
             IMinecraftMaterialRefRepository materialRepo,
             IMinecraftMaterialCatalogService catalog,
+            ITagRepository tagRepo,
             IMapper mapper)
         {
             _repo = repo;
             _materialRepo = materialRepo;
             _catalog = catalog;
+            _tagRepo = tagRepo;
             _mapper = mapper;
         }
 
@@ -68,6 +71,9 @@ namespace knkwebapi_v2.Services
             var category = _mapper.Map<Category>(categoryDto);
             category.IconMaterialRefId = iconMaterialRefId;
 
+            category.Tags = new List<CategoryTag>();
+            await AddTagsAsync(category, categoryDto.Tags);
+
             await _repo.AddCategoryAsync(category);
             return _mapper.Map<CategoryDto>(category);
         }
@@ -100,6 +106,9 @@ namespace knkwebapi_v2.Services
             existing.IconMaterialRefId = iconMaterialRefId;
             existing.ParentCategoryId = categoryDto.ParentCategoryId;
 
+            existing.Tags.Clear();
+            await AddTagsAsync(existing, categoryDto.Tags);
+
             await _repo.UpdateCategoryAsync(existing);
         }
 
@@ -131,6 +140,24 @@ namespace knkwebapi_v2.Services
             var resultDto = _mapper.Map<PagedResultDto<CategoryListDto>>(result);
 
             return resultDto;
+        }
+
+        private async Task AddTagsAsync(Category entity, List<CategoryTagDto>? tags)
+        {
+            if (tags == null || !tags.Any()) return;
+
+            foreach (var tagId in tags.Select(t => t.TagId).Distinct())
+            {
+                var tag = await _tagRepo.GetByIdAsync(tagId);
+                if (tag == null)
+                    throw new ArgumentException($"Tag with id {tagId} not found.");
+
+                entity.Tags.Add(new CategoryTag
+                {
+                    CategoryId = entity.Id,
+                    TagId = tagId
+                });
+            }
         }
 
         private async Task<int?> EnsureIconMaterialRefAsync(CategoryDto categoryDto, int? currentIconId = null)
