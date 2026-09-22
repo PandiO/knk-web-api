@@ -79,5 +79,43 @@ namespace knkwebapi_v2.Repositories
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task<PagedResult<Domain>> SearchAsync(PagedQuery query)
+        {
+            // Domain is a TPT base (Town/District/Structure/...); querying the base DbSet already
+            // materializes each row into its concrete runtime subtype, which is all DomainMappingProfile's
+            // GetType().Name convention (DomainListDto.DomainType) needs - no discriminator column, no
+            // extra Include.
+            var queryable = _context.Domains.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(query.SearchTerm))
+            {
+                var searchLower = query.SearchTerm.ToLower();
+                queryable = queryable.Where(d => d.Name.ToLower().Contains(searchLower));
+            }
+
+            var totalCount = await queryable.CountAsync();
+
+            queryable = query.SortBy switch
+            {
+                "name" => query.SortDescending ? queryable.OrderByDescending(d => d.Name) : queryable.OrderBy(d => d.Name),
+                "id" => query.SortDescending ? queryable.OrderByDescending(d => d.Id) : queryable.OrderBy(d => d.Id),
+                "createdat" => query.SortDescending ? queryable.OrderByDescending(d => d.CreatedAt) : queryable.OrderBy(d => d.CreatedAt),
+                _ => queryable.OrderBy(d => d.Name)
+            };
+
+            var items = await queryable
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .ToListAsync();
+
+            return new PagedResult<Domain>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = query.PageNumber,
+                PageSize = query.PageSize
+            };
+        }
     }
 }

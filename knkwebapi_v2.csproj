@@ -6,8 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <UserSecretsId>dbb0c827-1126-4e5a-a695-1558f4de4bf0</UserSecretsId>
-    <!-- The test project lives under tests/; without this the SDK globs its sources into the API assembly. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
+    <!-- The test project lives under Tests/; without this the SDK globs its sources into the API assembly.
+         Excludes both casings: case-insensitive filesystems (Windows/macOS) matched "tests\**", but the
+         folder on disk is "Tests/" (capital T), which a case-sensitive filesystem (Linux) does not match. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests\**;Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

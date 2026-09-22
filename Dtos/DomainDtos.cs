@@ -55,6 +55,11 @@ namespace knkwebapi_v2.Dtos
         public int? ParentDomainId { get; set; }
         [JsonPropertyName("parentDomain")]
         public ParentDomainDto? ParentDomain { get; set; }
+        // Concrete Domain subtype (Town/District/Structure/...), same convention as
+        // DomainRegionDecisionDto.DomainType - lets a picker show "Ironhaven (Town)" instead of a bare name
+        // (docs/specs/items/IMPLEMENTATION_PLAN.md §3.2/open question 4).
+        [JsonPropertyName("domainType")]
+        public string DomainType { get; set; } = null!;
     }
 
     public class DomainRegionDecisionDto

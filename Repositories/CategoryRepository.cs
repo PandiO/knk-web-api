@@ -35,6 +35,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(c => c.ParentCategory).ThenInclude(pc => pc.IconMaterialRef)
                 .Include(c => c.ChildCategories).ThenInclude(cc => cc.IconMaterialRef)
                 .Include(c => c.IconMaterialRef)
+                .Include(c => c.Tags).ThenInclude(ct => ct.Tag)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
         public async Task AddCategoryAsync(Category category)

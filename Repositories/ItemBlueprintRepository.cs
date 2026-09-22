@@ -18,9 +18,15 @@ namespace knkwebapi_v2.Repositories
         {
             return await _context.ItemBlueprints
                 .Include(ib => ib.IconMaterial)
+                .Include(ib => ib.Category)
+                .Include(ib => ib.Grade)
                 .Include(ib => ib.DefaultEnchantments)
                     .ThenInclude(de => de.EnchantmentDefinition)
                         .ThenInclude(ed => ed.BaseEnchantmentRef)
+                .Include(ib => ib.Tags)
+                    .ThenInclude(t => t.Tag)
+                .Include(ib => ib.Origins)
+                    .ThenInclude(o => o.Domain)
                 .ToListAsync();
         }
 
@@ -28,9 +34,15 @@ namespace knkwebapi_v2.Repositories
         {
             return await _context.ItemBlueprints
                 .Include(ib => ib.IconMaterial)
+                .Include(ib => ib.Category)
+                .Include(ib => ib.Grade)
                 .Include(ib => ib.DefaultEnchantments)
                     .ThenInclude(de => de.EnchantmentDefinition)
                         .ThenInclude(ed => ed.BaseEnchantmentRef)
+                .Include(ib => ib.Tags)
+                    .ThenInclude(t => t.Tag)
+                .Include(ib => ib.Origins)
+                    .ThenInclude(o => o.Domain)
                 .FirstOrDefaultAsync(ib => ib.Id == id);
         }
 
@@ -86,7 +98,10 @@ namespace knkwebapi_v2.Repositories
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .Include(ib => ib.IconMaterial)
+                .Include(ib => ib.Category)
+                .Include(ib => ib.Grade)
                 .Include(ib => ib.DefaultEnchantments)
+                .Include(ib => ib.Tags)
                 .ToListAsync();
 
             return new PagedResult<ItemBlueprint>

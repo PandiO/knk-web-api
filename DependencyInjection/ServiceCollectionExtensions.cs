@@ -88,6 +88,10 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IItemBlueprintService, ItemBlueprintService>();
             services.AddScoped<IEnchantmentDefinitionRepository, EnchantmentDefinitionRepository>();
             services.AddScoped<IEnchantmentDefinitionService, EnchantmentDefinitionService>();
+            services.AddScoped<IGradeRepository, GradeRepository>();
+            services.AddScoped<IGradeService, GradeService>();
+            services.AddScoped<ITagRepository, TagRepository>();
+            services.AddScoped<ITagService, TagService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();

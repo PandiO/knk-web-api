@@ -28,6 +28,12 @@ namespace knkwebapi_v2.Dtos
         // Optional embedded icon material reference when available
         [JsonPropertyName("iconMaterialRef")]
         public MinecraftMaterialRefDto? IconMaterialRef { get; set; }
+
+        // Read-only for now (Phase 1, docs/specs/items/IMPLEMENTATION_PLAN.md §6/§4.2): the CategoryTag
+        // join entity exists and is populated here for visibility, but write-side (create/update) support
+        // is deferred to Phase 2 alongside Category's own Tags FormConfiguration step.
+        [JsonPropertyName("tags")]
+        public List<TagNavDto> Tags { get; set; } = new();
     }
 
     public class RelatedCategoryDto

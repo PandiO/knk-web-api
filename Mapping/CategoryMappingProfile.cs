@@ -1,5 +1,6 @@
 namespace knkwebapi_v2.Mapping
 {
+    using System.Linq;
     using AutoMapper;
     using knkwebapi_v2.Dtos;
     using knkwebapi_v2.Models;
@@ -23,7 +24,8 @@ namespace knkwebapi_v2.Mapping
                     Category = s.IconMaterialRef.Category,
                     IconUrl = s.IconMaterialRef.IconUrl
                 }))
-                .ForMember(dest => dest.ChildCategories, src => src.MapFrom(s => s.ChildCategories));
+                .ForMember(dest => dest.ChildCategories, src => src.MapFrom(s => s.ChildCategories))
+                .ForMember(dest => dest.Tags, src => src.MapFrom(s => s.Tags.Select(ct => ct.Tag)));
 
             CreateMap<CategoryDto, Category>()
                 .ForMember(dest => dest.Id, src => src.MapFrom(src => src.Id ?? 0))

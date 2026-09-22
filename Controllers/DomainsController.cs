@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
@@ -89,6 +90,13 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
+            catch (DbUpdateException ex)
+            {
+                // Surfaced now that ItemBlueprintOrigin.DomainId (Restrict) is the first FK to ever
+                // reference Domains - matches the DbUpdateException handling every other controller with
+                // an incoming FK already has (CategoriesController, GradesController, etc.).
+                return Conflict(new { code = "DbConstraint", message = ex.Message });
+            }
         }
 
         [HttpGet("by-region/{regionName}")]
@@ -98,6 +106,13 @@ namespace KnKWebAPI.Controllers
             var dto = await _service.GetByWgRegionNameAsync(regionName);
             if (dto == null) return NotFound();
             return Ok(dto);
+        }
+
+        [HttpPost("search")]
+        public async Task<ActionResult<PagedResultDto<DomainListDto>>> Search([FromBody] PagedQueryDto query)
+        {
+            var result = await _service.SearchAsync(query);
+            return Ok(result);
         }
 
         [HttpPost("search-region-decisions")]
