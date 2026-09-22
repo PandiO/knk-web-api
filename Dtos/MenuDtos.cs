@@ -99,6 +99,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("visibilityPermission")]
         public string? VisibilityPermission { get; set; }
 
+        [JsonPropertyName("searchable")]
+        public bool Searchable { get; set; }
+
         [JsonPropertyName("items")]
         public List<MenuItemTemplateDto> Items { get; set; } = new();
 

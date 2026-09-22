@@ -137,6 +137,7 @@ namespace knkwebapi_v2.Services
                 ListMode = ParseEnum<MenuListMode>(dto.ListMode, nameof(dto.ListMode)),
                 Priority = ParseEnum<MenuRenderPriority>(dto.Priority, nameof(dto.Priority)),
                 VisibilityPermission = dto.VisibilityPermission,
+                Searchable = dto.Searchable,
             };
 
             foreach (var bindingDto in dto.VariableBindings)

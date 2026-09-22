@@ -249,6 +249,126 @@ public static class MenuTemplateSeed
                 },
             },
         };
+
+        // A fourth seed: exercises IMPLEMENTATION_PLAN.md Phase 5's search/filter
+        // mechanism - a Searchable SCROLL section small enough (2x2, capacity 4) that
+        // an 8-item catalog spans two pages, so search-narrows-before-paginate is
+        // actually observable, not just "search returns everything on one page".
+        // Each item also carries a "Category" VariableBinding: DESIGN_REVIEW.md §2.3
+        // describes filters faceting on real structured item fields (Category/Grade/
+        // Tag) that don't exist on MenuItemTemplate's actual schema and are out of
+        // this phase's authority to add (see ACTIVE_SESSIONS.md's Phase 5 entry,
+        // open question 4) - so this demonstrates faceted filtering today via the
+        // already-generic, already-persisted VariableBinding.TargetProperty
+        // mechanism instead of inventing new columns. A "Fruit"/"Berry" category
+        // split gives /knk menu filter Content Category Berry something real to
+        // narrow against.
+        yield return new MenuTemplate
+        {
+            Key = "example.search",
+            Name = "Example Search & Filter Menu",
+            Description = "Phase 5 smoke-test seed exercising searchable content + FilterBar-style facet filtering - not real menu content.",
+            Height = 3,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Instructions",
+                    Kind = MenuSectionKind.SearchBar,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Hide,
+                    ListMode = MenuListMode.Default,
+                    Priority = MenuRenderPriority.Medium,
+                    Items =
+                    {
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Try: /knk menu search Content | /knk menu filter Content Category Berry",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                        },
+                    },
+                },
+                new MenuSectionTemplate
+                {
+                    Name = "Content",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 1,
+                    DisplaySlot = 9,
+                    Width = 2,
+                    Height = 2,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ListMode = MenuListMode.Grid,
+                    Priority = MenuRenderPriority.Medium,
+                    Searchable = true,
+                    Items = SearchDemoItems(),
+                },
+            },
+        };
+    }
+
+    private static List<MenuItemTemplate> SearchDemoItems()
+    {
+        (string Name, string Category)[] catalog =
+        {
+            ("Red Apple", "Fruit"),
+            ("Green Apple", "Fruit"),
+            ("Banana", "Fruit"),
+            ("Cherry", "Berry"),
+            ("Blueberry", "Berry"),
+            ("Strawberry", "Berry"),
+            ("Fig", "Fruit"),
+            ("Grape", "Fruit"),
+        };
+
+        var items = new List<MenuItemTemplate>();
+        for (var i = 0; i < catalog.Length; i++)
+        {
+            items.Add(new MenuItemTemplate
+            {
+                SortOrder = i,
+                Amount = 1,
+                DisplayMode = MenuDisplayMode.Normal,
+                VariableBindings =
+                {
+                    new VariableBinding
+                    {
+                        TargetProperty = "Name",
+                        SortOrder = 0,
+                        Expression = catalog[i].Name,
+                        RefreshPolicy = VariableRefreshPolicy.Static,
+                    },
+                    new VariableBinding
+                    {
+                        TargetProperty = "Category",
+                        SortOrder = 0,
+                        Expression = catalog[i].Category,
+                        RefreshPolicy = VariableRefreshPolicy.Static,
+                    },
+                },
+            });
+        }
+        return items;
     }
 
     private static List<MenuItemTemplate> PaginationDemoItems(int count)
