@@ -138,6 +138,8 @@ namespace knkwebapi_v2.Services
                 Priority = ParseEnum<MenuRenderPriority>(dto.Priority, nameof(dto.Priority)),
                 VisibilityPermission = dto.VisibilityPermission,
                 Searchable = dto.Searchable,
+                ContentSourceId = dto.ContentSourceId,
+                ContentSourceParamsJson = string.IsNullOrWhiteSpace(dto.ContentSourceParamsJson) ? "{}" : dto.ContentSourceParamsJson,
             };
 
             foreach (var bindingDto in dto.VariableBindings)

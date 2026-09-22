@@ -416,62 +416,7 @@ public static class MenuTemplateSeed
                         // showing the first action's denial message - proof that
                         // per-action conditions are independent, not all-or-nothing
                         // for the whole click.
-                        new MenuItemTemplate
-                        {
-                            SortOrder = 1,
-                            Amount = 1,
-                            DisplayMode = MenuDisplayMode.Normal,
-                            VariableBindings =
-                            {
-                                new VariableBinding
-                                {
-                                    TargetProperty = "Name",
-                                    SortOrder = 0,
-                                    Expression = "Action-level gate demo",
-                                    RefreshPolicy = VariableRefreshPolicy.Static,
-                                },
-                                new VariableBinding
-                                {
-                                    TargetProperty = "Lore",
-                                    SortOrder = 0,
-                                    Expression = "Always closes; needs knk.menu.example.conditions.actiongate for the gated action to also run",
-                                    RefreshPolicy = VariableRefreshPolicy.Static,
-                                },
-                            },
-                            Actions =
-                            {
-                                new ActionBinding
-                                {
-                                    ActionTypeId = "menu.close",
-                                    ParamsJson = "{}",
-                                    SortOrder = 0,
-                                    Conditions =
-                                    {
-                                        new ConditionBinding
-                                        {
-                                            ConditionTypeId = "permission-node",
-                                            ParamsJson = "{\"node\":\"knk.menu.example.conditions.actiongate\"}",
-                                            SortOrder = 0,
-                                        },
-                                    },
-                                },
-                                new ActionBinding
-                                {
-                                    ActionTypeId = "menu.close",
-                                    ParamsJson = "{}",
-                                    SortOrder = 1,
-                                    Conditions =
-                                    {
-                                        new ConditionBinding
-                                        {
-                                            ConditionTypeId = "always",
-                                            ParamsJson = "{}",
-                                            SortOrder = 0,
-                                        },
-                                    },
-                                },
-                            },
-                        },
+                        ActionGateDemoItem(),
                     },
                 },
             },
@@ -680,6 +625,94 @@ public static class MenuTemplateSeed
                 },
             },
         };
+
+        // IMPLEMENTATION_PLAN.md Phase 8 (Scalable content access): unlike
+        // every prior example.* seed, this section's auto-placed content is
+        // NOT hand-authored MenuItemTemplate rows - its "Content" section
+        // below has zero non-pinned Items and instead carries a
+        // ContentSourceId, so the plugin's MenuContentSourceRegistry pages
+        // over the real ItemBlueprintsDataAccess.searchAsync gateway at
+        // render time (see ItemBlueprintExampleCatalogSeed for the 18 real
+        // ItemBlueprint rows this pages through). No FilterBar/filter-cycle
+        // button here (unlike example.presets) - ItemBlueprint has no
+        // filterable facet column on this branch (Items Phase 1's Category/
+        // Grade/Tag schema lives on a separate, unmerged branch), so a
+        // filter control would have nothing real to demonstrate; free-text
+        // search against Name/Description/DefaultDisplayName is real
+        // (ItemBlueprintRepository.SearchAsync applies it server-side) and
+        // is the only content query wired up.
+        yield return new MenuTemplate
+        {
+            Key = "example.catalog",
+            Name = "Example Catalog Paging Menu",
+            Description = "Phase 8 smoke-test seed exercising real paged/cursor content access against the ItemBlueprint catalog - not real menu content.",
+            Height = 3,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Content",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 5,
+                    Height = 2,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ListMode = MenuListMode.Grid,
+                    Priority = MenuRenderPriority.Medium,
+                    Searchable = true,
+                    ContentSourceId = "catalog.itemblueprints",
+                    Items =
+                    {
+                        // Pinned pagination + search controls only - the
+                        // section's auto content comes entirely from the
+                        // registered content source, never from Items here.
+                        PinnedButton(5, "« Previous Page", "menu.page.prev", "{}"),
+                        PinnedButton(6, "Next Page »", "menu.page.next", "{}"),
+                        PinnedButton(7, "Search", "menu.search.prompt", "{}"),
+                        PinnedButton(8, "Clear Search", "menu.search.clear", "{}"),
+                    },
+                },
+                new MenuSectionTemplate
+                {
+                    Name = "Instructions",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 1,
+                    DisplaySlot = 18,
+                    Width = 9,
+                    Height = 1,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Hide,
+                    ListMode = MenuListMode.Default,
+                    Priority = MenuRenderPriority.Medium,
+                    Items =
+                    {
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Content above is a real, paged ItemBlueprint catalog query",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        };
     }
 
     /// <summary>
@@ -771,6 +804,84 @@ public static class MenuTemplateSeed
                 },
             },
         };
+    }
+
+    /// <summary>
+    /// <c>example.conditions</c>' "Action-level gate demo" item: two
+    /// <c>menu.close</c> actions, each gated by its own action-level
+    /// condition (see the class comment above its call site). Bug fix: each
+    /// condition must be added to <em>both</em> its owning action's
+    /// <c>Conditions</c> and the item's own <c>Conditions</c> - EF's fixup
+    /// only sets <c>ConditionBinding.ActionBindingId</c> from
+    /// <c>ActionBinding.Conditions</c> membership; the required (non-null)
+    /// <c>MenuItemTemplateId</c> FK is only ever set via the item's own
+    /// <c>Conditions</c> navigation (the exact rule
+    /// <c>MenuTemplateService.BuildItemAsync</c> already documents and
+    /// applies for the CRUD-API authoring path - this hand-authored seed
+    /// just never followed it). Missing that dual membership left
+    /// <c>MenuItemTemplateId</c> at its CLR default (0), which a real MySQL
+    /// FK constraint rejects outright - previously undetected because no
+    /// prior session had run this seed against a real, FK-enforcing
+    /// database; only ever `dotnet build`-verified, never actually executed.
+    /// </summary>
+    private static MenuItemTemplate ActionGateDemoItem()
+    {
+        var actionGateCondition = new ConditionBinding
+        {
+            ConditionTypeId = "permission-node",
+            ParamsJson = "{\"node\":\"knk.menu.example.conditions.actiongate\"}",
+            SortOrder = 0,
+        };
+        var alwaysCondition = new ConditionBinding
+        {
+            ConditionTypeId = "always",
+            ParamsJson = "{}",
+            SortOrder = 0,
+        };
+
+        var item = new MenuItemTemplate
+        {
+            SortOrder = 1,
+            Amount = 1,
+            DisplayMode = MenuDisplayMode.Normal,
+            VariableBindings =
+            {
+                new VariableBinding
+                {
+                    TargetProperty = "Name",
+                    SortOrder = 0,
+                    Expression = "Action-level gate demo",
+                    RefreshPolicy = VariableRefreshPolicy.Static,
+                },
+                new VariableBinding
+                {
+                    TargetProperty = "Lore",
+                    SortOrder = 0,
+                    Expression = "Always closes; needs knk.menu.example.conditions.actiongate for the gated action to also run",
+                    RefreshPolicy = VariableRefreshPolicy.Static,
+                },
+            },
+            Actions =
+            {
+                new ActionBinding
+                {
+                    ActionTypeId = "menu.close",
+                    ParamsJson = "{}",
+                    SortOrder = 0,
+                    Conditions = { actionGateCondition },
+                },
+                new ActionBinding
+                {
+                    ActionTypeId = "menu.close",
+                    ParamsJson = "{}",
+                    SortOrder = 1,
+                    Conditions = { alwaysCondition },
+                },
+            },
+        };
+        item.Conditions.Add(actionGateCondition);
+        item.Conditions.Add(alwaysCondition);
+        return item;
     }
 
     private static List<MenuItemTemplate> SearchDemoItems()

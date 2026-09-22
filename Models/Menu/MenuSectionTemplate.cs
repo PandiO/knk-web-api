@@ -46,6 +46,29 @@ public class MenuSectionTemplate
     /// </summary>
     public bool Searchable { get; set; } = false;
 
+    /// <summary>
+    /// IMPLEMENTATION_PLAN.md Phase 8: key into the plugin-side
+    /// MenuContentSourceRegistry - when set, this section's auto-placed
+    /// content comes from a real paged/cursor query against that registered
+    /// source (e.g. "catalog.itemblueprints") instead of this section's own
+    /// <see cref="Items"/>. Mirrors <see cref="ActionBinding.ActionTypeId"/>'s
+    /// "registered key, not inline code" convention. Null/empty means this
+    /// section keeps the pre-Phase-8 behavior (auto content from <see
+    /// cref="Items"/>) - the default for every existing section.
+    /// </summary>
+    public string? ContentSourceId { get; set; }
+
+    /// <summary>
+    /// Key-value params for the content source, serialized as JSON - same
+    /// convention as <see cref="ActionBinding.ParamsJson"/>. Unused by the
+    /// one source this phase ships (it takes its page/search/filter
+    /// parameters from the plugin-side, runtime-only MenuSession instead),
+    /// but kept for parity with Action/ConditionBinding's shape so a future
+    /// source needing static author-supplied config doesn't need a schema
+    /// change.
+    /// </summary>
+    public string ContentSourceParamsJson { get; set; } = "{}";
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

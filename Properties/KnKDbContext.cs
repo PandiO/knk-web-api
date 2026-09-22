@@ -877,6 +877,8 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.Overflow).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.ListMode).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.Priority).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ContentSourceId).HasMaxLength(191);
+            entity.Property(e => e.ContentSourceParamsJson).HasColumnType("longtext");
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 

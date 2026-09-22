@@ -102,6 +102,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("searchable")]
         public bool Searchable { get; set; }
 
+        [JsonPropertyName("contentSourceId")]
+        public string? ContentSourceId { get; set; }
+
+        [JsonPropertyName("contentSourceParamsJson")]
+        public string ContentSourceParamsJson { get; set; } = "{}";
+
         [JsonPropertyName("items")]
         public List<MenuItemTemplateDto> Items { get; set; } = new();
 
