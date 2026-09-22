@@ -487,6 +487,14 @@ public static class MenuTemplateSeed
                     Priority = MenuRenderPriority.Medium,
                     Items =
                     {
+                        // Post-Phase-8 QOL follow-up: double-click confirm
+                        // (click, then click again within 3s) in place of a
+                        // separate Confirm/Cancel button pair - one item, one
+                        // menu.confirm.doubleclick action wrapping menu.close.
+                        // The item's own lore shows "Click again to confirm!"
+                        // while armed (MenuRenderer.appendPresetStateLore),
+                        // so no static "click, then confirm or cancel" lore
+                        // line is needed here anymore.
                         new MenuItemTemplate
                         {
                             SortOrder = 0,
@@ -505,7 +513,7 @@ public static class MenuTemplateSeed
                                 {
                                     TargetProperty = "Lore",
                                     SortOrder = 0,
-                                    Expression = "Click, then confirm or cancel",
+                                    Expression = "Click twice within 3s to confirm",
                                     RefreshPolicy = VariableRefreshPolicy.Static,
                                 },
                             },
@@ -513,76 +521,8 @@ public static class MenuTemplateSeed
                             {
                                 new ActionBinding
                                 {
-                                    ActionTypeId = "menu.confirm.request",
-                                    ParamsJson = "{\"actionTypeId\":\"menu.close\",\"actionParamsJson\":\"{}\",\"prompt\":\"Really close this menu? Click Confirm or Cancel.\"}",
-                                    SortOrder = 0,
-                                },
-                            },
-                        },
-                        new MenuItemTemplate
-                        {
-                            SortOrder = 1,
-                            Amount = 1,
-                            DisplayMode = MenuDisplayMode.Normal,
-                            VariableBindings =
-                            {
-                                new VariableBinding
-                                {
-                                    TargetProperty = "Name",
-                                    SortOrder = 0,
-                                    Expression = "Confirm",
-                                    RefreshPolicy = VariableRefreshPolicy.Static,
-                                },
-                            },
-                            Actions =
-                            {
-                                new ActionBinding
-                                {
-                                    ActionTypeId = "menu.confirm.accept",
-                                    ParamsJson = "{}",
-                                    SortOrder = 0,
-                                },
-                            },
-                            Conditions =
-                            {
-                                new ConditionBinding
-                                {
-                                    ConditionTypeId = "has-pending-confirmation",
-                                    ParamsJson = "{}",
-                                    SortOrder = 0,
-                                },
-                            },
-                        },
-                        new MenuItemTemplate
-                        {
-                            SortOrder = 2,
-                            Amount = 1,
-                            DisplayMode = MenuDisplayMode.Normal,
-                            VariableBindings =
-                            {
-                                new VariableBinding
-                                {
-                                    TargetProperty = "Name",
-                                    SortOrder = 0,
-                                    Expression = "Cancel",
-                                    RefreshPolicy = VariableRefreshPolicy.Static,
-                                },
-                            },
-                            Actions =
-                            {
-                                new ActionBinding
-                                {
-                                    ActionTypeId = "menu.confirm.cancel",
-                                    ParamsJson = "{}",
-                                    SortOrder = 0,
-                                },
-                            },
-                            Conditions =
-                            {
-                                new ConditionBinding
-                                {
-                                    ConditionTypeId = "has-pending-confirmation",
-                                    ParamsJson = "{}",
+                                    ActionTypeId = "menu.confirm.doubleclick",
+                                    ParamsJson = "{\"actionTypeId\":\"menu.close\",\"actionParamsJson\":\"{}\",\"windowTicks\":\"60\",\"armMessage\":\"Click again within 3s to close the menu.\"}",
                                     SortOrder = 0,
                                 },
                             },
@@ -671,10 +611,12 @@ public static class MenuTemplateSeed
                         // Pinned pagination + search controls only - the
                         // section's auto content comes entirely from the
                         // registered content source, never from Items here.
+                        // Post-Phase-8 QOL follow-up: "Clear Search" is now
+                        // shift-click on this same Search button
+                        // (MenuClickListener), not a separate item.
                         PinnedButton(5, "« Previous Page", "menu.page.prev", "{}"),
                         PinnedButton(6, "Next Page »", "menu.page.next", "{}"),
                         PinnedButton(7, "Search", "menu.search.prompt", "{}"),
-                        PinnedButton(8, "Clear Search", "menu.search.clear", "{}"),
                     },
                 },
                 new MenuSectionTemplate
@@ -759,11 +701,13 @@ public static class MenuTemplateSeed
             });
         }
 
-        // Pinned control row 1 (slots 5-8): pagination + search.
+        // Pinned control row 1 (slots 5-7): pagination + search. Post-Phase-8
+        // QOL follow-up: "Clear Search" is now shift-click on this same
+        // Search button (MenuClickListener), not a separate item - slot 8
+        // is intentionally left unused.
         items.Add(PinnedButton(5, "« Previous Page", "menu.page.prev", "{}"));
         items.Add(PinnedButton(6, "Next Page »", "menu.page.next", "{}"));
         items.Add(PinnedButton(7, "Search", "menu.search.prompt", "{}"));
-        items.Add(PinnedButton(8, "Clear Search", "menu.search.clear", "{}"));
 
         // Pinned control row 2 (slots 14-15): filter cycle + clear, cycling the
         // same Fruit/Berry categories the catalog above carries. The value list
