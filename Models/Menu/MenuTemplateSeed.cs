@@ -476,6 +476,301 @@ public static class MenuTemplateSeed
                 },
             },
         };
+        // Phase 7 smoke-test seed (IMPLEMENTATION_PLAN.md, DESIGN_REVIEW.md §2.1
+        // (updated)/§2.5, QOL_BUGFIX_BACKLOG.md item 8 folded in per the developer's
+        // 2026-09-22 decision): demonstrates every new click-driven preset in one
+        // place - real Next/Previous pagination, a real Search button + clear, a
+        // real Filter-cycle button + clear, and a real Confirm/Cancel pair - all
+        // wired through the exact same MenuService methods /knk menu ... already
+        // calls (open question 6), never a second parallel implementation. A new
+        // template rather than editing example.pagination/search/conditions in
+        // place: seeding is create-only (see this class's own doc comment), so
+        // extending an already-seeded template's definition in code wouldn't
+        // reach any database that already has it, and every prior phase's own
+        // convention here is a new example.* key alongside, not a mutation.
+        yield return new MenuTemplate
+        {
+            Key = "example.presets",
+            Name = "Example Preset Library Menu",
+            Description = "Phase 7 smoke-test seed exercising click-driven pagination/search/filter/confirm presets - not real menu content.",
+            Height = 4,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                // Row 0-1 (slots 0-17): a 5x2 SCROLL/Grid catalog (capacity 10) with
+                // 16 items spans two pages, in the same 5 unused columns (5-8) as the
+                // pagination/search/filter control buttons - all pinned via
+                // SlotOverride, so none of them are ever part of the auto/paginated
+                // pool or disturbed by an active search/filter (same guarantee
+                // example.search's persistent controls already rely on).
+                new MenuSectionTemplate
+                {
+                    Name = "Content",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 5,
+                    Height = 2,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ListMode = MenuListMode.Grid,
+                    Priority = MenuRenderPriority.Medium,
+                    Searchable = true,
+                    Items = PresetsContentItems(),
+                },
+                // Row 2 (slots 18-26): ConfirmDialog demo. "Do Something Risky" only
+                // *requests* confirmation (menu.confirm.request) - it never runs
+                // menu.close itself. Only Confirm actually re-triggers the wrapped
+                // action (menu.confirm.accept); Cancel discards it. Both Confirm and
+                // Cancel carry has-pending-confirmation so clicking either one first
+                // (with nothing requested yet) is a clean denial, not a crash.
+                new MenuSectionTemplate
+                {
+                    Name = "Confirm Demo",
+                    Kind = MenuSectionKind.ConfirmDialog,
+                    SortOrder = 1,
+                    DisplaySlot = 18,
+                    Width = 9,
+                    Height = 1,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Hide,
+                    ListMode = MenuListMode.Default,
+                    Priority = MenuRenderPriority.Medium,
+                    Items =
+                    {
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Do Something Risky (closes the menu)",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Lore",
+                                    SortOrder = 0,
+                                    Expression = "Click, then confirm or cancel",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                            Actions =
+                            {
+                                new ActionBinding
+                                {
+                                    ActionTypeId = "menu.confirm.request",
+                                    ParamsJson = "{\"actionTypeId\":\"menu.close\",\"actionParamsJson\":\"{}\",\"prompt\":\"Really close this menu? Click Confirm or Cancel.\"}",
+                                    SortOrder = 0,
+                                },
+                            },
+                        },
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 1,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Confirm",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                            Actions =
+                            {
+                                new ActionBinding
+                                {
+                                    ActionTypeId = "menu.confirm.accept",
+                                    ParamsJson = "{}",
+                                    SortOrder = 0,
+                                },
+                            },
+                            Conditions =
+                            {
+                                new ConditionBinding
+                                {
+                                    ConditionTypeId = "has-pending-confirmation",
+                                    ParamsJson = "{}",
+                                    SortOrder = 0,
+                                },
+                            },
+                        },
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 2,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "Cancel",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                            Actions =
+                            {
+                                new ActionBinding
+                                {
+                                    ActionTypeId = "menu.confirm.cancel",
+                                    ParamsJson = "{}",
+                                    SortOrder = 0,
+                                },
+                            },
+                            Conditions =
+                            {
+                                new ConditionBinding
+                                {
+                                    ConditionTypeId = "has-pending-confirmation",
+                                    ParamsJson = "{}",
+                                    SortOrder = 0,
+                                },
+                            },
+                        },
+                    },
+                },
+                new MenuSectionTemplate
+                {
+                    Name = "Instructions",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 2,
+                    DisplaySlot = 27,
+                    Width = 9,
+                    Height = 1,
+                    PositionMode = MenuPositionMode.Static,
+                    AlignVertical = MenuAlignVertical.Top,
+                    AlignHorizontal = MenuAlignHorizontal.Left,
+                    Overflow = MenuOverflowMode.Hide,
+                    ListMode = MenuListMode.Default,
+                    Priority = MenuRenderPriority.Medium,
+                    Items =
+                    {
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                new VariableBinding
+                                {
+                                    TargetProperty = "Name",
+                                    SortOrder = 0,
+                                    Expression = "All controls above are real clicks - no commands needed",
+                                    RefreshPolicy = VariableRefreshPolicy.Static,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        };
+    }
+
+    /// <summary>
+    /// 16 catalog items (Fruit/Berry, same category split as <see cref="SearchDemoItems"/>
+    /// but doubled so a 5x2 (capacity 10) section actually spans two pages) plus the
+    /// six pinned Phase 7 preset control buttons for <c>example.presets</c>' "Content"
+    /// section, in the section's own unused columns 5-8.
+    /// </summary>
+    private static List<MenuItemTemplate> PresetsContentItems()
+    {
+        (string Name, string Category)[] catalog =
+        {
+            ("Red Apple", "Fruit"), ("Green Apple", "Fruit"), ("Banana", "Fruit"), ("Fig", "Fruit"),
+            ("Grape", "Fruit"), ("Mango", "Fruit"), ("Peach", "Fruit"), ("Pear", "Fruit"),
+            ("Cherry", "Berry"), ("Blueberry", "Berry"), ("Strawberry", "Berry"), ("Raspberry", "Berry"),
+            ("Blackberry", "Berry"), ("Cranberry", "Berry"), ("Gooseberry", "Berry"), ("Elderberry", "Berry"),
+        };
+
+        var items = new List<MenuItemTemplate>();
+        for (var i = 0; i < catalog.Length; i++)
+        {
+            items.Add(new MenuItemTemplate
+            {
+                SortOrder = i,
+                Amount = 1,
+                DisplayMode = MenuDisplayMode.Normal,
+                VariableBindings =
+                {
+                    new VariableBinding
+                    {
+                        TargetProperty = "Name",
+                        SortOrder = 0,
+                        Expression = catalog[i].Name,
+                        RefreshPolicy = VariableRefreshPolicy.Static,
+                    },
+                    new VariableBinding
+                    {
+                        TargetProperty = "Category",
+                        SortOrder = 0,
+                        Expression = catalog[i].Category,
+                        RefreshPolicy = VariableRefreshPolicy.Static,
+                    },
+                },
+            });
+        }
+
+        // Pinned control row 1 (slots 5-8): pagination + search.
+        items.Add(PinnedButton(5, "« Previous Page", "menu.page.prev", "{}"));
+        items.Add(PinnedButton(6, "Next Page »", "menu.page.next", "{}"));
+        items.Add(PinnedButton(7, "Search", "menu.search.prompt", "{}"));
+        items.Add(PinnedButton(8, "Clear Search", "menu.search.clear", "{}"));
+
+        // Pinned control row 2 (slots 14-15): filter cycle + clear, cycling the
+        // same Fruit/Berry categories the catalog above carries. The value list
+        // is author-supplied here, not derived from any schema/enumeration - see
+        // MenuActionHandlers.filterCycle's javadoc for why.
+        items.Add(PinnedButton(14, "Filter: Cycle Category", "menu.filter.cycle",
+            "{\"facetKey\":\"Category\",\"values\":\"Fruit,Berry\"}"));
+        items.Add(PinnedButton(15, "Clear Filter", "menu.filter.clear", "{\"facetKey\":\"Category\"}"));
+
+        return items;
+    }
+
+    private static MenuItemTemplate PinnedButton(int slotOverride, string name, string actionTypeId, string paramsJson)
+    {
+        return new MenuItemTemplate
+        {
+            SortOrder = 100 + slotOverride,
+            SlotOverride = slotOverride,
+            Amount = 1,
+            DisplayMode = MenuDisplayMode.Normal,
+            VariableBindings =
+            {
+                new VariableBinding
+                {
+                    TargetProperty = "Name",
+                    SortOrder = 0,
+                    Expression = name,
+                    RefreshPolicy = VariableRefreshPolicy.Static,
+                },
+            },
+            Actions =
+            {
+                new ActionBinding
+                {
+                    ActionTypeId = actionTypeId,
+                    ParamsJson = paramsJson,
+                    SortOrder = 0,
+                },
+            },
+        };
     }
 
     private static List<MenuItemTemplate> SearchDemoItems()
