@@ -91,7 +91,7 @@ namespace knkwebapi_v2.Services
             }
 
             entity.Tags = new List<ItemBlueprintTag>();
-            await AddTagsAsync(entity, dto.TagIds);
+            await AddTagsAsync(entity, dto.Tags);
 
             entity.Origins = new List<ItemBlueprintOrigin>();
             await AddOriginsAsync(entity, dto.Origins);
@@ -151,7 +151,7 @@ namespace knkwebapi_v2.Services
             }
 
             existing.Tags.Clear();
-            await AddTagsAsync(existing, dto.TagIds);
+            await AddTagsAsync(existing, dto.Tags);
 
             existing.Origins.Clear();
             await AddOriginsAsync(existing, dto.Origins);
@@ -194,11 +194,11 @@ namespace knkwebapi_v2.Services
             }
         }
 
-        private async Task AddTagsAsync(ItemBlueprint entity, List<int>? tagIds)
+        private async Task AddTagsAsync(ItemBlueprint entity, List<ItemBlueprintTagDto>? tags)
         {
-            if (tagIds == null || !tagIds.Any()) return;
+            if (tags == null || !tags.Any()) return;
 
-            foreach (var tagId in tagIds.Distinct())
+            foreach (var tagId in tags.Select(t => t.TagId).Distinct())
             {
                 var tag = await _tagRepo.GetByIdAsync(tagId);
                 if (tag == null)

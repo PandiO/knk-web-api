@@ -105,8 +105,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("defaultEnchantments")]
         public List<ItemBlueprintDefaultEnchantmentCreateDto> DefaultEnchantments { get; set; } = new();
 
-        [JsonPropertyName("tagIds")]
-        public List<int> TagIds { get; set; } = new();
+        [JsonPropertyName("tags")]
+        public List<ItemBlueprintTagDto> Tags { get; set; } = new();
 
         [JsonPropertyName("origins")]
         public List<ItemBlueprintOriginCreateDto> Origins { get; set; } = new();
@@ -159,8 +159,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("defaultEnchantments")]
         public List<ItemBlueprintDefaultEnchantmentCreateDto> DefaultEnchantments { get; set; } = new();
 
-        [JsonPropertyName("tagIds")]
-        public List<int> TagIds { get; set; } = new();
+        [JsonPropertyName("tags")]
+        public List<ItemBlueprintTagDto> Tags { get; set; } = new();
 
         [JsonPropertyName("origins")]
         public List<ItemBlueprintOriginCreateDto> Origins { get; set; } = new();
