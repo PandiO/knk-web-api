@@ -86,6 +86,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("gatePassThroughMethodDefault")]
         public GatePassThroughMethod GatePassThroughMethodDefault { get; set; }
 
+        [JsonPropertyName("activeMode")]
+        public ActiveMode ActiveMode { get; set; }
+
         [JsonPropertyName("isFullAccount")]
         public bool IsFullAccount { get; set; }
 
@@ -124,6 +127,9 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("gatePassThroughMethodDefault")]
         public GatePassThroughMethod GatePassThroughMethodDefault { get; set; }
+
+        [JsonPropertyName("activeMode")]
+        public ActiveMode ActiveMode { get; set; }
     }
 
     /// <summary>
@@ -134,6 +140,16 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("gatePassThroughMethodDefault")]
         public GatePassThroughMethod GatePassThroughMethodDefault { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for updating a user's owner/staff mode (set via /ownermode or /staffmode in-game).
+    /// Mirrors the single-field update pattern used for the gate pass-through method.
+    /// </summary>
+    public class UpdateActiveModeDto
+    {
+        [JsonPropertyName("activeMode")]
+        public ActiveMode ActiveMode { get; set; }
     }
 
     /// <summary>

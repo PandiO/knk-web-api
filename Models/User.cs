@@ -104,6 +104,16 @@ public class User : PermissionHolder
     /// </summary>
     public GatePassThroughMethod GatePassThroughMethodDefault { get; set; } = GatePassThroughMethod.Default;
 
+    /// <summary>
+    /// This user's active owner/staff mode (docs/specs/user-features/DESIGN.md §6.1), toggled
+    /// in-game via /ownermode and /staffmode. Any value other than <see cref="ActiveMode.None"/>
+    /// means the player is vanished (hidden from players without staff/owner visibility).
+    /// Persisted so the plugin can restore it on the player's next login instead of defaulting
+    /// everyone visible after a server restart, as v1's in-memory-only maps did. Writable only
+    /// through PUT /api/users/{id}/active-mode, never through the generic user update.
+    /// </summary>
+    public ActiveMode ActiveMode { get; set; } = ActiveMode.None;
+
     // ===== AUDIT TRAIL (MINIMAL - MVP) =====
 
     /// <summary>
@@ -183,6 +193,29 @@ public enum AccountCreationMethod
     /// Minimal data: UUID + Username only.
     /// </summary>
     MinecraftServer = 1
+}
+
+/// <summary>
+/// A player's owner/staff mode (docs/specs/user-features/DESIGN.md §6.1). Mutually exclusive: a
+/// player is in at most one mode at a time, and vanish is implied by any mode other than None
+/// rather than tracked as a separate flag, since v1 never vanished a player outside a mode.
+/// </summary>
+public enum ActiveMode
+{
+    /// <summary>
+    /// Not in any mode; visible to everyone.
+    /// </summary>
+    None = 0,
+
+    /// <summary>
+    /// Staff mode (/staffmode, gated by knk.mode.staff in-game).
+    /// </summary>
+    Staff = 1,
+
+    /// <summary>
+    /// Owner mode (/ownermode, gated by knk.mode.owner in-game).
+    /// </summary>
+    Owner = 2
 }
 
 /// <summary>

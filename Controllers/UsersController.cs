@@ -123,7 +123,8 @@ namespace knkwebapi_v2.Controllers
                 ExperiencePoints = item.ExperiencePoints,
                 Uuid = item.Uuid,
                 IsFullAccount = item.IsFullAccount,
-                GatePassThroughMethodDefault = item.GatePassThroughMethodDefault
+                GatePassThroughMethodDefault = item.GatePassThroughMethodDefault,
+                ActiveMode = item.ActiveMode
             };
             return Ok(dto);
         }
@@ -149,7 +150,8 @@ namespace knkwebapi_v2.Controllers
                 ExperiencePoints = item.ExperiencePoints,
                 Uuid = item.Uuid,
                 IsFullAccount = item.IsFullAccount,
-                GatePassThroughMethodDefault = item.GatePassThroughMethodDefault
+                GatePassThroughMethodDefault = item.GatePassThroughMethodDefault,
+                ActiveMode = item.ActiveMode
             };
             return Ok(dto);
         }
@@ -432,6 +434,39 @@ namespace knkwebapi_v2.Controllers
             try
             {
                 await _service.UpdateGatePassThroughMethodAsync(id, request.GatePassThroughMethodDefault);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Update a user's owner/staff mode
+        /// </summary>
+        /// <remarks>
+        /// Used by the Minecraft plugin's /ownermode and /staffmode commands so the player's mode
+        /// (and the vanish it implies) survives a server restart - see
+        /// docs/specs/user-features/DESIGN.md §6.1. Who may enter which mode is enforced in-game
+        /// via the knk.mode.owner/knk.mode.staff permission nodes, not here.
+        /// </remarks>
+        /// <param name="id">User ID</param>
+        /// <param name="request">New active mode (None, Staff or Owner)</param>
+        /// <returns>No content</returns>
+        /// <response code="204">Updated successfully</response>
+        /// <response code="400">Unknown mode value</response>
+        /// <response code="404">User not found</response>
+        [HttpPut("{id:int}/active-mode")]
+        public async Task<IActionResult> UpdateActiveMode(int id, [FromBody] UpdateActiveModeDto request)
+        {
+            try
+            {
+                await _service.UpdateActiveModeAsync(id, request.ActiveMode);
                 return NoContent();
             }
             catch (KeyNotFoundException)

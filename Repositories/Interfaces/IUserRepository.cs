@@ -14,6 +14,7 @@ namespace knkwebapi_v2.Repositories
         Task UpdateUserCoinsAsync(int id, int coins);
         Task UpdateUserCoinsByUuidAsync(string uuid, int coins);
         Task UpdateGatePassThroughMethodAsync(int id, GatePassThroughMethod method);
+        Task UpdateActiveModeAsync(int id, ActiveMode mode);
         Task DeleteUserAsync(int id);
         Task<PagedResult<User>> SearchAsync(PagedQuery query);
 

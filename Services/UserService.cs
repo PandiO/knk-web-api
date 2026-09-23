@@ -150,6 +150,16 @@ namespace knkwebapi_v2.Services
             await _repo.UpdateGatePassThroughMethodAsync(id, method);
         }
 
+        public async Task UpdateActiveModeAsync(int id, ActiveMode mode)
+        {
+            if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
+            if (!Enum.IsDefined(typeof(ActiveMode), mode)) throw new ArgumentException($"Unknown active mode '{mode}'.", nameof(mode));
+            var existing = await _repo.GetByIdAsync(id);
+            if (existing == null) throw new KeyNotFoundException($"User with id {id} not found.");
+
+            await _repo.UpdateActiveModeAsync(id, mode);
+        }
+
         public async Task DeleteAsync(int id)
         {
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));

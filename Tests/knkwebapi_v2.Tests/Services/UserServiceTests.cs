@@ -679,4 +679,53 @@ public class UserServiceTests
     }
 
     #endregion
+    #region UpdateActiveModeAsync Tests (User features Phase 3, owner/staff mode)
+
+    [Theory]
+    [InlineData(ActiveMode.None)]
+    [InlineData(ActiveMode.Staff)]
+    [InlineData(ActiveMode.Owner)]
+    public async Task UpdateActiveModeAsync_WithExistingUser_PersistsMode(ActiveMode mode)
+    {
+        // Arrange
+        _mockUserRepository
+            .Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new User { Id = 1, Username = "player" });
+
+        // Act
+        await _userService.UpdateActiveModeAsync(1, mode);
+
+        // Assert
+        _mockUserRepository.Verify(r => r.UpdateActiveModeAsync(1, mode), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateActiveModeAsync_WithMissingUser_ThrowsKeyNotFound()
+    {
+        // Arrange
+        _mockUserRepository
+            .Setup(r => r.GetByIdAsync(99))
+            .ReturnsAsync((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.UpdateActiveModeAsync(99, ActiveMode.Owner));
+        _mockUserRepository.Verify(r => r.UpdateActiveModeAsync(It.IsAny<int>(), It.IsAny<ActiveMode>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateActiveModeAsync_WithUndefinedMode_ThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _userService.UpdateActiveModeAsync(1, (ActiveMode)7));
+        _mockUserRepository.Verify(r => r.UpdateActiveModeAsync(It.IsAny<int>(), It.IsAny<ActiveMode>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateActiveModeAsync_WithInvalidId_ThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _userService.UpdateActiveModeAsync(0, ActiveMode.Staff));
+    }
+
+    #endregion
 }
