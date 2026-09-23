@@ -193,6 +193,12 @@ using (var scope = app.Services.CreateScope())
     var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
     var seedLogger = loggerFactory.CreateLogger("AbilityDefinitionCanonicalSeed");
     await knkwebapi_v2.Models.AbilityDefinition.SeedCanonicalAsync(dbContext, seedLogger);
+
+    var itemBlueprintCatalogSeedLogger = loggerFactory.CreateLogger("ItemBlueprintExampleCatalogSeed");
+    await knkwebapi_v2.Models.ItemBlueprintExampleCatalogSeed.SeedCanonicalAsync(dbContext, itemBlueprintCatalogSeedLogger);
+
+    var menuSeedLogger = loggerFactory.CreateLogger("MenuTemplateSeed");
+    await knkwebapi_v2.Models.MenuTemplateSeed.SeedCanonicalAsync(dbContext, menuSeedLogger);
 }
 
 app.Run();

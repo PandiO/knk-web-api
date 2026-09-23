@@ -8,7 +8,9 @@
     <UserSecretsId>dbb0c827-1126-4e5a-a695-1558f4de4bf0</UserSecretsId>
     <!-- The test project lives under Tests/; without this the SDK globs its sources into the API assembly.
          Excludes both casings: case-insensitive filesystems (Windows/macOS) matched "tests\**", but the
-         folder on disk is "Tests/" (capital T), which a case-sensitive filesystem (Linux) does not match. -->
+         folder on disk is "Tests/" (capital T), which a case-sensitive filesystem (Linux) does not match -
+         on Linux the main project's default glob then also picks up every file under Tests/, which needs
+         xunit/Moq/etc. the main .csproj doesn't reference, and the build fails with ~870 unrelated errors. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);tests\**;Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
