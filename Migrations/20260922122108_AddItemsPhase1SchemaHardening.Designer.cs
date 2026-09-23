@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922122108_AddItemsPhase1SchemaHardening")]
+    partial class AddItemsPhase1SchemaHardening
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -100,43 +103,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("AbilityDefinitions", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.ActionBinding", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ActionTypeId")
-                        .IsRequired()
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<int>("MenuItemTemplateId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ParamsJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MenuItemTemplateId", "SortOrder")
-                        .HasDatabaseName("IX_ActionBinding_MenuItemTemplateId_SortOrder");
-
-                    b.ToTable("menu_action_bindings", (string)null);
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.Category", b =>
                 {
                     b.Property<int>("Id")
@@ -178,48 +144,6 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("TagId");
 
                     b.ToTable("CategoryTag");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ConditionBinding", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ActionBindingId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ConditionTypeId")
-                        .IsRequired()
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<int>("MenuItemTemplateId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ParamsJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActionBindingId");
-
-                    b.HasIndex("MenuItemTemplateId", "SortOrder")
-                        .HasDatabaseName("IX_ConditionBinding_MenuItemTemplateId_SortOrder");
-
-                    b.ToTable("menu_condition_bindings", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.DisplayCondition", b =>
@@ -1573,205 +1497,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("locations", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ActionPermission")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Amount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ChatColorDescription")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ChatColorName")
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("DisplayMode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<int?>("MaterialRefId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MenuSectionTemplateId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("SlotOverride")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("VisibilityPermission")
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MaterialRefId");
-
-                    b.HasIndex("MenuSectionTemplateId", "SortOrder")
-                        .HasDatabaseName("IX_MenuItemTemplate_MenuSectionTemplateId_SortOrder");
-
-                    b.ToTable("menu_item_templates", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuSectionTemplate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AlignHorizontal")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<string>("AlignVertical")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<string>("ContentSourceId")
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<string>("ContentSourceParamsJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<int>("DisplaySlot")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Height")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("varchar(30)");
-
-                    b.Property<string>("ListMode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<int>("MenuTemplateId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<string>("Overflow")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<string>("PositionMode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<string>("Priority")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<bool>("Searchable")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("VisibilityPermission")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Width")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MenuTemplateId", "Name")
-                        .IsUnique()
-                        .HasDatabaseName("IX_MenuSectionTemplate_MenuTemplateId_Name");
-
-                    b.HasIndex("MenuTemplateId", "SortOrder")
-                        .HasDatabaseName("IX_MenuSectionTemplate_MenuTemplateId_SortOrder");
-
-                    b.ToTable("menu_section_templates", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuTemplate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("BackgroundMaterialRefId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Growth")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<int>("Height")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BackgroundMaterialRefId");
-
-                    b.HasIndex("Key")
-                        .IsUnique();
-
-                    b.ToTable("menu_templates", (string)null);
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.MinecraftBlockRef", b =>
                 {
                     b.Property<int>("Id")
@@ -1870,58 +1595,6 @@ namespace knkwebapi_v2.Migrations
                         .IsUnique();
 
                     b.ToTable("minecraftmaterialrefs", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("HolderId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Node")
-                        .IsRequired()
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<bool>("Value")
-                        .HasColumnType("tinyint(1)");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("HolderId", "Node");
-
-                    b.ToTable("permission_grants", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionHolder", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ChatPrefix")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ChatSuffix")
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.ToTable("permission_holders", (string)null);
-
-                    b.UseTptMappingStrategy();
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.StepCondition", b =>
@@ -2030,25 +1703,7 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("tags", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PermissionGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("UserId", "PermissionGroupId");
-
-                    b.HasIndex("PermissionGroupId");
-
-                    b.ToTable("user_permission_groups", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.VariableBinding", b =>
+            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -2056,46 +1711,71 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AccountCreatedVia")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ArchiveUntil")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Coins")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Expression")
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DeletedReason")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ExperiencePoints")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GatePassThroughMethodDefault")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Gems")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("LastEmailChangeAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LastPasswordChangeAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Username")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<int?>("MenuItemTemplateId")
-                        .HasColumnType("int");
+                    b.Property<string>("Uuid")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<int?>("MenuSectionTemplateId")
-                        .HasColumnType("int");
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
 
-                    b.Property<string>("RefreshPolicy")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                    b.HasIndex("Email")
+                        .IsUnique();
 
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
+                    b.HasIndex("Username")
+                        .IsUnique();
 
-                    b.Property<string>("TargetProperty")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
+                    b.HasIndex("Uuid")
+                        .IsUnique();
 
-                    b.Property<int?>("TtlTicks")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MenuItemTemplateId");
-
-                    b.HasIndex("MenuSectionTemplateId");
-
-                    b.ToTable("menu_variable_bindings", (string)null);
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
@@ -2269,99 +1949,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("towns", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
-                {
-                    b.HasBaseType("knkwebapi_v2.Models.PermissionHolder");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<int?>("ParentGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Weight")
-                        .HasColumnType("int");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.HasIndex("ParentGroupId");
-
-                    b.ToTable("permission_groups", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
-                {
-                    b.HasBaseType("knkwebapi_v2.Models.PermissionHolder");
-
-                    b.Property<int>("AccountCreatedVia")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ActiveMode")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ArchiveUntil")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Coins")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("DeletedReason")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<bool>("EmailVerified")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<int>("ExperiencePoints")
-                        .HasColumnType("int");
-
-                    b.Property<int>("GatePassThroughMethodDefault")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Gems")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime?>("LastEmailChangeAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("LastPasswordChangeAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Uuid")
-                        .HasColumnType("varchar(255)");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.HasIndex("Username")
-                        .IsUnique();
-
-                    b.HasIndex("Uuid")
-                        .IsUnique();
-
-                    b.ToTable("users", (string)null);
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Structure");
@@ -2494,17 +2081,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("EnchantmentDefinition");
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.ActionBinding", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.MenuItemTemplate", "MenuItemTemplate")
-                        .WithMany("Actions")
-                        .HasForeignKey("MenuItemTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MenuItemTemplate");
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.Category", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "IconMaterialRef")
@@ -2538,24 +2114,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("Tag");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ConditionBinding", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.ActionBinding", "ActionBinding")
-                        .WithMany("Conditions")
-                        .HasForeignKey("ActionBindingId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("knkwebapi_v2.Models.MenuItemTemplate", "MenuItemTemplate")
-                        .WithMany("Conditions")
-                        .HasForeignKey("MenuItemTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ActionBinding");
-
-                    b.Navigation("MenuItemTemplate");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.DisplayCondition", b =>
@@ -2937,56 +2495,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "Material")
-                        .WithMany()
-                        .HasForeignKey("MaterialRefId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("knkwebapi_v2.Models.MenuSectionTemplate", "MenuSectionTemplate")
-                        .WithMany("Items")
-                        .HasForeignKey("MenuSectionTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Material");
-
-                    b.Navigation("MenuSectionTemplate");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuSectionTemplate", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.MenuTemplate", "MenuTemplate")
-                        .WithMany("Sections")
-                        .HasForeignKey("MenuTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MenuTemplate");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuTemplate", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "BackgroundMaterial")
-                        .WithMany()
-                        .HasForeignKey("BackgroundMaterialRefId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("BackgroundMaterial");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.PermissionHolder", "Holder")
-                        .WithMany("Grants")
-                        .HasForeignKey("HolderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Holder");
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.StepCondition", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.FormStep", "FormStep")
@@ -3007,42 +2515,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowSession");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "PermissionGroup")
-                        .WithMany("UserMemberships")
-                        .HasForeignKey("PermissionGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.User", "User")
-                        .WithMany("PermissionGroupMemberships")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PermissionGroup");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.VariableBinding", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.MenuItemTemplate", "MenuItemTemplate")
-                        .WithMany("VariableBindings")
-                        .HasForeignKey("MenuItemTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("knkwebapi_v2.Models.MenuSectionTemplate", "MenuSectionTemplate")
-                        .WithMany("VariableBindings")
-                        .HasForeignKey("MenuSectionTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("MenuItemTemplate");
-
-                    b.Navigation("MenuSectionTemplate");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
@@ -3132,31 +2604,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.PermissionHolder", null)
-                        .WithOne()
-                        .HasForeignKey("knkwebapi_v2.Models.PermissionGroup", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "ParentGroup")
-                        .WithMany("ChildGroups")
-                        .HasForeignKey("ParentGroupId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ParentGroup");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.PermissionHolder", null)
-                        .WithOne()
-                        .HasForeignKey("knkwebapi_v2.Models.User", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "IconMaterial")
@@ -3171,11 +2618,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("IconMaterial");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ActionBinding", b =>
-                {
-                    b.Navigation("Conditions");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Category", b =>
@@ -3258,35 +2700,14 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Tags");
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>
-                {
-                    b.Navigation("Actions");
-
-                    b.Navigation("Conditions");
-
-                    b.Navigation("VariableBindings");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuSectionTemplate", b =>
-                {
-                    b.Navigation("Items");
-
-                    b.Navigation("VariableBindings");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.MenuTemplate", b =>
-                {
-                    b.Navigation("Sections");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionHolder", b =>
-                {
-                    b.Navigation("Grants");
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
                 {
                     b.Navigation("Structures");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
+                {
+                    b.Navigation("LinkCodes");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
@@ -3304,20 +2725,6 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.Town", b =>
                 {
                     b.Navigation("Districts");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
-                {
-                    b.Navigation("ChildGroups");
-
-                    b.Navigation("UserMemberships");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
-                {
-                    b.Navigation("LinkCodes");
-
-                    b.Navigation("PermissionGroupMemberships");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>

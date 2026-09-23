@@ -56,6 +56,12 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<MinecraftEnchantmentRef> MinecraftEnchantmentRefs { get; set; } = null!;
     public virtual DbSet<EnchantmentDefinition> EnchantmentDefinitions { get; set; } = null!;
     public virtual DbSet<AbilityDefinition> AbilityDefinitions { get; set; } = null!;
+    public virtual DbSet<Grade> Grades { get; set; } = null!;
+    public virtual DbSet<Tag> Tags { get; set; } = null!;
+    // CategoryTag/ItemBlueprintTag have no DbSet, matching ItemBlueprintDefaultEnchantment's precedent
+    // (KnKDbContext.cs OnModelCreating) - a plain composite-key join entity reached only through its
+    // parent's navigation property, not its own controller/repository.
+    public virtual DbSet<ItemBlueprintOrigin> ItemBlueprintOrigins { get; set; } = null!;
     // Workflow + Tasks
     public virtual DbSet<WorkflowSession> WorkflowSessions { get; set; } = null!;
     public virtual DbSet<StepProgress> StepProgresses { get; set; } = null!;
@@ -195,6 +201,85 @@ public partial class KnKDbContext : DbContext
             entity.HasOne(ib => ib.IconMaterial)
                 .WithMany()
                 .HasForeignKey(ib => ib.IconMaterialRefId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Same precedent as IconMaterialRefId above: a catalog-lookup FK, Restrict so deleting a
+            // Category/Grade still in use by an ItemBlueprint fails loudly instead of silently nulling it out.
+            entity.HasOne(ib => ib.Category)
+                .WithMany()
+                .HasForeignKey(ib => ib.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(ib => ib.Grade)
+                .WithMany()
+                .HasForeignKey(ib => ib.GradeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Grade>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("grades");
+        });
+        modelBuilder.Entity<Tag>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("tags");
+        });
+
+        // CategoryTag / ItemBlueprintTag: plain composite-key join entities, no extra columns beyond the
+        // two FKs - same shape as ItemBlueprintDefaultEnchantment (KnKDbContext.cs, below), cascading both
+        // ways for the same reason: the join row has no meaning without both sides, so deleting either the
+        // Category/ItemBlueprint or the Tag should clean up the join row rather than leaving it orphaned.
+        modelBuilder.Entity<CategoryTag>()
+            .HasKey(ct => new { ct.CategoryId, ct.TagId });
+
+        modelBuilder.Entity<CategoryTag>()
+            .HasOne(ct => ct.Category)
+            .WithMany(c => c.Tags)
+            .HasForeignKey(ct => ct.CategoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CategoryTag>()
+            .HasOne(ct => ct.Tag)
+            .WithMany()
+            .HasForeignKey(ct => ct.TagId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ItemBlueprintTag>()
+            .HasKey(it => new { it.ItemBlueprintId, it.TagId });
+
+        modelBuilder.Entity<ItemBlueprintTag>()
+            .HasOne(it => it.ItemBlueprint)
+            .WithMany(ib => ib.Tags)
+            .HasForeignKey(it => it.ItemBlueprintId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ItemBlueprintTag>()
+            .HasOne(it => it.Tag)
+            .WithMany()
+            .HasForeignKey(it => it.TagId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ItemBlueprintOrigin: independent Id PK (not a composite key - the same Domain can legitimately
+        // appear twice in one item's history, see the model's own comment). ItemBlueprintId cascades (the
+        // origin history is meaningless without its ItemBlueprint); DomainId restricts (per
+        // docs/specs/items/IMPLEMENTATION_PLAN.md §3.2 explicitly, matching IconMaterialRefId's precedent -
+        // a Domain that's referenced as an item's origin should not be deletable out from under that history).
+        modelBuilder.Entity<ItemBlueprintOrigin>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("item_blueprint_origins");
+
+            entity.HasIndex(e => new { e.ItemBlueprintId, e.SequenceNumber }).IsUnique();
+
+            entity.HasOne(o => o.ItemBlueprint)
+                .WithMany(ib => ib.Origins)
+                .HasForeignKey(o => o.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(o => o.Domain)
+                .WithMany()
+                .HasForeignKey(o => o.DomainId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Location>(entity =>

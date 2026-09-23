@@ -12,7 +12,8 @@ public class DomainMappingProfile : Profile
         CreateMap<Domain, DomainDto>();
         CreateMap<DomainDto, Domain>();
 
-        CreateMap<Domain, DomainListDto>();
+        CreateMap<Domain, DomainListDto>()
+            .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name));
 
         CreateMap<Domain, DomainRegionDecisionDto>()
             .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name))

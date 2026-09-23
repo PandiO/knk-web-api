@@ -95,6 +95,15 @@ namespace knkwebapi_v2.Services
             return _mapper.Map<DomainRegionDecisionDto>(domain);
         }
 
+        public async Task<PagedResultDto<DomainListDto>> SearchAsync(PagedQueryDto queryDto)
+        {
+            if (queryDto == null) throw new ArgumentNullException(nameof(queryDto));
+
+            var query = _mapper.Map<PagedQuery>(queryDto);
+            var result = await _repo.SearchAsync(query);
+            return _mapper.Map<PagedResultDto<DomainListDto>>(result);
+        }
+
         /// <summary>
         /// Searches for domain region decisions based on the provided query criteria.
         /// </summary>

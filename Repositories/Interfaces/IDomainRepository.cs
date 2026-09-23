@@ -10,5 +10,6 @@ namespace knkwebapi_v2.Repositories
         Task AddDomainAsync(Domain domain);
         Task UpdateDomainAsync(Domain domain);
         Task DeleteDomainAsync(int id);
+        Task<PagedResult<Domain>> SearchAsync(PagedQuery query);
     }
 }

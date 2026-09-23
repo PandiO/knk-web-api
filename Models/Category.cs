@@ -24,4 +24,7 @@ public class Category
     // One-to-many: ParentCategoryId -> ChildCategories
     [RelatedEntityField(typeof(Category))]
     public ICollection<Category> ChildCategories { get; set; } = new List<Category>();
+
+    [RelatedEntityField(typeof(CategoryTag))]
+    public ICollection<CategoryTag> Tags { get; set; } = new List<CategoryTag>();
 }

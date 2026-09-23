@@ -1,6 +1,7 @@
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -12,6 +13,10 @@ namespace knkwebapi_v2.Services
         private readonly IMinecraftMaterialRefRepository _materialRepo;
         private readonly IMinecraftMaterialCatalogService _materialCatalog;
         private readonly IEnchantmentDefinitionRepository _enchantmentRepo;
+        private readonly ICategoryRepository _categoryRepo;
+        private readonly IGradeRepository _gradeRepo;
+        private readonly ITagRepository _tagRepo;
+        private readonly IDomainRepository _domainRepo;
         private readonly IMapper _mapper;
 
         public ItemBlueprintService(
@@ -19,12 +24,20 @@ namespace knkwebapi_v2.Services
             IMinecraftMaterialRefRepository materialRepo,
             IMinecraftMaterialCatalogService materialCatalog,
             IEnchantmentDefinitionRepository enchantmentRepo,
+            ICategoryRepository categoryRepo,
+            IGradeRepository gradeRepo,
+            ITagRepository tagRepo,
+            IDomainRepository domainRepo,
             IMapper mapper)
         {
             _repo = repo;
             _materialRepo = materialRepo;
             _materialCatalog = materialCatalog;
             _enchantmentRepo = enchantmentRepo;
+            _categoryRepo = categoryRepo;
+            _gradeRepo = gradeRepo;
+            _tagRepo = tagRepo;
+            _domainRepo = domainRepo;
             _mapper = mapper;
         }
 
@@ -53,6 +66,8 @@ namespace knkwebapi_v2.Services
             // Ensure icon material ref exists
             var iconMaterialRefId = await EnsureIconMaterialRefAsync(dto.IconMaterialRefId, dto.IconNamespaceKey);
 
+            await ValidateCategoryAndGradeAsync(dto.CategoryId, dto.GradeId);
+
             var entity = _mapper.Map<ItemBlueprint>(dto);
             entity.IconMaterialRefId = iconMaterialRefId;
 
@@ -75,6 +90,12 @@ namespace knkwebapi_v2.Services
                 }
             }
 
+            entity.Tags = new List<ItemBlueprintTag>();
+            await AddTagsAsync(entity, dto.Tags);
+
+            entity.Origins = new List<ItemBlueprintOrigin>();
+            await AddOriginsAsync(entity, dto.Origins);
+
             await _repo.AddAsync(entity);
             return _mapper.Map<ItemBlueprintReadDto>(entity);
         }
@@ -95,6 +116,8 @@ namespace knkwebapi_v2.Services
             // Ensure icon material ref exists
             var iconMaterialRefId = await EnsureIconMaterialRefAsync(dto.IconMaterialRefId, dto.IconNamespaceKey, existing.IconMaterialRefId);
 
+            await ValidateCategoryAndGradeAsync(dto.CategoryId, dto.GradeId);
+
             // Update scalar properties
             existing.Name = dto.Name;
             existing.Description = dto.Description;
@@ -103,6 +126,10 @@ namespace knkwebapi_v2.Services
             existing.DefaultDisplayDescription = dto.DefaultDisplayDescription;
             existing.DefaultQuantity = dto.DefaultQuantity;
             existing.MaxStackSize = dto.MaxStackSize;
+            existing.CategoryId = dto.CategoryId;
+            existing.GradeId = dto.GradeId;
+            existing.BasePriceMin = dto.BasePriceMin;
+            existing.BasePriceMax = dto.BasePriceMax;
 
             // Update default enchantments (cascade M2M)
             existing.DefaultEnchantments.Clear();
@@ -123,6 +150,12 @@ namespace knkwebapi_v2.Services
                 }
             }
 
+            existing.Tags.Clear();
+            await AddTagsAsync(existing, dto.Tags);
+
+            existing.Origins.Clear();
+            await AddOriginsAsync(existing, dto.Origins);
+
             await _repo.UpdateAsync(existing);
         }
 
@@ -142,6 +175,64 @@ namespace knkwebapi_v2.Services
             var query = _mapper.Map<PagedQuery>(queryDto);
             var result = await _repo.SearchAsync(query);
             return _mapper.Map<PagedResultDto<ItemBlueprintListDto>>(result);
+        }
+
+        private async Task ValidateCategoryAndGradeAsync(int? categoryId, int? gradeId)
+        {
+            if (categoryId.HasValue && categoryId > 0)
+            {
+                var category = await _categoryRepo.GetByIdAsync(categoryId.Value);
+                if (category == null)
+                    throw new ArgumentException($"Category with id {categoryId} not found.");
+            }
+
+            if (gradeId.HasValue && gradeId > 0)
+            {
+                var grade = await _gradeRepo.GetByIdAsync(gradeId.Value);
+                if (grade == null)
+                    throw new ArgumentException($"Grade with id {gradeId} not found.");
+            }
+        }
+
+        private async Task AddTagsAsync(ItemBlueprint entity, List<ItemBlueprintTagDto>? tags)
+        {
+            if (tags == null || !tags.Any()) return;
+
+            foreach (var tagId in tags.Select(t => t.TagId).Distinct())
+            {
+                var tag = await _tagRepo.GetByIdAsync(tagId);
+                if (tag == null)
+                    throw new ArgumentException($"Tag with id {tagId} not found.");
+
+                entity.Tags.Add(new ItemBlueprintTag
+                {
+                    ItemBlueprintId = entity.Id,
+                    TagId = tagId
+                });
+            }
+        }
+
+        private async Task AddOriginsAsync(ItemBlueprint entity, List<ItemBlueprintOriginCreateDto>? origins)
+        {
+            if (origins == null || !origins.Any()) return;
+
+            var sequenceNumbers = new HashSet<int>();
+            foreach (var originDto in origins)
+            {
+                var domain = await _domainRepo.GetByIdAsync(originDto.DomainId);
+                if (domain == null)
+                    throw new ArgumentException($"Domain with id {originDto.DomainId} not found.");
+
+                if (!sequenceNumbers.Add(originDto.SequenceNumber))
+                    throw new ArgumentException($"Duplicate SequenceNumber {originDto.SequenceNumber} in Origins - sequence numbers must be unique per ItemBlueprint.");
+
+                entity.Origins.Add(new ItemBlueprintOrigin
+                {
+                    ItemBlueprintId = entity.Id,
+                    DomainId = originDto.DomainId,
+                    SequenceNumber = originDto.SequenceNumber
+                });
+            }
         }
 
         private async Task<int?> EnsureIconMaterialRefAsync(int? explicitId, string? namespaceKey, int? currentId = null)

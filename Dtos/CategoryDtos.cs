@@ -28,6 +28,25 @@ namespace knkwebapi_v2.Dtos
         // Optional embedded icon material reference when available
         [JsonPropertyName("iconMaterialRef")]
         public MinecraftMaterialRefDto? IconMaterialRef { get; set; }
+
+        // Read: populated with the related Tag for display. Write (Phase 2,
+        // docs/specs/items/IMPLEMENTATION_PLAN.md §6/§4.2): the FormWizard M2M step engine submits this
+        // field as an array of join entries keyed by TagId (CategoryTag carries no extra columns beyond
+        // its two FKs) - CategoryId/Tag are ignored on write and reconciled by CategoryService.
+        [JsonPropertyName("tags")]
+        public List<CategoryTagDto> Tags { get; set; } = new();
+    }
+
+    public class CategoryTagDto
+    {
+        [JsonPropertyName("categoryId")]
+        public int CategoryId { get; set; }
+
+        [JsonPropertyName("tagId")]
+        public int TagId { get; set; }
+
+        [JsonPropertyName("tag")]
+        public TagNavDto? Tag { get; set; }
     }
 
     public class RelatedCategoryDto

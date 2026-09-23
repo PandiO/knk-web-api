@@ -12,5 +12,6 @@ namespace knkwebapi_v2.Services
         Task DeleteAsync(int id);
         Task<knkwebapi_v2.Dtos.DomainRegionDecisionDto?> GetByWgRegionNameAsync(string regionName);
         Task<Dictionary<int, knkwebapi_v2.Dtos.DomainRegionDecisionDto>> SearchDomainRegionDecisionAsync(DomainRegionQueryDto queryDto);
+        Task<PagedResultDto<DomainListDto>> SearchAsync(PagedQueryDto query);
     }
 }

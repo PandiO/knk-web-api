@@ -20,9 +20,30 @@ public class ItemBlueprint
     public int DefaultQuantity { get; set; } = 1;
     public int MaxStackSize { get; set; } = 64;
 
+    [RelatedEntityField(typeof(Category))]
+    [NavigationPair("Category")]
+    public int? CategoryId { get; set; }
+    [RelatedEntityField(typeof(Category))]
+    public Category? Category { get; set; } = null;
+
+    [RelatedEntityField(typeof(Grade))]
+    [NavigationPair("Grade")]
+    public int? GradeId { get; set; }
+    [RelatedEntityField(typeof(Grade))]
+    public Grade? Grade { get; set; } = null;
+
+    public decimal BasePriceMin { get; set; }
+    public decimal BasePriceMax { get; set; }
+
     [NavigationPair(nameof(ItemBlueprintDefaultEnchantment))]
     [RelatedEntityField(typeof(ItemBlueprintDefaultEnchantment))]
     public ICollection<int> DefaultEnchantmentIds { get; set; } = new List<int>();
     [RelatedEntityField(typeof(ItemBlueprintDefaultEnchantment))]
     public ICollection<ItemBlueprintDefaultEnchantment> DefaultEnchantments { get; set; } = new List<ItemBlueprintDefaultEnchantment>();
+
+    [RelatedEntityField(typeof(ItemBlueprintTag))]
+    public ICollection<ItemBlueprintTag> Tags { get; set; } = new List<ItemBlueprintTag>();
+
+    [RelatedEntityField(typeof(ItemBlueprintOrigin))]
+    public ICollection<ItemBlueprintOrigin> Origins { get; set; } = new List<ItemBlueprintOrigin>();
 }
