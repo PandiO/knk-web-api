@@ -70,6 +70,36 @@ namespace knkwebapi_v2.Repositories
                     ed.Description.ToLower().Contains(searchLower));
             }
 
+            // Apply filters from dictionary (same convention as CategoryRepository/GateStructureRepository/
+            // etc.) - this was previously missing entirely, so any caller passing Filters instead of
+            // SearchTerm (e.g. knk-plugin's /knk enchantments apply, resolving a specific enchantment by
+            // exact Key) silently got back every row, unfiltered. Case-insensitive key lookup since
+            // callers vary between PascalCase ("Key", from the plugin) and camelCase (other repos'
+            // established convention). Id/Key are exact matches (resolving one specific enchantment must
+            // not be ambiguous); DisplayName stays Contains, matching /knk enchantments search's
+            // discovery-oriented usage.
+            if (query.Filters != null)
+            {
+                var filters = new Dictionary<string, string>(query.Filters, StringComparer.OrdinalIgnoreCase);
+
+                if (filters.TryGetValue("Id", out var idStr) && int.TryParse(idStr, out var idValue))
+                {
+                    queryable = queryable.Where(ed => ed.Id == idValue);
+                }
+
+                if (filters.TryGetValue("Key", out var keyValue) && !string.IsNullOrWhiteSpace(keyValue))
+                {
+                    var keyLower = keyValue.ToLower();
+                    queryable = queryable.Where(ed => ed.Key.ToLower() == keyLower);
+                }
+
+                if (filters.TryGetValue("DisplayName", out var displayNameValue) && !string.IsNullOrWhiteSpace(displayNameValue))
+                {
+                    var displayNameLower = displayNameValue.ToLower();
+                    queryable = queryable.Where(ed => ed.DisplayName.ToLower().Contains(displayNameLower));
+                }
+            }
+
             // Get total count before pagination
             var totalCount = await queryable.CountAsync();
 
