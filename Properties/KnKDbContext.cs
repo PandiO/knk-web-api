@@ -67,6 +67,14 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<StepProgress> StepProgresses { get; set; } = null!;
     public virtual DbSet<WorldTask> WorldTasks { get; set; } = null!;
 
+    // InventoryMenu (docs/specs/inventory-menu/IMPLEMENTATION_PLAN.md Phase 1)
+    public virtual DbSet<MenuTemplate> MenuTemplates { get; set; } = null!;
+    public virtual DbSet<MenuSectionTemplate> MenuSectionTemplates { get; set; } = null!;
+    public virtual DbSet<MenuItemTemplate> MenuItemTemplates { get; set; } = null!;
+    public virtual DbSet<VariableBinding> VariableBindings { get; set; } = null!;
+    public virtual DbSet<ActionBinding> ActionBindings { get; set; } = null!;
+    public virtual DbSet<ConditionBinding> ConditionBindings { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -916,6 +924,146 @@ public partial class KnKDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.AssignedUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // InventoryMenu (docs/specs/inventory-menu/IMPLEMENTATION_PLAN.md Phase 1)
+        modelBuilder.Entity<MenuTemplate>(entity =>
+        {
+            entity.ToTable("menu_templates");
+
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(191);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(191);
+            entity.Property(e => e.Growth).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasIndex(e => e.Key).IsUnique();
+
+            entity.HasOne(e => e.BackgroundMaterial)
+                .WithMany()
+                .HasForeignKey(e => e.BackgroundMaterialRefId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Sections)
+                .WithOne(s => s.MenuTemplate)
+                .HasForeignKey(s => s.MenuTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MenuSectionTemplate>(entity =>
+        {
+            entity.ToTable("menu_section_templates");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(191);
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(30);
+            entity.Property(e => e.PositionMode).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.AlignVertical).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.AlignHorizontal).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Overflow).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ListMode).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Priority).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ContentSourceId).HasMaxLength(191);
+            entity.Property(e => e.ContentSourceParamsJson).HasColumnType("longtext");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            // Name is unique within its parent template, not globally.
+            entity.HasIndex(e => new { e.MenuTemplateId, e.Name })
+                .IsUnique()
+                .HasDatabaseName("IX_MenuSectionTemplate_MenuTemplateId_Name");
+
+            entity.HasIndex(e => new { e.MenuTemplateId, e.SortOrder })
+                .HasDatabaseName("IX_MenuSectionTemplate_MenuTemplateId_SortOrder");
+
+            entity.HasMany(e => e.Items)
+                .WithOne(i => i.MenuSectionTemplate)
+                .HasForeignKey(i => i.MenuSectionTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MenuItemTemplate>(entity =>
+        {
+            entity.ToTable("menu_item_templates");
+
+            entity.Property(e => e.DisplayMode).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasIndex(e => new { e.MenuSectionTemplateId, e.SortOrder })
+                .HasDatabaseName("IX_MenuItemTemplate_MenuSectionTemplateId_SortOrder");
+
+            entity.HasOne(e => e.Material)
+                .WithMany()
+                .HasForeignKey(e => e.MaterialRefId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<VariableBinding>(entity =>
+        {
+            entity.ToTable("menu_variable_bindings");
+
+            entity.Property(e => e.TargetProperty).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Expression).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.RefreshPolicy).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasOne(e => e.MenuSectionTemplate)
+                .WithMany(s => s.VariableBindings)
+                .HasForeignKey(e => e.MenuSectionTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.MenuItemTemplate)
+                .WithMany(i => i.VariableBindings)
+                .HasForeignKey(e => e.MenuItemTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.MenuSectionTemplateId);
+            entity.HasIndex(e => e.MenuItemTemplateId);
+        });
+
+        modelBuilder.Entity<ActionBinding>(entity =>
+        {
+            entity.ToTable("menu_action_bindings");
+
+            entity.Property(e => e.ActionTypeId).IsRequired().HasMaxLength(191);
+            entity.Property(e => e.ParamsJson).HasColumnType("longtext");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasOne(e => e.MenuItemTemplate)
+                .WithMany(i => i.Actions)
+                .HasForeignKey(e => e.MenuItemTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.MenuItemTemplateId, e.SortOrder })
+                .HasDatabaseName("IX_ActionBinding_MenuItemTemplateId_SortOrder");
+        });
+
+        modelBuilder.Entity<ConditionBinding>(entity =>
+        {
+            entity.ToTable("menu_condition_bindings");
+
+            entity.Property(e => e.ConditionTypeId).IsRequired().HasMaxLength(191);
+            entity.Property(e => e.ParamsJson).HasColumnType("longtext");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasOne(e => e.MenuItemTemplate)
+                .WithMany(i => i.Conditions)
+                .HasForeignKey(e => e.MenuItemTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Restrict: an action being removed goes through its own item's cascade,
+            // not through the condition that merely scopes to it.
+            entity.HasOne(e => e.ActionBinding)
+                .WithMany(a => a.Conditions)
+                .HasForeignKey(e => e.ActionBindingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.MenuItemTemplateId, e.SortOrder })
+                .HasDatabaseName("IX_ConditionBinding_MenuItemTemplateId_SortOrder");
+            entity.HasIndex(e => e.ActionBindingId);
         });
 
         OnModelCreatingPartial(modelBuilder);

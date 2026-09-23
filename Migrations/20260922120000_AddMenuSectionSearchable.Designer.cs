@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922120000_AddMenuSectionSearchable")]
+    partial class AddMenuSectionSearchable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -163,21 +166,6 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("ParentCategoryId");
 
                     b.ToTable("categories", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CategoryTag", b =>
-                {
-                    b.Property<int>("CategoryId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TagId")
-                        .HasColumnType("int");
-
-                    b.HasKey("CategoryId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("CategoryTag");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ConditionBinding", b =>
@@ -1358,27 +1346,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("gate_opened_block_snapshots", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.Grade", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Stars")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.ToTable("grades", (string)null);
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
                 {
                     b.Property<int>("Id")
@@ -1386,15 +1353,6 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("BasePriceMax")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<decimal>("BasePriceMin")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<int?>("CategoryId")
-                        .HasColumnType("int");
 
                     b.Property<string>("DefaultDisplayDescription")
                         .HasColumnType("longtext");
@@ -1413,9 +1371,6 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("longtext");
 
-                    b.Property<int?>("GradeId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("IconMaterialRefId")
                         .HasColumnType("int");
 
@@ -1427,10 +1382,6 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasKey("Id")
                         .HasName("PRIMARY");
-
-                    b.HasIndex("CategoryId");
-
-                    b.HasIndex("GradeId");
 
                     b.HasIndex("IconMaterialRefId");
 
@@ -1453,49 +1404,6 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("EnchantmentDefinitionId");
 
                     b.ToTable("ItemBlueprintDefaultEnchantment");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintOrigin", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("DomainId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ItemBlueprintId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SequenceNumber")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("DomainId");
-
-                    b.HasIndex("ItemBlueprintId", "SequenceNumber")
-                        .IsUnique();
-
-                    b.ToTable("item_blueprint_origins", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintTag", b =>
-                {
-                    b.Property<int>("ItemBlueprintId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TagId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ItemBlueprintId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("ItemBlueprintTag");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LinkCode", b =>
@@ -1646,14 +1554,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
-
-                    b.Property<string>("ContentSourceId")
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<string>("ContentSourceParamsJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime");
@@ -1958,24 +1858,6 @@ namespace knkwebapi_v2.Migrations
                         .HasName("PRIMARY");
 
                     b.ToTable("streets", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.Tag", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.ToTable("tags", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
@@ -2433,25 +2315,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ParentCategory");
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.CategoryTag", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.Category", "Category")
-                        .WithMany("Tags")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.Tag", "Tag")
-                        .WithMany()
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Category");
-
-                    b.Navigation("Tag");
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.ConditionBinding", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.ActionBinding", "ActionBinding")
@@ -2760,24 +2623,10 @@ namespace knkwebapi_v2.Migrations
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
                 {
-                    b.HasOne("knkwebapi_v2.Models.Category", "Category")
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("knkwebapi_v2.Models.Grade", "Grade")
-                        .WithMany()
-                        .HasForeignKey("GradeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "IconMaterial")
                         .WithMany()
                         .HasForeignKey("IconMaterialRefId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Category");
-
-                    b.Navigation("Grade");
 
                     b.Navigation("IconMaterial");
                 });
@@ -2799,44 +2648,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("EnchantmentDefinition");
 
                     b.Navigation("ItemBlueprint");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintOrigin", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
-                        .WithMany()
-                        .HasForeignKey("DomainId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
-                        .WithMany("Origins")
-                        .HasForeignKey("ItemBlueprintId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Domain");
-
-                    b.Navigation("ItemBlueprint");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintTag", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
-                        .WithMany("Tags")
-                        .HasForeignKey("ItemBlueprintId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.Tag", "Tag")
-                        .WithMany()
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ItemBlueprint");
-
-                    b.Navigation("Tag");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LinkCode", b =>
@@ -3038,8 +2849,6 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.Category", b =>
                 {
                     b.Navigation("ChildCategories");
-
-                    b.Navigation("Tags");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.DisplayConditionGroup", b =>
@@ -3109,10 +2918,6 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
                 {
                     b.Navigation("DefaultEnchantments");
-
-                    b.Navigation("Origins");
-
-                    b.Navigation("Tags");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>

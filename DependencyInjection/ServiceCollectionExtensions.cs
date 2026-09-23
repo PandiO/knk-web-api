@@ -108,6 +108,10 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IDisplaySectionService, DisplaySectionService>();
             services.AddScoped<IDisplayFieldService, DisplayFieldService>();
 
+            // InventoryMenu (docs/specs/inventory-menu/IMPLEMENTATION_PLAN.md Phase 1)
+            services.AddScoped<IMenuTemplateRepository, MenuTemplateRepository>();
+            services.AddScoped<IMenuTemplateService, MenuTemplateService>();
+
             // Add MetadataService for dynamic form building
             services.AddSingleton<IMetadataService, MetadataService>();
 
