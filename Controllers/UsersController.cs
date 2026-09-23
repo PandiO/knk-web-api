@@ -18,11 +18,61 @@ namespace knkwebapi_v2.Controllers
     {
         private readonly IUserService _service;
         private readonly IMapper _mapper;
+        private readonly IPermissionResolutionService _permissionResolutionService;
 
-        public UsersController(IUserService service, IMapper mapper)
+        public UsersController(IUserService service, IMapper mapper, IPermissionResolutionService permissionResolutionService)
         {
             _service = service;
             _mapper = mapper;
+            _permissionResolutionService = permissionResolutionService;
+        }
+
+        /// <summary>
+        /// Cheap single-node permission check. This is what knk-plugin calls per permission
+        /// check (see docs/specs/user-features/IMPLEMENTATION_PLAN.md §1) - keep it a single,
+        /// direct lookup rather than anything that fans out further.
+        /// </summary>
+        /// <param name="id">User ID</param>
+        /// <param name="node">The permission node to check, e.g. "knk.gate.open".</param>
+        /// <response code="200">Returns the resolution result (granted/denied/undeclared)</response>
+        /// <response code="400">Node query parameter missing</response>
+        /// <response code="404">User not found</response>
+        [HttpGet("{id:int}/permissions/check")]
+        public async Task<IActionResult> CheckPermission(int id, [FromQuery] string? node)
+        {
+            if (string.IsNullOrWhiteSpace(node))
+            {
+                return BadRequest(new { error = "InvalidRequest", message = "node query parameter is required" });
+            }
+
+            var result = await _permissionResolutionService.CheckAsync(id, node);
+            if (result == null)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Full resolved permission set for a user - every declared node, its value, and which
+        /// holder (the user directly, or a PermissionGroup) it came from. Backs the
+        /// user-management admin module's composite player-profile view (see
+        /// docs/specs/user-features/IMPLEMENTATION_PLAN.md §1 item 5).
+        /// </summary>
+        /// <param name="id">User ID</param>
+        /// <response code="200">Returns the full resolved permission set</response>
+        /// <response code="404">User not found</response>
+        [HttpGet("{id:int}/permissions/effective")]
+        public async Task<IActionResult> GetEffectivePermissions(int id)
+        {
+            var result = await _permissionResolutionService.GetEffectiveAsync(id);
+            if (result == null)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+
+            return Ok(result);
         }
 
         /// <summary>

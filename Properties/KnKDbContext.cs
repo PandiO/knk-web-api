@@ -69,6 +69,12 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<ActionBinding> ActionBindings { get; set; } = null!;
     public virtual DbSet<ConditionBinding> ConditionBindings { get; set; } = null!;
 
+    // User features Phase 1 — permission/rank system (docs/specs/user-features/IMPLEMENTATION_PLAN.md §1)
+    public virtual DbSet<PermissionHolder> PermissionHolders { get; set; } = null!;
+    public virtual DbSet<PermissionGroup> PermissionGroups { get; set; } = null!;
+    public virtual DbSet<PermissionGrant> PermissionGrants { get; set; } = null!;
+    public virtual DbSet<UserPermissionGroup> UserPermissionGroups { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -81,21 +87,77 @@ public partial class KnKDbContext : DbContext
             entity.ToTable("domains");
         });
 
-        modelBuilder.Entity<User>(entity =>
+        // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id
+        // as their own PK, same pattern as Domain/Town/District/Structure below.
+        modelBuilder.Entity<PermissionHolder>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("permission_holders");
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
             entity.ToTable("users");
-            
+
             // Unique constraints on Username, Email, UUID (with null handling)
             entity.HasIndex(e => e.Username).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.Uuid).IsUnique();
-            
+
             // Relationship to LinkCodes
             entity.HasMany(e => e.LinkCodes)
                 .WithOne(lc => lc.User)
                 .HasForeignKey(lc => lc.UserId)
                 .OnDelete(DeleteBehavior.Restrict); // No cascade; soft-delete handles cleanup
+        });
+
+        modelBuilder.Entity<PermissionGroup>(entity =>
+        {
+            entity.ToTable("permission_groups");
+
+            entity.HasIndex(e => e.Name).IsUnique();
+
+            // Single-parent inheritance chain (DESIGN.md §2.1) — restrict, not cascade: deleting
+            // a parent group with live children should fail loudly, not silently orphan them.
+            entity.HasOne(g => g.ParentGroup)
+                .WithMany(g => g.ChildGroups)
+                .HasForeignKey(g => g.ParentGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PermissionGrant>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("permission_grants");
+
+            entity.Property(e => e.Node).IsRequired().HasMaxLength(191);
+
+            // A holder's grant list is meaningless without the holder — cascade.
+            entity.HasOne(e => e.Holder)
+                .WithMany(h => h.Grants)
+                .HasForeignKey(e => e.HolderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Resolution always looks up "this holder's grants" first — index the lookup path.
+            entity.HasIndex(e => new { e.HolderId, e.Node });
+        });
+
+        modelBuilder.Entity<UserPermissionGroup>(entity =>
+        {
+            entity.ToTable("user_permission_groups");
+            entity.HasKey(e => new { e.UserId, e.PermissionGroupId });
+
+            // Membership rows are meaningless without either side — cascade both ways,
+            // matching ItemBlueprintDefaultEnchantment's join-entity precedent.
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.PermissionGroupMemberships)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.PermissionGroup)
+                .WithMany(g => g.UserMemberships)
+                .HasForeignKey(e => e.PermissionGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<LinkCode>(entity =>

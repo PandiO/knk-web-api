@@ -20,13 +20,15 @@ public class UsersControllerTests
 {
     private readonly Mock<IUserService> _mockUserService;
     private readonly Mock<IMapper> _mockMapper;
+    private readonly Mock<IPermissionResolutionService> _mockPermissionResolutionService;
     private readonly UsersController _controller;
 
     public UsersControllerTests()
     {
         _mockUserService = new Mock<IUserService>();
         _mockMapper = new Mock<IMapper>();
-        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object);
+        _mockPermissionResolutionService = new Mock<IPermissionResolutionService>();
+        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object);
     }
 
     #region Create Tests

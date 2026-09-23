@@ -10,13 +10,8 @@ namespace knkwebapi_v2.Models;
 /// Handles authentication, account linking, and soft deletion.
 /// </summary>
 [FormConfigurableEntity("User")]
-public class User
+public class User : PermissionHolder
 {
-    /// <summary>
-    /// Primary key - database surrogate identifier. Auto-generated and immutable.
-    /// </summary>
-    public int Id { get; set; }
-
     /// <summary>
     /// Player name; max 256 chars. Unique and immutable.
     /// Mirrors Minecraft server identity or web app input.
@@ -163,6 +158,13 @@ public class User
     /// One user can have multiple link codes (old codes expire, new ones generated).
     /// </summary>
     public ICollection<LinkCode> LinkCodes { get; set; } = new List<LinkCode>();
+
+    /// <summary>
+    /// This user's PermissionGroup memberships. A user can hold multiple groups at once
+    /// (e.g. staff + premium simultaneously) — see docs/specs/user-features/DESIGN.md §2.1.
+    /// </summary>
+    [RelatedEntityField(typeof(UserPermissionGroup))]
+    public ICollection<UserPermissionGroup> PermissionGroupMemberships { get; set; } = new List<UserPermissionGroup>();
 }
 
 /// <summary>
