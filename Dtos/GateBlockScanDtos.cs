@@ -4,7 +4,12 @@ using System.Text.Json.Serialization;
 namespace knkwebapi_v2.Dtos
 {
     /// <summary>
-    /// Well-known WorldTask.TaskType values that are handled without a player (headless).
+    /// Well-known WorldTask.TaskType string constants, kept here for parity/typo-safety
+    /// wherever a TaskType literal is compared. Not every member is headless - GateBlockScan/
+    /// GateOpenedBlockScan are (see WorldTaskService's own server-side branching on them);
+    /// ItemScan is player-driven (docs/specs/items/IMPLEMENTATION_PLAN.md §5.1) and has no
+    /// backend branching of its own - WorldTask.TaskType is an open string field either way,
+    /// so this constant is purely for convenience, not a schema requirement.
     /// </summary>
     public static class WorldTaskTypes
     {
@@ -14,6 +19,10 @@ namespace knkwebapi_v2.Dtos
         // OpenAnchorPoint instead of AnchorPoint, and posts to GateOpenedBlockSnapshot
         // instead of GateBlockSnapshot. See ROTATION_GAP_FILL_DESIGN.md.
         public const string GateOpenedBlockScan = "GateOpenedBlockScan";
+
+        // Player-driven ItemScan WorldTask (docs/specs/items/IMPLEMENTATION_PLAN.md §5) -
+        // handled entirely by knk-plugin's ItemScanTaskHandler; no server-side branching here.
+        public const string ItemScan = "ItemScan";
     }
 
     /// <summary>
