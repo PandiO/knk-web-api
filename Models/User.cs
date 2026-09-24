@@ -114,6 +114,21 @@ public class User : PermissionHolder
     /// </summary>
     public ActiveMode ActiveMode { get; set; } = ActiveMode.None;
 
+    /// <summary>
+    /// Per-player override for the salary formula (docs/specs/user-features/DESIGN.md §5) — a
+    /// plain numeric field, not a permission grant, confirmed DESIGN.md §7 item 9. Default 1.0
+    /// (neutral). Multiplied together with the global and rank-based multipliers by SalaryService.
+    /// </summary>
+    public decimal PersonalSalaryMultiplier { get; set; } = 1.0m;
+
+    /// <summary>
+    /// UTC timestamp of this user's last salary payout, advanced by SalaryService on each payout.
+    /// Backfilled to the migration's apply time for pre-existing users (not their CreatedAt) so
+    /// rollout doesn't trigger one giant retroactive payout. Service-managed only — ignored by the
+    /// generic UserDto update path, same convention as ActiveMode.
+    /// </summary>
+    public DateTime LastSalaryPayoutAt { get; set; } = DateTime.UtcNow;
+
     // ===== AUDIT TRAIL (MINIMAL - MVP) =====
 
     /// <summary>

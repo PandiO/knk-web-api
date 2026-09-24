@@ -27,6 +27,15 @@ public class PermissionGroup : PermissionHolder
     /// </summary>
     public bool IsPremiumTier { get; set; }
 
+    /// <summary>
+    /// The rank-based multiplier SalaryService applies for a member holding this group
+    /// (docs/specs/user-features/DESIGN.md §5). Default 1.0 (neutral — matches an unset v1
+    /// Donator.Multiplier precedent). A user's overall rank multiplier is the product of this
+    /// value across every currently-active group membership they hold (developer-confirmed
+    /// combination rule) — an empty membership set therefore yields 1.0, not 0.
+    /// </summary>
+    public decimal SalaryMultiplier { get; set; } = 1.0m;
+
     [NavigationPair(nameof(ParentGroup))]
     [RelatedEntityField(typeof(PermissionGroup))]
     public int? ParentGroupId { get; set; }

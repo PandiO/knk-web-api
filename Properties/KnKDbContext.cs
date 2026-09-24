@@ -84,6 +84,9 @@ public partial class KnKDbContext : DbContext
     // User features Phase 4 — title/XP track (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4)
     public virtual DbSet<TitleBracket> TitleBrackets { get; set; } = null!;
 
+    // User features Phase 6 — salary system (docs/specs/user-features/IMPLEMENTATION_PLAN.md §6)
+    public DbSet<SalaryConfiguration> SalaryConfigurations { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -821,6 +824,15 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => e.EntityTypeName)
                 .IsUnique()
                 .HasDatabaseName("IX_EntityTypeConfiguration_EntityTypeName");
+        });
+
+        modelBuilder.Entity<SalaryConfiguration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("salary_configurations");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(64);
         });
 
         modelBuilder.Entity<GameSettings>(entity =>

@@ -117,6 +117,20 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("premiumTierExpiresAt")]
         public DateTime? PremiumTierExpiresAt { get; set; }
 
+        /// <summary>
+        /// Salary formula's personal override (IMPLEMENTATION_PLAN.md §6). Admin-editable via the
+        /// generic user CRUD, default 1.0 (neutral).
+        /// </summary>
+        [JsonPropertyName("personalSalaryMultiplier")]
+        public decimal PersonalSalaryMultiplier { get; set; } = 1.0m;
+
+        /// <summary>
+        /// Read-only: last time SalaryService paid this user out. Not writable via this DTO — see
+        /// POST /api/users/{id}/salary/payout.
+        /// </summary>
+        [JsonPropertyName("lastSalaryPayoutAt")]
+        public DateTime LastSalaryPayoutAt { get; set; }
+
         [JsonPropertyName("isFullAccount")]
         public bool IsFullAccount { get; set; }
 

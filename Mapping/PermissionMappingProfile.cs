@@ -13,6 +13,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Name, src => src.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Weight, src => src.MapFrom(src => src.Weight))
                 .ForMember(dest => dest.IsPremiumTier, src => src.MapFrom(src => src.IsPremiumTier))
+                .ForMember(dest => dest.SalaryMultiplier, src => src.MapFrom(src => src.SalaryMultiplier))
                 .ForMember(dest => dest.ChatPrefix, src => src.MapFrom(src => src.ChatPrefix))
                 .ForMember(dest => dest.ChatSuffix, src => src.MapFrom(src => src.ChatSuffix))
                 .ForMember(dest => dest.ParentGroupId, src => src.MapFrom(src => src.ParentGroupId.HasValue ? src.ParentGroupId : src.ParentGroup != null ? src.ParentGroup.Id : null))
@@ -24,6 +25,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Name, src => src.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Weight, src => src.MapFrom(src => src.Weight))
                 .ForMember(dest => dest.IsPremiumTier, src => src.MapFrom(src => src.IsPremiumTier))
+                .ForMember(dest => dest.SalaryMultiplier, src => src.MapFrom(src => src.SalaryMultiplier))
                 .ForMember(dest => dest.ChatPrefix, src => src.MapFrom(src => src.ChatPrefix))
                 .ForMember(dest => dest.ChatSuffix, src => src.MapFrom(src => src.ChatSuffix))
                 .ForMember(dest => dest.ParentGroupId, src => src.MapFrom(src => src.ParentGroupId))
@@ -42,6 +44,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.name, src => src.MapFrom(src => src.Name))
                 .ForMember(dest => dest.weight, src => src.MapFrom(src => src.Weight))
                 .ForMember(dest => dest.isPremiumTier, src => src.MapFrom(src => src.IsPremiumTier))
+                .ForMember(dest => dest.salaryMultiplier, src => src.MapFrom(src => src.SalaryMultiplier))
                 .ForMember(dest => dest.parentGroupId, src => src.MapFrom(src => src.ParentGroupId))
                 .ForMember(dest => dest.parentGroupName, src => src.MapFrom(src => src.ParentGroup != null ? src.ParentGroup.Name : null))
                 .ForMember(dest => dest.childrenCount, src => src.MapFrom(src => src.ChildGroups != null ? src.ChildGroups.Count : 0));

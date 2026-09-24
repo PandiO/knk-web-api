@@ -32,7 +32,11 @@ namespace knkwebapi_v2.Mapping
                 // Likewise resolved from UserPermissionGroup memberships (IMPLEMENTATION_PLAN.md §5).
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
-                .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore());
+                .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore())
+                .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
+                // MySQL reads DateTime back as Unspecified — mark it UTC so it serializes with a
+                // "Z" (same fix UserPermissionGroupService.ToDto already applied for ExpiresAt).
+                .ForMember(dest => dest.LastSalaryPayoutAt, src => src.MapFrom(src => DateTime.SpecifyKind(src.LastSalaryPayoutAt, DateTimeKind.Utc)));
 
             // ===== UserDto → User =====
             // CRITICAL: Ignore PasswordHash to prevent exposure
@@ -52,6 +56,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ActiveMode, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, src => src.MapFrom(src => src.IsActive))
                 .ForMember(dest => dest.CreatedAt, src => src.MapFrom(src => DateTime.Parse(src.CreatedAt)))
+                .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
+                // Service-managed only (SalaryService.PayOutAsync) — same convention as ActiveMode:
+                // a generic edit that omits it must not reset a user's payout clock.
+                .ForMember(dest => dest.LastSalaryPayoutAt, opt => opt.Ignore())
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
                 .ForMember(dest => dest.LastPasswordChangeAt, opt => opt.Ignore())
                 .ForMember(dest => dest.LastEmailChangeAt, opt => opt.Ignore())
@@ -77,6 +85,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore());
+
+            // Note: PersonalSalaryMultiplier/LastSalaryPayoutAt are deliberately not added to
+            // UserSummaryDto (the plugin-facing lightweight DTO) — nothing consumes them there
+            // yet, per IMPLEMENTATION_PLAN.md §6's knk-web-api-only scope for this phase.
 
             // ===== User → UserListDto =====
             CreateMap<User, UserListDto>()
@@ -105,6 +117,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.AccountCreatedVia, opt => opt.Ignore())
                 .ForMember(dest => dest.GatePassThroughMethodDefault, opt => opt.Ignore())
                 .ForMember(dest => dest.ActiveMode, opt => opt.Ignore())
+                .ForMember(dest => dest.PersonalSalaryMultiplier, opt => opt.Ignore())  // Use default from model
+                .ForMember(dest => dest.LastSalaryPayoutAt, opt => opt.Ignore())  // Use default from model
                 .ForMember(dest => dest.LastPasswordChangeAt, opt => opt.Ignore())
                 .ForMember(dest => dest.LastEmailChangeAt, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.Ignore())

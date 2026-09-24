@@ -16,6 +16,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("isPremiumTier")]
         public bool IsPremiumTier { get; set; }
 
+        [JsonPropertyName("salaryMultiplier")]
+        public decimal SalaryMultiplier { get; set; } = 1.0m;
+
         [JsonPropertyName("chatPrefix")]
         public string? ChatPrefix { get; set; }
 
@@ -53,6 +56,8 @@ namespace knkwebapi_v2.Dtos
         public int weight { get; set; }
         [JsonPropertyName("isPremiumTier")]
         public bool isPremiumTier { get; set; }
+        [JsonPropertyName("salaryMultiplier")]
+        public decimal salaryMultiplier { get; set; } = 1.0m;
         [JsonPropertyName("parentGroupId")]
         public int? parentGroupId { get; set; }
         [JsonPropertyName("parentGroupName")]

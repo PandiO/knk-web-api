@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Interfaces;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 
@@ -19,12 +20,18 @@ namespace knkwebapi_v2.Controllers
         private readonly IUserService _service;
         private readonly IMapper _mapper;
         private readonly IPermissionResolutionService _permissionResolutionService;
+        private readonly ISalaryService _salaryService;
 
-        public UsersController(IUserService service, IMapper mapper, IPermissionResolutionService permissionResolutionService)
+        public UsersController(
+            IUserService service,
+            IMapper mapper,
+            IPermissionResolutionService permissionResolutionService,
+            ISalaryService salaryService)
         {
             _service = service;
             _mapper = mapper;
             _permissionResolutionService = permissionResolutionService;
+            _salaryService = salaryService;
         }
 
         /// <summary>
@@ -528,6 +535,33 @@ namespace knkwebapi_v2.Controllers
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { error = "InsufficientBalance", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Pays out the salary gap since this user's last payout, if at least an hour has passed.
+        /// </summary>
+        /// <remarks>
+        /// docs/specs/user-features/IMPLEMENTATION_PLAN.md §6. Intended trigger: the plugin calls
+        /// this on player join (not wired this phase — see IMPLEMENTATION_PLAN.md §6's
+        /// knk-web-api-only scope). Always returns 200; check the response's "paid" field rather
+        /// than the status code to tell a real payout from "not yet eligible".
+        /// </remarks>
+        /// <param name="id">User ID</param>
+        /// <response code="200">Payout evaluated (see the "paid" field for the outcome)</response>
+        /// <response code="404">User not found</response>
+        [HttpPost("{id:int}/salary/payout")]
+        [ProducesResponseType(typeof(SalaryPayoutResultDto), 200)]
+        public async Task<ActionResult<SalaryPayoutResultDto>> PayOutSalary(int id)
+        {
+            try
+            {
+                var result = await _salaryService.PayOutAsync(id);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
             }
         }
 

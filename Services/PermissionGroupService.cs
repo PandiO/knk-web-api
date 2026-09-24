@@ -33,6 +33,7 @@ namespace knkwebapi_v2.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Group name is required.", nameof(dto));
+            if (dto.SalaryMultiplier < 0) throw new ArgumentException("SalaryMultiplier cannot be negative.", nameof(dto));
 
             if (dto.ParentGroupId.HasValue && dto.ParentGroupId > 0)
             {
@@ -51,6 +52,7 @@ namespace knkwebapi_v2.Services
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Group name is required.", nameof(dto));
+            if (dto.SalaryMultiplier < 0) throw new ArgumentException("SalaryMultiplier cannot be negative.", nameof(dto));
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"PermissionGroup with id {id} not found.");
@@ -72,6 +74,7 @@ namespace knkwebapi_v2.Services
             existing.Name = dto.Name;
             existing.Weight = dto.Weight;
             existing.IsPremiumTier = dto.IsPremiumTier;
+            existing.SalaryMultiplier = dto.SalaryMultiplier;
             existing.ChatPrefix = dto.ChatPrefix;
             existing.ChatSuffix = dto.ChatSuffix;
             existing.ParentGroupId = dto.ParentGroupId;

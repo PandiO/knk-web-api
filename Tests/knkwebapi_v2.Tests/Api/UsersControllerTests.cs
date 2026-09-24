@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Controllers;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Dtos;
 using AutoMapper;
@@ -21,6 +22,7 @@ public class UsersControllerTests
     private readonly Mock<IUserService> _mockUserService;
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<IPermissionResolutionService> _mockPermissionResolutionService;
+    private readonly Mock<ISalaryService> _mockSalaryService;
     private readonly UsersController _controller;
 
     public UsersControllerTests()
@@ -28,7 +30,8 @@ public class UsersControllerTests
         _mockUserService = new Mock<IUserService>();
         _mockMapper = new Mock<IMapper>();
         _mockPermissionResolutionService = new Mock<IPermissionResolutionService>();
-        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object);
+        _mockSalaryService = new Mock<ISalaryService>();
+        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object);
     }
 
     #region Create Tests
