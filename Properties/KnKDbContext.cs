@@ -89,6 +89,9 @@ public partial class KnKDbContext : DbContext
 
     public virtual DbSet<AuditLogEntry> AuditLogEntries { get; set; } = null!;
 
+    // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
+    public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -832,6 +835,15 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.ToTable("salary_configurations");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<AuditLogRetentionConfiguration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("audit_log_retention_configurations");
 
             entity.Property(e => e.Id)
                 .HasMaxLength(64);

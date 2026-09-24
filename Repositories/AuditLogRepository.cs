@@ -1,3 +1,4 @@
+using System;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
 using knkwebapi_v2.Repositories.Interfaces;
@@ -50,6 +51,13 @@ namespace knkwebapi_v2.Repositories
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
+        }
+
+        public async Task<int> DeleteOlderThanAsync(DateTime beforeDate)
+        {
+            return await _context.AuditLogEntries
+                .Where(e => e.Timestamp < beforeDate)
+                .ExecuteDeleteAsync();
         }
     }
 }
