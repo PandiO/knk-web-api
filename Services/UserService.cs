@@ -252,6 +252,26 @@ namespace knkwebapi_v2.Services
             }
         }
 
+        public async Task UpdatePresenceAsync(int id, bool isOnline)
+        {
+            if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
+            var existing = await _repo.GetByIdAsync(id);
+            if (existing == null) throw new KeyNotFoundException($"User with id {id} not found.");
+
+            // Not audit-logged: this is a passive system signal from PlayerListener's
+            // join/quit hooks, not an admin action (docs/specs/user-management/DESIGN.md §4
+            // scopes the audit trail to admin/system *mutations affecting a player*, e.g. balance
+            // or group changes — presence pings would just be noise at server-restart volume).
+            await _repo.UpdatePresenceAsync(id, isOnline);
+        }
+
+        public async Task<IEnumerable<UserListDto>> SearchByGroupAsync(int groupId, bool? onlineOnly = null)
+        {
+            if (groupId <= 0) throw new ArgumentException("Invalid group id.", nameof(groupId));
+            var users = await _repo.SearchByGroupAsync(groupId, onlineOnly);
+            return _mapper.Map<IEnumerable<UserListDto>>(users);
+        }
+
         public async Task DeleteAsync(int id)
         {
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));

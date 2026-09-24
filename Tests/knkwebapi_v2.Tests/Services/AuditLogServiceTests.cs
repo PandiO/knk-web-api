@@ -63,7 +63,7 @@ public class AuditLogServiceTests
     [Fact]
     public async Task SearchAsync_ResolvesActorAndTargetUsernames()
     {
-        _mockRepo.Setup(r => r.SearchAsync(10, null, 1, 20)).ReturnsAsync(new PagedResult<AuditLogEntry>
+        _mockRepo.Setup(r => r.SearchAsync(10, null, null, null, 1, 20)).ReturnsAsync(new PagedResult<AuditLogEntry>
         {
             Items = new List<AuditLogEntry>
             {
@@ -82,5 +82,28 @@ public class AuditLogServiceTests
         Assert.Equal("admin1", result.Items[0].ActorUsername);
         Assert.Equal("player1", result.Items[0].TargetUsername);
         Assert.Equal("GroupAssigned", result.Items[0].Action);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithActionAndDirection_PassesThroughToRepository()
+    {
+        _mockRepo.Setup(r => r.SearchAsync(null, null, AuditAction.TitleChanged, "demotion", 1, 20))
+            .ReturnsAsync(new PagedResult<AuditLogEntry>
+            {
+                Items = new List<AuditLogEntry>
+                {
+                    new() { Id = 2, Timestamp = DateTime.UtcNow, ActorUserId = null, TargetUserId = 7, Action = AuditAction.TitleChanged, Details = "{\"direction\":\"demotion\"}" }
+                },
+                TotalCount = 1,
+                PageNumber = 1,
+                PageSize = 20
+            });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(7)).ReturnsAsync(new User { Id = 7, Username = "demoted1" });
+
+        var result = await _service.SearchAsync(targetUserId: null, actorUserId: null, AuditAction.TitleChanged, "demotion", pageNumber: 1, pageSize: 20);
+
+        Assert.Single(result.Items);
+        Assert.Equal("demoted1", result.Items[0].TargetUsername);
+        Assert.Equal("TitleChanged", result.Items[0].Action);
     }
 }

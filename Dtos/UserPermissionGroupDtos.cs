@@ -49,4 +49,23 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("expiresAt")]
         public DateTime? ExpiresAt { get; set; }
     }
+
+    /// <summary>
+    /// One row of GET /api/PermissionGroups/{id}/expiring-memberships
+    /// (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3 "premium expiring soon" view).
+    /// </summary>
+    public class ExpiringMembershipDto
+    {
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("username")]
+        public string Username { get; set; } = null!;
+
+        [JsonPropertyName("permissionGroupId")]
+        public int PermissionGroupId { get; set; }
+
+        [JsonPropertyName("expiresAt")]
+        public DateTime ExpiresAt { get; set; }
+    }
 }

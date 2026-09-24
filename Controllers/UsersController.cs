@@ -636,6 +636,61 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
+        /// Report online presence — join/quit hooks in knk-plugin's PlayerListener.
+        /// </summary>
+        /// <remarks>
+        /// Dedicated endpoint rather than piggybacking on a periodic sync (docs/specs/user-management/DESIGN.md
+        /// §7 item 2): UsersDataAccess only refreshes a cached user on-demand when a lookup finds
+        /// the cache stale, there is no existing periodic sync loop for users to attach to, so
+        /// "currently online" is real-time-ish (set directly by join/quit) rather than lagged
+        /// behind a sync interval.
+        /// </remarks>
+        /// <param name="id">User ID</param>
+        /// <param name="request">true on join, false on quit</param>
+        /// <returns>No content</returns>
+        /// <response code="204">Updated successfully</response>
+        /// <response code="404">User not found</response>
+        [HttpPut("{id:int}/presence")]
+        public async Task<IActionResult> UpdatePresence(int id, [FromBody] UpdatePresenceDto request)
+        {
+            try
+            {
+                await _service.UpdatePresenceAsync(id, request.IsOnline);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Moderation search: users in a given PermissionGroup, optionally narrowed to currently-online
+        /// (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3). Distinct from the generic
+        /// POST /api/Users/search (PagedQueryDto column filters) since group membership isn't a flat
+        /// column on User — see DESIGN.md §5.
+        /// </summary>
+        /// <param name="groupId">PermissionGroup id to filter by.</param>
+        /// <param name="onlineOnly">When true, further narrows to users with IsOnline=true.</param>
+        [HttpGet("search")]
+        public async Task<ActionResult<IEnumerable<UserListDto>>> SearchByGroup([FromQuery] int groupId, [FromQuery] bool? onlineOnly)
+        {
+            try
+            {
+                var result = await _service.SearchByGroupAsync(groupId, onlineOnly);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Adjust a user's coins/gems/experience by a signed delta, with an audit reason.
         /// </summary>
         /// <remarks>

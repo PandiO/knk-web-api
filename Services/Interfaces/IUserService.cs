@@ -16,6 +16,12 @@ namespace knkwebapi_v2.Services
         Task UpdateCoinsByUuidAsync(string uuid, int coins);
         Task UpdateGatePassThroughMethodAsync(int id, GatePassThroughMethod method);
         Task UpdateActiveModeAsync(int id, ActiveMode mode, int? actorUserId = null);
+
+        /// <summary>Sets IsOnline and stamps LastSeenAt=UtcNow (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3).</summary>
+        Task UpdatePresenceAsync(int id, bool isOnline);
+
+        /// <summary>Moderation search: users in a given PermissionGroup, optionally narrowed to currently-online ones.</summary>
+        Task<IEnumerable<UserListDto>> SearchByGroupAsync(int groupId, bool? onlineOnly = null);
         Task DeleteAsync(int id);
         Task<PagedResultDto<UserListDto>> SearchAsync(PagedQueryDto query);
 

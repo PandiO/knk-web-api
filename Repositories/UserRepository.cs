@@ -89,6 +89,32 @@ namespace knkwebapi_v2.Repositories
             }
         }
 
+        public async Task UpdatePresenceAsync(int id, bool isOnline)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user != null)
+            {
+                user.IsOnline = isOnline;
+                user.LastSeenAt = DateTime.UtcNow;
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<IEnumerable<User>> SearchByGroupAsync(int groupId, bool? onlineOnly = null)
+        {
+            var queryable = _context.UserPermissionGroups
+                .Where(m => m.PermissionGroupId == groupId)
+                .Select(m => m.User);
+
+            if (onlineOnly.HasValue)
+            {
+                queryable = queryable.Where(u => u.IsOnline == onlineOnly.Value);
+            }
+
+            return await queryable.Distinct().ToListAsync();
+        }
+
         public async Task DeleteUserAsync(int id)
         {
             var user = await _context.Users.FindAsync(id);

@@ -761,6 +761,45 @@ public class UserServiceTests
 
     #endregion
 
+    #region UpdatePresenceAsync / SearchByGroupAsync Tests (User management Phase 3, moderation search/filters)
+
+    [Fact]
+    public async Task UpdatePresenceAsync_WithExistingUser_PersistsPresence()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player" });
+
+        await _userService.UpdatePresenceAsync(1, true);
+
+        _mockUserRepository.Verify(r => r.UpdatePresenceAsync(1, true), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdatePresenceAsync_WithMissingUser_ThrowsKeyNotFound()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((User?)null);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.UpdatePresenceAsync(99, true));
+        _mockUserRepository.Verify(r => r.UpdatePresenceAsync(It.IsAny<int>(), It.IsAny<bool>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdatePresenceAsync_DoesNotRecordAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player" });
+
+        await _userService.UpdatePresenceAsync(1, false);
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<Enums.AuditAction>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SearchByGroupAsync_WithInvalidGroupId_ThrowsArgumentException()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _userService.SearchByGroupAsync(0));
+    }
+
+    #endregion
+
     #region AdjustBalancesAsync Audit Tests (user-management Phase 2 retrofit)
 
     [Fact]

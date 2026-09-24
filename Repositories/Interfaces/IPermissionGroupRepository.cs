@@ -16,5 +16,13 @@ namespace knkwebapi_v2.Repositories
         /// single-parent inheritance chain eager-loaded, ordered by Weight descending. Used by
         /// PermissionResolutionService.</summary>
         Task<List<PermissionGroup>> GetActiveGroupsForUserAsync(int userId, DateTime asOf);
+
+        /// <summary>
+        /// Memberships in this group expiring within the next <paramref name="withinDays"/> days
+        /// (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3 "premium expiring soon"
+        /// view). Excludes already-expired and permanent (ExpiresAt=null) memberships — a
+        /// permanent membership never "expires soon". User is eager-loaded for the username.
+        /// </summary>
+        Task<List<UserPermissionGroup>> GetExpiringMembershipsAsync(int groupId, int withinDays, DateTime asOf);
     }
 }

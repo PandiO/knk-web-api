@@ -18,5 +18,8 @@ namespace knkwebapi_v2.Services.Interfaces
         Task RecordAsync(int? actorUserId, int targetUserId, AuditAction action, string? details = null);
 
         Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, int pageNumber, int pageSize);
+
+        /// <summary>Moderation search (IMPLEMENTATION_PLAN.md Phase 3) — e.g. recently demoted players.</summary>
+        Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction, int pageNumber, int pageSize);
     }
 }

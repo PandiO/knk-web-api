@@ -36,7 +36,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
                 // MySQL reads DateTime back as Unspecified — mark it UTC so it serializes with a
                 // "Z" (same fix UserPermissionGroupService.ToDto already applied for ExpiresAt).
-                .ForMember(dest => dest.LastSalaryPayoutAt, src => src.MapFrom(src => DateTime.SpecifyKind(src.LastSalaryPayoutAt, DateTimeKind.Utc)));
+                .ForMember(dest => dest.LastSalaryPayoutAt, src => src.MapFrom(src => DateTime.SpecifyKind(src.LastSalaryPayoutAt, DateTimeKind.Utc)))
+                .ForMember(dest => dest.IsOnline, src => src.MapFrom(src => src.IsOnline))
+                .ForMember(dest => dest.LastSeenAt, src => src.MapFrom(src => src.LastSeenAt.HasValue ? DateTime.SpecifyKind(src.LastSeenAt.Value, DateTimeKind.Utc) : (DateTime?)null));
 
             // ===== UserDto → User =====
             // CRITICAL: Ignore PasswordHash to prevent exposure
@@ -60,6 +62,9 @@ namespace knkwebapi_v2.Mapping
                 // Service-managed only (SalaryService.PayOutAsync) — same convention as ActiveMode:
                 // a generic edit that omits it must not reset a user's payout clock.
                 .ForMember(dest => dest.LastSalaryPayoutAt, opt => opt.Ignore())
+                // Service-managed only (PUT /api/users/{id}/presence) — same convention.
+                .ForMember(dest => dest.IsOnline, opt => opt.Ignore())
+                .ForMember(dest => dest.LastSeenAt, opt => opt.Ignore())
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
                 .ForMember(dest => dest.LastPasswordChangeAt, opt => opt.Ignore())
                 .ForMember(dest => dest.LastEmailChangeAt, opt => opt.Ignore())
@@ -99,8 +104,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Coins, src => src.MapFrom(src => src.Coins))
                 .ForMember(dest => dest.Gems, src => src.MapFrom(src => src.Gems))
                 .ForMember(dest => dest.ExperiencePoints, src => src.MapFrom(src => src.ExperiencePoints))
-                .ForMember(dest => dest.IsActive, src => src.MapFrom(src => src.IsActive));
-        
+                .ForMember(dest => dest.IsActive, src => src.MapFrom(src => src.IsActive))
+                .ForMember(dest => dest.IsOnline, src => src.MapFrom(src => src.IsOnline))
+                .ForMember(dest => dest.LastSeenAt, src => src.MapFrom(src => src.LastSeenAt.HasValue ? DateTime.SpecifyKind(src.LastSeenAt.Value, DateTimeKind.Utc) : (DateTime?)null));
+
             // ===== UserCreateDto → User =====
             // CRITICAL: Ignore PasswordHash - passwords are hashed separately in the service layer
             CreateMap<UserCreateDto, User>()
@@ -119,6 +126,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ActiveMode, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalSalaryMultiplier, opt => opt.Ignore())  // Use default from model
                 .ForMember(dest => dest.LastSalaryPayoutAt, opt => opt.Ignore())  // Use default from model
+                .ForMember(dest => dest.IsOnline, opt => opt.Ignore())  // Use default from model
+                .ForMember(dest => dest.LastSeenAt, opt => opt.Ignore())  // Use default from model
                 .ForMember(dest => dest.LastPasswordChangeAt, opt => opt.Ignore())
                 .ForMember(dest => dest.LastEmailChangeAt, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.Ignore())

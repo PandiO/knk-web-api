@@ -131,6 +131,16 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lastSalaryPayoutAt")]
         public DateTime LastSalaryPayoutAt { get; set; }
 
+        /// <summary>
+        /// Read-only presence state (IMPLEMENTATION_PLAN.md Phase 3) — see
+        /// PUT /api/users/{id}/presence. Not writable via this DTO.
+        /// </summary>
+        [JsonPropertyName("isOnline")]
+        public bool IsOnline { get; set; }
+
+        [JsonPropertyName("lastSeenAt")]
+        public DateTime? LastSeenAt { get; set; }
+
         [JsonPropertyName("isFullAccount")]
         public bool IsFullAccount { get; set; }
 
@@ -218,6 +228,13 @@ namespace knkwebapi_v2.Dtos
         public ActiveMode ActiveMode { get; set; }
     }
 
+    /// <summary>Body for PUT /api/users/{id}/presence — knk-plugin's PlayerListener join/quit hooks.</summary>
+    public class UpdatePresenceDto
+    {
+        [JsonPropertyName("isOnline")]
+        public bool IsOnline { get; set; }
+    }
+
     /// <summary>
     /// DTO for adjusting a user's coins/gems/experience by a signed delta with an audit reason
     /// (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4's demotion/deduction hook — also usable
@@ -270,6 +287,12 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("isActive")]
         public bool IsActive { get; set; }
+
+        [JsonPropertyName("isOnline")]
+        public bool IsOnline { get; set; }
+
+        [JsonPropertyName("lastSeenAt")]
+        public DateTime? LastSeenAt { get; set; }
     }
 
     /// <summary>

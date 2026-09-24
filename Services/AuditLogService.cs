@@ -32,9 +32,12 @@ namespace knkwebapi_v2.Services
             });
         }
 
-        public async Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, int pageNumber, int pageSize)
+        public Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, int pageNumber, int pageSize)
+            => SearchAsync(targetUserId, actorUserId, null, null, pageNumber, pageSize);
+
+        public async Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction, int pageNumber, int pageSize)
         {
-            var result = await _repo.SearchAsync(targetUserId, actorUserId, pageNumber, pageSize);
+            var result = await _repo.SearchAsync(targetUserId, actorUserId, action, direction, pageNumber, pageSize);
 
             // Small per-page dataset (pageSize is admin-view sized) — a plain per-id lookup is
             // simpler than adding a batch-get-by-ids method to IUserRepository for this one caller.

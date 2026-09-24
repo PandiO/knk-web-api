@@ -129,6 +129,26 @@ public class User : PermissionHolder
     /// </summary>
     public DateTime LastSalaryPayoutAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Online-presence tracking for the moderation view's "currently online" filter
+    /// (docs/specs/user-management/DESIGN.md §5/§7 item 2, IMPLEMENTATION_PLAN.md Phase 3).
+    /// Set by knk-plugin's PlayerListener via PUT /api/users/{id}/presence on
+    /// PlayerJoinEvent/PlayerQuitEvent — there is no periodic sync loop for users to piggyback
+    /// on (confirmed: UsersDataAccess only refreshes on-demand on a stale cache hit), so this is
+    /// real-time-ish rather than lagged behind a sync interval. Defaults to false/null so a
+    /// server that never reports presence (e.g. this session's live test) doesn't show everyone
+    /// as perpetually online. Service-managed only — ignored by the generic UserDto update path,
+    /// same convention as ActiveMode.
+    /// </summary>
+    public bool IsOnline { get; set; } = false;
+
+    /// <summary>
+    /// UTC timestamp of the last presence report (join or quit) for this user. Null for a user
+    /// who has never triggered a presence update (pre-existing rows at migration time, or a
+    /// web-only account that has never joined the Minecraft server).
+    /// </summary>
+    public DateTime? LastSeenAt { get; set; }
+
     // ===== AUDIT TRAIL (MINIMAL - MVP) =====
 
     /// <summary>
