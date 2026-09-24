@@ -89,6 +89,20 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("activeMode")]
         public ActiveMode ActiveMode { get; set; }
 
+        /// <summary>
+        /// Resolved from ExperiencePoints by TitleService, not stored on the user row
+        /// (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4). Null only if no title brackets
+        /// are seeded.
+        /// </summary>
+        [JsonPropertyName("titleBracketId")]
+        public int? TitleBracketId { get; set; }
+
+        [JsonPropertyName("titleName")]
+        public string? TitleName { get; set; }
+
+        [JsonPropertyName("prestigeExperience")]
+        public int PrestigeExperience { get; set; }
+
         [JsonPropertyName("isFullAccount")]
         public bool IsFullAccount { get; set; }
 
@@ -130,6 +144,16 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("activeMode")]
         public ActiveMode ActiveMode { get; set; }
+
+        /// <summary>Resolved from ExperiencePoints by TitleService — see UserDto's field.</summary>
+        [JsonPropertyName("titleBracketId")]
+        public int? TitleBracketId { get; set; }
+
+        [JsonPropertyName("titleName")]
+        public string? TitleName { get; set; }
+
+        [JsonPropertyName("prestigeExperience")]
+        public int PrestigeExperience { get; set; }
     }
 
     /// <summary>
@@ -150,6 +174,30 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("activeMode")]
         public ActiveMode ActiveMode { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for adjusting a user's coins/gems/experience by a signed delta with an audit reason
+    /// (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4's demotion/deduction hook — also usable
+    /// for any coins/gems economy adjustment). Wraps UserService.AdjustBalancesAsync, which
+    /// already rejects underflow on any of the three balances.
+    /// </summary>
+    public class AdjustBalancesDto
+    {
+        [JsonPropertyName("coinsDelta")]
+        public int CoinsDelta { get; set; }
+
+        [JsonPropertyName("gemsDelta")]
+        public int GemsDelta { get; set; }
+
+        [JsonPropertyName("experienceDelta")]
+        public int ExperienceDelta { get; set; }
+
+        [JsonPropertyName("reason")]
+        public string Reason { get; set; } = null!;
+
+        [JsonPropertyName("metadata")]
+        public string? Metadata { get; set; }
     }
 
     /// <summary>

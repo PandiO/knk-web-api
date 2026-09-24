@@ -124,7 +124,10 @@ namespace knkwebapi_v2.Controllers
                 Uuid = item.Uuid,
                 IsFullAccount = item.IsFullAccount,
                 GatePassThroughMethodDefault = item.GatePassThroughMethodDefault,
-                ActiveMode = item.ActiveMode
+                ActiveMode = item.ActiveMode,
+                TitleBracketId = item.TitleBracketId,
+                TitleName = item.TitleName,
+                PrestigeExperience = item.PrestigeExperience
             };
             return Ok(dto);
         }
@@ -151,7 +154,10 @@ namespace knkwebapi_v2.Controllers
                 Uuid = item.Uuid,
                 IsFullAccount = item.IsFullAccount,
                 GatePassThroughMethodDefault = item.GatePassThroughMethodDefault,
-                ActiveMode = item.ActiveMode
+                ActiveMode = item.ActiveMode,
+                TitleBracketId = item.TitleBracketId,
+                TitleName = item.TitleName,
+                PrestigeExperience = item.PrestigeExperience
             };
             return Ok(dto);
         }
@@ -476,6 +482,46 @@ namespace knkwebapi_v2.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Adjust a user's coins/gems/experience by a signed delta, with an audit reason.
+        /// </summary>
+        /// <remarks>
+        /// Wraps UserService.AdjustBalancesAsync (previously implemented but unreachable via the
+        /// API — no controller route called it). This is the deduction/adjustment hook
+        /// docs/specs/user-features/IMPLEMENTATION_PLAN.md §4 calls for: a negative
+        /// experienceDelta here is how XP is deducted for misconduct, and the resolved title on
+        /// the next GET automatically reflects the new bracket — TitleService has no separate
+        /// "demotion" code path, since it always jumps straight to whatever bracket the current
+        /// XP total resolves to.
+        /// </remarks>
+        /// <param name="id">User ID</param>
+        /// <param name="request">Signed deltas and an audit reason</param>
+        /// <returns>No content</returns>
+        /// <response code="204">Adjusted successfully</response>
+        /// <response code="400">Missing reason, or a delta would underflow a balance below zero</response>
+        /// <response code="404">User not found</response>
+        [HttpPut("{id:int}/balances")]
+        public async Task<IActionResult> AdjustBalances(int id, [FromBody] AdjustBalancesDto request)
+        {
+            try
+            {
+                await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = "InsufficientBalance", message = ex.Message });
             }
         }
 

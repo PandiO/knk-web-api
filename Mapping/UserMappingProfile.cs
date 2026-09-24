@@ -23,7 +23,12 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ActiveMode, src => src.MapFrom(src => src.ActiveMode))
                 .ForMember(dest => dest.IsFullAccount, src => src.MapFrom(src => src.IsFullAccount))
                 .ForMember(dest => dest.IsActive, src => src.MapFrom(src => src.IsActive))
-                .ForMember(dest => dest.CreatedAt, src => src.MapFrom(src => src.CreatedAt.ToString("O")));
+                .ForMember(dest => dest.CreatedAt, src => src.MapFrom(src => src.CreatedAt.ToString("O")))
+                // Resolved from ExperiencePoints by UserService.MapToUserDtoAsync after this map
+                // runs, not by AutoMapper — User has no title field of its own (IMPLEMENTATION_PLAN.md §4).
+                .ForMember(dest => dest.TitleBracketId, opt => opt.Ignore())
+                .ForMember(dest => dest.TitleName, opt => opt.Ignore())
+                .ForMember(dest => dest.PrestigeExperience, opt => opt.Ignore());
 
             // ===== UserDto → User =====
             // CRITICAL: Ignore PasswordHash to prevent exposure
@@ -60,7 +65,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Gems, src => src.MapFrom(src => src.Gems))
                 .ForMember(dest => dest.ExperiencePoints, src => src.MapFrom(src => src.ExperiencePoints))
                 .ForMember(dest => dest.GatePassThroughMethodDefault, src => src.MapFrom(src => src.GatePassThroughMethodDefault))
-                .ForMember(dest => dest.ActiveMode, src => src.MapFrom(src => src.ActiveMode));
+                .ForMember(dest => dest.ActiveMode, src => src.MapFrom(src => src.ActiveMode))
+                .ForMember(dest => dest.TitleBracketId, opt => opt.Ignore())
+                .ForMember(dest => dest.TitleName, opt => opt.Ignore())
+                .ForMember(dest => dest.PrestigeExperience, opt => opt.Ignore());
 
             // ===== User → UserListDto =====
             CreateMap<User, UserListDto>()

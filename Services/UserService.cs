@@ -5,6 +5,7 @@ using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
+using knkwebapi_v2.Services.Interfaces;
 
 namespace knkwebapi_v2.Services
 {
@@ -18,44 +19,68 @@ namespace knkwebapi_v2.Services
         private readonly IMapper _mapper;
         private readonly IPasswordService _passwordService;
         private readonly ILinkCodeService _linkCodeService;
+        private readonly ITitleService _titleService;
 
         public UserService(
-            IUserRepository repo, 
+            IUserRepository repo,
             IMapper mapper,
             IPasswordService passwordService,
-            ILinkCodeService linkCodeService)
+            ILinkCodeService linkCodeService,
+            ITitleService titleService)
         {
             _repo = repo;
             _mapper = mapper;
             _passwordService = passwordService;
             _linkCodeService = linkCodeService;
+            _titleService = titleService;
+        }
+
+        /// <summary>
+        /// Maps a User to a UserDto and fills in the title fields resolved from its current
+        /// ExperiencePoints (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4). Every code path
+        /// that returns a UserDto goes through this instead of _mapper.Map directly, so title
+        /// stays in sync everywhere rather than needing every call site updated by hand.
+        /// </summary>
+        private async Task<UserDto> MapToUserDtoAsync(User user)
+        {
+            var dto = _mapper.Map<UserDto>(user);
+            var title = await _titleService.ResolveAsync(user.ExperiencePoints);
+            dto.TitleBracketId = title.TitleBracketId;
+            dto.TitleName = title.TitleName;
+            dto.PrestigeExperience = title.PrestigeExperience;
+            return dto;
         }
 
         public async Task<IEnumerable<UserDto>> GetAllAsync()
         {
             var users = await _repo.GetAllAsync();
-            return _mapper.Map<IEnumerable<UserDto>>(users);
+            var dtos = new List<UserDto>();
+            foreach (var user in users)
+            {
+                dtos.Add(await MapToUserDtoAsync(user));
+            }
+            return dtos;
         }
 
         public async Task<UserDto?> GetByIdAsync(int id)
         {
             if (id <= 0) return null;
             var user = await _repo.GetByIdAsync(id);
-            return _mapper.Map<UserDto>(user);
+            return user == null ? null : await MapToUserDtoAsync(user);
         }
 
         public async Task<UserDto?> GetByUuidAsync(string uuid)
         {
             if (string.IsNullOrWhiteSpace(uuid)) return null;
             var user = await _repo.GetByUuidAsync(uuid);
-            return _mapper.Map<UserDto>(user);
+            return user == null ? null : await MapToUserDtoAsync(user);
         }
 
         public async Task<UserDto?> GetByUsernameAsync(string username)
         {
             if (string.IsNullOrWhiteSpace(username)) return null;
             var user = await _repo.GetByUsernameAsync(username);
-            return _mapper.Map<UserDto>(user);
+            return user == null ? null : await MapToUserDtoAsync(user);
         }
 
         public async Task<UserDto> CreateAsync(UserCreateDto userDto)
@@ -86,7 +111,7 @@ namespace knkwebapi_v2.Services
                 : AccountCreationMethod.WebApp;
             
             await _repo.AddUserAsync(user);
-            return _mapper.Map<UserDto>(user);
+            return await MapToUserDtoAsync(user);
         }
 
         public async Task UpdateAsync(int id, UserDto userDto)
@@ -523,7 +548,7 @@ namespace knkwebapi_v2.Services
                 var user = await _repo.GetByIdAsync(linkCode.UserId.Value);
                 if (user != null)
                 {
-                    return (true, _mapper.Map<UserDto>(user));
+                    return (true, await MapToUserDtoAsync(user));
                 }
             }
 
@@ -545,7 +570,7 @@ namespace knkwebapi_v2.Services
                 var user = await _repo.GetByIdAsync(linkCode.UserId.Value);
                 if (user != null)
                 {
-                    return (true, _mapper.Map<UserDto>(user));
+                    return (true, await MapToUserDtoAsync(user));
                 }
             }
 
@@ -618,7 +643,7 @@ namespace knkwebapi_v2.Services
 
             // Return updated primary user
             var mergedUser = await _repo.GetByIdAsync(primaryUserId);
-            return _mapper.Map<UserDto>(mergedUser!);
+            return await MapToUserDtoAsync(mergedUser!);
         }
 
         // ===== HELPER METHODS =====
@@ -667,7 +692,7 @@ namespace knkwebapi_v2.Services
                 {
                     // Already linked, just consume the code
                     await _linkCodeService.ConsumeLinkCodeAsync(linkCode);
-                    return _mapper.Map<UserDto>(webAppUser);
+                    return await MapToUserDtoAsync(webAppUser);
                 }
 
                 // If different users, merge them (keep web app user as primary)
@@ -692,7 +717,7 @@ namespace knkwebapi_v2.Services
 
             // Step 6: Return updated user
             var updatedUser = await _repo.GetByIdAsync(webAppUser.Id);
-            return _mapper.Map<UserDto>(updatedUser!);
+            return await MapToUserDtoAsync(updatedUser!);
         }
 
         private static bool IsValidEmail(string email)

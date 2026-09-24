@@ -58,7 +58,9 @@ public class AccountManagementIntegrationTests
         var securityOptions = Microsoft.Extensions.Options.Options.Create(new SecuritySettings { LinkCodeExpirationMinutes = 20, BcryptRounds = 10 });
         _linkCodeService = new LinkCodeService(_linkCodeRepository, _userRepository, _mapper, securityOptions);
         _passwordService = passwordServiceMock;
-        _userService = new UserService(_userRepository, _mapper, _passwordService, _linkCodeService);
+        var titleBracketRepository = new TitleBracketRepository(_dbContext);
+        var titleService = new TitleService(titleBracketRepository);
+        _userService = new UserService(_userRepository, _mapper, _passwordService, _linkCodeService, titleService);
     }
 
     #region Web App First Flow Tests

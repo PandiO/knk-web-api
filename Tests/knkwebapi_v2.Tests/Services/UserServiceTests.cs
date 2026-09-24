@@ -22,6 +22,7 @@ public class UserServiceTests
     private readonly Mock<IPasswordService> _mockPasswordService;
     private readonly Mock<ILinkCodeService> _mockLinkCodeService;
     private readonly Mock<IMapper> _mockMapper;
+    private readonly Mock<ITitleService> _mockTitleService;
     private readonly UserService _userService;
 
     public UserServiceTests()
@@ -30,12 +31,17 @@ public class UserServiceTests
         _mockPasswordService = new Mock<IPasswordService>();
         _mockLinkCodeService = new Mock<ILinkCodeService>();
         _mockMapper = new Mock<IMapper>();
+        _mockTitleService = new Mock<ITitleService>();
+        _mockTitleService
+            .Setup(s => s.ResolveAsync(It.IsAny<int>()))
+            .ReturnsAsync(new TitleResolutionDto());
 
         _userService = new UserService(
             _mockUserRepository.Object,
             _mockMapper.Object,
             _mockPasswordService.Object,
-            _mockLinkCodeService.Object
+            _mockLinkCodeService.Object,
+            _mockTitleService.Object
         );
     }
 

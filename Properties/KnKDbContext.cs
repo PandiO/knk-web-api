@@ -81,6 +81,9 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<PermissionGrant> PermissionGrants { get; set; } = null!;
     public virtual DbSet<UserPermissionGroup> UserPermissionGroups { get; set; } = null!;
 
+    // User features Phase 4 — title/XP track (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4)
+    public virtual DbSet<TitleBracket> TitleBrackets { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -164,6 +167,18 @@ public partial class KnKDbContext : DbContext
                 .WithMany(g => g.UserMemberships)
                 .HasForeignKey(e => e.PermissionGroupId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TitleBracket>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("title_brackets");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+
+            // Brackets are resolved by "highest MinExperience <= user's XP" — each threshold
+            // must be distinct or resolution would be ambiguous.
+            entity.HasIndex(e => e.MinExperience).IsUnique();
         });
 
         modelBuilder.Entity<LinkCode>(entity =>
