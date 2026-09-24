@@ -23,6 +23,7 @@ public class UserServiceTests
     private readonly Mock<ILinkCodeService> _mockLinkCodeService;
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<ITitleService> _mockTitleService;
+    private readonly Mock<IUserPermissionGroupService> _mockMembershipService;
     private readonly UserService _userService;
 
     public UserServiceTests()
@@ -35,13 +36,15 @@ public class UserServiceTests
         _mockTitleService
             .Setup(s => s.ResolveAsync(It.IsAny<int>()))
             .ReturnsAsync(new TitleResolutionDto());
+        _mockMembershipService = new Mock<IUserPermissionGroupService>();
 
         _userService = new UserService(
             _mockUserRepository.Object,
             _mockMapper.Object,
             _mockPasswordService.Object,
             _mockLinkCodeService.Object,
-            _mockTitleService.Object
+            _mockTitleService.Object,
+            _mockMembershipService.Object
         );
     }
 

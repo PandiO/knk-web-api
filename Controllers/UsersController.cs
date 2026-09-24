@@ -127,7 +127,10 @@ namespace knkwebapi_v2.Controllers
                 ActiveMode = item.ActiveMode,
                 TitleBracketId = item.TitleBracketId,
                 TitleName = item.TitleName,
-                PrestigeExperience = item.PrestigeExperience
+                PrestigeExperience = item.PrestigeExperience,
+                PremiumTierGroupId = item.PremiumTierGroupId,
+                PremiumTierName = item.PremiumTierName,
+                PremiumTierExpiresAt = item.PremiumTierExpiresAt
             };
             return Ok(dto);
         }
@@ -157,7 +160,10 @@ namespace knkwebapi_v2.Controllers
                 ActiveMode = item.ActiveMode,
                 TitleBracketId = item.TitleBracketId,
                 TitleName = item.TitleName,
-                PrestigeExperience = item.PrestigeExperience
+                PrestigeExperience = item.PrestigeExperience,
+                PremiumTierGroupId = item.PremiumTierGroupId,
+                PremiumTierName = item.PremiumTierName,
+                PremiumTierExpiresAt = item.PremiumTierExpiresAt
             };
             return Ok(dto);
         }

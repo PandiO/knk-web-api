@@ -19,6 +19,14 @@ public class PermissionGroup : PermissionHolder
     /// </summary>
     public int Weight { get; set; }
 
+    /// <summary>
+    /// Marks this group as a premium tier (DESIGN.md §4) rather than a staff/general group.
+    /// Premium tiers are ordinary groups in every other respect — this flag only tells UIs and
+    /// <see cref="knkwebapi_v2.Services.UserPermissionGroupService"/> which of a user's
+    /// memberships to surface as their "premium tier" (the highest-Weight active one).
+    /// </summary>
+    public bool IsPremiumTier { get; set; }
+
     [NavigationPair(nameof(ParentGroup))]
     [RelatedEntityField(typeof(PermissionGroup))]
     public int? ParentGroupId { get; set; }

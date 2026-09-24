@@ -60,7 +60,9 @@ public class AccountManagementIntegrationTests
         _passwordService = passwordServiceMock;
         var titleBracketRepository = new TitleBracketRepository(_dbContext);
         var titleService = new TitleService(titleBracketRepository);
-        _userService = new UserService(_userRepository, _mapper, _passwordService, _linkCodeService, titleService);
+        var membershipService = new UserPermissionGroupService(
+            new UserPermissionGroupRepository(_dbContext), _userRepository, new PermissionGroupRepository(_dbContext));
+        _userService = new UserService(_userRepository, _mapper, _passwordService, _linkCodeService, titleService, membershipService);
     }
 
     #region Web App First Flow Tests

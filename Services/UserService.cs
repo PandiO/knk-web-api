@@ -20,26 +20,30 @@ namespace knkwebapi_v2.Services
         private readonly IPasswordService _passwordService;
         private readonly ILinkCodeService _linkCodeService;
         private readonly ITitleService _titleService;
+        private readonly IUserPermissionGroupService _membershipService;
 
         public UserService(
             IUserRepository repo,
             IMapper mapper,
             IPasswordService passwordService,
             ILinkCodeService linkCodeService,
-            ITitleService titleService)
+            ITitleService titleService,
+            IUserPermissionGroupService membershipService)
         {
             _repo = repo;
             _mapper = mapper;
             _passwordService = passwordService;
             _linkCodeService = linkCodeService;
             _titleService = titleService;
+            _membershipService = membershipService;
         }
 
         /// <summary>
         /// Maps a User to a UserDto and fills in the title fields resolved from its current
-        /// ExperiencePoints (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4). Every code path
-        /// that returns a UserDto goes through this instead of _mapper.Map directly, so title
-        /// stays in sync everywhere rather than needing every call site updated by hand.
+        /// ExperiencePoints (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4) and its current
+        /// premium tier (§5). Every code path that returns a UserDto goes through this instead of
+        /// _mapper.Map directly, so both stay in sync everywhere rather than needing every call
+        /// site updated by hand.
         /// </summary>
         private async Task<UserDto> MapToUserDtoAsync(User user)
         {
@@ -48,6 +52,14 @@ namespace knkwebapi_v2.Services
             dto.TitleBracketId = title.TitleBracketId;
             dto.TitleName = title.TitleName;
             dto.PrestigeExperience = title.PrestigeExperience;
+            // A brand-new, not-yet-saved user has Id 0 and can't hold memberships.
+            if (user.Id > 0)
+            {
+                var tier = await _membershipService.GetActivePremiumTierAsync(user.Id);
+                dto.PremiumTierGroupId = tier?.PermissionGroupId;
+                dto.PremiumTierName = tier?.PermissionGroupName;
+                dto.PremiumTierExpiresAt = tier?.ExpiresAt;
+            }
             return dto;
         }
 

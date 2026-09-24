@@ -71,6 +71,7 @@ namespace knkwebapi_v2.Services
 
             existing.Name = dto.Name;
             existing.Weight = dto.Weight;
+            existing.IsPremiumTier = dto.IsPremiumTier;
             existing.ChatPrefix = dto.ChatPrefix;
             existing.ChatSuffix = dto.ChatSuffix;
             existing.ParentGroupId = dto.ParentGroupId;

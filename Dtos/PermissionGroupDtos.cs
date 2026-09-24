@@ -13,6 +13,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("weight")]
         public int Weight { get; set; }
 
+        [JsonPropertyName("isPremiumTier")]
+        public bool IsPremiumTier { get; set; }
+
         [JsonPropertyName("chatPrefix")]
         public string? ChatPrefix { get; set; }
 
@@ -48,6 +51,8 @@ namespace knkwebapi_v2.Dtos
         public string name { get; set; } = null!;
         [JsonPropertyName("weight")]
         public int weight { get; set; }
+        [JsonPropertyName("isPremiumTier")]
+        public bool isPremiumTier { get; set; }
         [JsonPropertyName("parentGroupId")]
         public int? parentGroupId { get; set; }
         [JsonPropertyName("parentGroupName")]

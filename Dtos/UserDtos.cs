@@ -103,6 +103,20 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("prestigeExperience")]
         public int PrestigeExperience { get; set; }
 
+        /// <summary>
+        /// The user's current premium tier — their highest-Weight active membership in a
+        /// PermissionGroup flagged IsPremiumTier (IMPLEMENTATION_PLAN.md §5). Null when they hold
+        /// none. PremiumTierExpiresAt is null for a permanent tier.
+        /// </summary>
+        [JsonPropertyName("premiumTierGroupId")]
+        public int? PremiumTierGroupId { get; set; }
+
+        [JsonPropertyName("premiumTierName")]
+        public string? PremiumTierName { get; set; }
+
+        [JsonPropertyName("premiumTierExpiresAt")]
+        public DateTime? PremiumTierExpiresAt { get; set; }
+
         [JsonPropertyName("isFullAccount")]
         public bool IsFullAccount { get; set; }
 
@@ -154,6 +168,20 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("prestigeExperience")]
         public int PrestigeExperience { get; set; }
+
+        /// <summary>
+        /// The user's current premium tier — their highest-Weight active membership in a
+        /// PermissionGroup flagged IsPremiumTier (IMPLEMENTATION_PLAN.md §5). Null when they hold
+        /// none. PremiumTierExpiresAt is null for a permanent tier.
+        /// </summary>
+        [JsonPropertyName("premiumTierGroupId")]
+        public int? PremiumTierGroupId { get; set; }
+
+        [JsonPropertyName("premiumTierName")]
+        public string? PremiumTierName { get; set; }
+
+        [JsonPropertyName("premiumTierExpiresAt")]
+        public DateTime? PremiumTierExpiresAt { get; set; }
     }
 
     /// <summary>

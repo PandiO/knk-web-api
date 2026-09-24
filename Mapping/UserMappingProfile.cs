@@ -28,7 +28,11 @@ namespace knkwebapi_v2.Mapping
                 // runs, not by AutoMapper — User has no title field of its own (IMPLEMENTATION_PLAN.md §4).
                 .ForMember(dest => dest.TitleBracketId, opt => opt.Ignore())
                 .ForMember(dest => dest.TitleName, opt => opt.Ignore())
-                .ForMember(dest => dest.PrestigeExperience, opt => opt.Ignore());
+                .ForMember(dest => dest.PrestigeExperience, opt => opt.Ignore())
+                // Likewise resolved from UserPermissionGroup memberships (IMPLEMENTATION_PLAN.md §5).
+                .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
+                .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore());
 
             // ===== UserDto → User =====
             // CRITICAL: Ignore PasswordHash to prevent exposure
@@ -68,7 +72,11 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ActiveMode, src => src.MapFrom(src => src.ActiveMode))
                 .ForMember(dest => dest.TitleBracketId, opt => opt.Ignore())
                 .ForMember(dest => dest.TitleName, opt => opt.Ignore())
-                .ForMember(dest => dest.PrestigeExperience, opt => opt.Ignore());
+                .ForMember(dest => dest.PrestigeExperience, opt => opt.Ignore())
+                // Likewise resolved from UserPermissionGroup memberships (IMPLEMENTATION_PLAN.md §5).
+                .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
+                .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore());
 
             // ===== User → UserListDto =====
             CreateMap<User, UserListDto>()

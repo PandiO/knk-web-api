@@ -72,6 +72,14 @@ namespace knkwebapi_v2.Repositories
                 queryable = queryable.Where(g => g.ParentGroupId == parentGroupId);
             }
 
+            // Convenience filter for "premium tiers only" / "everything but premium tiers"
+            // (IMPLEMENTATION_PLAN.md §5).
+            if (query.Filters != null && query.Filters.TryGetValue("isPremiumTier", out var isPremiumStr)
+                && bool.TryParse(isPremiumStr, out var isPremium))
+            {
+                queryable = queryable.Where(g => g.IsPremiumTier == isPremium);
+            }
+
             queryable = string.Equals(query.SortBy, "weight", StringComparison.OrdinalIgnoreCase)
                 ? (query.SortDescending ? queryable.OrderByDescending(g => g.Weight) : queryable.OrderBy(g => g.Weight))
                 : (query.SortDescending ? queryable.OrderByDescending(g => g.Name) : queryable.OrderBy(g => g.Name));
