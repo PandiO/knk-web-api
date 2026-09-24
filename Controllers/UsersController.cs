@@ -21,17 +21,42 @@ namespace knkwebapi_v2.Controllers
         private readonly IMapper _mapper;
         private readonly IPermissionResolutionService _permissionResolutionService;
         private readonly ISalaryService _salaryService;
+        private readonly IUserProfileSummaryService _profileSummaryService;
 
         public UsersController(
             IUserService service,
             IMapper mapper,
             IPermissionResolutionService permissionResolutionService,
-            ISalaryService salaryService)
+            ISalaryService salaryService,
+            IUserProfileSummaryService profileSummaryService)
         {
             _service = service;
             _mapper = mapper;
             _permissionResolutionService = permissionResolutionService;
             _salaryService = salaryService;
+            _profileSummaryService = profileSummaryService;
+        }
+
+        /// <summary>
+        /// Composite player-profile view for the user-management admin module
+        /// (docs/specs/user-management/DESIGN.md §2, IMPLEMENTATION_PLAN.md Phase 1) — account,
+        /// resolved permissions, group memberships, title/XP progress, and salary state in one
+        /// response, so the admin page doesn't stitch together five separate calls itself.
+        /// </summary>
+        /// <param name="id">User ID</param>
+        /// <response code="200">Returns the composite profile summary</response>
+        /// <response code="404">User not found</response>
+        [HttpGet("{id:int}/profile-summary")]
+        [ProducesResponseType(typeof(UserProfileSummaryDto), 200)]
+        public async Task<IActionResult> GetProfileSummary(int id)
+        {
+            var result = await _profileSummaryService.GetAsync(id);
+            if (result == null)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+
+            return Ok(result);
         }
 
         /// <summary>

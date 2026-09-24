@@ -88,6 +88,12 @@ namespace knkwebapi_v2.Services
             };
         }
 
+        public Task<decimal> GetCurrentRankMultiplierAsync(int userId)
+        {
+            if (userId <= 0) throw new ArgumentException("Invalid user id.", nameof(userId));
+            return ComputeRankMultiplierAsync(userId, DateTime.UtcNow);
+        }
+
         /// <summary>
         /// Product of SalaryMultiplier across every currently-active (non-expired) PermissionGroup
         /// membership the user holds (developer-confirmed combination rule — deliberately not the

@@ -165,6 +165,36 @@ public class SalaryServiceTests
     }
 
     [Fact]
+    public async Task GetCurrentRankMultiplierAsync_InvalidUserId_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.GetCurrentRankMultiplierAsync(0));
+    }
+
+    [Fact]
+    public async Task GetCurrentRankMultiplierAsync_NoActiveMemberships_ReturnsOne()
+    {
+        var result = await _service.GetCurrentRankMultiplierAsync(1);
+
+        Assert.Equal(1.0m, result);
+    }
+
+    [Fact]
+    public async Task GetCurrentRankMultiplierAsync_MatchesPayOutAsyncAndDoesNotTouchCoins()
+    {
+        var group = new PermissionGroup { Id = 10, Name = "Rank", SalaryMultiplier = 1.5m };
+        _mockMembershipRepo.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup>
+        {
+            new() { UserId = 1, PermissionGroupId = 10, PermissionGroup = group, ExpiresAt = null }
+        });
+
+        var result = await _service.GetCurrentRankMultiplierAsync(1);
+
+        Assert.Equal(1.5m, result);
+        _mockUserRepo.Verify(r => r.GetByIdAsync(It.IsAny<int>()), Times.Never);
+        _mockUserRepo.Verify(r => r.UpdateUserAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
     public async Task PayOutAsync_AdvancesLastSalaryPayoutAtToNow()
     {
         var lastPayout = DateTime.UtcNow.AddHours(-5);

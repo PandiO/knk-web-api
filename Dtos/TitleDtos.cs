@@ -21,5 +21,20 @@ namespace knkwebapi_v2.Dtos
         /// </summary>
         [JsonPropertyName("prestigeExperience")]
         public int PrestigeExperience { get; set; }
+
+        /// <summary>
+        /// The next bracket above the current one, or null if the current bracket is already the
+        /// highest seeded (a pure-prestige state — see PrestigeExperience). Backs the
+        /// user-management admin module's "progress toward next bracket" view
+        /// (docs/specs/user-management/DESIGN.md §2).
+        /// </summary>
+        [JsonPropertyName("nextTitleBracketId")]
+        public int? NextTitleBracketId { get; set; }
+
+        [JsonPropertyName("nextTitleName")]
+        public string? NextTitleName { get; set; }
+
+        [JsonPropertyName("nextTitleMinExperience")]
+        public int? NextTitleMinExperience { get; set; }
     }
 }

@@ -103,6 +103,32 @@ public class TitleServiceTests
     }
 
     [Fact]
+    public async Task ResolveAsync_BelowTopBracket_ExposesNextBracket()
+    {
+        _mockRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(DefaultBrackets());
+
+        var result = await _service.ResolveAsync(6); // Apprentice (id 2), next is Journeyman (id 3)
+
+        Assert.Equal(2, result.TitleBracketId);
+        Assert.Equal(3, result.NextTitleBracketId);
+        Assert.Equal("Journeyman", result.NextTitleName);
+        Assert.Equal(10, result.NextTitleMinExperience);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_AtTopBracket_NextBracketIsNull()
+    {
+        _mockRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(DefaultBrackets());
+
+        var result = await _service.ResolveAsync(37); // past Master (id 5), the top bracket
+
+        Assert.Equal(5, result.TitleBracketId);
+        Assert.Null(result.NextTitleBracketId);
+        Assert.Null(result.NextTitleName);
+        Assert.Null(result.NextTitleMinExperience);
+    }
+
+    [Fact]
     public async Task ResolveAsync_XpBelowLowestBracket_FallsBackToLowestBracket()
     {
         // Guards against a misconfigured seed (no bracket at MinExperience 0) rather than

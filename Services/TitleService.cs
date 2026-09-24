@@ -31,11 +31,21 @@ namespace knkwebapi_v2.Services
                 ? Math.Max(0, experiencePoints - topBracket.MinExperience)
                 : 0;
 
+            // brackets is ordered ascending by MinExperience, so the next one (if any) is
+            // whichever comes right after `current` in that same list.
+            var currentIndex = brackets.FindIndex(b => b.Id == current.Id);
+            var next = currentIndex >= 0 && currentIndex + 1 < brackets.Count
+                ? brackets[currentIndex + 1]
+                : null;
+
             return new TitleResolutionDto
             {
                 TitleBracketId = current.Id,
                 TitleName = current.Name,
-                PrestigeExperience = prestige
+                PrestigeExperience = prestige,
+                NextTitleBracketId = next?.Id,
+                NextTitleName = next?.Name,
+                NextTitleMinExperience = next?.MinExperience
             };
         }
     }

@@ -23,6 +23,7 @@ public class UsersControllerTests
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<IPermissionResolutionService> _mockPermissionResolutionService;
     private readonly Mock<ISalaryService> _mockSalaryService;
+    private readonly Mock<IUserProfileSummaryService> _mockProfileSummaryService;
     private readonly UsersController _controller;
 
     public UsersControllerTests()
@@ -31,7 +32,8 @@ public class UsersControllerTests
         _mockMapper = new Mock<IMapper>();
         _mockPermissionResolutionService = new Mock<IPermissionResolutionService>();
         _mockSalaryService = new Mock<ISalaryService>();
-        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object);
+        _mockProfileSummaryService = new Mock<IUserProfileSummaryService>();
+        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object, _mockProfileSummaryService.Object);
     }
 
     #region Create Tests
@@ -492,6 +494,39 @@ public class UsersControllerTests
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal(400, badRequestResult.StatusCode);
+    }
+
+    #endregion
+
+    #region GetProfileSummary Tests
+
+    [Fact]
+    public async Task GetProfileSummary_UnknownUser_Returns404()
+    {
+        _mockProfileSummaryService.Setup(s => s.GetAsync(999)).ReturnsAsync((UserProfileSummaryDto?)null);
+
+        var result = await _controller.GetProfileSummary(999);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal(404, notFoundResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetProfileSummary_KnownUser_Returns200WithSummary()
+    {
+        var summary = new UserProfileSummaryDto
+        {
+            Account = new UserDto { Id = 1, Username = "alice" },
+            Permissions = new PermissionEffectiveResponseDto { UserId = 1 },
+            Title = new TitleResolutionDto(),
+            Salary = new SalaryStateDto()
+        };
+        _mockProfileSummaryService.Setup(s => s.GetAsync(1)).ReturnsAsync(summary);
+
+        var result = await _controller.GetProfileSummary(1);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(summary, okResult.Value);
     }
 
     #endregion

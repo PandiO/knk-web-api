@@ -17,4 +17,13 @@ public interface ISalaryService
     /// unknown user.
     /// </summary>
     Task<SalaryPayoutResultDto> PayOutAsync(int userId);
+
+    /// <summary>
+    /// The rank multiplier PayOutAsync would use right now, without paying anything out — the
+    /// product of SalaryMultiplier across every currently-active PermissionGroup membership the
+    /// user holds (1.0 if none). Backs the user-management admin module's salary state display
+    /// (docs/specs/user-management/DESIGN.md §2), which needs to show the current multiplier
+    /// breakdown without triggering a real payout as a side effect.
+    /// </summary>
+    Task<decimal> GetCurrentRankMultiplierAsync(int userId);
 }
