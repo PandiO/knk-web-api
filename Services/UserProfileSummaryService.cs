@@ -41,18 +41,18 @@ namespace knkwebapi_v2.Services
                 return null;
             }
 
-            // Everything below is read-only against a user we've just confirmed exists, so these
-            // can run concurrently rather than round-tripping one at a time.
-            var permissionsTask = _permissionResolutionService.GetEffectiveAsync(userId);
-            var groupsTask = _userPermissionGroupService.GetByUserAsync(userId);
-            var titleTask = _titleService.ResolveAsync(account.ExperiencePoints);
-            var rankMultiplierTask = _salaryService.GetCurrentRankMultiplierAsync(userId);
-            var salaryConfigTask = _salaryConfigurationService.GetAsync();
+            // These all go through the same scoped DbContext (via their respective repositories),
+            // which EF Core does not support concurrent operations against - awaiting them via
+            // Task.WhenAll throws "A second operation was started on this context instance before
+            // a previous operation completed" the moment more than one of these actually hits the
+            // database. Sequential awaits are required here, not just a style preference.
+            var permissions = await _permissionResolutionService.GetEffectiveAsync(userId);
+            var groups = await _userPermissionGroupService.GetByUserAsync(userId);
+            var title = await _titleService.ResolveAsync(account.ExperiencePoints);
+            var rankMultiplier = await _salaryService.GetCurrentRankMultiplierAsync(userId);
+            var salaryConfig = await _salaryConfigurationService.GetAsync();
 
-            await Task.WhenAll(permissionsTask, groupsTask, titleTask, rankMultiplierTask, salaryConfigTask);
-
-            var globalMultiplier = salaryConfigTask.Result.GlobalMultiplier;
-            var rankMultiplier = rankMultiplierTask.Result;
+            var globalMultiplier = salaryConfig.GlobalMultiplier;
 
             var salary = new SalaryStateDto
             {
@@ -70,9 +70,9 @@ namespace knkwebapi_v2.Services
                 // GetEffectiveAsync/GetByIdAsync just succeeded for this same id, so a null here
                 // would mean the user was deleted between those two calls - treat that the same
                 // as "not found" rather than surfacing a confusing partial response.
-                Permissions = permissionsTask.Result ?? new PermissionEffectiveResponseDto { UserId = userId },
-                Groups = groupsTask.Result,
-                Title = titleTask.Result,
+                Permissions = permissions ?? new PermissionEffectiveResponseDto { UserId = userId },
+                Groups = groups,
+                Title = title,
                 Salary = salary
             };
         }
