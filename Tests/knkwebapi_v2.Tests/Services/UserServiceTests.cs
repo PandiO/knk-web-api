@@ -24,6 +24,7 @@ public class UserServiceTests
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<ITitleService> _mockTitleService;
     private readonly Mock<IUserPermissionGroupService> _mockMembershipService;
+    private readonly Mock<IAuditLogService> _mockAuditLogService;
     private readonly UserService _userService;
 
     public UserServiceTests()
@@ -37,6 +38,7 @@ public class UserServiceTests
             .Setup(s => s.ResolveAsync(It.IsAny<int>()))
             .ReturnsAsync(new TitleResolutionDto());
         _mockMembershipService = new Mock<IUserPermissionGroupService>();
+        _mockAuditLogService = new Mock<IAuditLogService>();
 
         _userService = new UserService(
             _mockUserRepository.Object,
@@ -44,7 +46,8 @@ public class UserServiceTests
             _mockPasswordService.Object,
             _mockLinkCodeService.Object,
             _mockTitleService.Object,
-            _mockMembershipService.Object
+            _mockMembershipService.Object,
+            _mockAuditLogService.Object
         );
     }
 
@@ -734,6 +737,56 @@ public class UserServiceTests
     {
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _userService.UpdateActiveModeAsync(0, ActiveMode.Staff));
+    }
+
+    [Fact]
+    public async Task UpdateActiveModeAsync_ModeActuallyChanges_RecordsVanishToggledAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player", ActiveMode = ActiveMode.None });
+
+        await _userService.UpdateActiveModeAsync(1, ActiveMode.Staff, actorUserId: 7);
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(7, 1, Enums.AuditAction.VanishToggled, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateActiveModeAsync_ModeUnchanged_DoesNotRecordAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player", ActiveMode = ActiveMode.Staff });
+
+        await _userService.UpdateActiveModeAsync(1, ActiveMode.Staff);
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<Enums.AuditAction>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    #endregion
+
+    #region AdjustBalancesAsync Audit Tests (user-management Phase 2 retrofit)
+
+    [Fact]
+    public async Task AdjustBalancesAsync_RecordsBalanceAdjustedAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new User { Id = 1, Username = "player", Coins = 100, Gems = 0, ExperiencePoints = 0 });
+
+        await _userService.AdjustBalancesAsync(1, coinsDelta: 50, gemsDelta: 0, experienceDelta: 0, reason: "test", actorUserId: 3);
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(3, 1, Enums.AuditAction.BalanceAdjusted, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_TitleBracketChanges_AlsoRecordsTitleChangedAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new User { Id = 1, Username = "player", Coins = 0, Gems = 0, ExperiencePoints = 0 });
+        _mockTitleService.SetupSequence(s => s.ResolveAsync(It.IsAny<int>()))
+            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Novice" })
+            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 2, TitleName = "Apprentice" });
+
+        await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "xp gain");
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.BalanceAdjusted, It.IsAny<string?>()), Times.Once);
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.TitleChanged, It.IsAny<string?>()), Times.Once);
     }
 
     #endregion

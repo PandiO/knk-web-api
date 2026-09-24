@@ -1,4 +1,6 @@
+using System.Text.Json;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
@@ -10,15 +12,18 @@ namespace knkwebapi_v2.Services
         private readonly IUserPermissionGroupRepository _repo;
         private readonly IUserRepository _userRepo;
         private readonly IPermissionGroupRepository _groupRepo;
+        private readonly IAuditLogService _auditLogService;
 
         public UserPermissionGroupService(
             IUserPermissionGroupRepository repo,
             IUserRepository userRepo,
-            IPermissionGroupRepository groupRepo)
+            IPermissionGroupRepository groupRepo,
+            IAuditLogService auditLogService)
         {
             _repo = repo;
             _userRepo = userRepo;
             _groupRepo = groupRepo;
+            _auditLogService = auditLogService;
         }
 
         public async Task<List<UserPermissionGroupDto>> GetByUserAsync(int userId)
@@ -35,7 +40,7 @@ namespace knkwebapi_v2.Services
             return memberships.Select(m => ToDto(m, now)).ToList();
         }
 
-        public async Task<UserPermissionGroupDto> UpsertAsync(UpsertUserPermissionGroupDto dto)
+        public async Task<UserPermissionGroupDto> UpsertAsync(UpsertUserPermissionGroupDto dto, int? actorUserId = null)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
@@ -57,6 +62,15 @@ namespace knkwebapi_v2.Services
                 existing.ExpiresAt = expiresAt;
                 await _repo.UpdateAsync(existing);
                 existing.PermissionGroup ??= group;
+
+                await _auditLogService.RecordAsync(actorUserId, dto.UserId, AuditAction.GroupAssigned, JsonSerializer.Serialize(new
+                {
+                    permissionGroupId = dto.PermissionGroupId,
+                    groupName = group.Name,
+                    expiresAt,
+                    updatedExisting = true
+                }));
+
                 return ToDto(existing, now);
             }
 
@@ -68,15 +82,31 @@ namespace knkwebapi_v2.Services
             };
             await _repo.AddAsync(membership);
             membership.PermissionGroup = group;
+
+            await _auditLogService.RecordAsync(actorUserId, dto.UserId, AuditAction.GroupAssigned, JsonSerializer.Serialize(new
+            {
+                permissionGroupId = dto.PermissionGroupId,
+                groupName = group.Name,
+                expiresAt,
+                updatedExisting = false
+            }));
+
             return ToDto(membership, now);
         }
 
-        public async Task DeleteAsync(int userId, int permissionGroupId)
+        public async Task DeleteAsync(int userId, int permissionGroupId, int? actorUserId = null)
         {
             var existing = await _repo.GetAsync(userId, permissionGroupId);
             if (existing == null)
                 throw new KeyNotFoundException($"User {userId} is not a member of PermissionGroup {permissionGroupId}.");
+            var groupName = existing.PermissionGroup?.Name;
             await _repo.DeleteAsync(existing);
+
+            await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.GroupRemoved, JsonSerializer.Serialize(new
+            {
+                permissionGroupId,
+                groupName
+            }));
         }
 
         public async Task<UserPermissionGroupDto?> GetActivePremiumTierAsync(int userId)

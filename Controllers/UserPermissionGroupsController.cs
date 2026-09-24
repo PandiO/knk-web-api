@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Extensions;
 using knkwebapi_v2.Services.Interfaces;
 
 namespace KnKWebAPI.Controllers
@@ -45,7 +46,7 @@ namespace KnKWebAPI.Controllers
             if (dto == null) return BadRequest();
             try
             {
-                return Ok(await _service.UpsertAsync(dto));
+                return Ok(await _service.UpsertAsync(dto, User.GetUserId()));
             }
             catch (KeyNotFoundException ex)
             {
@@ -62,7 +63,7 @@ namespace KnKWebAPI.Controllers
         {
             try
             {
-                await _service.DeleteAsync(userId, permissionGroupId);
+                await _service.DeleteAsync(userId, permissionGroupId, User.GetUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)

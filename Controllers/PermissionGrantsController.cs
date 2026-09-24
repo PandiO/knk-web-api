@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Extensions;
 using knkwebapi_v2.Services;
 
 namespace KnKWebAPI.Controllers
@@ -40,7 +41,7 @@ namespace KnKWebAPI.Controllers
             if (dto == null) return BadRequest();
             try
             {
-                var created = await _service.CreateAsync(dto);
+                var created = await _service.CreateAsync(dto, User.GetUserId());
                 return CreatedAtRoute("GetPermissionGrantById", new { id = created.Id }, created);
             }
             catch (ArgumentException ex)
@@ -55,7 +56,7 @@ namespace KnKWebAPI.Controllers
             if (dto == null) return BadRequest();
             try
             {
-                await _service.UpdateAsync(id, dto);
+                await _service.UpdateAsync(id, dto, User.GetUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -73,7 +74,7 @@ namespace KnKWebAPI.Controllers
         {
             try
             {
-                await _service.DeleteAsync(id);
+                await _service.DeleteAsync(id, User.GetUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)

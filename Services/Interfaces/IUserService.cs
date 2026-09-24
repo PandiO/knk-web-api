@@ -11,11 +11,11 @@ namespace knkwebapi_v2.Services
         Task<UserDto?> GetByUuidAsync(string uuid);
         Task<UserDto?> GetByUsernameAsync(string username);
         Task<UserDto> CreateAsync(UserCreateDto user);
-        Task UpdateAsync(int id, UserDto user);
+        Task UpdateAsync(int id, UserDto user, int? actorUserId = null);
         Task UpdateCoinsAsync(int id, int coins);
         Task UpdateCoinsByUuidAsync(string uuid, int coins);
         Task UpdateGatePassThroughMethodAsync(int id, GatePassThroughMethod method);
-        Task UpdateActiveModeAsync(int id, ActiveMode mode);
+        Task UpdateActiveModeAsync(int id, ActiveMode mode, int? actorUserId = null);
         Task DeleteAsync(int id);
         Task<PagedResultDto<UserListDto>> SearchAsync(PagedQueryDto query);
 
@@ -85,7 +85,7 @@ namespace knkwebapi_v2.Services
         /// <param name="experienceDelta">Experience change (can be negative)</param>
         /// <param name="reason">Reason for balance change (required for audit)</param>
         /// <param name="metadata">Optional metadata for audit trail</param>
-        Task AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null);
+        Task AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null);
 
         // ===== NEW METHODS: LINK CODES =====
         /// <summary>

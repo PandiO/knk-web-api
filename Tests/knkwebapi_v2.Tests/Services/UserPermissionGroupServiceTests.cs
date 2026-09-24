@@ -4,6 +4,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Interfaces;
 
 namespace knkwebapi_v2.Tests.Services;
 
@@ -17,6 +18,7 @@ public class UserPermissionGroupServiceTests
     private readonly Mock<IUserPermissionGroupRepository> _mockRepo = new();
     private readonly Mock<IUserRepository> _mockUserRepo = new();
     private readonly Mock<IPermissionGroupRepository> _mockGroupRepo = new();
+    private readonly Mock<IAuditLogService> _mockAuditLogService = new();
     private readonly UserPermissionGroupService _service;
 
     private static readonly PermissionGroup Staff = new() { Id = 100, Name = "Staff", Weight = 50, IsPremiumTier = false };
@@ -26,7 +28,7 @@ public class UserPermissionGroupServiceTests
 
     public UserPermissionGroupServiceTests()
     {
-        _service = new UserPermissionGroupService(_mockRepo.Object, _mockUserRepo.Object, _mockGroupRepo.Object);
+        _service = new UserPermissionGroupService(_mockRepo.Object, _mockUserRepo.Object, _mockGroupRepo.Object, _mockAuditLogService.Object);
         _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
         _mockGroupRepo.Setup(r => r.GetByIdAsync(Royal.Id)).ReturnsAsync(Royal);
     }
@@ -116,6 +118,7 @@ public class UserPermissionGroupServiceTests
         Assert.Equal("Royal", result.PermissionGroupName);
         Assert.True(result.IsPremiumTier);
         Assert.True(result.IsActive);
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, knkwebapi_v2.Enums.AuditAction.GroupAssigned, It.IsAny<string?>()), Times.Once);
     }
 
     [Fact]
@@ -180,9 +183,10 @@ public class UserPermissionGroupServiceTests
         var existing = Membership(Royal, null);
         _mockRepo.Setup(r => r.GetAsync(1, Royal.Id)).ReturnsAsync(existing);
 
-        await _service.DeleteAsync(1, Royal.Id);
+        await _service.DeleteAsync(1, Royal.Id, actorUserId: 9);
 
         _mockRepo.Verify(r => r.DeleteAsync(existing), Times.Once);
+        _mockAuditLogService.Verify(a => a.RecordAsync(9, 1, knkwebapi_v2.Enums.AuditAction.GroupRemoved, It.IsAny<string?>()), Times.Once);
     }
 
     [Fact]

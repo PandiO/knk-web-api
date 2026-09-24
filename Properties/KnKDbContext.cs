@@ -87,6 +87,8 @@ public partial class KnKDbContext : DbContext
     // User features Phase 6 — salary system (docs/specs/user-features/IMPLEMENTATION_PLAN.md §6)
     public DbSet<SalaryConfiguration> SalaryConfigurations { get; set; }
 
+    public virtual DbSet<AuditLogEntry> AuditLogEntries { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -1153,6 +1155,24 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => new { e.MenuItemTemplateId, e.SortOrder })
                 .HasDatabaseName("IX_ConditionBinding_MenuItemTemplateId_SortOrder");
             entity.HasIndex(e => e.ActionBindingId);
+        });
+
+        modelBuilder.Entity<AuditLogEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("audit_log_entries");
+
+            entity.Property(e => e.Action)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(32);
+
+            entity.Property(e => e.Details).HasColumnType("longtext");
+
+            // The read path (GET /api/audit-log) always filters by one of these plus orders by
+            // Timestamp descending — see DESIGN.md §4/IMPLEMENTATION_PLAN.md Phase 2.
+            entity.HasIndex(e => new { e.TargetUserId, e.Timestamp });
+            entity.HasIndex(e => new { e.ActorUserId, e.Timestamp });
         });
 
         OnModelCreatingPartial(modelBuilder);

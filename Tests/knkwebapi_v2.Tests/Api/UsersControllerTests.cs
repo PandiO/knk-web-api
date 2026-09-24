@@ -24,6 +24,8 @@ public class UsersControllerTests
     private readonly Mock<IPermissionResolutionService> _mockPermissionResolutionService;
     private readonly Mock<ISalaryService> _mockSalaryService;
     private readonly Mock<IUserProfileSummaryService> _mockProfileSummaryService;
+    private readonly Mock<IUserPermissionGroupService> _mockMembershipService;
+    private readonly Mock<IPermissionGrantService> _mockGrantService;
     private readonly UsersController _controller;
 
     public UsersControllerTests()
@@ -33,7 +35,9 @@ public class UsersControllerTests
         _mockPermissionResolutionService = new Mock<IPermissionResolutionService>();
         _mockSalaryService = new Mock<ISalaryService>();
         _mockProfileSummaryService = new Mock<IUserProfileSummaryService>();
-        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object, _mockProfileSummaryService.Object);
+        _mockMembershipService = new Mock<IUserPermissionGroupService>();
+        _mockGrantService = new Mock<IPermissionGrantService>();
+        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object, _mockProfileSummaryService.Object, _mockMembershipService.Object, _mockGrantService.Object);
     }
 
     #region Create Tests

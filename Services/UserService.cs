@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
@@ -21,6 +23,7 @@ namespace knkwebapi_v2.Services
         private readonly ILinkCodeService _linkCodeService;
         private readonly ITitleService _titleService;
         private readonly IUserPermissionGroupService _membershipService;
+        private readonly IAuditLogService _auditLogService;
 
         public UserService(
             IUserRepository repo,
@@ -28,7 +31,8 @@ namespace knkwebapi_v2.Services
             IPasswordService passwordService,
             ILinkCodeService linkCodeService,
             ITitleService titleService,
-            IUserPermissionGroupService membershipService)
+            IUserPermissionGroupService membershipService,
+            IAuditLogService auditLogService)
         {
             _repo = repo;
             _mapper = mapper;
@@ -36,6 +40,7 @@ namespace knkwebapi_v2.Services
             _linkCodeService = linkCodeService;
             _titleService = titleService;
             _membershipService = membershipService;
+            _auditLogService = auditLogService;
         }
 
         /// <summary>
@@ -126,7 +131,7 @@ namespace knkwebapi_v2.Services
             return await MapToUserDtoAsync(user);
         }
 
-        public async Task UpdateAsync(int id, UserDto userDto)
+        public async Task UpdateAsync(int id, UserDto userDto, int? actorUserId = null)
         {
             if (userDto == null) throw new ArgumentNullException(nameof(userDto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
@@ -138,6 +143,19 @@ namespace knkwebapi_v2.Services
 
             var originalUuid = existing.Uuid;
             var originalCreatedAt = existing.CreatedAt;
+
+            // Real gap found while retrofitting audit hooks (docs/specs/user-management/
+            // IMPLEMENTATION_PLAN.md §0): unlike ActiveMode/LastSalaryPayoutAt (already
+            // opt.Ignore()'d in UserMappingProfile precisely so a generic edit can't silently
+            // reset them), Coins/Gems/ExperiencePoints/PersonalSalaryMultiplier ARE mapped here,
+            // so this generic FormWizard path is a second, previously-unaudited write route to
+            // the exact fields AdjustBalancesAsync/PayOutAsync now audit. Captured before the
+            // mapper overwrites them so the diff can be logged after saving.
+            var previousCoins = existing.Coins;
+            var previousGems = existing.Gems;
+            var previousExperience = existing.ExperiencePoints;
+            var previousMultiplier = existing.PersonalSalaryMultiplier;
+            var previousTitle = await _titleService.ResolveAsync(previousExperience);
 
             // Apply all editable UserDto fields onto the tracked entity. The mapping profile
             // (UserMappingProfile: UserDto -> User) already ignores fields that must never be
@@ -158,6 +176,36 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.UpdateUserAsync(existing);
+
+            if (existing.Coins != previousCoins || existing.Gems != previousGems ||
+                existing.ExperiencePoints != previousExperience || existing.PersonalSalaryMultiplier != previousMultiplier)
+            {
+                await _auditLogService.RecordAsync(actorUserId, id, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
+                {
+                    source = "GenericProfileEdit",
+                    coinsDelta = existing.Coins - previousCoins,
+                    gemsDelta = existing.Gems - previousGems,
+                    experienceDelta = existing.ExperiencePoints - previousExperience,
+                    previousPersonalSalaryMultiplier = previousMultiplier,
+                    newPersonalSalaryMultiplier = existing.PersonalSalaryMultiplier
+                }));
+
+                if (existing.ExperiencePoints != previousExperience)
+                {
+                    var newTitle = await _titleService.ResolveAsync(existing.ExperiencePoints);
+                    if (newTitle.TitleBracketId != previousTitle.TitleBracketId)
+                    {
+                        await _auditLogService.RecordAsync(actorUserId, id, AuditAction.TitleChanged, JsonSerializer.Serialize(new
+                        {
+                            fromTitleBracketId = previousTitle.TitleBracketId,
+                            fromTitleName = previousTitle.TitleName,
+                            toTitleBracketId = newTitle.TitleBracketId,
+                            toTitleName = newTitle.TitleName,
+                            direction = existing.ExperiencePoints > previousExperience ? "promotion" : "demotion"
+                        }));
+                    }
+                }
+            }
         }
 
         public async Task UpdateCoinsAsync(int id, int coins)
@@ -187,14 +235,21 @@ namespace knkwebapi_v2.Services
             await _repo.UpdateGatePassThroughMethodAsync(id, method);
         }
 
-        public async Task UpdateActiveModeAsync(int id, ActiveMode mode)
+        public async Task UpdateActiveModeAsync(int id, ActiveMode mode, int? actorUserId = null)
         {
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             if (!Enum.IsDefined(typeof(ActiveMode), mode)) throw new ArgumentException($"Unknown active mode '{mode}'.", nameof(mode));
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"User with id {id} not found.");
 
+            var previousMode = existing.ActiveMode;
             await _repo.UpdateActiveModeAsync(id, mode);
+
+            if (previousMode != mode)
+            {
+                await _auditLogService.RecordAsync(actorUserId, id, AuditAction.VanishToggled,
+                    $"{{\"from\":\"{previousMode}\",\"to\":\"{mode}\"}}");
+            }
         }
 
         public async Task DeleteAsync(int id)
@@ -478,7 +533,7 @@ namespace knkwebapi_v2.Services
         // ===== NEW METHODS: BALANCES (COINS, GEMS, XP) =====
 
         /// <inheritdoc/>
-        public async Task AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null)
+        public async Task AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null)
         {
             if (userId <= 0)
             {
@@ -517,6 +572,10 @@ namespace knkwebapi_v2.Services
                 throw new InvalidOperationException($"Insufficient experience points. Current: {user.ExperiencePoints}, Attempted change: {experienceDelta}");
             }
 
+            // Resolved before the mutation so a resulting title change (see below) can be
+            // detected by comparing against the post-mutation resolution.
+            var previousTitle = experienceDelta != 0 ? await _titleService.ResolveAsync(user.ExperiencePoints) : null;
+
             // Update balances
             user.Coins = newCoins;
             user.Gems = newGems;
@@ -524,8 +583,42 @@ namespace knkwebapi_v2.Services
 
             await _repo.UpdateUserAsync(user);
 
-            // TODO: Log to audit trail (Phase 4 - implement audit logging)
-            // Log balance change with reason and metadata
+            // docs/specs/user-management/IMPLEMENTATION_PLAN.md §0: every user-features mutation
+            // threads in an AuditLogEntry write as it's built, rather than user-management's
+            // Phase 2 retrofitting it later. This closes user-features IMPLEMENTATION_PLAN.md §6
+            // carried-forward item 4's "AdjustBalancesAsync still needs retrofitting".
+            await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
+            {
+                coinsDelta,
+                gemsDelta,
+                experienceDelta,
+                reason,
+                metadata
+            }));
+
+            // TitleService has no separate mutating "set title" method (see its own doc comment —
+            // title is purely derived from ExperiencePoints), so a title change is detected here by
+            // comparing the resolution before/after an XP-moving balance adjustment, not by a
+            // dedicated write path in TitleService itself.
+            if (previousTitle != null)
+            {
+                var newTitle = await _titleService.ResolveAsync(user.ExperiencePoints);
+                if (newTitle.TitleBracketId != previousTitle.TitleBracketId)
+                {
+                    await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.TitleChanged, JsonSerializer.Serialize(new
+                    {
+                        fromTitleBracketId = previousTitle.TitleBracketId,
+                        fromTitleName = previousTitle.TitleName,
+                        toTitleBracketId = newTitle.TitleBracketId,
+                        toTitleName = newTitle.TitleName,
+                        // Title brackets are ordered by MinExperience, not by TitleBracketId (an
+                        // auto-increment PK unrelated to rank order), so direction is derived from
+                        // the XP delta's sign rather than comparing bracket ids directly —
+                        // resolution is monotonic in XP per TitleService's own doc comment.
+                        direction = experienceDelta > 0 ? "promotion" : "demotion"
+                    }));
+                }
+            }
         }
 
         // ===== NEW METHODS: LINK CODES =====

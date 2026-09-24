@@ -20,6 +20,7 @@ public class SalaryServiceTests
     private readonly Mock<IUserRepository> _mockUserRepo;
     private readonly Mock<IUserPermissionGroupRepository> _mockMembershipRepo;
     private readonly Mock<ISalaryConfigurationService> _mockConfigService;
+    private readonly Mock<IAuditLogService> _mockAuditLogService;
     private readonly SalaryService _service;
 
     public SalaryServiceTests()
@@ -27,7 +28,8 @@ public class SalaryServiceTests
         _mockUserRepo = new Mock<IUserRepository>();
         _mockMembershipRepo = new Mock<IUserPermissionGroupRepository>();
         _mockConfigService = new Mock<ISalaryConfigurationService>();
-        _service = new SalaryService(_mockUserRepo.Object, _mockMembershipRepo.Object, _mockConfigService.Object);
+        _mockAuditLogService = new Mock<IAuditLogService>();
+        _service = new SalaryService(_mockUserRepo.Object, _mockMembershipRepo.Object, _mockConfigService.Object, _mockAuditLogService.Object);
 
         _mockConfigService.Setup(c => c.GetAsync()).ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 1.0m });
         _mockMembershipRepo.Setup(r => r.GetByUserAsync(It.IsAny<int>())).ReturnsAsync(new List<UserPermissionGroup>());
@@ -61,6 +63,20 @@ public class SalaryServiceTests
         Assert.False(result.Paid);
         Assert.Equal(0, result.AmountPaid);
         _mockUserRepo.Verify(r => r.UpdateUserAsync(It.IsAny<User>()), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<Enums.AuditAction>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PayOutAsync_Paid_RecordsSystemInitiatedAuditEntry()
+    {
+        var user = MakeUser(1, DateTime.UtcNow.AddHours(-2));
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+
+        await _service.PayOutAsync(1);
+
+        // System-initiated (docs/specs/user-management/DESIGN.md §4: actor null for automatic
+        // payouts) — closes user-features IMPLEMENTATION_PLAN.md §6 carried-forward item 4.
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.SalaryPayout, It.IsAny<string?>()), Times.Once);
     }
 
     [Fact]

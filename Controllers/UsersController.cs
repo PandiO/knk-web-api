@@ -22,19 +22,25 @@ namespace knkwebapi_v2.Controllers
         private readonly IPermissionResolutionService _permissionResolutionService;
         private readonly ISalaryService _salaryService;
         private readonly IUserProfileSummaryService _profileSummaryService;
+        private readonly IUserPermissionGroupService _membershipService;
+        private readonly IPermissionGrantService _grantService;
 
         public UsersController(
             IUserService service,
             IMapper mapper,
             IPermissionResolutionService permissionResolutionService,
             ISalaryService salaryService,
-            IUserProfileSummaryService profileSummaryService)
+            IUserProfileSummaryService profileSummaryService,
+            IUserPermissionGroupService membershipService,
+            IPermissionGrantService grantService)
         {
             _service = service;
             _mapper = mapper;
             _permissionResolutionService = permissionResolutionService;
             _salaryService = salaryService;
             _profileSummaryService = profileSummaryService;
+            _membershipService = membershipService;
+            _grantService = grantService;
         }
 
         /// <summary>
@@ -57,6 +63,112 @@ namespace knkwebapi_v2.Controllers
             }
 
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Quick action: assign a user to a group, or change an existing membership's expiry —
+        /// same underlying write UserPermissionGroupsController's generic PUT uses (docs/specs/
+        /// user-management/DESIGN.md §3: "thin wrapper over the same service the generic
+        /// FormWizard CRUD uses, not a parallel code path"), tailored to the profile page's
+        /// "target user comes from the route" shape.
+        /// </summary>
+        /// <response code="200">Returns the resulting membership</response>
+        /// <response code="400">Validation failed</response>
+        /// <response code="404">User or PermissionGroup not found</response>
+        [HttpPost("{id:int}/groups")]
+        public async Task<IActionResult> AssignGroup(int id, [FromBody] AssignGroupRequestDto request)
+        {
+            if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            try
+            {
+                var result = await _membershipService.UpsertAsync(new UpsertUserPermissionGroupDto
+                {
+                    UserId = id,
+                    PermissionGroupId = request.PermissionGroupId,
+                    ExpiresAt = request.ExpiresAt
+                }, GetUserIdFromClaims(User));
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = "NotFound", message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>Quick action: remove a group membership. Same underlying write UserPermissionGroupsController's generic DELETE uses.</summary>
+        /// <response code="204">Removed successfully</response>
+        /// <response code="404">User is not a member of that group</response>
+        [HttpDelete("{id:int}/groups/{groupId:int}")]
+        public async Task<IActionResult> RemoveGroup(int id, int groupId)
+        {
+            try
+            {
+                await _membershipService.DeleteAsync(id, groupId, GetUserIdFromClaims(User));
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = "NotFound", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Quick action: grant or explicitly deny a permission node directly on the player. Same
+        /// underlying write PermissionGrantsController's generic POST uses, tailored input (a
+        /// node-name field rather than the generic form's raw HolderId/Id fields) per DESIGN.md §3.
+        /// </summary>
+        /// <response code="200">Returns the created grant</response>
+        /// <response code="400">Validation failed</response>
+        /// <response code="404">User not found</response>
+        [HttpPost("{id:int}/grants")]
+        public async Task<IActionResult> GrantNode(int id, [FromBody] GrantNodeRequestDto request)
+        {
+            if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            try
+            {
+                var result = await _grantService.CreateAsync(new PermissionGrantDto
+                {
+                    HolderId = id,
+                    Node = request.Node,
+                    Value = request.Value,
+                    ExpiresAt = request.ExpiresAt
+                }, GetUserIdFromClaims(User));
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Quick action: toggle owner/staff-mode remotely — writes the same field the in-game
+        /// /staffmode //ownermode commands do (DESIGN.md §3), as an alternative surface to
+        /// PUT {id}/active-mode for the profile page's quick-action UI.
+        /// </summary>
+        /// <response code="204">Updated successfully</response>
+        /// <response code="400">Unknown mode value</response>
+        /// <response code="404">User not found</response>
+        [HttpPost("{id:int}/vanish-mode")]
+        public async Task<IActionResult> ToggleVanishMode(int id, [FromBody] UpdateActiveModeDto request)
+        {
+            try
+            {
+                await _service.UpdateActiveModeAsync(id, request.ActiveMode, GetUserIdFromClaims(User));
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -393,7 +505,7 @@ namespace knkwebapi_v2.Controllers
             if (user == null) return BadRequest(new { error = "InvalidRequest", message = "User data is required" });
             try
             {
-                await _service.UpdateAsync(id, user);
+                await _service.UpdateAsync(id, user, GetUserIdFromClaims(User));
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -510,7 +622,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.UpdateActiveModeAsync(id, request.ActiveMode);
+                await _service.UpdateActiveModeAsync(id, request.ActiveMode, GetUserIdFromClaims(User));
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -546,7 +658,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata);
+                await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetUserIdFromClaims(User));
                 return NoContent();
             }
             catch (KeyNotFoundException)

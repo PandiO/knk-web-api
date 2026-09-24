@@ -17,10 +17,10 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <summary>Creates the membership, or replaces its ExpiresAt if the user already holds
         /// the group. Throws KeyNotFoundException for an unknown user/group, ArgumentException
         /// for an ExpiresAt that isn't in the future.</summary>
-        Task<UserPermissionGroupDto> UpsertAsync(UpsertUserPermissionGroupDto dto);
+        Task<UserPermissionGroupDto> UpsertAsync(UpsertUserPermissionGroupDto dto, int? actorUserId = null);
 
         /// <summary>Throws KeyNotFoundException if the user doesn't hold the group.</summary>
-        Task DeleteAsync(int userId, int permissionGroupId);
+        Task DeleteAsync(int userId, int permissionGroupId, int? actorUserId = null);
 
         /// <summary>The user's current premium tier: their highest-Weight active membership in a
         /// group flagged IsPremiumTier, or null if they hold none.</summary>
