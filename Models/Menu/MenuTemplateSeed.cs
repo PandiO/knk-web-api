@@ -18,7 +18,7 @@ namespace knkwebapi_v2.Models;
 /// live Kits/Sieges menus is explicitly separate, later work per
 /// IMPLEMENTATION_PLAN.md's "explicitly out of scope for this plan" section.
 /// </summary>
-public static class MenuTemplateSeed
+public static partial class MenuTemplateSeed
 {
     public static async Task SeedCanonicalAsync(KnKDbContext context, ILogger? logger = null, CancellationToken cancellationToken = default)
     {
@@ -655,6 +655,10 @@ public static class MenuTemplateSeed
                 },
             },
         };
+
+        // InventoryMenu Phase 9 (E1-E9) demo seeds - see MenuTemplateSeed.DomainIntegration.cs.
+        foreach (var template in DomainIntegrationTemplates())
+            yield return template;
     }
 
     /// <summary>
