@@ -1,6 +1,7 @@
 using Xunit;
 using Moq;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
@@ -25,6 +26,7 @@ public class KitServiceTests
     private readonly Mock<ITitleService> _titleService = new();
     private readonly Mock<IUserPermissionGroupService> _userPermissionGroupService = new();
     private readonly Mock<IPermissionResolutionService> _permissionResolutionService = new();
+    private readonly Mock<IAuditLogService> _auditLogService = new();
     private readonly AutoMapper.IMapper _mapper;
     private readonly KitService _service;
 
@@ -44,6 +46,7 @@ public class KitServiceTests
             _titleService.Object,
             _userPermissionGroupService.Object,
             _permissionResolutionService.Object,
+            _auditLogService.Object,
             _mapper);
 
         _titleBracketRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(new List<TitleBracket>());
@@ -525,6 +528,39 @@ public class KitServiceTests
     }
 
     [Fact]
+    public async Task GiveKitAsync_RecordsExactlyOneKitGrantedAuditEntry()
+    {
+        var actor = new User { Id = 35, Username = "staff4" };
+        var target = new User { Id = 36, Username = "target4" };
+        var kit = PlainKit();
+        SetUser(actor);
+        SetUser(target);
+        SetKit(kit);
+
+        await _service.GiveKitAsync(actor.Id, target.Id, kit.Id);
+
+        _auditLogService.Verify(s => s.RecordAsync(
+            actor.Id,
+            target.Id,
+            AuditAction.KitGranted,
+            It.Is<string?>(d => d != null && d.Contains($"\"kitId\":{kit.Id}") && d.Contains(kit.Name))), Times.Once);
+        _auditLogService.Verify(s => s.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<AuditAction>(), It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClaimKitAsync_DoesNotRecordAuditEntry()
+    {
+        var user = new User { Id = 37, Username = "selfclaimer" };
+        var kit = PlainKit();
+        SetUser(user);
+        SetKit(kit);
+
+        await _service.ClaimKitAsync(user.Id, kit.Id);
+
+        _auditLogService.Verify(s => s.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<AuditAction>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GiveKitAsync_UnknownTargetUser_ThrowsKeyNotFound()
     {
         var actor = new User { Id = 32, Username = "staff2" };
@@ -534,6 +570,7 @@ public class KitServiceTests
         _userRepo.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((User?)null);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.GiveKitAsync(actor.Id, 999, kit.Id));
+        _auditLogService.Verify(s => s.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<AuditAction>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]

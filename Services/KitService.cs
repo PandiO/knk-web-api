@@ -1,5 +1,7 @@
+using System.Text.Json;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
@@ -17,6 +19,7 @@ namespace knkwebapi_v2.Services
         private readonly ITitleService _titleService;
         private readonly IUserPermissionGroupService _userPermissionGroupService;
         private readonly IPermissionResolutionService _permissionResolutionService;
+        private readonly IAuditLogService _auditLogService;
         private readonly IMapper _mapper;
 
         public KitService(
@@ -28,6 +31,7 @@ namespace knkwebapi_v2.Services
             ITitleService titleService,
             IUserPermissionGroupService userPermissionGroupService,
             IPermissionResolutionService permissionResolutionService,
+            IAuditLogService auditLogService,
             IMapper mapper)
         {
             _kitRepo = kitRepo;
@@ -38,6 +42,7 @@ namespace knkwebapi_v2.Services
             _titleService = titleService;
             _userPermissionGroupService = userPermissionGroupService;
             _permissionResolutionService = permissionResolutionService;
+            _auditLogService = auditLogService;
             _mapper = mapper;
         }
 
@@ -291,14 +296,15 @@ namespace knkwebapi_v2.Services
             var claim = new KitClaim { KitId = kitId, UserId = targetUserId, ClaimedAt = DateTime.UtcNow };
             await _kitRepo.AddClaimAsync(claim);
 
-            // TODO(kits-phase2): DESIGN.md §4.1 also calls for a call into AuditLogService.Record
-            // (actorUserId, targetUserId, "KitGranted", ...) here. That service does not exist -
-            // no AuditLogEntry/AuditLogService/IAuditLogService exists anywhere in this codebase
-            // yet, and docs/specs/user-management/IMPLEMENTATION_PLAN.md's own Phase 2 (the audit
-            // log) is still "Draft" (verified by direct code read, 2026-09-25 - see
-            // docs/specs/kits/IMPLEMENTATION_PLAN.md's §2 status note for the full explanation).
-            // Wire the real call in here once that phase ships; don't stub a fake
-            // IAuditLogService in the meantime.
+            // DESIGN.md §4.1: a staff give is an admin-initiated mutation, so it goes through the
+            // user-management audit log like every other one.
+            await _auditLogService.RecordAsync(actorUserId, targetUserId, AuditAction.KitGranted, JsonSerializer.Serialize(new
+            {
+                kitId = kit.Id,
+                kitName = kit.Name,
+                claimId = claim.Id
+            }));
+
             return _mapper.Map<KitClaimResultDto>(kit);
         }
 
