@@ -441,6 +441,10 @@ namespace knkwebapi_v2.Services
             }
         }
 
+        // KitContent.SlotIndex is a Bukkit PlayerInventory storage index (getStorageContents()).
+        private const int MinSlotIndex = 0;
+        private const int MaxSlotIndex = 35;
+
         private async Task<List<KitContent>> BuildContentsAsync(List<KitContentDto>? contents)
         {
             var result = new List<KitContent>();
@@ -449,6 +453,9 @@ namespace knkwebapi_v2.Services
             var seenSlots = new HashSet<int>();
             foreach (var content in contents)
             {
+                if (content.SlotIndex < MinSlotIndex || content.SlotIndex > MaxSlotIndex)
+                    throw new ArgumentException($"SlotIndex {content.SlotIndex} in Contents is out of range - it must be {MinSlotIndex}-{MaxSlotIndex} (0-8 hotbar, 9-35 main inventory).");
+
                 if (!seenSlots.Add(content.SlotIndex))
                     throw new ArgumentException($"Duplicate SlotIndex {content.SlotIndex} in Contents - each slot may hold at most one item.");
 
