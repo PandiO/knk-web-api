@@ -26,6 +26,7 @@ namespace knkwebapi_v2.Services
         private readonly IAuditLogService _auditLogService;
         private readonly IPermissionGroupRepository _permissionGroupRepo;
         private readonly ILogger<UserService> _logger;
+        private readonly IPlayerNotificationQueue? _notificationQueue;
 
         public UserService(
             IUserRepository repo,
@@ -36,8 +37,10 @@ namespace knkwebapi_v2.Services
             IUserPermissionGroupService membershipService,
             IAuditLogService auditLogService,
             IPermissionGroupRepository permissionGroupRepo,
-            ILogger<UserService> logger)
+            ILogger<UserService> logger,
+            IPlayerNotificationQueue? notificationQueue = null)
         {
+            _notificationQueue = notificationQueue;
             _repo = repo;
             _mapper = mapper;
             _passwordService = passwordService;
@@ -612,7 +615,7 @@ namespace knkwebapi_v2.Services
         // ===== NEW METHODS: BALANCES (COINS, GEMS, XP) =====
 
         /// <inheritdoc/>
-        public async Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null)
+        public async Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null, bool notifyPlayer = true)
         {
             if (userId <= 0)
             {
@@ -749,6 +752,14 @@ namespace knkwebapi_v2.Services
                     crossedTitles = titleChange.CrossedTitles.Select(t => t.TitleName),
                     direction = titleChange.Direction
                 }));
+
+                // The result below only reaches this request's caller. When that's the web app,
+                // the plugin would otherwise never learn of the change, so the player never got
+                // the in-game promotion moment - queue it for the plugin's poller to deliver.
+                if (notifyPlayer)
+                {
+                    _notificationQueue?.Enqueue(userId, user.Uuid, user.Username, PlayerNotificationTypes.TitleChanged, titleChange);
+                }
             }
 
             return new BalanceAdjustmentResultDto

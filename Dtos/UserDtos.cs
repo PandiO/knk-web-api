@@ -281,6 +281,15 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("metadata")]
         public string? Metadata { get; set; }
+
+        /// <summary>
+        /// Whether a resulting title change should be queued for the plugin to show in-game
+        /// (IPlayerNotificationQueue). Defaults to true so web-app callers get it for free; the
+        /// plugin's /knk user command sends false when the target is online, since it shows the
+        /// effects itself straight from this call's response.
+        /// </summary>
+        [JsonPropertyName("notifyPlayer")]
+        public bool NotifyPlayer { get; set; } = true;
     }
 
     /// <summary>
