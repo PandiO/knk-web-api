@@ -42,6 +42,27 @@ namespace knkwebapi_v2.Dtos
         public int? NextTitleMinExperience { get; set; }
     }
 
+    /// <summary>Read-only bracket row for pickers (TitleBracketsController) - e.g. the siege
+    /// scenario form's "minimum title" field. "name" is the male name, the form pickers'
+    /// display convention.</summary>
+    public class TitleBracketDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = null!;
+
+        [JsonPropertyName("maleName")]
+        public string MaleName { get; set; } = null!;
+
+        [JsonPropertyName("femaleName")]
+        public string FemaleName { get; set; } = null!;
+
+        [JsonPropertyName("minExperience")]
+        public int MinExperience { get; set; }
+    }
+
     /// <summary>One title bracket crossed during a consolidated promotion/demotion
     /// (UserService.AdjustBalancesAsync). See BalanceAdjustmentResultDto.</summary>
     public class TitleCrossingDto

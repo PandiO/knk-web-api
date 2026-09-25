@@ -70,11 +70,35 @@ namespace knkwebapi_v2.Repositories
 
             var totalCount = await queryable.CountAsync();
 
-            queryable = query.SortBy switch
+            // Siege Phase 3 (DESIGN §3.4 "default suggestion"): filters.preferTownId lists that
+            // town's default clan first, then the usual sort. It orders, it doesn't filter - a team
+            // may still pick any clan.
+            int? preferTownId = null;
+            if (query.Filters != null
+                && query.Filters.TryGetValue("preferTownId", out var preferTownIdStr)
+                && int.TryParse(preferTownIdStr, out var parsedTownId)
+                && parsedTownId > 0)
             {
-                "name" => query.SortDescending ? queryable.OrderByDescending(c => c.Name) : queryable.OrderBy(c => c.Name),
-                _ => query.SortDescending ? queryable.OrderByDescending(c => c.Id) : queryable.OrderBy(c => c.Id)
-            };
+                preferTownId = parsedTownId;
+            }
+
+            if (preferTownId.HasValue)
+            {
+                var preferred = queryable.OrderByDescending(c => c.DefaultForTownId == preferTownId);
+                queryable = query.SortBy switch
+                {
+                    "name" => query.SortDescending ? preferred.ThenByDescending(c => c.Name) : preferred.ThenBy(c => c.Name),
+                    _ => query.SortDescending ? preferred.ThenByDescending(c => c.Id) : preferred.ThenBy(c => c.Id)
+                };
+            }
+            else
+            {
+                queryable = query.SortBy switch
+                {
+                    "name" => query.SortDescending ? queryable.OrderByDescending(c => c.Name) : queryable.OrderBy(c => c.Name),
+                    _ => query.SortDescending ? queryable.OrderByDescending(c => c.Id) : queryable.OrderBy(c => c.Id)
+                };
+            }
 
             var items = await queryable
                 .Skip((query.PageNumber - 1) * query.PageSize)

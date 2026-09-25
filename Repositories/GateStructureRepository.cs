@@ -104,6 +104,16 @@ namespace knkwebapi_v2.Repositories
                 {
                     queryable = queryable.Where(gs => gs.DistrictId == districtId);
                 }
+                // Siege Phase 3 pickers: the scenario's Gates step lists the town's gates, and an
+                // objective's gate picker lists only the gates already saved in its scenario.
+                if (query.Filters.TryGetValue("townId", out var townIdStr) && int.TryParse(townIdStr, out var townId))
+                {
+                    queryable = queryable.Where(gs => gs.District.TownId == townId);
+                }
+                if (query.Filters.TryGetValue("siegeScenarioId", out var scenarioIdStr) && int.TryParse(scenarioIdStr, out var scenarioId))
+                {
+                    queryable = queryable.Where(gs => _context.SiegeScenarioGates.Any(g => g.SiegeScenarioId == scenarioId && g.GateStructureId == gs.Id));
+                }
                 // isActive/gateType/isOpened are now per-door fields (item 5's multi-door
                 // support) - a structure matches if at least one of its doors matches.
                 if (query.Filters.TryGetValue("isActive", out var isActiveStr) && bool.TryParse(isActiveStr, out var isActive))
