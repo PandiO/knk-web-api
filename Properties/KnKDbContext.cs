@@ -92,6 +92,11 @@ public partial class KnKDbContext : DbContext
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
     public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
 
+    // Siege Phase 1 — banner + minimal clan (docs/specs/siege-minigame/DESIGN.md §3.1–3.2)
+    public virtual DbSet<BannerDesign> BannerDesigns { get; set; } = null!;
+    public virtual DbSet<BannerLayer> BannerLayers { get; set; } = null!;
+    public virtual DbSet<Clan> Clans { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -188,6 +193,55 @@ public partial class KnKDbContext : DbContext
             // Brackets are resolved by "highest MinExperience <= user's XP" — each threshold
             // must be distinct or resolution would be ambiguous.
             entity.HasIndex(e => e.MinExperience).IsUnique();
+        });
+
+        // Siege Phase 1 (docs/specs/siege-minigame/DESIGN.md §3.1–3.2). Layers cascade from their
+        // BannerDesign (owned); Clan never cascades into the shared BannerDesign/Town rows (Restrict).
+        modelBuilder.Entity<BannerDesign>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("banner_designs");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.BaseColor).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<BannerLayer>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("banner_layers");
+
+            entity.Property(e => e.PatternKey).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Color).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.BannerDesignId, e.SortOrder });
+
+            entity.HasOne(e => e.BannerDesign)
+                .WithMany(d => d.Layers)
+                .HasForeignKey(e => e.BannerDesignId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Clan>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("clans");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ChatColor).IsRequired().HasMaxLength(20);
+
+            // MySQL unique indexes ignore NULLs, so this enforces "at most one default clan per
+            // town" while allowing any number of clans with no default town.
+            entity.HasIndex(e => e.DefaultForTownId).IsUnique();
+
+            entity.HasOne(e => e.BannerDesign)
+                .WithMany()
+                .HasForeignKey(e => e.BannerDesignId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.DefaultForTown)
+                .WithMany()
+                .HasForeignKey(e => e.DefaultForTownId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<LinkCode>(entity =>

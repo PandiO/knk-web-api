@@ -92,6 +92,11 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IGradeService, GradeService>();
             services.AddScoped<ITagRepository, TagRepository>();
             services.AddScoped<ITagService, TagService>();
+            // Siege Phase 1 — banner + minimal clan
+            services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
+            services.AddScoped<IBannerDesignService, BannerDesignService>();
+            services.AddScoped<IClanRepository, ClanRepository>();
+            services.AddScoped<IClanService, ClanService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();
