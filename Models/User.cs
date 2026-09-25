@@ -129,6 +129,26 @@ public class User : PermissionHolder
     /// </summary>
     public DateTime LastSalaryPayoutAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Online-presence tracking for the moderation view's "currently online" filter
+    /// (docs/specs/user-management/DESIGN.md §5/§7 item 2, IMPLEMENTATION_PLAN.md Phase 3).
+    /// Set by knk-plugin's PlayerListener via PUT /api/users/{id}/presence on
+    /// PlayerJoinEvent/PlayerQuitEvent — there is no periodic sync loop for users to piggyback
+    /// on (confirmed: UsersDataAccess only refreshes on-demand on a stale cache hit), so this is
+    /// real-time-ish rather than lagged behind a sync interval. Defaults to false/null so a
+    /// server that never reports presence (e.g. this session's live test) doesn't show everyone
+    /// as perpetually online. Service-managed only — ignored by the generic UserDto update path,
+    /// same convention as ActiveMode.
+    /// </summary>
+    public bool IsOnline { get; set; } = false;
+
+    /// <summary>
+    /// UTC timestamp of the last presence report (join or quit) for this user. Null for a user
+    /// who has never triggered a presence update (pre-existing rows at migration time, or a
+    /// web-only account that has never joined the Minecraft server).
+    /// </summary>
+    public DateTime? LastSeenAt { get; set; }
+
     // ===== AUDIT TRAIL (MINIMAL - MVP) =====
 
     /// <summary>
@@ -190,6 +210,29 @@ public class User : PermissionHolder
     /// </summary>
     [RelatedEntityField(typeof(UserPermissionGroup))]
     public ICollection<UserPermissionGroup> PermissionGroupMemberships { get; set; } = new List<UserPermissionGroup>();
+
+    /// <summary>
+    /// Optional gender, ported from v1's Gender table (Male/Female + Mylord/Mylady prefix) to
+    /// resolve a title's MaleName/FemaleName display form. Null = unset; title display falls
+    /// back to MaleName. Never required at account creation.
+    /// </summary>
+    public Gender? Gender { get; set; }
+
+    // ===== ADMIN FREEZE (rebuilt v1 FreezeCommands — v1's version was a dead no-op stub) =====
+
+    /// <summary>
+    /// Whether this player is currently admin-frozen (movement/chat/commands/damage locked
+    /// in-game). Persisted so /freeze applied to an offline player takes effect on next join,
+    /// and so state survives a server restart. Set only via PUT /api/users/{id}/freeze and
+    /// .../unfreeze — ignored by the generic UserDto update path, same convention as ActiveMode.
+    /// </summary>
+    public bool IsFrozen { get; set; } = false;
+
+    public string? FrozenReason { get; set; }
+
+    public int? FrozenByUserId { get; set; }
+
+    public DateTime? FrozenAt { get; set; }
 }
 
 /// <summary>
@@ -254,4 +297,14 @@ public enum GatePassThroughMethod
     /// The player is teleported directly to the other side of the gate. The gate never animates.
     /// </summary>
     Teleport = 2
+}
+
+/// <summary>
+/// Ported from v1's 2-row Gender table (Male: "Mylord", Female: "Mylady" prefix) — kept as an
+/// enum rather than a DB table since it will never have more than these two values.
+/// </summary>
+public enum Gender
+{
+    Male = 0,
+    Female = 1
 }

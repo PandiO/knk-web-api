@@ -21,17 +21,154 @@ namespace knkwebapi_v2.Controllers
         private readonly IMapper _mapper;
         private readonly IPermissionResolutionService _permissionResolutionService;
         private readonly ISalaryService _salaryService;
+        private readonly IUserProfileSummaryService _profileSummaryService;
+        private readonly IUserPermissionGroupService _membershipService;
+        private readonly IPermissionGrantService _grantService;
 
         public UsersController(
             IUserService service,
             IMapper mapper,
             IPermissionResolutionService permissionResolutionService,
-            ISalaryService salaryService)
+            ISalaryService salaryService,
+            IUserProfileSummaryService profileSummaryService,
+            IUserPermissionGroupService membershipService,
+            IPermissionGrantService grantService)
         {
             _service = service;
             _mapper = mapper;
             _permissionResolutionService = permissionResolutionService;
             _salaryService = salaryService;
+            _profileSummaryService = profileSummaryService;
+            _membershipService = membershipService;
+            _grantService = grantService;
+        }
+
+        /// <summary>
+        /// Composite player-profile view for the user-management admin module
+        /// (docs/specs/user-management/DESIGN.md §2, IMPLEMENTATION_PLAN.md Phase 1) — account,
+        /// resolved permissions, group memberships, title/XP progress, and salary state in one
+        /// response, so the admin page doesn't stitch together five separate calls itself.
+        /// </summary>
+        /// <param name="id">User ID</param>
+        /// <response code="200">Returns the composite profile summary</response>
+        /// <response code="404">User not found</response>
+        [HttpGet("{id:int}/profile-summary")]
+        [ProducesResponseType(typeof(UserProfileSummaryDto), 200)]
+        public async Task<IActionResult> GetProfileSummary(int id)
+        {
+            var result = await _profileSummaryService.GetAsync(id);
+            if (result == null)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Quick action: assign a user to a group, or change an existing membership's expiry —
+        /// same underlying write UserPermissionGroupsController's generic PUT uses (docs/specs/
+        /// user-management/DESIGN.md §3: "thin wrapper over the same service the generic
+        /// FormWizard CRUD uses, not a parallel code path"), tailored to the profile page's
+        /// "target user comes from the route" shape.
+        /// </summary>
+        /// <response code="200">Returns the resulting membership</response>
+        /// <response code="400">Validation failed</response>
+        /// <response code="404">User or PermissionGroup not found</response>
+        [HttpPost("{id:int}/groups")]
+        public async Task<IActionResult> AssignGroup(int id, [FromBody] AssignGroupRequestDto request)
+        {
+            if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            try
+            {
+                var result = await _membershipService.UpsertAsync(new UpsertUserPermissionGroupDto
+                {
+                    UserId = id,
+                    PermissionGroupId = request.PermissionGroupId,
+                    ExpiresAt = request.ExpiresAt
+                }, GetUserIdFromClaims(User));
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = "NotFound", message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>Quick action: remove a group membership. Same underlying write UserPermissionGroupsController's generic DELETE uses.</summary>
+        /// <response code="204">Removed successfully</response>
+        /// <response code="404">User is not a member of that group</response>
+        [HttpDelete("{id:int}/groups/{groupId:int}")]
+        public async Task<IActionResult> RemoveGroup(int id, int groupId)
+        {
+            try
+            {
+                await _membershipService.DeleteAsync(id, groupId, GetUserIdFromClaims(User));
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = "NotFound", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Quick action: grant or explicitly deny a permission node directly on the player. Same
+        /// underlying write PermissionGrantsController's generic POST uses, tailored input (a
+        /// node-name field rather than the generic form's raw HolderId/Id fields) per DESIGN.md §3.
+        /// </summary>
+        /// <response code="200">Returns the created grant</response>
+        /// <response code="400">Validation failed</response>
+        /// <response code="404">User not found</response>
+        [HttpPost("{id:int}/grants")]
+        public async Task<IActionResult> GrantNode(int id, [FromBody] GrantNodeRequestDto request)
+        {
+            if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            try
+            {
+                var result = await _grantService.CreateAsync(new PermissionGrantDto
+                {
+                    HolderId = id,
+                    Node = request.Node,
+                    Value = request.Value,
+                    ExpiresAt = request.ExpiresAt
+                }, GetUserIdFromClaims(User));
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Quick action: toggle owner/staff-mode remotely — writes the same field the in-game
+        /// /staffmode //ownermode commands do (DESIGN.md §3), as an alternative surface to
+        /// PUT {id}/active-mode for the profile page's quick-action UI.
+        /// </summary>
+        /// <response code="204">Updated successfully</response>
+        /// <response code="400">Unknown mode value</response>
+        /// <response code="404">User not found</response>
+        [HttpPost("{id:int}/vanish-mode")]
+        public async Task<IActionResult> ToggleVanishMode(int id, [FromBody] UpdateActiveModeDto request)
+        {
+            try
+            {
+                await _service.UpdateActiveModeAsync(id, request.ActiveMode, GetUserIdFromClaims(User));
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -137,7 +274,9 @@ namespace knkwebapi_v2.Controllers
                 PrestigeExperience = item.PrestigeExperience,
                 PremiumTierGroupId = item.PremiumTierGroupId,
                 PremiumTierName = item.PremiumTierName,
-                PremiumTierExpiresAt = item.PremiumTierExpiresAt
+                PremiumTierExpiresAt = item.PremiumTierExpiresAt,
+                IsFrozen = item.IsFrozen,
+                FrozenReason = item.FrozenReason
             };
             return Ok(dto);
         }
@@ -170,7 +309,9 @@ namespace knkwebapi_v2.Controllers
                 PrestigeExperience = item.PrestigeExperience,
                 PremiumTierGroupId = item.PremiumTierGroupId,
                 PremiumTierName = item.PremiumTierName,
-                PremiumTierExpiresAt = item.PremiumTierExpiresAt
+                PremiumTierExpiresAt = item.PremiumTierExpiresAt,
+                IsFrozen = item.IsFrozen,
+                FrozenReason = item.FrozenReason
             };
             return Ok(dto);
         }
@@ -368,7 +509,7 @@ namespace knkwebapi_v2.Controllers
             if (user == null) return BadRequest(new { error = "InvalidRequest", message = "User data is required" });
             try
             {
-                await _service.UpdateAsync(id, user);
+                await _service.UpdateAsync(id, user, GetUserIdFromClaims(User));
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -485,12 +626,108 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.UpdateActiveModeAsync(id, request.ActiveMode);
+                await _service.UpdateActiveModeAsync(id, request.ActiveMode, GetUserIdFromClaims(User));
                 return NoContent();
             }
             catch (KeyNotFoundException)
             {
                 return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Report online presence — join/quit hooks in knk-plugin's PlayerListener.
+        /// </summary>
+        /// <remarks>
+        /// Dedicated endpoint rather than piggybacking on a periodic sync (docs/specs/user-management/DESIGN.md
+        /// §7 item 2): UsersDataAccess only refreshes a cached user on-demand when a lookup finds
+        /// the cache stale, there is no existing periodic sync loop for users to attach to, so
+        /// "currently online" is real-time-ish (set directly by join/quit) rather than lagged
+        /// behind a sync interval.
+        /// </remarks>
+        /// <param name="id">User ID</param>
+        /// <param name="request">true on join, false on quit</param>
+        /// <returns>No content</returns>
+        /// <response code="204">Updated successfully</response>
+        /// <response code="404">User not found</response>
+        [HttpPut("{id:int}/presence")]
+        public async Task<IActionResult> UpdatePresence(int id, [FromBody] UpdatePresenceDto request)
+        {
+            try
+            {
+                await _service.UpdatePresenceAsync(id, request.IsOnline);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Freeze a player (rebuild of v1's FreezeCommands, a dead no-op stub in v1 — see the
+        /// knk-plugin /freeze command). Works on offline targets: writes through immediately, the
+        /// plugin enforces movement/chat/command/damage lockout once the target is next online.
+        /// </summary>
+        [HttpPut("{id:int}/freeze")]
+        public async Task<IActionResult> Freeze(int id, [FromBody] FreezePlayerDto request)
+        {
+            try
+            {
+                await _service.SetFrozenAsync(id, true, request?.Reason, GetUserIdFromClaims(User));
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        [HttpPut("{id:int}/unfreeze")]
+        public async Task<IActionResult> Unfreeze(int id)
+        {
+            try
+            {
+                await _service.SetFrozenAsync(id, false, null, GetUserIdFromClaims(User));
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Moderation search: users in a given PermissionGroup, optionally narrowed to currently-online
+        /// (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3). Distinct from the generic
+        /// POST /api/Users/search (PagedQueryDto column filters) since group membership isn't a flat
+        /// column on User — see DESIGN.md §5.
+        /// </summary>
+        /// <param name="groupId">PermissionGroup id to filter by.</param>
+        /// <param name="onlineOnly">When true, further narrows to users with IsOnline=true.</param>
+        [HttpGet("search")]
+        public async Task<ActionResult<IEnumerable<UserListDto>>> SearchByGroup([FromQuery] int groupId, [FromQuery] bool? onlineOnly)
+        {
+            try
+            {
+                var result = await _service.SearchByGroupAsync(groupId, onlineOnly);
+                return Ok(result);
             }
             catch (ArgumentException ex)
             {
@@ -521,8 +758,8 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata);
-                return NoContent();
+                var result = await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetUserIdFromClaims(User));
+                return Ok(result);
             }
             catch (KeyNotFoundException)
             {

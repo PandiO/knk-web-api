@@ -24,6 +24,8 @@ public class UserServiceTests
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<ITitleService> _mockTitleService;
     private readonly Mock<IUserPermissionGroupService> _mockMembershipService;
+    private readonly Mock<IAuditLogService> _mockAuditLogService;
+    private readonly Mock<IPermissionGroupRepository> _mockPermissionGroupRepository;
     private readonly UserService _userService;
 
     public UserServiceTests()
@@ -34,9 +36,11 @@ public class UserServiceTests
         _mockMapper = new Mock<IMapper>();
         _mockTitleService = new Mock<ITitleService>();
         _mockTitleService
-            .Setup(s => s.ResolveAsync(It.IsAny<int>()))
+            .Setup(s => s.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>()))
             .ReturnsAsync(new TitleResolutionDto());
         _mockMembershipService = new Mock<IUserPermissionGroupService>();
+        _mockAuditLogService = new Mock<IAuditLogService>();
+        _mockPermissionGroupRepository = new Mock<IPermissionGroupRepository>();
 
         _userService = new UserService(
             _mockUserRepository.Object,
@@ -44,7 +48,10 @@ public class UserServiceTests
             _mockPasswordService.Object,
             _mockLinkCodeService.Object,
             _mockTitleService.Object,
-            _mockMembershipService.Object
+            _mockMembershipService.Object,
+            _mockAuditLogService.Object,
+            _mockPermissionGroupRepository.Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance
         );
     }
 
@@ -734,6 +741,129 @@ public class UserServiceTests
     {
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _userService.UpdateActiveModeAsync(0, ActiveMode.Staff));
+    }
+
+    [Fact]
+    public async Task UpdateActiveModeAsync_ModeActuallyChanges_RecordsVanishToggledAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player", ActiveMode = ActiveMode.None });
+
+        await _userService.UpdateActiveModeAsync(1, ActiveMode.Staff, actorUserId: 7);
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(7, 1, Enums.AuditAction.VanishToggled, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateActiveModeAsync_ModeUnchanged_DoesNotRecordAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player", ActiveMode = ActiveMode.Staff });
+
+        await _userService.UpdateActiveModeAsync(1, ActiveMode.Staff);
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<Enums.AuditAction>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    #endregion
+
+    #region UpdatePresenceAsync / SearchByGroupAsync Tests (User management Phase 3, moderation search/filters)
+
+    [Fact]
+    public async Task UpdatePresenceAsync_WithExistingUser_PersistsPresence()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player" });
+
+        await _userService.UpdatePresenceAsync(1, true);
+
+        _mockUserRepository.Verify(r => r.UpdatePresenceAsync(1, true), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdatePresenceAsync_WithMissingUser_ThrowsKeyNotFound()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((User?)null);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.UpdatePresenceAsync(99, true));
+        _mockUserRepository.Verify(r => r.UpdatePresenceAsync(It.IsAny<int>(), It.IsAny<bool>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdatePresenceAsync_DoesNotRecordAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player" });
+
+        await _userService.UpdatePresenceAsync(1, false);
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<Enums.AuditAction>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SearchByGroupAsync_WithInvalidGroupId_ThrowsArgumentException()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _userService.SearchByGroupAsync(0));
+    }
+
+    #endregion
+
+    #region AdjustBalancesAsync Audit Tests (user-management Phase 2 retrofit)
+
+    [Fact]
+    public async Task AdjustBalancesAsync_RecordsBalanceAdjustedAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new User { Id = 1, Username = "player", Coins = 100, Gems = 0, ExperiencePoints = 0 });
+
+        await _userService.AdjustBalancesAsync(1, coinsDelta: 50, gemsDelta: 0, experienceDelta: 0, reason: "test", actorUserId: 3);
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(3, 1, Enums.AuditAction.BalanceAdjusted, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_TitleBracketChanges_AlsoRecordsTitleChangedAuditEntry()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new User { Id = 1, Username = "player", Coins = 0, Gems = 0, ExperiencePoints = 0 });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 500 }
+        });
+
+        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "xp gain");
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.BalanceAdjusted, It.IsAny<string?>()), Times.Once);
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.TitleChanged, It.IsAny<string?>()), Times.Once);
+        Assert.NotNull(result.TitleChange);
+        Assert.Equal("promotion", result.TitleChange!.Direction);
+        Assert.Equal(2, result.TitleChange.ToTitleBracketId);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_CrossesMultipleTiersAtOnce_ConsolidatesIntoOneChangeWithSummedBonuses()
+    {
+        // Regression guard for the developer-confirmed requirement: a single XP grant crossing
+        // several brackets must produce ONE TitleChanged audit entry and ONE consolidated result
+        // listing every crossed tier, not one iteration per tier (v1's TitleChangeEvents looped
+        // once per tier on a timer - explicitly not to be repeated).
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new User { Id = 1, Username = "player", Coins = 0, Gems = 0, ExperiencePoints = 0 });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 100, CoinBonus = 10, GemBonus = 1 },
+            new() { Id = 3, MaleName = "Journeyman", FemaleName = "Journeyman", MinExperience = 200, CoinBonus = 20, GemBonus = 2 },
+            new() { Id = 4, MaleName = "Veteran", FemaleName = "Veteran", MinExperience = 300, CoinBonus = 30, GemBonus = 3 }
+        });
+
+        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 250, reason: "big xp grant");
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.TitleChanged, It.IsAny<string?>()), Times.Once);
+        Assert.NotNull(result.TitleChange);
+        Assert.Equal(3, result.TitleChange!.ToTitleBracketId); // 250 XP reaches Journeyman (200), not Veteran (300)
+        Assert.Equal(2, result.TitleChange.CrossedTitles.Count); // Apprentice, Journeyman - not Veteran (250 XP doesn't reach 300)
+        Assert.Equal(30, result.TitleChange.CoinBonusGranted); // 10 + 20
+        Assert.Equal(3, result.TitleChange.GemBonusGranted); // 1 + 2
+        Assert.Equal(30, result.NewCoins);
+        Assert.Equal(3, result.NewGems);
     }
 
     #endregion

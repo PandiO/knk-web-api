@@ -2,6 +2,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using knkwebapi_v2.Repositories;
+using knkwebapi_v2.Repositories.Interfaces;
+using knkwebapi_v2.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,6 +13,9 @@ namespace knkwebapi_v2.Services
     /// <summary>
     /// Background service that enforces retention policies.
     /// - Deletes completed FormSubmissionProgress records older than 14 days.
+    /// - Deletes AuditLogEntry records older than the configurable retention window
+    ///   (AuditLogRetentionConfiguration, docs/specs/user-management/DESIGN.md §7 item 3 —
+    ///   default 180 days, re-read each run so a config change takes effect without a restart).
     /// Runs once per day at startup and then every 24 hours.
     /// </summary>
     public class RetentionPolicyService : BackgroundService
@@ -78,11 +83,43 @@ namespace knkwebapi_v2.Services
                     _logger.LogInformation(
                         "Retention policy cleanup completed. Deleted {Count} completed form submissions",
                         deletedCount);
+
+                    await RunAuditLogCleanupAsync(scope.ServiceProvider);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error running retention policy cleanup");
+            }
+        }
+
+        /// <summary>
+        /// Separate try/catch from the FormSubmissionProgress cleanup above so a failure in one
+        /// (e.g. the retention config row being unreadable) doesn't prevent the other from running.
+        /// </summary>
+        private async Task RunAuditLogCleanupAsync(IServiceProvider scopedProvider)
+        {
+            try
+            {
+                var retentionConfigService = scopedProvider.GetRequiredService<IAuditLogRetentionConfigurationService>();
+                var retentionConfig = await retentionConfigService.GetAsync();
+                var auditCutoffDate = DateTime.UtcNow.AddDays(-retentionConfig.RetentionDays);
+
+                _logger.LogInformation(
+                    "Running audit log retention cleanup. Deleting AuditLogEntry records older than {CutoffDate} ({RetentionDays}-day retention)",
+                    auditCutoffDate,
+                    retentionConfig.RetentionDays);
+
+                var auditLogRepository = scopedProvider.GetRequiredService<IAuditLogRepository>();
+                int deletedAuditCount = await auditLogRepository.DeleteOlderThanAsync(auditCutoffDate);
+
+                _logger.LogInformation(
+                    "Audit log retention cleanup completed. Deleted {Count} audit log entries",
+                    deletedAuditCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error running audit log retention cleanup");
             }
         }
     }

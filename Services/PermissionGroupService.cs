@@ -102,6 +102,23 @@ namespace knkwebapi_v2.Services
             return _mapper.Map<PagedResultDto<PermissionGroupListDto>>(result);
         }
 
+        public async Task<IEnumerable<ExpiringMembershipDto>> GetExpiringMembershipsAsync(int groupId, int withinDays)
+        {
+            if (groupId <= 0) throw new ArgumentException("Invalid group id.", nameof(groupId));
+            if (withinDays <= 0) throw new ArgumentException("withinDays must be positive.", nameof(withinDays));
+            var group = await _repo.GetByIdAsync(groupId);
+            if (group == null) throw new KeyNotFoundException($"PermissionGroup with id {groupId} not found.");
+
+            var memberships = await _repo.GetExpiringMembershipsAsync(groupId, withinDays, DateTime.UtcNow);
+            return memberships.Select(m => new ExpiringMembershipDto
+            {
+                UserId = m.UserId,
+                Username = m.User.Username,
+                PermissionGroupId = m.PermissionGroupId,
+                ExpiresAt = DateTime.SpecifyKind(m.ExpiresAt!.Value, DateTimeKind.Utc)
+            });
+        }
+
         /// <summary>Walks candidateParentId's own ancestor chain to make sure groupId doesn't
         /// appear in it — i.e. that setting groupId.ParentGroupId = candidateParentId wouldn't
         /// close a loop. The resolution engine walks this chain on every permission check, so an

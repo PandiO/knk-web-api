@@ -11,11 +11,17 @@ namespace knkwebapi_v2.Services
         Task<UserDto?> GetByUuidAsync(string uuid);
         Task<UserDto?> GetByUsernameAsync(string username);
         Task<UserDto> CreateAsync(UserCreateDto user);
-        Task UpdateAsync(int id, UserDto user);
+        Task UpdateAsync(int id, UserDto user, int? actorUserId = null);
         Task UpdateCoinsAsync(int id, int coins);
         Task UpdateCoinsByUuidAsync(string uuid, int coins);
         Task UpdateGatePassThroughMethodAsync(int id, GatePassThroughMethod method);
-        Task UpdateActiveModeAsync(int id, ActiveMode mode);
+        Task UpdateActiveModeAsync(int id, ActiveMode mode, int? actorUserId = null);
+
+        /// <summary>Sets IsOnline and stamps LastSeenAt=UtcNow (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3).</summary>
+        Task UpdatePresenceAsync(int id, bool isOnline);
+
+        /// <summary>Moderation search: users in a given PermissionGroup, optionally narrowed to currently-online ones.</summary>
+        Task<IEnumerable<UserListDto>> SearchByGroupAsync(int groupId, bool? onlineOnly = null);
         Task DeleteAsync(int id);
         Task<PagedResultDto<UserListDto>> SearchAsync(PagedQueryDto query);
 
@@ -85,7 +91,12 @@ namespace knkwebapi_v2.Services
         /// <param name="experienceDelta">Experience change (can be negative)</param>
         /// <param name="reason">Reason for balance change (required for audit)</param>
         /// <param name="metadata">Optional metadata for audit trail</param>
-        Task AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null);
+        Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null);
+
+        /// <summary>Rebuilds v1's FreezeCommands (a dead no-op stub in v1 — see /freeze command
+        /// javadoc in knk-plugin). Works on offline targets: writes through immediately, and the
+        /// plugin restores/enforces the state on the target's next join.</summary>
+        Task SetFrozenAsync(int userId, bool frozen, string? reason, int? actorUserId = null);
 
         // ===== NEW METHODS: LINK CODES =====
         /// <summary>

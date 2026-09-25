@@ -93,6 +93,11 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<KitClaim> KitClaims { get; set; } = null!;
     public virtual DbSet<KitPurchase> KitPurchases { get; set; } = null!;
 
+    public virtual DbSet<AuditLogEntry> AuditLogEntries { get; set; } = null!;
+
+    // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
+    public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -183,7 +188,8 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("title_brackets");
 
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.MaleName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.FemaleName).IsRequired().HasMaxLength(100);
 
             // Brackets are resolved by "highest MinExperience <= user's XP" — each threshold
             // must be distinct or resolution would be ambiguous.
@@ -961,6 +967,15 @@ public partial class KnKDbContext : DbContext
                 .HasMaxLength(64);
         });
 
+        modelBuilder.Entity<AuditLogRetentionConfiguration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("audit_log_retention_configurations");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(64);
+        });
+
         modelBuilder.Entity<GameSettings>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -1279,6 +1294,24 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => new { e.MenuItemTemplateId, e.SortOrder })
                 .HasDatabaseName("IX_ConditionBinding_MenuItemTemplateId_SortOrder");
             entity.HasIndex(e => e.ActionBindingId);
+        });
+
+        modelBuilder.Entity<AuditLogEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("audit_log_entries");
+
+            entity.Property(e => e.Action)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(32);
+
+            entity.Property(e => e.Details).HasColumnType("longtext");
+
+            // The read path (GET /api/audit-log) always filters by one of these plus orders by
+            // Timestamp descending — see DESIGN.md §4/IMPLEMENTATION_PLAN.md Phase 2.
+            entity.HasIndex(e => new { e.TargetUserId, e.Timestamp });
+            entity.HasIndex(e => new { e.ActorUserId, e.Timestamp });
         });
 
         OnModelCreatingPartial(modelBuilder);

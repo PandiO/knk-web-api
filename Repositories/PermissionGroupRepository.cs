@@ -29,6 +29,11 @@ namespace knkwebapi_v2.Repositories
                 .FirstOrDefaultAsync(g => g.Id == id);
         }
 
+        public async Task<PermissionGroup?> GetByNameAsync(string name)
+        {
+            return await _context.PermissionGroups.FirstOrDefaultAsync(g => g.Name == name);
+        }
+
         public async Task AddAsync(PermissionGroup group)
         {
             await _context.PermissionGroups.AddAsync(group);
@@ -167,6 +172,19 @@ namespace knkwebapi_v2.Repositories
                 .OrderByDescending(g => g.Weight)
                 .ThenBy(g => g.Id)
                 .ToList();
+        }
+
+        public async Task<List<UserPermissionGroup>> GetExpiringMembershipsAsync(int groupId, int withinDays, DateTime asOf)
+        {
+            var cutoff = asOf.AddDays(withinDays);
+            return await _context.UserPermissionGroups
+                .Include(m => m.User)
+                .Where(m => m.PermissionGroupId == groupId
+                    && m.ExpiresAt != null
+                    && m.ExpiresAt > asOf
+                    && m.ExpiresAt <= cutoff)
+                .OrderBy(m => m.ExpiresAt)
+                .ToListAsync();
         }
     }
 }

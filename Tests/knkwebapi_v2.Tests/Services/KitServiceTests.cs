@@ -82,11 +82,11 @@ public class KitServiceTests
     {
         var brackets = new List<TitleBracket>
         {
-            new() { Id = 1, Name = "Novice", MinExperience = 0 },
-            new() { Id = 2, Name = "Knight", MinExperience = 100 }
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Knight", FemaleName = "Knight", MinExperience = 100 }
         };
         _titleBracketRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(brackets);
-        _titleService.Setup(s => s.ResolveAsync(0)).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Novice" });
+        _titleService.Setup(s => s.ResolveAsync(0, It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Novice" });
 
         var user = new User { Id = 2, Username = "bob", ExperiencePoints = 0 };
         var kit = PlainKit(); kit.MinTitleBracketId = 2;
@@ -103,11 +103,11 @@ public class KitServiceTests
     {
         var brackets = new List<TitleBracket>
         {
-            new() { Id = 1, Name = "Novice", MinExperience = 0 },
-            new() { Id = 2, Name = "Knight", MinExperience = 100 }
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Knight", FemaleName = "Knight", MinExperience = 100 }
         };
         _titleBracketRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(brackets);
-        _titleService.Setup(s => s.ResolveAsync(150)).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 2, TitleName = "Knight" });
+        _titleService.Setup(s => s.ResolveAsync(150, It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 2, TitleName = "Knight" });
 
         var user = new User { Id = 3, Username = "carl", ExperiencePoints = 150 };
         var kit = PlainKit(); kit.MinTitleBracketId = 2;
@@ -191,9 +191,9 @@ public class KitServiceTests
     [Fact]
     public async Task ClaimKitAsync_AllThreeGates_AllPass_Succeeds()
     {
-        var brackets = new List<TitleBracket> { new() { Id = 1, Name = "Knight", MinExperience = 0 } };
+        var brackets = new List<TitleBracket> { new() { Id = 1, MaleName = "Knight", FemaleName = "Knight", MinExperience = 0 } };
         _titleBracketRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(brackets);
-        _titleService.Setup(s => s.ResolveAsync(0)).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Knight" });
+        _titleService.Setup(s => s.ResolveAsync(0, It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Knight" });
 
         var user = new User { Id = 9, Username = "iris" };
         var kit = PlainKit();
@@ -216,9 +216,9 @@ public class KitServiceTests
     [Fact]
     public async Task ClaimKitAsync_AllThreeGates_OneFails_Throws()
     {
-        var brackets = new List<TitleBracket> { new() { Id = 1, Name = "Knight", MinExperience = 0 } };
+        var brackets = new List<TitleBracket> { new() { Id = 1, MaleName = "Knight", FemaleName = "Knight", MinExperience = 0 } };
         _titleBracketRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(brackets);
-        _titleService.Setup(s => s.ResolveAsync(0)).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Knight" });
+        _titleService.Setup(s => s.ResolveAsync(0, It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Knight" });
 
         var user = new User { Id = 10, Username = "jack" };
         var kit = PlainKit();
@@ -462,11 +462,11 @@ public class KitServiceTests
     {
         var brackets = new List<TitleBracket>
         {
-            new() { Id = 1, Name = "Novice", MinExperience = 0 },
-            new() { Id = 2, Name = "Knight", MinExperience = 100 }
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Knight", FemaleName = "Knight", MinExperience = 100 }
         };
         _titleBracketRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(brackets);
-        _titleService.Setup(s => s.ResolveAsync(0)).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Novice" });
+        _titleService.Setup(s => s.ResolveAsync(0, It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Novice" });
 
         var user = new User { Id = 25, Username = "yuki", ExperiencePoints = 0 };
         var gatedKit = PlainKit(100);

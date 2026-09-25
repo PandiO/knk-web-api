@@ -24,11 +24,11 @@ public class TitleServiceTests
 
     private static List<TitleBracket> DefaultBrackets() => new()
     {
-        new TitleBracket { Id = 1, Name = "Novice", MinExperience = 0 },
-        new TitleBracket { Id = 2, Name = "Apprentice", MinExperience = 5 },
-        new TitleBracket { Id = 3, Name = "Journeyman", MinExperience = 10 },
-        new TitleBracket { Id = 4, Name = "Veteran", MinExperience = 12 },
-        new TitleBracket { Id = 5, Name = "Master", MinExperience = 15 }
+        new TitleBracket { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+        new TitleBracket { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 5 },
+        new TitleBracket { Id = 3, MaleName = "Journeyman", FemaleName = "Journeyman", MinExperience = 10 },
+        new TitleBracket { Id = 4, MaleName = "Veteran", FemaleName = "Veteran", MinExperience = 12 },
+        new TitleBracket { Id = 5, MaleName = "Master", FemaleName = "Master", MinExperience = 15 }
     };
 
     [Fact]
@@ -103,14 +103,40 @@ public class TitleServiceTests
     }
 
     [Fact]
+    public async Task ResolveAsync_BelowTopBracket_ExposesNextBracket()
+    {
+        _mockRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(DefaultBrackets());
+
+        var result = await _service.ResolveAsync(6); // Apprentice (id 2), next is Journeyman (id 3)
+
+        Assert.Equal(2, result.TitleBracketId);
+        Assert.Equal(3, result.NextTitleBracketId);
+        Assert.Equal("Journeyman", result.NextTitleName);
+        Assert.Equal(10, result.NextTitleMinExperience);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_AtTopBracket_NextBracketIsNull()
+    {
+        _mockRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(DefaultBrackets());
+
+        var result = await _service.ResolveAsync(37); // past Master (id 5), the top bracket
+
+        Assert.Equal(5, result.TitleBracketId);
+        Assert.Null(result.NextTitleBracketId);
+        Assert.Null(result.NextTitleName);
+        Assert.Null(result.NextTitleMinExperience);
+    }
+
+    [Fact]
     public async Task ResolveAsync_XpBelowLowestBracket_FallsBackToLowestBracket()
     {
         // Guards against a misconfigured seed (no bracket at MinExperience 0) rather than
         // returning no title at all for a brand-new user.
         var brackets = new List<TitleBracket>
         {
-            new() { Id = 10, Name = "StartsAtFive", MinExperience = 5 },
-            new() { Id = 11, Name = "Ten", MinExperience = 10 }
+            new() { Id = 10, MaleName = "StartsAtFive", FemaleName = "StartsAtFive", MinExperience = 5 },
+            new() { Id = 11, MaleName = "Ten", FemaleName = "Ten", MinExperience = 10 }
         };
         _mockRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(brackets);
 

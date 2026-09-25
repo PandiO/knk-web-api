@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
@@ -21,6 +23,9 @@ namespace knkwebapi_v2.Services
         private readonly ILinkCodeService _linkCodeService;
         private readonly ITitleService _titleService;
         private readonly IUserPermissionGroupService _membershipService;
+        private readonly IAuditLogService _auditLogService;
+        private readonly IPermissionGroupRepository _permissionGroupRepo;
+        private readonly ILogger<UserService> _logger;
 
         public UserService(
             IUserRepository repo,
@@ -28,7 +33,10 @@ namespace knkwebapi_v2.Services
             IPasswordService passwordService,
             ILinkCodeService linkCodeService,
             ITitleService titleService,
-            IUserPermissionGroupService membershipService)
+            IUserPermissionGroupService membershipService,
+            IAuditLogService auditLogService,
+            IPermissionGroupRepository permissionGroupRepo,
+            ILogger<UserService> logger)
         {
             _repo = repo;
             _mapper = mapper;
@@ -36,7 +44,18 @@ namespace knkwebapi_v2.Services
             _linkCodeService = linkCodeService;
             _titleService = titleService;
             _membershipService = membershipService;
+            _auditLogService = auditLogService;
+            _permissionGroupRepo = permissionGroupRepo;
+            _logger = logger;
         }
+
+        /// <summary>
+        /// Name of the standard group every account is assigned to on creation (developer
+        /// request, 2026-09-25 — "the standard group a player should be put in on first
+        /// join/account creation"), seeded by migration SeedDefaultPermissionGroup. Matched by
+        /// name rather than a hardcoded id since the seed migration lets MySQL assign the id.
+        /// </summary>
+        public const string DefaultGroupName = "Default";
 
         /// <summary>
         /// Maps a User to a UserDto and fills in the title fields resolved from its current
@@ -48,7 +67,7 @@ namespace knkwebapi_v2.Services
         private async Task<UserDto> MapToUserDtoAsync(User user)
         {
             var dto = _mapper.Map<UserDto>(user);
-            var title = await _titleService.ResolveAsync(user.ExperiencePoints);
+            var title = await _titleService.ResolveAsync(user.ExperiencePoints, user.Gender);
             dto.TitleBracketId = title.TitleBracketId;
             dto.TitleName = title.TitleName;
             dto.PrestigeExperience = title.PrestigeExperience;
@@ -123,10 +142,36 @@ namespace knkwebapi_v2.Services
                 : AccountCreationMethod.WebApp;
             
             await _repo.AddUserAsync(user);
+            await AssignDefaultGroupAsync(user.Id);
             return await MapToUserDtoAsync(user);
         }
 
-        public async Task UpdateAsync(int id, UserDto userDto)
+        /// <summary>
+        /// Assigns every newly created account to the standard "Default" group (developer
+        /// request, 2026-09-25) — covers both the web-first flow here and the Minecraft-first
+        /// flow, since knk-plugin's user creation also goes through this same CreateAsync via
+        /// POST /api/Users. Best-effort: a missing "Default" seed (e.g. this migration hasn't
+        /// run yet on an older database) must not block account creation, so this only logs a
+        /// warning rather than throwing.
+        /// </summary>
+        private async Task AssignDefaultGroupAsync(int userId)
+        {
+            var defaultGroup = await _permissionGroupRepo.GetByNameAsync(DefaultGroupName);
+            if (defaultGroup == null)
+            {
+                _logger.LogWarning("\"{DefaultGroupName}\" PermissionGroup not found — new user {UserId} was not assigned a default group. Run the SeedDefaultPermissionGroup migration.", DefaultGroupName, userId);
+                return;
+            }
+
+            await _membershipService.UpsertAsync(new UpsertUserPermissionGroupDto
+            {
+                UserId = userId,
+                PermissionGroupId = defaultGroup.Id,
+                ExpiresAt = null
+            });
+        }
+
+        public async Task UpdateAsync(int id, UserDto userDto, int? actorUserId = null)
         {
             if (userDto == null) throw new ArgumentNullException(nameof(userDto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
@@ -138,6 +183,19 @@ namespace knkwebapi_v2.Services
 
             var originalUuid = existing.Uuid;
             var originalCreatedAt = existing.CreatedAt;
+
+            // Real gap found while retrofitting audit hooks (docs/specs/user-management/
+            // IMPLEMENTATION_PLAN.md §0): unlike ActiveMode/LastSalaryPayoutAt (already
+            // opt.Ignore()'d in UserMappingProfile precisely so a generic edit can't silently
+            // reset them), Coins/Gems/ExperiencePoints/PersonalSalaryMultiplier ARE mapped here,
+            // so this generic FormWizard path is a second, previously-unaudited write route to
+            // the exact fields AdjustBalancesAsync/PayOutAsync now audit. Captured before the
+            // mapper overwrites them so the diff can be logged after saving.
+            var previousCoins = existing.Coins;
+            var previousGems = existing.Gems;
+            var previousExperience = existing.ExperiencePoints;
+            var previousMultiplier = existing.PersonalSalaryMultiplier;
+            var previousTitle = await _titleService.ResolveAsync(previousExperience, existing.Gender);
 
             // Apply all editable UserDto fields onto the tracked entity. The mapping profile
             // (UserMappingProfile: UserDto -> User) already ignores fields that must never be
@@ -158,6 +216,36 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.UpdateUserAsync(existing);
+
+            if (existing.Coins != previousCoins || existing.Gems != previousGems ||
+                existing.ExperiencePoints != previousExperience || existing.PersonalSalaryMultiplier != previousMultiplier)
+            {
+                await _auditLogService.RecordAsync(actorUserId, id, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
+                {
+                    source = "GenericProfileEdit",
+                    coinsDelta = existing.Coins - previousCoins,
+                    gemsDelta = existing.Gems - previousGems,
+                    experienceDelta = existing.ExperiencePoints - previousExperience,
+                    previousPersonalSalaryMultiplier = previousMultiplier,
+                    newPersonalSalaryMultiplier = existing.PersonalSalaryMultiplier
+                }));
+
+                if (existing.ExperiencePoints != previousExperience)
+                {
+                    var newTitle = await _titleService.ResolveAsync(existing.ExperiencePoints, existing.Gender);
+                    if (newTitle.TitleBracketId != previousTitle.TitleBracketId)
+                    {
+                        await _auditLogService.RecordAsync(actorUserId, id, AuditAction.TitleChanged, JsonSerializer.Serialize(new
+                        {
+                            fromTitleBracketId = previousTitle.TitleBracketId,
+                            fromTitleName = previousTitle.TitleName,
+                            toTitleBracketId = newTitle.TitleBracketId,
+                            toTitleName = newTitle.TitleName,
+                            direction = existing.ExperiencePoints > previousExperience ? "promotion" : "demotion"
+                        }));
+                    }
+                }
+            }
         }
 
         public async Task UpdateCoinsAsync(int id, int coins)
@@ -187,14 +275,60 @@ namespace knkwebapi_v2.Services
             await _repo.UpdateGatePassThroughMethodAsync(id, method);
         }
 
-        public async Task UpdateActiveModeAsync(int id, ActiveMode mode)
+        public async Task UpdateActiveModeAsync(int id, ActiveMode mode, int? actorUserId = null)
         {
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             if (!Enum.IsDefined(typeof(ActiveMode), mode)) throw new ArgumentException($"Unknown active mode '{mode}'.", nameof(mode));
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"User with id {id} not found.");
 
+            var previousMode = existing.ActiveMode;
             await _repo.UpdateActiveModeAsync(id, mode);
+
+            if (previousMode != mode)
+            {
+                await _auditLogService.RecordAsync(actorUserId, id, AuditAction.VanishToggled,
+                    $"{{\"from\":\"{previousMode}\",\"to\":\"{mode}\"}}");
+            }
+        }
+
+        public async Task UpdatePresenceAsync(int id, bool isOnline)
+        {
+            if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
+            var existing = await _repo.GetByIdAsync(id);
+            if (existing == null) throw new KeyNotFoundException($"User with id {id} not found.");
+
+            // Not audit-logged: this is a passive system signal from PlayerListener's
+            // join/quit hooks, not an admin action (docs/specs/user-management/DESIGN.md §4
+            // scopes the audit trail to admin/system *mutations affecting a player*, e.g. balance
+            // or group changes — presence pings would just be noise at server-restart volume).
+            await _repo.UpdatePresenceAsync(id, isOnline);
+        }
+
+        public async Task SetFrozenAsync(int userId, bool frozen, string? reason, int? actorUserId = null)
+        {
+            if (userId <= 0) throw new ArgumentException("Invalid user ID.", nameof(userId));
+            if (frozen && string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("A reason is required to freeze a player.", nameof(reason));
+
+            var user = await _repo.GetByIdAsync(userId);
+            if (user == null) throw new KeyNotFoundException($"User with ID {userId} not found.");
+
+            user.IsFrozen = frozen;
+            user.FrozenReason = frozen ? reason : null;
+            user.FrozenByUserId = frozen ? actorUserId : null;
+            user.FrozenAt = frozen ? DateTime.UtcNow : null;
+            await _repo.UpdateUserAsync(user);
+
+            await _auditLogService.RecordAsync(actorUserId, userId, frozen ? AuditAction.PlayerFrozen : AuditAction.PlayerUnfrozen,
+                JsonSerializer.Serialize(new { reason }));
+        }
+
+        public async Task<IEnumerable<UserListDto>> SearchByGroupAsync(int groupId, bool? onlineOnly = null)
+        {
+            if (groupId <= 0) throw new ArgumentException("Invalid group id.", nameof(groupId));
+            var users = await _repo.SearchByGroupAsync(groupId, onlineOnly);
+            return _mapper.Map<IEnumerable<UserListDto>>(users);
         }
 
         public async Task DeleteAsync(int id)
@@ -478,7 +612,7 @@ namespace knkwebapi_v2.Services
         // ===== NEW METHODS: BALANCES (COINS, GEMS, XP) =====
 
         /// <inheritdoc/>
-        public async Task AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null)
+        public async Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null)
         {
             if (userId <= 0)
             {
@@ -517,15 +651,113 @@ namespace knkwebapi_v2.Services
                 throw new InvalidOperationException($"Insufficient experience points. Current: {user.ExperiencePoints}, Attempted change: {experienceDelta}");
             }
 
-            // Update balances
+            // Resolved before the mutation so a resulting title change can be detected, and so the
+            // consolidation loop below has every bracket to walk between old and new XP.
+            var originalExperience = user.ExperiencePoints;
+            var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
+            TitleBracket? previousBracket = brackets != null && brackets.Count > 0
+                ? (brackets.LastOrDefault(b => b.MinExperience <= originalExperience) ?? brackets[0])
+                : null;
+
             user.Coins = newCoins;
             user.Gems = newGems;
             user.ExperiencePoints = newExperience;
 
+            TitleChangeResultDto? titleChange = null;
+
+            // Consolidate every bracket crossed by this single adjustment into one grant + one
+            // reported change, instead of firing once per tier the way v1's TitleChangeEvents
+            // loop did (setPromoteLoop/setDemoteLoop) — a developer-confirmed behavior NOT to
+            // repeat. ExpBonus can itself push into a further bracket, so this loops until
+            // resolution stabilizes, mirroring v1's cascading re-check but accumulating instead
+            // of firing per-iteration effects.
+            if (previousBracket != null && brackets != null)
+            {
+                var direction = newExperience > originalExperience ? "promotion" : "demotion";
+                var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
+
+                if (currentBracket.Id != previousBracket.Id)
+                {
+                    var crossed = new List<TitleBracket>();
+                    int coinBonusTotal = 0, gemBonusTotal = 0, expBonusTotal = 0;
+
+                    if (direction == "promotion")
+                    {
+                        // Walk every bracket strictly above previousBracket up to (and possibly
+                        // past, if ExpBonus pushes further) currentBracket, accumulating rewards.
+                        var idx = brackets.FindIndex(b => b.Id == previousBracket.Id) + 1;
+                        while (idx < brackets.Count && brackets[idx].MinExperience <= user.ExperiencePoints)
+                        {
+                            var tier = brackets[idx];
+                            crossed.Add(tier);
+                            coinBonusTotal += tier.CoinBonus;
+                            gemBonusTotal += tier.GemBonus;
+                            expBonusTotal += tier.ExpBonus;
+                            user.ExperiencePoints += tier.ExpBonus; // may unlock further brackets
+                            idx++;
+                        }
+                        user.Coins += coinBonusTotal;
+                        user.Gems += gemBonusTotal;
+                        currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
+                    }
+                    // Demotion never claws back currency (matches v1's userDemotion, which only
+                    // ever removed structural slots/skills — neither exists in v3), so no bonus
+                    // accumulation happens on the way down.
+
+                    titleChange = new TitleChangeResultDto
+                    {
+                        Direction = direction,
+                        FromTitleBracketId = previousBracket.Id,
+                        FromTitleName = previousBracket.NameFor(user.Gender),
+                        ToTitleBracketId = currentBracket.Id,
+                        ToTitleName = currentBracket.NameFor(user.Gender),
+                        CrossedTitles = crossed.Select(t => new TitleCrossingDto { TitleBracketId = t.Id, TitleName = t.NameFor(user.Gender) }).ToList(),
+                        CoinBonusGranted = coinBonusTotal,
+                        GemBonusGranted = gemBonusTotal,
+                        ExpBonusGranted = expBonusTotal
+                    };
+                }
+            }
+
             await _repo.UpdateUserAsync(user);
 
-            // TODO: Log to audit trail (Phase 4 - implement audit logging)
-            // Log balance change with reason and metadata
+            // docs/specs/user-management/IMPLEMENTATION_PLAN.md §0: every user-features mutation
+            // threads in an AuditLogEntry write as it's built, rather than user-management's
+            // Phase 2 retrofitting it later. This closes user-features IMPLEMENTATION_PLAN.md §6
+            // carried-forward item 4's "AdjustBalancesAsync still needs retrofitting".
+            await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
+            {
+                coinsDelta,
+                gemsDelta,
+                experienceDelta,
+                reason,
+                metadata,
+                titleBonusCoins = titleChange?.CoinBonusGranted ?? 0,
+                titleBonusGems = titleChange?.GemBonusGranted ?? 0,
+                titleBonusExp = titleChange?.ExpBonusGranted ?? 0
+            }));
+
+            if (titleChange != null)
+            {
+                // One consolidated audit entry for the whole crossing, not one per tier.
+                await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.TitleChanged, JsonSerializer.Serialize(new
+                {
+                    fromTitleBracketId = titleChange.FromTitleBracketId,
+                    fromTitleName = titleChange.FromTitleName,
+                    toTitleBracketId = titleChange.ToTitleBracketId,
+                    toTitleName = titleChange.ToTitleName,
+                    crossedTitles = titleChange.CrossedTitles.Select(t => t.TitleName),
+                    direction = titleChange.Direction
+                }));
+            }
+
+            return new BalanceAdjustmentResultDto
+            {
+                NewCoins = user.Coins,
+                NewGems = user.Gems,
+                NewExperiencePoints = user.ExperiencePoints,
+                TitleChange = titleChange
+            };
         }
 
         // ===== NEW METHODS: LINK CODES =====

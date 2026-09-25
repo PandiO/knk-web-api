@@ -18,6 +18,12 @@ namespace knkwebapi_v2.Repositories
         Task DeleteUserAsync(int id);
         Task<PagedResult<User>> SearchAsync(PagedQuery query);
 
+        /// <summary>Sets IsOnline and stamps LastSeenAt=UtcNow (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3).</summary>
+        Task UpdatePresenceAsync(int id, bool isOnline);
+
+        /// <summary>Moderation search: users in a given PermissionGroup, optionally narrowed to currently-online ones.</summary>
+        Task<IEnumerable<User>> SearchByGroupAsync(int groupId, bool? onlineOnly = null);
+
         // ===== NEW METHODS: UNIQUE CONSTRAINT CHECKS =====
         /// <summary>
         /// Check if a username is already taken (case-insensitive).

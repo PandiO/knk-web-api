@@ -339,7 +339,7 @@ namespace knkwebapi_v2.Services
                 var required = brackets.FirstOrDefault(b => b.Id == kit.MinTitleBracketId.Value);
                 if (required != null)
                 {
-                    var resolution = await _titleService.ResolveAsync(user.ExperiencePoints);
+                    var resolution = await _titleService.ResolveAsync(user.ExperiencePoints, user.Gender);
                     var current = resolution.TitleBracketId.HasValue
                         ? brackets.FirstOrDefault(b => b.Id == resolution.TitleBracketId.Value)
                         : null;
@@ -348,7 +348,7 @@ namespace knkwebapi_v2.Services
                     // so comparing MinExperience directly is comparing rank.
                     if (current == null || current.MinExperience < required.MinExperience)
                     {
-                        return (false, $"Requires the '{required.Name}' title or higher.");
+                        return (false, $"Requires the '{required.NameFor(user.Gender)}' title or higher.");
                     }
                 }
             }

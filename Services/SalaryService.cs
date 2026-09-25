@@ -25,15 +25,18 @@ namespace knkwebapi_v2.Services
         private readonly IUserRepository _userRepo;
         private readonly IUserPermissionGroupRepository _membershipRepo;
         private readonly ISalaryConfigurationService _configService;
+        private readonly IAuditLogService _auditLogService;
 
         public SalaryService(
             IUserRepository userRepo,
             IUserPermissionGroupRepository membershipRepo,
-            ISalaryConfigurationService configService)
+            ISalaryConfigurationService configService,
+            IAuditLogService auditLogService)
         {
             _userRepo = userRepo;
             _membershipRepo = membershipRepo;
             _configService = configService;
+            _auditLogService = auditLogService;
         }
 
         public async Task<SalaryPayoutResultDto> PayOutAsync(int userId)
@@ -74,6 +77,17 @@ namespace knkwebapi_v2.Services
             user.LastSalaryPayoutAt = now;
             await _userRepo.UpdateUserAsync(user);
 
+            // System-initiated (actorUserId null) — closes user-features IMPLEMENTATION_PLAN.md
+            // §6 carried-forward item 4's "PayOutAsync's coin mutation has no audit write hook".
+            await _auditLogService.RecordAsync(null, userId, Enums.AuditAction.SalaryPayout, System.Text.Json.JsonSerializer.Serialize(new
+            {
+                amountPaid,
+                hoursCovered,
+                globalMultiplier = config.GlobalMultiplier,
+                personalMultiplier = user.PersonalSalaryMultiplier,
+                rankMultiplier
+            }));
+
             return new SalaryPayoutResultDto
             {
                 Paid = true,
@@ -86,6 +100,12 @@ namespace knkwebapi_v2.Services
                 LastSalaryPayoutAt = now,
                 NextEligibleAt = now + MinimumPayoutInterval
             };
+        }
+
+        public Task<decimal> GetCurrentRankMultiplierAsync(int userId)
+        {
+            if (userId <= 0) throw new ArgumentException("Invalid user id.", nameof(userId));
+            return ComputeRankMultiplierAsync(userId, DateTime.UtcNow);
         }
 
         /// <summary>

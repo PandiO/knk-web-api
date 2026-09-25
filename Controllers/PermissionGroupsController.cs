@@ -100,5 +100,27 @@ namespace KnKWebAPI.Controllers
             var result = await _service.SearchAsync(query);
             return Ok(result);
         }
+
+        /// <summary>
+        /// "Premium expiring soon" moderation view (docs/specs/user-management/IMPLEMENTATION_PLAN.md
+        /// Phase 3) — memberships in this group expiring within the next withinDays days.
+        /// </summary>
+        [HttpGet("{id:int}/expiring-memberships")]
+        public async Task<ActionResult<IEnumerable<ExpiringMembershipDto>>> GetExpiringMemberships(int id, [FromQuery] int withinDays = 7)
+        {
+            try
+            {
+                var result = await _service.GetExpiringMembershipsAsync(id, withinDays);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }
