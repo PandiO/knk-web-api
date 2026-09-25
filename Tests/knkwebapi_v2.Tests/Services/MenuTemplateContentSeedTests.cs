@@ -59,6 +59,10 @@ public class MenuTemplateContentSeedTests
         MenuTemplateSeed.ProfileMenuKey,
         MenuTemplateSeed.ItemsCatalogMenuKey,
         MenuTemplateSeed.PremiumTiersMenuKey,
+        MenuTemplateSeed.UserManagerMenuKey,
+        MenuTemplateSeed.UserManagerEditMenuKey,
+        MenuTemplateSeed.UserManagerTitlesMenuKey,
+        MenuTemplateSeed.UserManagerGroupsMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
@@ -216,6 +220,82 @@ public class MenuTemplateContentSeedTests
         var tiers = premium.Sections.Single(s => s.Name == "Tiers");
         Assert.Equal("premium.tiers", tiers.ContentSourceId);
         Assert.Empty(Assert.Single(tiers.Items, i => i.IsRowTemplate).Actions);
+    }
+
+    [Fact]
+    public async Task UserManager_EverySectionNeedsTheManageNode_AndRowsOpenTheEditorWithStepDefaults()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var managerKeys = new[]
+        {
+            MenuTemplateSeed.UserManagerMenuKey, MenuTemplateSeed.UserManagerEditMenuKey,
+            MenuTemplateSeed.UserManagerTitlesMenuKey, MenuTemplateSeed.UserManagerGroupsMenuKey,
+        };
+        Assert.All(managerKeys.SelectMany(k => Single(seeded, k).Sections),
+            s => Assert.Equal(MenuTemplateSeed.UserManagePermission, s.VisibilityPermission));
+
+        var row = Single(seeded, MenuTemplateSeed.UserManagerMenuKey).Sections.Single(s => s.Name == "Players")
+            .Items.Single(i => i.IsRowTemplate);
+        using var open = JsonDocument.Parse(Assert.Single(row.Actions).ParamsJson);
+        Assert.Equal(MenuTemplateSeed.UserManagerEditMenuKey, open.RootElement.GetProperty("key").GetString());
+        Assert.Equal("$row.getUserId$", open.RootElement.GetProperty("ctx.userId").GetString());
+        Assert.Equal("100", open.RootElement.GetProperty("state.pm.coinStep").GetString());
+        Assert.Equal("10", open.RootElement.GetProperty("state.pm.gemStep").GetString());
+        Assert.Equal("100", open.RootElement.GetProperty("state.pm.xpStep").GetString());
+    }
+
+    [Fact]
+    public async Task UserManagerEdit_SteppersAdjustByTheSessionStepAndEveryEditIsGated()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var edit = Single(seeded, MenuTemplateSeed.UserManagerEditMenuKey);
+
+        var minus = ItemAt(edit, 10);
+        Assert.Equal("knk.admin.user.coins", minus.ActionPermission);
+        Assert.Contains("\"delta\":\"-$state.pm.coinStep$\"", Assert.Single(minus.Actions).ParamsJson);
+        Assert.Contains("\"delta\":\"$state.pm.coinStep$\"", Assert.Single(ItemAt(edit, 12).Actions).ParamsJson);
+        var value = ItemAt(edit, 11);
+        Assert.Equal("menu.state.cycle", Assert.Single(value.Actions).ActionTypeId);
+        Assert.Contains("1,10,100,1000,10000", value.Actions[0].ParamsJson);
+        Assert.Equal("knk.admin.user.xp", ItemAt(edit, 28).ActionPermission);
+
+        // Every mutating item carries the outranks Click condition.
+        foreach (var slot in new[] { 10, 12, 19, 21, 28, 30, 16, 23, 24, 32, 33 })
+            Assert.Contains(ItemAt(edit, slot).Conditions, c => c.ConditionTypeId == "users.outranks-target" && c.Phase == MenuConditionPhase.Click);
+
+        foreach (var (slot, action) in new[] { (32, "users.kick"), (33, "users.ban") })
+        {
+            var request = Assert.Single(ItemAt(edit, slot).Actions);
+            Assert.Equal("menu.confirm.request", request.ActionTypeId);
+            using var parsed = JsonDocument.Parse(request.ParamsJson);
+            Assert.Equal(action, parsed.RootElement.GetProperty("actionTypeId").GetString());
+        }
+        var freeze = ItemAt(edit, 24);
+        Assert.Equal(2, freeze.Actions.Count);
+        Assert.All(freeze.Actions, a => Assert.Contains(a.Conditions, c => c.ConditionTypeId == "permission-node"));
+        Assert.Equal("users.pending", Assert.Single(ItemAt(edit, 48).Conditions).ConditionTypeId);
+        Assert.Equal("users.target", edit.Sections.Single(s => s.Name == "Target").ContentSourceId);
+    }
+
+    [Fact]
+    public async Task UserManagerSubMenus_ConfirmTitleChangesAndGroupRemovals()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+
+        var titleRow = Single(seeded, MenuTemplateSeed.UserManagerTitlesMenuKey).Sections.Single(s => s.Name == "Titles")
+            .Items.Single(i => i.IsRowTemplate);
+        using (var parsed = JsonDocument.Parse(Assert.Single(titleRow.Actions).ParamsJson))
+            Assert.Equal("users.set-title", parsed.RootElement.GetProperty("actionTypeId").GetString());
+        Assert.Equal("$row.getPickerDisplayMode$", Binding(titleRow, "DisplayMode"));
+
+        var groupRow = Single(seeded, MenuTemplateSeed.UserManagerGroupsMenuKey).Sections.Single(s => s.Name == "Groups")
+            .Items.Single(i => i.IsRowTemplate);
+        Assert.Equal("users.group", groupRow.Actions.Single(a => a.SortOrder == 0).ActionTypeId);
+        Assert.Equal("menu.confirm.request", groupRow.Actions.Single(a => a.SortOrder == 1).ActionTypeId);
+        Assert.Equal("knk.admin.user.group", groupRow.ActionPermission);
     }
 
     /// <summary>

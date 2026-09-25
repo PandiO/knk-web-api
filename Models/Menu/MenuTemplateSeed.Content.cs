@@ -37,6 +37,10 @@ public static partial class MenuTemplateSeed
         yield return ProfileTemplate();
         yield return ItemsCatalogTemplate();
         yield return PremiumTiersTemplate();
+        yield return UserManagerTemplate();
+        yield return UserManagerEditTemplate();
+        yield return UserManagerTitlesTemplate();
+        yield return UserManagerGroupsTemplate();
     }
 
     /// <summary>
@@ -491,6 +495,500 @@ public static partial class MenuTemplateSeed
                 },
             },
         };
+    }
+
+    // ===== CP8 - Player manager (v1 Online-players Manager + Edit statistics §3.14) =====
+    //
+    // Every section carries VisibilityPermission knk.admin.user.manage (the engine skips a section
+    // the viewer lacks it for); each edit also has its own knk.admin.user.<property>
+    // ActionPermission and the Click condition users.outranks-target, and the plugin's
+    // UserAdminService re-checks both. Step sizes live in session state (engine G1): the online
+    // list opens the editor with state.pm.* defaults, the value items cycle them.
+
+    private const string TargetParams = "{\"userId\":\"$ctx.userId$\",\"name\":\"$ctx.name$\"}";
+    private const string CtxUserIdJson = "\"userId\":\"$ctx.userId$\"";
+
+    private static MenuTemplate UserManagerTemplate()
+    {
+        return new MenuTemplate
+        {
+            Key = UserManagerMenuKey,
+            Name = "&8Player manager",
+            Description = "Online players the viewer outranks (users.online) -> the editor. Content port CP8.",
+            Height = 6,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Header",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items =
+                    {
+                        DemoItem(4, 0,
+                            Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
+                            Bind("Name", "&cOnline players", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Online now: &f$usersManager.getOnlineCount$", VariableRefreshPolicy.OnDirty),
+                            Lore(1, "&7Only players ranked below you are listed")),
+                        BackButton(8, 1),
+                    },
+                }),
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Players",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 1,
+                    DisplaySlot = 9,
+                    Width = 9,
+                    Height = 4,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ContentSourceId = "users.online",
+                    ContentSourceParamsJson = "{}",
+                    Items =
+                    {
+                        PagerButton(45, "&aPrevious page", "menu.page.prev"),
+                        PagerButton(53, "&aNext page", "menu.page.next"),
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            IsRowTemplate = true,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                Bind("Material", "$row.getMaterial$", VariableRefreshPolicy.OnDirty),
+                                Bind("SkullOwner", "$row.getUuid$", VariableRefreshPolicy.OnDirty),
+                                Bind("DisplayMode", "$row.getDisplayMode$", VariableRefreshPolicy.OnDirty),
+                                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                                Lore(0, "$row.getLoreLines$", VariableRefreshPolicy.OnDirty),
+                            },
+                            Actions =
+                            {
+                                new ActionBinding
+                                {
+                                    ActionTypeId = "menu.open",
+                                    ParamsJson = "{\"key\":\"" + UserManagerEditMenuKey + "\",\"ctx.userId\":\"$row.getUserId$\","
+                                        + "\"ctx.name\":\"$row.getName$\",\"state.pm.coinStep\":\"100\","
+                                        + "\"state.pm.gemStep\":\"10\",\"state.pm.xpStep\":\"100\"}",
+                                    SortOrder = 0,
+                                },
+                            },
+                        },
+                    },
+                }),
+            },
+        };
+    }
+
+    private static MenuTemplate UserManagerEditTemplate()
+    {
+        return new MenuTemplate
+        {
+            Key = UserManagerEditMenuKey,
+            Name = "&8Edit player",
+            Description = "Steppers for coins/gems/XP, title, groups, mode, salary, freeze, kick, ban for the player in ctx.userId/ctx.name. Content port CP8.",
+            Height = 6,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Target",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 1,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    ContentSourceId = "users.target",
+                    ContentSourceParamsJson = TargetParams,
+                    Items =
+                    {
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            IsRowTemplate = true,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
+                                Bind("SkullOwner", "$row.getName$", VariableRefreshPolicy.OnDirty),
+                                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                                Lore(0, "$row.getSummaryLines$", VariableRefreshPolicy.OnDirty),
+                            },
+                        },
+                    },
+                }),
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Header",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 1,
+                    DisplaySlot = 1,
+                    Width = 8,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items = { BackButton(8, 0) },
+                }),
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Controls",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 2,
+                    DisplaySlot = 9,
+                    Width = 9,
+                    Height = 5,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items =
+                    {
+                        StepperMinus(10, "coins", "pm.coinStep", "coins"),
+                        StepperValue(11, "GOLD_INGOT", "&6Coins: &f$target.getCoins$", "pm.coinStep", "1,10,100,1000,10000"),
+                        StepperPlus(12, "coins", "pm.coinStep", "coins"),
+                        StepperMinus(19, "gems", "pm.gemStep", "gems"),
+                        StepperValue(20, "EMERALD", "&aGems: &f$target.getGems$", "pm.gemStep", "1,10,100,1000"),
+                        StepperPlus(21, "gems", "pm.gemStep", "gems"),
+                        StepperMinus(28, "xp", "pm.xpStep", "XP"),
+                        StepperValue(29, "EXPERIENCE_BOTTLE", "&bExperience: &f$target.getExperience$", "pm.xpStep", "10,100,1000,10000"),
+                        StepperPlus(30, "xp", "pm.xpStep", "XP"),
+
+                        WithActionPermission("knk.admin.user.xp", OpenWithTarget(14, 110, UserManagerTitlesMenuKey,
+                            Bind("Material", "IRON_HELMET", VariableRefreshPolicy.Static),
+                            Bind("Name", "&bTitle: &f$target.getTitleName$", VariableRefreshPolicy.OnDirty),
+                            Lore(0, "&8Click to set a title"))),
+                        WithActionPermission("knk.admin.user.group", OpenWithTarget(15, 111, UserManagerGroupsMenuKey,
+                            Bind("Material", "BOOK", VariableRefreshPolicy.Static),
+                            Bind("Name", "&eGroups", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Premium tier: &f$target.getPremiumTierName$", VariableRefreshPolicy.OnDirty),
+                            Lore(1, "&8Click to add or remove groups"))),
+                        ManagerEdit(16, 112, "knk.admin.user.mode", "users.mode",
+                            "{" + CtxUserIdJson + ",\"mode\":\"$target.getNextMode$\"}",
+                            Bind("Material", "ENDER_EYE", VariableRefreshPolicy.Static),
+                            Bind("Name", "&dMode: &f$target.getMode$", VariableRefreshPolicy.OnDirty),
+                            Lore(0, "&8Click to switch to $target.getNextModeName$", VariableRefreshPolicy.OnDirty)),
+                        ManagerEdit(23, 113, "knk.admin.user.salary", "users.salary-payout", "{" + CtxUserIdJson + "}",
+                            Bind("Material", "CLOCK", VariableRefreshPolicy.Static),
+                            Bind("Name", "&6Pay out salary", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Pays the salary owed since the last payout")),
+                        FreezeToggle(24, 114),
+                        ManagerConfirmed(32, 115, "users.kick", "Kick $target.getName$? Click Confirm or Cancel.",
+                            Bind("Material", "IRON_HORSE_ARMOR", VariableRefreshPolicy.Static),
+                            Bind("Name", "&cKick", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Runs /kick as you (vanilla permission)")),
+                        ManagerConfirmed(33, 116, "users.ban", "Ban $target.getName$? Click Confirm or Cancel.",
+                            Bind("Material", "NETHERITE_AXE", VariableRefreshPolicy.Static),
+                            Bind("Name", "&4Ban", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Runs /ban as you (vanilla permission)")),
+                        ConfirmButton(48, "users.pending", "&7Confirm the action you picked (see chat)"),
+                        CancelButton(50, "users.pending"),
+                    },
+                }),
+            },
+        };
+    }
+
+    private static MenuTemplate UserManagerTitlesTemplate()
+    {
+        var row = new MenuItemTemplate
+        {
+            SortOrder = 0,
+            Amount = 1,
+            IsRowTemplate = true,
+            DisplayMode = MenuDisplayMode.Normal,
+            ActionPermission = "knk.admin.user.xp",
+            VariableBindings =
+            {
+                Bind("Material", "IRON_HELMET", VariableRefreshPolicy.Static),
+                Bind("DisplayMode", "$row.getPickerDisplayMode$", VariableRefreshPolicy.OnDirty),
+                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                Lore(0, "$row.getLoreLines$", VariableRefreshPolicy.OnDirty),
+                Lore(1, "&8Click to set this title", VariableRefreshPolicy.Static),
+            },
+            Actions =
+            {
+                ConfirmRequest("users.set-title", "{" + CtxUserIdJson + ",\"bracketId\":\"$row.getBracketId$\"}",
+                    "Set $ctx.name$'s title to $row.getName$ (XP becomes $row.getMinExperience$)? Click Confirm or Cancel.", 0),
+            },
+        };
+        row.Conditions.Add(OutranksTarget());
+        return new MenuTemplate
+        {
+            Key = UserManagerTitlesMenuKey,
+            Name = "&8Set title",
+            Description = "Pick a title bracket for the player in ctx.userId (users.titles); sets their XP to its minimum. Content port CP8.",
+            Height = 4,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Header",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items =
+                    {
+                        DemoItem(4, 0,
+                            Bind("Material", "IRON_HELMET", VariableRefreshPolicy.Static),
+                            Bind("Name", "&bTitle for &f$target.getName$", VariableRefreshPolicy.OnDirty),
+                            Lore(0, "&7Current: &f$target.getTitleName$", VariableRefreshPolicy.OnDirty),
+                            Lore(1, "&7Experience: &f$target.getExperience$", VariableRefreshPolicy.OnDirty)),
+                        BackButton(8, 1),
+                    },
+                }),
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Titles",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 1,
+                    DisplaySlot = 9,
+                    Width = 9,
+                    Height = 2,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ContentSourceId = "users.titles",
+                    ContentSourceParamsJson = TargetParams,
+                    Items =
+                    {
+                        PagerButton(27, "&aPrevious page", "menu.page.prev"),
+                        PagerButton(35, "&aNext page", "menu.page.next"),
+                        ConfirmButton(30, "users.pending", "&7Set the title you picked (see chat)"),
+                        CancelButton(32, "users.pending"),
+                        row,
+                    },
+                }),
+            },
+        };
+    }
+
+    private static MenuTemplate UserManagerGroupsTemplate()
+    {
+        var add = new ActionBinding
+        {
+            ActionTypeId = "users.group",
+            ParamsJson = "{" + CtxUserIdJson + ",\"groupId\":\"$row.getGroupId$\",\"op\":\"add\"}",
+            SortOrder = 0,
+        };
+        var remove = ConfirmRequest("users.group", "{" + CtxUserIdJson + ",\"groupId\":\"$row.getGroupId$\",\"op\":\"remove\"}",
+            "Remove $ctx.name$ from $row.getName$? Click Confirm or Cancel.", 1);
+        var row = new MenuItemTemplate
+        {
+            SortOrder = 0,
+            Amount = 1,
+            IsRowTemplate = true,
+            DisplayMode = MenuDisplayMode.Normal,
+            ActionPermission = "knk.admin.user.group",
+            VariableBindings =
+            {
+                Bind("Material", "$row.getMaterial$", VariableRefreshPolicy.OnDirty),
+                Bind("DisplayMode", "$row.getDisplayMode$", VariableRefreshPolicy.OnDirty),
+                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                Lore(0, "$row.getLoreLines$", VariableRefreshPolicy.OnDirty),
+            },
+        };
+        row.Actions.Add(add);
+        row.Actions.Add(remove);
+        AddActionCondition(row, add,
+            RenderCondition("value-equals", "{\"value\":\"$row.getIsMember$\",\"expected\":\"false\"}"));
+        AddActionCondition(row, remove,
+            RenderCondition("value-equals", "{\"value\":\"$row.getIsMember$\",\"expected\":\"true\"}"));
+        row.Conditions.Add(OutranksTarget());
+        return new MenuTemplate
+        {
+            Key = UserManagerGroupsMenuKey,
+            Name = "&8Groups",
+            Description = "Every permission group; click to add the player in ctx.userId or (confirmed) remove them (users.groups). Content port CP8.",
+            Height = 6,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Header",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items =
+                    {
+                        DemoItem(4, 0,
+                            Bind("Material", "BOOK", VariableRefreshPolicy.Static),
+                            Bind("Name", "&eGroups of &f$target.getName$", VariableRefreshPolicy.OnDirty),
+                            Lore(0, "&7Highlighted: current memberships"),
+                            Lore(1, "&7Removing a group asks for confirmation")),
+                        BackButton(8, 1),
+                    },
+                }),
+                ManagerSection(new MenuSectionTemplate
+                {
+                    Name = "Groups",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 1,
+                    DisplaySlot = 9,
+                    Width = 9,
+                    Height = 4,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ContentSourceId = "users.groups",
+                    ContentSourceParamsJson = TargetParams,
+                    Items =
+                    {
+                        PagerButton(45, "&aPrevious page", "menu.page.prev"),
+                        PagerButton(53, "&aNext page", "menu.page.next"),
+                        ConfirmButton(48, "users.pending", "&7Confirm the removal you picked (see chat)"),
+                        CancelButton(50, "users.pending"),
+                        row,
+                    },
+                }),
+            },
+        };
+    }
+
+    private static MenuSectionTemplate ManagerSection(MenuSectionTemplate section)
+    {
+        section.VisibilityPermission = UserManagePermission;
+        return section;
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions RelaxedJson = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    private static ConditionBinding OutranksTarget() => new()
+    {
+        ConditionTypeId = "users.outranks-target",
+        ParamsJson = "{" + CtxUserIdJson + "}",
+        SortOrder = 0,
+        Phase = MenuConditionPhase.Click,
+    };
+
+    private static ActionBinding ConfirmRequest(string actionTypeId, string actionParamsJson, string prompt, int sortOrder) => new()
+    {
+        ActionTypeId = "menu.confirm.request",
+        ParamsJson = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+        {
+            ["actionTypeId"] = actionTypeId,
+            ["actionParamsJson"] = actionParamsJson,
+            ["prompt"] = prompt,
+        }, RelaxedJson),
+        SortOrder = sortOrder,
+    };
+
+    /// <summary>A pinned Player-manager edit: one action, its ActionPermission, the outranks Click condition.</summary>
+    private static MenuItemTemplate ManagerEdit(int slot, int sortOrder, string? permission, string actionTypeId,
+        string paramsJson, params VariableBinding[] bindings)
+    {
+        var item = DemoItem(slot, sortOrder, bindings);
+        item.ActionPermission = permission;
+        item.Actions.Add(new ActionBinding { ActionTypeId = actionTypeId, ParamsJson = paramsJson, SortOrder = 0 });
+        item.Conditions.Add(OutranksTarget());
+        return item;
+    }
+
+    /// <summary>A pinned edit that asks for confirmation first (kick, ban).</summary>
+    private static MenuItemTemplate ManagerConfirmed(int slot, int sortOrder, string actionTypeId, string prompt,
+        params VariableBinding[] bindings)
+    {
+        var item = DemoItem(slot, sortOrder, bindings);
+        item.Actions.Add(ConfirmRequest(actionTypeId, "{" + CtxUserIdJson + "}", prompt, 0));
+        item.Conditions.Add(OutranksTarget());
+        return item;
+    }
+
+    private static MenuItemTemplate StepperMinus(int slot, string field, string stateKey, string unit) =>
+        ManagerEdit(slot, 100 + slot, "knk.admin.user." + field, "users.adjust",
+            "{" + CtxUserIdJson + ",\"field\":\"" + field + "\",\"delta\":\"-$state." + stateKey + "$\"}",
+            Bind("Material", "RED_STAINED_GLASS_PANE", VariableRefreshPolicy.Static),
+            Bind("Name", "&c-$state." + stateKey + "$ " + unit, VariableRefreshPolicy.OnDirty));
+
+    private static MenuItemTemplate StepperPlus(int slot, string field, string stateKey, string unit) =>
+        ManagerEdit(slot, 100 + slot, "knk.admin.user." + field, "users.adjust",
+            "{" + CtxUserIdJson + ",\"field\":\"" + field + "\",\"delta\":\"$state." + stateKey + "$\"}",
+            Bind("Material", "LIME_STAINED_GLASS_PANE", VariableRefreshPolicy.Static),
+            Bind("Name", "&a+$state." + stateKey + "$ " + unit, VariableRefreshPolicy.OnDirty));
+
+    /// <summary>The value item of a stepper: shows the amount and step; clicking cycles the step (G1 menu.state.cycle).</summary>
+    private static MenuItemTemplate StepperValue(int slot, string material, string name, string stateKey, string steps)
+    {
+        var item = DemoItem(slot, 100 + slot,
+            Bind("Material", material, VariableRefreshPolicy.Static),
+            Bind("Name", name, VariableRefreshPolicy.OnDirty),
+            Lore(0, "&7Step: &f$state." + stateKey + "$", VariableRefreshPolicy.OnDirty),
+            Lore(1, "&8Click to change the step (" + steps.Replace(",", "/") + ")"));
+        item.Actions.Add(new ActionBinding
+        {
+            ActionTypeId = "menu.state.cycle",
+            ParamsJson = "{\"key\":\"" + stateKey + "\",\"values\":\"" + steps + "\"}",
+            SortOrder = 0,
+        });
+        return item;
+    }
+
+    /// <summary>Freeze/unfreeze in one slot: action-level Render conditions on $target.getIsFrozen$, Click-phase node checks.</summary>
+    private static MenuItemTemplate FreezeToggle(int slot, int sortOrder)
+    {
+        var item = DemoItem(slot, sortOrder,
+            Bind("Material", "$target.getFreezeMaterial$", VariableRefreshPolicy.OnDirty),
+            Bind("Name", "$target.getFreezeName$", VariableRefreshPolicy.OnDirty),
+            Lore(0, "&7Frozen players can't move, chat or use commands"));
+        var freeze = new ActionBinding
+        {
+            ActionTypeId = "users.freeze",
+            ParamsJson = "{" + CtxUserIdJson + ",\"op\":\"freeze\"}",
+            SortOrder = 0,
+        };
+        var unfreeze = new ActionBinding
+        {
+            ActionTypeId = "users.freeze",
+            ParamsJson = "{" + CtxUserIdJson + ",\"op\":\"unfreeze\"}",
+            SortOrder = 1,
+        };
+        item.Actions.Add(freeze);
+        item.Actions.Add(unfreeze);
+        AddActionCondition(item, freeze,
+            RenderCondition("value-equals", "{\"value\":\"$target.getIsFrozen$\",\"expected\":\"false\"}"));
+        AddActionCondition(item, freeze, new ConditionBinding
+        {
+            ConditionTypeId = "permission-node", ParamsJson = "{\"node\":\"knk.freeze\"}", SortOrder = 1,
+            Phase = MenuConditionPhase.Click,
+        });
+        AddActionCondition(item, unfreeze,
+            RenderCondition("value-equals", "{\"value\":\"$target.getIsFrozen$\",\"expected\":\"true\"}"));
+        AddActionCondition(item, unfreeze, new ConditionBinding
+        {
+            ConditionTypeId = "permission-node", ParamsJson = "{\"node\":\"knk.unfreeze\"}", SortOrder = 1,
+            Phase = MenuConditionPhase.Click,
+        });
+        item.Conditions.Add(OutranksTarget());
+        return item;
+    }
+
+    /// <summary>Opens a Player-manager sub-menu for the same target (ctx.userId + ctx.name carried along).</summary>
+    private static MenuItemTemplate OpenWithTarget(int slot, int sortOrder, string key, params VariableBinding[] bindings)
+    {
+        var item = DemoItem(slot, sortOrder, bindings);
+        item.Actions.Add(new ActionBinding
+        {
+            ActionTypeId = "menu.open",
+            ParamsJson = "{\"key\":\"" + key + "\",\"ctx.userId\":\"$ctx.userId$\",\"ctx.name\":\"$ctx.name$\"}",
+            SortOrder = 0,
+        });
+        return item;
+    }
+
+    private static MenuItemTemplate WithActionPermission(string node, MenuItemTemplate item)
+    {
+        item.ActionPermission = node;
+        return item;
     }
 
     /// <summary>
