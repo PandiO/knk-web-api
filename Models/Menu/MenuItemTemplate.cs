@@ -40,6 +40,15 @@ public class MenuItemTemplate
     /// <summary>Click-time gate: can this item's action(s) actually execute.</summary>
     public string? ActionPermission { get; set; }
 
+    /// <summary>
+    /// InventoryMenu Phase 9 (E3): this item is the section's row template - the
+    /// section's content source yields plain row objects and each one is rendered
+    /// through this item with the getter-chain root <c>$row$</c> bound to that row.
+    /// At most one per section; requires the section to have a ContentSourceId and
+    /// the item to have no SlotOverride (validated in MenuTemplateService).
+    /// </summary>
+    public bool IsRowTemplate { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

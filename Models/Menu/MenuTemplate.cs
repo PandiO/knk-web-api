@@ -24,6 +24,13 @@ public class MenuTemplate
     public int? BackgroundMaterialRefId { get; set; }
     public MinecraftMaterialRef? BackgroundMaterial { get; set; }
 
+    /// <summary>
+    /// InventoryMenu Phase 9 (E4): when set (&gt; 0), every open instance of this
+    /// menu is re-rendered every N ticks, honouring each binding's RefreshPolicy
+    /// (so Ttl bindings actually update while the menu stays open). Null = off.
+    /// </summary>
+    public int? AutoRefreshTicks { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
