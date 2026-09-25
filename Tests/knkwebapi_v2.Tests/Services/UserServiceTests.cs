@@ -25,6 +25,7 @@ public class UserServiceTests
     private readonly Mock<ITitleService> _mockTitleService;
     private readonly Mock<IUserPermissionGroupService> _mockMembershipService;
     private readonly Mock<IAuditLogService> _mockAuditLogService;
+    private readonly Mock<IPermissionGroupRepository> _mockPermissionGroupRepository;
     private readonly UserService _userService;
 
     public UserServiceTests()
@@ -39,6 +40,7 @@ public class UserServiceTests
             .ReturnsAsync(new TitleResolutionDto());
         _mockMembershipService = new Mock<IUserPermissionGroupService>();
         _mockAuditLogService = new Mock<IAuditLogService>();
+        _mockPermissionGroupRepository = new Mock<IPermissionGroupRepository>();
 
         _userService = new UserService(
             _mockUserRepository.Object,
@@ -47,7 +49,9 @@ public class UserServiceTests
             _mockLinkCodeService.Object,
             _mockTitleService.Object,
             _mockMembershipService.Object,
-            _mockAuditLogService.Object
+            _mockAuditLogService.Object,
+            _mockPermissionGroupRepository.Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance
         );
     }
 

@@ -24,6 +24,8 @@ namespace knkwebapi_v2.Services
         private readonly ITitleService _titleService;
         private readonly IUserPermissionGroupService _membershipService;
         private readonly IAuditLogService _auditLogService;
+        private readonly IPermissionGroupRepository _permissionGroupRepo;
+        private readonly ILogger<UserService> _logger;
 
         public UserService(
             IUserRepository repo,
@@ -32,7 +34,9 @@ namespace knkwebapi_v2.Services
             ILinkCodeService linkCodeService,
             ITitleService titleService,
             IUserPermissionGroupService membershipService,
-            IAuditLogService auditLogService)
+            IAuditLogService auditLogService,
+            IPermissionGroupRepository permissionGroupRepo,
+            ILogger<UserService> logger)
         {
             _repo = repo;
             _mapper = mapper;
@@ -41,7 +45,17 @@ namespace knkwebapi_v2.Services
             _titleService = titleService;
             _membershipService = membershipService;
             _auditLogService = auditLogService;
+            _permissionGroupRepo = permissionGroupRepo;
+            _logger = logger;
         }
+
+        /// <summary>
+        /// Name of the standard group every account is assigned to on creation (developer
+        /// request, 2026-09-25 — "the standard group a player should be put in on first
+        /// join/account creation"), seeded by migration SeedDefaultPermissionGroup. Matched by
+        /// name rather than a hardcoded id since the seed migration lets MySQL assign the id.
+        /// </summary>
+        public const string DefaultGroupName = "Default";
 
         /// <summary>
         /// Maps a User to a UserDto and fills in the title fields resolved from its current
@@ -128,7 +142,33 @@ namespace knkwebapi_v2.Services
                 : AccountCreationMethod.WebApp;
             
             await _repo.AddUserAsync(user);
+            await AssignDefaultGroupAsync(user.Id);
             return await MapToUserDtoAsync(user);
+        }
+
+        /// <summary>
+        /// Assigns every newly created account to the standard "Default" group (developer
+        /// request, 2026-09-25) — covers both the web-first flow here and the Minecraft-first
+        /// flow, since knk-plugin's user creation also goes through this same CreateAsync via
+        /// POST /api/Users. Best-effort: a missing "Default" seed (e.g. this migration hasn't
+        /// run yet on an older database) must not block account creation, so this only logs a
+        /// warning rather than throwing.
+        /// </summary>
+        private async Task AssignDefaultGroupAsync(int userId)
+        {
+            var defaultGroup = await _permissionGroupRepo.GetByNameAsync(DefaultGroupName);
+            if (defaultGroup == null)
+            {
+                _logger.LogWarning("\"{DefaultGroupName}\" PermissionGroup not found — new user {UserId} was not assigned a default group. Run the SeedDefaultPermissionGroup migration.", DefaultGroupName, userId);
+                return;
+            }
+
+            await _membershipService.UpsertAsync(new UpsertUserPermissionGroupDto
+            {
+                UserId = userId,
+                PermissionGroupId = defaultGroup.Id,
+                ExpiresAt = null
+            });
         }
 
         public async Task UpdateAsync(int id, UserDto userDto, int? actorUserId = null)

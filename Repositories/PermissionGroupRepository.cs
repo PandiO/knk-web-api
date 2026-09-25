@@ -29,6 +29,11 @@ namespace knkwebapi_v2.Repositories
                 .FirstOrDefaultAsync(g => g.Id == id);
         }
 
+        public async Task<PermissionGroup?> GetByNameAsync(string name)
+        {
+            return await _context.PermissionGroups.FirstOrDefaultAsync(g => g.Name == name);
+        }
+
         public async Task AddAsync(PermissionGroup group)
         {
             await _context.PermissionGroups.AddAsync(group);
