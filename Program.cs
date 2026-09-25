@@ -199,6 +199,10 @@ using (var scope = app.Services.CreateScope())
 
     var menuSeedLogger = loggerFactory.CreateLogger("MenuTemplateSeed");
     await knkwebapi_v2.Models.MenuTemplateSeed.SeedCanonicalAsync(dbContext, menuSeedLogger);
+
+    var kitSeedLogger = loggerFactory.CreateLogger("KitSeed");
+    var materialCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftMaterialCatalogService>();
+    await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, materialCatalog, kitSeedLogger);
 }
 
 app.Run();

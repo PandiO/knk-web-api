@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925105914_AddKitsPhase1Schema")]
+    partial class AddKitsPhase1Schema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -135,61 +138,6 @@ namespace knkwebapi_v2.Migrations
                         .HasDatabaseName("IX_ActionBinding_MenuItemTemplateId_SortOrder");
 
                     b.ToTable("menu_action_bindings", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.AuditLogEntry", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<int?>("ActorUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Details")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("TargetUserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("ActorUserId", "Timestamp");
-
-                    b.HasIndex("TargetUserId", "Timestamp");
-
-                    b.ToTable("audit_log_entries", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.AuditLogRetentionConfiguration", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("RetentionDays")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("audit_log_retention_configurations", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Category", b =>
@@ -2273,30 +2221,13 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CoinBonus")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ExpBonus")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FemaleName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<int>("GemBonus")
-                        .HasColumnType("int");
-
-                    b.Property<string>("MaleName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
                     b.Property<int>("MinExperience")
                         .HasColumnType("int");
 
-                    b.Property<int>("Salary")
-                        .HasColumnType("int");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.HasKey("Id")
                         .HasName("PRIMARY");
@@ -2608,31 +2539,13 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("ExperiencePoints")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("FrozenAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("FrozenByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FrozenReason")
-                        .HasColumnType("longtext");
-
                     b.Property<int>("GatePassThroughMethodDefault")
                         .HasColumnType("int");
 
                     b.Property<int>("Gems")
                         .HasColumnType("int");
 
-                    b.Property<int?>("Gender")
-                        .HasColumnType("int");
-
                     b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsFrozen")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsOnline")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime?>("LastEmailChangeAt")
@@ -2642,9 +2555,6 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("LastSalaryPayoutAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("LastSeenAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("PasswordHash")
