@@ -93,5 +93,38 @@ namespace KnKWebAPI.Controllers
             var result = await _service.SearchAsync(query);
             return Ok(result);
         }
+
+        [HttpPut("by-node")]
+        public async Task<IActionResult> UpsertByNode([FromBody] UpsertPermissionGrantByNodeDto dto)
+        {
+            if (dto == null) return BadRequest();
+            try
+            {
+                var result = await _service.UpsertByNodeAsync(dto.HolderId, dto.Node, dto.Value, dto.ExpiresAt, User.GetUserId());
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("by-node")]
+        public async Task<IActionResult> RevokeByNode([FromQuery] int holderId, [FromQuery] string node)
+        {
+            try
+            {
+                await _service.RevokeByNodeAsync(holderId, node, User.GetUserId());
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+        }
     }
 }

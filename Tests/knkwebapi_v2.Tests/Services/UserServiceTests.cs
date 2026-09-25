@@ -36,7 +36,7 @@ public class UserServiceTests
         _mockMapper = new Mock<IMapper>();
         _mockTitleService = new Mock<ITitleService>();
         _mockTitleService
-            .Setup(s => s.ResolveAsync(It.IsAny<int>()))
+            .Setup(s => s.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>()))
             .ReturnsAsync(new TitleResolutionDto());
         _mockMembershipService = new Mock<IUserPermissionGroupService>();
         _mockAuditLogService = new Mock<IAuditLogService>();
@@ -822,14 +822,48 @@ public class UserServiceTests
     {
         _mockUserRepository.Setup(r => r.GetByIdAsync(1))
             .ReturnsAsync(new User { Id = 1, Username = "player", Coins = 0, Gems = 0, ExperiencePoints = 0 });
-        _mockTitleService.SetupSequence(s => s.ResolveAsync(It.IsAny<int>()))
-            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, TitleName = "Novice" })
-            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 2, TitleName = "Apprentice" });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 500 }
+        });
 
-        await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "xp gain");
+        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "xp gain");
 
         _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.BalanceAdjusted, It.IsAny<string?>()), Times.Once);
         _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.TitleChanged, It.IsAny<string?>()), Times.Once);
+        Assert.NotNull(result.TitleChange);
+        Assert.Equal("promotion", result.TitleChange!.Direction);
+        Assert.Equal(2, result.TitleChange.ToTitleBracketId);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_CrossesMultipleTiersAtOnce_ConsolidatesIntoOneChangeWithSummedBonuses()
+    {
+        // Regression guard for the developer-confirmed requirement: a single XP grant crossing
+        // several brackets must produce ONE TitleChanged audit entry and ONE consolidated result
+        // listing every crossed tier, not one iteration per tier (v1's TitleChangeEvents looped
+        // once per tier on a timer - explicitly not to be repeated).
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new User { Id = 1, Username = "player", Coins = 0, Gems = 0, ExperiencePoints = 0 });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 100, CoinBonus = 10, GemBonus = 1 },
+            new() { Id = 3, MaleName = "Journeyman", FemaleName = "Journeyman", MinExperience = 200, CoinBonus = 20, GemBonus = 2 },
+            new() { Id = 4, MaleName = "Veteran", FemaleName = "Veteran", MinExperience = 300, CoinBonus = 30, GemBonus = 3 }
+        });
+
+        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 250, reason: "big xp grant");
+
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.TitleChanged, It.IsAny<string?>()), Times.Once);
+        Assert.NotNull(result.TitleChange);
+        Assert.Equal(3, result.TitleChange!.ToTitleBracketId); // 250 XP reaches Journeyman (200), not Veteran (300)
+        Assert.Equal(2, result.TitleChange.CrossedTitles.Count); // Apprentice, Journeyman - not Veteran (250 XP doesn't reach 300)
+        Assert.Equal(30, result.TitleChange.CoinBonusGranted); // 10 + 20
+        Assert.Equal(3, result.TitleChange.GemBonusGranted); // 1 + 2
+        Assert.Equal(30, result.NewCoins);
+        Assert.Equal(3, result.NewGems);
     }
 
     #endregion

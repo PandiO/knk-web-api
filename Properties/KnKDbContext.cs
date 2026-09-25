@@ -182,7 +182,8 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("title_brackets");
 
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.MaleName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.FemaleName).IsRequired().HasMaxLength(100);
 
             // Brackets are resolved by "highest MinExperience <= user's XP" — each threshold
             // must be distinct or resolution would be ambiguous.

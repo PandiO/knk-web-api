@@ -3,6 +3,7 @@ using Moq;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Models;
 
 namespace knkwebapi_v2.Tests.Services;
 
@@ -68,7 +69,7 @@ public class UserProfileSummaryServiceTests
             .ReturnsAsync(new PermissionEffectiveResponseDto { UserId = 1 });
         _mockUserPermissionGroupService.Setup(s => s.GetByUserAsync(1))
             .ReturnsAsync(new List<UserPermissionGroupDto>());
-        _mockTitleService.Setup(s => s.ResolveAsync(20)).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 3 });
+        _mockTitleService.Setup(s => s.ResolveAsync(20, It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 3 });
         _mockSalaryService.Setup(s => s.GetCurrentRankMultiplierAsync(1)).ReturnsAsync(1.5m);
         _mockSalaryConfigurationService.Setup(s => s.GetAsync())
             .ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 10.0m });
@@ -95,7 +96,7 @@ public class UserProfileSummaryServiceTests
             .ReturnsAsync((PermissionEffectiveResponseDto?)null);
         _mockUserPermissionGroupService.Setup(s => s.GetByUserAsync(1))
             .ReturnsAsync(new List<UserPermissionGroupDto>());
-        _mockTitleService.Setup(s => s.ResolveAsync(It.IsAny<int>())).ReturnsAsync(new TitleResolutionDto());
+        _mockTitleService.Setup(s => s.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto());
         _mockSalaryService.Setup(s => s.GetCurrentRankMultiplierAsync(1)).ReturnsAsync(1.0m);
         _mockSalaryConfigurationService.Setup(s => s.GetAsync())
             .ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 1.0m });

@@ -141,6 +141,15 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lastSeenAt")]
         public DateTime? LastSeenAt { get; set; }
 
+        [JsonPropertyName("gender")]
+        public Gender? Gender { get; set; }
+
+        [JsonPropertyName("isFrozen")]
+        public bool IsFrozen { get; set; }
+
+        [JsonPropertyName("frozenReason")]
+        public string? FrozenReason { get; set; }
+
         [JsonPropertyName("isFullAccount")]
         public bool IsFullAccount { get; set; }
 
@@ -206,6 +215,14 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("premiumTierExpiresAt")]
         public DateTime? PremiumTierExpiresAt { get; set; }
+
+        /// <summary>Admin-freeze state (PUT /api/users/{id}/freeze|unfreeze) — read here so the
+        /// plugin can restore/enforce it on the player's next join without a separate call.</summary>
+        [JsonPropertyName("isFrozen")]
+        public bool IsFrozen { get; set; }
+
+        [JsonPropertyName("frozenReason")]
+        public string? FrozenReason { get; set; }
     }
 
     /// <summary>
@@ -233,6 +250,13 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("isOnline")]
         public bool IsOnline { get; set; }
+    }
+
+    /// <summary>Body for PUT /api/users/{id}/freeze — required. /unfreeze takes no body.</summary>
+    public class FreezePlayerDto
+    {
+        [JsonPropertyName("reason")]
+        public string Reason { get; set; } = null!;
     }
 
     /// <summary>

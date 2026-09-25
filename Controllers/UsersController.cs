@@ -274,7 +274,9 @@ namespace knkwebapi_v2.Controllers
                 PrestigeExperience = item.PrestigeExperience,
                 PremiumTierGroupId = item.PremiumTierGroupId,
                 PremiumTierName = item.PremiumTierName,
-                PremiumTierExpiresAt = item.PremiumTierExpiresAt
+                PremiumTierExpiresAt = item.PremiumTierExpiresAt,
+                IsFrozen = item.IsFrozen,
+                FrozenReason = item.FrozenReason
             };
             return Ok(dto);
         }
@@ -307,7 +309,9 @@ namespace knkwebapi_v2.Controllers
                 PrestigeExperience = item.PrestigeExperience,
                 PremiumTierGroupId = item.PremiumTierGroupId,
                 PremiumTierName = item.PremiumTierName,
-                PremiumTierExpiresAt = item.PremiumTierExpiresAt
+                PremiumTierExpiresAt = item.PremiumTierExpiresAt,
+                IsFrozen = item.IsFrozen,
+                FrozenReason = item.FrozenReason
             };
             return Ok(dto);
         }
@@ -669,6 +673,47 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
+        /// Freeze a player (rebuild of v1's FreezeCommands, a dead no-op stub in v1 — see the
+        /// knk-plugin /freeze command). Works on offline targets: writes through immediately, the
+        /// plugin enforces movement/chat/command/damage lockout once the target is next online.
+        /// </summary>
+        [HttpPut("{id:int}/freeze")]
+        public async Task<IActionResult> Freeze(int id, [FromBody] FreezePlayerDto request)
+        {
+            try
+            {
+                await _service.SetFrozenAsync(id, true, request?.Reason, GetUserIdFromClaims(User));
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        [HttpPut("{id:int}/unfreeze")]
+        public async Task<IActionResult> Unfreeze(int id)
+        {
+            try
+            {
+                await _service.SetFrozenAsync(id, false, null, GetUserIdFromClaims(User));
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Moderation search: users in a given PermissionGroup, optionally narrowed to currently-online
         /// (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3). Distinct from the generic
         /// POST /api/Users/search (PagedQueryDto column filters) since group membership isn't a flat
@@ -713,8 +758,8 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetUserIdFromClaims(User));
-                return NoContent();
+                var result = await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetUserIdFromClaims(User));
+                return Ok(result);
             }
             catch (KeyNotFoundException)
             {

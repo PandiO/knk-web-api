@@ -15,6 +15,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("titleName")]
         public string? TitleName { get; set; }
 
+        /// <summary>Base salary for the resolved bracket (0 if no brackets seeded).</summary>
+        [JsonPropertyName("salary")]
+        public int Salary { get; set; }
+
         /// <summary>
         /// XP earned past the highest bracket's threshold — a pure prestige signal once a user
         /// has reached the final title (DESIGN.md §3), 0 otherwise.
@@ -36,5 +40,73 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("nextTitleMinExperience")]
         public int? NextTitleMinExperience { get; set; }
+    }
+
+    /// <summary>One title bracket crossed during a consolidated promotion/demotion
+    /// (UserService.AdjustBalancesAsync). See BalanceAdjustmentResultDto.</summary>
+    public class TitleCrossingDto
+    {
+        [JsonPropertyName("titleBracketId")]
+        public int TitleBracketId { get; set; }
+
+        [JsonPropertyName("titleName")]
+        public string TitleName { get; set; } = null!;
+    }
+
+    /// <summary>Result of UserService.AdjustBalancesAsync — the caller's requested balance
+    /// change plus, if it crossed one or more title brackets, everything needed to show one
+    /// consolidated promotion/demotion notification instead of one per tier (per the developer's
+    /// explicit instruction, since v1's TitleChangeEvents looped once per tier crossed).</summary>
+    public class BalanceAdjustmentResultDto
+    {
+        [JsonPropertyName("newCoins")]
+        public int NewCoins { get; set; }
+
+        [JsonPropertyName("newGems")]
+        public int NewGems { get; set; }
+
+        [JsonPropertyName("newExperiencePoints")]
+        public int NewExperiencePoints { get; set; }
+
+        /// <summary>Null if no title bracket was crossed by this adjustment.</summary>
+        [JsonPropertyName("titleChange")]
+        public TitleChangeResultDto? TitleChange { get; set; }
+    }
+
+    public class TitleChangeResultDto
+    {
+        /// <summary>"promotion" or "demotion".</summary>
+        [JsonPropertyName("direction")]
+        public string Direction { get; set; } = null!;
+
+        [JsonPropertyName("fromTitleBracketId")]
+        public int FromTitleBracketId { get; set; }
+
+        [JsonPropertyName("fromTitleName")]
+        public string FromTitleName { get; set; } = null!;
+
+        [JsonPropertyName("toTitleBracketId")]
+        public int ToTitleBracketId { get; set; }
+
+        [JsonPropertyName("toTitleName")]
+        public string ToTitleName { get; set; } = null!;
+
+        /// <summary>Every bracket crossed, in order, including the final one — e.g. jumping
+        /// Peasant -> Reeve lists Yeoman, Squire, Reeve. Promotion only; always empty on
+        /// demotion (v1 never granted/showed per-tier detail on the way down beyond the
+        /// from/to names, and demotion grants no currency — see the service's doc comment).</summary>
+        [JsonPropertyName("crossedTitles")]
+        public List<TitleCrossingDto> CrossedTitles { get; set; } = new();
+
+        /// <summary>Summed CoinBonus/GemBonus/ExpBonus across every bracket crossed on
+        /// promotion. Always 0 on demotion (v1 never clawed back currency on demotion).</summary>
+        [JsonPropertyName("coinBonusGranted")]
+        public int CoinBonusGranted { get; set; }
+
+        [JsonPropertyName("gemBonusGranted")]
+        public int GemBonusGranted { get; set; }
+
+        [JsonPropertyName("expBonusGranted")]
+        public int ExpBonusGranted { get; set; }
     }
 }

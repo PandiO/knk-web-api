@@ -10,6 +10,11 @@ namespace knkwebapi_v2.Services.Interfaces
     /// </summary>
     public interface ITitleService
     {
-        Task<TitleResolutionDto> ResolveAsync(int experiencePoints);
+        Task<TitleResolutionDto> ResolveAsync(int experiencePoints, Models.Gender? gender = null);
+
+        /// <summary>The full ordered bracket list — used by UserService.AdjustBalancesAsync's
+        /// tier-crossing consolidation loop, which needs to walk every bracket between the
+        /// previous and new XP totals, not just the single resolved one.</summary>
+        Task<List<Models.TitleBracket>> GetAllOrderedAsync();
     }
 }

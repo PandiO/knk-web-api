@@ -16,5 +16,7 @@ public enum AuditAction
     TitleChanged = 5,
     VanishToggled = 6,
     SalaryPayout = 7,
-    BalanceAdjusted = 8
+    BalanceAdjusted = 8,
+    PlayerFrozen = 9,
+    PlayerUnfrozen = 10
 }

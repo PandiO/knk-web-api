@@ -1,4 +1,5 @@
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -13,7 +14,9 @@ namespace knkwebapi_v2.Services
             _repo = repo;
         }
 
-        public async Task<TitleResolutionDto> ResolveAsync(int experiencePoints)
+        public async Task<List<TitleBracket>> GetAllOrderedAsync() => await _repo.GetAllOrderedByMinExperienceAsync();
+
+        public async Task<TitleResolutionDto> ResolveAsync(int experiencePoints, Gender? gender = null)
         {
             var brackets = await _repo.GetAllOrderedByMinExperienceAsync();
             if (brackets.Count == 0)
@@ -41,10 +44,11 @@ namespace knkwebapi_v2.Services
             return new TitleResolutionDto
             {
                 TitleBracketId = current.Id,
-                TitleName = current.Name,
+                TitleName = current.NameFor(gender),
+                Salary = current.Salary,
                 PrestigeExperience = prestige,
                 NextTitleBracketId = next?.Id,
-                NextTitleName = next?.Name,
+                NextTitleName = next?.NameFor(gender),
                 NextTitleMinExperience = next?.MinExperience
             };
         }

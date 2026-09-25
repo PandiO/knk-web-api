@@ -9,22 +9,45 @@ namespace knkwebapi_v2.Models;
 /// persisted on <see cref="User"/>, so a title jumps straight to the correct bracket on any XP
 /// change instead of needing a catch-up pass.
 ///
-/// Seeded content only, ported from v1's reward-threshold crossing points (5/10/12/15, confirmed
-/// DESIGN.md §7 item 10) — v1's actual per-title names/salary/bonus values were never committed
-/// to source (Titles.java issued raw SQL against a live "Titles" table with no seed data in the
-/// archive), so <see cref="Name"/> below is placeholder content only, retunable later via the
-/// admin UI once it exists.
+/// Real content, ported from v1's live "Titles" table export (19 brackets, id 0-18) — the
+/// original placeholder seed (5 brackets, MinExperience 0/5/10/12/15) confused v1's *title-ID*
+/// slot-unlock thresholds with actual XP amounts; see the
+/// AddUserFeaturesPhase6RealTitleData migration for the correction.
 /// </summary>
 [FormConfigurableEntity("TitleBracket")]
 public class TitleBracket
 {
     public int Id { get; set; }
 
-    public string Name { get; set; } = null!;
+    /// <summary>Display name for a male (or gender-unset) user. See <see cref="Gender"/>.</summary>
+    public string MaleName { get; set; } = null!;
+
+    /// <summary>Display name for a female user.</summary>
+    public string FemaleName { get; set; } = null!;
 
     /// <summary>
     /// The minimum ExperiencePoints total required to hold this title. Brackets are ordered by
-    /// this value; a user's title is the highest bracket whose MinExperience is <= their XP.
+    /// this value; a user's title is the highest bracket whose MinExperience is <= their XP. The
+    /// upper bound is derived from the next bracket's MinExperience, not stored separately.
     /// </summary>
     public int MinExperience { get; set; }
+
+    /// <summary>Base salary for this tier (docs/specs/user-features/DESIGN.md §5 SalaryService
+    /// input), ported directly from v1's Titles.Salary column.</summary>
+    public int Salary { get; set; }
+
+    /// <summary>One-time coin bonus granted on first reaching this tier.</summary>
+    public int CoinBonus { get; set; }
+
+    /// <summary>One-time gem bonus granted on first reaching this tier.</summary>
+    public int GemBonus { get; set; }
+
+    /// <summary>One-time XP bonus granted on first reaching this tier — can itself push the user
+    /// into a further bracket, which UserService.AdjustBalancesAsync's consolidation loop
+    /// accounts for.</summary>
+    public int ExpBonus { get; set; }
+
+    /// <summary>Resolves the display name for the given gender (null = unset, falls back to
+    /// MaleName — see User.Gender's doc comment).</summary>
+    public string NameFor(Gender? gender) => gender == Gender.Female ? FemaleName : MaleName;
 }

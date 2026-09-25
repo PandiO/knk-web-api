@@ -136,5 +136,77 @@ namespace knkwebapi_v2.Services
             var result = await _repo.SearchAsync(query);
             return _mapper.Map<PagedResultDto<PermissionGrantListDto>>(result);
         }
+
+        public async Task<PermissionGrantDto> UpsertByNodeAsync(int holderId, string node, bool value, DateTime? expiresAt, int? actorUserId = null)
+        {
+            if (holderId <= 0) throw new ArgumentException("Invalid holder id.", nameof(holderId));
+            if (string.IsNullOrWhiteSpace(node)) throw new ArgumentException("Permission node is required.", nameof(node));
+            if (!await _repo.HolderExistsAsync(holderId))
+                throw new ArgumentException($"PermissionHolder with id {holderId} not found.", nameof(holderId));
+
+            var existing = (await _repo.GetActiveGrantsForHolderAsync(holderId, DateTime.UtcNow))
+                .FirstOrDefault(g => g.Node == node);
+
+            if (existing != null)
+            {
+                var previousValue = existing.Value;
+                var previousExpiresAt = existing.ExpiresAt;
+                existing.Value = value;
+                existing.ExpiresAt = expiresAt;
+                await _repo.UpdateAsync(existing);
+
+                if (await IsUserHolderAsync(holderId))
+                {
+                    await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantUpdated, JsonSerializer.Serialize(new
+                    {
+                        grantId = existing.Id,
+                        from = new { node, value = previousValue, expiresAt = previousExpiresAt },
+                        to = new { node, value, expiresAt }
+                    }));
+                }
+
+                return _mapper.Map<PermissionGrantDto>(existing);
+            }
+
+            var grant = new PermissionGrant { HolderId = holderId, Node = node, Value = value, ExpiresAt = expiresAt };
+            await _repo.AddAsync(grant);
+
+            if (await IsUserHolderAsync(holderId))
+            {
+                await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantAdded, JsonSerializer.Serialize(new
+                {
+                    grantId = grant.Id,
+                    node,
+                    value,
+                    expiresAt
+                }));
+            }
+
+            return _mapper.Map<PermissionGrantDto>(grant);
+        }
+
+        public async Task RevokeByNodeAsync(int holderId, string node, int? actorUserId = null)
+        {
+            if (holderId <= 0) throw new ArgumentException("Invalid holder id.", nameof(holderId));
+            if (string.IsNullOrWhiteSpace(node)) throw new ArgumentException("Permission node is required.", nameof(node));
+
+            var existing = (await _repo.GetActiveGrantsForHolderAsync(holderId, DateTime.UtcNow))
+                .FirstOrDefault(g => g.Node == node);
+            if (existing == null)
+                throw new KeyNotFoundException($"Holder {holderId} has no active grant for node '{node}'.");
+
+            var value = existing.Value;
+            await _repo.DeleteAsync(existing.Id);
+
+            if (await IsUserHolderAsync(holderId))
+            {
+                await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
+                {
+                    grantId = existing.Id,
+                    node,
+                    value
+                }));
+            }
+        }
     }
 }

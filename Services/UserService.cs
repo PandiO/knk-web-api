@@ -67,7 +67,7 @@ namespace knkwebapi_v2.Services
         private async Task<UserDto> MapToUserDtoAsync(User user)
         {
             var dto = _mapper.Map<UserDto>(user);
-            var title = await _titleService.ResolveAsync(user.ExperiencePoints);
+            var title = await _titleService.ResolveAsync(user.ExperiencePoints, user.Gender);
             dto.TitleBracketId = title.TitleBracketId;
             dto.TitleName = title.TitleName;
             dto.PrestigeExperience = title.PrestigeExperience;
@@ -195,7 +195,7 @@ namespace knkwebapi_v2.Services
             var previousGems = existing.Gems;
             var previousExperience = existing.ExperiencePoints;
             var previousMultiplier = existing.PersonalSalaryMultiplier;
-            var previousTitle = await _titleService.ResolveAsync(previousExperience);
+            var previousTitle = await _titleService.ResolveAsync(previousExperience, existing.Gender);
 
             // Apply all editable UserDto fields onto the tracked entity. The mapping profile
             // (UserMappingProfile: UserDto -> User) already ignores fields that must never be
@@ -232,7 +232,7 @@ namespace knkwebapi_v2.Services
 
                 if (existing.ExperiencePoints != previousExperience)
                 {
-                    var newTitle = await _titleService.ResolveAsync(existing.ExperiencePoints);
+                    var newTitle = await _titleService.ResolveAsync(existing.ExperiencePoints, existing.Gender);
                     if (newTitle.TitleBracketId != previousTitle.TitleBracketId)
                     {
                         await _auditLogService.RecordAsync(actorUserId, id, AuditAction.TitleChanged, JsonSerializer.Serialize(new
@@ -303,6 +303,25 @@ namespace knkwebapi_v2.Services
             // scopes the audit trail to admin/system *mutations affecting a player*, e.g. balance
             // or group changes — presence pings would just be noise at server-restart volume).
             await _repo.UpdatePresenceAsync(id, isOnline);
+        }
+
+        public async Task SetFrozenAsync(int userId, bool frozen, string? reason, int? actorUserId = null)
+        {
+            if (userId <= 0) throw new ArgumentException("Invalid user ID.", nameof(userId));
+            if (frozen && string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("A reason is required to freeze a player.", nameof(reason));
+
+            var user = await _repo.GetByIdAsync(userId);
+            if (user == null) throw new KeyNotFoundException($"User with ID {userId} not found.");
+
+            user.IsFrozen = frozen;
+            user.FrozenReason = frozen ? reason : null;
+            user.FrozenByUserId = frozen ? actorUserId : null;
+            user.FrozenAt = frozen ? DateTime.UtcNow : null;
+            await _repo.UpdateUserAsync(user);
+
+            await _auditLogService.RecordAsync(actorUserId, userId, frozen ? AuditAction.PlayerFrozen : AuditAction.PlayerUnfrozen,
+                JsonSerializer.Serialize(new { reason }));
         }
 
         public async Task<IEnumerable<UserListDto>> SearchByGroupAsync(int groupId, bool? onlineOnly = null)
@@ -593,7 +612,7 @@ namespace knkwebapi_v2.Services
         // ===== NEW METHODS: BALANCES (COINS, GEMS, XP) =====
 
         /// <inheritdoc/>
-        public async Task AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null)
+        public async Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null)
         {
             if (userId <= 0)
             {
@@ -632,14 +651,73 @@ namespace knkwebapi_v2.Services
                 throw new InvalidOperationException($"Insufficient experience points. Current: {user.ExperiencePoints}, Attempted change: {experienceDelta}");
             }
 
-            // Resolved before the mutation so a resulting title change (see below) can be
-            // detected by comparing against the post-mutation resolution.
-            var previousTitle = experienceDelta != 0 ? await _titleService.ResolveAsync(user.ExperiencePoints) : null;
+            // Resolved before the mutation so a resulting title change can be detected, and so the
+            // consolidation loop below has every bracket to walk between old and new XP.
+            var originalExperience = user.ExperiencePoints;
+            var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
+            TitleBracket? previousBracket = brackets != null && brackets.Count > 0
+                ? (brackets.LastOrDefault(b => b.MinExperience <= originalExperience) ?? brackets[0])
+                : null;
 
-            // Update balances
             user.Coins = newCoins;
             user.Gems = newGems;
             user.ExperiencePoints = newExperience;
+
+            TitleChangeResultDto? titleChange = null;
+
+            // Consolidate every bracket crossed by this single adjustment into one grant + one
+            // reported change, instead of firing once per tier the way v1's TitleChangeEvents
+            // loop did (setPromoteLoop/setDemoteLoop) — a developer-confirmed behavior NOT to
+            // repeat. ExpBonus can itself push into a further bracket, so this loops until
+            // resolution stabilizes, mirroring v1's cascading re-check but accumulating instead
+            // of firing per-iteration effects.
+            if (previousBracket != null && brackets != null)
+            {
+                var direction = newExperience > originalExperience ? "promotion" : "demotion";
+                var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
+
+                if (currentBracket.Id != previousBracket.Id)
+                {
+                    var crossed = new List<TitleBracket>();
+                    int coinBonusTotal = 0, gemBonusTotal = 0, expBonusTotal = 0;
+
+                    if (direction == "promotion")
+                    {
+                        // Walk every bracket strictly above previousBracket up to (and possibly
+                        // past, if ExpBonus pushes further) currentBracket, accumulating rewards.
+                        var idx = brackets.FindIndex(b => b.Id == previousBracket.Id) + 1;
+                        while (idx < brackets.Count && brackets[idx].MinExperience <= user.ExperiencePoints)
+                        {
+                            var tier = brackets[idx];
+                            crossed.Add(tier);
+                            coinBonusTotal += tier.CoinBonus;
+                            gemBonusTotal += tier.GemBonus;
+                            expBonusTotal += tier.ExpBonus;
+                            user.ExperiencePoints += tier.ExpBonus; // may unlock further brackets
+                            idx++;
+                        }
+                        user.Coins += coinBonusTotal;
+                        user.Gems += gemBonusTotal;
+                        currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
+                    }
+                    // Demotion never claws back currency (matches v1's userDemotion, which only
+                    // ever removed structural slots/skills — neither exists in v3), so no bonus
+                    // accumulation happens on the way down.
+
+                    titleChange = new TitleChangeResultDto
+                    {
+                        Direction = direction,
+                        FromTitleBracketId = previousBracket.Id,
+                        FromTitleName = previousBracket.NameFor(user.Gender),
+                        ToTitleBracketId = currentBracket.Id,
+                        ToTitleName = currentBracket.NameFor(user.Gender),
+                        CrossedTitles = crossed.Select(t => new TitleCrossingDto { TitleBracketId = t.Id, TitleName = t.NameFor(user.Gender) }).ToList(),
+                        CoinBonusGranted = coinBonusTotal,
+                        GemBonusGranted = gemBonusTotal,
+                        ExpBonusGranted = expBonusTotal
+                    };
+                }
+            }
 
             await _repo.UpdateUserAsync(user);
 
@@ -653,32 +731,33 @@ namespace knkwebapi_v2.Services
                 gemsDelta,
                 experienceDelta,
                 reason,
-                metadata
+                metadata,
+                titleBonusCoins = titleChange?.CoinBonusGranted ?? 0,
+                titleBonusGems = titleChange?.GemBonusGranted ?? 0,
+                titleBonusExp = titleChange?.ExpBonusGranted ?? 0
             }));
 
-            // TitleService has no separate mutating "set title" method (see its own doc comment —
-            // title is purely derived from ExperiencePoints), so a title change is detected here by
-            // comparing the resolution before/after an XP-moving balance adjustment, not by a
-            // dedicated write path in TitleService itself.
-            if (previousTitle != null)
+            if (titleChange != null)
             {
-                var newTitle = await _titleService.ResolveAsync(user.ExperiencePoints);
-                if (newTitle.TitleBracketId != previousTitle.TitleBracketId)
+                // One consolidated audit entry for the whole crossing, not one per tier.
+                await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.TitleChanged, JsonSerializer.Serialize(new
                 {
-                    await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.TitleChanged, JsonSerializer.Serialize(new
-                    {
-                        fromTitleBracketId = previousTitle.TitleBracketId,
-                        fromTitleName = previousTitle.TitleName,
-                        toTitleBracketId = newTitle.TitleBracketId,
-                        toTitleName = newTitle.TitleName,
-                        // Title brackets are ordered by MinExperience, not by TitleBracketId (an
-                        // auto-increment PK unrelated to rank order), so direction is derived from
-                        // the XP delta's sign rather than comparing bracket ids directly —
-                        // resolution is monotonic in XP per TitleService's own doc comment.
-                        direction = experienceDelta > 0 ? "promotion" : "demotion"
-                    }));
-                }
+                    fromTitleBracketId = titleChange.FromTitleBracketId,
+                    fromTitleName = titleChange.FromTitleName,
+                    toTitleBracketId = titleChange.ToTitleBracketId,
+                    toTitleName = titleChange.ToTitleName,
+                    crossedTitles = titleChange.CrossedTitles.Select(t => t.TitleName),
+                    direction = titleChange.Direction
+                }));
             }
+
+            return new BalanceAdjustmentResultDto
+            {
+                NewCoins = user.Coins,
+                NewGems = user.Gems,
+                NewExperiencePoints = user.ExperiencePoints,
+                TitleChange = titleChange
+            };
         }
 
         // ===== NEW METHODS: LINK CODES =====

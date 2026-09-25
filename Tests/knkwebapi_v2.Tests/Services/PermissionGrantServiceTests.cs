@@ -78,4 +78,53 @@ public class PermissionGrantServiceTests
 
         _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantUpdated, It.IsAny<string?>()), Times.Once);
     }
+
+    [Fact]
+    public async Task UpsertByNodeAsync_NoExistingGrant_CreatesOneAndRecordsGrantAdded()
+    {
+        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant>());
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        var result = await _service.UpsertByNodeAsync(1, "knk.mode.staff", true, null, actorUserId: 4);
+
+        Assert.Equal("knk.mode.staff", result.Node);
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Once);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantAdded, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpsertByNodeAsync_ExistingGrantForNode_UpdatesItAndRecordsGrantUpdated()
+    {
+        var existing = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.mode.staff", Value = true, ExpiresAt = null };
+        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant> { existing });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+        var newExpiry = DateTime.UtcNow.AddHours(2);
+
+        await _service.UpsertByNodeAsync(1, "knk.mode.staff", true, newExpiry, actorUserId: 4);
+
+        _mockRepo.Verify(r => r.UpdateAsync(It.Is<PermissionGrant>(g => g.Id == 5 && g.ExpiresAt == newExpiry)), Times.Once);
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantUpdated, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevokeByNodeAsync_ExistingGrant_DeletesItAndRecordsGrantRemoved()
+    {
+        var existing = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.mode.staff", Value = true };
+        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant> { existing });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        await _service.RevokeByNodeAsync(1, "knk.mode.staff", actorUserId: 4);
+
+        _mockRepo.Verify(r => r.DeleteAsync(5), Times.Once);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantRemoved, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevokeByNodeAsync_NoExistingGrant_ThrowsKeyNotFoundException()
+    {
+        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant>());
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.RevokeByNodeAsync(1, "knk.mode.staff"));
+    }
 }

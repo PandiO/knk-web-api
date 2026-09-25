@@ -24,6 +24,24 @@ namespace knkwebapi_v2.Dtos
         public DateTime? ExpiresAt { get; set; }
     }
 
+    /// <summary>Body for PUT /api/PermissionGrants/by-node — create-or-update the one active
+    /// grant for (holderId, node), for callers that think in terms of "this holder has this
+    /// node" rather than a specific grant row id.</summary>
+    public class UpsertPermissionGrantByNodeDto
+    {
+        [JsonPropertyName("holderId")]
+        public int HolderId { get; set; }
+
+        [JsonPropertyName("node")]
+        public string Node { get; set; } = null!;
+
+        [JsonPropertyName("value")]
+        public bool Value { get; set; } = true;
+
+        [JsonPropertyName("expiresAt")]
+        public DateTime? ExpiresAt { get; set; }
+    }
+
     public class PermissionGrantListDto
     {
         [JsonPropertyName("id")]

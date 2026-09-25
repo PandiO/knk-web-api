@@ -210,6 +210,29 @@ public class User : PermissionHolder
     /// </summary>
     [RelatedEntityField(typeof(UserPermissionGroup))]
     public ICollection<UserPermissionGroup> PermissionGroupMemberships { get; set; } = new List<UserPermissionGroup>();
+
+    /// <summary>
+    /// Optional gender, ported from v1's Gender table (Male/Female + Mylord/Mylady prefix) to
+    /// resolve a title's MaleName/FemaleName display form. Null = unset; title display falls
+    /// back to MaleName. Never required at account creation.
+    /// </summary>
+    public Gender? Gender { get; set; }
+
+    // ===== ADMIN FREEZE (rebuilt v1 FreezeCommands — v1's version was a dead no-op stub) =====
+
+    /// <summary>
+    /// Whether this player is currently admin-frozen (movement/chat/commands/damage locked
+    /// in-game). Persisted so /freeze applied to an offline player takes effect on next join,
+    /// and so state survives a server restart. Set only via PUT /api/users/{id}/freeze and
+    /// .../unfreeze — ignored by the generic UserDto update path, same convention as ActiveMode.
+    /// </summary>
+    public bool IsFrozen { get; set; } = false;
+
+    public string? FrozenReason { get; set; }
+
+    public int? FrozenByUserId { get; set; }
+
+    public DateTime? FrozenAt { get; set; }
 }
 
 /// <summary>
@@ -274,4 +297,14 @@ public enum GatePassThroughMethod
     /// The player is teleported directly to the other side of the gate. The gate never animates.
     /// </summary>
     Teleport = 2
+}
+
+/// <summary>
+/// Ported from v1's 2-row Gender table (Male: "Mylord", Female: "Mylady" prefix) — kept as an
+/// enum rather than a DB table since it will never have more than these two values.
+/// </summary>
+public enum Gender
+{
+    Male = 0,
+    Female = 1
 }

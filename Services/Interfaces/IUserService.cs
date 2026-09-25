@@ -91,7 +91,12 @@ namespace knkwebapi_v2.Services
         /// <param name="experienceDelta">Experience change (can be negative)</param>
         /// <param name="reason">Reason for balance change (required for audit)</param>
         /// <param name="metadata">Optional metadata for audit trail</param>
-        Task AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null);
+        Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null);
+
+        /// <summary>Rebuilds v1's FreezeCommands (a dead no-op stub in v1 — see /freeze command
+        /// javadoc in knk-plugin). Works on offline targets: writes through immediately, and the
+        /// plugin restores/enforces the state on the target's next join.</summary>
+        Task SetFrozenAsync(int userId, bool frozen, string? reason, int? actorUserId = null);
 
         // ===== NEW METHODS: LINK CODES =====
         /// <summary>
