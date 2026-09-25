@@ -18,5 +18,6 @@ public enum AuditAction
     SalaryPayout = 7,
     BalanceAdjusted = 8,
     PlayerFrozen = 9,
-    PlayerUnfrozen = 10
+    PlayerUnfrozen = 10,
+    KitGranted = 11
 }

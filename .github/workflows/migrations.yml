@@ -1,0 +1,59 @@
+# Applies every EF Core migration to a fresh, empty MySQL 8 database (default sql_mode), the way
+# a brand-new environment would. Existing dev databases never re-run old migrations, so bugs that
+# only surface on an empty database (e.g. the title_brackets AUTO_INCREMENT/Id 0 collision fixed in
+# AddUserFeaturesPhase6RealTitleDataAndFreeze) are otherwise invisible until someone sets one up.
+name: Migrations (fresh DB)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fresh-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: knk_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+      ConnectionStrings__MySqlDbConnection: "Server=127.0.0.1;Port=3306;Database=knk_ci;User=root;Password=root;Allow User Variables=True;"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install dotnet-ef (matches Microsoft.EntityFrameworkCore.Design)
+        run: dotnet tool install --global dotnet-ef --version 9.0.10
+
+      - name: Build
+        run: dotnet build knkwebapi_v2.csproj
+
+      - name: Apply all migrations to an empty database
+        run: dotnet ef database update --no-build --project knkwebapi_v2.csproj
+
+      - name: Model snapshot matches the model (no missing migration)
+        run: dotnet ef migrations has-pending-model-changes --no-build --project knkwebapi_v2.csproj
+
+      - name: Roll every migration back down
+        run: dotnet ef database update 0 --no-build --project knkwebapi_v2.csproj
+
+      - name: Re-apply all migrations
+        run: dotnet ef database update --no-build --project knkwebapi_v2.csproj
