@@ -161,4 +161,31 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("quantity")]
         public int Quantity { get; set; }
     }
+
+    // Result of a successful PurchaseKitAsync call (docs/specs/kits/IMPLEMENTATION_PLAN.md §2) -
+    // purchasing and claiming are separate calls (DESIGN.md §4.1), so this deliberately does not
+    // carry a resolved loadout the way KitClaimResultDto does.
+    public class KitPurchaseResultDto
+    {
+        [JsonPropertyName("kitId")]
+        public int KitId { get; set; }
+
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("gemsPaid")]
+        public int GemsPaid { get; set; }
+
+        [JsonPropertyName("purchasedAt")]
+        public DateTime PurchasedAt { get; set; }
+    }
+
+    // Body for POST api/Kits/{id}/give - actorUserId is deliberately NOT a field here; it's
+    // resolved from the authenticated caller's JWT claims (DESIGN.md §4.6), never client-supplied.
+    public class GiveKitRequestDto
+    {
+        [Required]
+        [JsonPropertyName("targetUserId")]
+        public int TargetUserId { get; set; }
+    }
 }

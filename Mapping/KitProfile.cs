@@ -61,6 +61,18 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.SlotIndex, opt => opt.MapFrom(src => src.SlotIndex))
                 .ForMember(dest => dest.ItemBlueprintId, opt => opt.MapFrom(src => src.ItemBlueprintId))
                 .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity));
+
+            // Kit -> KitClaimResultDto (resolved loadout returned by ClaimKitAsync/GiveKitAsync/
+            // GrantFirstJoinKitsAsync, Phase 2, DESIGN.md §4.1/§4.2)
+            CreateMap<Kit, KitClaimResultDto>()
+                .ForMember(dest => dest.KitId, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.HelmetId, opt => opt.MapFrom(src => src.HelmetId))
+                .ForMember(dest => dest.ChestplateId, opt => opt.MapFrom(src => src.ChestplateId))
+                .ForMember(dest => dest.LeggingsId, opt => opt.MapFrom(src => src.LeggingsId))
+                .ForMember(dest => dest.BootsId, opt => opt.MapFrom(src => src.BootsId))
+                .ForMember(dest => dest.ShieldId, opt => opt.MapFrom(src => src.ShieldId))
+                .ForMember(dest => dest.HandId, opt => opt.MapFrom(src => src.HandId))
+                .ForMember(dest => dest.Contents, opt => opt.MapFrom(src => src.Contents.OrderBy(c => c.SlotIndex)));
         }
     }
 }
