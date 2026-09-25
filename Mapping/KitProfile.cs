@@ -19,9 +19,17 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.BootsId, opt => opt.MapFrom(src => src.BootsId))
                 .ForMember(dest => dest.ShieldId, opt => opt.MapFrom(src => src.ShieldId))
                 .ForMember(dest => dest.HandId, opt => opt.MapFrom(src => src.HandId))
+                .ForMember(dest => dest.Helmet, opt => opt.MapFrom(src => src.Helmet))
+                .ForMember(dest => dest.Chestplate, opt => opt.MapFrom(src => src.Chestplate))
+                .ForMember(dest => dest.Leggings, opt => opt.MapFrom(src => src.Leggings))
+                .ForMember(dest => dest.Boots, opt => opt.MapFrom(src => src.Boots))
+                .ForMember(dest => dest.Shield, opt => opt.MapFrom(src => src.Shield))
+                .ForMember(dest => dest.Hand, opt => opt.MapFrom(src => src.Hand))
                 .ForMember(dest => dest.Contents, opt => opt.MapFrom(src => src.Contents.OrderBy(c => c.SlotIndex)))
                 .ForMember(dest => dest.MinTitleBracketId, opt => opt.MapFrom(src => src.MinTitleBracketId))
+                .ForMember(dest => dest.MinTitleBracket, opt => opt.MapFrom(src => src.MinTitleBracket))
                 .ForMember(dest => dest.RequiredPermissionGroupId, opt => opt.MapFrom(src => src.RequiredPermissionGroupId))
+                .ForMember(dest => dest.RequiredPermissionGroup, opt => opt.MapFrom(src => src.RequiredPermissionGroup))
                 .ForMember(dest => dest.RequiredPermissionNode, opt => opt.MapFrom(src => src.RequiredPermissionNode))
                 .ForMember(dest => dest.GrantOnFirstJoin, opt => opt.MapFrom(src => src.GrantOnFirstJoin))
                 .ForMember(dest => dest.CooldownSeconds, opt => opt.MapFrom(src => src.CooldownSeconds))
@@ -44,6 +52,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.RequiredPermissionGroup, opt => opt.Ignore())
                 .ForMember(dest => dest.CostCurrency, opt => opt.MapFrom(src =>
                     string.IsNullOrEmpty(src.CostCurrency) ? (KitCostCurrency?)null : Enum.Parse<KitCostCurrency>(src.CostCurrency, true)));
+
+            // TitleBracket -> KitTitleBracketNavDto (KitDto.MinTitleBracket)
+            CreateMap<TitleBracket, KitTitleBracketNavDto>()
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.MaleName));
 
             // KitContent <-> KitContentDto
             CreateMap<KitContent, KitContentDto>()

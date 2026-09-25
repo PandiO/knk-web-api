@@ -34,14 +34,44 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("handId")]
         public int? HandId { get; set; }
 
+        // Read-only navigation objects for the FK fields above. The Kit FormConfiguration authors
+        // its pickers on the navigation property ("Helmet", not "HelmetId"), so FormWizard's edit
+        // mode needs these to pre-fill them - without them every picker loads empty and an untouched
+        // submit nulls the FK. Ignored on create/update, where only the *Id fields are read.
+        [JsonPropertyName("helmet")]
+        public ItemBlueprintNavDto? Helmet { get; set; }
+
+        [JsonPropertyName("chestplate")]
+        public ItemBlueprintNavDto? Chestplate { get; set; }
+
+        [JsonPropertyName("leggings")]
+        public ItemBlueprintNavDto? Leggings { get; set; }
+
+        [JsonPropertyName("boots")]
+        public ItemBlueprintNavDto? Boots { get; set; }
+
+        [JsonPropertyName("shield")]
+        public ItemBlueprintNavDto? Shield { get; set; }
+
+        [JsonPropertyName("hand")]
+        public ItemBlueprintNavDto? Hand { get; set; }
+
         [JsonPropertyName("contents")]
         public List<KitContentDto> Contents { get; set; } = new();
 
         [JsonPropertyName("minTitleBracketId")]
         public int? MinTitleBracketId { get; set; }
 
+        // Read-only, see Helmet above.
+        [JsonPropertyName("minTitleBracket")]
+        public KitTitleBracketNavDto? MinTitleBracket { get; set; }
+
         [JsonPropertyName("requiredPermissionGroupId")]
         public int? RequiredPermissionGroupId { get; set; }
+
+        // Read-only, see Helmet above.
+        [JsonPropertyName("requiredPermissionGroup")]
+        public RelatedPermissionGroupDto? RequiredPermissionGroup { get; set; }
 
         [JsonPropertyName("requiredPermissionNode")]
         public string? RequiredPermissionNode { get; set; }
@@ -63,6 +93,26 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("premiumPriceGems")]
         public int? PremiumPriceGems { get; set; }
+    }
+
+    // Lightweight TitleBracket shape for KitDto.MinTitleBracket. TitleBracket has no single name
+    // (it's gendered), so "name" carries the male form, which is what ObjectField displays.
+    public class KitTitleBracketNavDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("maleName")]
+        public string MaleName { get; set; } = string.Empty;
+
+        [JsonPropertyName("femaleName")]
+        public string FemaleName { get; set; } = string.Empty;
+
+        [JsonPropertyName("minExperience")]
+        public int MinExperience { get; set; }
     }
 
     // One Kit.Contents slot entry — (SlotIndex, ItemBlueprintId, Quantity), per DESIGN.md §2.2.

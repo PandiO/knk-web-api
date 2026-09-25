@@ -34,7 +34,14 @@ public class KitServiceTests
 
     public KitServiceTests()
     {
-        var config = new AutoMapper.MapperConfiguration(cfg => cfg.AddProfile<knkwebapi_v2.Mapping.KitProfile>());
+        // KitDto's read-only nav objects (Helmet, RequiredPermissionGroup, ...) reuse the
+        // ItemBlueprint/PermissionGroup profiles' nav maps, as the app's assembly-scan registration does.
+        var config = new AutoMapper.MapperConfiguration(cfg =>
+        {
+            cfg.AddProfile<knkwebapi_v2.Mapping.KitProfile>();
+            cfg.AddProfile<knkwebapi_v2.Mapping.ItemBlueprintMappingProfile>();
+            cfg.AddProfile<knkwebapi_v2.Mapping.PermissionMappingProfile>();
+        });
         _mapper = config.CreateMapper();
 
         _service = new KitService(
@@ -583,6 +590,70 @@ public class KitServiceTests
         _kitRepo.Setup(r => r.GetByIdAsync(404)).ReturnsAsync((Kit?)null);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.GiveKitAsync(actor.Id, target.Id, 404));
+    }
+
+    #endregion
+
+    #region Edit-mode read shape
+
+    // The Kit FormConfiguration authors its pickers on the navigation property ("Helmet"), so
+    // FormWizard edit mode pre-fills them from these objects. Without them an untouched edit
+    // submit wrote null to every equipment FK.
+    [Fact]
+    public async Task GetByIdAsync_EmitsNavigationObjectsAlongsideForeignKeys()
+    {
+        var helmet = new ItemBlueprint { Id = 20, Name = "iron_helmet", DefaultDisplayName = "Iron Helmet" };
+        var hand = new ItemBlueprint { Id = 26, Name = "iron_sword", DefaultDisplayName = "Iron Sword" };
+        var bracket = new TitleBracket { Id = 3, MaleName = "Knight", FemaleName = "Dame", MinExperience = 500 };
+        var group = new PermissionGroup { Id = 7, Name = "VIP", Weight = 10 };
+        var kit = PlainKit();
+        kit.HelmetId = helmet.Id;
+        kit.Helmet = helmet;
+        kit.HandId = hand.Id;
+        kit.Hand = hand;
+        kit.MinTitleBracketId = bracket.Id;
+        kit.MinTitleBracket = bracket;
+        kit.RequiredPermissionGroupId = group.Id;
+        kit.RequiredPermissionGroup = group;
+        SetKit(kit);
+
+        var dto = await _service.GetByIdAsync(kit.Id);
+
+        Assert.NotNull(dto);
+        Assert.Equal(20, dto!.HelmetId);
+        Assert.Equal(20, dto.Helmet!.Id);
+        Assert.Equal("iron_helmet", dto.Helmet.Name);
+        Assert.Equal("Iron Helmet", dto.Helmet.DefaultDisplayName);
+        Assert.Equal(26, dto.Hand!.Id);
+        Assert.Null(dto.ChestplateId);
+        Assert.Null(dto.Chestplate);
+        Assert.Null(dto.Leggings);
+        Assert.Null(dto.Boots);
+        Assert.Null(dto.Shield);
+        Assert.Equal(3, dto.MinTitleBracket!.Id);
+        Assert.Equal("Knight", dto.MinTitleBracket.Name);
+        Assert.Equal(7, dto.RequiredPermissionGroup!.Id);
+        Assert.Equal("VIP", dto.RequiredPermissionGroup.Name);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_IgnoresNavigationObjects_OnlyForeignKeysAreWritten()
+    {
+        var kit = PlainKit();
+        kit.HelmetId = 20;
+        SetKit(kit);
+        _itemBlueprintRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync((int id) => new ItemBlueprint { Id = id, Name = "bp" + id });
+
+        await _service.UpdateAsync(kit.Id, new KitDto
+        {
+            Name = "Default",
+            HelmetId = 21,
+            Helmet = new ItemBlueprintNavDto { Id = 99, Name = "stale" }
+        });
+
+        Assert.Equal(21, kit.HelmetId);
+        _kitRepo.Verify(r => r.UpdateAsync(kit), Times.Once);
     }
 
     #endregion
