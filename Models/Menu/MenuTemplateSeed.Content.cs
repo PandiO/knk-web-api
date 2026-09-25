@@ -35,6 +35,7 @@ public static partial class MenuTemplateSeed
         yield return HubTemplate();
         yield return KitsOverviewTemplate();
         yield return ProfileTemplate();
+        yield return ItemsCatalogTemplate();
     }
 
     /// <summary>
@@ -345,6 +346,79 @@ public static partial class MenuTemplateSeed
                 },
             },
         };
+    }
+
+    /// <summary>
+    /// CP4 - <c>items.catalog</c> (v1 List of items §3.11), built from the <c>example.catalog</c>
+    /// seed: the engine's <c>catalog.itemblueprints</c> source with search (shift-click clears) and
+    /// paging. No filter buttons: the source forwards filters to
+    /// <c>ItemBlueprintRepository.SearchAsync</c>, which applies none (only the search term), so a
+    /// facet would do nothing. The header's total comes from the plugin's <c>itemsCatalog</c> root.
+    /// Read-only - catalogue items carry no actions.
+    /// </summary>
+    private static MenuTemplate ItemsCatalogTemplate()
+    {
+        return new MenuTemplate
+        {
+            Key = ItemsCatalogMenuKey,
+            Name = "&8Item catalogue",
+            Description = "Every item blueprint, searchable and paged (catalog.itemblueprints). Content port CP4.",
+            Height = 6,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Header",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items =
+                    {
+                        DemoItem(4, 0,
+                            Bind("Material", "DIAMOND_SWORD", VariableRefreshPolicy.Static),
+                            Bind("Name", "&bItem catalogue", VariableRefreshPolicy.Static),
+                            Lore(0, "&7A list of all items in the game"),
+                            Lore(1, "$itemsCatalog.getTotalLine$", VariableRefreshPolicy.OnDirty)),
+                        BackButton(8, 1),
+                    },
+                },
+                new MenuSectionTemplate
+                {
+                    Name = "Items",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 1,
+                    DisplaySlot = 9,
+                    Width = 9,
+                    Height = 4,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ListMode = MenuListMode.Grid,
+                    Searchable = true,
+                    ContentSourceId = "catalog.itemblueprints",
+                    ContentSourceParamsJson = "{}",
+                    Items =
+                    {
+                        PagerButton(45, "&aPrevious page", "menu.page.prev"),
+                        PagerButton(53, "&aNext page", "menu.page.next"),
+                        SearchButton(49),
+                    },
+                },
+            },
+        };
+    }
+
+    private static MenuItemTemplate SearchButton(int slot)
+    {
+        var item = DemoItem(slot, 100 + slot,
+            Bind("Material", "OAK_SIGN", VariableRefreshPolicy.Static),
+            Bind("Name", "&eSearch", VariableRefreshPolicy.Static),
+            Lore(0, "&7Click to search by name"),
+            Lore(1, "&7Shift-click to clear the search"));
+        item.Actions.Add(new ActionBinding { ActionTypeId = "menu.search.prompt", ParamsJson = "{}", SortOrder = 0 });
+        return item;
     }
 
     /// <summary>

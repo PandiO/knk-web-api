@@ -57,6 +57,7 @@ public class MenuTemplateContentSeedTests
         MenuTemplateSeed.HubMenuKey,
         MenuTemplateSeed.KitsOverviewMenuKey,
         MenuTemplateSeed.ProfileMenuKey,
+        MenuTemplateSeed.ItemsCatalogMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
@@ -183,6 +184,23 @@ public class MenuTemplateContentSeedTests
         var row = Assert.Single(titles.Items, i => i.IsRowTemplate);
         Assert.Equal("$row.getDisplayMode$", Binding(row, "DisplayMode"));
         Assert.Empty(row.Actions);
+    }
+
+    [Fact]
+    public async Task ItemsCatalog_IsASearchablePagedCatalogWithoutFilters()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var catalog = Single(seeded, MenuTemplateSeed.ItemsCatalogMenuKey);
+
+        var grid = catalog.Sections.Single(s => s.Name == "Items");
+        Assert.Equal("catalog.itemblueprints", grid.ContentSourceId);
+        Assert.True(grid.Searchable);
+        Assert.DoesNotContain(grid.Items, i => i.IsRowTemplate);
+        var actions = grid.Items.SelectMany(i => i.Actions).Select(a => a.ActionTypeId).ToList();
+        Assert.Equal(new[] { "menu.page.prev", "menu.page.next", "menu.search.prompt" }, actions);
+        Assert.DoesNotContain(actions, a => a.StartsWith("menu.filter"));
+        Assert.Contains(ItemAt(catalog, 4).VariableBindings, b => b.Expression == "$itemsCatalog.getTotalLine$");
     }
 
     /// <summary>
