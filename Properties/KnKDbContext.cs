@@ -97,6 +97,22 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<BannerLayer> BannerLayers { get; set; } = null!;
     public virtual DbSet<Clan> Clans { get; set; } = null!;
 
+    // Siege Phase 2 — scenario/lobby/configuration/match schema (docs/specs/siege-minigame/DESIGN.md
+    // §3.3–3.10). Model configuration: the "Siege Phase 2" block in OnModelCreating.
+    public virtual DbSet<SiegeScenario> SiegeScenarios { get; set; } = null!;
+    public virtual DbSet<SiegeScenarioDistrict> SiegeScenarioDistricts { get; set; } = null!;
+    public virtual DbSet<SiegeTeam> SiegeTeams { get; set; } = null!;
+    public virtual DbSet<SiegeSpawnpoint> SiegeSpawnpoints { get; set; } = null!;
+    public virtual DbSet<SiegeObjective> SiegeObjectives { get; set; } = null!;
+    public virtual DbSet<SiegeScenarioGate> SiegeScenarioGates { get; set; } = null!;
+    public virtual DbSet<SiegeLobby> SiegeLobbies { get; set; } = null!;
+    public virtual DbSet<SiegeLobbyScenario> SiegeLobbyScenarios { get; set; } = null!;
+    public virtual DbSet<SiegeConfiguration> SiegeConfigurations { get; set; } = null!;
+    public virtual DbSet<SiegeMatch> SiegeMatches { get; set; } = null!;
+    public virtual DbSet<SiegeMatchParticipant> SiegeMatchParticipants { get; set; } = null!;
+    public virtual DbSet<SiegeMatchObjectiveResult> SiegeMatchObjectiveResults { get; set; } = null!;
+    public virtual DbSet<SiegeMatchGateSnapshot> SiegeMatchGateSnapshots { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -243,6 +259,182 @@ public partial class KnKDbContext : DbContext
                 .HasForeignKey(e => e.DefaultForTownId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // ==== Siege Phase 2 (docs/specs/siege-minigame/DESIGN.md §3.3–3.10) ====================
+        // Kept as one block (with the DbSets above) so it merges cleanly with other branches.
+        // Delete rules (DESIGN §3): owned children cascade from their owner; shared world/catalog
+        // rows (Town, District, Location, GateStructure, Clan, BannerDesign, TitleBracket, User) are
+        // Restrict. Team references from sibling rows (objective holder, gate owner, match history)
+        // are SetNull, so deleting a team falls back to the "first Defender team" default instead of
+        // being blocked. Match history Restricts its lobby/scenario (a played scenario can't be
+        // deleted). Enums are stored as strings.
+        modelBuilder.Entity<SiegeScenario>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_scenarios");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+
+            entity.HasOne(e => e.Town).WithMany().HasForeignKey(e => e.TownId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.HubLocation).WithMany().HasForeignKey(e => e.HubLocationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.MinTitleBracket).WithMany().HasForeignKey(e => e.MinTitleBracketId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SiegeScenarioDistrict>(entity =>
+        {
+            entity.HasKey(e => new { e.SiegeScenarioId, e.DistrictId });
+            entity.ToTable("siege_scenario_districts");
+
+            entity.HasOne(e => e.SiegeScenario).WithMany(s => s.Districts).HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.District).WithMany().HasForeignKey(e => e.DistrictId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SiegeTeam>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_teams");
+
+            entity.Property(e => e.Role).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.ChatColor).HasMaxLength(20);
+            entity.Property(e => e.StartMessage).HasMaxLength(255);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany(s => s.Teams).HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Clan).WithMany().HasForeignKey(e => e.ClanId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.BannerDesign).WithMany().HasForeignKey(e => e.BannerDesignId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SiegeSpawnpoint>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_spawnpoints");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => new { e.SiegeTeamId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeTeam).WithMany(t => t.Spawnpoints).HasForeignKey(e => e.SiegeTeamId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Location).WithMany().HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SiegeObjective>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_objectives");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.GateStateOnCapture).HasConversion<string>().HasMaxLength(50);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany(s => s.Objectives).HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Location).WithMany().HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.GateStructure).WithMany().HasForeignKey(e => e.GateStructureId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.InitialHolderTeam).WithMany().HasForeignKey(e => e.InitialHolderTeamId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SiegeScenarioGate>(entity =>
+        {
+            entity.HasKey(e => new { e.SiegeScenarioId, e.GateStructureId });
+            entity.ToTable("siege_scenario_gates");
+
+            entity.Property(e => e.InitialState).HasConversion<string>().HasMaxLength(50);
+
+            entity.HasOne(e => e.SiegeScenario).WithMany(s => s.Gates).HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.GateStructure).WithMany().HasForeignKey(e => e.GateStructureId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.InitialOwnerTeam).WithMany().HasForeignKey(e => e.InitialOwnerTeamId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SiegeLobby>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_lobbies");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Mode).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ScheduleJson).HasColumnType("longtext");
+            entity.HasIndex(e => e.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<SiegeLobbyScenario>(entity =>
+        {
+            entity.HasKey(e => new { e.SiegeLobbyId, e.SiegeScenarioId });
+            entity.ToTable("siege_lobby_scenarios");
+
+            entity.HasOne(e => e.SiegeLobby).WithMany(l => l.Rotation).HasForeignKey(e => e.SiegeLobbyId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SiegeConfiguration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("siege_configurations");
+
+            entity.Property(e => e.Id).HasMaxLength(64);
+            entity.Property(e => e.MatchmakingAnnouncementMarks).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.KillAnnouncementThresholds).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.AllowedCommands).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.AllowedEnchantmentKeys).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.NonMemberGateView).HasConversion<string>().HasMaxLength(30);
+        });
+
+        modelBuilder.Entity<SiegeMatch>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_matches");
+
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.EndReason).HasConversion<string>().HasMaxLength(30);
+            entity.HasIndex(e => e.Status);
+
+            entity.HasOne(e => e.SiegeLobby).WithMany().HasForeignKey(e => e.SiegeLobbyId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SiegeMatchParticipant>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_match_participants");
+
+            entity.HasIndex(e => new { e.SiegeMatchId, e.UserId });
+
+            entity.HasOne(e => e.SiegeMatch).WithMany(m => m.Participants).HasForeignKey(e => e.SiegeMatchId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SiegeTeam).WithMany().HasForeignKey(e => e.SiegeTeamId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SiegeMatchObjectiveResult>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_match_objective_results");
+
+            entity.HasOne(e => e.SiegeMatch).WithMany(m => m.ObjectiveResults).HasForeignKey(e => e.SiegeMatchId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SiegeObjective).WithMany().HasForeignKey(e => e.SiegeObjectiveId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.FinalHolderTeam).WithMany().HasForeignKey(e => e.FinalHolderTeamId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.CapturedByUser).WithMany().HasForeignKey(e => e.CapturedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SiegeMatchGateSnapshot>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_match_gate_snapshots");
+
+            entity.Property(e => e.SnapshotJson).IsRequired().HasColumnType("longtext");
+            entity.HasIndex(e => new { e.SiegeMatchId, e.GateStructureId }).IsUnique();
+
+            entity.HasOne(e => e.SiegeMatch).WithMany(m => m.GateSnapshots).HasForeignKey(e => e.SiegeMatchId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.GateStructure).WithMany().HasForeignKey(e => e.GateStructureId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // GateStructure.CurrentSiegeId (was a plain int? "FK to Siege (future)") -> SiegeMatch, no
+        // navigation property. SetNull: deleting a match never strands a gate "in a siege".
+        modelBuilder.Entity<GateStructure>()
+            .HasOne<SiegeMatch>()
+            .WithMany()
+            .HasForeignKey(g => g.CurrentSiegeId)
+            .OnDelete(DeleteBehavior.SetNull);
+        // ==== end Siege Phase 2 ================================================================
 
         modelBuilder.Entity<LinkCode>(entity =>
         {
