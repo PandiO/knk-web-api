@@ -23,6 +23,10 @@ namespace knkwebapi_v2.Dtos
         // Player-driven ItemScan WorldTask (docs/specs/items/IMPLEMENTATION_PLAN.md §5) -
         // handled entirely by knk-plugin's ItemScanTaskHandler; no server-side branching here.
         public const string ItemScan = "ItemScan";
+
+        // Player-driven KitScan WorldTask (docs/specs/kits/DESIGN.md §6) - same shape as
+        // ItemScan, handled entirely by knk-plugin's KitScanTaskHandler.
+        public const string KitScan = "KitScan";
     }
 
     /// <summary>
