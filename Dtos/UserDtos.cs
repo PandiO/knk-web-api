@@ -223,6 +223,14 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("frozenReason")]
         public string? FrozenReason { get; set; }
+
+        /// <summary>
+        /// "Male", "Female" or null (unset - treated as male for title names, see
+        /// TitleBracket.NameFor). Added for the in-game Profile menu (InventoryMenu content port
+        /// CP3), which shows every bracket's name for the viewer's gender.
+        /// </summary>
+        [JsonPropertyName("gender")]
+        public Gender? Gender { get; set; }
     }
 
     /// <summary>

@@ -534,4 +534,16 @@ public class UsersControllerTests
     }
 
     #endregion
+
+    [Fact]
+    public async Task GetUserSummaryByUuid_IncludesGender()
+    {
+        _mockUserService.Setup(s => s.GetByUuidAsync("uuid-1"))
+            .ReturnsAsync(new UserDto { Id = 3, Username = "Lady", Uuid = "uuid-1", Gender = Gender.Female });
+
+        var result = await _controller.GetUserSummaryByUuid("uuid-1");
+
+        var dto = Assert.IsType<UserSummaryDto>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(Gender.Female, dto.Gender);
+    }
 }

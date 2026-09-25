@@ -34,6 +34,7 @@ public static partial class MenuTemplateSeed
     {
         yield return HubTemplate();
         yield return KitsOverviewTemplate();
+        yield return ProfileTemplate();
     }
 
     /// <summary>
@@ -255,6 +256,95 @@ public static partial class MenuTemplateSeed
         item.Actions.Add(new ActionBinding { ActionTypeId = "menu.confirm.cancel", ParamsJson = "{}", SortOrder = 0 });
         item.Conditions.Add(RenderCondition(pendingCondition, "{}"));
         return item;
+    }
+
+    /// <summary>
+    /// CP3 - <c>profile.main</c> (v1 Title information §3.3 + Personal Menu profile/Titles/
+    /// Financial tiles §3.1). Row 0 reads the plugin's <c>profile</c> root (a fresh read of the
+    /// viewer); rows 2-5 list every title bracket (<c>titles.brackets</c>) with the viewer's
+    /// current one HIGHLIGHTed, passed ones NORMAL and the rest DISABLED. 19 brackets fit on one
+    /// page; the pager (45/53) stays for safety. Read-only.
+    /// </summary>
+    private static MenuTemplate ProfileTemplate()
+    {
+        return new MenuTemplate
+        {
+            Key = ProfileMenuKey,
+            Name = "&8Your profile",
+            Description = "The viewer's balances, title progress, premium tier and every title bracket. Content port CP3.",
+            Height = 6,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Header",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items =
+                    {
+                        DemoItem(0, 0,
+                            Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
+                            Bind("SkullOwner", "$player.getName$", VariableRefreshPolicy.OnDirty),
+                            Bind("Name", "&f$player.getName$", VariableRefreshPolicy.OnDirty),
+                            Lore(0, "$profile.getTitleLine$", VariableRefreshPolicy.OnDirty),
+                            Lore(1, "$profile.getPremiumLine$", VariableRefreshPolicy.OnDirty)),
+                        DemoItem(1, 1,
+                            Bind("Material", "GOLD_INGOT", VariableRefreshPolicy.Static),
+                            Bind("Name", "&6Balances", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Coins: &f$profile.getCoins$", VariableRefreshPolicy.OnDirty),
+                            Lore(1, "&7Gems: &f$profile.getGems$", VariableRefreshPolicy.OnDirty),
+                            Lore(2, "&7Experience: &f$profile.getExperience$", VariableRefreshPolicy.OnDirty),
+                            Lore(3, "$profile.getPrestigeLine$", VariableRefreshPolicy.OnDirty)),
+                        DemoItem(2, 2,
+                            Bind("Material", "IRON_HELMET", VariableRefreshPolicy.Static),
+                            Bind("Name", "&bTitle progress", VariableRefreshPolicy.Static),
+                            Lore(0, "$profile.getProgressLines$", VariableRefreshPolicy.OnDirty)),
+                        DemoItem(4, 3,
+                            Bind("Material", "BOOK", VariableRefreshPolicy.Static),
+                            Bind("Name", "&eTitles", VariableRefreshPolicy.Static),
+                            Lore(0, "&7There are &f$profile.getTitleCount$ &7titles", VariableRefreshPolicy.OnDirty),
+                            Lore(1, "&7Earn experience to climb them")),
+                        BackButton(8, 4),
+                    },
+                },
+                new MenuSectionTemplate
+                {
+                    Name = "Titles",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 1,
+                    DisplaySlot = 18,
+                    Width = 9,
+                    Height = 4,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ContentSourceId = "titles.brackets",
+                    ContentSourceParamsJson = "{}",
+                    Items =
+                    {
+                        PagerButton(45, "&aPrevious page", "menu.page.prev"),
+                        PagerButton(53, "&aNext page", "menu.page.next"),
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            IsRowTemplate = true,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                Bind("Material", "IRON_HELMET", VariableRefreshPolicy.Static),
+                                Bind("DisplayMode", "$row.getDisplayMode$", VariableRefreshPolicy.OnDirty),
+                                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                                Lore(0, "$row.getLoreLines$", VariableRefreshPolicy.OnDirty),
+                            },
+                        },
+                    },
+                },
+            },
+        };
     }
 
     /// <summary>

@@ -56,6 +56,7 @@ public class MenuTemplateContentSeedTests
     {
         MenuTemplateSeed.HubMenuKey,
         MenuTemplateSeed.KitsOverviewMenuKey,
+        MenuTemplateSeed.ProfileMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
@@ -163,6 +164,25 @@ public class MenuTemplateContentSeedTests
         Assert.Equal("menu.page.next", Assert.Single(ItemAt(kits, 53).Actions).ActionTypeId);
         foreach (var slot in new[] { 48, 50 })
             Assert.Equal("kits.purchase-pending", Assert.Single(ItemAt(kits, slot).Conditions).ConditionTypeId);
+    }
+
+    [Fact]
+    public async Task Profile_ReadsTheProfileRootAndListsTitleBrackets()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var profile = Single(seeded, MenuTemplateSeed.ProfileMenuKey);
+
+        Assert.Equal(6, profile.Height);
+        Assert.Equal("$player.getName$", Binding(ItemAt(profile, 0), "SkullOwner"));
+        Assert.Contains(ItemAt(profile, 1).VariableBindings, b => b.Expression == "$profile.getPrestigeLine$");
+        Assert.Equal("$profile.getProgressLines$", Binding(ItemAt(profile, 2), "Lore"));
+        Assert.Equal("menu.back", Assert.Single(ItemAt(profile, 8).Actions).ActionTypeId);
+        var titles = profile.Sections.Single(s => s.Name == "Titles");
+        Assert.Equal("titles.brackets", titles.ContentSourceId);
+        var row = Assert.Single(titles.Items, i => i.IsRowTemplate);
+        Assert.Equal("$row.getDisplayMode$", Binding(row, "DisplayMode"));
+        Assert.Empty(row.Actions);
     }
 
     /// <summary>
