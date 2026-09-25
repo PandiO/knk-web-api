@@ -867,4 +867,71 @@ public class UserServiceTests
     }
 
     #endregion
+
+    #region AdjustBalancesAsync Player Notification Tests
+
+    private UserService CreateUserServiceWithQueue(IPlayerNotificationQueue queue) => new(
+        _mockUserRepository.Object,
+        _mockMapper.Object,
+        _mockPasswordService.Object,
+        _mockLinkCodeService.Object,
+        _mockTitleService.Object,
+        _mockMembershipService.Object,
+        _mockAuditLogService.Object,
+        _mockPermissionGroupRepository.Object,
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+        queue);
+
+    private void SetUpTwoBracketsAndPlayer()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new User { Id = 1, Username = "player", Uuid = "uuid-1", Coins = 0, Gems = 0, ExperiencePoints = 0 });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 500 }
+        });
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_TitleChanges_QueuesInGameNotificationForThePlugin()
+    {
+        // Regression guard: a web-app XP grant returned the title change to the browser only, so
+        // an online player never saw the in-game promotion effects.
+        SetUpTwoBracketsAndPlayer();
+        var queue = new Mock<IPlayerNotificationQueue>();
+
+        await CreateUserServiceWithQueue(queue.Object)
+            .AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "web app xp grant");
+
+        queue.Verify(q => q.Enqueue(1, "uuid-1", "player", PlayerNotificationTypes.TitleChanged,
+            It.Is<TitleChangeResultDto>(t => t.Direction == "promotion" && t.ToTitleBracketId == 2)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_NotifyPlayerFalse_DoesNotQueue()
+    {
+        // The plugin's /knk user command shows the effects itself from the response.
+        SetUpTwoBracketsAndPlayer();
+        var queue = new Mock<IPlayerNotificationQueue>();
+
+        await CreateUserServiceWithQueue(queue.Object)
+            .AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "/knk user", notifyPlayer: false);
+
+        queue.Verify(q => q.Enqueue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TitleChangeResultDto?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_NoTitleChange_DoesNotQueue()
+    {
+        SetUpTwoBracketsAndPlayer();
+        var queue = new Mock<IPlayerNotificationQueue>();
+
+        await CreateUserServiceWithQueue(queue.Object)
+            .AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 100, reason: "small xp grant");
+
+        queue.Verify(q => q.Enqueue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TitleChangeResultDto?>()), Times.Never);
+    }
+
+    #endregion
 }

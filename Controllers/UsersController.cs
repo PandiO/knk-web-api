@@ -758,7 +758,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                var result = await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetUserIdFromClaims(User));
+                var result = await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetUserIdFromClaims(User), request.NotifyPlayer);
                 return Ok(result);
             }
             catch (KeyNotFoundException)

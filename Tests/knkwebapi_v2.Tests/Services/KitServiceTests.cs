@@ -657,4 +657,50 @@ public class KitServiceTests
     }
 
     #endregion
+
+    #region Contents slot range
+
+    private static KitDto KitWithSlot(int slotIndex) => new()
+    {
+        Name = "Slot range",
+        Contents = new List<KitContentDto> { new() { SlotIndex = slotIndex, ItemBlueprintId = 5, Quantity = 1 } }
+    };
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(36)]
+    public async Task CreateAsync_SlotIndexOutOfRange_Throws(int slotIndex)
+    {
+        _itemBlueprintRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(new ItemBlueprint { Id = 5, Name = "Arrow" });
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(KitWithSlot(slotIndex)));
+
+        Assert.Contains($"SlotIndex {slotIndex}", ex.Message);
+        _kitRepo.Verify(r => r.AddAsync(It.IsAny<Kit>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(35)]
+    public async Task CreateAsync_SlotIndexAtBoundary_IsAccepted(int slotIndex)
+    {
+        _itemBlueprintRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(new ItemBlueprint { Id = 5, Name = "Arrow" });
+
+        await _service.CreateAsync(KitWithSlot(slotIndex));
+
+        _kitRepo.Verify(r => r.AddAsync(It.Is<Kit>(k => k.Contents.Single().SlotIndex == slotIndex)), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SlotIndexOutOfRange_Throws()
+    {
+        SetKit(PlainKit());
+        _itemBlueprintRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(new ItemBlueprint { Id = 5, Name = "Arrow" });
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(10, KitWithSlot(36)));
+
+        _kitRepo.Verify(r => r.UpdateAsync(It.IsAny<Kit>()), Times.Never);
+    }
+
+    #endregion
 }
