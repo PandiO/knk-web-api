@@ -87,6 +87,12 @@ public partial class KnKDbContext : DbContext
     // User features Phase 6 — salary system (docs/specs/user-features/IMPLEMENTATION_PLAN.md §6)
     public DbSet<SalaryConfiguration> SalaryConfigurations { get; set; }
 
+    // Kits Phase 1 — schema (docs/specs/kits/IMPLEMENTATION_PLAN.md §1)
+    public virtual DbSet<Kit> Kits { get; set; } = null!;
+    public virtual DbSet<KitContent> KitContents { get; set; } = null!;
+    public virtual DbSet<KitClaim> KitClaims { get; set; } = null!;
+    public virtual DbSet<KitPurchase> KitPurchases { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -304,6 +310,126 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("locations");
+        });
+
+        // Kits (docs/specs/kits/IMPLEMENTATION_PLAN.md §1) — Kit is fundamentally an item-catalog
+        // composition, configured alongside ItemBlueprint's own satellite entities above.
+        modelBuilder.Entity<Kit>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("kits");
+
+            entity.Property(e => e.CostCurrency).HasConversion<string>().HasMaxLength(20);
+
+            // Equipment-slot FKs — Restrict, never Cascade (DESIGN.md §2.1/§2.2's cascade-delete-
+            // bug fix applies to these exactly like KitContent.ItemBlueprintId below).
+            entity.HasOne(k => k.Helmet)
+                .WithMany()
+                .HasForeignKey(k => k.HelmetId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(k => k.Chestplate)
+                .WithMany()
+                .HasForeignKey(k => k.ChestplateId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(k => k.Leggings)
+                .WithMany()
+                .HasForeignKey(k => k.LeggingsId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(k => k.Boots)
+                .WithMany()
+                .HasForeignKey(k => k.BootsId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(k => k.Shield)
+                .WithMany()
+                .HasForeignKey(k => k.ShieldId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(k => k.Hand)
+                .WithMany()
+                .HasForeignKey(k => k.HandId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Gating FKs — catalog-lookup FKs, Restrict for the same reason (a TitleBracket/
+            // PermissionGroup still referenced by a Kit's gating must not be deletable out from
+            // under it).
+            entity.HasOne(k => k.MinTitleBracket)
+                .WithMany()
+                .HasForeignKey(k => k.MinTitleBracketId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(k => k.RequiredPermissionGroup)
+                .WithMany()
+                .HasForeignKey(k => k.RequiredPermissionGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // KitContent — composite key (KitId, SlotIndex), not (KitId, ItemBlueprintId): two
+        // different slots may legitimately hold the same ItemBlueprint (DESIGN.md §2.2).
+        modelBuilder.Entity<KitContent>(entity =>
+        {
+            entity.ToTable("kit_contents");
+            entity.HasKey(e => new { e.KitId, e.SlotIndex });
+
+            // A Kit's contents are meaningless without their parent Kit - cascade.
+            entity.HasOne(kc => kc.Kit)
+                .WithMany(k => k.Contents)
+                .HasForeignKey(kc => kc.KitId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // The cascade-delete-bug fix (DESIGN.md §2.2/§0): an ItemBlueprint still referenced by
+            // any KitContent must not be deletable out from under it - EF defaults every FK it can
+            // to Cascade unless told otherwise, so this must be explicit.
+            entity.HasOne(kc => kc.ItemBlueprint)
+                .WithMany()
+                .HasForeignKey(kc => kc.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // KitClaim — append-only claim-history log (DESIGN.md §2.3).
+        modelBuilder.Entity<KitClaim>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("kit_claims");
+
+            entity.Property(e => e.ClaimedAt).HasColumnType("datetime");
+
+            entity.HasOne(kc => kc.Kit)
+                .WithMany()
+                .HasForeignKey(kc => kc.KitId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(kc => kc.User)
+                .WithMany()
+                .HasForeignKey(kc => kc.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Cooldown check looks up "this (kit, user) pair's most recent claim" first - index it.
+            entity.HasIndex(e => new { e.KitId, e.UserId, e.ClaimedAt });
+        });
+
+        // KitPurchase — one-time premium unlock (DESIGN.md §2.4), unique per (KitId, UserId).
+        modelBuilder.Entity<KitPurchase>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("kit_purchases");
+
+            entity.Property(e => e.PurchasedAt).HasColumnType("datetime");
+
+            entity.HasOne(kp => kp.Kit)
+                .WithMany()
+                .HasForeignKey(kp => kp.KitId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(kp => kp.User)
+                .WithMany()
+                .HasForeignKey(kp => kp.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.KitId, e.UserId }).IsUnique();
         });
 
         base.OnModelCreating(modelBuilder);
