@@ -58,6 +58,7 @@ public class MenuTemplateContentSeedTests
         MenuTemplateSeed.KitsOverviewMenuKey,
         MenuTemplateSeed.ProfileMenuKey,
         MenuTemplateSeed.ItemsCatalogMenuKey,
+        MenuTemplateSeed.PremiumTiersMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
@@ -201,6 +202,20 @@ public class MenuTemplateContentSeedTests
         Assert.Equal(new[] { "menu.page.prev", "menu.page.next", "menu.search.prompt" }, actions);
         Assert.DoesNotContain(actions, a => a.StartsWith("menu.filter"));
         Assert.Contains(ItemAt(catalog, 4).VariableBindings, b => b.Expression == "$itemsCatalog.getTotalLine$");
+    }
+
+    [Fact]
+    public async Task PremiumTiers_IsAReadOnlyRowOfTiersUnderTheViewersTier()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var premium = Single(seeded, MenuTemplateSeed.PremiumTiersMenuKey);
+
+        Assert.Equal(3, premium.Height);
+        Assert.Equal("$premium.getTierLine$", Binding(ItemAt(premium, 4), "Lore"));
+        var tiers = premium.Sections.Single(s => s.Name == "Tiers");
+        Assert.Equal("premium.tiers", tiers.ContentSourceId);
+        Assert.Empty(Assert.Single(tiers.Items, i => i.IsRowTemplate).Actions);
     }
 
     /// <summary>

@@ -36,6 +36,7 @@ public static partial class MenuTemplateSeed
         yield return KitsOverviewTemplate();
         yield return ProfileTemplate();
         yield return ItemsCatalogTemplate();
+        yield return PremiumTiersTemplate();
     }
 
     /// <summary>
@@ -419,6 +420,77 @@ public static partial class MenuTemplateSeed
             Lore(1, "&7Shift-click to clear the search"));
         item.Actions.Add(new ActionBinding { ActionTypeId = "menu.search.prompt", ParamsJson = "{}", SortOrder = 0 });
         return item;
+    }
+
+    /// <summary>
+    /// CP5 - <c>premium.tiers</c> (v1 Donator-ranks information §3.4, rebuilt from today's v3 data,
+    /// not its 2017 content): the premium-tier permission groups by weight with their salary
+    /// multiplier, the viewer's own tier HIGHLIGHTed; header shows the viewer's tier + expiry
+    /// (<c>premium</c> root). Read-only. The perk redesign (vision §5.3) changes the data, not this
+    /// screen.
+    /// </summary>
+    private static MenuTemplate PremiumTiersTemplate()
+    {
+        return new MenuTemplate
+        {
+            Key = PremiumTiersMenuKey,
+            Name = "&8Premium tiers",
+            Description = "Every premium tier (premium permission groups by weight) and the viewer's own. Content port CP5.",
+            Height = 3,
+            Growth = MenuGrowthMode.Static,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Header",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items =
+                    {
+                        DemoItem(4, 0,
+                            Bind("Material", "GOLD_BLOCK", VariableRefreshPolicy.Static),
+                            Bind("Name", "&6Premium tiers", VariableRefreshPolicy.Static),
+                            Lore(0, "$premium.getTierLine$", VariableRefreshPolicy.OnDirty)),
+                        BackButton(8, 1),
+                    },
+                },
+                new MenuSectionTemplate
+                {
+                    Name = "Tiers",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 1,
+                    DisplaySlot = 9,
+                    Width = 9,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ContentSourceId = "premium.tiers",
+                    ContentSourceParamsJson = "{}",
+                    Items =
+                    {
+                        PagerButton(18, "&aPrevious page", "menu.page.prev"),
+                        PagerButton(26, "&aNext page", "menu.page.next"),
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            IsRowTemplate = true,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                Bind("Material", "$row.getMaterial$", VariableRefreshPolicy.OnDirty),
+                                Bind("DisplayMode", "$row.getDisplayMode$", VariableRefreshPolicy.OnDirty),
+                                Bind("Name", "&6$row.getName$", VariableRefreshPolicy.OnDirty),
+                                Lore(0, "$row.getLoreLines$", VariableRefreshPolicy.OnDirty),
+                            },
+                        },
+                    },
+                },
+            },
+        };
     }
 
     /// <summary>
