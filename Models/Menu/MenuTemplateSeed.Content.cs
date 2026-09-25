@@ -33,6 +33,7 @@ public static partial class MenuTemplateSeed
     private static IEnumerable<MenuTemplate> ContentTemplates()
     {
         yield return HubTemplate();
+        yield return KitsOverviewTemplate();
     }
 
     /// <summary>
@@ -115,6 +116,145 @@ public static partial class MenuTemplateSeed
                 },
             },
         };
+    }
+
+    /// <summary>
+    /// CP2 - <c>kits.overview</c> (v2 <c>KitOverview</c>/<c>KitSelectItem</c>, catalogue §4.1).
+    /// Rows come from the plugin's <c>kits.available</c> source (the viewer's availability list;
+    /// a single disabled "No kits available right now" row when empty). A row's click is either
+    /// <c>kits.claim</c> or - for a not-yet-bought single-purchase premium kit - a
+    /// <c>menu.confirm.request</c> wrapping <c>kits.purchase</c>; which one is picked per row by
+    /// action-level Render conditions on <c>$row.getIsPurchase$</c>. Confirm/Cancel (row 5) only
+    /// show while a kit purchase is pending (<c>kits.purchase-pending</c>). Paging works on the
+    /// base engine (fixes v2 bug B28); the server's ClaimKitAsync does every permission,
+    /// cooldown and cost check (fixes kits.md bug #3). AutoRefreshTicks 20 so the cooldown line
+    /// (a TTL binding) counts down.
+    /// </summary>
+    private static MenuTemplate KitsOverviewTemplate()
+    {
+        return new MenuTemplate
+        {
+            Key = KitsOverviewMenuKey,
+            Name = "&8Kits",
+            Description = "Every kit the viewer can see, claim or buy (kits.available). Content port CP2.",
+            Height = 6,
+            Growth = MenuGrowthMode.Static,
+            AutoRefreshTicks = 20,
+            Sections =
+            {
+                new MenuSectionTemplate
+                {
+                    Name = "Header",
+                    Kind = MenuSectionKind.StaticButtons,
+                    SortOrder = 0,
+                    DisplaySlot = 0,
+                    Width = 9,
+                    Height = 1,
+                    Overflow = MenuOverflowMode.Hide,
+                    Items =
+                    {
+                        DemoItem(4, 0,
+                            Bind("Material", "ARMOR_STAND", VariableRefreshPolicy.Static),
+                            Bind("Name", "&aKits", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Click a kit to claim it"),
+                            Lore(1, "&7Premium kits are bought once, then claimed")),
+                        BackButton(8, 1),
+                    },
+                },
+                new MenuSectionTemplate
+                {
+                    Name = "Kits",
+                    Kind = MenuSectionKind.ContentGrid,
+                    SortOrder = 1,
+                    DisplaySlot = 9,
+                    Width = 9,
+                    Height = 4,
+                    Overflow = MenuOverflowMode.Scroll,
+                    ContentSourceId = "kits.available",
+                    ContentSourceParamsJson = "{}",
+                    Items =
+                    {
+                        // Pinned below the grid (absolute slots, J16): pager 45/53, confirm 48/50.
+                        PagerButton(45, "&aPrevious page", "menu.page.prev"),
+                        PagerButton(53, "&aNext page", "menu.page.next"),
+                        ConfirmButton(48, "kits.purchase-pending", "&7Buy the kit you picked (see chat)"),
+                        CancelButton(50, "kits.purchase-pending"),
+                        KitRowTemplate(),
+                    },
+                },
+            },
+        };
+    }
+
+    private static MenuItemTemplate KitRowTemplate()
+    {
+        var claim = new ActionBinding
+        {
+            ActionTypeId = "kits.claim",
+            ParamsJson = "{\"kitId\":\"$row.getKitId$\"}",
+            SortOrder = 0,
+        };
+        var purchase = new ActionBinding
+        {
+            ActionTypeId = "menu.confirm.request",
+            ParamsJson = "{\"actionTypeId\":\"kits.purchase\",\"actionParamsJson\":\"{\\\"kitId\\\":\\\"$row.getKitId$\\\"}\","
+                + "\"prompt\":\"$row.getPurchasePrompt$\"}",
+            SortOrder = 1,
+        };
+        var item = new MenuItemTemplate
+        {
+            SortOrder = 0,
+            Amount = 1,
+            IsRowTemplate = true,
+            DisplayMode = MenuDisplayMode.Normal,
+            VariableBindings =
+            {
+                Bind("Material", "$row.getMaterial$", VariableRefreshPolicy.OnDirty),
+                Bind("DisplayMode", "$row.getDisplayMode$", VariableRefreshPolicy.OnDirty),
+                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                Lore(0, "$row.getLoreLines$", VariableRefreshPolicy.OnDirty),
+                Bind("Lore", "$row.getCooldownText$", VariableRefreshPolicy.Ttl, 1, 20),
+            },
+        };
+        item.Actions.Add(claim);
+        item.Actions.Add(purchase);
+        AddActionCondition(item, claim,
+            RenderCondition("value-equals", "{\"value\":\"$row.getIsPurchase$\",\"expected\":\"false\"}"));
+        AddActionCondition(item, purchase,
+            RenderCondition("value-equals", "{\"value\":\"$row.getIsPurchase$\",\"expected\":\"true\"}"));
+        return item;
+    }
+
+    /// <summary>
+    /// Action-scoped conditions also belong to the item's own Conditions (required FK) - the
+    /// arrangement <c>MenuTemplateService.BuildItemAsync</c> uses (see ActionLevelRenderDemo).
+    /// </summary>
+    private static void AddActionCondition(MenuItemTemplate item, ActionBinding action, ConditionBinding condition)
+    {
+        action.Conditions.Add(condition);
+        item.Conditions.Add(condition);
+    }
+
+    /// <summary>Confirm button of a <c>menu.confirm.request</c>; shown only while <paramref name="pendingCondition"/> allows.</summary>
+    private static MenuItemTemplate ConfirmButton(int slot, string pendingCondition, string hint)
+    {
+        var item = DemoItem(slot, 100 + slot,
+            Bind("Material", "LIME_CONCRETE", VariableRefreshPolicy.Static),
+            Bind("Name", "&aConfirm", VariableRefreshPolicy.Static),
+            Lore(0, hint));
+        item.Actions.Add(new ActionBinding { ActionTypeId = "menu.confirm.accept", ParamsJson = "{}", SortOrder = 0 });
+        item.Conditions.Add(RenderCondition(pendingCondition, "{}"));
+        return item;
+    }
+
+    private static MenuItemTemplate CancelButton(int slot, string pendingCondition)
+    {
+        var item = DemoItem(slot, 100 + slot,
+            Bind("Material", "RED_CONCRETE", VariableRefreshPolicy.Static),
+            Bind("Name", "&cCancel", VariableRefreshPolicy.Static));
+        item.Actions.Add(new ActionBinding { ActionTypeId = "menu.confirm.cancel", ParamsJson = "{}", SortOrder = 0 });
+        item.Conditions.Add(RenderCondition(pendingCondition, "{}"));
+        return item;
     }
 
     /// <summary>

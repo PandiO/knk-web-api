@@ -55,6 +55,7 @@ public class MenuTemplateContentSeedTests
     private static readonly string[] ContentKeyList =
     {
         MenuTemplateSeed.HubMenuKey,
+        MenuTemplateSeed.KitsOverviewMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
@@ -126,6 +127,42 @@ public class MenuTemplateContentSeedTests
         var back = ItemAt(hub, 8);
         Assert.Equal("menu.back", Assert.Single(back.Actions).ActionTypeId);
         Assert.Equal("&c$menu.getBackLabel$", Binding(back, "Name"));
+    }
+
+    [Fact]
+    public async Task KitsOverview_RowTemplatePicksClaimOrConfirmedPurchasePerRow()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var kits = Single(seeded, MenuTemplateSeed.KitsOverviewMenuKey);
+
+        Assert.Equal(6, kits.Height);
+        Assert.Equal(20, kits.AutoRefreshTicks);
+        var grid = kits.Sections.Single(s => s.Name == "Kits");
+        Assert.Equal("kits.available", grid.ContentSourceId);
+        Assert.Equal((9, 9, 4), (grid.DisplaySlot, grid.Width, grid.Height));
+
+        var row = Assert.Single(grid.Items, i => i.IsRowTemplate);
+        Assert.Equal(2, row.Actions.Count);
+        var claim = row.Actions.Single(a => a.ActionTypeId == "kits.claim");
+        Assert.Equal("{\"kitId\":\"$row.getKitId$\"}", claim.ParamsJson);
+        Assert.Contains("\"expected\":\"false\"", Assert.Single(claim.Conditions).ParamsJson);
+        var purchase = row.Actions.Single(a => a.ActionTypeId == "menu.confirm.request");
+        using (var parsed = JsonDocument.Parse(purchase.ParamsJson))
+        {
+            Assert.Equal("kits.purchase", parsed.RootElement.GetProperty("actionTypeId").GetString());
+            using var inner = JsonDocument.Parse(parsed.RootElement.GetProperty("actionParamsJson").GetString()!);
+            Assert.Equal("$row.getKitId$", inner.RootElement.GetProperty("kitId").GetString());
+        }
+        Assert.Contains("\"expected\":\"true\"", Assert.Single(purchase.Conditions).ParamsJson);
+        Assert.All(row.Conditions, c => Assert.Equal(MenuConditionPhase.Render, c.Phase));
+        Assert.Equal(VariableRefreshPolicy.Ttl,
+            row.VariableBindings.Single(b => b.Expression == "$row.getCooldownText$").RefreshPolicy);
+
+        Assert.Equal("menu.page.prev", Assert.Single(ItemAt(kits, 45).Actions).ActionTypeId);
+        Assert.Equal("menu.page.next", Assert.Single(ItemAt(kits, 53).Actions).ActionTypeId);
+        foreach (var slot in new[] { 48, 50 })
+            Assert.Equal("kits.purchase-pending", Assert.Single(ItemAt(kits, slot).Conditions).ConditionTypeId);
     }
 
     /// <summary>
