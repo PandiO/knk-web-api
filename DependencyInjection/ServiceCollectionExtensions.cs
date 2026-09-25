@@ -97,6 +97,13 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IBannerDesignService, BannerDesignService>();
             services.AddScoped<IClanRepository, ClanRepository>();
             services.AddScoped<IClanService, ClanService>();
+            // Siege Phase 2 — scenarios, lobbies, configuration singleton
+            services.AddScoped<ISiegeScenarioRepository, SiegeScenarioRepository>();
+            services.AddScoped<ISiegeScenarioService, SiegeScenarioService>();
+            services.AddScoped<ISiegeLobbyRepository, SiegeLobbyRepository>();
+            services.AddScoped<ISiegeLobbyService, SiegeLobbyService>();
+            services.AddScoped<ISiegeConfigurationRepository, SiegeConfigurationRepository>();
+            services.AddScoped<ISiegeConfigurationService, SiegeConfigurationService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();

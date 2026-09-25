@@ -5,15 +5,15 @@ using knkwebapi_v2.Services.Interfaces;
 
 namespace KnKWebAPI.Controllers
 {
-    // Siege Phase 1 (docs/specs/siege-minigame/DESIGN.md §3.2). GET by id returns the full banner
-    // graph (base colour + ordered layers) so the plugin can build the banner item in one call.
+    // Siege Phase 2 (docs/specs/siege-minigame/DESIGN.md §3.8, D1, §11.2): lobby CRUD (rotation is an
+    // M2M join in the lobby payload) plus the plugin's runtime-config.
     [ApiController]
     [Route("api/[controller]")]
-    public class ClansController : ControllerBase
+    public class SiegeLobbiesController : ControllerBase
     {
-        private readonly IClanService _service;
+        private readonly ISiegeLobbyService _service;
 
-        public ClansController(IClanService service)
+        public SiegeLobbiesController(ISiegeLobbyService service)
         {
             _service = service;
         }
@@ -21,28 +21,31 @@ namespace KnKWebAPI.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll() => Ok(await _service.GetAllAsync());
 
-        [HttpGet("{id:int}", Name = "GetClanById")]
+        [HttpGet("{id:int}", Name = "GetSiegeLobbyById")]
         public async Task<IActionResult> GetById(int id)
         {
             var item = await _service.GetByIdAsync(id);
             return item == null ? NotFound() : Ok(item);
         }
 
-        [HttpGet("default-for-town/{townId:int}")]
-        public async Task<IActionResult> GetDefaultForTown(int townId)
+        // Enabled lobbies + rotations + fully-resolved READY scenarios + the global configuration, in
+        // one payload for the plugin's cache. Served at the DESIGN §11.2 kebab-case path and at this
+        // controller's own path.
+        [HttpGet("runtime-config")]
+        [HttpGet("/api/siege-lobbies/runtime-config")]
+        public async Task<ActionResult<SiegeRuntimeConfigDto>> GetRuntimeConfig()
         {
-            var item = await _service.GetDefaultForTownAsync(townId);
-            return item == null ? NotFound() : Ok(item);
+            return Ok(await _service.GetRuntimeConfigAsync());
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] ClanUpsertDto dto)
+        public async Task<IActionResult> Create([FromBody] SiegeLobbyUpsertDto dto)
         {
             if (dto == null) return BadRequest();
             try
             {
                 var created = await _service.CreateAsync(dto);
-                return CreatedAtRoute("GetClanById", new { id = created.Id }, created);
+                return CreatedAtRoute("GetSiegeLobbyById", new { id = created.Id }, created);
             }
             catch (ArgumentException ex)
             {
@@ -55,7 +58,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, [FromBody] ClanUpsertDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] SiegeLobbyUpsertDto dto)
         {
             if (dto == null) return BadRequest();
             try
@@ -104,7 +107,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPost("search")]
-        public async Task<ActionResult<PagedResultDto<ClanListDto>>> Search([FromBody] PagedQueryDto query)
+        public async Task<ActionResult<PagedResultDto<SiegeLobbyListDto>>> Search([FromBody] PagedQueryDto query)
         {
             return Ok(await _service.SearchAsync(query));
         }

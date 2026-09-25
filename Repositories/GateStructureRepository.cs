@@ -55,6 +55,13 @@ namespace knkwebapi_v2.Repositories
             }
         }
 
+        public async Task<bool> IsReferencedBySiegeAsync(int gateStructureId)
+        {
+            return await _context.SiegeScenarioGates.AnyAsync(g => g.GateStructureId == gateStructureId)
+                || await _context.SiegeObjectives.AnyAsync(o => o.GateStructureId == gateStructureId)
+                || await _context.SiegeMatchGateSnapshots.AnyAsync(s => s.GateStructureId == gateStructureId);
+        }
+
         public async Task<IEnumerable<GateStructure>> GetGatesByDomainAsync(int domainId)
         {
             // Domain is inherited through Structure, need to query via LocationId

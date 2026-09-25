@@ -64,6 +64,8 @@ namespace knkwebapi_v2.Services
                 ?? throw new KeyNotFoundException($"BannerDesign with id {id} not found.");
             if (await _repo.IsReferencedByClanAsync(id))
                 throw new InvalidOperationException("This banner is used by a clan. Pick another banner for that clan before deleting it.");
+            if (await _repo.IsReferencedBySiegeTeamAsync(id))
+                throw new InvalidOperationException("This banner is used by a siege team. Pick another banner for that team before deleting it.");
 
             await _repo.DeleteAsync(id);
         }

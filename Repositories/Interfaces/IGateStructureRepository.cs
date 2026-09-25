@@ -15,5 +15,8 @@ namespace knkwebapi_v2.Repositories
         // Gate-specific operations
         Task<IEnumerable<GateStructure>> GetGatesByDomainAsync(int domainId);
         Task<bool> IsGateNameUniqueAsync(string name, int domainId, int? excludeId = null);
+
+        // Siege Phase 2: selected by a scenario, used by an objective, or snapshotted by a match.
+        Task<bool> IsReferencedBySiegeAsync(int gateStructureId);
     }
 }

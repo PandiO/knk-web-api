@@ -154,6 +154,10 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { code = "BusinessRuleViolation", message = ex.Message });
+            }
             catch (DbUpdateException ex)
             {
                 return Conflict(new { code = "DbConstraint", message = ex.Message });

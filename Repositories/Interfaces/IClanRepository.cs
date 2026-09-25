@@ -13,5 +13,6 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<PagedResult<Clan>> SearchAsync(PagedQuery query);
         Task<bool> TownExistsAsync(int townId);
         Task<bool> BannerDesignExistsAsync(int bannerDesignId);
+        Task<bool> IsUsedBySiegeTeamAsync(int clanId);
     }
 }

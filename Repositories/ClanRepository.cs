@@ -101,5 +101,10 @@ namespace knkwebapi_v2.Repositories
         {
             return await _context.BannerDesigns.AnyAsync(d => d.Id == bannerDesignId);
         }
+
+        public async Task<bool> IsUsedBySiegeTeamAsync(int clanId)
+        {
+            return await _context.SiegeTeams.AnyAsync(t => t.ClanId == clanId);
+        }
     }
 }

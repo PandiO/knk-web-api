@@ -71,6 +71,9 @@ namespace knkwebapi_v2.Services
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             _ = await _repo.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException($"Clan with id {id} not found.");
+            // Siege teams reference their clan with Restrict (Siege Phase 2).
+            if (await _repo.IsUsedBySiegeTeamAsync(id))
+                throw new InvalidOperationException("This clan is used by a siege team. Change that team's clan before deleting it.");
             await _repo.DeleteAsync(id);
         }
 

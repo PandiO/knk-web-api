@@ -91,6 +91,11 @@ namespace knkwebapi_v2.Repositories
             return await _context.Clans.AnyAsync(c => c.BannerDesignId == bannerDesignId);
         }
 
+        public async Task<bool> IsReferencedBySiegeTeamAsync(int bannerDesignId)
+        {
+            return await _context.SiegeTeams.AnyAsync(t => t.BannerDesignId == bannerDesignId);
+        }
+
         public async Task<BannerLayer?> GetLayerByIdAsync(int id)
         {
             return await _context.BannerLayers.FirstOrDefaultAsync(l => l.Id == id);

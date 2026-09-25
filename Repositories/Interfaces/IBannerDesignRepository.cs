@@ -11,6 +11,7 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task DeleteAsync(int id);
         Task<PagedResult<BannerDesign>> SearchAsync(PagedQuery query);
         Task<bool> IsReferencedByClanAsync(int bannerDesignId);
+        Task<bool> IsReferencedBySiegeTeamAsync(int bannerDesignId);
 
         // Owned layers
         Task<BannerLayer?> GetLayerByIdAsync(int id);
