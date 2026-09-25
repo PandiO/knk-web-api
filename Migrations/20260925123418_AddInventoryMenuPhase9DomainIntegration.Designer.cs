@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925123418_AddInventoryMenuPhase9DomainIntegration")]
+    partial class AddInventoryMenuPhase9DomainIntegration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -135,61 +138,6 @@ namespace knkwebapi_v2.Migrations
                         .HasDatabaseName("IX_ActionBinding_MenuItemTemplateId_SortOrder");
 
                     b.ToTable("menu_action_bindings", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.AuditLogEntry", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<int?>("ActorUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Details")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("TargetUserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("ActorUserId", "Timestamp");
-
-                    b.HasIndex("TargetUserId", "Timestamp");
-
-                    b.ToTable("audit_log_entries", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.AuditLogRetentionConfiguration", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("RetentionDays")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("audit_log_retention_configurations", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Category", b =>
@@ -1938,78 +1886,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("minecraftmaterialrefs", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("HolderId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Node")
-                        .IsRequired()
-                        .HasMaxLength(191)
-                        .HasColumnType("varchar(191)");
-
-                    b.Property<bool>("Value")
-                        .HasColumnType("tinyint(1)");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("HolderId", "Node");
-
-                    b.ToTable("permission_grants", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionHolder", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ChatPrefix")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ChatSuffix")
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.ToTable("permission_holders", (string)null);
-
-                    b.UseTptMappingStrategy();
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.SalaryConfiguration", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<decimal>("GlobalMultiplier")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("salary_configurations", (string)null);
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.StepCondition", b =>
                 {
                     b.Property<int>("Id")
@@ -2116,7 +1992,7 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("tags", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.TitleBracket", b =>
+            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -2124,56 +2000,71 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CoinBonus")
+                    b.Property<int>("AccountCreatedVia")
                         .HasColumnType("int");
 
-                    b.Property<int>("ExpBonus")
+                    b.Property<DateTime?>("ArchiveUntil")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Coins")
                         .HasColumnType("int");
 
-                    b.Property<string>("FemaleName")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DeletedReason")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ExperiencePoints")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GatePassThroughMethodDefault")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Gems")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("LastEmailChangeAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LastPasswordChangeAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Username")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<int>("GemBonus")
-                        .HasColumnType("int");
-
-                    b.Property<string>("MaleName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<int>("MinExperience")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Salary")
-                        .HasColumnType("int");
+                    b.Property<string>("Uuid")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
-                    b.HasIndex("MinExperience")
+                    b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("title_brackets", (string)null);
-                });
+                    b.HasIndex("Username")
+                        .IsUnique();
 
-            modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.HasIndex("Uuid")
+                        .IsUnique();
 
-                    b.Property<int>("PermissionGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("UserId", "PermissionGroupId");
-
-                    b.HasIndex("PermissionGroupId");
-
-                    b.ToTable("user_permission_groups", (string)null);
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.VariableBinding", b =>
@@ -2395,132 +2286,6 @@ namespace knkwebapi_v2.Migrations
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
 
                     b.ToTable("towns", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
-                {
-                    b.HasBaseType("knkwebapi_v2.Models.PermissionHolder");
-
-                    b.Property<bool>("IsPremiumTier")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<int?>("ParentGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("SalaryMultiplier")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<int>("Weight")
-                        .HasColumnType("int");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.HasIndex("ParentGroupId");
-
-                    b.ToTable("permission_groups", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
-                {
-                    b.HasBaseType("knkwebapi_v2.Models.PermissionHolder");
-
-                    b.Property<int>("AccountCreatedVia")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ActiveMode")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ArchiveUntil")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Coins")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("DeletedReason")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<bool>("EmailVerified")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<int>("ExperiencePoints")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("FrozenAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("FrozenByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FrozenReason")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("GatePassThroughMethodDefault")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Gems")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("Gender")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsFrozen")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsOnline")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime?>("LastEmailChangeAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("LastPasswordChangeAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("LastSalaryPayoutAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("LastSeenAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("longtext");
-
-                    b.Property<decimal>("PersonalSalaryMultiplier")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Uuid")
-                        .HasColumnType("varchar(255)");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.HasIndex("Username")
-                        .IsUnique();
-
-                    b.HasIndex("Uuid")
-                        .IsUnique();
-
-                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>
@@ -3137,17 +2902,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("BackgroundMaterial");
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.PermissionHolder", "Holder")
-                        .WithMany("Grants")
-                        .HasForeignKey("HolderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Holder");
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.StepCondition", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.FormStep", "FormStep")
@@ -3168,25 +2922,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowSession");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "PermissionGroup")
-                        .WithMany("UserMemberships")
-                        .HasForeignKey("PermissionGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.User", "User")
-                        .WithMany("PermissionGroupMemberships")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PermissionGroup");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.VariableBinding", b =>
@@ -3289,31 +3024,6 @@ namespace knkwebapi_v2.Migrations
                     b.HasOne("knkwebapi_v2.Models.Domain", null)
                         .WithOne()
                         .HasForeignKey("knkwebapi_v2.Models.Town", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.PermissionHolder", null)
-                        .WithOne()
-                        .HasForeignKey("knkwebapi_v2.Models.PermissionGroup", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "ParentGroup")
-                        .WithMany("ChildGroups")
-                        .HasForeignKey("ParentGroupId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ParentGroup");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.PermissionHolder", null)
-                        .WithOne()
-                        .HasForeignKey("knkwebapi_v2.Models.User", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -3440,14 +3150,14 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Sections");
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionHolder", b =>
-                {
-                    b.Navigation("Grants");
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
                 {
                     b.Navigation("Structures");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
+                {
+                    b.Navigation("LinkCodes");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
@@ -3465,20 +3175,6 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.Town", b =>
                 {
                     b.Navigation("Districts");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
-                {
-                    b.Navigation("ChildGroups");
-
-                    b.Navigation("UserMemberships");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.User", b =>
-                {
-                    b.Navigation("LinkCodes");
-
-                    b.Navigation("PermissionGroupMemberships");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>

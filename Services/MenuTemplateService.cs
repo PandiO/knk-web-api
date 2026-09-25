@@ -64,6 +64,7 @@ namespace knkwebapi_v2.Services
                 Height = dto.Height,
                 Growth = ParseEnum<MenuGrowthMode>(dto.Growth, nameof(dto.Growth)),
                 BackgroundMaterialRefId = dto.BackgroundMaterialRefId,
+                AutoRefreshTicks = NormalizeAutoRefreshTicks(dto.AutoRefreshTicks),
             };
 
             foreach (var sectionDto in dto.Sections)
@@ -96,6 +97,7 @@ namespace knkwebapi_v2.Services
             existing.Height = dto.Height;
             existing.Growth = ParseEnum<MenuGrowthMode>(dto.Growth, nameof(dto.Growth));
             existing.BackgroundMaterialRefId = dto.BackgroundMaterialRefId;
+            existing.AutoRefreshTicks = NormalizeAutoRefreshTicks(dto.AutoRefreshTicks);
             existing.UpdatedAt = DateTime.UtcNow;
 
             // Full-replace strategy for the nested tree (mirrors ItemBlueprintService's
@@ -145,6 +147,8 @@ namespace knkwebapi_v2.Services
             foreach (var bindingDto in dto.VariableBindings)
                 section.VariableBindings.Add(BuildVariableBinding(bindingDto));
 
+            ValidateRowTemplates(dto);
+
             foreach (var itemDto in dto.Items)
                 section.Items.Add(await BuildItemAsync(itemDto));
 
@@ -166,6 +170,7 @@ namespace knkwebapi_v2.Services
                 DisplayMode = ParseEnum<MenuDisplayMode>(dto.DisplayMode, nameof(dto.DisplayMode)),
                 VisibilityPermission = dto.VisibilityPermission,
                 ActionPermission = dto.ActionPermission,
+                IsRowTemplate = dto.IsRowTemplate,
             };
 
             foreach (var bindingDto in dto.VariableBindings)
@@ -207,7 +212,8 @@ namespace knkwebapi_v2.Services
         {
             if (string.IsNullOrWhiteSpace(dto.TargetProperty))
                 throw new ArgumentException("VariableBinding.TargetProperty is required.");
-            if (string.IsNullOrWhiteSpace(dto.Expression))
+            // InventoryMenu Phase 9 (E8): "" is a legitimate blank lore line.
+            if (dto.Expression == null)
                 throw new ArgumentException("VariableBinding.Expression is required.");
 
             var refreshPolicy = ParseEnum<VariableRefreshPolicy>(dto.RefreshPolicy, nameof(dto.RefreshPolicy));
@@ -234,7 +240,37 @@ namespace knkwebapi_v2.Services
                 ConditionTypeId = dto.ConditionTypeId,
                 ParamsJson = string.IsNullOrWhiteSpace(dto.ParamsJson) ? "{}" : dto.ParamsJson,
                 SortOrder = dto.SortOrder,
+                Phase = string.IsNullOrWhiteSpace(dto.Phase)
+                    ? MenuConditionPhase.Click
+                    : ParseEnum<MenuConditionPhase>(dto.Phase, nameof(dto.Phase)),
             };
+        }
+
+        /// <summary>
+        /// InventoryMenu Phase 9 (E4): one representation of "off" - null. Zero or
+        /// negative values are treated as off rather than rejected, since "0 ticks"
+        /// can only ever mean "don't refresh".
+        /// </summary>
+        private static int? NormalizeAutoRefreshTicks(int? ticks) => ticks is > 0 ? ticks : null;
+
+        /// <summary>
+        /// InventoryMenu Phase 9 (E3): a row template renders each row a content
+        /// source yields, so it only makes sense (a) in a section that has a
+        /// ContentSourceId, (b) without a SlotOverride (its slots come from the
+        /// section's auto-fill pool) and (c) once per section (the plugin would
+        /// otherwise have to guess which template a row uses).
+        /// </summary>
+        private static void ValidateRowTemplates(MenuSectionTemplateDto section)
+        {
+            var rowTemplates = section.Items.Where(i => i.IsRowTemplate).ToList();
+            if (rowTemplates.Count == 0) return;
+
+            if (rowTemplates.Count > 1)
+                throw new ArgumentException($"MenuSectionTemplate '{section.Name}' has {rowTemplates.Count} row templates; at most one is allowed.");
+            if (string.IsNullOrWhiteSpace(section.ContentSourceId))
+                throw new ArgumentException($"MenuSectionTemplate '{section.Name}' has a row template but no ContentSourceId to supply rows.");
+            if (rowTemplates[0].SlotOverride != null)
+                throw new ArgumentException($"The row template in MenuSectionTemplate '{section.Name}' must not have a SlotOverride.");
         }
 
         private async Task ValidateMaterialRefAsync(int? materialRefId, string fieldName)

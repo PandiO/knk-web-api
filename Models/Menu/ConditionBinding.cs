@@ -1,3 +1,5 @@
+using knkwebapi_v2.Enums;
+
 namespace knkwebapi_v2.Models;
 
 /// <summary>
@@ -25,6 +27,13 @@ public class ConditionBinding
     public string ParamsJson { get; set; } = "{}";
 
     public int SortOrder { get; set; }
+
+    /// <summary>
+    /// InventoryMenu Phase 9 (E5): Click (default - Phase 6 behaviour, gates the
+    /// click) or Render (evaluated per render pass - hides the item, or drops the
+    /// action when ActionBindingId is set).
+    /// </summary>
+    public MenuConditionPhase Phase { get; set; } = MenuConditionPhase.Click;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
