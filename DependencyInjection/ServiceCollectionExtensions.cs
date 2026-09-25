@@ -30,6 +30,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ICategoryService, CategoryService>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserService, UserService>();
+            services.AddSingleton<IPlayerNotificationQueue, InMemoryPlayerNotificationQueue>();
             services.AddScoped<IPasswordService, PasswordService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
