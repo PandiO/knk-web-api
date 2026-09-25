@@ -99,7 +99,15 @@ namespace knkwebapi_v2.Migrations
             // migration's class doc comment) with the real 19-bracket "Titles" table the
             // developer supplied from a v1 phpMyAdmin export (KnightsAndKings (1).json).
             migrationBuilder.Sql("DELETE FROM title_brackets;");
+            // title_brackets.Id is AUTO_INCREMENT, so under MySQL's default sql_mode an explicit
+            // Id of 0 means "generate the next value": on a fresh database Serf would take the
+            // counter's next Id (6, after the 5 placeholder rows) and then collide with Baronet.
+            // NO_AUTO_VALUE_ON_ZERO makes MySQL store the literal 0; the session's previous
+            // sql_mode is restored right after. (Uses a user variable, so the connection string
+            // needs "Allow User Variables=True" — already required by AddGateDoor.)
             migrationBuilder.Sql(@"
+SET @old_sql_mode = @@SESSION.sql_mode;
+SET SESSION sql_mode = CONCAT(@@SESSION.sql_mode, ',NO_AUTO_VALUE_ON_ZERO');
 INSERT INTO title_brackets (Id, MaleName, FemaleName, Salary, CoinBonus, GemBonus, ExpBonus, MinExperience) VALUES
 (0, 'Serf', 'Serf', 650, 0, 0, 0, 0),
 (1, 'Peasant', 'Peasant', 1350, 13500, 3, 32, 2500),
@@ -119,7 +127,8 @@ INSERT INTO title_brackets (Id, MaleName, FemaleName, Salary, CoinBonus, GemBonu
 (15, 'Prince', 'Princess', 46300, 463000, 50, 600, 92500),
 (16, 'King', 'Queen', 55555, 555550, 20, 750, 110000),
 (17, 'Emperor', 'Empress', 66666, 666660, 20, 850, 130000),
-(18, 'One of the Seven', 'One of the Seven', 80000, 800000, 250, 1200, 160000);");
+(18, 'One of the Seven', 'One of the Seven', 80000, 800000, 250, 1200, 160000);
+SET SESSION sql_mode = @old_sql_mode;");
 
             // v1's Donator table gives the real Noble/Royal/Dragon Blood salary multipliers
             // (1.10/1.20/1.50) — the Phase 5 premium-tier seed migration left SalaryMultiplier at
