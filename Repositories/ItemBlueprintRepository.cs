@@ -68,6 +68,14 @@ namespace knkwebapi_v2.Repositories
             }
         }
 
+        public async Task<string?> FindDeleteBlockerAsync(int id)
+        {
+            var instances = await _context.ItemInstances.CountAsync(i => i.ItemBlueprintId == id);
+            if (instances > 0)
+                return $"{instances} item instance(s) were minted from it";
+            return null;
+        }
+
         public async Task<PagedResult<ItemBlueprint>> SearchAsync(PagedQuery query)
         {
             var queryable = _context.ItemBlueprints.AsQueryable();

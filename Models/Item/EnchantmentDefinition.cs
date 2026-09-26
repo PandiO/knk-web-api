@@ -35,6 +35,6 @@ public class EnchantmentDefinition
     [RelatedEntityField(typeof(ItemBlueprintDefaultEnchantment))]
     public ICollection<ItemBlueprintDefaultEnchantment> DefaultForBlueprints { get; set; } = new List<ItemBlueprintDefaultEnchantment>();
     
-    // TODO: Add ItemInstanceEnchantment when item instances are implemented
-    // public ICollection<ItemInstanceEnchantment> AppliedToInstances { get; set; } = new List<ItemInstanceEnchantment>();
+    // One-to-Many: EnchantmentDefinition → ItemInstanceEnchantment (the enchantment on minted items)
+    public ICollection<ItemInstanceEnchantment> AppliedToInstances { get; set; } = new List<ItemInstanceEnchantment>();
 }

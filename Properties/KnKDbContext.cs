@@ -93,6 +93,10 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<KitClaim> KitClaims { get; set; } = null!;
     public virtual DbSet<KitPurchase> KitPurchases { get; set; } = null!;
 
+    // Minimal ItemInstance (vision §9.1; docs/specs/lootboxes/DESIGN.md §3.2)
+    public virtual DbSet<ItemInstance> ItemInstances { get; set; } = null!;
+    public virtual DbSet<ItemInstanceEnchantment> ItemInstanceEnchantments { get; set; } = null!;
+
     public virtual DbSet<AuditLogEntry> AuditLogEntries { get; set; } = null!;
 
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
@@ -443,6 +447,57 @@ public partial class KnKDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(e => new { e.KitId, e.UserId }).IsUnique();
+        });
+
+        // ItemInstance (docs/specs/lootboxes/DESIGN.md §3.2) - one row per minted non-stackable item. No cascade
+        // into the catalog (vision §9.2): a blueprint, grade or enchantment definition still carried by an
+        // instance can't be deleted; deleting the owner only forgets who owns it.
+        modelBuilder.Entity<ItemInstance>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("item_instances");
+
+            entity.Property(e => e.Origin).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.OriginRef).HasMaxLength(64);
+            entity.Property(e => e.CustomDisplayName).HasMaxLength(128);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+
+            entity.HasOne(i => i.ItemBlueprint)
+                .WithMany()
+                .HasForeignKey(i => i.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(i => i.Grade)
+                .WithMany()
+                .HasForeignKey(i => i.GradeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(i => i.OwnerUser)
+                .WithMany()
+                .HasForeignKey(i => i.OwnerUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.OwnerUserId);
+            entity.HasIndex(e => e.ItemBlueprintId);
+            entity.HasIndex(e => new { e.Origin, e.OriginRef });
+        });
+
+        // ItemInstanceEnchantment - the instance's own child rows: cascade from the instance, Restrict to the
+        // definition.
+        modelBuilder.Entity<ItemInstanceEnchantment>(entity =>
+        {
+            entity.ToTable("item_instance_enchantments");
+            entity.HasKey(e => new { e.ItemInstanceId, e.EnchantmentDefinitionId });
+
+            entity.HasOne(e => e.ItemInstance)
+                .WithMany(i => i.Enchantments)
+                .HasForeignKey(e => e.ItemInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.EnchantmentDefinition)
+                .WithMany(d => d.AppliedToInstances)
+                .HasForeignKey(e => e.EnchantmentDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         base.OnModelCreating(modelBuilder);

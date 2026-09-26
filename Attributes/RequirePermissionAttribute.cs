@@ -15,6 +15,13 @@ namespace knkwebapi_v2.Attributes
         /// in-game get the web moderation pages too; also matched by knk.admin.* and *.
         /// </summary>
         public const string ManageUsers = "knk.admin.user.manage";
+
+        /// <summary>
+        /// Web lootbox administration: types, specials, spawn areas, the singleton configuration and the
+        /// item-instance lookup (knk-workspace docs/specs/lootboxes/DESIGN.md §3.3, §3.6). Web-only: the in-game
+        /// admin commands use the knk.lootbox.admin.* nodes. Also matched by knk.admin.* and *.
+        /// </summary>
+        public const string ManageLootboxes = "knk.admin.lootbox.manage";
     }
 
     /// <summary>
