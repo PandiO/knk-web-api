@@ -81,8 +81,31 @@ namespace knkwebapi_v2.Services
                 dto.PremiumTierGroupId = tier?.PermissionGroupId;
                 dto.PremiumTierName = tier?.PermissionGroupName;
                 dto.PremiumTierExpiresAt = tier?.ExpiresAt;
+                var defaultGroup = await GetDefaultGroupAsync();
+                dto.ChatPrimaryColor = tier?.ChatPrimaryColor ?? defaultGroup?.ChatPrimaryColor;
+                dto.ChatSecondaryColor = tier?.ChatSecondaryColor ?? defaultGroup?.ChatSecondaryColor;
+                dto.NameColor = tier?.NameColor ?? defaultGroup?.NameColor;
             }
             return dto;
+        }
+
+        private PermissionGroup? _defaultGroup;
+        private bool _defaultGroupLoaded;
+
+        /// <summary>
+        /// The "Default" group supplies the chat/tab-list colors (KNG-7) for players without a
+        /// premium tier. Looked up by name, not membership, since it is the fallback look for
+        /// everyone. Loaded once per service instance (scoped = once per request) so list
+        /// endpoints mapping many users don't query it per user.
+        /// </summary>
+        private async Task<PermissionGroup?> GetDefaultGroupAsync()
+        {
+            if (!_defaultGroupLoaded)
+            {
+                _defaultGroup = await _permissionGroupRepo.GetByNameAsync(DefaultGroupName);
+                _defaultGroupLoaded = true;
+            }
+            return _defaultGroup;
         }
 
         public async Task<IEnumerable<UserDto>> GetAllAsync()

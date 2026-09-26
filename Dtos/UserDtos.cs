@@ -118,6 +118,21 @@ namespace knkwebapi_v2.Dtos
         public DateTime? PremiumTierExpiresAt { get; set; }
 
         /// <summary>
+        /// Chat and tab-list styles (KNG-7) as Minecraft "&amp;" formatting codes — taken from the premium tier
+        /// above, falling back field by field to the "Default" PermissionGroup's colors (for a
+        /// player without a tier, or a tier with a color left unset). Null = the plugin's built-in
+        /// default.
+        /// </summary>
+        [JsonPropertyName("chatPrimaryColor")]
+        public string? ChatPrimaryColor { get; set; }
+
+        [JsonPropertyName("chatSecondaryColor")]
+        public string? ChatSecondaryColor { get; set; }
+
+        [JsonPropertyName("nameColor")]
+        public string? NameColor { get; set; }
+
+        /// <summary>
         /// Salary formula's personal override (IMPLEMENTATION_PLAN.md §6). Admin-editable via the
         /// generic user CRUD, default 1.0 (neutral).
         /// </summary>
@@ -215,6 +230,21 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("premiumTierExpiresAt")]
         public DateTime? PremiumTierExpiresAt { get; set; }
+
+        /// <summary>
+        /// Chat and tab-list styles (KNG-7) as Minecraft "&amp;" formatting codes — taken from the premium tier
+        /// above, falling back field by field to the "Default" PermissionGroup's colors (for a
+        /// player without a tier, or a tier with a color left unset). Null = the plugin's built-in
+        /// default.
+        /// </summary>
+        [JsonPropertyName("chatPrimaryColor")]
+        public string? ChatPrimaryColor { get; set; }
+
+        [JsonPropertyName("chatSecondaryColor")]
+        public string? ChatSecondaryColor { get; set; }
+
+        [JsonPropertyName("nameColor")]
+        public string? NameColor { get; set; }
 
         /// <summary>Admin-freeze state (PUT /api/users/{id}/freeze|unfreeze) — read here so the
         /// plugin can restore/enforce it on the player's next join without a separate call.</summary>

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926121530_PremiumRanksInheritDefault")]
+    partial class PremiumRanksInheritDefault
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1425,13 +1428,6 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal?>("DropChance")
-                        .HasPrecision(7, 4)
-                        .HasColumnType("decimal(7,4)");
-
-                    b.Property<int?>("EnchantLevelCapDivisor")
-                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()

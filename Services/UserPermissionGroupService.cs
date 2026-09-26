@@ -140,6 +140,9 @@ namespace knkwebapi_v2.Services
             PermissionGroupName = m.PermissionGroup?.Name,
             Weight = m.PermissionGroup?.Weight ?? 0,
             IsPremiumTier = m.PermissionGroup?.IsPremiumTier ?? false,
+            ChatPrimaryColor = m.PermissionGroup?.ChatPrimaryColor,
+            ChatSecondaryColor = m.PermissionGroup?.ChatSecondaryColor,
+            NameColor = m.PermissionGroup?.NameColor,
             // Stored as UTC (see NormalizeToUtc) but MySQL reads it back as Unspecified — mark it
             // UTC so it serializes with a "Z" and clients don't read it as local time.
             ExpiresAt = m.ExpiresAt.HasValue ? DateTime.SpecifyKind(m.ExpiresAt.Value, DateTimeKind.Utc) : null,

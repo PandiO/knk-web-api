@@ -140,6 +140,11 @@ public partial class KnKDbContext : DbContext
 
             entity.HasIndex(e => e.Name).IsUnique();
 
+            // Minecraft "&" formatting codes (KNG-7) — a hex color alone is 14 characters.
+            entity.Property(e => e.ChatPrimaryColor).HasMaxLength(32);
+            entity.Property(e => e.ChatSecondaryColor).HasMaxLength(32);
+            entity.Property(e => e.NameColor).HasMaxLength(32);
+
             // Single-parent inheritance chain (DESIGN.md §2.1) — restrict, not cascade: deleting
             // a parent group with live children should fail loudly, not silently orphan them.
             entity.HasOne(g => g.ParentGroup)
