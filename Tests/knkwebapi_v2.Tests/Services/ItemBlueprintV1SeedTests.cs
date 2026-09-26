@@ -59,7 +59,7 @@ public class ItemBlueprintV1SeedTests
         (await db.ItemBlueprints.CountAsync()).Should().Be(BlueprintCount);
         (await db.Categories.CountAsync()).Should().Be(6);
         (await db.Grades.OrderBy(g => g.Stars).Select(g => g.Name).ToListAsync())
-            .Should().Equal("Common", "Uncommon", "Rare", "Epic", "Legendary");
+            .Should().Equal("Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Ascended", "Relic", "Exalted", "Divine");
         (await db.Tags.Select(t => t.Name).ToListAsync()).Should().Equal(ItemBlueprintV1Seed.LegacyTag);
         (await db.Set<ItemBlueprintTag>().CountAsync()).Should().Be(BlueprintCount);
         (await db.Set<ItemBlueprintDefaultEnchantment>().CountAsync()).Should().Be(28);
@@ -123,7 +123,7 @@ public class ItemBlueprintV1SeedTests
         await using var db = NewContext();
         (await db.ItemBlueprints.CountAsync()).Should().Be(BlueprintCount);
         (await db.Categories.CountAsync()).Should().Be(6);
-        (await db.Grades.CountAsync()).Should().Be(5);
+        (await db.Grades.CountAsync()).Should().Be(10);
         (await db.Tags.CountAsync()).Should().Be(1);
         (await db.Set<ItemBlueprintTag>().CountAsync()).Should().Be(BlueprintCount);
         (await db.Set<ItemBlueprintDefaultEnchantment>().CountAsync()).Should().Be(28);
@@ -153,7 +153,7 @@ public class ItemBlueprintV1SeedTests
         blueprints["Arrow"].Tags.Should().BeEmpty();
 
         // Existing grades (by stars), categories and enchantment definitions are reused.
-        (await db.Grades.CountAsync()).Should().Be(5);
+        (await db.Grades.CountAsync()).Should().Be(10);
         (await db.Categories.CountAsync()).Should().Be(6);
         blueprints["Steel Sword"].Category!.Id.Should().Be(blueprints["Iron Sword"].Category!.Id);
         (await db.EnchantmentDefinitions.CountAsync(e => e.Key == "minecraft:sharpness")).Should().Be(1);
@@ -168,5 +168,36 @@ public class ItemBlueprintV1SeedTests
         (await db.EnchantmentDefinitions.CountAsync(e => e.IsCustom)).Should().Be(0);
         (await db.ItemBlueprints.CountAsync()).Should().Be(BlueprintCount);
         (await db.Set<ItemBlueprintDefaultEnchantment>().CountAsync()).Should().Be(28 - 7);
+    }
+
+    [Fact]
+    public async Task FirstRun_SeedsDropChanceAndCapDivisorForEveryGrade()
+    {
+        await SeedAsync();
+
+        await using var db = NewContext();
+        var grades = await db.Grades.OrderBy(g => g.Stars).ToListAsync();
+        grades.Select(g => g.DropChance).Should().Equal(70m, 60m, 40m, 25m, 15m, 8m, 5m, 1m, 0.5m, 0.05m);
+        grades.Select(g => g.EnchantLevelCapDivisor).Should().Equal(5, 4, 3, 2, 1, null, null, null, null, null);
+    }
+
+    [Fact]
+    public async Task ExistingGrades_AreNotUpdated_OnlyMissingStarsAreAdded()
+    {
+        // A pre-KNG-6 DB: grades 1-5 without the new fields (the migration backfills those, not the seed).
+        await using (var context = NewContext())
+        {
+            for (var stars = 1; stars <= 5; stars++)
+                context.Grades.Add(new Grade { Name = "Old " + stars, Stars = stars });
+            await context.SaveChangesAsync();
+        }
+
+        await SeedAsync();
+
+        await using var db = NewContext();
+        var grades = await db.Grades.OrderBy(g => g.Stars).ToListAsync();
+        grades.Should().HaveCount(10);
+        grades.Take(5).Should().OnlyContain(g => g.Name.StartsWith("Old ") && g.DropChance == null && g.EnchantLevelCapDivisor == null);
+        grades.Skip(5).Select(g => g.Name).Should().Equal("Mythic", "Ascended", "Relic", "Exalted", "Divine");
     }
 }
