@@ -451,6 +451,34 @@ public class LootboxConfigServicesTests
         (await service.Invoking(s => s.CreateAsync(NewArea("SPAWN"))).Should().ThrowAsync<LootboxConflictException>()).Which.Code.Should().Be("NameTaken");
     }
 
+    [Fact]
+    public async Task SpawnArea_ALootboxRegion_BelongsToOneArea_ButABorrowedRegionCanBeShared()
+    {
+        await using var db = NewContext();
+        var service = AreaService(db);
+        var spawn = await service.CreateAsync(NewArea("spawn"));
+
+        // An in-game delete of "spawn" removes lootbox_spawn, so no other area may stand on it (in any case).
+        var second = NewArea("market");
+        second.WgRegionId = "LOOTBOX_SPAWN";
+        (await service.Invoking(s => s.CreateAsync(second)).Should().ThrowAsync<LootboxConflictException>()).Which.Code.Should().Be("RegionInUse");
+        var market = NewArea("market");
+        market.WgRegionId = "lootbox_market";
+        var created = await service.CreateAsync(market);
+        var moveOnto = NewArea("market");
+        (await service.Invoking(s => s.UpdateAsync(created.Id, moveOnto)).Should().ThrowAsync<LootboxConflictException>()).Which.Code.Should().Be("RegionInUse");
+        // An area keeps its own region on an update.
+        await service.UpdateAsync(spawn.Id, NewArea("spawn"));
+
+        var townA = NewArea("town_a");
+        townA.WgRegionId = "domain_7";
+        var townB = NewArea("town_b");
+        townB.WgRegionId = "domain_7";
+        await service.CreateAsync(townA);
+        await service.CreateAsync(townB);
+        (await db.LootboxSpawnAreas.CountAsync(a => a.WgRegionId == "domain_7")).Should().Be(2);
+    }
+
     [Theory]
     [InlineData("has space")]
     [InlineData("")]

@@ -17,6 +17,8 @@ namespace knkwebapi_v2.Services
         // The in-game command addresses areas by name and derives the region id lootbox_<slug> from it (DESIGN.md §3.4).
         public static readonly Regex NamePattern = new("^[A-Za-z0-9_-]{1,32}$", RegexOptions.Compiled);
         public const int MinSpawnIntervalSeconds = 60;
+        // The regions the in-game command creates (and only those are ever removed by it): lootbox_<slug>.
+        public const string OwnRegionPrefix = "lootbox_";
 
         private readonly ILootboxSpawnAreaRepository _repo;
         private readonly IMapper _mapper;
@@ -249,6 +251,12 @@ namespace knkwebapi_v2.Services
 
             if (await _repo.NameTakenAsync(dto.Name, id))
                 throw new LootboxConflictException("NameTaken", $"A lootbox spawn area named '{dto.Name}' already exists.");
+            // A lootbox_ region belongs to the one area /knk lootbox area create made it for, and deleting that area in
+            // game removes the region (DESIGN.md §3.4, D17): a second area on it would silently lose its region then.
+            // Borrowed regions (a town or district) can be shared.
+            if (dto.WgRegionId.StartsWith(OwnRegionPrefix, StringComparison.OrdinalIgnoreCase)
+                && await _repo.RegionTakenAsync(dto.World, dto.WgRegionId, id))
+                throw new LootboxConflictException("RegionInUse", $"Region '{dto.WgRegionId}' in '{dto.World}' already belongs to another lootbox spawn area.");
         }
     }
 }
