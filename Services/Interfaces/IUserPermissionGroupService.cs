@@ -25,5 +25,13 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <summary>The user's current premium tier: their highest-Weight active membership in a
         /// group flagged IsPremiumTier, or null if they hold none.</summary>
         Task<UserPermissionGroupDto?> GetActivePremiumTierAsync(int userId);
+
+        /// <summary>
+        /// Background sweep (RankExpirySweepService): puts users whose temporary rank expired back
+        /// on Default, and queues a RankChanged notification for everyone whose rank expired in
+        /// (<paramref name="after"/>, <paramref name="asOf"/>] or who was put back on Default.
+        /// </summary>
+        /// <returns>How many users were notified.</returns>
+        Task<int> SweepExpiredRanksAsync(DateTime after, DateTime asOf);
     }
 }

@@ -40,6 +40,13 @@ namespace knkwebapi_v2.Dtos
     public static class PlayerNotificationTypes
     {
         public const string TitleChanged = "TitleChanged";
+
+        /// <summary>
+        /// A user's group memberships changed (web app, API, or a temporary rank expiring) - the
+        /// plugin re-reads the player so their rank shows in chat and the tab list straight away.
+        /// No payload.
+        /// </summary>
+        public const string RankChanged = "RankChanged";
     }
 
     public class AcknowledgePlayerNotificationsDto
