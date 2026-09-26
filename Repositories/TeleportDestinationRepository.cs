@@ -23,6 +23,33 @@ namespace knkwebapi_v2.Repositories
         public Task<Domain?> GetByIdAsync(int domainId) =>
             WithRequirements().FirstOrDefaultAsync(d => d.Id == domainId);
 
+        public Task<bool> IsFeeKeyVoidAsync(string idempotencyKey) =>
+            _context.TeleportFeeVoids.AsNoTracking().AnyAsync(v => v.IdempotencyKey == idempotencyKey);
+
+        public async Task<bool> VoidFeeKeyAsync(TeleportFeeVoid marker)
+        {
+            if (await IsFeeKeyVoidAsync(marker.IdempotencyKey))
+            {
+                return false;
+            }
+            _context.TeleportFeeVoids.Add(marker);
+            try
+            {
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException)
+            {
+                // The primary key: another request voided it in between. Anything else is real.
+                _context.Entry(marker).State = EntityState.Detached;
+                if (await IsFeeKeyVoidAsync(marker.IdempotencyKey))
+                {
+                    return false;
+                }
+                throw;
+            }
+        }
+
         // Domain is TPT, so a query on the base set materializes Towns, Districts, Structures and
         // GateStructures as their own types.
         private IQueryable<Domain> WithRequirements() =>

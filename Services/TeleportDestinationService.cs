@@ -10,7 +10,6 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace knkwebapi_v2.Services
@@ -37,10 +36,6 @@ namespace knkwebapi_v2.Services
         public const string WarpSourceType = "Domain";
         public const string RequestSourceType = "TeleportRequest";
 
-        /// <summary>How long a key stays void after a refund found nothing to refund. Far longer
-        /// than the plugin's charge retries (a few seconds), so a late duplicate can't charge.</summary>
-        public static readonly TimeSpan VoidKeyLifetime = TimeSpan.FromMinutes(30);
-
         /// <summary>Highest coin fee a teleport request may carry (the coin balance cap).</summary>
         public const int MaxRequestFeeCoins = BalanceLimits.MaxCoins;
 
@@ -56,7 +51,6 @@ namespace knkwebapi_v2.Services
         private readonly IPermissionGroupRepository _permissionGroups;
         private readonly ICurrencyService _currency;
         private readonly ICurrencyRepository _ledger;
-        private readonly IMemoryCache _cache;
         private readonly ILogger<TeleportDestinationService> _logger;
 
         public TeleportDestinationService(
@@ -68,7 +62,6 @@ namespace knkwebapi_v2.Services
             IPermissionGroupRepository permissionGroups,
             ICurrencyService currency,
             ICurrencyRepository ledger,
-            IMemoryCache cache,
             ILogger<TeleportDestinationService> logger)
         {
             _repo = repo;
@@ -79,7 +72,6 @@ namespace knkwebapi_v2.Services
             _permissionGroups = permissionGroups;
             _currency = currency;
             _ledger = ledger;
-            _cache = cache;
             _logger = logger;
         }
 
@@ -109,7 +101,7 @@ namespace knkwebapi_v2.Services
             TeleportChargeResultDto? result = null;
             await _users.RunWithUsersLockedAsync(new[] { request.UserId }, async () =>
             {
-                RequireNotVoid(request.IdempotencyKey);
+                await RequireNotVoidAsync(request.IdempotencyKey);
                 var user = await _users.GetByIdAsync(request.UserId) ?? throw new KeyNotFoundException($"User {request.UserId} not found.");
                 var domain = await _repo.GetByIdAsync(domainId);
                 if (domain == null || domain.Location == null)
@@ -189,7 +181,7 @@ namespace knkwebapi_v2.Services
             TeleportChargeResultDto? result = null;
             await _users.RunWithUsersLockedAsync(new[] { request.UserId }, async () =>
             {
-                RequireNotVoid(request.IdempotencyKey);
+                await RequireNotVoidAsync(request.IdempotencyKey);
                 var user = await _users.GetByIdAsync(request.UserId) ?? throw new KeyNotFoundException($"User {request.UserId} not found.");
 
                 var existing = await _ledger.FindByIdempotencyAsync(CurrencyIdempotencyScopes.Plugin, request.IdempotencyKey);
@@ -235,8 +227,17 @@ namespace knkwebapi_v2.Services
                 if (charge == null)
                 {
                     // Nothing charged (yet): make sure nothing will be. A charge still on its way
-                    // with this key finds it void under the same row lock.
-                    _cache.Set(VoidCacheKey(request.IdempotencyKey), user.Id, VoidKeyLifetime);
+                    // with this key finds it void under the same row lock; the marker is a row, so
+                    // a late duplicate is refused after an API restart and on every API instance.
+                    if (await _repo.VoidFeeKeyAsync(new TeleportFeeVoid
+                        {
+                            IdempotencyKey = request.IdempotencyKey,
+                            UserId = user.Id,
+                            Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim()
+                        }))
+                    {
+                        _logger.LogInformation("Teleport refund before any charge: key {Key} of user {UserId} voided", request.IdempotencyKey, user.Id);
+                    }
                     result = new TeleportRefundResultDto { Refunded = false };
                     return;
                 }
@@ -494,16 +495,14 @@ namespace knkwebapi_v2.Services
             Replayed = replayed
         };
 
-        private void RequireNotVoid(string key)
+        private async Task RequireNotVoidAsync(string key)
         {
-            if (_cache.TryGetValue(VoidCacheKey(key), out _))
+            if (await _repo.IsFeeKeyVoidAsync(key))
             {
                 throw new TeleportDestinationException(TeleportDestinationException.Refunded,
                     "This teleport was already cancelled; try again.");
             }
         }
-
-        private static string VoidCacheKey(string key) => "teleport-fee-void:" + key;
 
         private static void RequireKey(string? key)
         {

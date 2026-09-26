@@ -111,6 +111,9 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<CurrencyPendingTransfer> CurrencyPendingTransfers { get; set; } = null!;
     public virtual DbSet<CurrencyAlert> CurrencyAlerts { get; set; } = null!;
 
+    // Teleport fees (docs/specs/teleport/DESIGN.md §3.7.3): keys voided by a refund that came first.
+    public virtual DbSet<TeleportFeeVoid> TeleportFeeVoids { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -1549,6 +1552,20 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.Property(e => e.TransferLockReason).HasMaxLength(200);
+        });
+
+        // Teleport fee keys voided by a refund that found nothing to refund (KNG-17): the key is
+        // the primary key, so a key is voided once whichever API instance handles the refund.
+        modelBuilder.Entity<TeleportFeeVoid>(entity =>
+        {
+            entity.HasKey(e => e.IdempotencyKey).HasName("PRIMARY");
+            entity.ToTable("teleport_fee_voids");
+
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(100).UseCollation("utf8mb4_bin");
+            entity.Property(e => e.Reason).HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+
+            entity.HasIndex(e => e.UserId);
         });
     }
 }

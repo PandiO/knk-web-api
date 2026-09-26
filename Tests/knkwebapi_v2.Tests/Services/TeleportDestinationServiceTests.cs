@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -23,7 +22,6 @@ namespace knkwebapi_v2.Tests.Services;
 public class TeleportDestinationServiceTests
 {
     private readonly string _db = $"teleport-{Guid.NewGuid()}";
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     private KnKDbContext NewContext() =>
         new(new DbContextOptionsBuilder<KnKDbContext>().UseInMemoryDatabase(_db).Options);
@@ -36,7 +34,7 @@ public class TeleportDestinationServiceTests
         return new TeleportDestinationService(new TeleportDestinationRepository(ctx), users, groups,
             new DiscoveryRepository(ctx), new TitleBracketRepository(ctx), new PermissionGroupRepository(ctx),
             new CurrencyService(new CurrencyRepository(ctx), users, NullLogger<CurrencyService>.Instance),
-            new CurrencyRepository(ctx), _cache, NullLogger<TeleportDestinationService>.Instance);
+            new CurrencyRepository(ctx), NullLogger<TeleportDestinationService>.Instance);
     }
 
     // ===== Seeding =====
@@ -559,6 +557,48 @@ public class TeleportDestinationServiceTests
         Assert.Empty(await LedgerAsync());
         // Other keys are unaffected.
         Assert.Equal(10, (await ChargeAsync(town, user, "warp:next")).Charged);
+    }
+
+    [Fact]
+    public async Task Refund_BeforeAnyCharge_PersistsTheVoid_SoItOutlivesTheService()
+    {
+        var user = await UserAsync(gems: 25, coins: 100);
+        var town = await TownAsync(price: 10);
+
+        await RefundAsync(user, "warp:durable");
+        await RefundAsync(user, "warp:durable");
+
+        // A fresh service and context (an API restart, or another instance) still refuses it.
+        await using (var ctx = NewContext())
+        {
+            var marker = Assert.Single(await ctx.TeleportFeeVoids.AsNoTracking().ToListAsync());
+            Assert.Equal("warp:durable", marker.IdempotencyKey);
+            Assert.Equal(user, marker.UserId);
+            Assert.Equal("cancelled by a listener", marker.Reason);
+        }
+        Assert.Equal("Refunded", (await RefusedAsync(town, user, "warp:durable")).Code);
+        await using (var ctx = NewContext())
+        {
+            var error = await Assert.ThrowsAsync<TeleportDestinationException>(() => Service(ctx).ChargeRequestFeeAsync(
+                new TeleportRequestFeeDto { UserId = user, IdempotencyKey = "warp:durable", AmountCoins = 5 }));
+            Assert.Equal(TeleportDestinationException.Refunded, error.Code);
+        }
+        Assert.Equal(25, (await ReloadAsync(user)).Gems);
+        Assert.Equal(100, (await ReloadAsync(user)).Coins);
+        Assert.Empty(await LedgerAsync());
+    }
+
+    [Fact]
+    public async Task Refund_AfterTheCharge_RecordsNoVoid()
+    {
+        var user = await UserAsync(gems: 25);
+        var town = await TownAsync(price: 10);
+        await ChargeAsync(town, user, "warp:paid");
+
+        await RefundAsync(user, "warp:paid");
+
+        await using var ctx = NewContext();
+        Assert.Empty(await ctx.TeleportFeeVoids.ToListAsync());
     }
 
     [Fact]

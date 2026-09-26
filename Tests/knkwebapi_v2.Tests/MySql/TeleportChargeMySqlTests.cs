@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -16,14 +15,14 @@ namespace knkwebapi_v2.Tests.MySql;
 /// Warp charges on a real MySQL (teleport IMPLEMENTATION_PLAN.md Phase 5): the plugin retries a
 /// charge with the same idempotency key after a timeout, so concurrent same-key charges must take
 /// the gems exactly once; different keys racing for too few gems must never overdraw; a refund
-/// racing its own charge must end either refunded or void, never charged-without-teleport; and the
-/// AddDomainTeleportSettings migration's FK/check constraint hold.
+/// racing its own charge must end either refunded or void, never charged-without-teleport; a void
+/// key is a row, so it survives a restart; and the AddDomainTeleportSettings migration's FK/check
+/// constraint hold.
 /// </summary>
 [Trait("Category", "requires-mysql")]
 public class TeleportChargeMySqlTests : IClassFixture<MySqlTestDatabase>
 {
     private readonly MySqlTestDatabase _db;
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public TeleportChargeMySqlTests(MySqlTestDatabase db)
     {
@@ -38,7 +37,7 @@ public class TeleportChargeMySqlTests : IClassFixture<MySqlTestDatabase>
         return new TeleportDestinationService(new TeleportDestinationRepository(ctx), users, groups,
             new DiscoveryRepository(ctx), new TitleBracketRepository(ctx), new PermissionGroupRepository(ctx),
             new CurrencyService(new CurrencyRepository(ctx), users, NullLogger<CurrencyService>.Instance),
-            new CurrencyRepository(ctx), _cache, NullLogger<TeleportDestinationService>.Instance);
+            new CurrencyRepository(ctx), NullLogger<TeleportDestinationService>.Instance);
     }
 
     private async Task<int> UserAsync(int gems)
@@ -157,6 +156,39 @@ public class TeleportChargeMySqlTests : IClassFixture<MySqlTestDatabase>
             {
                 Assert.Equal(TeleportDestinationException.Refunded, Assert.IsType<TeleportDestinationException>(outcomes[0].Error).Code);
             }
+        }
+    }
+
+    [MySqlFact]
+    public async Task RefundBeforeTheCharge_VoidsTheKeyDurably_AndParallelRefundsVoidItOnce()
+    {
+        var user = await UserAsync(gems: 50);
+        var town = await TownAsync(price: 10);
+        var key = "warp:void:" + Guid.NewGuid().ToString("N");
+
+        var refunds = await InParallelAsync(8, (s, _) => s.RefundAsync(new TeleportRefundRequestDto { UserId = user, IdempotencyKey = key }));
+
+        Assert.All(refunds, o => Assert.Null(o.Error));
+        Assert.All(refunds, o => Assert.False(o.Result!.Refunded));
+        await using (var check = _db.NewContext())
+        {
+            Assert.Equal(1, await check.TeleportFeeVoids.CountAsync(v => v.IdempotencyKey == key && v.UserId == user));
+        }
+
+        // A late duplicate charge on a brand-new service and connection (= after an API restart,
+        // or on another instance): refused, nothing taken.
+        await using (var ctx = _db.NewContext())
+        {
+            var error = await Assert.ThrowsAsync<TeleportDestinationException>(() => Service(ctx).ChargeAsync(town, Charge(user, key)));
+            Assert.Equal(TeleportDestinationException.Refunded, error.Code);
+        }
+        Assert.Equal(50, await GemsAsync(user));
+        Assert.Equal(0, await TeleportFeesAsync(user));
+
+        // Keys are case-sensitive, like the ledger's: another key still charges.
+        await using (var ctx = _db.NewContext())
+        {
+            Assert.Equal(10, (await Service(ctx).ChargeAsync(town, Charge(user, key.ToUpperInvariant()))).Charged);
         }
     }
 
