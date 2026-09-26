@@ -93,6 +93,22 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IGradeService, GradeService>();
             services.AddScoped<ITagRepository, TagRepository>();
             services.AddScoped<ITagService, TagService>();
+            // Siege Phase 1 — banner + minimal clan
+            services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
+            services.AddScoped<IBannerDesignService, BannerDesignService>();
+            services.AddScoped<IClanRepository, ClanRepository>();
+            services.AddScoped<IClanService, ClanService>();
+            // Siege Phase 2 — scenarios, lobbies, configuration singleton
+            services.AddScoped<ISiegeScenarioRepository, SiegeScenarioRepository>();
+            services.AddScoped<ISiegeScenarioService, SiegeScenarioService>();
+            services.AddScoped<ISiegeLobbyRepository, SiegeLobbyRepository>();
+            services.AddScoped<ISiegeLobbyService, SiegeLobbyService>();
+            services.AddScoped<ISiegeConfigurationRepository, SiegeConfigurationRepository>();
+            services.AddScoped<ISiegeConfigurationService, SiegeConfigurationService>();
+            // Siege Phase 6 — match lifecycle + server-side rewards
+            services.AddScoped<ISiegeMatchRepository, SiegeMatchRepository>();
+            services.AddScoped<ISiegeMatchService, SiegeMatchService>();
+            services.AddScoped<ISiegeMatchGateService, SiegeMatchGateService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();

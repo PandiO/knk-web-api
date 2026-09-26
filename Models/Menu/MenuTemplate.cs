@@ -41,7 +41,7 @@ public class MenuTemplate
     /// <summary>
     /// Background filler material by name (e.g. "BLACK_STAINED_GLASS_PANE") for slots nothing was
     /// rendered in - easier to author than <see cref="BackgroundMaterialRefId"/>, which wins when
-    /// both are set. Neither set: the plugin's default (light gray stained glass pane).
+    /// both are set. Neither set: the plugin's default (gray stained glass pane).
     /// </summary>
     public string? BackgroundMaterial { get; set; }
 

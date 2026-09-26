@@ -229,6 +229,10 @@ using (var scope = app.Services.CreateScope())
     // rolls and the lootbox settings (docs/specs/lootboxes/DESIGN.md §3.5).
     var lootboxSeedLogger = loggerFactory.CreateLogger("LootboxSeed");
     await knkwebapi_v2.Models.LootboxSeed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, lootboxSeedLogger);
+
+    // Siege Phase 9: one disabled example lobby (create-only by key).
+    var siegeLobbySeedLogger = loggerFactory.CreateLogger("SiegeLobbySeed");
+    await knkwebapi_v2.Models.SiegeLobbySeed.SeedCanonicalAsync(dbContext, siegeLobbySeedLogger);
 }
 
 app.Run();

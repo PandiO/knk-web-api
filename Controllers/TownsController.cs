@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -82,6 +83,11 @@ namespace KnKWebAPI.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
+            }
+            catch (DbUpdateException ex)
+            {
+                // Still referenced (e.g. by a siege scenario, whose FKs restrict deletes): 409, not 500.
+                return Conflict(new { code = "DbConstraint", message = ex.InnerException?.Message ?? ex.Message });
             }
         }
 
