@@ -34,6 +34,7 @@ namespace knkwebapi_v2.Services
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Group name is required.", nameof(dto));
             if (dto.SalaryMultiplier < 0) throw new ArgumentException("SalaryMultiplier cannot be negative.", nameof(dto));
+            NormalizeColors(dto);
 
             if (dto.ParentGroupId.HasValue && dto.ParentGroupId > 0)
             {
@@ -53,6 +54,7 @@ namespace knkwebapi_v2.Services
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Group name is required.", nameof(dto));
             if (dto.SalaryMultiplier < 0) throw new ArgumentException("SalaryMultiplier cannot be negative.", nameof(dto));
+            NormalizeColors(dto);
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"PermissionGroup with id {id} not found.");
@@ -77,6 +79,9 @@ namespace knkwebapi_v2.Services
             existing.SalaryMultiplier = dto.SalaryMultiplier;
             existing.ChatPrefix = dto.ChatPrefix;
             existing.ChatSuffix = dto.ChatSuffix;
+            existing.ChatPrimaryColor = dto.ChatPrimaryColor;
+            existing.ChatSecondaryColor = dto.ChatSecondaryColor;
+            existing.NameColor = dto.NameColor;
             existing.ParentGroupId = dto.ParentGroupId;
 
             await _repo.UpdateAsync(existing);
@@ -117,6 +122,15 @@ namespace knkwebapi_v2.Services
                 PermissionGroupId = m.PermissionGroupId,
                 ExpiresAt = DateTime.SpecifyKind(m.ExpiresAt!.Value, DateTimeKind.Utc)
             });
+        }
+
+        /// <summary>Validates the KNG-7 style fields and stores them in canonical form ("&amp;6&amp;L"
+        /// → "&amp;6&amp;l", blank → null), so the plugin only ever sees codes it can parse.</summary>
+        private static void NormalizeColors(PermissionGroupDto dto)
+        {
+            dto.ChatPrimaryColor = MinecraftTextStyle.Normalize(dto.ChatPrimaryColor, "ChatPrimaryColor");
+            dto.ChatSecondaryColor = MinecraftTextStyle.Normalize(dto.ChatSecondaryColor, "ChatSecondaryColor");
+            dto.NameColor = MinecraftTextStyle.Normalize(dto.NameColor, "NameColor");
         }
 
         /// <summary>Walks candidateParentId's own ancestor chain to make sure groupId doesn't

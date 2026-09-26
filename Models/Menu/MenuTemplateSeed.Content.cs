@@ -855,7 +855,7 @@ public static partial class MenuTemplateSeed
         {
             Key = UserManagerGroupsMenuKey,
             Name = "&8Groups",
-            Description = "Every permission group; click to add the player in ctx.userId or (confirmed) remove them (users.groups). Content port CP8.",
+            Description = "Every permission group; click to add the player in ctx.userId or (confirmed) remove them (users.groups). Ranks (Default + premium tiers) are one per player: a rank click is a confirmed switch and removing a premium rank drops back to Default (plugin-side). Content port CP8.",
             Height = 6,
             MinHeight = 3,
             Growth = MenuGrowthMode.Dynamic,
@@ -876,7 +876,8 @@ public static partial class MenuTemplateSeed
                             Bind("Material", "BOOK", VariableRefreshPolicy.Static),
                             Bind("Name", "&eGroups of &f$target.getName$", VariableRefreshPolicy.OnDirty),
                             Lore(0, "&7Highlighted: current memberships"),
-                            Lore(1, "&7Removing a group asks for confirmation")),
+                            Lore(1, "&7One rank per player (Default or premium):"),
+                            Lore(2, "&7switching or removing asks for confirmation")),
                         ConfirmButton(2, "users.pending", "&7Confirm the removal you picked (see chat)"),
                         CancelButton(6, "users.pending"),
                         BackButton(8, 1),

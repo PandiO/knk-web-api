@@ -23,6 +23,16 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("isPremiumTier")]
         public bool IsPremiumTier { get; set; }
 
+        /// <summary>The group's display colors (KNG-7) — see PermissionGroup.ChatPrimaryColor.</summary>
+        [JsonPropertyName("chatPrimaryColor")]
+        public string? ChatPrimaryColor { get; set; }
+
+        [JsonPropertyName("chatSecondaryColor")]
+        public string? ChatSecondaryColor { get; set; }
+
+        [JsonPropertyName("nameColor")]
+        public string? NameColor { get; set; }
+
         /// <summary>Null = never expires.</summary>
         [JsonPropertyName("expiresAt")]
         public DateTime? ExpiresAt { get; set; }
