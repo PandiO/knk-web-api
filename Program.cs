@@ -212,6 +212,11 @@ using (var scope = app.Services.CreateScope())
     // After the ability (custom) and V1 (vanilla) seeds: permanent enchantment books reuse their EnchantmentDefinitions (KNG-5).
     var enchantBookSeedLogger = loggerFactory.CreateLogger("EnchantBookSeed");
     await knkwebapi_v2.Models.EnchantBookSeed.SeedCanonicalAsync(dbContext, materialCatalog, enchantBookSeedLogger);
+
+    // After every item seed: one disabled lootbox type per category, the specials (incl. the Flaming Samurai), enchant
+    // rolls and the lootbox settings (docs/specs/lootboxes/DESIGN.md §3.5).
+    var lootboxSeedLogger = loggerFactory.CreateLogger("LootboxSeed");
+    await knkwebapi_v2.Models.LootboxSeed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, lootboxSeedLogger);
 }
 
 app.Run();

@@ -113,6 +113,11 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IMenuTemplateRepository, MenuTemplateRepository>();
             services.AddScoped<IMenuTemplateService, MenuTemplateService>();
 
+            // Lootboxes (docs/specs/lootboxes/IMPLEMENTATION_PLAN.md Phase 1). The repositories/services follow the
+            // I<Name> convention scan below; the roll engine and its randomness are registered here.
+            services.AddSingleton<knkwebapi_v2.Services.Lootbox.ILootRandom, knkwebapi_v2.Services.Lootbox.CryptoLootRandom>();
+            services.AddSingleton<knkwebapi_v2.Services.Lootbox.LootboxRollEngine>();
+
             // Add MetadataService for dynamic form building
             services.AddSingleton<IMetadataService, MetadataService>();
 
