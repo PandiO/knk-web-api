@@ -82,6 +82,32 @@ namespace knkwebapi_v2.Repositories
                     ib.DefaultDisplayName.ToLower().Contains(searchLower));
             }
 
+            // KNG-10: field filters, as knk-plugin's /knk itemblueprints (ib) search sends them. They were
+            // ignored before, so every search returned the unfiltered list. Keys are case-insensitive
+            // (same convention as EnchantmentDefinitionRepository); Id is exact, Name/DefaultDisplayName
+            // are case-insensitive "contains" so "/knk ib search name sword" finds "Iron Sword".
+            if (query.Filters != null)
+            {
+                var filters = new Dictionary<string, string>(query.Filters, StringComparer.OrdinalIgnoreCase);
+
+                if (filters.TryGetValue("Id", out var idStr) && int.TryParse(idStr, out var idValue))
+                {
+                    queryable = queryable.Where(ib => ib.Id == idValue);
+                }
+
+                if (filters.TryGetValue("Name", out var nameValue) && !string.IsNullOrWhiteSpace(nameValue))
+                {
+                    var nameLower = nameValue.Trim().ToLower();
+                    queryable = queryable.Where(ib => ib.Name != null && ib.Name.ToLower().Contains(nameLower));
+                }
+
+                if (filters.TryGetValue("DefaultDisplayName", out var displayNameValue) && !string.IsNullOrWhiteSpace(displayNameValue))
+                {
+                    var displayNameLower = displayNameValue.Trim().ToLower();
+                    queryable = queryable.Where(ib => ib.DefaultDisplayName != null && ib.DefaultDisplayName.ToLower().Contains(displayNameLower));
+                }
+            }
+
             // Menu follow-up 2026-09-26 (in-game item catalogue): filter by category. "Category" is a
             // category name (case-insensitive), "CategoryId" an id; either includes every
             // sub-category below it, so filtering on "Weapons" also shows "Swords".
