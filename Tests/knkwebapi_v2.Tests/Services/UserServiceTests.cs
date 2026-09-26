@@ -26,6 +26,8 @@ public class UserServiceTests
     private readonly Mock<IUserPermissionGroupService> _mockMembershipService;
     private readonly Mock<IAuditLogService> _mockAuditLogService;
     private readonly Mock<IPermissionGroupRepository> _mockPermissionGroupRepository;
+    private readonly FakeCurrencyService _currency;
+    private readonly TitleProgressionService _titleProgression;
     private readonly UserService _userService;
 
     public UserServiceTests()
@@ -45,6 +47,11 @@ public class UserServiceTests
         _mockUserRepository.Setup(r => r.RunWithUsersLockedAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<Func<Task>>()))
             .Returns((IEnumerable<int> _, Func<Task> work) => work());
 
+        // Postings land on the User objects the repository mock returns.
+        _currency = new FakeCurrencyService(id => _mockUserRepository.Object.GetByIdAsync(id).Result);
+        _titleProgression = new TitleProgressionService(_currency, _mockUserRepository.Object, _mockTitleService.Object,
+            _mockMembershipService.Object, _mockAuditLogService.Object);
+
         _userService = new UserService(
             _mockUserRepository.Object,
             _mockMapper.Object,
@@ -54,7 +61,9 @@ public class UserServiceTests
             _mockMembershipService.Object,
             _mockAuditLogService.Object,
             _mockPermissionGroupRepository.Object,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+            _currency,
+            _titleProgression
         );
     }
 
@@ -594,6 +603,28 @@ public class UserServiceTests
         Assert.NotNull(result);
         Assert.Equal(primaryUserId, result.Id);
         _mockUserRepository.Verify(r => r.MergeUsersAsync(primaryUserId, secondaryUserId), Times.Once);
+
+        // Currency Phase 2 (DESIGN.md §5 Q6): the secondary's coins and gems are forfeited as one
+        // MERGE_FORFEIT posting (not moved to the primary); XP stays on the archived row.
+        var forfeit = Assert.Single(_currency.Postings);
+        Assert.Equal(CurrencyReasons.MergeForfeit, forfeit.Ctx.ReasonCode);
+        Assert.Equal("merge:2", forfeit.Ctx.IdempotencyKey);
+        Assert.Equal((0, 0, 1000), (secondaryUser.Coins, secondaryUser.Gems, secondaryUser.ExperiencePoints));
+        Assert.Equal((500, 100), (primaryUser.Coins, primaryUser.Gems));
+        _mockUserRepository.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => ids.OrderBy(i => i).SequenceEqual(new[] { 1, 2 })), It.IsAny<Func<Task>>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task MergeAccountsAsync_SecondaryWithNoBalance_PostsNothing()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "primary" });
+        _mockUserRepository.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new User { Id = 2, Username = "secondary" });
+        _mockMapper.Setup(m => m.Map<UserDto>(It.IsAny<User>())).Returns(new UserDto { Id = 1, Username = "primary" });
+
+        await _userService.MergeAccountsAsync(1, 2);
+
+        Assert.Empty(_currency.Postings);
+        _mockUserRepository.Verify(r => r.MergeUsersAsync(1, 2), Times.Once);
     }
 
     [Fact]
@@ -809,13 +840,31 @@ public class UserServiceTests
 
     #region AdjustBalancesAsync Audit Tests (user-management Phase 2 retrofit)
 
+    /// <summary>A staff context like UsersController builds; actor null = the plugin without a named staff member.</summary>
+    private static CurrencyContext StaffCtx(int? actorUserId = null, string reason = "test", string key = "k1") => new()
+    {
+        IdempotencyKey = key,
+        IdempotencyScope = CurrencyIdempotencyScopes.Plugin,
+        ReasonCode = CurrencyReasons.AdminGrant,
+        Reason = reason,
+        Initiator = actorUserId == null ? Enums.CurrencyInitiator.PluginService : Enums.CurrencyInitiator.Admin,
+        InitiatorUserId = actorUserId,
+        InitiatorComponent = "Test"
+    };
+
+    private static List<BalanceChangeDto> Change(Enums.Currency currency, long amount, Enums.CurrencyOperation mode = Enums.CurrencyOperation.Add) =>
+        new() { new BalanceChangeDto { Currency = currency, Mode = mode, Amount = amount } };
+
+    private Task<BalanceAdjustmentResultDto> AddXpAsync(UserService service, int amount, string reason = "xp", bool notifyPlayer = true) =>
+        service.AdjustBalancesAsync(1, Change(Enums.Currency.Experience, amount), StaffCtx(reason: reason), notifyPlayer: notifyPlayer);
+
     [Fact]
     public async Task AdjustBalancesAsync_RecordsBalanceAdjustedAuditEntry()
     {
         _mockUserRepository.Setup(r => r.GetByIdAsync(1))
             .ReturnsAsync(new User { Id = 1, Username = "player", Coins = 100, Gems = 0, ExperiencePoints = 0 });
 
-        await _userService.AdjustBalancesAsync(1, coinsDelta: 50, gemsDelta: 0, experienceDelta: 0, reason: "test", actorUserId: 3);
+        await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Coins, 50), StaffCtx(actorUserId: 3));
 
         _mockAuditLogService.Verify(a => a.RecordAsync(3, 1, Enums.AuditAction.BalanceAdjusted, It.IsAny<string?>()), Times.Once);
     }
@@ -831,7 +880,7 @@ public class UserServiceTests
             new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 500 }
         });
 
-        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "xp gain");
+        var result = await AddXpAsync(_userService, 500, "xp gain");
 
         _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.BalanceAdjusted, It.IsAny<string?>()), Times.Once);
         _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.TitleChanged, It.IsAny<string?>()), Times.Once);
@@ -857,7 +906,7 @@ public class UserServiceTests
             new() { Id = 4, MaleName = "Veteran", FemaleName = "Veteran", MinExperience = 300, CoinBonus = 30, GemBonus = 3 }
         });
 
-        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 250, reason: "big xp grant");
+        var result = await AddXpAsync(_userService, 250, "big xp grant");
 
         _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.TitleChanged, It.IsAny<string?>()), Times.Once);
         Assert.NotNull(result.TitleChange);
@@ -889,7 +938,7 @@ public class UserServiceTests
             new() { Id = 4, MaleName = "Veteran", FemaleName = "Veteran", MinExperience = 300, CoinBonus = 30, GemBonus = 3 }
         });
 
-        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 100, reason: "xp");
+        var result = await AddXpAsync(_userService, 100);
 
         Assert.NotNull(result.TitleChange);
         // 100 XP reaches Apprentice; its 50 XP bonus x3 = 150 lifts the total to 250, reaching
@@ -928,7 +977,7 @@ public class UserServiceTests
             new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 100, CoinBonus = 10, GemBonus = 3, ExpBonus = 7 }
         });
 
-        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 100, reason: "xp");
+        var result = await AddXpAsync(_userService, 100);
 
         Assert.Equal(40, result.TitleChange!.CoinBonusGranted); // 10 x 2 x 2
         Assert.Equal(3, result.TitleChange.GemBonusGranted);
@@ -949,6 +998,8 @@ public class UserServiceTests
         _mockAuditLogService.Object,
         _mockPermissionGroupRepository.Object,
         Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+        _currency,
+        _titleProgression,
         queue);
 
     private void SetUpTwoBracketsAndPlayer()
@@ -970,8 +1021,7 @@ public class UserServiceTests
         SetUpTwoBracketsAndPlayer();
         var queue = new Mock<IPlayerNotificationQueue>();
 
-        await CreateUserServiceWithQueue(queue.Object)
-            .AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "web app xp grant");
+        await AddXpAsync(CreateUserServiceWithQueue(queue.Object), 500, "web app xp grant");
 
         queue.Verify(q => q.Enqueue(1, "uuid-1", "player", PlayerNotificationTypes.TitleChanged,
             It.Is<TitleChangeResultDto>(t => t.Direction == "promotion" && t.ToTitleBracketId == 2)), Times.Once);
@@ -984,8 +1034,7 @@ public class UserServiceTests
         SetUpTwoBracketsAndPlayer();
         var queue = new Mock<IPlayerNotificationQueue>();
 
-        await CreateUserServiceWithQueue(queue.Object)
-            .AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 500, reason: "/knk user", notifyPlayer: false);
+        await AddXpAsync(CreateUserServiceWithQueue(queue.Object), 500, "/knk user", notifyPlayer: false);
 
         queue.Verify(q => q.Enqueue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TitleChangeResultDto?>()), Times.Never);
     }
@@ -996,10 +1045,133 @@ public class UserServiceTests
         SetUpTwoBracketsAndPlayer();
         var queue = new Mock<IPlayerNotificationQueue>();
 
-        await CreateUserServiceWithQueue(queue.Object)
-            .AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 100, reason: "small xp grant");
+        await AddXpAsync(CreateUserServiceWithQueue(queue.Object), 100, "small xp grant");
 
         queue.Verify(q => q.Enqueue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TitleChangeResultDto?>()), Times.Never);
+    }
+
+    #endregion
+
+    #region Currency ledger routing (currency-payments Phase 2)
+
+    [Fact]
+    public async Task CreateAsync_PostsTheSignupGrant()
+    {
+        var user = new User { Username = "newbie" };
+        _mockMapper.Setup(m => m.Map<User>(It.IsAny<UserCreateDto>())).Returns(user);
+        _mockUserRepository.Setup(r => r.AddUserAsync(user)).Callback(() => user.Id = 7).Returns(Task.CompletedTask);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(7)).ReturnsAsync(user);
+        _mockMapper.Setup(m => m.Map<UserDto>(user)).Returns(new UserDto { Id = 7, Username = "newbie" });
+
+        await _userService.CreateAsync(new UserCreateDto { Username = "newbie" });
+
+        // Inserted at 0 (EF never writes the balance columns), then the starting balance as one
+        // SIGNUP_GRANT posting, inside the same transaction as the insert.
+        var signup = Assert.Single(_currency.Postings);
+        Assert.Equal(CurrencyReasons.SignupGrant, signup.Ctx.ReasonCode);
+        Assert.Equal("signup:7", signup.Ctx.IdempotencyKey);
+        Assert.Equal(CurrencyIdempotencyScopes.System, signup.Ctx.IdempotencyScope);
+        Assert.Equal((250, 50, 0), (user.Coins, user.Gems, user.ExperiencePoints));
+        _mockUserRepository.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => !ids.Any()), It.IsAny<Func<Task>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_SignupGrantComesFromThePolicy()
+    {
+        _currency.Policies[Enums.Currency.Coins] = new CurrencyPolicy { Currency = Enums.Currency.Coins, SignupGrant = 1000 };
+        _currency.Policies[Enums.Currency.Gems] = new CurrencyPolicy { Currency = Enums.Currency.Gems, SignupGrant = 0 };
+        var user = new User { Username = "newbie" };
+        _mockMapper.Setup(m => m.Map<User>(It.IsAny<UserCreateDto>())).Returns(user);
+        _mockUserRepository.Setup(r => r.AddUserAsync(user)).Callback(() => user.Id = 8).Returns(Task.CompletedTask);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(8)).ReturnsAsync(user);
+        _mockMapper.Setup(m => m.Map<UserDto>(user)).Returns(new UserDto { Id = 8, Username = "newbie" });
+
+        await _userService.CreateAsync(new UserCreateDto { Username = "newbie" });
+
+        var leg = Assert.Single(Assert.Single(_currency.Postings).Legs);
+        Assert.Equal((Enums.Currency.Coins, 1000L), (leg.Currency, leg.Amount));
+        Assert.Equal((1000, 0), (user.Coins, user.Gems));
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_Set_IsAppliedServerSide()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player", Coins = 100 });
+
+        var result = await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Coins, 40, Enums.CurrencyOperation.Set), StaffCtx(actorUserId: 3));
+
+        Assert.Equal(40, result.NewCoins);
+        var change = Assert.Single(result.Changes);
+        Assert.Equal(("Coins", "Set", -60L, 100L, 40L), (change.Currency, change.Mode, change.Amount, change.BalanceBefore, change.BalanceAfter));
+        var posting = Assert.Single(_currency.Postings);
+        Assert.Equal(CurrencyReasons.AdminSet, posting.Ctx.ReasonCode);
+        Assert.Equal("k1:coins", posting.Ctx.IdempotencyKey);
+        Assert.Equal(3, posting.Ctx.InitiatorUserId);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_SameKeyTwice_PostsAndAuditsOnce()
+    {
+        var user = new User { Id = 1, Username = "player", Coins = 100 };
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+
+        var first = await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Coins, 50), StaffCtx(key: "retry-me"));
+        var retry = await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Coins, 50), StaffCtx(key: "retry-me"));
+
+        Assert.False(first.Replayed);
+        Assert.True(retry.Replayed);
+        Assert.Equal(150, user.Coins);
+        Assert.Equal(150, retry.NewCoins);
+        Assert.Single(_currency.Postings);
+        _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), 1, Enums.AuditAction.BalanceAdjusted, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task AdjustBalancesAsync_WithoutReason_IsRejected(string? reason)
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "player", Coins = 100 });
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Coins, 5), StaffCtx() with { Reason = reason }));
+        Assert.Empty(_currency.Postings);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_SameCurrencyTwice_IsRejected()
+    {
+        var changes = Change(Enums.Currency.Gems, 5);
+        changes.AddRange(Change(Enums.Currency.Gems, 1, Enums.CurrencyOperation.Remove));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _userService.AdjustBalancesAsync(1, changes, StaffCtx()));
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_DemoteThenPromoteAgain_PaysTheBracketBonusOnce()
+    {
+        // Audit A5: XP down and back up used to re-credit every crossed bracket's bonus. Now each
+        // bracket's bonus is a keyed ledger posting (title-bonus:{user}:{bracket}), paid once ever.
+        var user = new User { Id = 1, Username = "player" };
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 100, CoinBonus = 10, GemBonus = 1 }
+        });
+
+        var promoted = await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Experience, 100), StaffCtx(key: "a"));
+        var demoted = await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Experience, 100, Enums.CurrencyOperation.Remove), StaffCtx(key: "b"));
+        var again = await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Experience, 100), StaffCtx(key: "c"));
+
+        Assert.Equal(10, promoted.TitleChange!.CoinBonusGranted);
+        Assert.Equal("demotion", demoted.TitleChange!.Direction);
+        Assert.Equal("promotion", again.TitleChange!.Direction);
+        Assert.Equal(0, again.TitleChange.CoinBonusGranted);
+        Assert.Equal(0, again.TitleChange.GemBonusGranted);
+        Assert.Equal((10, 1), (user.Coins, user.Gems));
+        var bonus = Assert.Single(_currency.Postings, p => p.Ctx.ReasonCode == CurrencyReasons.TitleBonus);
+        Assert.Equal("title-bonus:1:2", bonus.Ctx.IdempotencyKey);
     }
 
     #endregion

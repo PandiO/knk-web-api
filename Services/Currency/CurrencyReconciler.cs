@@ -17,9 +17,9 @@ namespace knkwebapi_v2.Services
     /// column = first BalanceBefore + Σ entries. Every transaction must also sum to zero per
     /// currency. Users without ledger rows aren't checked (their balance predates the ledger).
     /// </para>
-    /// Note: until currency Phase 2 routes every write path through ICurrencyService, a balance
-    /// changed by a pre-ledger path (salary, kits, admin adjust…) after a user's first ledger
-    /// posting shows up here as a Chain/BalanceColumn mismatch — that is the reconciler working.
+    /// Since currency Phase 2 every write path goes through ICurrencyService and EF can't write the
+    /// balance columns, so a Chain/BalanceColumn mismatch means a write outside the application
+    /// (a manual SQL edit) or a bug — that is the reconciler working.
     /// </summary>
     public class CurrencyReconciler
     {

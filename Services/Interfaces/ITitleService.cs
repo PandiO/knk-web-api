@@ -12,7 +12,7 @@ namespace knkwebapi_v2.Services.Interfaces
     {
         Task<TitleResolutionDto> ResolveAsync(int experiencePoints, Models.Gender? gender = null);
 
-        /// <summary>The full ordered bracket list — used by UserService.AdjustBalancesAsync's
+        /// <summary>The full ordered bracket list — used by TitleProgressionService's
         /// tier-crossing consolidation loop, which needs to walk every bracket between the
         /// previous and new XP totals, not just the single resolved one.</summary>
         Task<List<Models.TitleBracket>> GetAllOrderedAsync();

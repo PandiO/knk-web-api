@@ -33,11 +33,17 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<Dictionary<int, BalancesDto>> GetBalancesAsync(IEnumerable<int> userIds, CancellationToken ct = default);
 
         /// <summary>
-        /// Adds the transaction and its entries and saves, together with the balance changes made
-        /// to the users returned by <see cref="GetUsersForUpdateAsync"/> — one SaveChanges, so the
-        /// balance columns and the ledger rows commit together.
+        /// Adds the transaction and its entries, then writes each user leg's final BalanceAfter
+        /// to the users row (ExecuteUpdate — the balance columns are PropertySaveBehavior.Ignore,
+        /// so this is the only code that can write them). Call inside
+        /// IUserRepository.RunWithUsersLockedAsync: the ledger rows and the balance columns commit
+        /// together. The users returned by <see cref="GetUsersForUpdateAsync"/> must already hold
+        /// the new values.
         /// </summary>
         Task AddTransactionAsync(CurrencyTransaction transaction, CancellationToken ct = default);
+
+        /// <summary>Policy rows per currency, untracked (a currency without a row is missing).</summary>
+        Task<Dictionary<Currency, CurrencyPolicy>> GetPoliciesAsync(CancellationToken ct = default);
 
         /// <summary>Stops tracking a transaction whose save failed, so a later SaveChanges in the
         /// same request doesn't try to insert it again. Not a database operation.</summary>

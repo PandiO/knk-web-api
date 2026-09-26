@@ -138,12 +138,13 @@ namespace knkwebapi_v2.DependencyInjection
                 new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl)
             );
 
-            // Retention policy service - background task for cleaning up old records
-            // Currency ledger (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phase 1)
+            // Currency ledger (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phases 1-2)
             services.AddScoped<ICurrencyRepository, CurrencyRepository>();
             services.AddScoped<ICurrencyService, CurrencyService>();
+            services.AddScoped<ITitleProgressionService, TitleProgressionService>();
             services.AddScoped<CurrencyReconciler>();
 
+            // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
             // Temporary ranks expiring: back to Default + tell the plugin (RANK_DISPLAY.md).
             services.AddHostedService<RankExpirySweepService>();

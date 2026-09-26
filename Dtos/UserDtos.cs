@@ -309,22 +309,19 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
-    /// DTO for adjusting a user's coins/gems/experience by a signed delta with an audit reason
-    /// (docs/specs/user-features/IMPLEMENTATION_PLAN.md §4's demotion/deduction hook — also usable
-    /// for any coins/gems economy adjustment). Wraps UserService.AdjustBalancesAsync, which
-    /// already rejects underflow on any of the three balances.
+    /// Body for PUT /api/users/{id}/balances: staff changes to a user's coins, gems and/or XP, each
+    /// posted to the currency ledger as ADMIN_GRANT / ADMIN_TAKE / ADMIN_SET (currency-payments
+    /// Phase 2). The server applies the mode under the row lock — clients never compute a delta
+    /// from a balance they cached (audit A6). The request's Idempotency-Key header makes a retry
+    /// safe: the same key returns the stored result instead of posting again.
     /// </summary>
     public class AdjustBalancesDto
     {
-        [JsonPropertyName("coinsDelta")]
-        public int CoinsDelta { get; set; }
+        /// <summary>At most one change per currency.</summary>
+        [JsonPropertyName("changes")]
+        public List<BalanceChangeDto> Changes { get; set; } = new();
 
-        [JsonPropertyName("gemsDelta")]
-        public int GemsDelta { get; set; }
-
-        [JsonPropertyName("experienceDelta")]
-        public int ExperienceDelta { get; set; }
-
+        /// <summary>Why (required, ≤ 500 characters). Stored on the ledger rows and the audit entry.</summary>
         [JsonPropertyName("reason")]
         public string Reason { get; set; } = null!;
 
@@ -339,6 +336,29 @@ namespace knkwebapi_v2.Dtos
         /// </summary>
         [JsonPropertyName("notifyPlayer")]
         public bool NotifyPlayer { get; set; } = true;
+    }
+
+    /// <summary>
+    /// One staff balance change. <see cref="Mode"/> Add/Remove take a positive
+    /// <see cref="Amount"/>; Set takes the target balance (0..cap) and the server computes the
+    /// delta. <see cref="ExpectedCurrent"/> (optional) must equal the balance the server finds, so
+    /// a set made from a stale screen is refused (409) rather than applied.
+    /// </summary>
+    public class BalanceChangeDto
+    {
+        /// <summary>"Coins", "Gems" or "Experience".</summary>
+        [JsonPropertyName("currency")]
+        public Enums.Currency Currency { get; set; }
+
+        /// <summary>"Add", "Remove" or "Set".</summary>
+        [JsonPropertyName("mode")]
+        public Enums.CurrencyOperation Mode { get; set; }
+
+        [JsonPropertyName("amount")]
+        public long Amount { get; set; }
+
+        [JsonPropertyName("expectedCurrent")]
+        public long? ExpectedCurrent { get; set; }
     }
 
     /// <summary>

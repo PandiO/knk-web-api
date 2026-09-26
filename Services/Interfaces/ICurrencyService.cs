@@ -24,9 +24,13 @@ namespace knkwebapi_v2.Services.Interfaces
     /// <see cref="CurrencyErrorCode"/>. Callers must not catch InsufficientFunds and retry with a
     /// smaller amount.
     /// <para>
-    /// XP postings change ExperiencePoints only; they don't run title progression (promotion
-    /// bonuses, title change notifications). Until currency Phase 2 reroutes it, XP that should
-    /// promote goes through UserService.AdjustBalancesAsync.
+    /// XP postings change ExperiencePoints only; they don't run title progression. A path that
+    /// changes XP runs ITitleProgressionService.ApplyForPostingAsync on the result afterwards
+    /// (same transaction), which pays promotion bonuses once per bracket.
+    /// </para>
+    /// <para>
+    /// This is the only code that writes users.Coins/Gems/ExperiencePoints: EF ignores those
+    /// columns everywhere else (PropertySaveBehavior.Ignore, currency Phase 2).
     /// </para>
     /// </summary>
     public interface ICurrencyService
@@ -59,6 +63,16 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <see cref="ReversalOptions"/> for balances that have since been spent.
         /// </summary>
         Task<PostingResult> ReverseAsync(long transactionId, ReversalOptions opts, CurrencyContext ctx, CancellationToken ct = default);
+
+        /// <summary>
+        /// The posting stored under (<paramref name="scope"/>, <paramref name="idempotencyKey"/>),
+        /// as a replay (<c>Replayed = true</c>, current balances), or null if none. Lets a caller
+        /// skip a once-ever posting (e.g. a title bonus already paid) without building the request.
+        /// </summary>
+        Task<PostingResult?> FindAsync(string scope, string idempotencyKey, CancellationToken ct = default);
+
+        /// <summary>The policy row of each currency that has one (signup grant, transfer rules).</summary>
+        Task<IReadOnlyDictionary<Currency, Models.CurrencyPolicy>> GetPoliciesAsync(CancellationToken ct = default);
 
         /// <summary>Current balances; UserNotFound if the user doesn't exist.</summary>
         Task<BalancesDto> GetBalancesAsync(int userId, CancellationToken ct = default);

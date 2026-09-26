@@ -26,6 +26,8 @@ namespace knkwebapi_v2.Services
         private readonly IAuditLogService _auditLogService;
         private readonly IPermissionGroupRepository _permissionGroupRepo;
         private readonly ILogger<UserService> _logger;
+        private readonly ICurrencyService _currency;
+        private readonly ITitleProgressionService _titleProgression;
         private readonly IPlayerNotificationQueue? _notificationQueue;
 
         public UserService(
@@ -38,9 +40,13 @@ namespace knkwebapi_v2.Services
             IAuditLogService auditLogService,
             IPermissionGroupRepository permissionGroupRepo,
             ILogger<UserService> logger,
+            ICurrencyService currency,
+            ITitleProgressionService titleProgression,
             IPlayerNotificationQueue? notificationQueue = null)
         {
             _notificationQueue = notificationQueue;
+            _currency = currency;
+            _titleProgression = titleProgression;
             _repo = repo;
             _mapper = mapper;
             _passwordService = passwordService;
@@ -166,10 +172,42 @@ namespace knkwebapi_v2.Services
             user.AccountCreatedVia = string.IsNullOrWhiteSpace(userDto.Email)
                 ? AccountCreationMethod.MinecraftServer
                 : AccountCreationMethod.WebApp;
-            
-            await _repo.AddUserAsync(user);
+
+            // The row is inserted at balance 0 (EF never writes the balance columns); the starting
+            // balance is a SIGNUP_GRANT ledger posting in the same transaction, so there is never
+            // an account without its grant or a grant without its account (currency DESIGN.md
+            // §3.10 step 2). No ids to lock yet: this is just the transaction.
+            await _repo.RunWithUsersLockedAsync(Array.Empty<int>(), async () =>
+            {
+                await _repo.AddUserAsync(user);
+                await GrantSignupBalanceAsync(user.Id);
+            });
             await AssignDefaultGroupAsync(user.Id);
             return await MapToUserDtoAsync(user);
+        }
+
+        /// <summary>
+        /// Posts the starting balance (CurrencyPolicy.SignupGrant: 250 coins / 50 gems unless
+        /// changed) under the once-only key <c>signup:{userId}</c>.
+        /// </summary>
+        private async Task GrantSignupBalanceAsync(int userId)
+        {
+            var policies = await _currency.GetPoliciesAsync();
+            var legs = new[] { Currency.Coins, Currency.Gems, Currency.Experience }
+                .Select(c => new CurrencyLeg(userId, c,
+                    policies != null && policies.TryGetValue(c, out var policy) ? policy.SignupGrant : CurrencyPolicy.DefaultSignupGrant(c)))
+                .Where(l => l.Amount > 0)
+                .ToList();
+            if (legs.Count == 0)
+            {
+                return;
+            }
+            var ctx = CurrencyContext.ForSystem("UserService", CurrencyReasons.SignupGrant, $"signup:{userId}") with
+            {
+                SourceType = "User",
+                SourceRef = userId.ToString()
+            };
+            await _currency.PostAsync(legs, ctx);
         }
 
         /// <summary>
@@ -637,30 +675,104 @@ namespace knkwebapi_v2.Services
         // ===== NEW METHODS: BALANCES (COINS, GEMS, XP) =====
 
         /// <inheritdoc/>
-        public async Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null, bool notifyPlayer = true)
+        public async Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, IReadOnlyList<BalanceChangeDto> changes, CurrencyContext ctx, string? metadata = null, bool notifyPlayer = true)
         {
             if (userId <= 0)
             {
                 throw new ArgumentException("Invalid user ID.", nameof(userId));
             }
-
-            if (string.IsNullOrWhiteSpace(reason))
+            if (ctx == null)
             {
-                throw new ArgumentException("Reason is required for balance adjustments.", nameof(reason));
+                throw new ArgumentNullException(nameof(ctx));
+            }
+            if (string.IsNullOrWhiteSpace(ctx.Reason))
+            {
+                throw new ArgumentException("Reason is required for balance adjustments.", "reason");
+            }
+            if (string.IsNullOrEmpty(ctx.IdempotencyKey) || ctx.IdempotencyKey.Length > CurrencyClientKeys.MaxLength)
+            {
+                throw new ArgumentException($"An Idempotency-Key of 1–{CurrencyClientKeys.MaxLength} characters is required.", nameof(ctx));
+            }
+            if (changes == null || changes.Count == 0)
+            {
+                throw new ArgumentException("At least one balance change is required.", nameof(changes));
+            }
+            if (changes.Any(c => c == null || !Enum.IsDefined(c.Currency) || !Enum.IsDefined(c.Mode)))
+            {
+                throw new ArgumentException("Each change needs a currency (Coins, Gems, Experience) and a mode (Add, Remove, Set).", nameof(changes));
+            }
+            if (changes.GroupBy(c => c.Currency).Any(g => g.Count() > 1))
+            {
+                throw new ArgumentException("Each currency may appear only once.", nameof(changes));
             }
 
             User user = null!;
+            var posted = new List<(BalanceChangeDto Change, PostingResult Posting)>();
             TitleChangeResultDto? titleChange = null;
 
-            // One transaction with the user's row locked (DESIGN.md §1.4 A2): two adjustments, or
-            // an adjustment racing a salary payout or kit purchase, run one after the other
-            // instead of both starting from the same balance. The audit entry is written in the
-            // same transaction, so there is never a balance change without its entry.
+            // One transaction with the user's row locked (DESIGN.md §1.4 A2): the postings, any
+            // title bonuses and the audit entry commit together or not at all. XP goes last, so
+            // title progression runs once on the final XP.
             await _repo.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
                 user = await _repo.GetByIdAsync(userId)
                     ?? throw new KeyNotFoundException($"User with ID {userId} not found.");
-                titleChange = await ApplyBalanceAdjustmentAsync(user, coinsDelta, gemsDelta, experienceDelta, reason, metadata, actorUserId);
+                var coinsBefore = user.Coins;
+                var gemsBefore = user.Gems;
+                var experienceBefore = user.ExperiencePoints;
+
+                foreach (var change in changes.OrderBy(c => c.Currency))
+                {
+                    var posting = await _currency.AdminAdjustAsync(
+                        new AdminAdjustRequest(userId, change.Currency, change.Mode, change.Amount, change.ExpectedCurrent),
+                        ctx with
+                        {
+                            ReasonCode = CurrencyReasons.ForAdminMode(change.Mode),
+                            IdempotencyKey = $"{ctx.IdempotencyKey}:{KeySuffix(change.Currency)}",
+                            SourceType = ctx.SourceType ?? "User",
+                            SourceRef = ctx.SourceRef ?? userId.ToString()
+                        });
+                    posted.Add((change, posting));
+                }
+
+                var xpPosting = posted.FirstOrDefault(p => p.Change.Currency == Currency.Experience).Posting;
+                if (xpPosting != null)
+                {
+                    var titleChanges = await _titleProgression.ApplyForPostingAsync(xpPosting, ctx.InitiatorUserId);
+                    titleChange = titleChanges.GetValueOrDefault(userId);
+                }
+
+                // A full replay (same Idempotency-Key retried) posted nothing, and its audit entry
+                // was written the first time.
+                if (posted.All(p => p.Posting.Replayed))
+                {
+                    return;
+                }
+
+                // docs/specs/user-management/IMPLEMENTATION_PLAN.md §0: every balance mutation
+                // writes an AuditLogEntry. The ledger is authoritative; this entry keeps the web
+                // activity feed (knk-web-app utils/auditDetails.ts) and links to the ledger rows.
+                long Delta(Currency c) => posted.Where(p => p.Change.Currency == c).SelectMany(p => p.Posting.Entries).Sum(e => e.Amount);
+                await _auditLogService.RecordAsync(ctx.InitiatorUserId, userId, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
+                {
+                    coinsDelta = Delta(Currency.Coins),
+                    gemsDelta = Delta(Currency.Gems),
+                    experienceDelta = Delta(Currency.Experience),
+                    reason = ctx.Reason,
+                    metadata,
+                    changes = posted.Select(p => new { currency = p.Change.Currency.ToString(), mode = p.Change.Mode.ToString(), amount = p.Change.Amount }),
+                    ledgerTransactionIds = posted.Select(p => p.Posting.PublicId),
+                    titleBonusCoins = titleChange?.CoinBonusGranted ?? 0,
+                    titleBonusGems = titleChange?.GemBonusGranted ?? 0,
+                    titleBonusExp = titleChange?.ExpBonusGranted ?? 0,
+                    // Before/after (bonuses included) for the moderation activity feed.
+                    coinsBefore,
+                    coinsAfter = user.Coins,
+                    gemsBefore,
+                    gemsAfter = user.Gems,
+                    experienceBefore,
+                    experienceAfter = user.ExperiencePoints
+                }));
             });
 
             // Only after the commit: the plugin must not announce a promotion that rolled back.
@@ -672,174 +784,33 @@ namespace knkwebapi_v2.Services
                 _notificationQueue?.Enqueue(userId, user.Uuid, user.Username, PlayerNotificationTypes.TitleChanged, titleChange);
             }
 
+            var balances = await _currency.GetBalancesAsync(userId);
             return new BalanceAdjustmentResultDto
             {
-                NewCoins = user.Coins,
-                NewGems = user.Gems,
-                NewExperiencePoints = user.ExperiencePoints,
-                TitleChange = titleChange
+                NewCoins = balances.Coins,
+                NewGems = balances.Gems,
+                NewExperiencePoints = balances.ExperiencePoints,
+                TitleChange = titleChange,
+                Replayed = posted.All(p => p.Posting.Replayed),
+                Changes = posted.SelectMany(p => p.Posting.Entries.Select(e => new BalanceChangeResultDto
+                {
+                    Currency = e.Currency,
+                    Mode = p.Change.Mode.ToString(),
+                    Amount = e.Amount,
+                    BalanceBefore = e.BalanceBefore,
+                    BalanceAfter = e.BalanceAfter,
+                    TransactionPublicId = p.Posting.PublicId,
+                    Replayed = p.Posting.Replayed
+                })).ToList()
             };
         }
 
-        /// <summary>
-        /// The body of AdjustBalancesAsync, run under the user's row lock: validates and applies
-        /// the deltas and any title-promotion bonuses, saves, and writes the audit entries.
-        /// Every new value is computed and checked (BalanceLimits: no negatives, caps, checked
-        /// arithmetic) before anything is assigned, so a rejected adjustment changes nothing.
-        /// </summary>
-        private async Task<TitleChangeResultDto?> ApplyBalanceAdjustmentAsync(User user, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata, int? actorUserId)
+        private static string KeySuffix(Currency currency) => currency switch
         {
-            var userId = user.Id;
-            var originalExperience = user.ExperiencePoints;
-            var originalCoins = user.Coins;
-            var originalGems = user.Gems;
-
-            // Rejects underflow ("Insufficient …") and anything above the caps.
-            var newCoins = BalanceLimits.ApplyCoins(originalCoins, coinsDelta);
-            var newGems = BalanceLimits.ApplyGems(originalGems, gemsDelta);
-            var newExperience = BalanceLimits.ApplyExperience(originalExperience, experienceDelta);
-
-            // Resolved before the mutation so a resulting title change can be detected, and so the
-            // consolidation loop below has every bracket to walk between old and new XP.
-            var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
-            TitleBracket? previousBracket = brackets != null && brackets.Count > 0
-                ? (brackets.LastOrDefault(b => b.MinExperience <= originalExperience) ?? brackets[0])
-                : null;
-
-            TitleChangeResultDto? titleChange = null;
-
-            // Consolidate every bracket crossed by this single adjustment into one grant + one
-            // reported change, instead of firing once per tier the way v1's TitleChangeEvents
-            // loop did (setPromoteLoop/setDemoteLoop) — a developer-confirmed behavior NOT to
-            // repeat. ExpBonus can itself push into a further bracket, so this loops until
-            // resolution stabilizes, mirroring v1's cascading re-check but accumulating instead
-            // of firing per-iteration effects.
-            if (previousBracket != null && brackets != null)
-            {
-                var direction = newExperience > originalExperience ? "promotion" : "demotion";
-                var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= newExperience) ?? brackets[0];
-
-                if (currentBracket.Id != previousBracket.Id)
-                {
-                    var crossed = new List<TitleBracket>();
-                    long coinBonusTotal = 0, gemBonusTotal = 0, expBonusTotal = 0;
-                    int coinBonusBase = 0, gemBonusBase = 0, expBonusBase = 0;
-                    var coinMultipliers = new List<RewardMultiplierDto>();
-                    var gemMultipliers = new List<RewardMultiplierDto>();
-                    var expMultipliers = new List<RewardMultiplierDto>();
-
-                    if (direction == "promotion")
-                    {
-                        // KNG-16: each bonus is scaled by the player's personal x rank multiplier
-                        // for that currency - coins by the salary multipliers, gems and XP by their
-                        // own GemBonus/ExpBonus multipliers. No global multiplier applies.
-                        var ranks = await _membershipService.GetActiveRankMultipliersAsync(userId) ?? RankMultipliersDto.Neutral;
-                        var coinMultiplier = user.PersonalSalaryMultiplier * ranks.Salary;
-                        var gemMultiplier = user.PersonalGemBonusMultiplier * ranks.GemBonus;
-                        var expMultiplier = user.PersonalExpBonusMultiplier * ranks.ExpBonus;
-                        coinMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalSalaryMultiplier));
-                        coinMultipliers.AddRange(ranks.SalaryBreakdown());
-                        gemMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalGemBonusMultiplier));
-                        gemMultipliers.AddRange(ranks.GemBonusBreakdown());
-                        expMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalExpBonusMultiplier));
-                        expMultipliers.AddRange(ranks.ExpBonusBreakdown());
-
-                        // Walk every bracket strictly above previousBracket up to (and possibly
-                        // past, if ExpBonus pushes further) currentBracket, accumulating rewards.
-                        var idx = brackets.FindIndex(b => b.Id == previousBracket.Id) + 1;
-                        while (idx < brackets.Count && brackets[idx].MinExperience <= newExperience)
-                        {
-                            var tier = brackets[idx];
-                            crossed.Add(tier);
-                            var expBonus = ScaleBonus(tier.ExpBonus, expMultiplier);
-                            coinBonusTotal = checked(coinBonusTotal + ScaleBonus(tier.CoinBonus, coinMultiplier));
-                            gemBonusTotal = checked(gemBonusTotal + ScaleBonus(tier.GemBonus, gemMultiplier));
-                            expBonusTotal = checked(expBonusTotal + expBonus);
-                            coinBonusBase += tier.CoinBonus;
-                            gemBonusBase += tier.GemBonus;
-                            expBonusBase += tier.ExpBonus;
-                            newExperience = BalanceLimits.ApplyExperience(newExperience, expBonus); // may unlock further brackets
-                            idx++;
-                        }
-                        newCoins = BalanceLimits.ApplyCoins(newCoins, coinBonusTotal);
-                        newGems = BalanceLimits.ApplyGems(newGems, gemBonusTotal);
-                        currentBracket = brackets.LastOrDefault(b => b.MinExperience <= newExperience) ?? brackets[0];
-                    }
-                    // Demotion never claws back currency (matches v1's userDemotion, which only
-                    // ever removed structural slots/skills — neither exists in v3), so no bonus
-                    // accumulation happens on the way down.
-
-                    titleChange = new TitleChangeResultDto
-                    {
-                        Direction = direction,
-                        FromTitleBracketId = previousBracket.Id,
-                        FromTitleName = previousBracket.NameFor(user.Gender),
-                        ToTitleBracketId = currentBracket.Id,
-                        ToTitleName = currentBracket.NameFor(user.Gender),
-                        CrossedTitles = crossed.Select(t => new TitleCrossingDto { TitleBracketId = t.Id, TitleName = t.NameFor(user.Gender) }).ToList(),
-                        // Each total is at most its cap here (the Apply* calls above passed).
-                        CoinBonusGranted = (int)coinBonusTotal,
-                        GemBonusGranted = (int)gemBonusTotal,
-                        ExpBonusGranted = (int)expBonusTotal,
-                        CoinBonusBase = coinBonusBase,
-                        GemBonusBase = gemBonusBase,
-                        ExpBonusBase = expBonusBase,
-                        CoinBonusMultipliers = coinMultipliers,
-                        GemBonusMultipliers = gemMultipliers,
-                        ExpBonusMultipliers = expMultipliers
-                    };
-                }
-            }
-
-            user.Coins = newCoins;
-            user.Gems = newGems;
-            user.ExperiencePoints = newExperience;
-            await _repo.SaveBalancesAsync(user);
-
-            // docs/specs/user-management/IMPLEMENTATION_PLAN.md §0: every user-features mutation
-            // threads in an AuditLogEntry write as it's built, rather than user-management's
-            // Phase 2 retrofitting it later. This closes user-features IMPLEMENTATION_PLAN.md §6
-            // carried-forward item 4's "AdjustBalancesAsync still needs retrofitting".
-            await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
-            {
-                coinsDelta,
-                gemsDelta,
-                experienceDelta,
-                reason,
-                metadata,
-                titleBonusCoins = titleChange?.CoinBonusGranted ?? 0,
-                titleBonusGems = titleChange?.GemBonusGranted ?? 0,
-                titleBonusExp = titleChange?.ExpBonusGranted ?? 0,
-                // Before/after (bonuses included) for the moderation activity feed.
-                coinsBefore = originalCoins,
-                coinsAfter = user.Coins,
-                gemsBefore = originalGems,
-                gemsAfter = user.Gems,
-                experienceBefore = originalExperience,
-                experienceAfter = user.ExperiencePoints
-            }));
-
-            if (titleChange != null)
-            {
-                // One consolidated audit entry for the whole crossing, not one per tier.
-                await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.TitleChanged, JsonSerializer.Serialize(new
-                {
-                    fromTitleBracketId = titleChange.FromTitleBracketId,
-                    fromTitleName = titleChange.FromTitleName,
-                    toTitleBracketId = titleChange.ToTitleBracketId,
-                    toTitleName = titleChange.ToTitleName,
-                    crossedTitles = titleChange.CrossedTitles.Select(t => t.TitleName),
-                    direction = titleChange.Direction
-                }));
-            }
-
-            return titleChange;
-        }
-
-        /// <summary>A title promotion bonus scaled by its multiplier, rounded to whole units and
-        /// never negative (a multiplier set negative by a direct DB edit pays nothing).</summary>
-        private static long ScaleBonus(int bonus, decimal multiplier) =>
-            BalanceLimits.ToWholeAmount(() => bonus * multiplier, "title bonus");
+            Currency.Coins => "coins",
+            Currency.Gems => "gems",
+            _ => "xp"
+        };
 
         // ===== NEW METHODS: LINK CODES =====
 
@@ -964,11 +935,41 @@ namespace knkwebapi_v2.Services
             }
 
             // Perform merge (repository handles soft delete and data preservation)
-            await _repo.MergeUsersAsync(primaryUserId, secondaryUserId);
+            await MergeWithForfeitAsync(primaryUserId, secondaryUserId);
 
             // Return updated primary user
             var mergedUser = await _repo.GetByIdAsync(primaryUserId);
             return await MapToUserDtoAsync(mergedUser!);
+        }
+
+        /// <summary>
+        /// Soft-deletes the secondary account and forfeits its coins and gems as one
+        /// MERGE_FORFEIT ledger posting (currency DESIGN.md §5 Q6: forfeited, not added to the
+        /// primary — that would turn alt accounts into a funnel — but recorded instead of left
+        /// orphaned on a deleted row, audit A10). XP is progression, not currency, and stays on
+        /// the archived row. Both rows are locked; the posting and the soft delete commit together.
+        /// </summary>
+        private async Task MergeWithForfeitAsync(int primaryUserId, int secondaryUserId)
+        {
+            await _repo.RunWithUsersLockedAsync(new[] { primaryUserId, secondaryUserId }, async () =>
+            {
+                var secondary = await _repo.GetByIdAsync(secondaryUserId)
+                    ?? throw new KeyNotFoundException($"Secondary user with ID {secondaryUserId} not found.");
+                var legs = new List<CurrencyLeg>();
+                if (secondary.Coins > 0) legs.Add(new CurrencyLeg(secondaryUserId, Currency.Coins, -secondary.Coins));
+                if (secondary.Gems > 0) legs.Add(new CurrencyLeg(secondaryUserId, Currency.Gems, -secondary.Gems));
+                if (legs.Count > 0)
+                {
+                    var ctx = CurrencyContext.ForSystem("UserService", CurrencyReasons.MergeForfeit, $"merge:{secondaryUserId}",
+                        $"Account merged into user {primaryUserId}") with
+                    {
+                        SourceType = "User",
+                        SourceRef = primaryUserId.ToString()
+                    };
+                    await _currency.PostAsync(legs, ctx);
+                }
+                await _repo.MergeUsersAsync(primaryUserId, secondaryUserId);
+            });
         }
 
         // ===== HELPER METHODS =====
@@ -1021,7 +1022,7 @@ namespace knkwebapi_v2.Services
                 }
 
                 // If different users, merge them (keep web app user as primary)
-                await _repo.MergeUsersAsync(webAppUser.Id, minecraftUser.Id);
+                await MergeWithForfeitAsync(webAppUser.Id, minecraftUser.Id);
             }
 
             // Step 4: Consume the link code AFTER all validation

@@ -57,8 +57,40 @@ namespace knkwebapi_v2.Repositories
         public async Task AddTransactionAsync(CurrencyTransaction transaction, CancellationToken ct = default)
         {
             await _context.CurrencyTransactions.AddAsync(transaction, ct);
+            // Ledger rows first: if this insert loses an idempotency race (unique index), no
+            // balance has been written yet, so the caller's transaction stays clean.
             await _context.SaveChangesAsync(ct);
+
+            if (!_context.Database.IsRelational())
+            {
+                // EF InMemory (tests) has no ExecuteUpdate and doesn't apply PropertySaveBehavior,
+                // so the SaveChanges above already stored the tracked users' new balances.
+                return;
+            }
+
+            // Coins/Gems/ExperiencePoints are PropertySaveBehavior.Ignore (KnKDbContext), so
+            // SaveChanges never writes them: this is the only write, inside the locked ledger
+            // transaction. SaveChanges already made the tracked users' values the "original"
+            // ones, so the entities and the rows agree afterwards.
+            var finalBalances = transaction.Entries
+                .Where(e => e.AccountKind == CurrencyAccountKind.User)
+                .GroupBy(e => (UserId: e.UserId!.Value, e.Currency))
+                .Select(g => (g.Key.UserId, g.Key.Currency, Value: checked((int)g.Last().BalanceAfter!.Value)));
+            foreach (var (userId, currency, value) in finalBalances)
+            {
+                var row = _context.Users.Where(u => u.Id == userId);
+                _ = currency switch
+                {
+                    Currency.Coins => await row.ExecuteUpdateAsync(set => set.SetProperty(u => u.Coins, value), ct),
+                    Currency.Gems => await row.ExecuteUpdateAsync(set => set.SetProperty(u => u.Gems, value), ct),
+                    Currency.Experience => await row.ExecuteUpdateAsync(set => set.SetProperty(u => u.ExperiencePoints, value), ct),
+                    _ => throw new ArgumentOutOfRangeException(nameof(currency))
+                };
+            }
         }
+
+        public async Task<Dictionary<Currency, CurrencyPolicy>> GetPoliciesAsync(CancellationToken ct = default) =>
+            await _context.CurrencyPolicies.AsNoTracking().ToDictionaryAsync(p => p.Currency, ct);
 
         public void Discard(CurrencyTransaction transaction)
         {

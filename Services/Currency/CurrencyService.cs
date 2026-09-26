@@ -250,6 +250,24 @@ namespace knkwebapi_v2.Services
 
         // ===== Reads =====
 
+        public async Task<PostingResult?> FindAsync(string scope, string idempotencyKey, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(scope) || string.IsNullOrEmpty(idempotencyKey))
+            {
+                return null;
+            }
+            var existing = await _repo.FindByIdempotencyAsync(scope, idempotencyKey, ct);
+            if (existing == null)
+            {
+                return null;
+            }
+            var userIds = existing.Entries.Where(e => e.UserId.HasValue).Select(e => e.UserId!.Value);
+            return ToResult(existing, await _repo.GetBalancesAsync(userIds, ct), replayed: true);
+        }
+
+        public async Task<IReadOnlyDictionary<Currency, CurrencyPolicy>> GetPoliciesAsync(CancellationToken ct = default) =>
+            await _repo.GetPoliciesAsync(ct);
+
         public async Task<BalancesDto> GetBalancesAsync(int userId, CancellationToken ct = default)
         {
             var balances = await _repo.GetBalancesAsync(new[] { userId }, ct);

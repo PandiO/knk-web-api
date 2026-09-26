@@ -171,7 +171,8 @@ public class PermissionGroupDisplayColorsTests
         var service = new UserService(userRepo.Object, mapper.Object, new Mock<IPasswordService>().Object,
             new Mock<ILinkCodeService>().Object, titles.Object, memberships.Object,
             new Mock<IAuditLogService>().Object, groupRepo.Object,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+            new Mock<ICurrencyService>().Object, new Mock<ITitleProgressionService>().Object);
         return (service, groupRepo);
     }
 

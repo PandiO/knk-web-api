@@ -17,6 +17,14 @@ namespace knkwebapi_v2.Services
         public const string System = "system";
     }
 
+    /// <summary>Idempotency keys a client sends in the Idempotency-Key header.</summary>
+    public static class CurrencyClientKeys
+    {
+        /// <summary>Longest client key: the server adds a prefix or suffix ("kit-claim:",
+        /// ":coins") and ledger keys are at most 100 characters.</summary>
+        public const int MaxLength = 90;
+    }
+
     /// <summary>
     /// Who, why and which idempotency key, for one ledger posting (currency DESIGN.md §3.3, KNG-23).
     /// <list type="bullet">

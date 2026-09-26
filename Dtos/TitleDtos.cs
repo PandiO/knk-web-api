@@ -76,7 +76,7 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>One title bracket crossed during a consolidated promotion/demotion
-    /// (UserService.AdjustBalancesAsync). See BalanceAdjustmentResultDto.</summary>
+    /// (TitleProgressionService). See BalanceAdjustmentResultDto.</summary>
     public class TitleCrossingDto
     {
         [JsonPropertyName("titleBracketId")]
@@ -104,6 +104,43 @@ namespace knkwebapi_v2.Dtos
         /// <summary>Null if no title bracket was crossed by this adjustment.</summary>
         [JsonPropertyName("titleChange")]
         public TitleChangeResultDto? TitleChange { get; set; }
+
+        /// <summary>What each requested change did, as posted to the ledger (the server's own
+        /// numbers: a Set's delta, before and after).</summary>
+        [JsonPropertyName("changes")]
+        public List<BalanceChangeResultDto> Changes { get; set; } = new();
+
+        /// <summary>True when the Idempotency-Key was already used for this request: nothing was
+        /// posted again, the balances are the current ones.</summary>
+        [JsonPropertyName("replayed")]
+        public bool Replayed { get; set; }
+    }
+
+    /// <summary>One staff balance change as the ledger recorded it.</summary>
+    public class BalanceChangeResultDto
+    {
+        [JsonPropertyName("currency")]
+        public string Currency { get; set; } = null!;
+
+        [JsonPropertyName("mode")]
+        public string Mode { get; set; } = null!;
+
+        /// <summary>Signed change actually applied (for a Set: target minus the balance found).</summary>
+        [JsonPropertyName("amount")]
+        public long Amount { get; set; }
+
+        [JsonPropertyName("balanceBefore")]
+        public long BalanceBefore { get; set; }
+
+        [JsonPropertyName("balanceAfter")]
+        public long BalanceAfter { get; set; }
+
+        /// <summary>The ledger transaction ("TX 01J…").</summary>
+        [JsonPropertyName("transactionPublicId")]
+        public string TransactionPublicId { get; set; } = null!;
+
+        [JsonPropertyName("replayed")]
+        public bool Replayed { get; set; }
     }
 
     public class TitleChangeResultDto
@@ -133,8 +170,10 @@ namespace knkwebapi_v2.Dtos
 
         /// <summary>Summed CoinBonus/GemBonus/ExpBonus across every bracket crossed on
         /// promotion, after the player's multipliers (KNG-16: coins x personal/rank salary
-        /// multipliers, gems and XP x their own GemBonus/ExpBonus multipliers). Always 0 on
-        /// demotion (v1 never clawed back currency on demotion).</summary>
+        /// multipliers, gems and XP x their own GemBonus/ExpBonus multipliers) — what was actually
+        /// posted to the ledger: a bracket already paid on an earlier promotion adds 0 (each
+        /// bracket's bonus is paid once per player, ever). Always 0 on demotion (v1 never clawed
+        /// back currency on demotion).</summary>
         [JsonPropertyName("coinBonusGranted")]
         public int CoinBonusGranted { get; set; }
 
@@ -144,8 +183,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("expBonusGranted")]
         public int ExpBonusGranted { get; set; }
 
-        /// <summary>The crossed brackets' CoinBonus/GemBonus/ExpBonus summed before any
-        /// multiplier (KNG-16), for the plugin's reward message. 0 on demotion.</summary>
+        /// <summary>The CoinBonus/GemBonus/ExpBonus of the brackets paid by this change, summed
+        /// before any multiplier (KNG-16), for the plugin's reward message. 0 on demotion.</summary>
         [JsonPropertyName("coinBonusBase")]
         public int CoinBonusBase { get; set; }
 

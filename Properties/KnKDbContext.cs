@@ -1,6 +1,7 @@
 using System;
 using knkwebapi_v2.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 // Updated with FieldValidationRule relationship configuration
 namespace knkwebapi_v2.Properties;
@@ -137,6 +138,20 @@ public partial class KnKDbContext : DbContext
                 t.HasCheckConstraint("CK_users_Gems_Range", $"`Gems` >= 0 AND `Gems` <= {knkwebapi_v2.Services.BalanceLimits.MaxGems}");
                 t.HasCheckConstraint("CK_users_ExperiencePoints_NonNegative", "`ExperiencePoints` >= 0");
             });
+
+            // Only the currency ledger writes balances (currency DESIGN.md §3.1 invariant 1, §3.2):
+            // EF ignores these columns on insert and update, so no Users.Update(user) or
+            // SaveChanges anywhere can put a stale or hand-computed balance back (audit A2).
+            // CurrencyRepository writes them with ExecuteUpdate inside the locked ledger
+            // transaction. New rows get the DB default 0 and their starting balance as a
+            // SIGNUP_GRANT posting.
+            foreach (var balance in new[] { nameof(User.Coins), nameof(User.Gems), nameof(User.ExperiencePoints) })
+            {
+                var property = entity.Property(balance);
+                property.HasDefaultValue(0);
+                property.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+                property.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+            }
 
             // Unique constraints on Username, Email, UUID (with null handling)
             entity.HasIndex(e => e.Username).IsUnique();

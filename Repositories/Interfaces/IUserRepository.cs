@@ -12,16 +12,17 @@ namespace knkwebapi_v2.Repositories
         Task AddUserAsync(User user);
 
         /// <summary>
-        /// Saves a user's changed columns, except the balance columns (Coins, Gems,
-        /// ExperiencePoints, LastSalaryPayoutAt): those are only written by
-        /// <see cref="SaveBalancesAsync"/> under a row lock, so an unrelated edit made from an
-        /// older copy of the row can't put an old balance back (currency DESIGN.md §1.4 A2).
+        /// Saves a user's changed columns, except LastSalaryPayoutAt and the balance columns, so
+        /// an unrelated edit made from an older copy of the row can't put an old value back
+        /// (currency DESIGN.md §1.4 A2). Coins, Gems and ExperiencePoints are never written by EF
+        /// at all (PropertySaveBehavior.Ignore): only ICurrencyService changes them.
         /// </summary>
         Task UpdateUserAsync(User user);
 
         /// <summary>
-        /// Saves a user including the balance columns. Only call it inside
-        /// <see cref="RunWithUsersLockedAsync"/>, on a user loaded inside that same call.
+        /// Saves a user including LastSalaryPayoutAt (SalaryService). Only call it inside
+        /// <see cref="RunWithUsersLockedAsync"/>, on a user loaded inside that same call. Doesn't
+        /// write Coins/Gems/ExperiencePoints — those go through ICurrencyService.
         /// </summary>
         Task SaveBalancesAsync(User user);
 
@@ -31,6 +32,7 @@ namespace knkwebapi_v2.Repositories
         /// read-modify-writes on the same user run one after another. Reuses an ambient
         /// transaction if one is open. Users already tracked are re-read after the lock. On
         /// failure the transaction rolls back and unsaved changes to those users are discarded.
+        /// With no ids it is just the transaction (e.g. inserting a user and its signup grant).
         /// A no-op wrapper on non-relational providers (EF InMemory in tests).
         /// </summary>
         Task RunWithUsersLockedAsync(IEnumerable<int> userIds, Func<Task> work);

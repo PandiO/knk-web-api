@@ -5,8 +5,8 @@ namespace knkwebapi_v2.Models;
 
 /// <summary>
 /// Per-currency transfer and admin limits (currency DESIGN.md §3.5), one row per currency,
-/// seeded with the §3.5 defaults by migration AddCurrencyLedger. Read by the transfer policy
-/// (currency Phase 3) and the admin daily cap (Phase 4); nothing reads it in Phase 1. Balance
+/// seeded with the §3.5 defaults by migration AddCurrencyLedger. Read for the signup grant
+/// (currency Phase 2), the transfer policy (Phase 3) and the admin daily cap (Phase 4). Balance
 /// caps themselves stay in Services/BalanceLimits (mirrored by the users CHECK constraints);
 /// MaxBalance here may only lower them.
 /// </summary>
@@ -51,6 +51,21 @@ public class CurrencyPolicy
 
     /// <summary>What one staff member may grant per 24 h without knk.admin.currency.unlimited.</summary>
     public long AdminDailyGrantCapPerActor { get; set; }
+
+    /// <summary>
+    /// Starting balance a new account receives as a SIGNUP_GRANT posting (currency Phase 2;
+    /// 250 coins / 50 gems, the old User defaults). 0 = none. <see cref="DefaultSignupGrant"/>
+    /// applies when a currency has no policy row.
+    /// </summary>
+    public long SignupGrant { get; set; }
+
+    /// <summary>The seeded starting balances, used when the policy row is missing.</summary>
+    public static long DefaultSignupGrant(Currency currency) => currency switch
+    {
+        Currency.Coins => 250,
+        Currency.Gems => 50,
+        _ => 0
+    };
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

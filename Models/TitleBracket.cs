@@ -36,15 +36,17 @@ public class TitleBracket
     /// input), ported directly from v1's Titles.Salary column.</summary>
     public int Salary { get; set; }
 
-    /// <summary>One-time coin bonus granted on first reaching this tier.</summary>
+    /// <summary>One-time coin bonus granted on first reaching this tier: paid once per user ever,
+    /// as the TITLE_BONUS ledger posting keyed <c>title-bonus:{userId}:{bracketId}</c>, so a
+    /// demotion and re-promotion pays nothing again (currency DESIGN.md D10, audit A5).</summary>
     public int CoinBonus { get; set; }
 
-    /// <summary>One-time gem bonus granted on first reaching this tier.</summary>
+    /// <summary>One-time gem bonus granted on first reaching this tier (same once-ever rule).</summary>
     public int GemBonus { get; set; }
 
     /// <summary>One-time XP bonus granted on first reaching this tier — can itself push the user
-    /// into a further bracket, which UserService.AdjustBalancesAsync's consolidation loop
-    /// accounts for.</summary>
+    /// into a further bracket, which TitleProgressionService's consolidation loop accounts
+    /// for.</summary>
     public int ExpBonus { get; set; }
 
     /// <summary>Resolves the display name for the given gender (null = unset, falls back to
