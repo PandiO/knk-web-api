@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using knkwebapi_v2.Models;
 using Microsoft.EntityFrameworkCore;
 
