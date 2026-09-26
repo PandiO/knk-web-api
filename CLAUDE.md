@@ -35,10 +35,12 @@ assuming SQL Server is in play anywhere.
 **Common commands:**
 - Restore: `dotnet restore`
 - Run: `dotnet run` (single Web SDK project at the repo root,
-  `knkwebapi_v2.csproj`; the test project under `tests/` is excluded from
-  the main build via `DefaultItemExcludes`)
+  `knkwebapi_v2.csproj`; the test project under `Tests/` is excluded from
+  the main build via `DefaultItemExcludes`, which lists both `tests\**`
+  and `Tests\**` so the exclude also works on case-sensitive Linux)
 - Build: `dotnet build`
-- Test: `dotnet test tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj`
+- Test: `dotnet test Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj`
+  (capital `T` — the path is case-sensitive on Linux)
 - Add migration: `dotnet ef migrations add <Name>`
 - Apply migrations: `dotnet ef database update`
 - Local dev helper script: `./run-with-swagger.sh`
@@ -60,13 +62,38 @@ assuming SQL Server is in play anywhere.
 **Conventions:**
 - Auth: JWT bearer (`Microsoft.AspNetCore.Authentication.JwtBearer`),
   configured under `Security:Jwt` in `appsettings.json` (issuer `knk-api`,
-  audience `knk-app`)
+  audience `knk-app`). JWTs are for web-app users only. Staff-only web
+  endpoints use `[RequirePermission(node)]` (`Attributes/`), which needs a
+  JWT, so it must not go on routes the plugin calls. See **Talks to**
+  below for how the plugin authenticates.
 - No API versioning in place — routes follow the plain `api/[controller]`
   convention; no `Asp.Versioning`/`[ApiVersion]` usage found
-- Observability: OpenTelemetry is wired in (see `OBSERVABILITY.md`),
-  Prometheus metrics exposed at `/metrics`
+- Observability: OpenTelemetry is wired in (see `OBSERVABILITY.md`):
+  ASP.NET Core metrics, exported over OTLP when enabled. There is no
+  Prometheus `/metrics` endpoint yet; it's a TODO in `Program.cs` and
+  `OBSERVABILITY.md`.
 
 **Talks to:** `knk-web-app` (browser clients, bearer token in the
 `Authorization` header) and `knk-plugin` (direct REST calls from its
-`knk-api-client` module, also bearer-token authenticated via
-`BearerAuthProvider`) — no webhook/push model from the API side was found.
+`knk-api-client` module). The plugin does **not** send a JWT:
+- On `master`, the plugin calls anonymously (its `config.yml` ships
+  `api.auth.type: none`) and most plugin-called routes are open. It can
+  send a shared key in `X-API-Key` (`api.auth.type: apikey`), matched
+  against `Security:PluginApiKey`. When that setting is set, the API uses
+  the key in two places. `UsersController` only trusts the
+  `X-Acting-User-Id` header (the in-game staff member named for audit
+  logs) on requests carrying the key. `[RequirePluginServiceKey]` (siege
+  match writes, one gate-structure endpoint) requires it, using
+  `Security:PluginServiceKey` when set, else `Security:PluginApiKey`.
+  Both checks are opt-in: with the settings empty (the default),
+  everything stays open.
+- KNG-22 (unmerged branch `claude/currency-payments`) makes the key
+  mandatory and fails closed. It adds `[RequireServiceOrPermission(node)]`
+  (the plugin's key, or a web user's JWT holding `node`) and
+  `[RequirePluginService]` (plugin key only) in
+  `Attributes/RequireServiceOrPermissionAttribute.cs`. There's a
+  Development-only escape hatch, `Security:AllowUnauthenticatedPluginCalls`.
+
+There is no webhook/push from the API to the plugin. The plugin polls
+instead: e.g. `GET api/PlayerNotifications/pending`, and pending headless
+WorldTasks.
