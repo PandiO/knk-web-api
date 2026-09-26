@@ -681,18 +681,58 @@ namespace knkwebapi_v2.Services
             };
         }
 
+        /// <inheritdoc/>
+        public async Task<TitleChangeResultDto?> ApplyTitleProgressionAsync(int userId, int previousExperience, string reason, string? metadata = null, int? actorUserId = null, bool notifyPlayer = true)
+        {
+            if (userId <= 0)
+            {
+                throw new ArgumentException("Invalid user ID.", nameof(userId));
+            }
+
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("Reason is required for balance adjustments.", nameof(reason));
+            }
+
+            User user = null!;
+            TitleChangeResultDto? titleChange = null;
+
+            // Joins the caller's transaction (e.g. the ledger posting that moved the XP), so the
+            // bonuses commit or roll back with it.
+            await _repo.RunWithUsersLockedAsync(new[] { userId }, async () =>
+            {
+                user = await _repo.GetByIdAsync(userId)
+                    ?? throw new KeyNotFoundException($"User with ID {userId} not found.");
+                if (user.ExperiencePoints != previousExperience)
+                {
+                    titleChange = await ApplyBalanceAdjustmentAsync(user, 0, 0, 0, reason, metadata, actorUserId, previousExperience);
+                }
+            });
+
+            if (titleChange != null && notifyPlayer)
+            {
+                _notificationQueue?.Enqueue(userId, user.Uuid, user.Username, PlayerNotificationTypes.TitleChanged, titleChange);
+            }
+
+            return titleChange;
+        }
+
         /// <summary>
         /// The body of AdjustBalancesAsync, run under the user's row lock: validates and applies
         /// the deltas and any title-promotion bonuses, saves, and writes the audit entries.
         /// Every new value is computed and checked (BalanceLimits: no negatives, caps, checked
         /// arithmetic) before anything is assigned, so a rejected adjustment changes nothing.
+        /// <paramref name="progressFromExperience"/> (ApplyTitleProgressionAsync): the XP the
+        /// title is resolved from when the XP itself already moved elsewhere (a ledger posting);
+        /// the deltas are then zero and only the bonuses of the brackets crossed are applied.
         /// </summary>
-        private async Task<TitleChangeResultDto?> ApplyBalanceAdjustmentAsync(User user, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata, int? actorUserId)
+        private async Task<TitleChangeResultDto?> ApplyBalanceAdjustmentAsync(User user, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata, int? actorUserId, int? progressFromExperience = null)
         {
             var userId = user.Id;
             var originalExperience = user.ExperiencePoints;
             var originalCoins = user.Coins;
             var originalGems = user.Gems;
+            var titleFromExperience = progressFromExperience ?? originalExperience;
 
             // Rejects underflow ("Insufficient …") and anything above the caps.
             var newCoins = BalanceLimits.ApplyCoins(originalCoins, coinsDelta);
@@ -701,9 +741,9 @@ namespace knkwebapi_v2.Services
 
             // Resolved before the mutation so a resulting title change can be detected, and so the
             // consolidation loop below has every bracket to walk between old and new XP.
-            var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
+            var brackets = experienceDelta != 0 || titleFromExperience != originalExperience ? await _titleService.GetAllOrderedAsync() : null;
             TitleBracket? previousBracket = brackets != null && brackets.Count > 0
-                ? (brackets.LastOrDefault(b => b.MinExperience <= originalExperience) ?? brackets[0])
+                ? (brackets.LastOrDefault(b => b.MinExperience <= titleFromExperience) ?? brackets[0])
                 : null;
 
             TitleChangeResultDto? titleChange = null;
@@ -716,7 +756,7 @@ namespace knkwebapi_v2.Services
             // of firing per-iteration effects.
             if (previousBracket != null && brackets != null)
             {
-                var direction = newExperience > originalExperience ? "promotion" : "demotion";
+                var direction = newExperience > titleFromExperience ? "promotion" : "demotion";
                 var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= newExperience) ?? brackets[0];
 
                 if (currentBracket.Id != previousBracket.Id)
@@ -786,6 +826,12 @@ namespace knkwebapi_v2.Services
                         ExpBonusMultipliers = expMultipliers
                     };
                 }
+            }
+
+            if (progressFromExperience.HasValue && titleChange == null)
+            {
+                // Progression only, and no bracket was crossed: nothing to save or audit.
+                return null;
             }
 
             user.Coins = newCoins;

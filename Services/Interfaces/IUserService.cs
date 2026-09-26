@@ -99,6 +99,17 @@ namespace knkwebapi_v2.Services
         /// <param name="notifyPlayer">Queue a resulting title change for the plugin to show in-game (see AdjustBalancesDto.NotifyPlayer)</param>
         Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null, bool notifyPlayer = true);
 
+        /// <summary>
+        /// Title progression for XP that already changed through the ledger (ICurrencyService XP
+        /// postings don't run it until currency Phase 2): resolves the title at
+        /// <paramref name="previousExperience"/> and at the user's current XP and, when a bracket
+        /// was crossed, applies the consolidated promotion bonuses and writes the BalanceAdjusted
+        /// (bonuses only) and TitleChanged audit rows, exactly as AdjustBalancesAsync does for its
+        /// own XP delta - the XP itself is not applied again. Joins the caller's transaction.
+        /// Returns null (and writes nothing) when the title didn't change.
+        /// </summary>
+        Task<TitleChangeResultDto?> ApplyTitleProgressionAsync(int userId, int previousExperience, string reason, string? metadata = null, int? actorUserId = null, bool notifyPlayer = true);
+
         /// <summary>Rebuilds v1's FreezeCommands (a dead no-op stub in v1 — see /freeze command
         /// javadoc in knk-plugin). Works on offline targets: writes through immediately, and the
         /// plugin restores/enforces the state on the target's next join.</summary>
