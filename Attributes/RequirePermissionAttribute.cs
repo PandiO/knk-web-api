@@ -15,6 +15,13 @@ namespace knkwebapi_v2.Attributes
         /// in-game get the web moderation pages too; also matched by knk.admin.* and *.
         /// </summary>
         public const string ManageUsers = "knk.admin.user.manage";
+
+        /// <summary>
+        /// Domain discovery administration: reward rules, per-domain overrides, statistics and
+        /// resetting a player's discovery. The same node as the in-game /knk discovery subcommand
+        /// (docs/specs/domain-discovery/DESIGN.md §3.6); also matched by knk.admin.* and *.
+        /// </summary>
+        public const string ManageDiscovery = "knk.admin.discovery";
     }
 
     /// <summary>
@@ -62,7 +69,8 @@ namespace knkwebapi_v2.Attributes
             }
         }
 
-        private static int? UserIdFrom(ClaimsPrincipal? principal)
+        /// <summary>The logged-in user's id from their JWT claims, or null.</summary>
+        public static int? UserIdFrom(ClaimsPrincipal? principal)
         {
             if (principal?.Identity?.IsAuthenticated != true)
             {

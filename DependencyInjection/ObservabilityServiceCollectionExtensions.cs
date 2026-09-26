@@ -66,7 +66,8 @@ public static class ObservabilityServiceCollectionExtensions
         //     builder.Services
         //         .AddOpenTelemetry()
         //         .WithTracing(tracingBuilder => ...)
-        //         .WithMetrics(metricsBuilder => ...);
+        //         .WithMetrics(metricsBuilder => metricsBuilder
+        //             .AddMeter(DiscoveryService.MeterName)); // domain discovery counters
         // }
         // else if (telemetryOptions.Exporter == "prometheus")
         // {
