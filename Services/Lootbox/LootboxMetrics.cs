@@ -16,6 +16,7 @@ public static class LootboxMetrics
     private static readonly Counter<long> Spawns = Meter.CreateCounter<long>("lootbox_spawns_total", description: "Boxes spawned");
     private static readonly Counter<long> Claims = Meter.CreateCounter<long>("lootbox_claims_total", description: "Boxes opened (not replays)");
     private static readonly Counter<long> Conflicts = Meter.CreateCounter<long>("lootbox_claim_conflicts_total", description: "Refused claims by reason");
+    private static readonly Counter<long> Tokens = Meter.CreateCounter<long>("lootbox_tokens_issued_total", description: "Lootbox token items issued");
     private static readonly Histogram<double> ClaimDuration = Meter.CreateHistogram<double>("lootbox_claim_duration_ms", unit: "ms", description: "Claim handling time");
 
     public static void Spawned(string type, int boxStars) =>
@@ -25,6 +26,8 @@ public static class LootboxMetrics
         Claims.Add(1, new("type", type), new("box_stars", boxStars), new("item_stars", itemStars ?? 0), new("special", special));
 
     public static void Conflict(string reason) => Conflicts.Add(1, new KeyValuePair<string, object?>("reason", reason));
+
+    public static void TokensIssued(string reason, int count) => Tokens.Add(count, new KeyValuePair<string, object?>("reason", reason));
 
     public static void ClaimTook(double milliseconds) => ClaimDuration.Record(milliseconds);
 }

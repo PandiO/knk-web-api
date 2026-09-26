@@ -111,6 +111,10 @@ namespace knkwebapi_v2.Repositories
             if (spawns > 0) return $"{spawns} lootbox(es) of this type have spawned; disable it instead";
             var claims = await _context.LootboxClaims.CountAsync(c => c.LootboxTypeId == id);
             if (claims > 0) return $"{claims} claim(s) of this type are in the drop log; disable it instead";
+            var tokens = await _context.LootboxTokens.CountAsync(t => t.LootboxTypeId == id);
+            if (tokens > 0) return $"{tokens} lootbox token item(s) of this type were issued; disable it instead";
+            var grants = await _context.LootboxTokenGrants.CountAsync(g => g.LootboxTypeId == id);
+            if (grants > 0) return $"{grants} token grant rule(s) use it";
             return null;
         }
 

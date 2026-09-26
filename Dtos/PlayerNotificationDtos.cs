@@ -47,6 +47,13 @@ namespace knkwebapi_v2.Dtos
         /// No payload.
         /// </summary>
         public const string RankChanged = "RankChanged";
+
+        /// <summary>
+        /// Lootbox token items were issued to the player by the API itself (a premium tier or kit grant rule,
+        /// docs/specs/lootboxes/IMPLEMENTATION_PLAN.md Phase 5) - the plugin fetches and hands over their undelivered
+        /// tokens. No payload.
+        /// </summary>
+        public const string LootboxTokensIssued = "LootboxTokensIssued";
     }
 
     public class AcknowledgePlayerNotificationsDto

@@ -78,9 +78,9 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<bool> SpawnHasClaimAsync(int spawnId);
 
         /// <summary>
-        /// How many world-box claims <paramref name="userId"/> made with ClaimedAt in [<paramref name="from"/>,
-        /// <paramref name="to"/>), optionally of one type. Admin gives (no spawn) are not counted (DESIGN.md §3.3
-        /// step 3); Phase 5 token redeems will be counted here too.
+        /// How many world-box claims and token redeems <paramref name="userId"/> made with ClaimedAt in
+        /// [<paramref name="from"/>, <paramref name="to"/>), optionally of one type. Admin gives (neither a spawn nor
+        /// a token) are not counted (DESIGN.md §3.3 step 3; a token redeem is a claim like any other, Phase 5).
         /// </summary>
         Task<int> CountClaimsAsync(int userId, DateTime from, DateTime to, int? lootboxTypeId = null);
 
@@ -95,8 +95,41 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<List<LootboxClaim>> GetPendingAsync(int userId, DateTime claimedAtOrBefore);
 
         /// <summary>The paged drop log. Filters: userId, lootboxTypeId, itemGradeId, boxGradeId, isSpecial, delivered,
-        /// adminGive, from, to (UTC ISO dates); SearchTerm matches the username or the item name.</summary>
+        /// adminGive, source (World|Token|AdminGive), from, to (UTC ISO dates); SearchTerm matches the username or the
+        /// item name.</summary>
         Task<PagedResult<LootboxClaim>> SearchClaimsAsync(PagedQuery query);
+
+        // ===== Token items (Phase 5) =====
+
+        /// <summary>Adds new tokens without saving.</summary>
+        void AddTokens(IEnumerable<LootboxToken> tokens);
+
+        /// <summary>One token by its item id with type (category), box grade, users and claim. Tracked.</summary>
+        Task<LootboxToken?> GetTokenAsync(Guid token);
+
+        /// <summary>The token's row id without loading or tracking it, or null for an unknown token.</summary>
+        Task<int?> FindTokenIdAsync(Guid token);
+
+        /// <summary>The token's current status straight from the store (no tracking), or null.</summary>
+        Task<LootboxTokenStatus?> GetTokenStatusAsync(int id);
+
+        Task<bool> TokenHasClaimAsync(int tokenId);
+
+        /// <summary>The tokens one issue request created, by IssueIndex. No tracking.</summary>
+        Task<List<LootboxToken>> GetTokensByIssueKeyAsync(string issueKey);
+
+        /// <summary>Tokens by id, loaded like <see cref="GetTokenAsync"/>. No tracking.</summary>
+        Task<List<LootboxToken>> GetTokensAsync(IEnumerable<int> ids);
+
+        /// <summary>The user's Issued tokens the plugin hasn't handed over yet, oldest first. No tracking.</summary>
+        Task<List<LootboxToken>> GetUndeliveredTokensAsync(int userId);
+
+        /// <summary>The given tokens that were issued to <paramref name="userId"/> and aren't delivered yet. Tracked.</summary>
+        Task<List<LootboxToken>> GetTokensForDeliveryAsync(int userId, IEnumerable<Guid> tokens);
+
+        /// <summary>Paged tokens. Filters: userId (issued to or redeemed by), lootboxTypeId, status, reason, delivered;
+        /// SearchTerm is a token id or part of a username. Newest first by default.</summary>
+        Task<PagedResult<LootboxToken>> SearchTokensAsync(PagedQuery query);
 
         /// <summary>A blueprint as the claim needs it (MaxStackSize, default enchantments). No tracking.</summary>
         Task<ItemBlueprint?> GetBlueprintAsync(int id);

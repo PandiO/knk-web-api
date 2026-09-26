@@ -28,7 +28,7 @@ namespace knkwebapi_v2.Services
     /// day [00:00, 24:00).
     /// </para>
     /// </summary>
-    public class LootboxRuntimeService : ILootboxRuntimeService
+    public partial class LootboxRuntimeService : ILootboxRuntimeService
     {
         private const string FallbackDisplayMaterial = "minecraft:chest";
 
@@ -165,7 +165,9 @@ namespace knkwebapi_v2.Services
                 {
                     Id = c.Id,
                     LootboxSpawnId = c.LootboxSpawnId,
-                    IsAdminGive = c.LootboxSpawnId == null,
+                    IsAdminGive = c.LootboxSpawnId == null && c.LootboxTokenId == null,
+                    LootboxTokenId = c.LootboxTokenId,
+                    Source = ClaimSource(c),
                     UserId = c.UserId,
                     Username = c.User?.Username,
                     LootboxTypeId = c.LootboxTypeId,
@@ -630,7 +632,8 @@ namespace knkwebapi_v2.Services
 
         // Inserts the ItemInstance (non-stackable items only) and the claim in one save, then points the instance's
         // OriginRef at the claim id, which only exists after that save (DESIGN.md §3.3 step 4).
-        private async Task<LootboxClaim> MintAsync(LootRollResult roll, int userId, int typeId, int boxGradeId, int? spawnId, string key, DateTime now)
+        private async Task<LootboxClaim> MintAsync(LootRollResult roll, int userId, int typeId, int boxGradeId, int? spawnId, string key, DateTime now,
+            int? tokenId = null)
         {
             var blueprint = await _repo.GetBlueprintAsync(roll.Item.BlueprintId)
                 ?? throw new InvalidOperationException($"ItemBlueprint {roll.Item.BlueprintId} not found.");
@@ -650,6 +653,7 @@ namespace knkwebapi_v2.Services
             var claim = new LootboxClaim
             {
                 LootboxSpawnId = spawnId,
+                LootboxTokenId = tokenId,
                 UserId = userId,
                 LootboxTypeId = typeId,
                 BoxGradeId = boxGradeId,
@@ -672,18 +676,19 @@ namespace knkwebapi_v2.Services
             return claim;
         }
 
-        private async Task<LootboxClaimResultDto> ReplayAsync(LootboxClaim stored, int userId, int? spawnId, int? typeId)
+        private async Task<LootboxClaimResultDto> ReplayAsync(LootboxClaim stored, int userId, int? spawnId, int? typeId, int? tokenId = null)
         {
-            EnsureSameClaim(stored, userId, spawnId, typeId);
+            EnsureSameClaim(stored, userId, spawnId, typeId, tokenId);
             _logger.LogInformation("Lootbox claim {ClaimId} replayed for user {UserId}", stored.Id, userId);
             return await ResultAsync(stored.Id, replay: true)
                 ?? throw new InvalidOperationException($"Lootbox claim {stored.Id} vanished.");
         }
 
-        // An idempotency key belongs to one (user, box); anyone else reusing it gets a 409, never someone's item.
-        private static void EnsureSameClaim(LootboxClaim stored, int userId, int? spawnId, int? typeId)
+        // An idempotency key belongs to one (user, box or token); anyone else reusing it gets a 409, never someone's item.
+        private static void EnsureSameClaim(LootboxClaim stored, int userId, int? spawnId, int? typeId, int? tokenId = null)
         {
-            if (stored.UserId != userId || stored.LootboxSpawnId != spawnId || (typeId != null && stored.LootboxTypeId != typeId))
+            if (stored.UserId != userId || stored.LootboxSpawnId != spawnId || stored.LootboxTokenId != tokenId
+                || (typeId != null && stored.LootboxTypeId != typeId))
                 throw Conflict("IdempotencyKeyReused", "That idempotency key was already used for another claim.");
         }
 
@@ -729,6 +734,7 @@ namespace knkwebapi_v2.Services
                 Replay = replay,
                 UserId = claim.UserId,
                 LootboxSpawnId = claim.LootboxSpawnId,
+                LootboxTokenId = claim.LootboxTokenId,
                 LootboxTypeId = claim.LootboxTypeId,
                 BoxStars = claim.BoxGrade?.Stars ?? 0,
                 BoxLabel = BoxLabel(claim.BoxGrade, claim.LootboxType),
@@ -857,6 +863,9 @@ namespace knkwebapi_v2.Services
             }
             await _audit.RecordAsync(actorUserId, targetId, action, JsonSerializer.Serialize(details));
         }
+
+        private static string ClaimSource(LootboxClaim claim) =>
+            claim.LootboxSpawnId != null ? "World" : claim.LootboxTokenId != null ? "Token" : "AdminGive";
 
         private static string BoxLabel(Grade? grade, LootboxType? type) =>
             $"{grade?.Name} {type?.Name}".Trim();

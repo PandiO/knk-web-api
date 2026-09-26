@@ -191,7 +191,7 @@ namespace knkwebapi_v2.Repositories
         {
             return await _context.LootboxClaims.CountAsync(c =>
                 c.UserId == userId
-                && c.LootboxSpawnId != null
+                && (c.LootboxSpawnId != null || c.LootboxTokenId != null)
                 && c.ClaimedAt >= from && c.ClaimedAt < to
                 && (lootboxTypeId == null || c.LootboxTypeId == lootboxTypeId));
         }
@@ -241,7 +241,19 @@ namespace knkwebapi_v2.Repositories
                 if (TryBool(query.Filters, "delivered", out var delivered))
                     queryable = delivered ? queryable.Where(c => c.DeliveredAt != null) : queryable.Where(c => c.DeliveredAt == null);
                 if (TryBool(query.Filters, "adminGive", out var adminGive))
-                    queryable = adminGive ? queryable.Where(c => c.LootboxSpawnId == null) : queryable.Where(c => c.LootboxSpawnId != null);
+                    queryable = adminGive
+                        ? queryable.Where(c => c.LootboxSpawnId == null && c.LootboxTokenId == null)
+                        : queryable.Where(c => c.LootboxSpawnId != null || c.LootboxTokenId != null);
+                if (query.Filters.TryGetValue("source", out var source))
+                {
+                    queryable = source?.Trim().ToLowerInvariant() switch
+                    {
+                        "world" => queryable.Where(c => c.LootboxSpawnId != null),
+                        "token" => queryable.Where(c => c.LootboxTokenId != null),
+                        "admingive" => queryable.Where(c => c.LootboxSpawnId == null && c.LootboxTokenId == null),
+                        _ => queryable,
+                    };
+                }
                 if (TryDate(query.Filters, "from", out var from))
                     queryable = queryable.Where(c => c.ClaimedAt >= from);
                 if (TryDate(query.Filters, "to", out var to))
@@ -299,6 +311,139 @@ namespace knkwebapi_v2.Repositories
                 return false;
             value = DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
             return true;
+        }
+
+        // ===== Token items (Phase 5) =====
+
+        private IQueryable<LootboxToken> TokensWithIncludes() => _context.LootboxTokens
+            .Include(t => t.LootboxType)
+                .ThenInclude(lt => lt.Category)
+            .Include(t => t.BoxGrade)
+            .Include(t => t.IssuedToUser)
+            .Include(t => t.RedeemedByUser)
+            .Include(t => t.Claim);
+
+        public void AddTokens(IEnumerable<LootboxToken> tokens)
+        {
+            _context.LootboxTokens.AddRange(tokens);
+        }
+
+        public async Task<LootboxToken?> GetTokenAsync(Guid token)
+        {
+            return await TokensWithIncludes().FirstOrDefaultAsync(t => t.Token == token);
+        }
+
+        public async Task<int?> FindTokenIdAsync(Guid token)
+        {
+            return await _context.LootboxTokens.AsNoTracking()
+                .Where(t => t.Token == token)
+                .Select(t => (int?)t.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<LootboxTokenStatus?> GetTokenStatusAsync(int id)
+        {
+            return await _context.LootboxTokens.AsNoTracking()
+                .Where(t => t.Id == id)
+                .Select(t => (LootboxTokenStatus?)t.Status)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> TokenHasClaimAsync(int tokenId)
+        {
+            return await _context.LootboxClaims.AnyAsync(c => c.LootboxTokenId == tokenId);
+        }
+
+        public async Task<List<LootboxToken>> GetTokensByIssueKeyAsync(string issueKey)
+        {
+            return await TokensWithIncludes().AsNoTracking()
+                .Where(t => t.IssueKey == issueKey)
+                .OrderBy(t => t.IssueIndex)
+                .ToListAsync();
+        }
+
+        public async Task<List<LootboxToken>> GetTokensAsync(IEnumerable<int> ids)
+        {
+            var idList = ids.ToList();
+            return await TokensWithIncludes().AsNoTracking()
+                .Where(t => idList.Contains(t.Id))
+                .OrderBy(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<LootboxToken>> GetUndeliveredTokensAsync(int userId)
+        {
+            return await TokensWithIncludes().AsNoTracking()
+                .Where(t => t.IssuedToUserId == userId && t.Status == LootboxTokenStatus.Issued && t.DeliveredAt == null)
+                .OrderBy(t => t.IssuedAt).ThenBy(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<LootboxToken>> GetTokensForDeliveryAsync(int userId, IEnumerable<Guid> tokens)
+        {
+            var list = tokens.Distinct().ToList();
+            return await _context.LootboxTokens
+                .Where(t => t.IssuedToUserId == userId && t.DeliveredAt == null && list.Contains(t.Token))
+                .ToListAsync();
+        }
+
+        public async Task<PagedResult<LootboxToken>> SearchTokensAsync(PagedQuery query)
+        {
+            var queryable = _context.LootboxTokens.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(query.SearchTerm))
+            {
+                var term = query.SearchTerm.Trim();
+                var searchLower = term.ToLower();
+                queryable = Guid.TryParse(term, out var exact)
+                    ? queryable.Where(t => t.Token == exact)
+                    : queryable.Where(t =>
+                        (t.IssuedToUser != null && t.IssuedToUser.Username.ToLower().Contains(searchLower)) ||
+                        (t.RedeemedByUser != null && t.RedeemedByUser.Username.ToLower().Contains(searchLower)));
+            }
+
+            if (query.Filters != null)
+            {
+                if (TryInt(query.Filters, "userId", out var userId))
+                    queryable = queryable.Where(t => t.IssuedToUserId == userId || t.RedeemedByUserId == userId);
+                if (TryInt(query.Filters, "lootboxTypeId", out var typeId))
+                    queryable = queryable.Where(t => t.LootboxTypeId == typeId);
+                if (query.Filters.TryGetValue("status", out var rawStatus) && Enum.TryParse<LootboxTokenStatus>(rawStatus, true, out var status))
+                    queryable = queryable.Where(t => t.Status == status);
+                if (query.Filters.TryGetValue("reason", out var rawReason) && Enum.TryParse<LootboxTokenReason>(rawReason, true, out var reason))
+                    queryable = queryable.Where(t => t.IssuedReason == reason);
+                if (TryBool(query.Filters, "delivered", out var delivered))
+                    queryable = delivered ? queryable.Where(t => t.DeliveredAt != null) : queryable.Where(t => t.DeliveredAt == null);
+            }
+
+            var totalCount = await queryable.CountAsync();
+            queryable = query.SortBy switch
+            {
+                "issuedAt" when !query.SortDescending => queryable.OrderBy(t => t.IssuedAt).ThenBy(t => t.Id),
+                "redeemedAt" => query.SortDescending
+                    ? queryable.OrderByDescending(t => t.RedeemedAt).ThenByDescending(t => t.Id)
+                    : queryable.OrderBy(t => t.RedeemedAt).ThenBy(t => t.Id),
+                _ => queryable.OrderByDescending(t => t.IssuedAt).ThenByDescending(t => t.Id)
+            };
+
+            var items = await queryable
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .Include(t => t.LootboxType)
+                    .ThenInclude(lt => lt.Category)
+                .Include(t => t.BoxGrade)
+                .Include(t => t.IssuedToUser)
+                .Include(t => t.RedeemedByUser)
+                .Include(t => t.Claim)
+                .ToListAsync();
+
+            return new PagedResult<LootboxToken>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = query.PageNumber,
+                PageSize = query.PageSize
+            };
         }
 
         public async Task<ItemBlueprint?> GetBlueprintAsync(int id)

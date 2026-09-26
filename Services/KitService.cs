@@ -21,6 +21,7 @@ namespace knkwebapi_v2.Services
         private readonly IPermissionResolutionService _permissionResolutionService;
         private readonly IAuditLogService _auditLogService;
         private readonly IMapper _mapper;
+        private readonly ILootboxTokenGrantService? _lootboxTokenGrants;
 
         public KitService(
             IKitRepository kitRepo,
@@ -32,7 +33,8 @@ namespace knkwebapi_v2.Services
             IUserPermissionGroupService userPermissionGroupService,
             IPermissionResolutionService permissionResolutionService,
             IAuditLogService auditLogService,
-            IMapper mapper)
+            IMapper mapper,
+            ILootboxTokenGrantService? lootboxTokenGrants = null)
         {
             _kitRepo = kitRepo;
             _userRepo = userRepo;
@@ -44,6 +46,7 @@ namespace knkwebapi_v2.Services
             _permissionResolutionService = permissionResolutionService;
             _auditLogService = auditLogService;
             _mapper = mapper;
+            _lootboxTokenGrants = lootboxTokenGrants;
         }
 
         // ===== CRUD (FormWizard-only, DESIGN.md §4.0) =====
@@ -211,17 +214,30 @@ namespace knkwebapi_v2.Services
             // cost deduction are read and written with no other claim, purchase or balance write
             // for this user in between, so two quick claims can't both pass the cooldown or both
             // spend the same coins.
+            KitClaim claim = null!;
             await _userRepo.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
                 var user = await _userRepo.GetByIdAsync(userId)
                     ?? throw new KeyNotFoundException($"User with id {userId} not found.");
-                await ClaimLockedAsync(user, kit);
+                claim = await ClaimLockedAsync(user, kit);
             });
 
+            await IssueLootboxTokensAsync(userId, kit, claim, null);
             return _mapper.Map<KitClaimResultDto>(kit);
         }
 
-        private async Task ClaimLockedAsync(User user, Kit kit)
+        /// <summary>
+        /// A granted kit issues its lootbox token items (knk-workspace docs/specs/lootboxes/IMPLEMENTATION_PLAN.md
+        /// Phase 5), keyed by the KitClaim so it happens once per grant. After the claim is committed, and the grant
+        /// service never throws, so a failed issue can't undo the kit.
+        /// </summary>
+        private async Task IssueLootboxTokensAsync(int userId, Kit kit, KitClaim claim, int? actorUserId)
+        {
+            if (_lootboxTokenGrants == null || claim == null || claim.Id <= 0) return;
+            await _lootboxTokenGrants.IssueForKitAsync(userId, kit.Id, claim.Id, actorUserId);
+        }
+
+        private async Task<KitClaim> ClaimLockedAsync(User user, Kit kit)
         {
             var userId = user.Id;
             var kitId = kit.Id;
@@ -261,6 +277,7 @@ namespace knkwebapi_v2.Services
             // above throws before this line is ever reached, so no claim row is written for it.
             var claim = new KitClaim { KitId = kitId, UserId = userId, ClaimedAt = DateTime.UtcNow };
             await _kitRepo.AddClaimAsync(claim, userToPersist);
+            return claim;
         }
 
         public async Task<KitPurchaseResultDto> PurchaseKitAsync(int userId, int kitId)
@@ -341,6 +358,7 @@ namespace knkwebapi_v2.Services
                 claimId = claim.Id
             }));
 
+            await IssueLootboxTokensAsync(targetUserId, kit, claim, actorUserId);
             return _mapper.Map<KitClaimResultDto>(kit);
         }
 
@@ -361,6 +379,7 @@ namespace knkwebapi_v2.Services
 
                 var claim = new KitClaim { KitId = kit.Id, UserId = userId, ClaimedAt = DateTime.UtcNow };
                 await _kitRepo.AddClaimAsync(claim);
+                await IssueLootboxTokensAsync(userId, kit, claim, null);
                 results.Add(_mapper.Map<KitClaimResultDto>(kit));
             }
 

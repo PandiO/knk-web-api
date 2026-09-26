@@ -334,9 +334,13 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("userId")]
         public int UserId { get; set; }
 
-        // Null for an admin give.
+        // Null for an admin give or a token item.
         [JsonPropertyName("lootboxSpawnId")]
         public int? LootboxSpawnId { get; set; }
+
+        // Set when a token item was redeemed (Phase 5).
+        [JsonPropertyName("lootboxTokenId")]
+        public int? LootboxTokenId { get; set; }
 
         [JsonPropertyName("lootboxTypeId")]
         public int LootboxTypeId { get; set; }
@@ -423,9 +427,16 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lootboxSpawnId")]
         public int? LootboxSpawnId { get; set; }
 
-        // No world box: an admin give.
+        // Neither a world box nor a token item: an admin give.
         [JsonPropertyName("isAdminGive")]
         public bool IsAdminGive { get; set; }
+
+        [JsonPropertyName("lootboxTokenId")]
+        public int? LootboxTokenId { get; set; }
+
+        // World | Token | AdminGive
+        [JsonPropertyName("source")]
+        public string Source { get; set; } = string.Empty;
 
         [JsonPropertyName("userId")]
         public int UserId { get; set; }
@@ -511,5 +522,179 @@ namespace knkwebapi_v2.Dtos
         // The boxes that were active in the area and are now Removed; the plugin removes their entities.
         [JsonPropertyName("removedSpawnIds")]
         public List<int> RemovedSpawnIds { get; set; } = new();
+    }
+
+    // ===== Lootbox token items (IMPLEMENTATION_PLAN.md Phase 5) =====
+
+    /// <summary>POST api/LootboxTokens/issue: <c>quantity</c> token items of a type for a player. The staff member (if
+    /// any) comes from X-Acting-User-Id.</summary>
+    public class LootboxTokenIssueRequestDto
+    {
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("typeId")]
+        public int TypeId { get; set; }
+
+        // 1-5; null = rolled from the type's box-grade weights, once per token.
+        [JsonPropertyName("boxStars")]
+        public int? BoxStars { get; set; }
+
+        [JsonPropertyName("quantity")]
+        public int Quantity { get; set; } = 1;
+
+        // Admin | PremiumTier | Kit | PvpKill | Referral | Other; empty = Admin.
+        [JsonPropertyName("reason")]
+        public string? Reason { get; set; }
+
+        [JsonPropertyName("note")]
+        public string? Note { get; set; }
+
+        // Optional; a retried issue with the same key returns the same tokens instead of issuing more.
+        [JsonPropertyName("idempotencyKey")]
+        public string? IdempotencyKey { get; set; }
+    }
+
+    public class LootboxTokenIssueResultDto
+    {
+        [JsonPropertyName("replay")]
+        public bool Replay { get; set; }
+
+        [JsonPropertyName("tokens")]
+        public List<LootboxTokenDto> Tokens { get; set; } = new();
+    }
+
+    /// <summary>One token item: what the plugin stamps and labels, and what the web app lists.</summary>
+    public class LootboxTokenDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        // Goes into the item's PDC (knightsandkings:knk_lootbox_token); the item's only identity.
+        [JsonPropertyName("token")]
+        public Guid Token { get; set; }
+
+        [JsonPropertyName("lootboxTypeId")]
+        public int LootboxTypeId { get; set; }
+
+        [JsonPropertyName("lootboxTypeName")]
+        public string LootboxTypeName { get; set; } = string.Empty;
+
+        [JsonPropertyName("categoryName")]
+        public string? CategoryName { get; set; }
+
+        [JsonPropertyName("boxGradeId")]
+        public int BoxGradeId { get; set; }
+
+        [JsonPropertyName("boxStars")]
+        public int BoxStars { get; set; }
+
+        // "<GradeName> <TypeName>", e.g. "Legendary Weapons Lootbox".
+        [JsonPropertyName("boxLabel")]
+        public string BoxLabel { get; set; } = string.Empty;
+
+        // Issued | Redeemed | Revoked
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = string.Empty;
+
+        [JsonPropertyName("reason")]
+        public string Reason { get; set; } = string.Empty;
+
+        [JsonPropertyName("note")]
+        public string? Note { get; set; }
+
+        [JsonPropertyName("issuedToUserId")]
+        public int? IssuedToUserId { get; set; }
+
+        [JsonPropertyName("issuedToUsername")]
+        public string? IssuedToUsername { get; set; }
+
+        [JsonPropertyName("issuedByUserId")]
+        public int? IssuedByUserId { get; set; }
+
+        [JsonPropertyName("issuedAt")]
+        public DateTime IssuedAt { get; set; }
+
+        [JsonPropertyName("deliveredAt")]
+        public DateTime? DeliveredAt { get; set; }
+
+        [JsonPropertyName("redeemedAt")]
+        public DateTime? RedeemedAt { get; set; }
+
+        [JsonPropertyName("redeemedByUserId")]
+        public int? RedeemedByUserId { get; set; }
+
+        [JsonPropertyName("redeemedByUsername")]
+        public string? RedeemedByUsername { get; set; }
+
+        [JsonPropertyName("revokedAt")]
+        public DateTime? RevokedAt { get; set; }
+
+        // The drop-log row the redeem wrote.
+        [JsonPropertyName("claimId")]
+        public int? ClaimId { get; set; }
+    }
+
+    /// <summary>POST api/LootboxTokens/{token}/redeem.</summary>
+    public class LootboxTokenRedeemRequestDto
+    {
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        // One per open attempt (a click), reused only by a retry of that same attempt: a retry replays the stored
+        // result, while a second click on a duplicated item (new key) is refused AlreadyRedeemed.
+        [JsonPropertyName("idempotencyKey")]
+        public string IdempotencyKey { get; set; } = string.Empty;
+    }
+
+    /// <summary>POST api/LootboxTokens/delivered: the plugin handed these token items to the player.</summary>
+    public class LootboxTokensDeliveredRequestDto
+    {
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("tokens")]
+        public List<Guid> Tokens { get; set; } = new();
+    }
+
+    public class LootboxTokensDeliveredResultDto
+    {
+        // How many were newly marked delivered (tokens already delivered or issued to someone else are skipped).
+        [JsonPropertyName("updated")]
+        public int Updated { get; set; }
+    }
+
+    /// <summary>A token grant rule (premium tier or kit → tokens), for the web app.</summary>
+    public class LootboxTokenGrantDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("lootboxTypeId")]
+        public int LootboxTypeId { get; set; }
+
+        [JsonPropertyName("lootboxTypeName")]
+        public string? LootboxTypeName { get; set; }
+
+        [JsonPropertyName("boxStars")]
+        public int? BoxStars { get; set; }
+
+        [JsonPropertyName("quantity")]
+        public int Quantity { get; set; } = 1;
+
+        [JsonPropertyName("permissionGroupId")]
+        public int? PermissionGroupId { get; set; }
+
+        [JsonPropertyName("permissionGroupName")]
+        public string? PermissionGroupName { get; set; }
+
+        [JsonPropertyName("kitId")]
+        public int? KitId { get; set; }
+
+        [JsonPropertyName("kitName")]
+        public string? KitName { get; set; }
+
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
     }
 }
