@@ -33,6 +33,9 @@ public class SalaryServiceTests
         _mockTitleService = new Mock<ITitleService>();
         _mockAuditLogService = new Mock<IAuditLogService>();
         _service = new SalaryService(_mockUserRepo.Object, _mockMembershipRepo.Object, _mockConfigService.Object, _mockTitleService.Object, _mockAuditLogService.Object);
+        // The row lock is a DB concern; here it just runs the work (see UserRepository).
+        _mockUserRepo.Setup(r => r.RunWithUsersLockedAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<Func<Task>>()))
+            .Returns((IEnumerable<int> _, Func<Task> work) => work());
 
         _mockConfigService.Setup(c => c.GetAsync()).ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 1.0m });
         _mockMembershipRepo.Setup(r => r.GetByUserAsync(It.IsAny<int>())).ReturnsAsync(new List<UserPermissionGroup>());
@@ -68,7 +71,7 @@ public class SalaryServiceTests
 
         Assert.False(result.Paid);
         Assert.Equal(0, result.AmountPaid);
-        _mockUserRepo.Verify(r => r.UpdateUserAsync(It.IsAny<User>()), Times.Never);
+        _mockUserRepo.Verify(r => r.SaveBalancesAsync(It.IsAny<User>()), Times.Never);
         _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<Enums.AuditAction>(), It.IsAny<string?>()), Times.Never);
     }
 
@@ -191,7 +194,7 @@ public class SalaryServiceTests
         Assert.Equal(275, result.AmountPaid);
         Assert.Equal(325, result.NewCoinsBalance); // 50 existing + 275
         Assert.Equal(50 + 275, user.Coins);
-        _mockUserRepo.Verify(r => r.UpdateUserAsync(It.Is<User>(u => u.Coins == 325)), Times.Once);
+        _mockUserRepo.Verify(r => r.SaveBalancesAsync(It.Is<User>(u => u.Coins == 325)), Times.Once);
     }
 
     [Fact]
@@ -307,7 +310,7 @@ public class SalaryServiceTests
 
         Assert.Equal(1.5m, result);
         _mockUserRepo.Verify(r => r.GetByIdAsync(It.IsAny<int>()), Times.Never);
-        _mockUserRepo.Verify(r => r.UpdateUserAsync(It.IsAny<User>()), Times.Never);
+        _mockUserRepo.Verify(r => r.SaveBalancesAsync(It.IsAny<User>()), Times.Never);
     }
 
     [Fact]

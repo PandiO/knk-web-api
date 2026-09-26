@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926153928_AddBalanceAndKitPriceCheckConstraints")]
+    partial class AddBalanceAndKitPriceCheckConstraints
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2343,33 +2346,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("title_brackets", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<int>("IgnoredUserId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IgnoredUserId");
-
-                    b.HasIndex("UserId", "IgnoredUserId")
-                        .IsUnique();
-
-                    b.ToTable("user_ignores", (string)null);
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
                 {
                     b.Property<int>("UserId")
@@ -3527,25 +3503,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowSession");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.User", "IgnoredUser")
-                        .WithMany()
-                        .HasForeignKey("IgnoredUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("IgnoredUser");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>

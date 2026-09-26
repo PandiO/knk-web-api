@@ -123,7 +123,15 @@ public partial class KnKDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.ToTable("users");
+            // Balance bounds enforced by MySQL too (MySQL >= 8.0.16 enforces CHECK), so no code
+            // path can store a negative or over-cap balance (currency DESIGN.md §1.4 A9, KNG-22).
+            // Same limits as Services/BalanceLimits.
+            entity.ToTable("users", t =>
+            {
+                t.HasCheckConstraint("CK_users_Coins_Range", $"`Coins` >= 0 AND `Coins` <= {knkwebapi_v2.Services.BalanceLimits.MaxCoins}");
+                t.HasCheckConstraint("CK_users_Gems_Range", $"`Gems` >= 0 AND `Gems` <= {knkwebapi_v2.Services.BalanceLimits.MaxGems}");
+                t.HasCheckConstraint("CK_users_ExperiencePoints_NonNegative", "`ExperiencePoints` >= 0");
+            });
 
             // Unique constraints on Username, Email, UUID (with null handling)
             entity.HasIndex(e => e.Username).IsUnique();
@@ -333,7 +341,12 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<Kit>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
-            entity.ToTable("kits");
+            // A negative price minted currency (currency DESIGN.md §1.4 A4, KNG-22).
+            entity.ToTable("kits", t =>
+            {
+                t.HasCheckConstraint("CK_kits_CostAmount_NonNegative", "`CostAmount` IS NULL OR `CostAmount` >= 0");
+                t.HasCheckConstraint("CK_kits_PremiumPriceGems_NonNegative", "`PremiumPriceGems` IS NULL OR `PremiumPriceGems` >= 0");
+            });
 
             entity.Property(e => e.CostCurrency).HasConversion<string>().HasMaxLength(20);
 
