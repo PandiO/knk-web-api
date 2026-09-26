@@ -7,6 +7,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
 
@@ -143,22 +144,48 @@ public class DiscoveriesControllerTests
     }
 
     [Fact]
-    public void PluginRoutesAreOpen_AdminRoutesNeedTheDiscoveryNode()
+    public void PluginRoutesNeedTheServiceKey_AdminRoutesNeedTheDiscoveryNode()
     {
-        // The plugin calls without a JWT, so its routes can't carry RequirePermission (KNG-22 adds
-        // service auth). Reset re-enables a reward, so it stays staff-only.
-        Assert.Null(Node(typeof(DiscoveriesController), nameof(DiscoveriesController.Grant)));
-        Assert.Null(Node(typeof(DiscoveriesController), nameof(DiscoveriesController.GetKnown)));
-        Assert.Null(Node(typeof(DiscoveriesController), nameof(DiscoveriesController.GetProgress)));
-        Assert.Null(Node(typeof(DiscoveriesController), nameof(DiscoveriesController.GetSummary)));
-        Assert.Equal("knk.admin.discovery", Node(typeof(DiscoveriesController), nameof(DiscoveriesController.Reset)));
-        Assert.Equal("knk.admin.discovery", Node(typeof(DiscoveriesController), nameof(DiscoveriesController.GetStats)));
+        // KNG-22: grant and the known-set cache are the game server's alone; progress and summary
+        // are also read by the player themself and staff on the web; reset is staff-only (it
+        // re-enables a reward), from the web or through the plugin's /knk discovery reset.
+        var type = typeof(DiscoveriesController);
+        Assert.NotNull(type.GetMethod(nameof(DiscoveriesController.Grant))!.GetCustomAttribute<RequirePluginServiceAttribute>());
+        Assert.NotNull(type.GetMethod(nameof(DiscoveriesController.GetKnown))!.GetCustomAttribute<RequirePluginServiceAttribute>());
+        foreach (var method in new[] { nameof(DiscoveriesController.GetProgress), nameof(DiscoveriesController.GetSummary) })
+        {
+            var gate = type.GetMethod(method)!.GetCustomAttribute<RequireServiceSelfOrPermissionAttribute>();
+            Assert.NotNull(gate);
+            Assert.Equal(("knk.admin.discovery", "userId"), (gate!.Node, gate.UserIdRouteKey));
+            Assert.Null(Node(type, method));
+        }
+        Assert.Equal(new[] { "knk.admin.discovery" },
+            type.GetMethod(nameof(DiscoveriesController.Reset))!.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node));
+        Assert.Null(Node(type, nameof(DiscoveriesController.Reset)));
+        Assert.Equal("knk.admin.discovery", Node(type, nameof(DiscoveriesController.GetStats)));
         foreach (var method in new[] { nameof(DiscoveryRewardsController.GetRules), nameof(DiscoveryRewardsController.UpdateRule),
                      nameof(DiscoveryRewardsController.GetOverrides), nameof(DiscoveryRewardsController.UpsertOverride),
                      nameof(DiscoveryRewardsController.DeleteOverride), nameof(DiscoveryRewardsController.Preview) })
         {
             Assert.Equal("knk.admin.discovery", Node(typeof(DiscoveryRewardsController), method));
         }
+    }
+
+    [Fact]
+    public async Task Reset_FromThePlugin_UsesTheActingStaffMember()
+    {
+        _service.Setup(s => s.ResetAsync(7, 3, 42)).ReturnsAsync(true);
+        var controller = Controller();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { [PluginServiceAuth.ApiKeyConfigKey] = "secret" }).Build();
+        var services = new Mock<IServiceProvider>();
+        services.Setup(s => s.GetService(typeof(IConfiguration))).Returns(configuration);
+        controller.HttpContext.RequestServices = services.Object;
+        controller.HttpContext.Request.Headers[PluginServiceAuth.ApiKeyHeader] = "secret";
+        controller.HttpContext.Request.Headers[PluginServiceAuth.ActingUserHeader] = "42";
+
+        Assert.IsType<NoContentResult>(await controller.Reset(7, 3));
+        _service.Verify(s => s.ResetAsync(7, 3, 42), Times.Once);
     }
 
     [Fact]

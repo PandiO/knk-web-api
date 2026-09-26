@@ -30,7 +30,10 @@ public class DiscoveriesController : ControllerBase
     /// </summary>
     /// <response code="200">Evaluated - see granted / alreadyDiscovered / skipped</response>
     /// <response code="400">No ids, more than 50, or an unknown source</response>
+    /// <response code="401">Not the game server (no or wrong X-API-Key)</response>
+    /// <response code="403">A logged-in web user - only the game server grants discoveries</response>
     /// <response code="404">User not found</response>
+    [RequirePluginService]
     [HttpPost("api/users/{userId:int}/discoveries")]
     [ProducesResponseType(typeof(DiscoveryGrantResultDto), 200)]
     [ProducesResponseType(400)]
@@ -52,6 +55,7 @@ public class DiscoveriesController : ControllerBase
     }
 
     /// <summary>Every domain the user has discovered with its region id, for the plugin's cache.</summary>
+    [RequirePluginService]
     [HttpGet("api/users/{userId:int}/discoveries/known")]
     [ProducesResponseType(typeof(List<KnownDiscoveryDto>), 200)]
     [ProducesResponseType(404)]
@@ -71,7 +75,9 @@ public class DiscoveriesController : ControllerBase
     /// Every enabled discoverable domain with the user's discovered state. Filters: "domainType"
     /// (Town/District/Structure/GateStructure), "status" (discovered/undiscovered); searchTerm on
     /// the name; sortBy "name" or "discoveredAt" (default: Town, District, Structure, then name).
+    /// The game server, the player themself (their account page) or staff with knk.admin.discovery.
     /// </summary>
+    [RequireServiceSelfOrPermission(StaffPermissions.ManageDiscovery)]
     [HttpPost("api/users/{userId:int}/discoveries/progress")]
     [ProducesResponseType(typeof(PagedResultDto<DiscoveryProgressRowDto>), 200)]
     [ProducesResponseType(404)]
@@ -87,7 +93,9 @@ public class DiscoveriesController : ControllerBase
         }
     }
 
-    /// <summary>Discovered vs. total per type, the latest discovery and lifetime reward totals.</summary>
+    /// <summary>Discovered vs. total per type, the latest discovery and lifetime reward totals. The
+    /// game server, the player themself or staff with knk.admin.discovery.</summary>
+    [RequireServiceSelfOrPermission(StaffPermissions.ManageDiscovery)]
     [HttpGet("api/users/{userId:int}/discoveries/summary")]
     [ProducesResponseType(typeof(DiscoverySummaryDto), 200)]
     [ProducesResponseType(404)]
@@ -106,11 +114,12 @@ public class DiscoveriesController : ControllerBase
     /// <summary>
     /// Resets one discovery so the domain can be discovered and rewarded again (no claw-back),
     /// audited as DiscoveryReset. Staff only: an open reset would let anyone farm a domain's reward
-    /// by resetting and re-entering it.
+    /// by resetting and re-entering it. The game server may call it for /knk discovery reset (its
+    /// own node check), naming the staff member in X-Acting-User-Id.
     /// </summary>
     /// <response code="204">Reset</response>
     /// <response code="404">User not found, or the user hadn't discovered that domain</response>
-    [RequirePermission(StaffPermissions.ManageDiscovery)]
+    [RequireServiceOrPermission(StaffPermissions.ManageDiscovery)]
     [HttpDelete("api/users/{userId:int}/discoveries/{domainId:int}")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
@@ -118,8 +127,7 @@ public class DiscoveriesController : ControllerBase
     {
         try
         {
-            var actorUserId = RequirePermissionFilter.UserIdFrom(HttpContext?.User);
-            if (!await _service.ResetAsync(userId, domainId, actorUserId))
+            if (!await _service.ResetAsync(userId, domainId, HttpContext.GetKnkCaller().ActorUserId))
             {
                 return NotFound(new { error = "NotFound", message = $"User {userId} has not discovered domain {domainId}" });
             }
