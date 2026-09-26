@@ -34,7 +34,8 @@ public class DiscoveriesController : ControllerBase
     /// <response code="401">Not the game server (no or wrong X-API-Key)</response>
     /// <response code="403">A logged-in web user - only the game server grants discoveries</response>
     /// <response code="404">User not found</response>
-    /// <response code="409">The ledger refused the credit (e.g. a balance at its cap); nothing was granted</response>
+    /// <response code="409">The ledger refused the credit, or the title bonuses it unlocks would pass a
+    /// balance cap; nothing was granted</response>
     [RequirePluginService]
     [HttpPost("api/users/{userId:int}/discoveries")]
     [ProducesResponseType(typeof(DiscoveryGrantResultDto), 200)]
@@ -59,6 +60,13 @@ public class DiscoveriesController : ControllerBase
         {
             // A 4xx is final for the plugin: it logs and doesn't spool a request that can't succeed.
             return Conflict(new { error = ex.Code.ToString(), message = ex.Message });
+        }
+        catch (BalanceCapExceededException ex)
+        {
+            // The title bonuses the discovery XP unlocks would push a balance over its cap. Not
+            // transient either: as a 500 the plugin would spool it and retry it forever, holding up
+            // every spooled discovery queued behind it.
+            return Conflict(new { error = BalanceCapExceededException.Code, message = ex.Message });
         }
     }
 

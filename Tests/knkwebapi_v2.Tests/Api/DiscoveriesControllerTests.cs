@@ -105,6 +105,18 @@ public class DiscoveriesControllerTests
     }
 
     [Fact]
+    public async Task Grant_TitleBonusOverTheCapIs409()
+    {
+        // ApplyTitleProgressionAsync throws BalanceCapExceededException (an InvalidOperationException)
+        // when the bonuses of a crossed bracket don't fit; a 500 would make the plugin spool it.
+        _service.Setup(s => s.DiscoverAsync(7, It.IsAny<DiscoveryGrantRequestDto>()))
+            .ThrowsAsync(new BalanceCapExceededException("gems", 999_990, 50, BalanceLimits.MaxGems));
+
+        var conflict = Assert.IsType<ConflictObjectResult>((await Controller().Grant(7, new DiscoveryGrantRequestDto())).Result);
+        Assert.Contains(BalanceCapExceededException.Code, JsonSerializer.Serialize(conflict.Value));
+    }
+
+    [Fact]
     public async Task Known_Progress_Summary_Return200Or404()
     {
         _service.Setup(s => s.GetKnownAsync(7)).ReturnsAsync(new List<KnownDiscoveryDto> { new() { DomainId = 1, WgRegionId = "town_rivia" } });
