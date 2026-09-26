@@ -20,8 +20,8 @@ namespace knkwebapi_v2.Services
     public class SalaryService : ISalaryService
     {
         /// <summary>A payout only triggers once this much time has passed since the last one —
-        /// IMPLEMENTATION_PLAN.md §6's "if now - LastSalaryPayoutAt >= 1 hour". The full elapsed
-        /// gap (not just whole hours) is then paid out, per vision §5.4's offline-gap fix.</summary>
+        /// IMPLEMENTATION_PLAN.md §6's "if now - LastSalaryPayoutAt >= 1 hour". The elapsed gap is
+        /// then paid with log decay (PaidHoursFor), per vision §5.4's offline-gap fix.</summary>
         private static readonly TimeSpan MinimumPayoutInterval = TimeSpan.FromHours(1);
 
         private readonly IUserRepository _userRepo;
@@ -72,10 +72,11 @@ namespace knkwebapi_v2.Services
             var title = await _titleService.ResolveAsync(user.ExperiencePoints, user.Gender);
             var rankMultiplier = await ComputeRankMultiplierAsync(userId, now);
             var hoursCovered = (decimal)elapsed.TotalHours;
+            var paidHours = PaidHoursFor(elapsed.TotalHours, config.OfflinePayoutMaxHours);
 
             // The title's Salary is the per-hour base; before this it was left out entirely and
             // GlobalMultiplier (default 1.0) stood in as the base rate, paying ~1 coin an hour.
-            var rawPayout = title.Salary * config.GlobalMultiplier * user.PersonalSalaryMultiplier * rankMultiplier * hoursCovered;
+            var rawPayout = title.Salary * config.GlobalMultiplier * user.PersonalSalaryMultiplier * rankMultiplier * paidHours;
             // Multipliers are validated non-negative at write time (SalaryConfigurationService,
             // PermissionGroupService) and PersonalSalaryMultiplier defaults to a non-negative 1.0,
             // but nothing currently stops a direct DB edit from making one negative — clamp
@@ -92,6 +93,7 @@ namespace knkwebapi_v2.Services
             {
                 amountPaid,
                 hoursCovered,
+                paidHours,
                 titleBracketId = title.TitleBracketId,
                 titleSalary = title.Salary,
                 globalMultiplier = config.GlobalMultiplier,
@@ -104,6 +106,7 @@ namespace knkwebapi_v2.Services
                 Paid = true,
                 AmountPaid = amountPaid,
                 HoursCovered = hoursCovered,
+                PaidHours = paidHours,
                 TitleBracketId = title.TitleBracketId,
                 TitleSalary = title.Salary,
                 GlobalMultiplier = config.GlobalMultiplier,
@@ -113,6 +116,28 @@ namespace knkwebapi_v2.Services
                 LastSalaryPayoutAt = now,
                 NextEligibleAt = now + MinimumPayoutInterval
             };
+        }
+
+        /// <summary>
+        /// Hours of salary a gap of <paramref name="elapsedHours"/> since the last payout is worth
+        /// (developer-chosen log decay, docs/specs/user-features/DESIGN.md §5): hour N of the gap
+        /// pays 1/N of an hour, so the first hour pays in full and the total grows like ln(hours)
+        /// — 1.5 for 2h, ~2.7 for 8h, ~3.8 for a day, ~7.2 for 30 days. Hours past
+        /// <paramref name="maxHours"/> (default 720 = 30 days) pay nothing. A partial hour pays
+        /// its fraction of that hour's weight. While online the plugin pays every hour, so an
+        /// online player's payouts are ~1 hour each and barely decay.
+        /// </summary>
+        public static decimal PaidHoursFor(double elapsedHours, int maxHours)
+        {
+            var capped = Math.Min(Math.Max(0, elapsedHours), Math.Max(1, maxHours));
+            var wholeHours = (int)Math.Floor(capped);
+            var paid = 0.0;
+            for (var n = 1; n <= wholeHours; n++)
+            {
+                paid += 1.0 / n;
+            }
+            paid += (capped - wholeHours) / (wholeHours + 1);
+            return (decimal)paid;
         }
 
         public Task<decimal> GetCurrentRankMultiplierAsync(int userId)

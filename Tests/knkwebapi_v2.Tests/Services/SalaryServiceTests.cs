@@ -12,7 +12,7 @@ namespace knkwebapi_v2.Tests.Services;
 /// <summary>
 /// Unit tests for SalaryService (docs/specs/user-features/DESIGN.md §5,
 /// IMPLEMENTATION_PLAN.md §6). Covers the 1-hour eligibility gate, the gap-covering payout math
-/// (title salary x global x personal x rank multipliers x hours elapsed), and the
+/// (title salary x global x personal x rank multipliers x log-decayed hours elapsed), and the
 /// developer-confirmed "multiply every active membership's SalaryMultiplier together"
 /// rank-multiplier combination rule.
 /// </summary>
@@ -106,8 +106,8 @@ public class SalaryServiceTests
         var result = await _service.PayOutAsync(1);
 
         Assert.Equal(1.0m, result.RankMultiplier);
-        // 650 (title) * 10 (global) * 1.0 (personal) * 1.0 (rank) * 2 hours = 13000, not 0.
-        Assert.Equal(13000, result.AmountPaid);
+        // 650 (title) * 10 (global) * 1.0 (personal) * 1.0 (rank) * 1.5 (2 hours, decayed) = 9750, not 0.
+        Assert.Equal(9750, result.AmountPaid);
     }
 
     [Fact]
@@ -181,11 +181,11 @@ public class SalaryServiceTests
 
         var result = await _service.PayOutAsync(1);
 
-        // 10 (title) * 5 (global) * 2.0 (personal) * 1.5 (rank) * 3 hours = 450.
-        Assert.Equal(450, result.AmountPaid);
-        Assert.Equal(500, result.NewCoinsBalance); // 50 existing + 450
-        Assert.Equal(50 + 450, user.Coins);
-        _mockUserRepo.Verify(r => r.UpdateUserAsync(It.Is<User>(u => u.Coins == 500)), Times.Once);
+        // 10 (title) * 5 (global) * 2.0 (personal) * 1.5 (rank) * (1 + 1/2 + 1/3) for 3 hours = 275.
+        Assert.Equal(275, result.AmountPaid);
+        Assert.Equal(325, result.NewCoinsBalance); // 50 existing + 275
+        Assert.Equal(50 + 275, user.Coins);
+        _mockUserRepo.Verify(r => r.UpdateUserAsync(It.Is<User>(u => u.Coins == 325)), Times.Once);
     }
 
     [Fact]
@@ -223,6 +223,54 @@ public class SalaryServiceTests
 
         // 650 (Serf) * 1.0 (global) * 1.5 (personal) * 2.0 (premium rank) * ~1 hour = 1950.
         Assert.Equal(1950, result.AmountPaid);
+    }
+
+    [Fact]
+    public async Task PayOutAsync_GapLongerThanOfflineMaxHours_PaysTheCappedLogDecayedHours()
+    {
+        var user = MakeUser(1, DateTime.UtcNow.AddDays(-40));
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockTitleService.Setup(t => t.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>()))
+            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 18, Salary = 80000 });
+
+        var result = await _service.PayOutAsync(1);
+
+        // One of the Seven, 40 days away: only the first 720 hours count, hour N paying 1/N —
+        // ~7.157 hours of salary, not 960.
+        Assert.Equal(572573, result.AmountPaid);
+        Assert.Equal(7.157m, Math.Round(result.PaidHours, 3));
+        Assert.True(result.HoursCovered > 959);
+    }
+
+    [Fact]
+    public async Task PayOutAsync_OfflineMaxHoursOne_PaysASingleHourForAnyGap()
+    {
+        var user = MakeUser(1, DateTime.UtcNow.AddHours(-10));
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockConfigService.Setup(c => c.GetAsync())
+            .ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 1.0m, OfflinePayoutMaxHours = 1 });
+
+        var result = await _service.PayOutAsync(1);
+
+        Assert.Equal(650, result.AmountPaid);
+    }
+
+    [Theory]
+    [InlineData(1.0, 720, 1.0)]
+    [InlineData(1.5, 720, 1.25)]      // 1 + half of hour 2's 1/2
+    [InlineData(2.0, 720, 1.5)]
+    [InlineData(3.0, 720, 1.8333)]
+    [InlineData(8.0, 720, 2.7179)]
+    [InlineData(24.0, 720, 3.7760)]
+    [InlineData(168.0, 720, 5.7042)]  // a week
+    [InlineData(720.0, 720, 7.1572)]  // 30 days
+    [InlineData(5000.0, 720, 7.1572)] // hours past the cap pay nothing
+    [InlineData(48.0, 24, 3.7760)]
+    [InlineData(100.0, 1, 1.0)]
+    [InlineData(100.0, 0, 1.0)]       // a bad config never pays less than one hour
+    public void PaidHoursFor_FirstHourFullThenHourNPaysOneNth(double elapsedHours, int maxHours, double expected)
+    {
+        Assert.Equal((decimal)expected, Math.Round(SalaryService.PaidHoursFor(elapsedHours, maxHours), 4));
     }
 
     [Fact]

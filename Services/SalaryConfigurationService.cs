@@ -26,9 +26,14 @@ public class SalaryConfigurationService : ISalaryConfigurationService
     {
         if (dto == null) throw new ArgumentNullException(nameof(dto));
         if (dto.GlobalMultiplier < 0) throw new ArgumentException("globalMultiplier cannot be negative.", nameof(dto));
+        if (dto.OfflinePayoutMaxHours is < 1) throw new ArgumentException("offlinePayoutMaxHours must be at least 1.", nameof(dto));
 
         var existing = await EnsureExistsAsync();
         existing.GlobalMultiplier = dto.GlobalMultiplier;
+        if (dto.OfflinePayoutMaxHours.HasValue)
+        {
+            existing.OfflinePayoutMaxHours = dto.OfflinePayoutMaxHours.Value;
+        }
 
         var saved = await _repository.UpsertAsync(existing);
         return ToDto(saved);
@@ -49,6 +54,7 @@ public class SalaryConfigurationService : ISalaryConfigurationService
     private static SalaryConfigurationDto ToDto(SalaryConfiguration config) => new()
     {
         GlobalMultiplier = config.GlobalMultiplier,
+        OfflinePayoutMaxHours = config.OfflinePayoutMaxHours,
         UpdatedAt = DateTime.SpecifyKind(config.UpdatedAt, DateTimeKind.Utc)
     };
 }

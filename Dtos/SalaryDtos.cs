@@ -17,6 +17,14 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("globalMultiplier")]
         public decimal GlobalMultiplier { get; set; } = 1.0m;
 
+        /// <summary>
+        /// Hours of a gap between payouts that count toward salary. Hour N of a gap pays 1/N of
+        /// an hour (the first in full), and hours past this limit pay nothing. Default 720 (30
+        /// days); 1 pays a single hour however long the player was away.
+        /// </summary>
+        [JsonPropertyName("offlinePayoutMaxHours")]
+        public int OfflinePayoutMaxHours { get; set; } = 720;
+
         [JsonPropertyName("updatedAt")]
         public DateTime UpdatedAt { get; set; }
     }
@@ -28,6 +36,10 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("globalMultiplier")]
         public decimal GlobalMultiplier { get; set; } = 1.0m;
+
+        /// <summary>Omitted (null) keeps the current value.</summary>
+        [JsonPropertyName("offlinePayoutMaxHours")]
+        public int? OfflinePayoutMaxHours { get; set; }
     }
 
     /// <summary>
@@ -44,8 +56,15 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("amountPaid")]
         public int AmountPaid { get; set; }
 
+        /// <summary>Real time since the last payout.</summary>
         [JsonPropertyName("hoursCovered")]
         public decimal HoursCovered { get; set; }
+
+        /// <summary>Hours of salary HoursCovered was worth after log decay (see
+        /// SalaryService.PaidHoursFor) — about 1 for an hourly online payout, at most ~7.2 for a
+        /// gap of 30 days or more.</summary>
+        [JsonPropertyName("paidHours")]
+        public decimal PaidHours { get; set; }
 
         /// <summary>The title bracket whose Salary was used as the hourly base rate.</summary>
         [JsonPropertyName("titleBracketId")]

@@ -17,6 +17,13 @@ public class SalaryConfiguration
     /// </summary>
     public decimal GlobalMultiplier { get; set; } = 1.0m;
 
+    /// <summary>
+    /// How many hours of a gap between payouts count toward salary (log decay, see
+    /// SalaryService.PaidHoursFor). Default 720 = 30 days; 1 pays a single hour however long the
+    /// player was away.
+    /// </summary>
+    public int OfflinePayoutMaxHours { get; set; } = 720;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
