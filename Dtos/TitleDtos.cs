@@ -43,15 +43,19 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
-    /// One title bracket as listed by <c>GET /api/title-brackets</c> (InventoryMenu content port
-    /// CP3: the in-game Profile menu's title list and the Player manager's title picker). Ordered
-    /// by <see cref="MinExperience"/>; the bonus fields are the one-time rewards for first reaching
-    /// the bracket.
+    /// One title bracket as listed by <c>TitleBracketsController</c> (<c>GET /api/TitleBrackets</c>
+    /// and its alias <c>GET /api/title-brackets</c>): the siege scenario form's "minimum title"
+    /// picker and the in-game Profile menu / Player manager title picker (InventoryMenu content port
+    /// CP3). Ordered by <see cref="MinExperience"/>. "name" is the male name, the form pickers'
+    /// display convention; the bonus fields are the one-time rewards for first reaching the bracket.
     /// </summary>
     public class TitleBracketDto
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = null!;
 
         [JsonPropertyName("maleName")]
         public string MaleName { get; set; } = null!;

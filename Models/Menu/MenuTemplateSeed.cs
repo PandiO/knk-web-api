@@ -667,6 +667,10 @@ public static partial class MenuTemplateSeed
         // Domain discovery (KNG-20) - see MenuTemplateSeed.Discovery.cs.
         foreach (var template in DiscoveryTemplates())
             yield return template;
+
+        // Siege Phase 8b (siege-minigame MENU_TEMPLATES.md Part C) - see MenuTemplateSeed.Siege.cs.
+        foreach (var template in SiegeTemplates())
+            yield return template;
     }
 
     /// <summary>
