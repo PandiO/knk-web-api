@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
@@ -9,8 +10,8 @@ namespace knkwebapi_v2.Controllers
     /// A player's ignore list (KNG-18 Phase 2, docs/specs/private-messages/DESIGN.md §3.2) - read
     /// on join and changed by /ignore and /unignore in knk-plugin.
     /// <para>
-    /// No auth attribute yet: the plugin calls anonymously, like every plugin endpoint. KNG-22
-    /// adds the plugin service key that these endpoints should then require.
+    /// Game server only (<see cref="RequirePluginServiceAttribute"/>, KNG-22): anonymous → 401,
+    /// a logged-in web user → 403. No web page manages ignore lists.
     /// </para>
     /// </summary>
     [ApiController]
@@ -28,6 +29,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">The ignore list (may be empty)</response>
         /// <response code="404">User not found</response>
         [HttpGet]
+        [RequirePluginService]
         public async Task<ActionResult<List<UserIgnoreDto>>> Get(int userId)
         {
             var ignores = await _service.GetAsync(userId);
@@ -42,6 +44,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="404">Either user not found</response>
         /// <response code="409">IgnoreLimitReached</response>
         [HttpPut("{ignoredUserId:int}")]
+        [RequirePluginService]
         public async Task<IActionResult> Add(int userId, int ignoredUserId)
         {
             var result = await _service.AddAsync(userId, ignoredUserId);
@@ -62,6 +65,7 @@ namespace knkwebapi_v2.Controllers
 
         /// <summary>Stop ignoring a player. Idempotent: always 204.</summary>
         [HttpDelete("{ignoredUserId:int}")]
+        [RequirePluginService]
         public async Task<IActionResult> Remove(int userId, int ignoredUserId)
         {
             await _service.RemoveAsync(userId, ignoredUserId);

@@ -60,4 +60,33 @@ public class UserIgnoresControllerTests
         Assert.IsType<NoContentResult>(await Controller.Remove(1, 2));
         _service.Verify(s => s.RemoveAsync(1, 2), Times.Once);
     }
+
+    // ===== KNG-22: game server only =====
+
+    [Theory]
+    [InlineData(nameof(UserIgnoresController.Get))]
+    [InlineData(nameof(UserIgnoresController.Add))]
+    [InlineData(nameof(UserIgnoresController.Remove))]
+    public async Task Anonymous_Is401(string action)
+    {
+        Assert.Equal(401, await ServiceAuthTestHelper.RunGates(typeof(UserIgnoresController), action, ServiceAuthTestHelper.Anonymous()));
+    }
+
+    [Theory]
+    [InlineData(nameof(UserIgnoresController.Get))]
+    [InlineData(nameof(UserIgnoresController.Add))]
+    [InlineData(nameof(UserIgnoresController.Remove))]
+    public async Task PluginKey_Passes(string action)
+    {
+        Assert.Null(await ServiceAuthTestHelper.RunGates(typeof(UserIgnoresController), action, ServiceAuthTestHelper.Plugin()));
+    }
+
+    [Theory]
+    [InlineData(nameof(UserIgnoresController.Get))]
+    [InlineData(nameof(UserIgnoresController.Add))]
+    [InlineData(nameof(UserIgnoresController.Remove))]
+    public async Task WebUser_Is403(string action)
+    {
+        Assert.Equal(403, await ServiceAuthTestHelper.RunGates(typeof(UserIgnoresController), action, ServiceAuthTestHelper.WebUser(1)));
+    }
 }
