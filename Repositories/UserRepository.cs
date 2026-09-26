@@ -41,31 +41,103 @@ namespace knkwebapi_v2.Repositories
 
         public async Task UpdateUserAsync(User user)
         {
-            _context.Users.Update(user);
+            // A user loaded through this context is already tracked, so SaveChanges writes only
+            // the columns that changed. _context.Users.Update() would mark every column modified
+            // and write back the whole (possibly stale) row, which is how a presence or profile
+            // write used to erase a salary payout or refund a kit purchase (DESIGN.md §1.4 A2).
+            var entry = _context.Entry(user);
+            if (entry.State == EntityState.Detached)
+            {
+                _context.Users.Update(user);
+            }
+            foreach (var column in BalanceColumns)
+            {
+                entry.Property(column).IsModified = false;
+            }
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateUserCoinsAsync(int id, int coins)
+        /// <summary>Written only by the locked balance paths (SaveBalancesAsync).</summary>
+        private static readonly string[] BalanceColumns =
         {
-            var user = await _context.Users.FindAsync(id);
-            if (user != null)
+            nameof(User.Coins), nameof(User.Gems), nameof(User.ExperiencePoints), nameof(User.LastSalaryPayoutAt)
+        };
+
+        public async Task SaveBalancesAsync(User user)
+        {
+            if (_context.Entry(user).State == EntityState.Detached)
             {
-                user.Coins = coins;
                 _context.Users.Update(user);
-                await _context.SaveChangesAsync();
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RunWithUsersLockedAsync(IEnumerable<int> userIds, Func<Task> work)
+        {
+            var ids = userIds.Distinct().OrderBy(id => id).ToList();
+            var isRelational = _context.Database.IsRelational();
+            var ownsTransaction = isRelational && _context.Database.CurrentTransaction == null;
+
+            await using var transaction = ownsTransaction
+                ? await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted)
+                : null;
+            try
+            {
+                if (isRelational)
+                {
+                    await LockUsersAsync(ids);
+                    // Anything read before the lock may be stale: re-read it now that no other
+                    // balance write can run in between.
+                    foreach (var entry in TrackedUsers(ids))
+                    {
+                        await entry.ReloadAsync();
+                    }
+                }
+
+                await work();
+
+                if (transaction != null)
+                {
+                    await transaction.CommitAsync();
+                }
+            }
+            catch
+            {
+                if (transaction != null)
+                {
+                    await transaction.RollbackAsync();
+                }
+                // Changes the rolled-back work made to these users (saved or not) must not ride
+                // along on a later SaveChanges in the same request.
+                foreach (var entry in TrackedUsers(ids))
+                {
+                    if (entry.State == EntityState.Modified)
+                    {
+                        entry.CurrentValues.SetValues(entry.OriginalValues);
+                        entry.State = EntityState.Unchanged;
+                    }
+                    if (isRelational)
+                    {
+                        try { await entry.ReloadAsync(); } catch { /* keep the original error */ }
+                    }
+                }
+                throw;
             }
         }
 
-        public async Task UpdateUserCoinsByUuidAsync(string uuid, int coins)
+        public async Task LockUsersAsync(IEnumerable<int> userIds)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Uuid == uuid);
-            if (user != null)
-            {
-                user.Coins = coins;
-                _context.Users.Update(user);
-                await _context.SaveChangesAsync();
-            }
+            var ids = userIds.Distinct().OrderBy(id => id).ToList();
+            if (ids.Count == 0 || !_context.Database.IsRelational()) return;
+            // ints only, so the joined list can't inject anything.
+#pragma warning disable EF1002
+            await _context.Database.ExecuteSqlRawAsync(
+                $"SELECT Id FROM users WHERE Id IN ({string.Join(",", ids)}) ORDER BY Id FOR UPDATE");
+#pragma warning restore EF1002
         }
+
+        private List<Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<User>> TrackedUsers(List<int> ids) =>
+            _context.ChangeTracker.Entries<User>().Where(e => ids.Contains(e.Entity.Id)).ToList();
 
         public async Task UpdateGatePassThroughMethodAsync(int id, GatePassThroughMethod method)
         {
@@ -73,7 +145,6 @@ namespace knkwebapi_v2.Repositories
             if (user != null)
             {
                 user.GatePassThroughMethodDefault = method;
-                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
             }
         }
@@ -84,7 +155,6 @@ namespace knkwebapi_v2.Repositories
             if (user != null)
             {
                 user.ActiveMode = mode;
-                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
             }
         }
@@ -96,7 +166,6 @@ namespace knkwebapi_v2.Repositories
             {
                 user.IsOnline = isOnline;
                 user.LastSeenAt = DateTime.UtcNow;
-                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
             }
         }
@@ -255,7 +324,6 @@ namespace knkwebapi_v2.Repositories
             {
                 user.PasswordHash = passwordHash;
                 user.LastPasswordChangeAt = DateTime.UtcNow;
-                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
             }
         }
@@ -267,7 +335,6 @@ namespace knkwebapi_v2.Repositories
             {
                 user.Email = email;
                 user.LastEmailChangeAt = DateTime.UtcNow;
-                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
             }
         }
@@ -297,8 +364,6 @@ namespace knkwebapi_v2.Repositories
                     secondaryUser.DeletedAt = DateTime.UtcNow;
                     secondaryUser.DeletedReason = $"Merged with user {primaryUserId}";
                     secondaryUser.ArchiveUntil = DateTime.UtcNow.AddDays(90);
-
-                    _context.Users.Update(secondaryUser);
                     await _context.SaveChangesAsync();
 
                     await transaction.CommitAsync();

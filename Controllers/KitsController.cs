@@ -1,8 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -36,6 +34,7 @@ namespace knkwebapi_v2.Controllers
             return Ok(item);
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageKits)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] KitDto dto)
         {
@@ -51,6 +50,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageKits)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] KitDto dto)
         {
@@ -70,6 +70,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageKits)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -115,6 +116,10 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        // Claim, purchase and the first-join grant act for the userId in the query string, so
+        // only the game server (which resolved it from the player) may call them (KNG-22) —
+        // before, anyone could spend another player's gems on a kit.
+        [RequirePluginService]
         [HttpPost("{id:int}/claim")]
         public async Task<IActionResult> Claim(int id, [FromQuery] int userId)
         {
@@ -133,6 +138,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequirePluginService]
         [HttpPost("{id:int}/purchase")]
         public async Task<IActionResult> Purchase(int id, [FromQuery] int userId)
         {
@@ -155,23 +161,19 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
-        // actorUserId is resolved from the authenticated caller's own JWT claims - never
-        // client-supplied (DESIGN.md §4.6) - so this endpoint requires a valid bearer token.
-        [Authorize]
+        // The actor is never taken from the body (DESIGN.md §4.6): it is the logged-in web user,
+        // or the staff member the game server names in X-Acting-User-Id (honoured only with the
+        // plugin's key). This used to be JWT-only, so the plugin's /kit give always got 401
+        // (KNG-15); the plugin now authenticates with its key.
+        [RequireServiceOrPermission(StaffPermissions.GiveKits)]
         [HttpPost("{id:int}/give")]
         public async Task<IActionResult> Give(int id, [FromBody] GiveKitRequestDto request)
         {
             if (request == null) return BadRequest();
 
-            var actorUserId = GetUserIdFromClaims(User);
-            if (!actorUserId.HasValue)
-            {
-                return Unauthorized(new { error = "InvalidToken", message = "User claim missing or not authenticated." });
-            }
-
             try
             {
-                var result = await _service.GiveKitAsync(actorUserId.Value, request.TargetUserId, id);
+                var result = await _service.GiveKitAsync(HttpContext.GetKnkCaller().ActorUserId, request.TargetUserId, id);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
@@ -180,6 +182,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequirePluginService]
         [HttpPost("grant-first-join")]
         public async Task<IActionResult> GrantFirstJoin([FromQuery] int userId)
         {
@@ -192,16 +195,6 @@ namespace knkwebapi_v2.Controllers
             {
                 return NotFound(ex.Message);
             }
-        }
-
-        private int? GetUserIdFromClaims(ClaimsPrincipal principal)
-        {
-            var userIdClaim = principal.FindFirst("uid")
-                ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)
-                ?? principal.FindFirst(ClaimTypes.NameIdentifier);
-
-            if (userIdClaim == null) return null;
-            return int.TryParse(userIdClaim.Value, out var userId) ? userId : (int?)null;
         }
     }
 }

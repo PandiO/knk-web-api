@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Extensions;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Attributes;
 
 namespace KnKWebAPI.Controllers
 {
@@ -40,13 +41,16 @@ namespace KnKWebAPI.Controllers
         /// Assign a user to a group, or change the expiry of an existing membership. Omit
         /// expiresAt for a permanent membership.
         /// </summary>
+        /// <remarks>No longer anonymous (KNG-22): a rank carries nodes and reward multipliers.
+        /// The plugin's /knk user group calls this with its key and names the staff member.</remarks>
+        [RequireServiceOrPermission(StaffPermissions.UserGroups)]
         [HttpPut]
         public async Task<IActionResult> Upsert([FromBody] UpsertUserPermissionGroupDto dto)
         {
             if (dto == null) return BadRequest();
             try
             {
-                return Ok(await _service.UpsertAsync(dto, User.GetUserId()));
+                return Ok(await _service.UpsertAsync(dto, HttpContext.GetKnkCaller().ActorUserId));
             }
             catch (KeyNotFoundException ex)
             {
@@ -58,12 +62,13 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserGroups)]
         [HttpDelete("{userId:int}/{permissionGroupId:int}")]
         public async Task<IActionResult> Delete(int userId, int permissionGroupId)
         {
             try
             {
-                await _service.DeleteAsync(userId, permissionGroupId, User.GetUserId());
+                await _service.DeleteAsync(userId, permissionGroupId, HttpContext.GetKnkCaller().ActorUserId);
                 return NoContent();
             }
             catch (KeyNotFoundException)

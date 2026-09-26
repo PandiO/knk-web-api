@@ -2,12 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
@@ -520,6 +517,9 @@ namespace knkwebapi_v2.Controllers
         /// <response code="204">User updated successfully</response>
         /// <response code="400">Validation failed</response>
         /// <response code="404">User not found</response>
+        /// <remarks>Coins, gems, XP and the personal multipliers in the body are ignored: they
+        /// change only through PUT {id}/balances and PUT {id}/multipliers (KNG-22).</remarks>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] UserDto user)
         {
@@ -540,60 +540,6 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Update user coins balance
-        /// </summary>
-        /// <param name="id">User ID</param>
-        /// <param name="coins">New coins balance</param>
-        /// <returns>No content</returns>
-        /// <response code="204">Coins updated successfully</response>
-        /// <response code="400">Validation failed</response>
-        /// <response code="404">User not found</response>
-        [HttpPut("{id:int}/coins")]
-        public async Task<IActionResult> UpdateCoins(int id, [FromBody] int coins)
-        {
-            try
-            {
-                await _service.UpdateCoinsAsync(id, coins);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Update user coins balance by UUID (Minecraft plugin uses this)
-        /// </summary>
-        /// <param name="uuid">Minecraft player UUID</param>
-        /// <param name="coins">New coins balance</param>
-        /// <returns>No content</returns>
-        /// <response code="204">Coins updated successfully</response>
-        /// <response code="400">Validation failed</response>
-        /// <response code="404">User not found</response>
-        [HttpPut("{uuid}/coins")]
-        public async Task<IActionResult> UpdateCoinsByUuid(string uuid, [FromBody] int coins)
-        {
-            try
-            {
-                await _service.UpdateCoinsByUuidAsync(uuid, coins);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(new { error = "UserNotFound", message = $"User with UUID {uuid} not found" });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
-            }
-        }
-
-        /// <summary>
         /// Update a user's preferred gate pass-through method
         /// </summary>
         /// <remarks>
@@ -605,6 +551,7 @@ namespace knkwebapi_v2.Controllers
         /// <returns>No content</returns>
         /// <response code="204">Updated successfully</response>
         /// <response code="404">User not found</response>
+        [RequirePluginService]
         [HttpPut("{id:int}/gate-passthrough-method")]
         public async Task<IActionResult> UpdateGatePassThroughMethod(int id, [FromBody] UpdateGatePassThroughMethodDto request)
         {
@@ -638,6 +585,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="204">Updated successfully</response>
         /// <response code="400">Unknown mode value</response>
         /// <response code="404">User not found</response>
+        [RequirePluginService]
         [HttpPut("{id:int}/active-mode")]
         public async Task<IActionResult> UpdateActiveMode(int id, [FromBody] UpdateActiveModeDto request)
         {
@@ -671,6 +619,7 @@ namespace knkwebapi_v2.Controllers
         /// <returns>No content</returns>
         /// <response code="204">Updated successfully</response>
         /// <response code="404">User not found</response>
+        [RequirePluginService]
         [HttpPut("{id:int}/presence")]
         public async Task<IActionResult> UpdatePresence(int id, [FromBody] UpdatePresenceDto request)
         {
@@ -694,6 +643,7 @@ namespace knkwebapi_v2.Controllers
         /// knk-plugin /freeze command). Works on offline targets: writes through immediately, the
         /// plugin enforces movement/chat/command/damage lockout once the target is next online.
         /// </summary>
+        [RequireServiceOrPermission(StaffPermissions.Freeze)]
         [HttpPut("{id:int}/freeze")]
         public async Task<IActionResult> Freeze(int id, [FromBody] FreezePlayerDto request)
         {
@@ -712,6 +662,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.Unfreeze)]
         [HttpPut("{id:int}/unfreeze")]
         public async Task<IActionResult> Unfreeze(int id)
         {
@@ -769,11 +720,21 @@ namespace knkwebapi_v2.Controllers
         /// <param name="request">Signed deltas and an audit reason</param>
         /// <returns>No content</returns>
         /// <response code="204">Adjusted successfully</response>
-        /// <response code="400">Missing reason, or a delta would underflow a balance below zero</response>
+        /// <response code="400">Missing reason, a delta would underflow a balance below zero, or a balance would pass its cap</response>
+        /// <response code="401">Neither the game server nor logged in</response>
+        /// <response code="403">Logged in without the node for a changed balance (knk.admin.user.coins/gems/xp)</response>
         /// <response code="404">User not found</response>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPut("{id:int}/balances")]
         public async Task<IActionResult> AdjustBalances(int id, [FromBody] AdjustBalancesDto request)
         {
+            if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+
+            // A web caller needs the in-game node for each balance it changes, as /knk user does
+            // in-game; the plugin checks those nodes itself before calling.
+            var denied = await RequireBalanceNodesAsync(request);
+            if (denied != null) return denied;
+
             try
             {
                 var result = await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetActorUserId(), request.NotifyPlayer);
@@ -787,9 +748,70 @@ namespace knkwebapi_v2.Controllers
             {
                 return BadRequest(new { error = "ValidationFailed", message = ex.Message });
             }
+            catch (BalanceCapExceededException ex)
+            {
+                return BadRequest(new { error = BalanceCapExceededException.Code, message = ex.Message });
+            }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { error = "InsufficientBalance", message = ex.Message });
+            }
+        }
+
+        private async Task<IActionResult?> RequireBalanceNodesAsync(AdjustBalancesDto request)
+        {
+            var caller = HttpContext?.GetKnkCaller();
+            if (caller?.IsPluginService == true)
+            {
+                return null;
+            }
+            if (caller?.WebUserId == null)
+            {
+                return Unauthorized(new { error = "Unauthorized", message = "Log in to use this." });
+            }
+
+            var nodes = new List<string>();
+            if (request.CoinsDelta != 0) nodes.Add(StaffPermissions.UserCoins);
+            if (request.GemsDelta != 0) nodes.Add(StaffPermissions.UserGems);
+            if (request.ExperienceDelta != 0) nodes.Add(StaffPermissions.UserXp);
+            foreach (var node in nodes)
+            {
+                var check = await _permissionResolutionService.CheckAsync(caller.WebUserId.Value, node);
+                if (check?.Allowed != true)
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = $"Requires the {node} permission." });
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Sets a user's personal salary / gem-bonus / XP-bonus multipliers (omitted = keep).
+        /// </summary>
+        /// <remarks>
+        /// KNG-22 took these out of the generic PUT {id} so an ordinary profile edit can't change
+        /// what a player earns; each must be 0..100. Audit-logged like the other balance edits.
+        /// </remarks>
+        /// <response code="204">Updated (or nothing changed)</response>
+        /// <response code="400">A multiplier is out of range</response>
+        /// <response code="404">User not found</response>
+        [RequireServiceOrPermission(StaffPermissions.UserSalary)]
+        [HttpPut("{id:int}/multipliers")]
+        public async Task<IActionResult> UpdatePersonalMultipliers(int id, [FromBody] UpdatePersonalMultipliersDto request)
+        {
+            if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            try
+            {
+                await _service.SetPersonalMultipliersAsync(id, request, GetActorUserId());
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
             }
         }
 
@@ -805,6 +827,7 @@ namespace knkwebapi_v2.Controllers
         /// <param name="id">User ID</param>
         /// <response code="200">Payout evaluated (see the "paid" field for the outcome)</response>
         /// <response code="404">User not found</response>
+        [RequireServiceOrPermission(StaffPermissions.UserSalary)]
         [HttpPost("{id:int}/salary/payout")]
         [ProducesResponseType(typeof(SalaryPayoutResultDto), 200)]
         public async Task<ActionResult<SalaryPayoutResultDto>> PayOutSalary(int id)
@@ -817,6 +840,10 @@ namespace knkwebapi_v2.Controllers
             catch (KeyNotFoundException)
             {
                 return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (BalanceCapExceededException ex)
+            {
+                return Conflict(new { error = BalanceCapExceededException.Code, message = ex.Message });
             }
         }
 
@@ -845,9 +872,16 @@ namespace knkwebapi_v2.Controllers
             {
                 int? userId = null;
 
-                // Check if request has userId (Minecraft plugin use case)
+                // Check if request has userId (Minecraft plugin use case). Only the game server may
+                // name the user: a link code lets whoever holds it set that account's email and
+                // password (link-account), so an anonymous caller naming any user id was an
+                // account takeover (KNG-22).
                 if (request?.UserId.HasValue == true)
                 {
+                    if (!HttpContext.GetKnkCaller().IsPluginService)
+                    {
+                        return Unauthorized(new { error = "Unauthorized", message = "Only the game server can create a link code for another user." });
+                    }
                     userId = request.UserId;
                 }
                 else
@@ -930,6 +964,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Validation failed (weak password, mismatch, etc.)</response>
         /// <response code="401">Current password incorrect</response>
         /// <response code="404">User not found</response>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPut("{id:int}/change-password")]
         public async Task<IActionResult> ChangePassword(int id, [FromBody] ChangePasswordDto request)
         {
@@ -969,6 +1004,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="401">Current password incorrect</response>
         /// <response code="404">User not found</response>
         /// <response code="409">Email already in use</response>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPut("{id:int}/update-email")]
         public async Task<IActionResult> UpdateEmail(int id, [FromBody] UpdateEmailDto request)
         {
@@ -1094,6 +1130,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Accounts merged successfully</response>
         /// <response code="400">Invalid request or operation failed</response>
         /// <response code="404">One or both users not found</response>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPost("merge")]
         public async Task<IActionResult> MergeAccounts([FromBody] AccountMergeDto request)
         {
@@ -1211,6 +1248,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -1298,52 +1336,19 @@ namespace knkwebapi_v2.Controllers
 
         /// <summary>Header naming the in-game staff member a plugin request acts for (sent by
         /// knk-plugin's UsersCommandApi.withActor).</summary>
-        public const string ActingUserHeader = "X-Acting-User-Id";
+        public const string ActingUserHeader = PluginServiceAuth.ActingUserHeader;
 
-        /// <summary>Header carrying the plugin's shared key when Security:PluginApiKey is set
-        /// (knk-plugin config.yml api.auth type "apikey", header "X-API-Key").</summary>
-        public const string PluginApiKeyHeader = "X-API-Key";
+        /// <summary>Header carrying the plugin's shared key, Security:PluginApiKey (knk-plugin
+        /// config.yml api.auth type "apikey", header "X-API-Key").</summary>
+        public const string PluginApiKeyHeader = PluginServiceAuth.ApiKeyHeader;
 
         /// <summary>
-        /// Who an audited change is made by. The caller's own JWT identity when there is one (a
-        /// logged-in web user can never act as someone else). Otherwise the staff member named in
-        /// the X-Acting-User-Id header: the plugin calls anonymously and names the in-game admin
-        /// there, and until this was read every in-game staff action was logged as system (null).
-        /// When Security:PluginApiKey is configured, the header only counts on a request carrying
-        /// that key, so an anonymous caller can't attribute changes to someone else.
+        /// Who an audited change is made by (KnkCaller.ActorUserId): the caller's own JWT identity
+        /// when there is one (a logged-in web user can never act as someone else), otherwise the
+        /// staff member knk-plugin names in X-Acting-User-Id — honoured only on a request that
+        /// carries the plugin's key, so nobody else can attribute changes to someone.
         /// </summary>
-        private int? GetActorUserId()
-        {
-            var httpContext = HttpContext;
-            if (httpContext == null)
-            {
-                return null;
-            }
-
-            var fromToken = GetUserIdFromClaims(httpContext.User);
-            if (fromToken.HasValue || httpContext.User?.Identity?.IsAuthenticated == true)
-            {
-                return fromToken;
-            }
-
-            if (!int.TryParse(httpContext.Request.Headers[ActingUserHeader].ToString(), out var actingUserId) || actingUserId <= 0)
-            {
-                return null;
-            }
-
-            var configuration = httpContext.RequestServices?.GetService(typeof(IConfiguration)) as IConfiguration;
-            var requiredKey = configuration?["Security:PluginApiKey"];
-            if (!string.IsNullOrEmpty(requiredKey))
-            {
-                var sentKey = httpContext.Request.Headers[PluginApiKeyHeader].ToString();
-                if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(sentKey), Encoding.UTF8.GetBytes(requiredKey)))
-                {
-                    return null;
-                }
-            }
-
-            return actingUserId;
-        }
+        private int? GetActorUserId() => HttpContext?.GetKnkCaller().ActorUserId;
 
         private int? GetUserIdFromClaims(ClaimsPrincipal principal)
         {

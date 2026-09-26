@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Attributes;
 
 namespace KnKWebAPI.Controllers
 {
@@ -34,6 +35,9 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        // Group definitions carry nodes and reward multipliers, so editing them is as strong as
+        // granting nodes directly (knk.admin.user.perm) — no longer anonymous (KNG-22).
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] PermissionGroupDto dto)
         {
@@ -49,6 +53,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] PermissionGroupDto dto)
         {
@@ -68,6 +73,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

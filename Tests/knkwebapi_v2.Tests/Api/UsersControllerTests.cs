@@ -547,14 +547,19 @@ public class UsersControllerTests
         Assert.Equal(Gender.Female, dto.Gender);
     }
 
-    #region Acting user (plugin X-Acting-User-Id header)
+    #region Acting user (plugin X-Acting-User-Id header) and balance nodes (KNG-22)
 
-    private void SetRequest(ClaimsPrincipal? user = null, string? actingUserId = null, string? apiKey = null, string? configuredKey = null)
+    private void SetRequest(ClaimsPrincipal? user = null, string? actingUserId = null, string? apiKey = null, string? configuredKey = null,
+        bool development = false, bool allowUnauthenticated = false)
     {
         var configuration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
         configuration.Setup(c => c["Security:PluginApiKey"]).Returns(configuredKey);
+        configuration.Setup(c => c["Security:AllowUnauthenticatedPluginCalls"]).Returns(allowUnauthenticated ? "true" : null);
+        var environment = new Mock<Microsoft.Extensions.Hosting.IHostEnvironment>();
+        environment.Setup(e => e.EnvironmentName).Returns(development ? "Development" : "Production");
         var services = new Mock<IServiceProvider>();
         services.Setup(s => s.GetService(typeof(Microsoft.Extensions.Configuration.IConfiguration))).Returns(configuration.Object);
+        services.Setup(s => s.GetService(typeof(Microsoft.Extensions.Hosting.IHostEnvironment))).Returns(environment.Object);
 
         var httpContext = new DefaultHttpContext { RequestServices = services.Object };
         if (user != null) httpContext.User = user;
@@ -567,18 +572,45 @@ public class UsersControllerTests
             .ReturnsAsync(new BalanceAdjustmentResultDto());
     }
 
-    private Task AdjustCoins() =>
+    private static ClaimsPrincipal LoggedIn(int userId) =>
+        new(new ClaimsIdentity(new[] { new Claim("uid", userId.ToString()) }, "Bearer"));
+
+    private void Holds(int userId, string node, bool granted) =>
+        _mockPermissionResolutionService.Setup(p => p.CheckAsync(userId, node))
+            .ReturnsAsync(new PermissionCheckResponseDto
+            {
+                UserId = userId,
+                Node = node,
+                Result = granted ? PermissionResolutionResult.Granted : PermissionResolutionResult.Denied
+            });
+
+    private Task<IActionResult> AdjustCoins() =>
         _controller.AdjustBalances(7, new AdjustBalancesDto { CoinsDelta = 500, Reason = "event prize" });
 
     private void VerifyActor(int? actor) =>
         _mockUserService.Verify(s => s.AdjustBalancesAsync(7, 500, 0, 0, "event prize", It.IsAny<string?>(), actor, It.IsAny<bool>()), Times.Once);
 
+    private void VerifyNotAdjusted() =>
+        _mockUserService.Verify(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(),
+            It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<bool>()), Times.Never);
+
     [Fact]
-    public async Task AdjustBalances_AnonymousPluginCallWithActingUserHeader_RecordsThatStaffMember()
+    public async Task AdjustBalances_NoKeyConfigured_AnonymousCallIsRefused()
     {
-        // Regression: the plugin calls anonymously and names the in-game admin in this header,
-        // which the API never read - every in-game staff change was logged as system (null).
+        // KNG-22: before, an anonymous call with this header was trusted whenever the key was
+        // unset (the shipped default), so anyone could mint coins and blame a staff member.
         SetRequest(actingUserId: "42");
+
+        var result = await AdjustCoins();
+
+        Assert.IsType<UnauthorizedObjectResult>(result);
+        VerifyNotAdjusted();
+    }
+
+    [Fact]
+    public async Task AdjustBalances_NoKeyButDevelopmentOptOut_TrustsTheHeader()
+    {
+        SetRequest(actingUserId: "42", development: true, allowUnauthenticated: true);
 
         await AdjustCoins();
 
@@ -586,10 +618,19 @@ public class UsersControllerTests
     }
 
     [Fact]
+    public async Task AdjustBalances_OptOutOutsideDevelopment_IsIgnored()
+    {
+        SetRequest(actingUserId: "42", development: false, allowUnauthenticated: true);
+
+        Assert.IsType<UnauthorizedObjectResult>(await AdjustCoins());
+        VerifyNotAdjusted();
+    }
+
+    [Fact]
     public async Task AdjustBalances_LoggedInCaller_IsTheActorEvenIfTheHeaderNamesSomeoneElse()
     {
-        var identity = new ClaimsIdentity(new[] { new Claim("uid", "5") }, "Bearer");
-        SetRequest(user: new ClaimsPrincipal(identity), actingUserId: "42");
+        Holds(5, "knk.admin.user.coins", granted: true);
+        SetRequest(user: LoggedIn(5), actingUserId: "42", apiKey: "secret", configuredKey: "secret");
 
         await AdjustCoins();
 
@@ -597,13 +638,37 @@ public class UsersControllerTests
     }
 
     [Fact]
-    public async Task AdjustBalances_PluginKeyConfiguredButMissing_IgnoresTheHeader()
+    public async Task AdjustBalances_LoggedInWithoutTheCoinsNode_IsForbidden()
+    {
+        Holds(5, "knk.admin.user.coins", granted: false);
+        SetRequest(user: LoggedIn(5));
+
+        var result = await AdjustCoins();
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<ObjectResult>(result).StatusCode);
+        VerifyNotAdjusted();
+    }
+
+    [Fact]
+    public async Task AdjustBalances_LoggedIn_NeedsTheNodeOfEveryChangedBalance()
+    {
+        Holds(5, "knk.admin.user.coins", granted: true);
+        Holds(5, "knk.admin.user.gems", granted: false);
+        SetRequest(user: LoggedIn(5));
+
+        var result = await _controller.AdjustBalances(7, new AdjustBalancesDto { CoinsDelta = 1, GemsDelta = 1, Reason = "x" });
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<ObjectResult>(result).StatusCode);
+        VerifyNotAdjusted();
+    }
+
+    [Fact]
+    public async Task AdjustBalances_PluginKeyConfiguredButMissing_IsRefused()
     {
         SetRequest(actingUserId: "42", configuredKey: "secret");
 
-        await AdjustCoins();
-
-        VerifyActor(null);
+        Assert.IsType<UnauthorizedObjectResult>(await AdjustCoins());
+        VerifyNotAdjusted();
     }
 
     [Fact]
@@ -617,15 +682,47 @@ public class UsersControllerTests
     }
 
     [Fact]
-    public async Task AdjustBalances_WrongPluginKeyOrBadHeader_IgnoresTheHeader()
+    public async Task AdjustBalances_WrongPluginKey_IsRefused()
     {
         SetRequest(actingUserId: "42", apiKey: "guess", configuredKey: "secret");
-        await AdjustCoins();
-        VerifyActor(null);
 
-        SetRequest(actingUserId: "not-a-number");
+        Assert.IsType<UnauthorizedObjectResult>(await AdjustCoins());
+        VerifyNotAdjusted();
+    }
+
+    [Fact]
+    public async Task AdjustBalances_PluginKeyWithoutUsableHeader_IsSystem()
+    {
+        SetRequest(actingUserId: "not-a-number", apiKey: "secret", configuredKey: "secret");
+
         await AdjustCoins();
-        _mockUserService.Verify(s => s.AdjustBalancesAsync(7, 500, 0, 0, "event prize", It.IsAny<string?>(), null, It.IsAny<bool>()), Times.Exactly(2));
+
+        VerifyActor(null);
+    }
+
+    [Fact]
+    public async Task AdjustBalances_CapExceeded_Returns400WithItsOwnCode()
+    {
+        SetRequest(apiKey: "secret", configuredKey: "secret");
+        _mockUserService.Setup(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(),
+                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<bool>()))
+            .ThrowsAsync(new BalanceCapExceededException("coins", 999_999_000, 5_000, BalanceLimits.MaxCoins));
+
+        var result = Assert.IsType<BadRequestObjectResult>(await AdjustCoins());
+
+        Assert.Contains("BalanceCapExceeded", System.Text.Json.JsonSerializer.Serialize(result.Value));
+    }
+
+    [Fact]
+    public async Task GenerateLinkCode_ForAnotherUserId_WithoutThePluginKey_IsRefused()
+    {
+        // A link code lets its holder set the account's email and password (link-account).
+        SetRequest(configuredKey: "secret");
+
+        var result = await _controller.GenerateLinkCode(new GenerateLinkCodeRequestDto { UserId = 1 });
+
+        Assert.IsType<UnauthorizedObjectResult>(result);
+        _mockUserService.Verify(s => s.GenerateLinkCodeAsync(It.IsAny<int?>()), Times.Never);
     }
 
     #endregion
