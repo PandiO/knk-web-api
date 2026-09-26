@@ -63,6 +63,7 @@ public class MenuTemplateContentSeedTests
         MenuTemplateSeed.UserManagerEditMenuKey,
         MenuTemplateSeed.UserManagerTitlesMenuKey,
         MenuTemplateSeed.UserManagerGroupsMenuKey,
+        MenuTemplateSeed.DiscoveriesMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
@@ -109,6 +110,7 @@ public class MenuTemplateContentSeedTests
             [12] = MenuTemplateSeed.SiegeOverviewMenuKey,
             [14] = MenuTemplateSeed.ItemsCatalogMenuKey,
             [16] = MenuTemplateSeed.PremiumTiersMenuKey,
+            [20] = MenuTemplateSeed.DiscoveriesMenuKey,
             [22] = MenuTemplateSeed.UserManagerMenuKey,
         };
         foreach (var (slot, target) in expectedTargets)
