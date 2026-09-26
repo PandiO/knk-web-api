@@ -42,6 +42,13 @@ public class LootboxRuntimeControllersAuthTests
         new object?[] { typeof(LootboxSpawnAreasController), nameof(LootboxSpawnAreasController.CreateInGame), "plugin" },
         new object?[] { typeof(LootboxSpawnAreasController), nameof(LootboxSpawnAreasController.DeleteInGame), "plugin" },
         new object?[] { typeof(LootboxTypesController), nameof(LootboxTypesController.GetOdds), "service-or-node" },
+        // Phase 5 token items.
+        new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Issue), "plugin" },
+        new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Redeem), "plugin" },
+        new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Undelivered), "plugin" },
+        new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Delivered), "plugin" },
+        new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Revoke), "service-or-node" },
+        new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Search), "web" },
     };
 
     [Theory]
@@ -73,13 +80,33 @@ public class LootboxRuntimeControllersAuthTests
     public void EveryRuntimeAction_IsListed()
     {
         var listed = Routes().Select(r => ((Type)r[0]!, (string)r[1]!)).ToHashSet();
-        foreach (var controller in new[] { typeof(LootboxSpawnsController), typeof(LootboxClaimsController) })
+        foreach (var controller in new[] { typeof(LootboxSpawnsController), typeof(LootboxClaimsController), typeof(LootboxTokensController) })
         {
             foreach (var action in controller.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
                 listed.Should().Contain((controller, action.Name));
             }
         }
+    }
+
+    [Fact]
+    public void TokenGrantRules_AreWebAdminOnly()
+    {
+        typeof(LootboxTokenGrantsController).GetCustomAttributes<RequirePermissionAttribute>()
+            .Select(a => (string)a.Arguments![0]).Should().Equal(StaffPermissions.ManageLootboxes);
+    }
+
+    [Fact]
+    public async Task Redeem_MapsTheDeadTokenCodes()
+    {
+        var service = new Mock<ILootboxRuntimeService>();
+        var token = Guid.NewGuid();
+        var request = new LootboxTokenRedeemRequestDto { UserId = 1, IdempotencyKey = "k" };
+        service.Setup(s => s.RedeemTokenAsync(token, request)).ThrowsAsync(new LootboxConflictException("AlreadyRedeemed", "opened"));
+        var controller = new LootboxTokensController(service.Object) { ControllerContext = new ControllerContext { HttpContext = Http("secret") } };
+
+        var conflict = (await controller.Redeem(token, request)).Should().BeOfType<ConflictObjectResult>().Subject;
+        Prop(conflict.Value, "code").Should().Be("AlreadyRedeemed");
     }
 
     private static HttpContext Http(string? sentKey)
