@@ -245,7 +245,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
                 }
 
                 var property = current.GetType().GetProperty(part,
-                    System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public);
+                    System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
                 if (property == null)
                 {

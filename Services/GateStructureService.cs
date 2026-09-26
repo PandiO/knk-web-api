@@ -103,6 +103,13 @@ namespace knkwebapi_v2.Services
             if (existing == null)
                 throw new KeyNotFoundException($"GateStructure with id {id} not found.");
 
+            // Siege scenarios/objectives/match snapshots reference gates with Restrict
+            // (docs/specs/siege-minigame/DESIGN.md §3.7) - refuse with a readable 409 instead of the
+            // FK error.
+            if (await _repo.IsReferencedBySiegeAsync(id))
+                throw new InvalidOperationException(
+                    "This gate is used by a siege scenario (selected gate or objective). Remove it there before deleting it.");
+
             // GateDoors (and their block snapshots) cascade-delete at the DB level.
             await _repo.DeleteGateStructureAsync(id);
         }

@@ -685,102 +685,23 @@ namespace knkwebapi_v2.Services
             }
 
             // Resolved before the mutation so a resulting title change can be detected, and so the
-            // consolidation loop below has every bracket to walk between old and new XP.
+            // consolidation in TitleProgression has every bracket to walk between old and new XP.
             var originalExperience = user.ExperiencePoints;
             var originalCoins = user.Coins;
             var originalGems = user.Gems;
             var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
-            TitleBracket? previousBracket = brackets != null && brackets.Count > 0
-                ? (brackets.LastOrDefault(b => b.MinExperience <= originalExperience) ?? brackets[0])
-                : null;
 
             user.Coins = newCoins;
             user.Gems = newGems;
             user.ExperiencePoints = newExperience;
 
-            TitleChangeResultDto? titleChange = null;
-
-            // Consolidate every bracket crossed by this single adjustment into one grant + one
-            // reported change, instead of firing once per tier the way v1's TitleChangeEvents
-            // loop did (setPromoteLoop/setDemoteLoop) — a developer-confirmed behavior NOT to
-            // repeat. ExpBonus can itself push into a further bracket, so this loops until
-            // resolution stabilizes, mirroring v1's cascading re-check but accumulating instead
-            // of firing per-iteration effects.
-            if (previousBracket != null && brackets != null)
-            {
-                var direction = newExperience > originalExperience ? "promotion" : "demotion";
-                var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
-
-                if (currentBracket.Id != previousBracket.Id)
-                {
-                    var crossed = new List<TitleBracket>();
-                    int coinBonusTotal = 0, gemBonusTotal = 0, expBonusTotal = 0;
-                    int coinBonusBase = 0, gemBonusBase = 0, expBonusBase = 0;
-                    var coinMultipliers = new List<RewardMultiplierDto>();
-                    var gemMultipliers = new List<RewardMultiplierDto>();
-                    var expMultipliers = new List<RewardMultiplierDto>();
-
-                    if (direction == "promotion")
-                    {
-                        // KNG-16: each bonus is scaled by the player's personal x rank multiplier
-                        // for that currency - coins by the salary multipliers, gems and XP by their
-                        // own GemBonus/ExpBonus multipliers. No global multiplier applies.
-                        var ranks = await _membershipService.GetActiveRankMultipliersAsync(userId) ?? RankMultipliersDto.Neutral;
-                        var coinMultiplier = user.PersonalSalaryMultiplier * ranks.Salary;
-                        var gemMultiplier = user.PersonalGemBonusMultiplier * ranks.GemBonus;
-                        var expMultiplier = user.PersonalExpBonusMultiplier * ranks.ExpBonus;
-                        coinMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalSalaryMultiplier));
-                        coinMultipliers.AddRange(ranks.SalaryBreakdown());
-                        gemMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalGemBonusMultiplier));
-                        gemMultipliers.AddRange(ranks.GemBonusBreakdown());
-                        expMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalExpBonusMultiplier));
-                        expMultipliers.AddRange(ranks.ExpBonusBreakdown());
-
-                        // Walk every bracket strictly above previousBracket up to (and possibly
-                        // past, if ExpBonus pushes further) currentBracket, accumulating rewards.
-                        var idx = brackets.FindIndex(b => b.Id == previousBracket.Id) + 1;
-                        while (idx < brackets.Count && brackets[idx].MinExperience <= user.ExperiencePoints)
-                        {
-                            var tier = brackets[idx];
-                            crossed.Add(tier);
-                            var expBonus = ScaleBonus(tier.ExpBonus, expMultiplier);
-                            coinBonusTotal += ScaleBonus(tier.CoinBonus, coinMultiplier);
-                            gemBonusTotal += ScaleBonus(tier.GemBonus, gemMultiplier);
-                            expBonusTotal += expBonus;
-                            coinBonusBase += tier.CoinBonus;
-                            gemBonusBase += tier.GemBonus;
-                            expBonusBase += tier.ExpBonus;
-                            user.ExperiencePoints += expBonus; // may unlock further brackets
-                            idx++;
-                        }
-                        user.Coins += coinBonusTotal;
-                        user.Gems += gemBonusTotal;
-                        currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
-                    }
-                    // Demotion never claws back currency (matches v1's userDemotion, which only
-                    // ever removed structural slots/skills — neither exists in v3), so no bonus
-                    // accumulation happens on the way down.
-
-                    titleChange = new TitleChangeResultDto
-                    {
-                        Direction = direction,
-                        FromTitleBracketId = previousBracket.Id,
-                        FromTitleName = previousBracket.NameFor(user.Gender),
-                        ToTitleBracketId = currentBracket.Id,
-                        ToTitleName = currentBracket.NameFor(user.Gender),
-                        CrossedTitles = crossed.Select(t => new TitleCrossingDto { TitleBracketId = t.Id, TitleName = t.NameFor(user.Gender) }).ToList(),
-                        CoinBonusGranted = coinBonusTotal,
-                        GemBonusGranted = gemBonusTotal,
-                        ExpBonusGranted = expBonusTotal,
-                        CoinBonusBase = coinBonusBase,
-                        GemBonusBase = gemBonusBase,
-                        ExpBonusBase = expBonusBase,
-                        CoinBonusMultipliers = coinMultipliers,
-                        GemBonusMultipliers = gemMultipliers,
-                        ExpBonusMultipliers = expMultipliers
-                    };
-                }
-            }
+            // Shared with siege match rewards (docs/specs/siege-minigame/DESIGN.md §7.6). KNG-16: the
+            // promotion bonuses are scaled by the personal x rank multipliers (loaded only when the
+            // gain actually crosses into a higher bracket).
+            var ranks = TitleProgression.CrossesUp(brackets, originalExperience, newExperience)
+                ? await _membershipService.GetActiveRankMultipliersAsync(userId) ?? RankMultipliersDto.Neutral
+                : RankMultipliersDto.Neutral;
+            TitleChangeResultDto? titleChange = TitleProgression.ApplyExperienceChange(user, originalExperience, brackets, ranks);
 
             await _repo.UpdateUserAsync(user);
 
@@ -837,11 +758,6 @@ namespace knkwebapi_v2.Services
                 TitleChange = titleChange
             };
         }
-
-        /// <summary>A title promotion bonus scaled by its multiplier, rounded to whole units and
-        /// never negative (a multiplier set negative by a direct DB edit pays nothing).</summary>
-        private static int ScaleBonus(int bonus, decimal multiplier) =>
-            Math.Max(0, (int)Math.Round(bonus * multiplier, MidpointRounding.AwayFromZero));
 
         // ===== NEW METHODS: LINK CODES =====
 

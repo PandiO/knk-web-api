@@ -1,7 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using knkwebapi_v2.Controllers;
+using KnKWebAPI.Controllers;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Mapping;
 using knkwebapi_v2.Models;
