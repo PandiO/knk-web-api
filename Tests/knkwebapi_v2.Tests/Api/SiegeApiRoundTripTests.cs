@@ -162,7 +162,7 @@ public class SiegeApiRoundTripTests : IAsyncLifetime
         var config = Assert.IsType<SiegeConfigurationDto>(Assert.IsType<OkObjectResult>((await Call(() => _configuration.Update(
             Body<UpdateSiegeConfigurationDto>("""{ "headshotMultiplier": 1.0, "nonMemberGateView": "PassThroughOnly" }""")))).Result).Value);
         Assert.Equal(1.0, config.HeadshotMultiplier);
-        Assert.Equal(5, config.CaptureAttackBase);
+        Assert.Equal(10, config.CaptureAttackBase);
 
         // 11. DELETE /api/GateStructures/400 - refused while the scenario uses it
         var refused = Assert.IsType<ConflictObjectResult>(await Call(() => _gates.Delete(400)));

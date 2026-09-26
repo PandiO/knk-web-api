@@ -19,9 +19,12 @@ public class SiegeConfiguration
     public string Id { get; set; } = SingletonId;
 
     // ---- Capture step (§7.2): attack = A1 + (a−1)·A2, defend = D1 + (d−1)·D2 ----
-    public int CaptureAttackBase { get; set; } = 5;                          // A1
+    // Siege Phase 9: A1 and IV A2 carry the developer's playtest tuning (DESIGN §7.2 "Playtest
+    // tuning": A1 10, A2 2, IV A2 10, D 6/3/6) instead of the legacy 5/2/5, so a fresh DB starts
+    // tuned. An existing configuration row keeps its own values.
+    public int CaptureAttackBase { get; set; } = 10;                         // A1 (legacy 5)
     public int CaptureAttackPerExtra { get; set; } = 2;                      // A2
-    public int CaptureAttackPerExtraInstantVictory { get; set; } = 5;        // A2 on IV objectives
+    public int CaptureAttackPerExtraInstantVictory { get; set; } = 10;       // A2 on IV objectives (legacy 5)
     public int CaptureDefendBase { get; set; } = 6;                          // D1
     public int CaptureDefendPerExtra { get; set; } = 3;                      // D2
     public int CaptureDefendPerExtraInstantVictory { get; set; } = 6;        // D2 on IV objectives

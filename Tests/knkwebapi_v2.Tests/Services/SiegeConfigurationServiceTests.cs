@@ -35,7 +35,8 @@ public class SiegeConfigurationServiceTests
         _repo.Verify(r => r.AddAsync(It.IsAny<SiegeConfiguration>()), Times.Once);
         Assert.Equal("global", _stored!.Id);
         // §7.2 capture constants, §7.4 side-capture, §6.2 timeline, §6.6/6.7 combat, §9.4 drops, §8.5 view
-        Assert.Equal((5, 2, 5, 6, 3, 6), (dto.CaptureAttackBase, dto.CaptureAttackPerExtra, dto.CaptureAttackPerExtraInstantVictory,
+        // Phase 9: A1 and IV A2 are the playtest tuning (10), the rest the legacy values.
+        Assert.Equal((10, 2, 10, 6, 3, 6), (dto.CaptureAttackBase, dto.CaptureAttackPerExtra, dto.CaptureAttackPerExtraInstantVictory,
             dto.CaptureDefendBase, dto.CaptureDefendPerExtra, dto.CaptureDefendPerExtraInstantVictory));
         Assert.Equal(0.4, dto.SideCaptureReduction);
         Assert.Equal((30, 25, 15, 10), (dto.VoteCloseSecondsBeforeStart, dto.DrawSecondsBeforeStart, dto.HubSecondsBeforeStart, dto.TeamSplitSecondsBeforeStart));
@@ -66,7 +67,7 @@ public class SiegeConfigurationServiceTests
 
         Assert.Equal(1.0, dto.HeadshotMultiplier);
         Assert.Equal(SiegeNonMemberGateView.PassThroughOnly, dto.NonMemberGateView);
-        Assert.Equal(5, dto.CaptureAttackBase);          // untouched
+        Assert.Equal(10, dto.CaptureAttackBase);         // untouched
         Assert.Equal(new[] { 290, 60, 30, 15 }, dto.MatchmakingAnnouncementMarks);
         _repo.Verify(r => r.SaveAsync(_stored!), Times.Once);
     }

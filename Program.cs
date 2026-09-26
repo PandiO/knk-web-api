@@ -208,6 +208,10 @@ using (var scope = app.Services.CreateScope())
     var v1BlueprintSeedLogger = loggerFactory.CreateLogger("ItemBlueprintV1Seed");
     var enchantmentCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftEnchantmentCatalogService>();
     await knkwebapi_v2.Models.ItemBlueprintV1Seed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, v1BlueprintSeedLogger);
+
+    // Siege Phase 9: one disabled example lobby (create-only by key).
+    var siegeLobbySeedLogger = loggerFactory.CreateLogger("SiegeLobbySeed");
+    await knkwebapi_v2.Models.SiegeLobbySeed.SeedCanonicalAsync(dbContext, siegeLobbySeedLogger);
 }
 
 app.Run();
