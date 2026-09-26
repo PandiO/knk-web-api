@@ -685,12 +685,16 @@ namespace knkwebapi_v2.Controllers
         /// Audit one in-game staff teleport (docs/specs/teleport/DESIGN.md §3.10): knk-plugin's
         /// TeleportAuditor posts here after every /tp, /tp a b and /tphere, fire-and-forget.
         /// {id} is the player the entry is filed under (the visited player for "/tp &lt;player&gt;",
-        /// otherwise the moved one); the acting staff member comes from X-Acting-User-Id, see
-        /// GetActorUserId. Plugin endpoint without an auth attribute until KNG-22's service key.
+        /// otherwise the moved one); the acting staff member comes from X-Acting-User-Id, which only
+        /// counts with the plugin key (GetActorUserId = HttpContext.GetKnkCaller().ActorUserId). Game
+        /// server only.
         /// </summary>
         /// <response code="204">Recorded</response>
         /// <response code="400">Invalid body</response>
+        /// <response code="401">No valid plugin key</response>
+        /// <response code="403">Called by a web user</response>
         /// <response code="404">User {id} not found</response>
+        [RequirePluginService]
         [HttpPost("{id:int}/teleport-audit")]
         public async Task<IActionResult> RecordTeleportAudit(int id, [FromBody] TeleportAuditDto request)
         {
