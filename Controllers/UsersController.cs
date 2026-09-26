@@ -2,9 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
@@ -86,7 +89,7 @@ namespace knkwebapi_v2.Controllers
                     UserId = id,
                     PermissionGroupId = request.PermissionGroupId,
                     ExpiresAt = request.ExpiresAt
-                }, GetUserIdFromClaims(User));
+                }, GetActorUserId());
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
@@ -107,7 +110,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _membershipService.DeleteAsync(id, groupId, GetUserIdFromClaims(User));
+                await _membershipService.DeleteAsync(id, groupId, GetActorUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException ex)
@@ -136,7 +139,7 @@ namespace knkwebapi_v2.Controllers
                     Node = request.Node,
                     Value = request.Value,
                     ExpiresAt = request.ExpiresAt
-                }, GetUserIdFromClaims(User));
+                }, GetActorUserId());
                 return Ok(result);
             }
             catch (ArgumentException ex)
@@ -158,7 +161,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.UpdateActiveModeAsync(id, request.ActiveMode, GetUserIdFromClaims(User));
+                await _service.UpdateActiveModeAsync(id, request.ActiveMode, GetActorUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -517,7 +520,7 @@ namespace knkwebapi_v2.Controllers
             if (user == null) return BadRequest(new { error = "InvalidRequest", message = "User data is required" });
             try
             {
-                await _service.UpdateAsync(id, user, GetUserIdFromClaims(User));
+                await _service.UpdateAsync(id, user, GetActorUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -634,7 +637,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.UpdateActiveModeAsync(id, request.ActiveMode, GetUserIdFromClaims(User));
+                await _service.UpdateActiveModeAsync(id, request.ActiveMode, GetActorUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -690,7 +693,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.SetFrozenAsync(id, true, request?.Reason, GetUserIdFromClaims(User));
+                await _service.SetFrozenAsync(id, true, request?.Reason, GetActorUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -708,7 +711,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                await _service.SetFrozenAsync(id, false, null, GetUserIdFromClaims(User));
+                await _service.SetFrozenAsync(id, false, null, GetActorUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -766,7 +769,7 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                var result = await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetUserIdFromClaims(User), request.NotifyPlayer);
+                var result = await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetActorUserId(), request.NotifyPlayer);
                 return Ok(result);
             }
             catch (KeyNotFoundException)
@@ -1286,8 +1289,62 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        /// <summary>Header naming the in-game staff member a plugin request acts for (sent by
+        /// knk-plugin's UsersCommandApi.withActor).</summary>
+        public const string ActingUserHeader = "X-Acting-User-Id";
+
+        /// <summary>Header carrying the plugin's shared key when Security:PluginApiKey is set
+        /// (knk-plugin config.yml api.auth type "apikey", header "X-API-Key").</summary>
+        public const string PluginApiKeyHeader = "X-API-Key";
+
+        /// <summary>
+        /// Who an audited change is made by. The caller's own JWT identity when there is one (a
+        /// logged-in web user can never act as someone else). Otherwise the staff member named in
+        /// the X-Acting-User-Id header: the plugin calls anonymously and names the in-game admin
+        /// there, and until this was read every in-game staff action was logged as system (null).
+        /// When Security:PluginApiKey is configured, the header only counts on a request carrying
+        /// that key, so an anonymous caller can't attribute changes to someone else.
+        /// </summary>
+        private int? GetActorUserId()
+        {
+            var httpContext = HttpContext;
+            if (httpContext == null)
+            {
+                return null;
+            }
+
+            var fromToken = GetUserIdFromClaims(httpContext.User);
+            if (fromToken.HasValue || httpContext.User?.Identity?.IsAuthenticated == true)
+            {
+                return fromToken;
+            }
+
+            if (!int.TryParse(httpContext.Request.Headers[ActingUserHeader].ToString(), out var actingUserId) || actingUserId <= 0)
+            {
+                return null;
+            }
+
+            var configuration = httpContext.RequestServices?.GetService(typeof(IConfiguration)) as IConfiguration;
+            var requiredKey = configuration?["Security:PluginApiKey"];
+            if (!string.IsNullOrEmpty(requiredKey))
+            {
+                var sentKey = httpContext.Request.Headers[PluginApiKeyHeader].ToString();
+                if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(sentKey), Encoding.UTF8.GetBytes(requiredKey)))
+                {
+                    return null;
+                }
+            }
+
+            return actingUserId;
+        }
+
         private int? GetUserIdFromClaims(ClaimsPrincipal principal)
         {
+            if (principal == null)
+            {
+                return null;
+            }
+
             var userIdClaim = principal.FindFirst("uid")
                 ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)
                 ?? principal.FindFirst(ClaimTypes.NameIdentifier);
