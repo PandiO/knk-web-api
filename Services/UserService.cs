@@ -805,6 +805,25 @@ namespace knkwebapi_v2.Services
             };
         }
 
+        /// <inheritdoc/>
+        public async Task<TitleChangeResultDto?> ApplyTitleProgressionAsync(int userId, int previousExperience, string reason, string? metadata = null, int? actorUserId = null, bool notifyPlayer = true)
+        {
+            if (userId <= 0)
+            {
+                throw new ArgumentException("Invalid user ID.", nameof(userId));
+            }
+            var change = await _titleProgression.ApplyAsync(userId, previousExperience, actorUserId);
+            if (change != null && notifyPlayer)
+            {
+                var user = await _repo.GetByIdAsync(userId);
+                if (user != null)
+                {
+                    _notificationQueue?.Enqueue(userId, user.Uuid, user.Username, PlayerNotificationTypes.TitleChanged, change);
+                }
+            }
+            return change;
+        }
+
         private static string KeySuffix(Currency currency) => currency switch
         {
             Currency.Coins => "coins",

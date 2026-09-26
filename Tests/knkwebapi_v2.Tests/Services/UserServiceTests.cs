@@ -1174,5 +1174,26 @@ public class UserServiceTests
         Assert.Equal("title-bonus:1:2", bonus.Ctx.IdempotencyKey);
     }
 
+    [Fact]
+    public async Task ApplyTitleProgressionAsync_ForXpPostedElsewhere_PaysTheBonusWithoutReaddingXp()
+    {
+        // Discovery/siege post XP through the ledger themselves, then ask for progression.
+        var user = new User { Id = 1, Username = "player", Uuid = "uuid-1", ExperiencePoints = 150 };
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 100, CoinBonus = 10 }
+        });
+        var queue = new Mock<IPlayerNotificationQueue>();
+
+        var change = await CreateUserServiceWithQueue(queue.Object).ApplyTitleProgressionAsync(1, previousExperience: 50, reason: "discovery");
+
+        Assert.Equal(10, change!.CoinBonusGranted);
+        Assert.Equal((10, 150), (user.Coins, user.ExperiencePoints));
+        Assert.Equal("title-bonus:1:2", Assert.Single(_currency.Postings).Ctx.IdempotencyKey);
+        queue.Verify(q => q.Enqueue(1, "uuid-1", "player", PlayerNotificationTypes.TitleChanged, change), Times.Once);
+    }
+
     #endregion
 }
