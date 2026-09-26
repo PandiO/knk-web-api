@@ -101,6 +101,9 @@ public partial class KnKDbContext : DbContext
     // Private messages Phase 2 — ignore list (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §2)
     public virtual DbSet<UserIgnore> UserIgnores { get; set; } = null!;
 
+    // Private messages Phase 3 — server-side PM log (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §3)
+    public virtual DbSet<PrivateMessageLogEntry> PrivateMessageLogEntries { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -997,6 +1000,10 @@ public partial class KnKDbContext : DbContext
 
             entity.Property(e => e.Id)
                 .HasMaxLength(64);
+
+            // The existing "global" row gets 30 days, not 0 (which would delete every PM on the next run).
+            entity.Property(e => e.PrivateMessageRetentionDays)
+                .HasDefaultValue(AuditLogRetentionConfiguration.DefaultPrivateMessageRetentionDays);
         });
 
         modelBuilder.Entity<GameSettings>(entity =>
@@ -1361,6 +1368,29 @@ public partial class KnKDbContext : DbContext
 
             entity.HasIndex(e => new { e.UserId, e.IgnoredUserId }).IsUnique();
             entity.HasIndex(e => e.IgnoredUserId);
+        });
+
+        // PrivateMessageLogEntry — server-side PM log (docs/specs/private-messages/DESIGN.md §3.1).
+        // No FKs to users on purpose (see the model's summary).
+        modelBuilder.Entity<PrivateMessageLogEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("private_message_log_entries");
+
+            entity.Property(e => e.SenderName).IsRequired().HasMaxLength(PrivateMessageLogEntry.NameMaxLength);
+            entity.Property(e => e.RecipientName).IsRequired().HasMaxLength(PrivateMessageLogEntry.NameMaxLength);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(PrivateMessageLogEntry.ContentMaxLength);
+            entity.Property(e => e.Outcome)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(32);
+
+            entity.HasIndex(e => e.ClientMessageId).IsUnique();
+            // The staff read path filters by one participant and orders by SentAt descending;
+            // retention deletes by SentAt.
+            entity.HasIndex(e => new { e.SenderUserId, e.SentAt });
+            entity.HasIndex(e => new { e.RecipientUserId, e.SentAt });
+            entity.HasIndex(e => e.SentAt);
         });
 
         OnModelCreatingPartial(modelBuilder);

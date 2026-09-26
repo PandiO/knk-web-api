@@ -38,6 +38,10 @@ namespace knkwebapi_v2.Attributes
 
         /// <summary>Server-wide admin settings with no narrower node (audit-log retention).</summary>
         public const string ServerConfig = "knk.admin.config";
+
+        /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
+        /// owner group; every read is audited.</summary>
+        public const string ReadPrivateMessages = "knk.pmlog.read";
     }
 
     /// <summary>
