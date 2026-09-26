@@ -52,12 +52,54 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// <summary>True when the save failed on a unique index (idempotency key, reversal, public id).</summary>
         bool IsUniqueViolation(DbUpdateException exception);
 
-        /// <summary>Total the user sent to other players in <paramref name="currency"/> since
-        /// <paramref name="since"/> (transfer daily caps, currency Phase 3).</summary>
-        Task<long> SumSentSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default);
+        /// <summary>Each player transfer of <paramref name="currency"/> the user sent since
+        /// <paramref name="since"/>: when, and what the recipient got (fees excluded), oldest
+        /// first (transfer daily cap, cooldown and hourly limit, currency Phase 3). Call under the
+        /// sender's row lock so a concurrent transfer can't slip past the cap.</summary>
+        Task<List<(DateTime CreatedAt, long Amount)>> GetTransfersSentSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default);
 
-        /// <summary>When the user last sent a player transfer (cooldowns, currency Phase 3).</summary>
+        /// <summary>Total the user received from player transfers of <paramref name="currency"/> since <paramref name="since"/>.</summary>
+        Task<long> SumReceivedSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default);
+
+        /// <summary>When the user last sent a player transfer of any currency (cooldowns, currency Phase 3).</summary>
         Task<DateTime?> LastTransferAtAsync(int userId, CancellationToken ct = default);
+
+        /// <summary>A title bracket, untracked (the transfer policy's sender title gate).</summary>
+        Task<TitleBracket?> GetTitleBracketAsync(int id, CancellationToken ct = default);
+
+        // Pending transfers (currency Phase 3) are workflow rows, not ledger rows: their status
+        // moves Pending → Confirmed/Cancelled/Expired, so they are tracked and updated.
+
+        /// <summary>The pending transfer, tracked; null if none.</summary>
+        Task<CurrencyPendingTransfer?> FindPendingAsync(string publicId, CancellationToken ct = default);
+
+        /// <summary>The pending transfer created under this (scope-prefixed) key, tracked; null if none.</summary>
+        Task<CurrencyPendingTransfer?> FindPendingByKeyAsync(string idempotencyKey, CancellationToken ct = default);
+
+        /// <summary>The sender's transfers still in status Pending (expired or not), tracked.</summary>
+        Task<List<CurrencyPendingTransfer>> GetOpenPendingForSenderAsync(int senderUserId, CancellationToken ct = default);
+
+        /// <summary>Re-reads a tracked pending transfer (call under the sender's lock before deciding on it).</summary>
+        Task ReloadPendingAsync(CurrencyPendingTransfer pending, CancellationToken ct = default);
+
+        /// <summary>Username and Minecraft UUID per user id (users missing from the result don't exist).</summary>
+        Task<Dictionary<int, (string Username, string? Uuid)>> GetIdentitiesAsync(IEnumerable<int> userIds, CancellationToken ct = default);
+
+        Task AddPendingAsync(CurrencyPendingTransfer pending, CancellationToken ct = default);
+
+        /// <summary>Saves status changes made to tracked pending transfers.</summary>
+        Task SavePendingChangesAsync(CancellationToken ct = default);
+
+        /// <summary>Stops tracking a pending transfer whose insert failed.</summary>
+        void DiscardPending(CurrencyPendingTransfer pending);
+
+        /// <summary>
+        /// Active, non-deleted, not transfer-locked users with a positive balance of
+        /// <paramref name="currency"/>, richest first (ties by id), leaving out holders of an
+        /// exact, unexpired grant of <paramref name="exemptNode"/> (directly or through a group).
+        /// </summary>
+        Task<(int TotalCount, List<LeaderboardEntryDto> Entries)> GetLeaderboardAsync(
+            Currency currency, string exemptNode, int skip, int take, CancellationToken ct = default);
 
         /// <summary>User legs matching the query, newest first by default (balance history, event log).</summary>
         Task<PagedResult<LedgerLineDto>> SearchLinesAsync(LedgerQuery query, CancellationToken ct = default);

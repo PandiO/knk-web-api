@@ -140,7 +140,10 @@ namespace knkwebapi_v2.DependencyInjection
 
             // Currency ledger (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phases 1-2)
             services.AddScoped<ICurrencyRepository, CurrencyRepository>();
-            services.AddScoped<ICurrencyService, CurrencyService>();
+            // One scoped CurrencyService per request behind both interfaces (Phase 3 transfers).
+            services.AddScoped<CurrencyService>();
+            services.AddScoped<ICurrencyService>(sp => sp.GetRequiredService<CurrencyService>());
+            services.AddScoped<ICurrencyTransferService>(sp => sp.GetRequiredService<CurrencyService>());
             services.AddScoped<ITitleProgressionService, TitleProgressionService>();
             services.AddScoped<CurrencyReconciler>();
 

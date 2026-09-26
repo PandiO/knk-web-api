@@ -118,6 +118,15 @@ namespace knkwebapi_v2.Services
     public sealed record AdminAdjustRequest(int UserId, Currency Currency, CurrencyOperation Mode, long Amount, long? ExpectedCurrent = null);
 
     /// <summary>
+    /// A player-to-player transfer (currency DESIGN.md §3.5, IMPLEMENTATION_PLAN.md Phase 3):
+    /// <paramref name="Amount"/> of <paramref name="Currency"/> from the sender to the recipient,
+    /// reason PLAYER_TRANSFER. <paramref name="BypassLimits"/> is knk.pay.bypass (see
+    /// TransferPolicyInput.BypassLimits).
+    /// </summary>
+    public sealed record TransferRequest(int SenderUserId, int RecipientUserId, Currency Currency, long Amount,
+        string? Note = null, bool BypassLimits = false);
+
+    /// <summary>
     /// Reversal options (DESIGN.md D11). A reversal never takes a balance below zero: with
     /// <paramref name="AllowPartial"/> false it is refused (ReversalWouldGoNegative); with true it
     /// reverses what is there and records the shortfall in the reversal's metadata.

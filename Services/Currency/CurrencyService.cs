@@ -26,7 +26,7 @@ namespace knkwebapi_v2.Services
     /// the loser replays the winner's committed row.
     /// </para>
     /// </summary>
-    public class CurrencyService : ICurrencyService
+    public partial class CurrencyService : ICurrencyService
     {
         private static readonly Regex KeyPattern = new("^[A-Za-z0-9:_.\\-]{1,100}$", RegexOptions.Compiled);
         private const int MaxMetadataLength = 16_000;
@@ -300,6 +300,10 @@ namespace knkwebapi_v2.Services
             public List<CurrencyEntry> Entries { get; init; } = new();
             public long? ReversesTransactionId { get; set; }
             public string? MetadataJson { get; set; }
+
+            /// <summary>Player transfers: the sender and recipient (denormalized on the header).</summary>
+            public int? FromUserId { get; set; }
+            public int? ToUserId { get; set; }
         }
 
         private async Task<PostingResult> ExecuteAsync(
@@ -308,7 +312,8 @@ namespace knkwebapi_v2.Services
             IEnumerable<int> userIds,
             string canonicalRequest,
             Func<Dictionary<int, User>, CancellationToken, Task<PostingDraft>> build,
-            CancellationToken ct)
+            CancellationToken ct,
+            Func<CurrencyTransaction, Task>? afterPost = null)
         {
             var ids = userIds.Distinct().OrderBy(id => id).ToList();
             var requestHash = Sha256(canonicalRequest);
@@ -351,10 +356,17 @@ namespace knkwebapi_v2.Services
                         MetadataJson = draft.MetadataJson ?? ctx.MetadataJson,
                         CorrelationId = ctx.CorrelationId,
                         ReversesTransactionId = draft.ReversesTransactionId,
+                        FromUserId = draft.FromUserId,
+                        ToUserId = draft.ToUserId,
                         CreatedAt = DateTime.UtcNow,
                         Entries = draft.Entries
                     };
                     await _repo.AddTransactionAsync(pending, ct);
+                    if (afterPost != null)
+                    {
+                        // Same transaction and locks: e.g. a pending transfer marked confirmed.
+                        await afterPost(pending);
+                    }
                     result = ToResult(pending, users.Values.Select(ToBalances).ToDictionary(b => b.UserId), replayed: false);
 
                     _logger.LogInformation("Ledger {PublicId}: {Reason} ({Kind}) for {Users}, key {Scope}/{Key}",

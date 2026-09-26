@@ -52,7 +52,19 @@ namespace knkwebapi_v2.Services
 
         /// <summary>The request itself is malformed: unknown or misused reason code, missing
         /// initiator or reason text, duplicate legs, invalid metadata JSON, bad key.</summary>
-        InvalidRequest
+        InvalidRequest,
+
+        /// <summary>No pending transfer with that id belongs to this sender (currency Phase 3).</summary>
+        PendingTransferNotFound,
+
+        /// <summary>The pending transfer's confirmation window has passed; send it again.</summary>
+        PendingTransferExpired,
+
+        /// <summary>The pending transfer was already cancelled (or confirmed, for a cancel).</summary>
+        PendingTransferClosed,
+
+        /// <summary>The recipient has received their rolling 24 h limit of this currency.</summary>
+        RecipientDailyCapExceeded
     }
 
     /// <summary>
