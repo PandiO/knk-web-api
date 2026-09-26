@@ -36,6 +36,31 @@ namespace knkwebapi_v2.Repositories
                 .FirstOrDefaultAsync(m => m.UserId == userId && m.PermissionGroupId == permissionGroupId);
         }
 
+        public async Task<List<UserPermissionGroup>> GetRanksExpiredBetweenAsync(DateTime after, DateTime asOf, string defaultGroupName)
+        {
+            return await _context.UserPermissionGroups
+                .Include(m => m.PermissionGroup)
+                .Include(m => m.User)
+                .Where(m => m.PermissionGroup.IsPremiumTier || m.PermissionGroup.Name == defaultGroupName)
+                .Where(m => m.ExpiresAt != null && m.ExpiresAt > after && m.ExpiresAt <= asOf)
+                .ToListAsync();
+        }
+
+        public async Task<List<User>> GetUsersLeftWithoutRankAsync(DateTime asOf, string defaultGroupName)
+        {
+            var expiredRankHolders = _context.UserPermissionGroups
+                .Where(m => m.PermissionGroup.IsPremiumTier || m.PermissionGroup.Name == defaultGroupName)
+                .Where(m => m.ExpiresAt != null && m.ExpiresAt <= asOf)
+                .Select(m => m.UserId);
+            var activeRankHolders = _context.UserPermissionGroups
+                .Where(m => m.PermissionGroup.IsPremiumTier || m.PermissionGroup.Name == defaultGroupName)
+                .Where(m => m.ExpiresAt == null || m.ExpiresAt > asOf)
+                .Select(m => m.UserId);
+            return await _context.Users
+                .Where(u => expiredRankHolders.Contains(u.Id) && !activeRankHolders.Contains(u.Id))
+                .ToListAsync();
+        }
+
         public async Task AddAsync(UserPermissionGroup membership)
         {
             await _context.UserPermissionGroups.AddAsync(membership);

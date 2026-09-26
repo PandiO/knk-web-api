@@ -29,5 +29,13 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <summary>Products of SalaryMultiplier, GemBonusMultiplier and ExpBonusMultiplier across
         /// the user's currently-active memberships (1.0 each if none).</summary>
         Task<RankMultipliersDto> GetActiveRankMultipliersAsync(int userId);
+
+        /// <summary>
+        /// Background sweep (RankExpirySweepService): puts users whose temporary rank expired back
+        /// on Default, and queues a RankChanged notification for everyone whose rank expired in
+        /// (<paramref name="after"/>, <paramref name="asOf"/>] or who was put back on Default.
+        /// </summary>
+        /// <returns>How many users were notified.</returns>
+        Task<int> SweepExpiredRanksAsync(DateTime after, DateTime asOf);
     }
 }

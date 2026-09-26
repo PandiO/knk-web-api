@@ -13,18 +13,33 @@ namespace knkwebapi_v2.Services
         private readonly IUserRepository _userRepo;
         private readonly IPermissionGroupRepository _groupRepo;
         private readonly IAuditLogService _auditLogService;
+        private readonly IPlayerNotificationQueue? _notificationQueue;
 
         public UserPermissionGroupService(
             IUserPermissionGroupRepository repo,
             IUserRepository userRepo,
             IPermissionGroupRepository groupRepo,
-            IAuditLogService auditLogService)
+            IAuditLogService auditLogService,
+            IPlayerNotificationQueue? notificationQueue = null)
         {
             _repo = repo;
             _userRepo = userRepo;
             _groupRepo = groupRepo;
             _auditLogService = auditLogService;
+            _notificationQueue = notificationQueue;
         }
+
+        /// <summary>
+        /// A player's rank: the free "Default" group or a premium tier (Noble, Royal, Dragon Blood),
+        /// which upgrade from it. A user holds at most one active rank - see UpsertAsync/DeleteAsync
+        /// and docs/specs/user-features/RANK_DISPLAY.md. Default is matched by name, like
+        /// UserService.DefaultGroupName.
+        /// </summary>
+        public static bool IsRank(PermissionGroup? group) =>
+            group != null && (group.IsPremiumTier || IsDefault(group));
+
+        private static bool IsDefault(PermissionGroup group) =>
+            !group.IsPremiumTier && string.Equals(group.Name, UserService.DefaultGroupName, StringComparison.OrdinalIgnoreCase);
 
         public async Task<List<UserPermissionGroupDto>> GetByUserAsync(int userId)
         {
@@ -49,7 +64,8 @@ namespace knkwebapi_v2.Services
             if (expiresAt.HasValue && expiresAt.Value <= now)
                 throw new ArgumentException("expiresAt must be in the future (omit it for a permanent membership).", nameof(dto));
 
-            if (await _userRepo.GetByIdAsync(dto.UserId) == null)
+            var user = await _userRepo.GetByIdAsync(dto.UserId);
+            if (user == null)
                 throw new KeyNotFoundException($"User with id {dto.UserId} not found.");
 
             var group = await _groupRepo.GetByIdAsync(dto.PermissionGroupId);
@@ -71,6 +87,7 @@ namespace knkwebapi_v2.Services
                     updatedExisting = true
                 }));
 
+                await AfterMembershipChangeAsync(user, group, now, actorUserId);
                 return ToDto(existing, now);
             }
 
@@ -91,7 +108,91 @@ namespace knkwebapi_v2.Services
                 updatedExisting = false
             }));
 
+            await AfterMembershipChangeAsync(user, group, now, actorUserId);
             return ToDto(membership, now);
+        }
+
+        /// <summary>
+        /// One rank per user: granting a rank removes every other active rank they hold (premium
+        /// tiers and Default alike) - an upgrade from Default, a switch between tiers, or a drop
+        /// back to Default. Expired rows are history and are left alone. Then tells the plugin.
+        /// </summary>
+        private async Task AfterMembershipChangeAsync(User user, PermissionGroup group, DateTime now, int? actorUserId)
+        {
+            if (IsRank(group))
+            {
+                var others = (await _repo.GetByUserAsync(user.Id))
+                    .Where(m => m.PermissionGroupId != group.Id && IsRank(m.PermissionGroup))
+                    .Where(m => m.ExpiresAt == null || m.ExpiresAt > now)
+                    .ToList();
+                foreach (var other in others)
+                {
+                    var otherName = other.PermissionGroup?.Name;
+                    await _repo.DeleteAsync(other);
+                    await _auditLogService.RecordAsync(actorUserId, user.Id, AuditAction.GroupRemoved, JsonSerializer.Serialize(new
+                    {
+                        permissionGroupId = other.PermissionGroupId,
+                        groupName = otherName,
+                        replacedBy = group.Name
+                    }));
+                }
+            }
+            NotifyRankChanged(user);
+        }
+
+        /// <summary>
+        /// Puts a user who holds no active rank back on Default (permanent). No-op when they still
+        /// hold one, or when no "Default" group exists.
+        /// </summary>
+        private async Task EnsureDefaultRankAsync(User user, DateTime now, int? actorUserId)
+        {
+            var memberships = await _repo.GetByUserAsync(user.Id);
+            if (memberships.Any(m => IsRank(m.PermissionGroup) && (m.ExpiresAt == null || m.ExpiresAt > now)))
+                return;
+            var defaultGroup = await _groupRepo.GetByNameAsync(UserService.DefaultGroupName);
+            if (defaultGroup == null)
+                return;
+
+            var existing = memberships.FirstOrDefault(m => m.PermissionGroupId == defaultGroup.Id);
+            if (existing != null)
+            {
+                existing.ExpiresAt = null; // an expired Default row: make it permanent again
+                await _repo.UpdateAsync(existing);
+            }
+            else
+            {
+                await _repo.AddAsync(new UserPermissionGroup { UserId = user.Id, PermissionGroupId = defaultGroup.Id, ExpiresAt = null });
+            }
+            await _auditLogService.RecordAsync(actorUserId, user.Id, AuditAction.GroupAssigned, JsonSerializer.Serialize(new
+            {
+                permissionGroupId = defaultGroup.Id,
+                groupName = defaultGroup.Name,
+                expiresAt = (DateTime?)null,
+                reason = "back to the free rank"
+            }));
+        }
+
+        private void NotifyRankChanged(User user)
+        {
+            _notificationQueue?.Enqueue(user.Id, user.Uuid, user.Username, PlayerNotificationTypes.RankChanged, null);
+        }
+
+        public async Task<int> SweepExpiredRanksAsync(DateTime after, DateTime asOf)
+        {
+            var notify = new Dictionary<int, User>();
+            foreach (var expired in await _repo.GetRanksExpiredBetweenAsync(after, asOf, UserService.DefaultGroupName))
+            {
+                if (expired.User != null)
+                    notify[expired.UserId] = expired.User;
+            }
+            foreach (var user in await _repo.GetUsersLeftWithoutRankAsync(asOf, UserService.DefaultGroupName))
+            {
+                await EnsureDefaultRankAsync(user, asOf, null);
+                notify[user.Id] = user;
+            }
+            foreach (var user in notify.Values)
+                NotifyRankChanged(user);
+            return notify.Count;
         }
 
         public async Task DeleteAsync(int userId, int permissionGroupId, int? actorUserId = null)
@@ -100,6 +201,7 @@ namespace knkwebapi_v2.Services
             if (existing == null)
                 throw new KeyNotFoundException($"User {userId} is not a member of PermissionGroup {permissionGroupId}.");
             var groupName = existing.PermissionGroup?.Name;
+            var wasPaidRank = existing.PermissionGroup?.IsPremiumTier == true;
             await _repo.DeleteAsync(existing);
 
             await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.GroupRemoved, JsonSerializer.Serialize(new
@@ -107,6 +209,14 @@ namespace knkwebapi_v2.Services
                 permissionGroupId,
                 groupName
             }));
+
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user == null)
+                return;
+            // Removing a premium rank drops the user back to the free Default rank.
+            if (wasPaidRank)
+                await EnsureDefaultRankAsync(user, DateTime.UtcNow, actorUserId);
+            NotifyRankChanged(user);
         }
 
         public async Task<UserPermissionGroupDto?> GetActivePremiumTierAsync(int userId)
