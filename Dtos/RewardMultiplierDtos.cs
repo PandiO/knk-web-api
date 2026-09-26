@@ -110,4 +110,49 @@ namespace knkwebapi_v2.Dtos
                 .ToList()
         };
     }
+
+    /// <summary>
+    /// A player's multiplier for each currency, with the breakdown the plugin shows (KNG-16):
+    /// coins x personal salary x rank salary multipliers, gems and XP x their own personal and
+    /// rank GemBonus/ExpBonus multipliers. No global multiplier (that one is salary-only). Used for
+    /// title promotion bonuses and domain discovery rewards alike.
+    /// </summary>
+    public class CurrencyMultipliersDto
+    {
+        public decimal Coins { get; set; } = 1.0m;
+        public decimal Gems { get; set; } = 1.0m;
+        public decimal Exp { get; set; } = 1.0m;
+
+        /// <summary>Personal first, then one per active rank with its name and colors.</summary>
+        public List<RewardMultiplierDto> CoinBreakdown { get; set; } = new();
+        public List<RewardMultiplierDto> GemBreakdown { get; set; } = new();
+        public List<RewardMultiplierDto> ExpBreakdown { get; set; } = new();
+
+        public static CurrencyMultipliersDto For(User user, RankMultipliersDto? ranks)
+        {
+            ranks ??= RankMultipliersDto.Neutral;
+            return new CurrencyMultipliersDto
+            {
+                Coins = user.PersonalSalaryMultiplier * ranks.Salary,
+                Gems = user.PersonalGemBonusMultiplier * ranks.GemBonus,
+                Exp = user.PersonalExpBonusMultiplier * ranks.ExpBonus,
+                CoinBreakdown = new List<RewardMultiplierDto> { RewardMultiplierDto.Personal(user.PersonalSalaryMultiplier) }
+                    .Concat(ranks.SalaryBreakdown()).ToList(),
+                GemBreakdown = new List<RewardMultiplierDto> { RewardMultiplierDto.Personal(user.PersonalGemBonusMultiplier) }
+                    .Concat(ranks.GemBonusBreakdown()).ToList(),
+                ExpBreakdown = new List<RewardMultiplierDto> { RewardMultiplierDto.Personal(user.PersonalExpBonusMultiplier) }
+                    .Concat(ranks.ExpBonusBreakdown()).ToList()
+            };
+        }
+
+        /// <summary>An amount scaled by a multiplier, rounded to whole units (away from zero) and
+        /// never negative - a multiplier made negative by a direct DB edit pays nothing - nor above
+        /// int.MaxValue.</summary>
+        public static int Scale(int amount, decimal multiplier)
+        {
+            var scaled = Math.Round(amount * multiplier, MidpointRounding.AwayFromZero);
+            if (scaled <= 0) return 0;
+            return scaled >= int.MaxValue ? int.MaxValue : (int)scaled;
+        }
+    }
 }
