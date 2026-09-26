@@ -663,6 +663,10 @@ public static partial class MenuTemplateSeed
         // InventoryMenu content port (CONTENT_PORT_PLAN.md CP1-CP8) - see MenuTemplateSeed.Content.cs.
         foreach (var template in ContentTemplates())
             yield return template;
+
+        // Siege Phase 8b (siege-minigame MENU_TEMPLATES.md Part C) - see MenuTemplateSeed.Siege.cs.
+        foreach (var template in SiegeTemplates())
+            yield return template;
     }
 
     /// <summary>
