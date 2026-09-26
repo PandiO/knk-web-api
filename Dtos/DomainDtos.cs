@@ -4,7 +4,21 @@ using System.Text.Json.Serialization;
 
 namespace knkwebapi_v2.Dtos
 {
-    public class DomainDto
+    /// <summary>
+    /// The Domain warp settings (teleport DESIGN.md §3.7.1) as carried by the Domain/Town/District/
+    /// Structure DTOs. Applied by DomainTeleportSettings.Apply after
+    /// ITeleportDestinationService.ValidateSettingsAsync.
+    /// </summary>
+    public interface IDomainTeleportSettingsDto
+    {
+        bool? TeleportEnabled { get; set; }
+        int? TeleportPriceGems { get; set; }
+        int? TeleportMinTitleBracketId { get; set; }
+        int? TeleportMinPremiumGroupId { get; set; }
+        bool? TeleportRequiresDiscovery { get; set; }
+    }
+
+    public class DomainDto : IDomainTeleportSettingsDto
     {
         [JsonPropertyName("id")]
         public int? Id { get; set; }
@@ -22,6 +36,23 @@ namespace knkwebapi_v2.Dtos
         public string WgRegionId { get; set; } = null!;
         [JsonPropertyName("locationId")]
         public int? LocationId { get; set; }
+
+        // Warp destination settings (teleport DESIGN.md §3.7.1). On create/update a null
+        // teleportEnabled means "not on this form": all five are left as they are.
+        [JsonPropertyName("teleportEnabled")]
+        public bool? TeleportEnabled { get; set; }
+
+        [JsonPropertyName("teleportPriceGems")]
+        public int? TeleportPriceGems { get; set; }
+
+        [JsonPropertyName("teleportMinTitleBracketId")]
+        public int? TeleportMinTitleBracketId { get; set; }
+
+        [JsonPropertyName("teleportMinPremiumGroupId")]
+        public int? TeleportMinPremiumGroupId { get; set; }
+
+        [JsonPropertyName("teleportRequiresDiscovery")]
+        public bool? TeleportRequiresDiscovery { get; set; }
         [JsonPropertyName("parentDomainId")]
         public int? ParentDomainId { get; set; }
         [JsonPropertyName("parentDomain")]

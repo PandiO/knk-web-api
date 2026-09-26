@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace knkwebapi_v2.Dtos
 {
-    public class DistrictDto
+    public class DistrictDto : IDomainTeleportSettingsDto
     {
         [JsonPropertyName("id")]
         public int? Id { get; set; }
@@ -33,6 +33,23 @@ namespace knkwebapi_v2.Dtos
         // Optional embedded Location to allow cascading create/update
         [JsonPropertyName("location")]
         public LocationDto? Location { get; set; }
+
+        // Warp destination settings (teleport DESIGN.md §3.7.1). On create/update a null
+        // teleportEnabled means "not on this form": all five are left as they are.
+        [JsonPropertyName("teleportEnabled")]
+        public bool? TeleportEnabled { get; set; }
+
+        [JsonPropertyName("teleportPriceGems")]
+        public int? TeleportPriceGems { get; set; }
+
+        [JsonPropertyName("teleportMinTitleBracketId")]
+        public int? TeleportMinTitleBracketId { get; set; }
+
+        [JsonPropertyName("teleportMinPremiumGroupId")]
+        public int? TeleportMinPremiumGroupId { get; set; }
+
+        [JsonPropertyName("teleportRequiresDiscovery")]
+        public bool? TeleportRequiresDiscovery { get; set; }
 
         [JsonPropertyName("townId")]
         public int TownId { get; set; }

@@ -120,7 +120,20 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<Domain>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
-            entity.ToTable("domains");
+            // Warp price (teleport DESIGN.md §3.7.1): never negative, never above the gem cap.
+            entity.ToTable("domains", t =>
+                t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range",
+                    $"`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= {knkwebapi_v2.Services.BalanceLimits.MaxGems}"));
+
+            // Deleting the title bracket or premium group just drops the requirement.
+            entity.HasOne(d => d.TeleportMinTitleBracket)
+                .WithMany()
+                .HasForeignKey(d => d.TeleportMinTitleBracketId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(d => d.TeleportMinPremiumGroup)
+                .WithMany()
+                .HasForeignKey(d => d.TeleportMinPremiumGroupId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id
