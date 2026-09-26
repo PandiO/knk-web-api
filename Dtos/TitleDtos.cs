@@ -42,9 +42,13 @@ namespace knkwebapi_v2.Dtos
         public int? NextTitleMinExperience { get; set; }
     }
 
-    /// <summary>Read-only bracket row for pickers (TitleBracketsController) - e.g. the siege
-    /// scenario form's "minimum title" field. "name" is the male name, the form pickers'
-    /// display convention.</summary>
+    /// <summary>
+    /// One title bracket as listed by <c>TitleBracketsController</c> (<c>GET /api/TitleBrackets</c>
+    /// and its alias <c>GET /api/title-brackets</c>): the siege scenario form's "minimum title"
+    /// picker and the in-game Profile menu / Player manager title picker (InventoryMenu content port
+    /// CP3). Ordered by <see cref="MinExperience"/>. "name" is the male name, the form pickers'
+    /// display convention; the bonus fields are the one-time rewards for first reaching the bracket.
+    /// </summary>
     public class TitleBracketDto
     {
         [JsonPropertyName("id")]
@@ -61,6 +65,18 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("minExperience")]
         public int MinExperience { get; set; }
+
+        [JsonPropertyName("salary")]
+        public int Salary { get; set; }
+
+        [JsonPropertyName("coinBonus")]
+        public int CoinBonus { get; set; }
+
+        [JsonPropertyName("gemBonus")]
+        public int GemBonus { get; set; }
+
+        [JsonPropertyName("expBonus")]
+        public int ExpBonus { get; set; }
     }
 
     /// <summary>One title bracket crossed during a consolidated promotion/demotion

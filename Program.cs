@@ -203,6 +203,11 @@ using (var scope = app.Services.CreateScope())
     var kitSeedLogger = loggerFactory.CreateLogger("KitSeed");
     var materialCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftMaterialCatalogService>();
     await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, materialCatalog, kitSeedLogger);
+
+    // After KitSeed, so on a fresh DB the kit's own "Iron Sword"/"Arrow" rows win the shared names.
+    var v1BlueprintSeedLogger = loggerFactory.CreateLogger("ItemBlueprintV1Seed");
+    var enchantmentCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftEnchantmentCatalogService>();
+    await knkwebapi_v2.Models.ItemBlueprintV1Seed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, v1BlueprintSeedLogger);
 }
 
 app.Run();

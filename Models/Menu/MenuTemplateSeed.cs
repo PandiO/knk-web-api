@@ -659,6 +659,10 @@ public static partial class MenuTemplateSeed
         // InventoryMenu Phase 9 (E1-E9) demo seeds - see MenuTemplateSeed.DomainIntegration.cs.
         foreach (var template in DomainIntegrationTemplates())
             yield return template;
+
+        // InventoryMenu content port (CONTENT_PORT_PLAN.md CP1-CP8) - see MenuTemplateSeed.Content.cs.
+        foreach (var template in ContentTemplates())
+            yield return template;
     }
 
     /// <summary>

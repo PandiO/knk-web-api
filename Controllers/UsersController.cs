@@ -276,7 +276,8 @@ namespace knkwebapi_v2.Controllers
                 PremiumTierName = item.PremiumTierName,
                 PremiumTierExpiresAt = item.PremiumTierExpiresAt,
                 IsFrozen = item.IsFrozen,
-                FrozenReason = item.FrozenReason
+                FrozenReason = item.FrozenReason,
+                Gender = item.Gender
             };
             return Ok(dto);
         }
@@ -311,7 +312,8 @@ namespace knkwebapi_v2.Controllers
                 PremiumTierName = item.PremiumTierName,
                 PremiumTierExpiresAt = item.PremiumTierExpiresAt,
                 IsFrozen = item.IsFrozen,
-                FrozenReason = item.FrozenReason
+                FrozenReason = item.FrozenReason,
+                Gender = item.Gender
             };
             return Ok(dto);
         }

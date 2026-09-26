@@ -5,12 +5,15 @@ using knkwebapi_v2.Services.Interfaces;
 
 namespace KnKWebAPI.Controllers
 {
-    // Read-only title-bracket lookup for form pickers (siege Phase 3: SiegeScenario.MinTitleBracketId).
-    // Brackets are seeded reference data (user-features Phase 6), so there is no create/update/delete
-    // here. The list is a handful of rows, so search filters and pages in memory, ordered by
-    // MinExperience (lowest title first).
+    // Read-only title-bracket lookup. Brackets are seeded reference data (user-features Phase 6),
+    // so there is no create/update/delete here. Two routes, one controller: siege Phase 3's
+    // api/TitleBrackets (web-app form pickers, siege plugin) and the InventoryMenu content port's
+    // api/title-brackets (in-game Profile menu and Player manager title picker). The list is a
+    // handful of rows, so search filters and pages in memory, ordered by MinExperience (lowest
+    // title first).
     [ApiController]
     [Route("api/[controller]")]
+    [Route("api/title-brackets")]
     public class TitleBracketsController : ControllerBase
     {
         private readonly ITitleService _titleService;
@@ -21,10 +24,10 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<ActionResult<List<TitleBracketDto>>> GetAll()
         {
             var brackets = await _titleService.GetAllOrderedAsync();
-            return Ok(brackets.Select(ToDto));
+            return Ok(brackets.Select(ToDto).ToList());
         }
 
         [HttpGet("{id:int}")]
@@ -66,7 +69,11 @@ namespace KnKWebAPI.Controllers
             Name = bracket.MaleName,
             MaleName = bracket.MaleName,
             FemaleName = bracket.FemaleName,
-            MinExperience = bracket.MinExperience
+            MinExperience = bracket.MinExperience,
+            Salary = bracket.Salary,
+            CoinBonus = bracket.CoinBonus,
+            GemBonus = bracket.GemBonus,
+            ExpBonus = bracket.ExpBonus
         };
     }
 }
