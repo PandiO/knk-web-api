@@ -113,6 +113,10 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IMenuTemplateRepository, MenuTemplateRepository>();
             services.AddScoped<IMenuTemplateService, MenuTemplateService>();
 
+            // Private messages Phase 2 — ignore list (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §2)
+            services.AddScoped<IUserIgnoreRepository, UserIgnoreRepository>();
+            services.AddScoped<IUserIgnoreService, UserIgnoreService>();
+
             // Add MetadataService for dynamic form building
             services.AddSingleton<IMetadataService, MetadataService>();
 

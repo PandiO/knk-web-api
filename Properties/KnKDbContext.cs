@@ -98,6 +98,9 @@ public partial class KnKDbContext : DbContext
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
     public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
 
+    // Private messages Phase 2 — ignore list (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §2)
+    public virtual DbSet<UserIgnore> UserIgnores { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -1322,6 +1325,29 @@ public partial class KnKDbContext : DbContext
             // Timestamp descending — see DESIGN.md §4/IMPLEMENTATION_PLAN.md Phase 2.
             entity.HasIndex(e => new { e.TargetUserId, e.Timestamp });
             entity.HasIndex(e => new { e.ActorUserId, e.Timestamp });
+        });
+
+        // UserIgnore — a player's ignore list (docs/specs/private-messages/DESIGN.md §3.1).
+        modelBuilder.Entity<UserIgnore>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("user_ignores");
+
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+
+            // An ignore row means nothing once either player is gone - cascade both FKs.
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.IgnoredUser)
+                .WithMany()
+                .HasForeignKey(e => e.IgnoredUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UserId, e.IgnoredUserId }).IsUnique();
+            entity.HasIndex(e => e.IgnoredUserId);
         });
 
         OnModelCreatingPartial(modelBuilder);
