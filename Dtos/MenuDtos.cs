@@ -40,7 +40,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("minHeight")]
         public int? MinHeight { get; set; }
 
-        /// <summary>Background filler material name; null = plugin default (light gray stained glass pane).</summary>
+        /// <summary>Background filler material name; null = plugin default (gray stained glass pane).</summary>
         [JsonPropertyName("backgroundMaterial")]
         public string? BackgroundMaterial { get; set; }
 
