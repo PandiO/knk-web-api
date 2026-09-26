@@ -3,7 +3,7 @@ using knkwebapi_v2.Enums;
 namespace knkwebapi_v2.Models;
 
 /// <summary>
-/// Append-only drop log (DESIGN.md §3.2), like <see cref="KitClaim"/>: one row per opened box or admin give. The
+/// Append-only drop log (DESIGN.md §3.2), like <see cref="KitClaim"/>: one row per opened box, redeemed token item or admin give. The
 /// roll is persisted here before any item exists, so a relog, crash or retry replays it instead of re-rolling.
 /// The rolled enchantments live on the minted <see cref="ItemInstance"/> (null for stackable items). Written from
 /// Phase 2 on; not form-configurable.
@@ -12,9 +12,14 @@ public class LootboxClaim
 {
     public int Id { get; set; }
 
-    // Unique; null for admin gives and (Phase 5) token items.
+    // Unique; null for admin gives and token items.
     public int? LootboxSpawnId { get; set; }
     public LootboxSpawn? LootboxSpawn { get; set; }
+
+    // Unique; set when a lootbox token item was redeemed (Phase 5). World box, token and admin give are exclusive:
+    // spawn set = world box, token set = token item, neither = admin give.
+    public int? LootboxTokenId { get; set; }
+    public LootboxToken? LootboxToken { get; set; }
 
     public int UserId { get; set; }
     public User User { get; set; } = null!;

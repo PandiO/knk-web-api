@@ -108,6 +108,8 @@ public partial class KnKDbContext : DbContext
     public DbSet<LootboxConfiguration> LootboxConfigurations { get; set; } = null!;
     public virtual DbSet<LootboxSpawn> LootboxSpawns { get; set; } = null!;
     public virtual DbSet<LootboxClaim> LootboxClaims { get; set; } = null!;
+    public virtual DbSet<LootboxToken> LootboxTokens { get; set; } = null!;
+    public virtual DbSet<LootboxTokenGrant> LootboxTokenGrants { get; set; } = null!;
 
     public virtual DbSet<AuditLogEntry> AuditLogEntries { get; set; } = null!;
 
@@ -767,6 +769,84 @@ public partial class KnKDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(c => c.ItemInstanceId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // One claim per token (a one-to-one makes the FK index unique): the last line of defence against a
+            // duplicated token item being opened twice (IMPLEMENTATION_PLAN.md Phase 5).
+            entity.HasOne(c => c.LootboxToken)
+                .WithOne(t => t.Claim)
+                .HasForeignKey<LootboxClaim>(c => c.LootboxTokenId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Lootbox token items (IMPLEMENTATION_PLAN.md Phase 5). History, like spawns: Restrict to the type and grade,
+        // SetNull to users.
+        modelBuilder.Entity<LootboxToken>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("lootbox_tokens");
+
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.IssuedReason).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.IssueKey).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Note).HasMaxLength(256);
+            entity.Property(e => e.IssuedAt).HasColumnType("datetime");
+            entity.Property(e => e.DeliveredAt).HasColumnType("datetime");
+            entity.Property(e => e.RedeemedAt).HasColumnType("datetime");
+            entity.Property(e => e.RevokedAt).HasColumnType("datetime");
+
+            entity.HasIndex(e => e.Token).IsUnique();
+            entity.HasIndex(e => new { e.IssueKey, e.IssueIndex }).IsUnique();
+            // No (IssuedToUserId, Status, …) index on purpose: InnoDB re-checks a foreign key whenever a column of its
+            // supporting index changes, so a redeem flipping Status would take a shared lock on the *issued-to* user's
+            // row while the redeemer's own row is locked - two players opening each other's tokens could deadlock
+            // (seen on MySQL 8 with a composite index). The plain FK index on IssuedToUserId serves the undelivered read.
+
+            entity.HasOne(t => t.LootboxType)
+                .WithMany()
+                .HasForeignKey(t => t.LootboxTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(t => t.BoxGrade)
+                .WithMany()
+                .HasForeignKey(t => t.BoxGradeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(t => t.IssuedToUser)
+                .WithMany()
+                .HasForeignKey(t => t.IssuedToUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(t => t.IssuedByUser)
+                .WithMany()
+                .HasForeignKey(t => t.IssuedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(t => t.RedeemedByUser)
+                .WithMany()
+                .HasForeignKey(t => t.RedeemedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Token grant rules: configuration owned by their premium tier or kit (Cascade from those), Restrict to the type.
+        modelBuilder.Entity<LootboxTokenGrant>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("lootbox_token_grants");
+
+            entity.HasOne(g => g.LootboxType)
+                .WithMany()
+                .HasForeignKey(g => g.LootboxTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(g => g.PermissionGroup)
+                .WithMany()
+                .HasForeignKey(g => g.PermissionGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(g => g.Kit)
+                .WithMany()
+                .HasForeignKey(g => g.KitId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         base.OnModelCreating(modelBuilder);
