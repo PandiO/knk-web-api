@@ -128,6 +128,12 @@ public class SalaryServiceTests
         var result = await _service.PayOutAsync(1);
 
         Assert.Equal(1.8m, result.RankMultiplier); // 1.2 * 1.5, not 1.2 + 1.5 or highest-wins 1.5
+        // The payout message's breakdown: global, personal, then each rank by name.
+        Assert.Collection(result.Multipliers,
+            m => Assert.Equal("global", m.Source),
+            m => Assert.Equal("personal", m.Source),
+            m => { Assert.Equal("rank", m.Source); Assert.Equal("Staff", m.Name); Assert.Equal(1.2m, m.Value); },
+            m => { Assert.Equal("rank", m.Source); Assert.Equal("Royal", m.Name); Assert.True(m.IsPremiumTier); });
     }
 
     [Fact]
@@ -205,6 +211,7 @@ public class SalaryServiceTests
         Assert.Equal(4800, result.AmountPaid);
         Assert.Equal(5, result.TitleBracketId);
         Assert.Equal(4800, result.TitleSalary);
+        Assert.Equal(4800.0m, Math.Round(result.BaseAmount, 1)); // 4800/h x ~1 paid hour
         _mockTitleService.Verify(t => t.ResolveAsync(10000, Gender.Female), Times.Once);
     }
 

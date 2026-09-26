@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace knkwebapi_v2.Dtos
@@ -84,6 +85,16 @@ namespace knkwebapi_v2.Dtos
         /// PermissionGroup membership the user holds. 1.0 (neutral) if they hold none.</summary>
         [JsonPropertyName("rankMultiplier")]
         public decimal RankMultiplier { get; set; }
+
+        /// <summary>Title salary x paid hours: the amount before any multiplier.</summary>
+        [JsonPropertyName("baseAmount")]
+        public decimal BaseAmount { get; set; }
+
+        /// <summary>Every multiplier applied to BaseAmount (global, personal, then one per active
+        /// rank with its name and colors), for the plugin's payout message. Their product is
+        /// GlobalMultiplier x PersonalMultiplier x RankMultiplier.</summary>
+        [JsonPropertyName("multipliers")]
+        public List<RewardMultiplierDto> Multipliers { get; set; } = new();
 
         [JsonPropertyName("newCoinsBalance")]
         public int NewCoinsBalance { get; set; }

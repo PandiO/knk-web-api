@@ -877,7 +877,7 @@ public class UserServiceTests
             PersonalSalaryMultiplier = 2.0m, PersonalGemBonusMultiplier = 1.5m, PersonalExpBonusMultiplier = 3.0m
         });
         _mockMembershipService.Setup(s => s.GetActiveRankMultipliersAsync(1))
-            .ReturnsAsync(new RankMultipliersDto { Salary = 1.5m, GemBonus = 2.0m, ExpBonus = 1.0m });
+            .ReturnsAsync(new RankMultipliersDto { Ranks = { new ActiveRankDto { PermissionGroupId = 20, Name = "Royal", IsPremiumTier = true, ChatPrimaryColor = "&6", SalaryMultiplier = 1.5m, GemBonusMultiplier = 2.0m } } });
         _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
         {
             new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
@@ -898,6 +898,16 @@ public class UserServiceTests
         Assert.Equal(9, result.TitleChange.GemBonusGranted);   // (1 + 2) x 1.5 x 2.0
         Assert.Equal(90, result.NewCoins);
         Assert.Equal(9, result.NewGems);
+
+        // What the plugin's reward message shows: the unscaled sums and each multiplier's source.
+        Assert.Equal(30, result.TitleChange.CoinBonusBase);
+        Assert.Equal(3, result.TitleChange.GemBonusBase);
+        Assert.Equal(50, result.TitleChange.ExpBonusBase);
+        Assert.Collection(result.TitleChange.CoinBonusMultipliers,
+            m => { Assert.Equal("personal", m.Source); Assert.Equal(2.0m, m.Value); },
+            m => { Assert.Equal("rank", m.Source); Assert.Equal(1.5m, m.Value); Assert.Equal("Royal", m.Name); Assert.Equal("&6", m.ChatPrimaryColor); });
+        Assert.Equal(2.0m, result.TitleChange.GemBonusMultipliers[1].Value);
+        Assert.Equal(3.0m, result.TitleChange.ExpBonusMultipliers[0].Value);
     }
 
     [Fact]
@@ -908,7 +918,7 @@ public class UserServiceTests
             Id = 1, Username = "player", Coins = 0, Gems = 0, ExperiencePoints = 0, PersonalSalaryMultiplier = 2.0m
         });
         _mockMembershipService.Setup(s => s.GetActiveRankMultipliersAsync(1))
-            .ReturnsAsync(new RankMultipliersDto { Salary = 2.0m });
+            .ReturnsAsync(new RankMultipliersDto { Ranks = { new ActiveRankDto { Name = "Royal", SalaryMultiplier = 2.0m } } });
         _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
         {
             new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },

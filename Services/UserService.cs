@@ -713,6 +713,10 @@ namespace knkwebapi_v2.Services
                 {
                     var crossed = new List<TitleBracket>();
                     int coinBonusTotal = 0, gemBonusTotal = 0, expBonusTotal = 0;
+                    int coinBonusBase = 0, gemBonusBase = 0, expBonusBase = 0;
+                    var coinMultipliers = new List<RewardMultiplierDto>();
+                    var gemMultipliers = new List<RewardMultiplierDto>();
+                    var expMultipliers = new List<RewardMultiplierDto>();
 
                     if (direction == "promotion")
                     {
@@ -723,6 +727,12 @@ namespace knkwebapi_v2.Services
                         var coinMultiplier = user.PersonalSalaryMultiplier * ranks.Salary;
                         var gemMultiplier = user.PersonalGemBonusMultiplier * ranks.GemBonus;
                         var expMultiplier = user.PersonalExpBonusMultiplier * ranks.ExpBonus;
+                        coinMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalSalaryMultiplier));
+                        coinMultipliers.AddRange(ranks.SalaryBreakdown());
+                        gemMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalGemBonusMultiplier));
+                        gemMultipliers.AddRange(ranks.GemBonusBreakdown());
+                        expMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalExpBonusMultiplier));
+                        expMultipliers.AddRange(ranks.ExpBonusBreakdown());
 
                         // Walk every bracket strictly above previousBracket up to (and possibly
                         // past, if ExpBonus pushes further) currentBracket, accumulating rewards.
@@ -735,6 +745,9 @@ namespace knkwebapi_v2.Services
                             coinBonusTotal += ScaleBonus(tier.CoinBonus, coinMultiplier);
                             gemBonusTotal += ScaleBonus(tier.GemBonus, gemMultiplier);
                             expBonusTotal += expBonus;
+                            coinBonusBase += tier.CoinBonus;
+                            gemBonusBase += tier.GemBonus;
+                            expBonusBase += tier.ExpBonus;
                             user.ExperiencePoints += expBonus; // may unlock further brackets
                             idx++;
                         }
@@ -756,7 +769,13 @@ namespace knkwebapi_v2.Services
                         CrossedTitles = crossed.Select(t => new TitleCrossingDto { TitleBracketId = t.Id, TitleName = t.NameFor(user.Gender) }).ToList(),
                         CoinBonusGranted = coinBonusTotal,
                         GemBonusGranted = gemBonusTotal,
-                        ExpBonusGranted = expBonusTotal
+                        ExpBonusGranted = expBonusTotal,
+                        CoinBonusBase = coinBonusBase,
+                        GemBonusBase = gemBonusBase,
+                        ExpBonusBase = expBonusBase,
+                        CoinBonusMultipliers = coinMultipliers,
+                        GemBonusMultipliers = gemMultipliers,
+                        ExpBonusMultipliers = expMultipliers
                     };
                 }
             }

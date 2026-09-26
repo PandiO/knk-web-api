@@ -143,5 +143,27 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("expBonusGranted")]
         public int ExpBonusGranted { get; set; }
+
+        /// <summary>The crossed brackets' CoinBonus/GemBonus/ExpBonus summed before any
+        /// multiplier (KNG-16), for the plugin's reward message. 0 on demotion.</summary>
+        [JsonPropertyName("coinBonusBase")]
+        public int CoinBonusBase { get; set; }
+
+        [JsonPropertyName("gemBonusBase")]
+        public int GemBonusBase { get; set; }
+
+        [JsonPropertyName("expBonusBase")]
+        public int ExpBonusBase { get; set; }
+
+        /// <summary>The multipliers applied to each bonus: personal first, then one per active
+        /// rank with its name and colors. Empty on demotion.</summary>
+        [JsonPropertyName("coinBonusMultipliers")]
+        public List<RewardMultiplierDto> CoinBonusMultipliers { get; set; } = new();
+
+        [JsonPropertyName("gemBonusMultipliers")]
+        public List<RewardMultiplierDto> GemBonusMultipliers { get; set; } = new();
+
+        [JsonPropertyName("expBonusMultipliers")]
+        public List<RewardMultiplierDto> ExpBonusMultipliers { get; set; } = new();
     }
 }

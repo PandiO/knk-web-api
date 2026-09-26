@@ -44,21 +44,6 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
-    /// Products of each rank multiplier across a user's currently-active memberships (1.0 each
-    /// when they hold none) — the same combination rule SalaryService applies to SalaryMultiplier.
-    /// Used for title promotion bonuses (KNG-16): coins scale with Salary, gems with GemBonus, XP
-    /// with ExpBonus.
-    /// </summary>
-    public class RankMultipliersDto
-    {
-        public static RankMultipliersDto Neutral => new();
-
-        public decimal Salary { get; set; } = 1.0m;
-        public decimal GemBonus { get; set; } = 1.0m;
-        public decimal ExpBonus { get; set; } = 1.0m;
-    }
-
-    /// <summary>
     /// Body for PUT /api/UserPermissionGroups — creates the membership, or updates its expiry if
     /// the user already holds that group (one row per user+group pair).
     /// </summary>

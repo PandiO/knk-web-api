@@ -70,7 +70,8 @@ namespace knkwebapi_v2.Services
             // Sequential awaits: these share one scoped DbContext (see UserProfileSummaryService).
             var config = await _configService.GetAsync();
             var title = await _titleService.ResolveAsync(user.ExperiencePoints, user.Gender);
-            var rankMultiplier = await ComputeRankMultiplierAsync(userId, now);
+            var ranks = await GetActiveRanksAsync(userId, now);
+            var rankMultiplier = ranks.Salary;
             var hoursCovered = (decimal)elapsed.TotalHours;
             var paidHours = PaidHoursFor(elapsed.TotalHours, config.OfflinePayoutMaxHours);
 
@@ -112,6 +113,12 @@ namespace knkwebapi_v2.Services
                 GlobalMultiplier = config.GlobalMultiplier,
                 PersonalMultiplier = user.PersonalSalaryMultiplier,
                 RankMultiplier = rankMultiplier,
+                BaseAmount = title.Salary * paidHours,
+                Multipliers = new List<RewardMultiplierDto>
+                {
+                    RewardMultiplierDto.Global(config.GlobalMultiplier),
+                    RewardMultiplierDto.Personal(user.PersonalSalaryMultiplier)
+                }.Concat(ranks.SalaryBreakdown()).ToList(),
                 NewCoinsBalance = user.Coins,
                 LastSalaryPayoutAt = now,
                 NextEligibleAt = now + MinimumPayoutInterval
@@ -140,25 +147,20 @@ namespace knkwebapi_v2.Services
             return (decimal)paid;
         }
 
-        public Task<decimal> GetCurrentRankMultiplierAsync(int userId)
+        public async Task<decimal> GetCurrentRankMultiplierAsync(int userId)
         {
             if (userId <= 0) throw new ArgumentException("Invalid user id.", nameof(userId));
-            return ComputeRankMultiplierAsync(userId, DateTime.UtcNow);
+            return (await GetActiveRanksAsync(userId, DateTime.UtcNow)).Salary;
         }
 
         /// <summary>
-        /// Product of SalaryMultiplier across every currently-active (non-expired) PermissionGroup
-        /// membership the user holds (developer-confirmed combination rule — deliberately not the
-        /// highest-Weight-wins rule Phase 5 used for premium tier *display*, since stacking ranks
-        /// multiplicatively is meant to reward holding more than one at once). A user with no
-        /// active memberships yields 1.0 (neutral), not 0 — an empty product.
+        /// Every currently-active (non-expired) PermissionGroup membership the user holds. The rank
+        /// multiplier is the product of their SalaryMultiplier (developer-confirmed combination
+        /// rule — deliberately not the highest-Weight-wins rule Phase 5 used for premium tier
+        /// *display*, since stacking ranks multiplicatively is meant to reward holding more than
+        /// one at once). A user with no active memberships yields 1.0 (neutral), not 0.
         /// </summary>
-        private async Task<decimal> ComputeRankMultiplierAsync(int userId, DateTime asOf)
-        {
-            var memberships = await _membershipRepo.GetByUserAsync(userId);
-            return memberships
-                .Where(m => m.PermissionGroup != null && (m.ExpiresAt == null || m.ExpiresAt > asOf))
-                .Aggregate(1.0m, (product, m) => product * m.PermissionGroup!.SalaryMultiplier);
-        }
+        private async Task<RankMultipliersDto> GetActiveRanksAsync(int userId, DateTime asOf) =>
+            RankMultipliersDto.FromMemberships(await _membershipRepo.GetByUserAsync(userId), asOf);
     }
 }
