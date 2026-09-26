@@ -12,8 +12,13 @@ namespace knkwebapi_v2.Services
         Task<UserDto?> GetByUsernameAsync(string username);
         Task<UserDto> CreateAsync(UserCreateDto user);
         Task UpdateAsync(int id, UserDto user, int? actorUserId = null);
-        Task UpdateCoinsAsync(int id, int coins);
-        Task UpdateCoinsByUuidAsync(string uuid, int coins);
+
+        /// <summary>
+        /// Sets a user's personal salary / gem-bonus / XP-bonus multipliers (null = keep). Their
+        /// own route since KNG-22 took them out of the generic user edit; each must be within
+        /// 0..<see cref="Services.UserService.MaxPersonalMultiplier"/>. Audit-logged.
+        /// </summary>
+        Task SetPersonalMultipliersAsync(int id, UpdatePersonalMultipliersDto request, int? actorUserId = null);
         Task UpdateGatePassThroughMethodAsync(int id, GatePassThroughMethod method);
         Task UpdateActiveModeAsync(int id, ActiveMode mode, int? actorUserId = null);
 
