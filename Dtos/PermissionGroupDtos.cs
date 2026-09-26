@@ -25,6 +25,16 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("chatSuffix")]
         public string? ChatSuffix { get; set; }
 
+        /// <summary>Minecraft color names (KNG-7) — see PermissionGroup.ChatPrimaryColor.</summary>
+        [JsonPropertyName("chatPrimaryColor")]
+        public string? ChatPrimaryColor { get; set; }
+
+        [JsonPropertyName("chatSecondaryColor")]
+        public string? ChatSecondaryColor { get; set; }
+
+        [JsonPropertyName("nameColor")]
+        public string? NameColor { get; set; }
+
         [JsonPropertyName("parentGroupId")]
         public int? ParentGroupId { get; set; }
         [JsonPropertyName("parentGroup")]
@@ -58,6 +68,12 @@ namespace knkwebapi_v2.Dtos
         public bool isPremiumTier { get; set; }
         [JsonPropertyName("salaryMultiplier")]
         public decimal salaryMultiplier { get; set; } = 1.0m;
+        [JsonPropertyName("chatPrimaryColor")]
+        public string? chatPrimaryColor { get; set; }
+        [JsonPropertyName("chatSecondaryColor")]
+        public string? chatSecondaryColor { get; set; }
+        [JsonPropertyName("nameColor")]
+        public string? nameColor { get; set; }
         [JsonPropertyName("parentGroupId")]
         public int? parentGroupId { get; set; }
         [JsonPropertyName("parentGroupName")]

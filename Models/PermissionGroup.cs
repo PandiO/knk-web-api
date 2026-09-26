@@ -36,6 +36,26 @@ public class PermissionGroup : PermissionHolder
     /// </summary>
     public decimal SalaryMultiplier { get; set; } = 1.0m;
 
+    /// <summary>
+    /// In-game chat colors for members whose display group this is (KNG-7): the premium tier's,
+    /// or the Default group's for players without one. Stored as a Minecraft color name
+    /// ("YELLOW", "DARK_RED", ... — see <see cref="knkwebapi_v2.Services.MinecraftChatColors"/>).
+    /// ChatPrimaryColor colors the title and username, ChatSecondaryColor the "-{ }-" brackets
+    /// around the title (v1 Donator.PrimaryColor/SecondColor). Null = the plugin's built-in
+    /// default.
+    /// </summary>
+    public string? ChatPrimaryColor { get; set; }
+
+    /// <inheritdoc cref="ChatPrimaryColor"/>
+    public string? ChatSecondaryColor { get; set; }
+
+    /// <summary>
+    /// Tab-list / nametag color (scoreboard team color) for members whose display group this is
+    /// (KNG-7). Separate from the chat colors on purpose — v1 let them differ (Default: gray name,
+    /// green chat). Same color-name format as <see cref="ChatPrimaryColor"/>.
+    /// </summary>
+    public string? NameColor { get; set; }
+
     [NavigationPair(nameof(ParentGroup))]
     [RelatedEntityField(typeof(PermissionGroup))]
     public int? ParentGroupId { get; set; }
