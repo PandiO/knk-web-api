@@ -63,6 +63,17 @@ public static partial class MenuTemplateSeed
                     SortOrder = 0,
                 },
             },
+            Conditions =
+            {
+                // Smoke test 2026-09-26: a lobby in cooldown (or disabled) is listed, not opened.
+                new ConditionBinding
+                {
+                    ConditionTypeId = "siege.lobby-open",
+                    ParamsJson = "{\"lobbyId\":\"$row.getLobbyId$\"}",
+                    SortOrder = 0,
+                    Phase = MenuConditionPhase.Click,
+                },
+            },
         };
 
         var empty = WithConditions(DemoItem(22, 50,
@@ -78,7 +89,9 @@ public static partial class MenuTemplateSeed
             Name = "&8Siege",
             Description = "Every siege lobby (siege.lobbies), matchmaking first. Siege Phase 8b, MENU_TEMPLATES.md C.2.",
             Height = 5,
-            Growth = MenuGrowthMode.Static,
+            // Smoke test 2026-09-26: shrinks to its content (header + the lobby rows in use).
+            Growth = MenuGrowthMode.Dynamic,
+            MinHeight = 2,
             AutoRefreshTicks = 20,
             Sections =
             {
@@ -303,7 +316,10 @@ public static partial class MenuTemplateSeed
             Name = "&8Siege information",
             Description = "One siege lobby (ctx.lobbyId), per phase. Siege Phase 8b, MENU_TEMPLATES.md C.3.",
             Height = 6,
-            Growth = MenuGrowthMode.Static,
+            // Smoke test 2026-09-26: shrinks to its content (the votes row outside matchmaking and unused
+            // body rows drop out; header + divider + one body row stay).
+            Growth = MenuGrowthMode.Dynamic,
+            MinHeight = 3,
             AutoRefreshTicks = 20,
             Sections =
             {

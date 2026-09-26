@@ -72,6 +72,20 @@ public class MenuTemplateSiegeSeedTests
     }
 
     [Fact]
+    public async Task Overview_ShrinksToItsContent_AndLobbiesInCooldownDontOpen()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var overview = seeded.Single(t => t.Key == MenuTemplateSeed.SiegeOverviewMenuKey);
+
+        Assert.Equal((MenuGrowthMode.Dynamic, 2), (overview.Growth, overview.MinHeight));
+        var row = overview.Sections.Single(s => s.Name == "Sieges").Items.Single(i => i.IsRowTemplate);
+        var guard = Assert.Single(row.Conditions, c => c.ConditionTypeId == "siege.lobby-open");
+        Assert.Equal(MenuConditionPhase.Click, guard.Phase);
+        Assert.Contains("$row.getLobbyId$", guard.ParamsJson);
+    }
+
+    [Fact]
     public async Task Information_WiresTheLobbyContext_JoinLeaveAndThePhaseAwareBody()
     {
         var (context, seeded) = await SeedTwiceAsync();
@@ -79,6 +93,7 @@ public class MenuTemplateSiegeSeedTests
         var info = seeded.Single(t => t.Key == MenuTemplateSeed.SiegeInformationMenuKey);
 
         Assert.Equal(6, info.Height);
+        Assert.Equal((MenuGrowthMode.Dynamic, 3), (info.Growth, info.MinHeight)); // shrinks to its content
         Assert.Equal(20, info.AutoRefreshTicks);
         var body = info.Sections.Single(s => s.Name == "Body");
         Assert.Equal("siege.body", body.ContentSourceId);
