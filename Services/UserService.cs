@@ -655,72 +655,16 @@ namespace knkwebapi_v2.Services
             }
 
             // Resolved before the mutation so a resulting title change can be detected, and so the
-            // consolidation loop below has every bracket to walk between old and new XP.
+            // consolidation in TitleProgression has every bracket to walk between old and new XP.
             var originalExperience = user.ExperiencePoints;
             var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
-            TitleBracket? previousBracket = brackets != null && brackets.Count > 0
-                ? (brackets.LastOrDefault(b => b.MinExperience <= originalExperience) ?? brackets[0])
-                : null;
 
             user.Coins = newCoins;
             user.Gems = newGems;
             user.ExperiencePoints = newExperience;
 
-            TitleChangeResultDto? titleChange = null;
-
-            // Consolidate every bracket crossed by this single adjustment into one grant + one
-            // reported change, instead of firing once per tier the way v1's TitleChangeEvents
-            // loop did (setPromoteLoop/setDemoteLoop) — a developer-confirmed behavior NOT to
-            // repeat. ExpBonus can itself push into a further bracket, so this loops until
-            // resolution stabilizes, mirroring v1's cascading re-check but accumulating instead
-            // of firing per-iteration effects.
-            if (previousBracket != null && brackets != null)
-            {
-                var direction = newExperience > originalExperience ? "promotion" : "demotion";
-                var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
-
-                if (currentBracket.Id != previousBracket.Id)
-                {
-                    var crossed = new List<TitleBracket>();
-                    int coinBonusTotal = 0, gemBonusTotal = 0, expBonusTotal = 0;
-
-                    if (direction == "promotion")
-                    {
-                        // Walk every bracket strictly above previousBracket up to (and possibly
-                        // past, if ExpBonus pushes further) currentBracket, accumulating rewards.
-                        var idx = brackets.FindIndex(b => b.Id == previousBracket.Id) + 1;
-                        while (idx < brackets.Count && brackets[idx].MinExperience <= user.ExperiencePoints)
-                        {
-                            var tier = brackets[idx];
-                            crossed.Add(tier);
-                            coinBonusTotal += tier.CoinBonus;
-                            gemBonusTotal += tier.GemBonus;
-                            expBonusTotal += tier.ExpBonus;
-                            user.ExperiencePoints += tier.ExpBonus; // may unlock further brackets
-                            idx++;
-                        }
-                        user.Coins += coinBonusTotal;
-                        user.Gems += gemBonusTotal;
-                        currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
-                    }
-                    // Demotion never claws back currency (matches v1's userDemotion, which only
-                    // ever removed structural slots/skills — neither exists in v3), so no bonus
-                    // accumulation happens on the way down.
-
-                    titleChange = new TitleChangeResultDto
-                    {
-                        Direction = direction,
-                        FromTitleBracketId = previousBracket.Id,
-                        FromTitleName = previousBracket.NameFor(user.Gender),
-                        ToTitleBracketId = currentBracket.Id,
-                        ToTitleName = currentBracket.NameFor(user.Gender),
-                        CrossedTitles = crossed.Select(t => new TitleCrossingDto { TitleBracketId = t.Id, TitleName = t.NameFor(user.Gender) }).ToList(),
-                        CoinBonusGranted = coinBonusTotal,
-                        GemBonusGranted = gemBonusTotal,
-                        ExpBonusGranted = expBonusTotal
-                    };
-                }
-            }
+            // Shared with siege match rewards (docs/specs/siege-minigame/DESIGN.md §7.6).
+            TitleChangeResultDto? titleChange = TitleProgression.ApplyExperienceChange(user, originalExperience, brackets);
 
             await _repo.UpdateUserAsync(user);
 
