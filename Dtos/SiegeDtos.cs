@@ -433,6 +433,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("teams")] public List<SiegeRuntimeTeamDto> Teams { get; set; } = new();
         [JsonPropertyName("objectives")] public List<SiegeRuntimeObjectiveDto> Objectives { get; set; } = new();
         [JsonPropertyName("gates")] public List<SiegeRuntimeGateDto> Gates { get; set; } = new();
+        // Siege Phase 7 (DESIGN §8.1): the other gate structures in the scenario area (its districts,
+        // or the whole town when it has none) - forced open and invincible for the match.
+        [JsonPropertyName("areaGateStructureIds")] public List<int> AreaGateStructureIds { get; set; } = new();
     }
 
     public class SiegeRuntimeDistrictDto

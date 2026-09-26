@@ -19,6 +19,8 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<Town?> GetTownAsync(int townId);
         Task<List<District>> GetDistrictsAsync(IEnumerable<int> districtIds);
         Task<List<GateStructure>> GetGateStructuresAsync(IEnumerable<int> gateStructureIds);
+        // Siege Phase 7: every gate structure in these districts (none given: in any district of the town).
+        Task<List<int>> GetAreaGateStructureIdsAsync(int townId, IEnumerable<int> districtIds);
         Task<bool> LocationExistsAsync(int locationId);
         Task<bool> TitleBracketExistsAsync(int titleBracketId);
         Task<Clan?> GetClanAsync(int clanId);

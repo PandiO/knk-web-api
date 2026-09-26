@@ -44,5 +44,22 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         /// <summary>Inside <see cref="RunLockedAsync{T}"/>: row-locks these users before their balances change.</summary>
         Task LockUsersAsync(IEnumerable<int> userIds);
+
+        // ---- Phase 7a: gate lockdown ----
+
+        /// <summary>These gate structures with their doors; tracked.</summary>
+        Task<List<GateStructure>> GetGateStructuresWithDoorsAsync(IEnumerable<int> gateStructureIds);
+
+        /// <summary>Gate structures whose CurrentSiegeId is set, with their doors; tracked.</summary>
+        Task<List<GateStructure>> GetGatesInSiegeAsync();
+
+        /// <summary>One match's gate snapshots (null = every match's); tracked, oldest first.</summary>
+        Task<List<SiegeMatchGateSnapshot>> GetGateSnapshotsAsync(int? siegeMatchId);
+
+        Task<Dictionary<int, SiegeMatchStatus>> GetMatchStatusesAsync(IEnumerable<int> siegeMatchIds);
+
+        void AddGateSnapshot(SiegeMatchGateSnapshot snapshot);
+
+        void RemoveGateSnapshots(IEnumerable<SiegeMatchGateSnapshot> snapshots);
     }
 }

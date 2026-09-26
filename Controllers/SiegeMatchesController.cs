@@ -10,17 +10,20 @@ namespace KnKWebAPI.Controllers
     // lifecycle checkpoints and the match history. Served at the DESIGN kebab-case path
     // (/api/siege-matches) and at the PascalCase controller path every other controller uses.
     // Writes carry [RequirePluginServiceKey] (open until Security:PluginServiceKey is set).
-    // GET {id}/gate-snapshots is Phase 7.
+    // Phase 7a adds the gate lockdown: GET {id}/gate-snapshots, POST {id}/gate-lockdown,
+    // POST {id}/gate-restore, POST restore-stale-gates.
     [ApiController]
     [Route("api/siege-matches")]
     [Route("api/[controller]")]
     public class SiegeMatchesController : ControllerBase
     {
         private readonly ISiegeMatchService _service;
+        private readonly ISiegeMatchGateService? _gates;
 
-        public SiegeMatchesController(ISiegeMatchService service)
+        public SiegeMatchesController(ISiegeMatchService service, ISiegeMatchGateService? gates = null)
         {
             _service = service;
+            _gates = gates;
         }
 
         // History: newest first, optionally filtered (userId also returns that user's own row).
@@ -95,6 +98,42 @@ namespace KnKWebAPI.Controllers
         {
             return await Run(async () => Ok(await _service.AbortUnfinishedAsync(dto ?? new SiegeMatchAbortUnfinishedDto())));
         }
+
+        // ---- Phase 7a: gate lockdown (DESIGN §8.2, §8.4) ----
+
+        [HttpGet("{id:int}/gate-snapshots")]
+        public async Task<IActionResult> GateSnapshots(int id)
+        {
+            return await Run(async () => Ok(await Gates().GetSnapshotsAsync(id)));
+        }
+
+        // Snapshot → CurrentSiegeId → overrides for the listed gates (one transaction).
+        [HttpPost("{id:int}/gate-lockdown")]
+        [RequirePluginServiceKey]
+        public async Task<IActionResult> GateLockdown(int id, [FromBody] SiegeGateLockdownDto dto)
+        {
+            if (dto == null) return BadRequest();
+            return await Run(async () => Ok(await Gates().LockdownAsync(id, dto)));
+        }
+
+        // Re-applies and deletes the match's snapshots; returns them for the runtime restore.
+        [HttpPost("{id:int}/gate-restore")]
+        [RequirePluginServiceKey]
+        public async Task<IActionResult> GateRestore(int id)
+        {
+            return await Run(async () => Ok(await Gates().RestoreAsync(id)));
+        }
+
+        // Plugin startup recovery (nothing runs yet): every leftover snapshot is re-applied.
+        [HttpPost("restore-stale-gates")]
+        [RequirePluginServiceKey]
+        public async Task<IActionResult> RestoreStaleGates()
+        {
+            return await Run(async () => Ok(await Gates().RestoreStaleAsync()));
+        }
+
+        private ISiegeMatchGateService Gates() =>
+            _gates ?? throw new InvalidOperationException("Siege gate service is not registered.");
 
         private async Task<IActionResult> Run(Func<Task<IActionResult>> action)
         {

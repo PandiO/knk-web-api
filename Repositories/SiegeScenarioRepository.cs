@@ -145,6 +145,16 @@ namespace knkwebapi_v2.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<int>> GetAreaGateStructureIdsAsync(int townId, IEnumerable<int> districtIds)
+        {
+            var ids = districtIds.Distinct().ToList();
+            var query = _context.GateStructures.AsQueryable();
+            query = ids.Count > 0
+                ? query.Where(g => ids.Contains(g.DistrictId))
+                : query.Where(g => g.District.TownId == townId);
+            return await query.OrderBy(g => g.Id).Select(g => g.Id).ToListAsync();
+        }
+
         public async Task<bool> LocationExistsAsync(int locationId)
         {
             return await _context.Locations.AnyAsync(l => l.Id == locationId);

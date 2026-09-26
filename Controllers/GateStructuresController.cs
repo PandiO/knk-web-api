@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -171,11 +172,12 @@ namespace KnKWebAPI.Controllers
             return Ok(result);
         }
 
-        // Sets/clears the structure-level cascading overrides (decision 5.0-B). Permission
-        // model for who may call this is still open - see
-        // GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md item 5.3 "still open" #5 - intended for
-        // admin commands/permissions and the future Siege capture event.
+        // Sets/clears the structure-level cascading overrides (decision 5.0-B). Permission model
+        // (GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md item 5.3 "still open" #5), settled by siege
+        // Phase 7a as "service client + admins": the plugin's service key or an Admin JWT once
+        // Security:PluginServiceKey is set; open (as before) while it is empty.
         [HttpPatch("{id:int}/overrides")]
+        [RequirePluginServiceKey(AllowAdmins = true)]
         public async Task<IActionResult> UpdateOverrides(int id, [FromBody] GateStructureOverridesUpdateDto request)
         {
             if (id <= 0) return BadRequest("Invalid id.");

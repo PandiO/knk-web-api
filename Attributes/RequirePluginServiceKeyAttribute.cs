@@ -15,6 +15,8 @@ namespace knkwebapi_v2.Attributes
     /// <item>Set: the request must carry that key in the <c>Security:PluginServiceKeyHeader</c> header
     /// (default <c>X-API-Key</c>, what the plugin's <c>api.auth.type: apikey</c> sends), else 401.</item>
     /// </list>
+    /// With <see cref="AllowAdmins"/>, a caller whose JWT carries the Admin role (the
+    /// <c>RequireAdmin</c> policy's rule) is let through without the key too.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public sealed class RequirePluginServiceKeyAttribute : Attribute, IAuthorizationFilter
@@ -22,6 +24,9 @@ namespace knkwebapi_v2.Attributes
         public const string KeySetting = "Security:PluginServiceKey";
         public const string HeaderSetting = "Security:PluginServiceKeyHeader";
         public const string DefaultHeader = "X-API-Key";
+
+        /// <summary>Also accept an authenticated admin (role "Admin") without the key.</summary>
+        public bool AllowAdmins { get; set; }
 
         public void OnAuthorization(AuthorizationFilterContext context)
         {
@@ -31,6 +36,11 @@ namespace knkwebapi_v2.Attributes
 
             var header = configuration?[HeaderSetting];
             if (string.IsNullOrWhiteSpace(header)) header = DefaultHeader;
+
+            var user = context.HttpContext.User;
+            if (AllowAdmins && user?.Identity?.IsAuthenticated == true
+                && (user.IsInRole("Admin") || user.Claims.Any(c => c.Type == "role" && c.Value == "Admin")))
+                return;
 
             var supplied = context.HttpContext.Request.Headers[header].FirstOrDefault();
             if (supplied == null || !FixedTimeEquals(supplied, expected))

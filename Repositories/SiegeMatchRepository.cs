@@ -122,6 +122,42 @@ namespace knkwebapi_v2.Repositories
             }
         }
 
+        public async Task<List<GateStructure>> GetGateStructuresWithDoorsAsync(IEnumerable<int> gateStructureIds)
+        {
+            var ids = gateStructureIds.Distinct().ToList();
+            if (ids.Count == 0) return new List<GateStructure>();
+            return await _context.GateStructures.Include(g => g.GateDoors).Where(g => ids.Contains(g.Id)).ToListAsync();
+        }
+
+        public async Task<List<GateStructure>> GetGatesInSiegeAsync()
+        {
+            return await _context.GateStructures.Include(g => g.GateDoors).Where(g => g.CurrentSiegeId != null).ToListAsync();
+        }
+
+        public async Task<List<SiegeMatchGateSnapshot>> GetGateSnapshotsAsync(int? siegeMatchId)
+        {
+            var query = _context.SiegeMatchGateSnapshots.AsQueryable();
+            if (siegeMatchId.HasValue) query = query.Where(s => s.SiegeMatchId == siegeMatchId.Value);
+            return await query.OrderBy(s => s.Id).ToListAsync();
+        }
+
+        public async Task<Dictionary<int, SiegeMatchStatus>> GetMatchStatusesAsync(IEnumerable<int> siegeMatchIds)
+        {
+            var ids = siegeMatchIds.Distinct().ToList();
+            if (ids.Count == 0) return new Dictionary<int, SiegeMatchStatus>();
+            return await _context.SiegeMatches.Where(m => ids.Contains(m.Id)).ToDictionaryAsync(m => m.Id, m => m.Status);
+        }
+
+        public void AddGateSnapshot(SiegeMatchGateSnapshot snapshot)
+        {
+            _context.SiegeMatchGateSnapshots.Add(snapshot);
+        }
+
+        public void RemoveGateSnapshots(IEnumerable<SiegeMatchGateSnapshot> snapshots)
+        {
+            _context.SiegeMatchGateSnapshots.RemoveRange(snapshots);
+        }
+
         public async Task LockUsersAsync(IEnumerable<int> userIds)
         {
             var ids = userIds.Distinct().OrderBy(id => id).ToList();

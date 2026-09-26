@@ -139,6 +139,10 @@ namespace knkwebapi_v2.Services
                     if (!resolved.TryGetValue(scenario.Id, out var scenarioDto))
                     {
                         scenarioDto = BuildRuntimeScenario(scenario);
+                        var selected = scenario.Gates.Select(g => g.GateStructureId).ToHashSet();
+                        scenarioDto.AreaGateStructureIds = (await _scenarioRepo.GetAreaGateStructureIdsAsync(
+                                scenario.TownId, scenario.Districts.Select(d => d.DistrictId)))
+                            .Where(id => !selected.Contains(id)).ToList();
                         resolved[scenario.Id] = scenarioDto;
                     }
                     lobbyDto.Rotation.Add(new SiegeRuntimeRotationEntryDto { Weight = entry.Weight, Scenario = scenarioDto });
