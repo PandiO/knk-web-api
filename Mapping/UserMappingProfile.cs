@@ -38,6 +38,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
+                .ForMember(dest => dest.PersonalGemBonusMultiplier, src => src.MapFrom(src => (decimal?)src.PersonalGemBonusMultiplier))
+                .ForMember(dest => dest.PersonalExpBonusMultiplier, src => src.MapFrom(src => (decimal?)src.PersonalExpBonusMultiplier))
                 // MySQL reads DateTime back as Unspecified — mark it UTC so it serializes with a
                 // "Z" (same fix UserPermissionGroupService.ToDto already applied for ExpiresAt).
                 .ForMember(dest => dest.LastSalaryPayoutAt, src => src.MapFrom(src => DateTime.SpecifyKind(src.LastSalaryPayoutAt, DateTimeKind.Utc)))
@@ -63,6 +65,18 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.IsActive, src => src.MapFrom(src => src.IsActive))
                 .ForMember(dest => dest.CreatedAt, src => src.MapFrom(src => DateTime.Parse(src.CreatedAt)))
                 .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
+                // Omitted (null) = keep the stored value (KNG-16): without the condition AutoMapper
+                // would write 0 for a client that predates these fields.
+                .ForMember(dest => dest.PersonalGemBonusMultiplier, opt =>
+                {
+                    opt.Condition(src => src.PersonalGemBonusMultiplier.HasValue);
+                    opt.MapFrom(src => src.PersonalGemBonusMultiplier!.Value);
+                })
+                .ForMember(dest => dest.PersonalExpBonusMultiplier, opt =>
+                {
+                    opt.Condition(src => src.PersonalExpBonusMultiplier.HasValue);
+                    opt.MapFrom(src => src.PersonalExpBonusMultiplier!.Value);
+                })
                 // Service-managed only (SalaryService.PayOutAsync) — same convention as ActiveMode:
                 // a generic edit that omits it must not reset a user's payout clock.
                 .ForMember(dest => dest.LastSalaryPayoutAt, opt => opt.Ignore())
@@ -134,6 +148,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.GatePassThroughMethodDefault, opt => opt.Ignore())
                 .ForMember(dest => dest.ActiveMode, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalSalaryMultiplier, opt => opt.Ignore())  // Use default from model
+                .ForMember(dest => dest.PersonalGemBonusMultiplier, opt => opt.Ignore())  // Use default from model
+                .ForMember(dest => dest.PersonalExpBonusMultiplier, opt => opt.Ignore())  // Use default from model
                 .ForMember(dest => dest.LastSalaryPayoutAt, opt => opt.Ignore())  // Use default from model
                 .ForMember(dest => dest.IsOnline, opt => opt.Ignore())  // Use default from model
                 .ForMember(dest => dest.LastSeenAt, opt => opt.Ignore())  // Use default from model

@@ -31,6 +31,7 @@ public class UserPermissionGroupServiceTests
         _service = new UserPermissionGroupService(_mockRepo.Object, _mockUserRepo.Object, _mockGroupRepo.Object, _mockAuditLogService.Object);
         _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
         _mockGroupRepo.Setup(r => r.GetByIdAsync(Royal.Id)).ReturnsAsync(Royal);
+        _mockRepo.Setup(r => r.GetByUserAsync(It.IsAny<int>())).ReturnsAsync(new List<UserPermissionGroup>());
     }
 
     private static UserPermissionGroup Membership(PermissionGroup group, DateTime? expiresAt) =>
@@ -202,6 +203,119 @@ public class UserPermissionGroupServiceTests
 
         Assert.Equal("Royal", result!.PermissionGroupName);
         Assert.Equal(expires, result.ExpiresAt);
+    }
+
+    #endregion
+
+    #region One rank per user + RankChanged notifications (RANK_DISPLAY.md)
+
+    private static readonly PermissionGroup DefaultGroup = new() { Id = 1, Name = "Default", Weight = 0, IsPremiumTier = false };
+
+    private (UserPermissionGroupService Service, InMemoryPlayerNotificationQueue Queue) ServiceWithQueue()
+    {
+        var queue = new InMemoryPlayerNotificationQueue();
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice", Uuid = "u-1" });
+        _mockGroupRepo.Setup(r => r.GetByIdAsync(Noble.Id)).ReturnsAsync(Noble);
+        _mockGroupRepo.Setup(r => r.GetByIdAsync(Staff.Id)).ReturnsAsync(Staff);
+        _mockGroupRepo.Setup(r => r.GetByIdAsync(DefaultGroup.Id)).ReturnsAsync(DefaultGroup);
+        _mockGroupRepo.Setup(r => r.GetByNameAsync("Default")).ReturnsAsync(DefaultGroup);
+        return (new UserPermissionGroupService(_mockRepo.Object, _mockUserRepo.Object, _mockGroupRepo.Object,
+            _mockAuditLogService.Object, queue), queue);
+    }
+
+    [Fact]
+    public async Task Upsert_PremiumRank_RemovesDefaultAndOtherActivePremiumRanks()
+    {
+        var (service, queue) = ServiceWithQueue();
+        var defaultMembership = Membership(DefaultGroup, null);
+        var noble = Membership(Noble, null);
+        var staff = Membership(Staff, null);
+        var expiredDragon = Membership(DragonBlood, DateTime.UtcNow.AddDays(-1));
+        _mockRepo.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup> { defaultMembership, noble, staff, expiredDragon });
+
+        await service.UpsertAsync(new UpsertUserPermissionGroupDto { UserId = 1, PermissionGroupId = Royal.Id });
+
+        _mockRepo.Verify(r => r.DeleteAsync(defaultMembership), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(noble), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(staff), Times.Never);        // not a rank
+        _mockRepo.Verify(r => r.DeleteAsync(expiredDragon), Times.Never); // history
+        var note = Assert.Single(queue.GetPending());
+        Assert.Equal(PlayerNotificationTypes.RankChanged, note.Type);
+        Assert.Equal("u-1", note.Uuid);
+    }
+
+    [Fact]
+    public async Task Upsert_Default_ReplacesThePremiumRank()
+    {
+        var (service, _) = ServiceWithQueue();
+        var royal = Membership(Royal, null);
+        _mockRepo.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup> { royal });
+
+        await service.UpsertAsync(new UpsertUserPermissionGroupDto { UserId = 1, PermissionGroupId = DefaultGroup.Id });
+
+        _mockRepo.Verify(r => r.DeleteAsync(royal), Times.Once);
+    }
+
+    [Fact]
+    public async Task Upsert_NonRankGroup_KeepsTheRankButStillNotifies()
+    {
+        var (service, queue) = ServiceWithQueue();
+        var royal = Membership(Royal, null);
+        _mockRepo.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup> { royal });
+
+        await service.UpsertAsync(new UpsertUserPermissionGroupDto { UserId = 1, PermissionGroupId = Staff.Id });
+
+        _mockRepo.Verify(r => r.DeleteAsync(It.IsAny<UserPermissionGroup>()), Times.Never);
+        Assert.Single(queue.GetPending());
+    }
+
+    [Fact]
+    public async Task Delete_PremiumRank_PutsTheUserBackOnDefault()
+    {
+        var (service, queue) = ServiceWithQueue();
+        var royal = Membership(Royal, null);
+        _mockRepo.Setup(r => r.GetAsync(1, Royal.Id)).ReturnsAsync(royal);
+        _mockRepo.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup>()); // after the delete
+
+        await service.DeleteAsync(1, Royal.Id);
+
+        _mockRepo.Verify(r => r.AddAsync(It.Is<UserPermissionGroup>(m =>
+            m.UserId == 1 && m.PermissionGroupId == DefaultGroup.Id && m.ExpiresAt == null)), Times.Once);
+        Assert.Equal(PlayerNotificationTypes.RankChanged, Assert.Single(queue.GetPending()).Type);
+    }
+
+    [Fact]
+    public async Task Delete_NonRankGroup_DoesNotTouchRanks()
+    {
+        var (service, queue) = ServiceWithQueue();
+        _mockRepo.Setup(r => r.GetAsync(1, Staff.Id)).ReturnsAsync(Membership(Staff, null));
+
+        await service.DeleteAsync(1, Staff.Id);
+
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<UserPermissionGroup>()), Times.Never);
+        Assert.Single(queue.GetPending());
+    }
+
+    [Fact]
+    public async Task Sweep_RestoresDefaultForUsersLeftWithoutRank_AndNotifiesExpiries()
+    {
+        var (service, queue) = ServiceWithQueue();
+        var alice = new User { Id = 1, Username = "alice", Uuid = "u-1" };
+        var bob = new User { Id = 2, Username = "bob", Uuid = "u-2" };
+        var now = DateTime.UtcNow;
+        var after = now.AddSeconds(-30);
+        _mockRepo.Setup(r => r.GetRanksExpiredBetweenAsync(after, now, "Default")).ReturnsAsync(new List<UserPermissionGroup>
+        {
+            new() { UserId = 1, User = alice, PermissionGroupId = Royal.Id, PermissionGroup = Royal, ExpiresAt = now.AddSeconds(-5) },
+            new() { UserId = 2, User = bob, PermissionGroupId = Royal.Id, PermissionGroup = Royal, ExpiresAt = now.AddSeconds(-5) },
+        });
+        _mockRepo.Setup(r => r.GetUsersLeftWithoutRankAsync(now, "Default")).ReturnsAsync(new List<User> { alice });
+
+        var notified = await service.SweepExpiredRanksAsync(after, now);
+
+        Assert.Equal(2, notified);
+        _mockRepo.Verify(r => r.AddAsync(It.Is<UserPermissionGroup>(m => m.UserId == 1 && m.PermissionGroupId == DefaultGroup.Id)), Times.Once);
+        Assert.Equal(new[] { "u-1", "u-2" }, queue.GetPending().Select(n => n.Uuid).OrderBy(u => u).ToArray());
     }
 
     #endregion

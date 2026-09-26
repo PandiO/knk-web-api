@@ -546,4 +546,87 @@ public class UsersControllerTests
         var dto = Assert.IsType<UserSummaryDto>(Assert.IsType<OkObjectResult>(result).Value);
         Assert.Equal(Gender.Female, dto.Gender);
     }
+
+    #region Acting user (plugin X-Acting-User-Id header)
+
+    private void SetRequest(ClaimsPrincipal? user = null, string? actingUserId = null, string? apiKey = null, string? configuredKey = null)
+    {
+        var configuration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+        configuration.Setup(c => c["Security:PluginApiKey"]).Returns(configuredKey);
+        var services = new Mock<IServiceProvider>();
+        services.Setup(s => s.GetService(typeof(Microsoft.Extensions.Configuration.IConfiguration))).Returns(configuration.Object);
+
+        var httpContext = new DefaultHttpContext { RequestServices = services.Object };
+        if (user != null) httpContext.User = user;
+        if (actingUserId != null) httpContext.Request.Headers[UsersController.ActingUserHeader] = actingUserId;
+        if (apiKey != null) httpContext.Request.Headers[UsersController.PluginApiKeyHeader] = apiKey;
+        _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        _mockUserService.Setup(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(),
+                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<bool>()))
+            .ReturnsAsync(new BalanceAdjustmentResultDto());
+    }
+
+    private Task AdjustCoins() =>
+        _controller.AdjustBalances(7, new AdjustBalancesDto { CoinsDelta = 500, Reason = "event prize" });
+
+    private void VerifyActor(int? actor) =>
+        _mockUserService.Verify(s => s.AdjustBalancesAsync(7, 500, 0, 0, "event prize", It.IsAny<string?>(), actor, It.IsAny<bool>()), Times.Once);
+
+    [Fact]
+    public async Task AdjustBalances_AnonymousPluginCallWithActingUserHeader_RecordsThatStaffMember()
+    {
+        // Regression: the plugin calls anonymously and names the in-game admin in this header,
+        // which the API never read - every in-game staff change was logged as system (null).
+        SetRequest(actingUserId: "42");
+
+        await AdjustCoins();
+
+        VerifyActor(42);
+    }
+
+    [Fact]
+    public async Task AdjustBalances_LoggedInCaller_IsTheActorEvenIfTheHeaderNamesSomeoneElse()
+    {
+        var identity = new ClaimsIdentity(new[] { new Claim("uid", "5") }, "Bearer");
+        SetRequest(user: new ClaimsPrincipal(identity), actingUserId: "42");
+
+        await AdjustCoins();
+
+        VerifyActor(5);
+    }
+
+    [Fact]
+    public async Task AdjustBalances_PluginKeyConfiguredButMissing_IgnoresTheHeader()
+    {
+        SetRequest(actingUserId: "42", configuredKey: "secret");
+
+        await AdjustCoins();
+
+        VerifyActor(null);
+    }
+
+    [Fact]
+    public async Task AdjustBalances_PluginKeyConfiguredAndSent_TrustsTheHeader()
+    {
+        SetRequest(actingUserId: "42", apiKey: "secret", configuredKey: "secret");
+
+        await AdjustCoins();
+
+        VerifyActor(42);
+    }
+
+    [Fact]
+    public async Task AdjustBalances_WrongPluginKeyOrBadHeader_IgnoresTheHeader()
+    {
+        SetRequest(actingUserId: "42", apiKey: "guess", configuredKey: "secret");
+        await AdjustCoins();
+        VerifyActor(null);
+
+        SetRequest(actingUserId: "not-a-number");
+        await AdjustCoins();
+        _mockUserService.Verify(s => s.AdjustBalancesAsync(7, 500, 0, 0, "event prize", It.IsAny<string?>(), null, It.IsAny<bool>()), Times.Exactly(2));
+    }
+
+    #endregion
 }

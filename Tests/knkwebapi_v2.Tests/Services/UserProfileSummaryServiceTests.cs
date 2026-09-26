@@ -53,7 +53,7 @@ public class UserProfileSummaryServiceTests
     }
 
     [Fact]
-    public async Task GetAsync_KnownUser_ComposesSalaryStateFromGlobalPersonalAndRankMultipliers()
+    public async Task GetAsync_KnownUser_ComposesSalaryStateFromTitleSalaryAndAllThreeMultipliers()
     {
         var lastPayout = DateTime.UtcNow.AddHours(-2);
         var account = new UserDto
@@ -69,7 +69,7 @@ public class UserProfileSummaryServiceTests
             .ReturnsAsync(new PermissionEffectiveResponseDto { UserId = 1 });
         _mockUserPermissionGroupService.Setup(s => s.GetByUserAsync(1))
             .ReturnsAsync(new List<UserPermissionGroupDto>());
-        _mockTitleService.Setup(s => s.ResolveAsync(20, It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 3 });
+        _mockTitleService.Setup(s => s.ResolveAsync(20, It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { TitleBracketId = 3, Salary = 2000 });
         _mockSalaryService.Setup(s => s.GetCurrentRankMultiplierAsync(1)).ReturnsAsync(1.5m);
         _mockSalaryConfigurationService.Setup(s => s.GetAsync())
             .ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 10.0m });
@@ -79,10 +79,11 @@ public class UserProfileSummaryServiceTests
         Assert.NotNull(result);
         Assert.Same(account, result!.Account);
         Assert.Equal(3, result.Title.TitleBracketId);
+        Assert.Equal(2000, result.Salary.TitleSalary);
         Assert.Equal(10.0m, result.Salary.GlobalMultiplier);
         Assert.Equal(2.0m, result.Salary.PersonalMultiplier);
         Assert.Equal(1.5m, result.Salary.RankMultiplier);
-        Assert.Equal(30.0m, result.Salary.EffectiveHourlyRate); // 10 * 2.0 * 1.5
+        Assert.Equal(60000.0m, result.Salary.EffectiveHourlyRate); // 2000 (title) * 10 * 2.0 * 1.5
         Assert.Equal(lastPayout, result.Salary.LastSalaryPayoutAt);
         Assert.Equal(lastPayout.AddHours(1), result.Salary.NextEligibleAt);
     }

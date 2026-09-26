@@ -221,6 +221,8 @@ namespace knkwebapi_v2.Services
             var previousGems = existing.Gems;
             var previousExperience = existing.ExperiencePoints;
             var previousMultiplier = existing.PersonalSalaryMultiplier;
+            var previousGemBonusMultiplier = existing.PersonalGemBonusMultiplier;
+            var previousExpBonusMultiplier = existing.PersonalExpBonusMultiplier;
             var previousTitle = await _titleService.ResolveAsync(previousExperience, existing.Gender);
 
             // Apply all editable UserDto fields onto the tracked entity. The mapping profile
@@ -244,7 +246,8 @@ namespace knkwebapi_v2.Services
             await _repo.UpdateUserAsync(existing);
 
             if (existing.Coins != previousCoins || existing.Gems != previousGems ||
-                existing.ExperiencePoints != previousExperience || existing.PersonalSalaryMultiplier != previousMultiplier)
+                existing.ExperiencePoints != previousExperience || existing.PersonalSalaryMultiplier != previousMultiplier ||
+                existing.PersonalGemBonusMultiplier != previousGemBonusMultiplier || existing.PersonalExpBonusMultiplier != previousExpBonusMultiplier)
             {
                 await _auditLogService.RecordAsync(actorUserId, id, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
                 {
@@ -253,7 +256,11 @@ namespace knkwebapi_v2.Services
                     gemsDelta = existing.Gems - previousGems,
                     experienceDelta = existing.ExperiencePoints - previousExperience,
                     previousPersonalSalaryMultiplier = previousMultiplier,
-                    newPersonalSalaryMultiplier = existing.PersonalSalaryMultiplier
+                    newPersonalSalaryMultiplier = existing.PersonalSalaryMultiplier,
+                    previousPersonalGemBonusMultiplier = previousGemBonusMultiplier,
+                    newPersonalGemBonusMultiplier = existing.PersonalGemBonusMultiplier,
+                    previousPersonalExpBonusMultiplier = previousExpBonusMultiplier,
+                    newPersonalExpBonusMultiplier = existing.PersonalExpBonusMultiplier
                 }));
 
                 if (existing.ExperiencePoints != previousExperience)
@@ -680,14 +687,21 @@ namespace knkwebapi_v2.Services
             // Resolved before the mutation so a resulting title change can be detected, and so the
             // consolidation in TitleProgression has every bracket to walk between old and new XP.
             var originalExperience = user.ExperiencePoints;
+            var originalCoins = user.Coins;
+            var originalGems = user.Gems;
             var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
 
             user.Coins = newCoins;
             user.Gems = newGems;
             user.ExperiencePoints = newExperience;
 
-            // Shared with siege match rewards (docs/specs/siege-minigame/DESIGN.md §7.6).
-            TitleChangeResultDto? titleChange = TitleProgression.ApplyExperienceChange(user, originalExperience, brackets);
+            // Shared with siege match rewards (docs/specs/siege-minigame/DESIGN.md §7.6). KNG-16: the
+            // promotion bonuses are scaled by the personal x rank multipliers (loaded only when the
+            // gain actually crosses into a higher bracket).
+            var ranks = TitleProgression.CrossesUp(brackets, originalExperience, newExperience)
+                ? await _membershipService.GetActiveRankMultipliersAsync(userId) ?? RankMultipliersDto.Neutral
+                : RankMultipliersDto.Neutral;
+            TitleChangeResultDto? titleChange = TitleProgression.ApplyExperienceChange(user, originalExperience, brackets, ranks);
 
             await _repo.UpdateUserAsync(user);
 
@@ -704,7 +718,14 @@ namespace knkwebapi_v2.Services
                 metadata,
                 titleBonusCoins = titleChange?.CoinBonusGranted ?? 0,
                 titleBonusGems = titleChange?.GemBonusGranted ?? 0,
-                titleBonusExp = titleChange?.ExpBonusGranted ?? 0
+                titleBonusExp = titleChange?.ExpBonusGranted ?? 0,
+                // Before/after (bonuses included) for the moderation activity feed.
+                coinsBefore = originalCoins,
+                coinsAfter = user.Coins,
+                gemsBefore = originalGems,
+                gemsAfter = user.Gems,
+                experienceBefore = originalExperience,
+                experienceAfter = user.ExperiencePoints
             }));
 
             if (titleChange != null)

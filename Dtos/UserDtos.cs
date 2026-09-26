@@ -140,6 +140,17 @@ namespace knkwebapi_v2.Dtos
         public decimal PersonalSalaryMultiplier { get; set; } = 1.0m;
 
         /// <summary>
+        /// Per-player multipliers on title promotion gem/XP bonuses (KNG-16), admin-editable like
+        /// PersonalSalaryMultiplier. Always set when read; omitted (null) on a write keeps the
+        /// stored value, so clients that predate these fields don't reset them.
+        /// </summary>
+        [JsonPropertyName("personalGemBonusMultiplier")]
+        public decimal? PersonalGemBonusMultiplier { get; set; }
+
+        [JsonPropertyName("personalExpBonusMultiplier")]
+        public decimal? PersonalExpBonusMultiplier { get; set; }
+
+        /// <summary>
         /// Read-only: last time SalaryService paid this user out. Not writable via this DTO — see
         /// POST /api/users/{id}/salary/payout.
         /// </summary>

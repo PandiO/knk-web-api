@@ -40,17 +40,15 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>
-        /// Coin rewards get the player's personal salary multiplier times their rank (premium)
-        /// multiplier (smoke test 2026-09-26; <see cref="CoinRewardMultipliers"/>). Without the
-        /// membership repository (some tests) the rank part is neutral.
+        /// The player's active ranks (KNG-16 <see cref="RankMultipliersDto"/>): siege coin rewards are
+        /// scaled by personal salary x rank salary multipliers (smoke test 2026-09-26), and title
+        /// promotion bonuses by the same rules as every other XP gain. Without the membership
+        /// repository (some tests) the ranks are neutral.
         /// </summary>
-        private async Task<decimal> CoinMultiplierAsync(User user, DateTime asOf)
-        {
-            var rank = _memberships == null
-                ? 1.0m
-                : CoinRewardMultipliers.Rank(await _memberships.GetByUserAsync(user.Id), asOf);
-            return user.PersonalSalaryMultiplier * rank;
-        }
+        private async Task<RankMultipliersDto> RanksAsync(int userId, DateTime asOf) =>
+            _memberships == null
+                ? RankMultipliersDto.Neutral
+                : RankMultipliersDto.FromMemberships(await _memberships.GetByUserAsync(userId), asOf);
 
         // ===== Reads =====
 
@@ -254,22 +252,25 @@ namespace knkwebapi_v2.Services
                 var brackets = grantees.Any(x => x.Reward.Experience > 0) ? await _titleService.GetAllOrderedAsync() : null;
 
                 var titleChangeByUser = new Dictionary<int, TitleChangeResultDto>();
-                var coinsByUser = new Dictionary<int, (int Coins, decimal Multiplier)>();
+                var coinsByUser = new Dictionary<int, (int Coins, decimal Multiplier, List<RewardMultiplierDto> Breakdown)>();
                 var now = DateTime.UtcNow;
                 foreach (var (row, reward) in grantees)
                 {
                     var user = users[row.UserId];
                     var previousExperience = user.ExperiencePoints;
-                    var multiplier = reward.Coins > 0 ? await CoinMultiplierAsync(user, now) : 1.0m;
-                    var coins = CoinRewardMultipliers.Apply(reward.Coins, multiplier);
-                    coinsByUser[user.Id] = (coins, multiplier);
+                    var ranks = await RanksAsync(user.Id, now);
+                    var multiplier = user.PersonalSalaryMultiplier * ranks.Salary;
+                    var coins = TitleProgression.ScaleBonus(reward.Coins, multiplier);
+                    var breakdown = new List<RewardMultiplierDto> { RewardMultiplierDto.Personal(user.PersonalSalaryMultiplier) };
+                    breakdown.AddRange(ranks.SalaryBreakdown());
+                    coinsByUser[user.Id] = (coins, multiplier, breakdown);
                     user.Coins += coins;
                     user.Gems += reward.Gems;
                     user.ExperiencePoints += reward.Experience;
                     // XP goes through the shared title path, so brackets advance (and grant their
                     // bonuses) exactly as for any other XP gain.
                     var change = reward.Experience > 0
-                        ? TitleProgression.ApplyExperienceChange(user, previousExperience, brackets)
+                        ? TitleProgression.ApplyExperienceChange(user, previousExperience, brackets, ranks)
                         : null;
                     if (change != null)
                     {
@@ -292,7 +293,7 @@ namespace knkwebapi_v2.Services
                     WinningAllianceGroup = match.WinningAllianceGroup,
                     AlreadyCompleted = false,
                     Rewards = rewards.Select(x => ToRewardDto(x.Reward, titleChangeByUser.GetValueOrDefault(x.Row.UserId),
-                        coinsByUser.TryGetValue(x.Row.UserId, out var granted) ? granted : (x.Reward.Coins, 1.0m))).ToList()
+                        coinsByUser.TryGetValue(x.Row.UserId, out var granted) ? granted : (x.Reward.Coins, 1.0m, new List<RewardMultiplierDto>()))).ToList()
                 };
             });
 
@@ -441,7 +442,7 @@ namespace knkwebapi_v2.Services
         }
 
         private static SiegeMatchRewardDto ToRewardDto(SiegeRewardCalculator.Reward reward, TitleChangeResultDto? titleChange,
-            (int Coins, decimal Multiplier) granted) => new()
+            (int Coins, decimal Multiplier, List<RewardMultiplierDto> Breakdown) granted) => new()
         {
             UserId = reward.UserId,
             SiegeTeamId = reward.TeamId,
@@ -452,6 +453,7 @@ namespace knkwebapi_v2.Services
             Coins = granted.Coins,
             BaseCoins = reward.Coins,
             CoinMultiplier = granted.Multiplier,
+            CoinMultipliers = granted.Breakdown,
             Experience = reward.Experience,
             Gems = reward.Gems,
             TitleChange = titleChange

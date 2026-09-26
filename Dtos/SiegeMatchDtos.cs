@@ -159,6 +159,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("coins")] public int Coins { get; set; }
         [JsonPropertyName("baseCoins")] public int BaseCoins { get; set; }
         [JsonPropertyName("coinMultiplier")] public decimal CoinMultiplier { get; set; } = 1.0m;
+        // KNG-16 breakdown (personal, then one entry per active rank), like salary and title bonuses;
+        // empty on a repeat call.
+        [JsonPropertyName("coinMultipliers")] public List<RewardMultiplierDto> CoinMultipliers { get; set; } = new();
         [JsonPropertyName("experience")] public int Experience { get; set; }
         [JsonPropertyName("gems")] public int Gems { get; set; }
         // Only on the call that granted the rewards (a repeat call returns the stored amounts

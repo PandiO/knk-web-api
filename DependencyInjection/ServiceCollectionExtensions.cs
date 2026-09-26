@@ -156,6 +156,8 @@ namespace knkwebapi_v2.DependencyInjection
 
             // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
+            // Temporary ranks expiring: back to Default + tell the plugin (RANK_DISPLAY.md).
+            services.AddHostedService<RankExpirySweepService>();
 
             // Validation method implementations (Phase 3)
             services.AddScoped<IValidationMethod, LocationInsideRegionValidator>();

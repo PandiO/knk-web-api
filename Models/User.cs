@@ -122,6 +122,20 @@ public class User : PermissionHolder
     public decimal PersonalSalaryMultiplier { get; set; } = 1.0m;
 
     /// <summary>
+    /// Per-player multiplier on the one-time gem bonus of each title reached (TitleBracket.GemBonus,
+    /// KNG-16). Multiplied with the rank-based PermissionGroup.GemBonusMultiplier by
+    /// UserService.AdjustBalancesAsync. Default 1.0 (neutral). The coin bonus uses the salary
+    /// multipliers instead.
+    /// </summary>
+    public decimal PersonalGemBonusMultiplier { get; set; } = 1.0m;
+
+    /// <summary>
+    /// Per-player multiplier on the one-time XP bonus of each title reached (TitleBracket.ExpBonus,
+    /// KNG-16), multiplied with PermissionGroup.ExpBonusMultiplier. Default 1.0 (neutral).
+    /// </summary>
+    public decimal PersonalExpBonusMultiplier { get; set; } = 1.0m;
+
+    /// <summary>
     /// UTC timestamp of this user's last salary payout, advanced by SalaryService on each payout.
     /// Backfilled to the migration's apply time for pre-existing users (not their CreatedAt) so
     /// rollout doesn't trigger one giant retroactive payout. Service-managed only — ignored by the

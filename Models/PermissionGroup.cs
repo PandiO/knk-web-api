@@ -37,6 +37,17 @@ public class PermissionGroup : PermissionHolder
     public decimal SalaryMultiplier { get; set; } = 1.0m;
 
     /// <summary>
+    /// Rank-based multiplier on title promotion gem bonuses (TitleBracket.GemBonus, KNG-16),
+    /// combined across active memberships and with User.PersonalGemBonusMultiplier the same way
+    /// as SalaryMultiplier. Default 1.0 (neutral).
+    /// </summary>
+    public decimal GemBonusMultiplier { get; set; } = 1.0m;
+
+    /// <summary>Rank-based multiplier on title promotion XP bonuses (TitleBracket.ExpBonus,
+    /// KNG-16) — see GemBonusMultiplier.</summary>
+    public decimal ExpBonusMultiplier { get; set; } = 1.0m;
+
+    /// <summary>
     /// In-game chat styles for members whose display group this is (KNG-7): the premium tier's,
     /// or the Default group's for players without one. Stored as Minecraft "&amp;" formatting
     /// codes only ("&amp;e", "&amp;6&amp;l", hex "&amp;x&amp;f&amp;f&amp;a&amp;a&amp;0&amp;0" —

@@ -12,11 +12,17 @@ public class SalaryConfiguration
     public string Id { get; set; } = "global";
 
     /// <summary>
-    /// Base coins paid per hour at a neutral (1.0) personal/rank multiplier — see
-    /// SalaryConfigurationDto's doc comment for why this one field also functions as the base
-    /// hourly rate. Default 1.0 is a placeholder; tune via PUT before relying on real payouts.
+    /// Server-wide multiplier on the title-based hourly salary (TitleBracket.Salary), applied
+    /// alongside the personal and rank multipliers. 1.0 (the default) pays titles' Salary as-is.
     /// </summary>
     public decimal GlobalMultiplier { get; set; } = 1.0m;
+
+    /// <summary>
+    /// How many hours of a gap between payouts count toward salary (log decay, see
+    /// SalaryService.PaidHoursFor). Default 720 = 30 days; 1 pays a single hour however long the
+    /// player was away.
+    /// </summary>
+    public int OfflinePayoutMaxHours { get; set; } = 720;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
