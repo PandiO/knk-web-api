@@ -252,6 +252,18 @@ public class User : PermissionHolder
     public int? FrozenByUserId { get; set; }
 
     public DateTime? FrozenAt { get; set; }
+
+    // ===== CURRENCY TRANSFER LOCK (docs/specs/currency-payments/DESIGN.md §3.5) =====
+
+    /// <summary>
+    /// Set by staff to stop this player sending or receiving player transfers (/pay); null when
+    /// not locked. System grants (salary, rewards) still credit a locked player. Enforced from
+    /// currency Phase 3; set only through the currency admin route (Phase 4), never through the
+    /// generic user edit.
+    /// </summary>
+    public string? TransferLockReason { get; set; }
+
+    public DateTime? TransferLockedAt { get; set; }
 }
 
 /// <summary>
