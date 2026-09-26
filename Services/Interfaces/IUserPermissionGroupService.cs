@@ -25,5 +25,9 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <summary>The user's current premium tier: their highest-Weight active membership in a
         /// group flagged IsPremiumTier, or null if they hold none.</summary>
         Task<UserPermissionGroupDto?> GetActivePremiumTierAsync(int userId);
+
+        /// <summary>Products of SalaryMultiplier, GemBonusMultiplier and ExpBonusMultiplier across
+        /// the user's currently-active memberships (1.0 each if none).</summary>
+        Task<RankMultipliersDto> GetActiveRankMultipliersAsync(int userId);
     }
 }

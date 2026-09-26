@@ -132,7 +132,9 @@ namespace knkwebapi_v2.Dtos
         public List<TitleCrossingDto> CrossedTitles { get; set; } = new();
 
         /// <summary>Summed CoinBonus/GemBonus/ExpBonus across every bracket crossed on
-        /// promotion. Always 0 on demotion (v1 never clawed back currency on demotion).</summary>
+        /// promotion, after the player's multipliers (KNG-16: coins x personal/rank salary
+        /// multipliers, gems and XP x their own GemBonus/ExpBonus multipliers). Always 0 on
+        /// demotion (v1 never clawed back currency on demotion).</summary>
         [JsonPropertyName("coinBonusGranted")]
         public int CoinBonusGranted { get; set; }
 

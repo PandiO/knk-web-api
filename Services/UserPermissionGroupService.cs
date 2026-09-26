@@ -116,6 +116,21 @@ namespace knkwebapi_v2.Services
             return tier == null ? null : ToDto(tier, now);
         }
 
+        public async Task<RankMultipliersDto> GetActiveRankMultipliersAsync(int userId)
+        {
+            var now = DateTime.UtcNow;
+            var groups = (await _repo.GetByUserAsync(userId))
+                .Where(m => m.PermissionGroup != null && (m.ExpiresAt == null || m.ExpiresAt > now))
+                .Select(m => m.PermissionGroup!)
+                .ToList();
+            return new RankMultipliersDto
+            {
+                Salary = groups.Aggregate(1.0m, (product, g) => product * g.SalaryMultiplier),
+                GemBonus = groups.Aggregate(1.0m, (product, g) => product * g.GemBonusMultiplier),
+                ExpBonus = groups.Aggregate(1.0m, (product, g) => product * g.ExpBonusMultiplier)
+            };
+        }
+
         /// <summary>
         /// Highest-Weight active premium membership (ties broken by lowest group id, matching
         /// PermissionGroupRepository.GetActiveGroupsForUserAsync's ordering). A temporary higher

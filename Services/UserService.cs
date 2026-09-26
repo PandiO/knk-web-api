@@ -221,6 +221,8 @@ namespace knkwebapi_v2.Services
             var previousGems = existing.Gems;
             var previousExperience = existing.ExperiencePoints;
             var previousMultiplier = existing.PersonalSalaryMultiplier;
+            var previousGemBonusMultiplier = existing.PersonalGemBonusMultiplier;
+            var previousExpBonusMultiplier = existing.PersonalExpBonusMultiplier;
             var previousTitle = await _titleService.ResolveAsync(previousExperience, existing.Gender);
 
             // Apply all editable UserDto fields onto the tracked entity. The mapping profile
@@ -244,7 +246,8 @@ namespace knkwebapi_v2.Services
             await _repo.UpdateUserAsync(existing);
 
             if (existing.Coins != previousCoins || existing.Gems != previousGems ||
-                existing.ExperiencePoints != previousExperience || existing.PersonalSalaryMultiplier != previousMultiplier)
+                existing.ExperiencePoints != previousExperience || existing.PersonalSalaryMultiplier != previousMultiplier ||
+                existing.PersonalGemBonusMultiplier != previousGemBonusMultiplier || existing.PersonalExpBonusMultiplier != previousExpBonusMultiplier)
             {
                 await _auditLogService.RecordAsync(actorUserId, id, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
                 {
@@ -253,7 +256,11 @@ namespace knkwebapi_v2.Services
                     gemsDelta = existing.Gems - previousGems,
                     experienceDelta = existing.ExperiencePoints - previousExperience,
                     previousPersonalSalaryMultiplier = previousMultiplier,
-                    newPersonalSalaryMultiplier = existing.PersonalSalaryMultiplier
+                    newPersonalSalaryMultiplier = existing.PersonalSalaryMultiplier,
+                    previousPersonalGemBonusMultiplier = previousGemBonusMultiplier,
+                    newPersonalGemBonusMultiplier = existing.PersonalGemBonusMultiplier,
+                    previousPersonalExpBonusMultiplier = previousExpBonusMultiplier,
+                    newPersonalExpBonusMultiplier = existing.PersonalExpBonusMultiplier
                 }));
 
                 if (existing.ExperiencePoints != previousExperience)
@@ -709,6 +716,14 @@ namespace knkwebapi_v2.Services
 
                     if (direction == "promotion")
                     {
+                        // KNG-16: each bonus is scaled by the player's personal x rank multiplier
+                        // for that currency - coins by the salary multipliers, gems and XP by their
+                        // own GemBonus/ExpBonus multipliers. No global multiplier applies.
+                        var ranks = await _membershipService.GetActiveRankMultipliersAsync(userId) ?? RankMultipliersDto.Neutral;
+                        var coinMultiplier = user.PersonalSalaryMultiplier * ranks.Salary;
+                        var gemMultiplier = user.PersonalGemBonusMultiplier * ranks.GemBonus;
+                        var expMultiplier = user.PersonalExpBonusMultiplier * ranks.ExpBonus;
+
                         // Walk every bracket strictly above previousBracket up to (and possibly
                         // past, if ExpBonus pushes further) currentBracket, accumulating rewards.
                         var idx = brackets.FindIndex(b => b.Id == previousBracket.Id) + 1;
@@ -716,10 +731,11 @@ namespace knkwebapi_v2.Services
                         {
                             var tier = brackets[idx];
                             crossed.Add(tier);
-                            coinBonusTotal += tier.CoinBonus;
-                            gemBonusTotal += tier.GemBonus;
-                            expBonusTotal += tier.ExpBonus;
-                            user.ExperiencePoints += tier.ExpBonus; // may unlock further brackets
+                            var expBonus = ScaleBonus(tier.ExpBonus, expMultiplier);
+                            coinBonusTotal += ScaleBonus(tier.CoinBonus, coinMultiplier);
+                            gemBonusTotal += ScaleBonus(tier.GemBonus, gemMultiplier);
+                            expBonusTotal += expBonus;
+                            user.ExperiencePoints += expBonus; // may unlock further brackets
                             idx++;
                         }
                         user.Coins += coinBonusTotal;
@@ -793,6 +809,11 @@ namespace knkwebapi_v2.Services
                 TitleChange = titleChange
             };
         }
+
+        /// <summary>A title promotion bonus scaled by its multiplier, rounded to whole units and
+        /// never negative (a multiplier set negative by a direct DB edit pays nothing).</summary>
+        private static int ScaleBonus(int bonus, decimal multiplier) =>
+            Math.Max(0, (int)Math.Round(bonus * multiplier, MidpointRounding.AwayFromZero));
 
         // ===== NEW METHODS: LINK CODES =====
 

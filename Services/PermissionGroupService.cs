@@ -29,11 +29,18 @@ namespace knkwebapi_v2.Services
             return _mapper.Map<PermissionGroupDto>(group);
         }
 
+        private static void ValidateMultipliers(PermissionGroupDto dto)
+        {
+            if (dto.SalaryMultiplier < 0) throw new ArgumentException("SalaryMultiplier cannot be negative.", nameof(dto));
+            if (dto.GemBonusMultiplier < 0) throw new ArgumentException("GemBonusMultiplier cannot be negative.", nameof(dto));
+            if (dto.ExpBonusMultiplier < 0) throw new ArgumentException("ExpBonusMultiplier cannot be negative.", nameof(dto));
+        }
+
         public async Task<PermissionGroupDto> CreateAsync(PermissionGroupDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Group name is required.", nameof(dto));
-            if (dto.SalaryMultiplier < 0) throw new ArgumentException("SalaryMultiplier cannot be negative.", nameof(dto));
+            ValidateMultipliers(dto);
             NormalizeColors(dto);
 
             if (dto.ParentGroupId.HasValue && dto.ParentGroupId > 0)
@@ -53,7 +60,7 @@ namespace knkwebapi_v2.Services
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Group name is required.", nameof(dto));
-            if (dto.SalaryMultiplier < 0) throw new ArgumentException("SalaryMultiplier cannot be negative.", nameof(dto));
+            ValidateMultipliers(dto);
             NormalizeColors(dto);
 
             var existing = await _repo.GetByIdAsync(id);
@@ -77,6 +84,9 @@ namespace knkwebapi_v2.Services
             existing.Weight = dto.Weight;
             existing.IsPremiumTier = dto.IsPremiumTier;
             existing.SalaryMultiplier = dto.SalaryMultiplier;
+            // Omitted = keep: a client that predates these fields (KNG-16) must not reset them.
+            existing.GemBonusMultiplier = dto.GemBonusMultiplier ?? existing.GemBonusMultiplier;
+            existing.ExpBonusMultiplier = dto.ExpBonusMultiplier ?? existing.ExpBonusMultiplier;
             existing.ChatPrefix = dto.ChatPrefix;
             existing.ChatSuffix = dto.ChatSuffix;
             existing.ChatPrimaryColor = dto.ChatPrimaryColor;
