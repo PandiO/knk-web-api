@@ -667,6 +667,10 @@ public static partial class MenuTemplateSeed
         // Domain discovery (KNG-20) - see MenuTemplateSeed.Discovery.cs.
         foreach (var template in DiscoveryTemplates())
             yield return template;
+
+        // Teleport menu (KNG-17 Phase 6) - see MenuTemplateSeed.Teleport.cs.
+        foreach (var template in TeleportTemplates())
+            yield return template;
     }
 
     /// <summary>
