@@ -731,6 +731,34 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
+        /// Audit one in-game staff teleport (docs/specs/teleport/DESIGN.md §3.10): knk-plugin's
+        /// TeleportAuditor posts here after every /tp, /tp a b and /tphere, fire-and-forget.
+        /// {id} is the player the entry is filed under (the visited player for "/tp &lt;player&gt;",
+        /// otherwise the moved one); the acting staff member comes from X-Acting-User-Id, see
+        /// GetActorUserId. Plugin endpoint without an auth attribute until KNG-22's service key.
+        /// </summary>
+        /// <response code="204">Recorded</response>
+        /// <response code="400">Invalid body</response>
+        /// <response code="404">User {id} not found</response>
+        [HttpPost("{id:int}/teleport-audit")]
+        public async Task<IActionResult> RecordTeleportAudit(int id, [FromBody] TeleportAuditDto request)
+        {
+            try
+            {
+                await _service.RecordTeleportAuditAsync(id, request, GetActorUserId());
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Moderation search: users in a given PermissionGroup, optionally narrowed to currently-online
         /// (docs/specs/user-management/IMPLEMENTATION_PLAN.md Phase 3). Distinct from the generic
         /// POST /api/Users/search (PagedQueryDto column filters) since group membership isn't a flat

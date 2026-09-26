@@ -357,6 +357,78 @@ namespace knkwebapi_v2.Services
                 JsonSerializer.Serialize(new { reason }));
         }
 
+        /// <summary>TeleportKind names the plugin may audit (docs/specs/teleport/DESIGN.md §3.4).</summary>
+        public static readonly IReadOnlyCollection<string> TeleportAuditKinds = new[] { "STAFF", "REQUEST", "SPAWN", "WARP", "BACK" };
+
+        private const int TeleportAuditMaxWorldLength = 64;
+        private const int TeleportAuditMaxReasonLength = 256;
+        private const double TeleportAuditMaxCoordinate = 30_000_000;
+
+        public async Task RecordTeleportAuditAsync(int targetUserId, TeleportAuditDto dto, int? actorUserId = null)
+        {
+            if (targetUserId <= 0) throw new ArgumentException("Invalid user ID.", nameof(targetUserId));
+            if (dto == null) throw new ArgumentException("A teleport audit body is required.", nameof(dto));
+
+            var target = await _repo.GetByIdAsync(targetUserId);
+            if (target == null) throw new KeyNotFoundException($"User with ID {targetUserId} not found.");
+
+            // Anonymous callers can reach this (plugin endpoint, KNG-22 adds the service key), so
+            // nothing in the body is taken on trust: the entry must be about user {id}, every user
+            // it names must exist, and the free-text parts are bounded.
+            var kind = dto.Kind?.Trim().ToUpperInvariant();
+            if (string.IsNullOrEmpty(kind) || !TeleportAuditKinds.Contains(kind))
+                throw new ArgumentException($"Unknown teleport kind '{dto.Kind}'.", nameof(dto.Kind));
+            if (dto.SubjectUserId <= 0) throw new ArgumentException("subjectUserId is required.", nameof(dto.SubjectUserId));
+            if (dto.VisitedUserId is <= 0) throw new ArgumentException("Invalid visitedUserId.", nameof(dto.VisitedUserId));
+            if (targetUserId != dto.SubjectUserId && targetUserId != dto.VisitedUserId)
+                throw new ArgumentException("The audited user must be the moved or the visited player.", nameof(targetUserId));
+            if (dto.DomainId is <= 0) throw new ArgumentException("Invalid domainId.", nameof(dto.DomainId));
+            ValidateTeleportPoint(dto.From, "from");
+            ValidateTeleportPoint(dto.To, "to");
+            var reason = string.IsNullOrWhiteSpace(dto.Reason) ? null : dto.Reason.Trim();
+            if (reason?.Length > TeleportAuditMaxReasonLength)
+                throw new ArgumentException($"reason must be at most {TeleportAuditMaxReasonLength} characters.", nameof(dto.Reason));
+            var via = string.IsNullOrWhiteSpace(dto.Via) ? "command" : dto.Via.Trim().ToLowerInvariant();
+            if (via != "command" && via != "console") throw new ArgumentException($"Unknown via '{dto.Via}'.", nameof(dto.Via));
+
+            var subject = dto.SubjectUserId == targetUserId ? target : await _repo.GetByIdAsync(dto.SubjectUserId);
+            if (subject == null) throw new ArgumentException($"Subject user {dto.SubjectUserId} not found.", nameof(dto.SubjectUserId));
+            User? visited = null;
+            if (dto.VisitedUserId.HasValue)
+            {
+                visited = dto.VisitedUserId.Value == targetUserId ? target : await _repo.GetByIdAsync(dto.VisitedUserId.Value);
+                if (visited == null) throw new ArgumentException($"Visited user {dto.VisitedUserId} not found.", nameof(dto.VisitedUserId));
+            }
+
+            // Usernames are resolved here rather than sent by the plugin, so the Recent Activity
+            // line ("Alice → Bob") can't be spoofed and still reads right after a rename.
+            await _auditLogService.RecordAsync(actorUserId, targetUserId, AuditAction.PlayerTeleported, JsonSerializer.Serialize(new
+            {
+                kind,
+                subjectUserId = subject.Id,
+                subjectUsername = subject.Username,
+                visitedUserId = visited?.Id,
+                visitedUsername = visited?.Username,
+                from = new { world = dto.From.World.Trim(), x = dto.From.X, y = dto.From.Y, z = dto.From.Z },
+                to = new { world = dto.To.World.Trim(), x = dto.To.X, y = dto.To.Y, z = dto.To.Z, domainId = dto.DomainId },
+                silent = dto.Silent,
+                reason,
+                via
+            }));
+        }
+
+        private static void ValidateTeleportPoint(TeleportAuditPointDto? point, string name)
+        {
+            if (point == null) throw new ArgumentException($"{name} is required.", name);
+            if (string.IsNullOrWhiteSpace(point.World) || point.World.Trim().Length > TeleportAuditMaxWorldLength)
+                throw new ArgumentException($"{name}.world is required (at most {TeleportAuditMaxWorldLength} characters).", name);
+            foreach (var value in new[] { point.X, point.Y, point.Z })
+            {
+                if (!double.IsFinite(value) || Math.Abs(value) > TeleportAuditMaxCoordinate)
+                    throw new ArgumentException($"{name} has an invalid coordinate.", name);
+            }
+        }
+
         public async Task<IEnumerable<UserListDto>> SearchByGroupAsync(int groupId, bool? onlineOnly = null)
         {
             if (groupId <= 0) throw new ArgumentException("Invalid group id.", nameof(groupId));

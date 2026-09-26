@@ -19,5 +19,8 @@ public enum AuditAction
     BalanceAdjusted = 8,
     PlayerFrozen = 9,
     PlayerUnfrozen = 10,
-    KitGranted = 11
+    KitGranted = 11,
+    // A staff /tp, /tphere (and later /spawn <p>, /warp <d> <p>) made in game - recorded by the
+    // plugin through POST /api/users/{id}/teleport-audit (docs/specs/teleport/DESIGN.md §3.10).
+    PlayerTeleported = 12
 }

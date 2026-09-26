@@ -99,6 +99,15 @@ namespace knkwebapi_v2.Services
         /// plugin restores/enforces the state on the target's next join.</summary>
         Task SetFrozenAsync(int userId, bool frozen, string? reason, int? actorUserId = null);
 
+        /// <summary>
+        /// Records one in-game staff teleport as a PlayerTeleported audit entry on
+        /// <paramref name="targetUserId"/> (docs/specs/teleport/DESIGN.md §3.10). Throws
+        /// KeyNotFoundException for an unknown target, ArgumentException for an invalid body
+        /// (unknown kind/users, a target that is neither the moved nor the visited player, bad
+        /// coordinates, overlong text).
+        /// </summary>
+        Task RecordTeleportAuditAsync(int targetUserId, TeleportAuditDto dto, int? actorUserId = null);
+
         // ===== NEW METHODS: LINK CODES =====
         /// <summary>
         /// Generate a link code for a user (or null for web-first flow).
