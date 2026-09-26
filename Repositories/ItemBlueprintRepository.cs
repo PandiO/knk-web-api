@@ -73,6 +73,15 @@ namespace knkwebapi_v2.Repositories
             var instances = await _context.ItemInstances.CountAsync(i => i.ItemBlueprintId == id);
             if (instances > 0)
                 return $"{instances} item instance(s) were minted from it";
+            var poolEntries = await _context.LootboxPoolEntries.CountAsync(p => p.ItemBlueprintId == id);
+            if (poolEntries > 0)
+                return $"{poolEntries} lootbox pool entr{(poolEntries == 1 ? "y" : "ies")} reference it";
+            var specials = await _context.LootboxSpecialEntries.CountAsync(s => s.ItemBlueprintId == id);
+            if (specials > 0)
+                return $"{specials} lootbox special entr{(specials == 1 ? "y" : "ies")} reference it";
+            var claims = await _context.LootboxClaims.CountAsync(c => c.ItemBlueprintId == id);
+            if (claims > 0)
+                return $"{claims} lootbox claim(s) in the drop log reference it";
             return null;
         }
 

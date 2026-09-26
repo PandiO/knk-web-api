@@ -19,5 +19,11 @@ public enum AuditAction
     BalanceAdjusted = 8,
     PlayerFrozen = 9,
     PlayerUnfrozen = 10,
-    KitGranted = 11
+    KitGranted = 11,
+    // 12 is allocated to teleport (PlayerTeleported) on its own branch.
+    // Lootboxes (docs/specs/lootboxes/DESIGN.md §3.2), numbers 13-14 allocated to this feature; written from Phase 2
+    // on. Player claims are logged in LootboxClaim, not here. LootboxAreaCreated/LootboxAreaDeleted (in-game area
+    // command) are added with Phase 2 once they have numbers.
+    LootboxSpawnedByAdmin = 13,
+    LootboxGranted = 14
 }
