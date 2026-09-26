@@ -6,6 +6,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services;
 using Moq;
+using System.Text.Json;
 using Xunit;
 
 namespace knkwebapi_v2.Tests.Services;
@@ -89,5 +90,34 @@ public class GradeServiceTests
     {
         await FluentActions.Awaiting(() => Service().CreateAsync(new GradeCreateDto { Name = "X", Stars = 1, DropChance = (decimal)dropChance }))
             .Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Update_FromAFormWithoutTheNewFields_KeepsThem()
+    {
+        // What the web app's generic form sends when the Grade form configuration predates KNG-6.
+        var dto = JsonSerializer.Deserialize<GradeUpdateDto>("{\"id\":1,\"name\":\"Basic\",\"stars\":1}")!;
+        var existing = new Grade { Id = 1, Name = "Common", Stars = 1, DropChance = 70m, EnchantLevelCapDivisor = 5 };
+        _repo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(existing);
+
+        await Service().UpdateAsync(1, dto);
+
+        existing.Name.Should().Be("Basic");
+        existing.DropChance.Should().Be(70m);
+        existing.EnchantLevelCapDivisor.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Update_WithExplicitNulls_ClearsThem()
+    {
+        var dto = JsonSerializer.Deserialize<GradeUpdateDto>(
+            "{\"id\":1,\"name\":\"Common\",\"stars\":1,\"dropChance\":null,\"enchantLevelCapDivisor\":null}")!;
+        var existing = new Grade { Id = 1, Name = "Common", Stars = 1, DropChance = 70m, EnchantLevelCapDivisor = 5 };
+        _repo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(existing);
+
+        await Service().UpdateAsync(1, dto);
+
+        existing.DropChance.Should().BeNull();
+        existing.EnchantLevelCapDivisor.Should().BeNull();
     }
 }

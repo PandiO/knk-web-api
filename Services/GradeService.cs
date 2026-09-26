@@ -53,8 +53,9 @@ namespace knkwebapi_v2.Services
 
             existing.Name = dto.Name;
             existing.Stars = dto.Stars;
-            existing.DropChance = dto.DropChance;
-            existing.EnchantLevelCapDivisor = dto.EnchantLevelCapDivisor;
+            // Only fields the request carried (see GradeUpdateDto): an older form without them keeps the values.
+            if (dto.HasDropChance) existing.DropChance = dto.DropChance;
+            if (dto.HasEnchantLevelCapDivisor) existing.EnchantLevelCapDivisor = dto.EnchantLevelCapDivisor;
 
             await _repo.UpdateAsync(existing);
         }
