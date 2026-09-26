@@ -17,6 +17,12 @@ namespace knkwebapi_v2.Services
     ///   (AuditLogRetentionConfiguration, docs/specs/user-management/DESIGN.md §7 item 3 —
     ///   default 180 days, re-read each run so a config change takes effect without a restart).
     /// Runs once per day at startup and then every 24 hours.
+    /// <para>
+    /// Never touches the currency ledger (currency_transactions / currency_entries): it is kept
+    /// forever (docs/specs/currency-payments/DESIGN.md §3.1 invariant 6, §5 resolved item 11) and
+    /// its tables refuse deletes by trigger. Don't add a ledger cleanup here or anywhere else —
+    /// RetentionPolicyLedgerTests fails if this service ever deletes ledger rows.
+    /// </para>
     /// </summary>
     public class RetentionPolicyService : BackgroundService
     {

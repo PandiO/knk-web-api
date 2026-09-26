@@ -139,6 +139,11 @@ namespace knkwebapi_v2.DependencyInjection
             );
 
             // Retention policy service - background task for cleaning up old records
+            // Currency ledger (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phase 1)
+            services.AddScoped<ICurrencyRepository, CurrencyRepository>();
+            services.AddScoped<ICurrencyService, CurrencyService>();
+            services.AddScoped<CurrencyReconciler>();
+
             services.AddHostedService<RetentionPolicyService>();
             // Temporary ranks expiring: back to Default + tell the plugin (RANK_DISPLAY.md).
             services.AddHostedService<RankExpirySweepService>();
