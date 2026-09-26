@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -25,6 +26,7 @@ namespace KnKWebAPI.Controllers
             return team == null ? NotFound() : Ok(team);
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeTeamUpsertDto dto)
         {
@@ -44,6 +46,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -83,6 +86,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost("{id:int}/spawnpoints")]
         public async Task<IActionResult> CreateSpawnpoint(int id, [FromBody] SiegeSpawnpointUpsertDto dto)
         {

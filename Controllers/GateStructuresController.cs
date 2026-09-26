@@ -1,9 +1,9 @@
-using knkwebapi_v2.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
@@ -174,10 +174,11 @@ namespace KnKWebAPI.Controllers
 
         // Sets/clears the structure-level cascading overrides (decision 5.0-B). Permission model
         // (GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md item 5.3 "still open" #5), settled by siege
-        // Phase 7a as "service client + admins": the plugin's service key or an Admin JWT once
-        // Security:PluginServiceKey is set; open (as before) while it is empty.
+        // Phase 7a as "service client + admins": the plugin's key (it checks knk.gate.admin
+        // in-game first) or a web user holding knk.gate.admin (KNG-22 service auth; fails closed
+        // when Security:PluginApiKey is unset, currency Phase 5).
         [HttpPatch("{id:int}/overrides")]
-        [RequirePluginServiceKey(AllowAdmins = true)]
+        [RequireServiceOrPermission(StaffPermissions.GateAdmin)]
         public async Task<IActionResult> UpdateOverrides(int id, [FromBody] GateStructureOverridesUpdateDto request)
         {
             if (id <= 0) return BadRequest("Invalid id.");

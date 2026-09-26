@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -24,6 +25,7 @@ namespace KnKWebAPI.Controllers
             return objective == null ? NotFound() : Ok(objective);
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeObjectiveUpsertDto dto)
         {
@@ -43,6 +45,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

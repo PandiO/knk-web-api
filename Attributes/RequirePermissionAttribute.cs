@@ -49,6 +49,14 @@ namespace knkwebapi_v2.Attributes
         /// in-game alert notices (currency Phase 5).</summary>
         public const string CurrencyAlerts = "knk.admin.currency.alerts";
 
+        /// <summary>Siege setup: SiegeConfiguration, scenarios, lobbies, teams, objectives,
+        /// spawnpoints (the web-app forms; plugin.yml "/siege admin manage"). Scenario rewards
+        /// are a currency lever (currency DESIGN.md §3.4).</summary>
+        public const string SiegeManage = "knk.siege.admin.manage";
+
+        /// <summary>Gate administration (plugin.yml knk.gate.admin): the structure-level gate overrides.</summary>
+        public const string GateAdmin = "knk.gate.admin";
+
         /// <summary>Server-wide admin settings with no narrower node (audit-log retention).</summary>
         public const string ServerConfig = "knk.admin.config";
     }
