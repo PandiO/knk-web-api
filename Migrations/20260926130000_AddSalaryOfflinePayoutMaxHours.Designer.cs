@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926130000_AddSalaryOfflinePayoutMaxHours")]
+    partial class AddSalaryOfflinePayoutMaxHours
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2589,12 +2592,6 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
-                    b.Property<decimal>("ExpBonusMultiplier")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<decimal>("GemBonusMultiplier")
-                        .HasColumnType("decimal(65,30)");
-
                     b.Property<bool>("IsPremiumTier")
                         .HasColumnType("tinyint(1)");
 
@@ -2698,12 +2695,6 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("longtext");
-
-                    b.Property<decimal>("PersonalExpBonusMultiplier")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<decimal>("PersonalGemBonusMultiplier")
-                        .HasColumnType("decimal(65,30)");
 
                     b.Property<decimal>("PersonalSalaryMultiplier")
                         .HasColumnType("decimal(65,30)");

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -11,6 +12,8 @@ namespace knkwebapi_v2.Controllers
     /// </summary>
     [ApiController]
     [Route("api/audit-log")]
+    // Staff only (developer request 2026-09-26): the log lists every player's moderation history.
+    [RequirePermission(StaffPermissions.ManageUsers)]
     public class AuditLogController : ControllerBase
     {
         private readonly IAuditLogService _service;

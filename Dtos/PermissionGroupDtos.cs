@@ -19,6 +19,16 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("salaryMultiplier")]
         public decimal SalaryMultiplier { get; set; } = 1.0m;
 
+        /// <summary>
+        /// Rank multipliers on title promotion gem/XP bonuses (KNG-16). Always set when read;
+        /// omitted (null) keeps the stored value on update and means 1.0 on create.
+        /// </summary>
+        [JsonPropertyName("gemBonusMultiplier")]
+        public decimal? GemBonusMultiplier { get; set; }
+
+        [JsonPropertyName("expBonusMultiplier")]
+        public decimal? ExpBonusMultiplier { get; set; }
+
         [JsonPropertyName("chatPrefix")]
         public string? ChatPrefix { get; set; }
 
@@ -68,6 +78,10 @@ namespace knkwebapi_v2.Dtos
         public bool isPremiumTier { get; set; }
         [JsonPropertyName("salaryMultiplier")]
         public decimal salaryMultiplier { get; set; } = 1.0m;
+        [JsonPropertyName("gemBonusMultiplier")]
+        public decimal gemBonusMultiplier { get; set; } = 1.0m;
+        [JsonPropertyName("expBonusMultiplier")]
+        public decimal expBonusMultiplier { get; set; } = 1.0m;
         [JsonPropertyName("chatPrimaryColor")]
         public string? chatPrimaryColor { get; set; }
         [JsonPropertyName("chatSecondaryColor")]

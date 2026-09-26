@@ -10,6 +10,10 @@ namespace knkwebapi_v2.Dtos
     /// </summary>
     public class SalaryStateDto
     {
+        /// <summary>Coins per hour of the user's current title bracket, before any multiplier.</summary>
+        [JsonPropertyName("titleSalary")]
+        public int TitleSalary { get; set; }
+
         [JsonPropertyName("globalMultiplier")]
         public decimal GlobalMultiplier { get; set; }
 
@@ -19,7 +23,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("rankMultiplier")]
         public decimal RankMultiplier { get; set; }
 
-        /// <summary>Coins paid per hour at the current multipliers (global x personal x rank).</summary>
+        /// <summary>Coins paid per hour right now (title salary x global x personal x rank).</summary>
         [JsonPropertyName("effectiveHourlyRate")]
         public decimal EffectiveHourlyRate { get; set; }
 

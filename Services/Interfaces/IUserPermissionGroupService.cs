@@ -26,6 +26,10 @@ namespace knkwebapi_v2.Services.Interfaces
         /// group flagged IsPremiumTier, or null if they hold none.</summary>
         Task<UserPermissionGroupDto?> GetActivePremiumTierAsync(int userId);
 
+        /// <summary>Products of SalaryMultiplier, GemBonusMultiplier and ExpBonusMultiplier across
+        /// the user's currently-active memberships (1.0 each if none).</summary>
+        Task<RankMultipliersDto> GetActiveRankMultipliersAsync(int userId);
+
         /// <summary>
         /// Background sweep (RankExpirySweepService): puts users whose temporary rank expired back
         /// on Default, and queues a RankChanged notification for everyone whose rank expired in

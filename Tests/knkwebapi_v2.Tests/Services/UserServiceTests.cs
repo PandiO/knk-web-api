@@ -866,6 +866,72 @@ public class UserServiceTests
         Assert.Equal(3, result.NewGems);
     }
 
+    [Fact]
+    public async Task AdjustBalancesAsync_Promotion_ScalesEachBonusByItsOwnPersonalAndRankMultipliers()
+    {
+        // KNG-16: coins x salary multipliers, gems x gem bonus multipliers, XP x XP bonus
+        // multipliers (personal x rank each). The scaled XP bonus can cascade into a further title.
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User
+        {
+            Id = 1, Username = "player", Coins = 0, Gems = 0, ExperiencePoints = 0,
+            PersonalSalaryMultiplier = 2.0m, PersonalGemBonusMultiplier = 1.5m, PersonalExpBonusMultiplier = 3.0m
+        });
+        _mockMembershipService.Setup(s => s.GetActiveRankMultipliersAsync(1))
+            .ReturnsAsync(new RankMultipliersDto { Ranks = { new ActiveRankDto { PermissionGroupId = 20, Name = "Royal", IsPremiumTier = true, ChatPrimaryColor = "&6", SalaryMultiplier = 1.5m, GemBonusMultiplier = 2.0m } } });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 100, CoinBonus = 10, GemBonus = 1, ExpBonus = 50 },
+            new() { Id = 3, MaleName = "Journeyman", FemaleName = "Journeyman", MinExperience = 200, CoinBonus = 20, GemBonus = 2 },
+            new() { Id = 4, MaleName = "Veteran", FemaleName = "Veteran", MinExperience = 300, CoinBonus = 30, GemBonus = 3 }
+        });
+
+        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 100, reason: "xp");
+
+        Assert.NotNull(result.TitleChange);
+        // 100 XP reaches Apprentice; its 50 XP bonus x3 = 150 lifts the total to 250, reaching
+        // Journeyman too (an unscaled 50 would have stopped at 150) - not Veteran (300).
+        Assert.Equal(150, result.TitleChange!.ExpBonusGranted);
+        Assert.Equal(250, result.NewExperiencePoints);
+        Assert.Equal(3, result.TitleChange.ToTitleBracketId);
+        Assert.Equal(90, result.TitleChange.CoinBonusGranted); // (10 + 20) x 2.0 x 1.5
+        Assert.Equal(9, result.TitleChange.GemBonusGranted);   // (1 + 2) x 1.5 x 2.0
+        Assert.Equal(90, result.NewCoins);
+        Assert.Equal(9, result.NewGems);
+
+        // What the plugin's reward message shows: the unscaled sums and each multiplier's source.
+        Assert.Equal(30, result.TitleChange.CoinBonusBase);
+        Assert.Equal(3, result.TitleChange.GemBonusBase);
+        Assert.Equal(50, result.TitleChange.ExpBonusBase);
+        Assert.Collection(result.TitleChange.CoinBonusMultipliers,
+            m => { Assert.Equal("personal", m.Source); Assert.Equal(2.0m, m.Value); },
+            m => { Assert.Equal("rank", m.Source); Assert.Equal(1.5m, m.Value); Assert.Equal("Royal", m.Name); Assert.Equal("&6", m.ChatPrimaryColor); });
+        Assert.Equal(2.0m, result.TitleChange.GemBonusMultipliers[1].Value);
+        Assert.Equal(3.0m, result.TitleChange.ExpBonusMultipliers[0].Value);
+    }
+
+    [Fact]
+    public async Task AdjustBalancesAsync_Promotion_SalaryMultipliersDoNotScaleGemOrXpBonuses()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User
+        {
+            Id = 1, Username = "player", Coins = 0, Gems = 0, ExperiencePoints = 0, PersonalSalaryMultiplier = 2.0m
+        });
+        _mockMembershipService.Setup(s => s.GetActiveRankMultipliersAsync(1))
+            .ReturnsAsync(new RankMultipliersDto { Ranks = { new ActiveRankDto { Name = "Royal", SalaryMultiplier = 2.0m } } });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Novice", FemaleName = "Novice", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Apprentice", FemaleName = "Apprentice", MinExperience = 100, CoinBonus = 10, GemBonus = 3, ExpBonus = 7 }
+        });
+
+        var result = await _userService.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 100, reason: "xp");
+
+        Assert.Equal(40, result.TitleChange!.CoinBonusGranted); // 10 x 2 x 2
+        Assert.Equal(3, result.TitleChange.GemBonusGranted);
+        Assert.Equal(7, result.TitleChange.ExpBonusGranted);
+    }
+
     #endregion
 
     #region AdjustBalancesAsync Player Notification Tests

@@ -226,6 +226,9 @@ namespace knkwebapi_v2.Services
             return tier == null ? null : ToDto(tier, now);
         }
 
+        public async Task<RankMultipliersDto> GetActiveRankMultipliersAsync(int userId) =>
+            RankMultipliersDto.FromMemberships(await _repo.GetByUserAsync(userId), DateTime.UtcNow);
+
         /// <summary>
         /// Highest-Weight active premium membership (ties broken by lowest group id, matching
         /// PermissionGroupRepository.GetActiveGroupsForUserAsync's ordering). A temporary higher
