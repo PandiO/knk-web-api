@@ -342,6 +342,22 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
+    /// Body for PUT /api/users/{id}/multipliers (KNG-22): the personal reward multipliers, which
+    /// the generic user edit no longer writes. Omitted (null) = keep the stored value.
+    /// </summary>
+    public class UpdatePersonalMultipliersDto
+    {
+        [JsonPropertyName("personalSalaryMultiplier")]
+        public decimal? PersonalSalaryMultiplier { get; set; }
+
+        [JsonPropertyName("personalGemBonusMultiplier")]
+        public decimal? PersonalGemBonusMultiplier { get; set; }
+
+        [JsonPropertyName("personalExpBonusMultiplier")]
+        public decimal? PersonalExpBonusMultiplier { get; set; }
+    }
+
+    /// <summary>
     /// DTO for listing users (admin/search views).
     /// </summary>
     public class UserListDto

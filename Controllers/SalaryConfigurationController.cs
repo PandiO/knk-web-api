@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Attributes;
 
 namespace knkwebapi_v2.Controllers;
 
@@ -29,6 +30,7 @@ public class SalaryConfigurationController : ControllerBase
         return Ok(config);
     }
 
+    [RequireServiceOrPermission(StaffPermissions.CurrencyPolicy)]
     [HttpPut]
     [ProducesResponseType(typeof(SalaryConfigurationDto), 200)]
     [ProducesResponseType(400)]
