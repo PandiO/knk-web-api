@@ -47,6 +47,11 @@ namespace knkwebapi_v2.Controllers
         /// <summary>
         /// A player's private messages (sent and received), newest first. Each call writes a
         /// PrivateMessagesViewed audit entry naming the viewer and the player.
+        /// <para>
+        /// Logged-in staff holding knk.pmlog.read only (DESIGN.md §3.2/§3.6) - not the game server's
+        /// key: the plugin never reads the log, and a key holder could otherwise read every PM with
+        /// no audited viewer (or name any staff member as the viewer via X-Acting-User-Id).
+        /// </para>
         /// </summary>
         /// <param name="participantUserId">The player whose messages to show (required).</param>
         /// <param name="otherUserId">Only the conversation with this player.</param>
@@ -55,7 +60,7 @@ namespace knkwebapi_v2.Controllers
         /// <param name="pageNumber">1-based page number.</param>
         /// <param name="pageSize">Page size, capped at 100.</param>
         [HttpGet]
-        [RequireServiceOrPermission(StaffPermissions.ReadPrivateMessages)]
+        [RequirePermission(StaffPermissions.ReadPrivateMessages)]
         [ProducesResponseType(typeof(PagedResultDto<PrivateMessageLogEntryDto>), 200)]
         [ProducesResponseType(400)]
         public async Task<ActionResult<PagedResultDto<PrivateMessageLogEntryDto>>> Search(
@@ -77,7 +82,7 @@ namespace knkwebapi_v2.Controllers
                     PageNumber = pageNumber,
                     PageSize = pageSize
                 };
-                return Ok(await _service.SearchAsync(query, HttpContext.GetKnkCaller().ActorUserId));
+                return Ok(await _service.SearchAsync(query, HttpContext.GetKnkCaller().WebUserId));
             }
             catch (ArgumentException ex)
             {

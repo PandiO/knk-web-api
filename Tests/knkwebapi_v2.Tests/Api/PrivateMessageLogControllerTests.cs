@@ -10,8 +10,8 @@ namespace knkwebapi_v2.Tests.Api;
 
 /// <summary>
 /// KNG-18 Phase 3: api/private-message-log (DESIGN.md §3.2) - the batch write is game-server
-/// only, the read needs the plugin key or knk.pmlog.read, and the viewer is passed on for the
-/// audit entry.
+/// only, the read needs a logged-in user holding knk.pmlog.read (not the plugin key), and the
+/// viewer is passed on for the audit entry.
 /// </summary>
 [Trait("Category", "API")]
 public class PrivateMessageLogControllerTests
@@ -68,7 +68,7 @@ public class PrivateMessageLogControllerTests
         Assert.IsType<BadRequestObjectResult>(bad.Result);
     }
 
-    // ===== GET: plugin key or knk.pmlog.read =====
+    // ===== GET: logged-in staff with knk.pmlog.read only =====
 
     [Fact]
     public async Task Search_Anonymous_Is401()
@@ -100,16 +100,12 @@ public class PrivateMessageLogControllerTests
     }
 
     [Fact]
-    public async Task Search_PluginKey_Passes_WithTheActingStaffMemberAsViewer()
+    public async Task Search_PluginKey_Is401_EvenNamingAStaffMember()
     {
-        var http = ServiceAuthTestHelper.Plugin(actingUserId: 7);
-        Assert.Null(await Gates(nameof(PrivateMessageLogController.Search), http));
-
-        _service.Setup(s => s.SearchAsync(It.IsAny<PrivateMessageLogQueryDto>(), 7))
-            .ReturnsAsync(new PagedResultDto<PrivateMessageLogEntryDto>());
-        await Controller(http).Search(1, null, null, null);
-
-        _service.Verify(s => s.SearchAsync(It.IsAny<PrivateMessageLogQueryDto>(), 7), Times.Once);
+        // The game server never reads the log; its key must not open every PM without an
+        // audited viewer, nor let it name any staff member as the viewer.
+        Assert.Equal(401, await Gates(nameof(PrivateMessageLogController.Search), ServiceAuthTestHelper.Plugin()));
+        Assert.Equal(401, await Gates(nameof(PrivateMessageLogController.Search), ServiceAuthTestHelper.Plugin(actingUserId: 7)));
     }
 
     [Fact]
@@ -118,7 +114,7 @@ public class PrivateMessageLogControllerTests
         _service.Setup(s => s.SearchAsync(It.IsAny<PrivateMessageLogQueryDto>(), It.IsAny<int?>()))
             .ThrowsAsync(new ArgumentException("participantUserId is required."));
 
-        var result = await Controller(ServiceAuthTestHelper.Plugin()).Search(0, null, null, null);
+        var result = await Controller(ServiceAuthTestHelper.WebUser(5)).Search(0, null, null, null);
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
     }

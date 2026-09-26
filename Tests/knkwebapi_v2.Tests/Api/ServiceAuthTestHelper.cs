@@ -15,7 +15,7 @@ namespace knkwebapi_v2.Tests.Api;
 
 /// <summary>
 /// Runs the KNG-22 gates an action carries (<see cref="RequirePluginServiceAttribute"/>,
-/// <see cref="RequireServiceOrPermissionAttribute"/>) against a hand-built request, so a
+/// <see cref="RequireServiceOrPermissionAttribute"/>, <see cref="RequirePermissionAttribute"/>) against a hand-built request, so a
 /// controller test can assert "anonymous → 401, key → passes" per route without a live server.
 /// </summary>
 internal static class ServiceAuthTestHelper
@@ -60,7 +60,8 @@ internal static class ServiceAuthTestHelper
         var method = controller.GetMethods(BindingFlags.Public | BindingFlags.Instance).Single(m => m.Name == action);
         var pluginOnly = method.GetCustomAttributes<RequirePluginServiceAttribute>().ToList();
         var serviceOrNode = method.GetCustomAttributes<RequireServiceOrPermissionAttribute>().ToList();
-        if (pluginOnly.Count == 0 && serviceOrNode.Count == 0)
+        var webNodeOnly = method.GetCustomAttributes<RequirePermissionAttribute>().ToList();
+        if (pluginOnly.Count == 0 && serviceOrNode.Count == 0 && webNodeOnly.Count == 0)
         {
             throw new InvalidOperationException($"{controller.Name}.{action} carries no service-auth gate.");
         }
@@ -75,6 +76,14 @@ internal static class ServiceAuthTestHelper
         {
             var context = Context(http);
             var filter = new RequireServiceOrPermissionFilter(gate.Node,
+                permissions ?? new Mock<IPermissionResolutionService>().Object);
+            await filter.OnAuthorizationAsync(context);
+            if (context.Result != null) return Status(context.Result);
+        }
+        foreach (var gate in webNodeOnly)
+        {
+            var context = Context(http);
+            var filter = new RequirePermissionFilter((string)gate.Arguments![0],
                 permissions ?? new Mock<IPermissionResolutionService>().Object);
             await filter.OnAuthorizationAsync(context);
             if (context.Result != null) return Status(context.Result);
