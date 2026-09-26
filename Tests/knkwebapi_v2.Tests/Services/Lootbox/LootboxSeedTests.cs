@@ -241,4 +241,32 @@ public class LootboxSeedTests
         intoCatalog.Should().OnlyContain(fk => fk.DeleteBehavior == DeleteBehavior.Restrict,
             "vision §9.2: deleting a lootbox row never touches the catalog, and the catalog can't vanish under it");
     }
+
+    [Fact]
+    public async Task DefaultGroup_GetsThePlayerNodes_Once_AndAdminNodesAreNotSeeded()
+    {
+        await using (var db = NewContext())
+        {
+            var group = new PermissionGroup { Name = "Default" };
+            group.Grants.Add(new PermissionGrant { Node = "knk.lootbox.odds", Value = false }); // an admin's explicit deny stays
+            db.PermissionGroups.Add(group);
+            await db.SaveChangesAsync();
+        }
+
+        await SeedAllAsync();
+        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db, enchantmentCatalog: EnchantmentCatalog);
+
+        await using var read = NewContext();
+        var grants = await read.PermissionGrants.OrderBy(g => g.Node).ToListAsync();
+        grants.Select(g => (g.Node, g.Value)).Should().Equal(("knk.lootbox.odds", false), ("knk.lootbox.open", true));
+    }
+
+    [Fact]
+    public async Task NoDefaultGroup_SeedsNoGrants()
+    {
+        await SeedAllAsync();
+
+        await using var read = NewContext();
+        (await read.PermissionGrants.CountAsync()).Should().Be(0);
+    }
 }

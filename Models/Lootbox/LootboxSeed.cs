@@ -16,7 +16,8 @@ namespace knkwebapi_v2.Models;
 /// <item>the <see cref="SpecialTag"/> tag, the new v3 <b>Flaming Samurai</b> blueprint (§3.5) and a special entry per
 /// v1 one-off (§1.4, minus the Donator pickaxe) limited to its own category's box. A special entry's blueprint gets
 /// the tag when the entry is created, which keeps it out of the normal pools;</item>
-/// <item>the <see cref="LootboxConfiguration"/> singleton.</item>
+/// <item>the <see cref="LootboxConfiguration"/> singleton;</item>
+/// <item>grants of <see cref="PlayerNodes"/> on the <c>Default</c> permission group (Phase 3, D8), when missing.</item>
 /// </list>
 /// Missing vanilla definitions and the netherite_sword material are created from the <c>Data/</c> catalogs; a missing
 /// custom definition (<see cref="AbilityDefinition.SeedCanonicalAsync"/> owns those) is logged and skipped.
@@ -24,6 +25,11 @@ namespace knkwebapi_v2.Models;
 public static class LootboxSeed
 {
     public const string SpecialTag = "Lootbox Special";
+
+    /// <summary>The player nodes the seed grants to <see cref="DefaultGroupName"/> (open a box, see its odds).</summary>
+    public static readonly string[] PlayerNodes = { "knk.lootbox.open", "knk.lootbox.odds" };
+
+    private const string DefaultGroupName = "Default";
 
     public const string FlamingSamuraiName = "Flaming Samurai";
     public const int LegacySpecialChancePerMillion = 2000; // 0.2%
@@ -305,6 +311,27 @@ public static class LootboxSeed
         {
             context.LootboxConfigurations.Add(new LootboxConfiguration { Id = "global" });
             Count(nameof(LootboxConfiguration));
+        }
+
+        // --- Player nodes on the Default group (DESIGN.md §3.4, D8): KnkPermissible fails closed, so without these
+        // no non-op could open a box. Admin nodes are never seeded. ---
+        var defaultGroup = await context.PermissionGroups
+            .Include(g => g.Grants)
+            .Where(g => g.Name == DefaultGroupName)
+            .OrderBy(g => g.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (defaultGroup == null)
+        {
+            logger?.LogWarning("LootboxSeed: no '{Group}' permission group; {Nodes} not granted", DefaultGroupName, string.Join(", ", PlayerNodes));
+        }
+        else
+        {
+            foreach (var node in PlayerNodes)
+            {
+                if (defaultGroup.Grants.Any(g => string.Equals(g.Node, node, StringComparison.OrdinalIgnoreCase))) continue;
+                context.PermissionGrants.Add(new PermissionGrant { HolderId = defaultGroup.Id, Node = node, Value = true });
+                Count(nameof(PermissionGrant));
+            }
         }
 
         if (created.Values.Any(v => v > 0))
