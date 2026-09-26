@@ -425,6 +425,150 @@ public class LootboxRollEngineTests
         ((double)knockbackHits / enchantable).Should().BeApproximately(0.66, 0.02);
     }
 
+    // ===== Enchantment applicability (the minted instance must match the ItemStack) =====
+
+    private static LootItem Of(LootItem item, string material) => item with { MaterialKey = material };
+
+    private static readonly LootEnchantRollSpec Protection = Roll(4, 104, "minecraft:protection", false, 4, 50m, 1, 4);
+    private static readonly LootEnchantRollSpec FireProtection = Roll(5, 105, "minecraft:fire_protection", false, 4, 50m, 1, 4);
+    private static readonly LootEnchantRollSpec Unbreaking = Roll(6, 106, "minecraft:unbreaking", false, 3, 46m, 1, 3);
+
+    [Theory]
+    [InlineData("minecraft:sharpness", "minecraft:netherite_sword", true)]
+    [InlineData("minecraft:sharpness", "minecraft:iron_axe", true)]
+    [InlineData("minecraft:sharpness", "minecraft:bow", false)]
+    [InlineData("minecraft:sharpness", "minecraft:diamond_pickaxe", false)]
+    [InlineData("minecraft:knockback", "minecraft:iron_axe", false)]
+    [InlineData("minecraft:fire_aspect", "minecraft:copper_sword", true)]
+    [InlineData("minecraft:power", "minecraft:bow", true)]
+    [InlineData("minecraft:power", "minecraft:crossbow", false)]
+    [InlineData("minecraft:protection", "minecraft:copper_chestplate", true)]
+    [InlineData("minecraft:respiration", "minecraft:turtle_helmet", true)]
+    [InlineData("minecraft:respiration", "minecraft:diamond_boots", false)]
+    [InlineData("minecraft:feather_falling", "minecraft:iron_boots", true)]
+    [InlineData("minecraft:efficiency", "minecraft:shears", true)]
+    [InlineData("minecraft:efficiency", "minecraft:iron_sword", false)]
+    [InlineData("minecraft:unbreaking", "minecraft:fishing_rod", true)]
+    [InlineData("minecraft:unbreaking", "minecraft:bread", false)]
+    [InlineData("MINECRAFT:Sharpness", "iron_sword", true)]
+    [InlineData("minecraft:not_a_real_enchant", "minecraft:iron_sword", false)]
+    [InlineData("knk:sharpness", "minecraft:iron_sword", false)]
+    public void VanillaRules_CanApply_FollowsTheSupportedItemTags(string enchantment, string material, bool expected)
+    {
+        VanillaEnchantmentRules.CanApply(enchantment, material).Should().Be(expected);
+    }
+
+    [Fact]
+    public void VanillaRules_Conflicts_FollowTheExclusiveSets()
+    {
+        VanillaEnchantmentRules.Conflicts("minecraft:sharpness", "minecraft:smite").Should().BeTrue();
+        VanillaEnchantmentRules.Conflicts("minecraft:protection", "minecraft:blast_protection").Should().BeTrue();
+        VanillaEnchantmentRules.Conflicts("minecraft:riptide", "minecraft:channeling").Should().BeTrue();
+        VanillaEnchantmentRules.Conflicts("minecraft:loyalty", "minecraft:channeling").Should().BeFalse();
+        VanillaEnchantmentRules.Conflicts("minecraft:sharpness", "minecraft:sharpness").Should().BeFalse("same enchantment only raises the level");
+        VanillaEnchantmentRules.Conflicts("minecraft:sharpness", "minecraft:unbreaking").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Enchant_VanillaRollTheMaterialCantCarry_IsSkippedWithoutDrawing_CustomStillLands()
+    {
+        // A bow in the Weapons box: sharpness and knockback can't go on it, poison (lore) can.
+        var pool = new[] { Of(Item(1, 5), "minecraft:bow") };
+        var random = new ScriptedRandom().Doubles(0.0, 0.0).Ints(Hit, 2);
+
+        var result = new LootboxRollEngine(random).Roll(Input(pool, rolls: new[] { Sharpness, Knockback, Poison }), 5);
+
+        result.Enchantments.Should().ContainSingle().Which.Key.Should().Be("poison");
+        random.IntsLeft.Should().Be(0, "only poison's chance and level were drawn");
+
+        // The same rolls on a sword all land.
+        var sword = new[] { Of(Item(1, 5), "minecraft:iron_sword") };
+        new LootboxRollEngine(new ScriptedRandom().Doubles(0.0, 0.0).Ints(Hit, 5, Hit, 2, Hit, 2))
+            .Roll(Input(sword, rolls: new[] { Sharpness, Knockback, Poison }), 5)
+            .Enchantments.Select(e => e.Key).Should().Equal("minecraft:sharpness", "minecraft:knockback", "poison");
+    }
+
+    [Fact]
+    public void Enchant_ConflictingRolls_TheDefaultOrTheEarlierRollWins()
+    {
+        var chestplate = Of(Item(1, 5), "minecraft:iron_chestplate");
+
+        // Both protections hit: fire protection comes later and is skipped before its level is drawn.
+        var random = new ScriptedRandom().Doubles(0.0, 0.0).Ints(Hit, 3);
+        var result = new LootboxRollEngine(random).Roll(Input(new[] { chestplate }, rolls: new[] { Protection, FireProtection }), 5);
+        result.Enchantments.Select(e => (e.Key, e.Level)).Should().Equal(("minecraft:protection", 3));
+        random.IntsLeft.Should().Be(0);
+
+        // A default blast protection excludes both; unbreaking still rolls.
+        var blast = new LootEnchantment(107, "minecraft:blast_protection", false, 2);
+        var withDefault = Of(Item(1, 5, defaults: blast), "minecraft:iron_chestplate");
+        result = new LootboxRollEngine(new ScriptedRandom().Doubles(0.0, 0.0).Ints(Hit, 3))
+            .Roll(Input(new[] { withDefault }, rolls: new[] { Protection, FireProtection, Unbreaking }), 5);
+        result.Enchantments.Select(e => e.Key).Should().Equal("minecraft:unbreaking", "minecraft:blast_protection");
+    }
+
+    [Fact]
+    public void Enchant_ItemOfUnknownMaterial_IsNotFiltered()
+    {
+        var result = new LootboxRollEngine(new ScriptedRandom().Doubles(0.0, 0.0).Ints(Hit, 5))
+            .Roll(Input(new[] { Item(1, 5) }, rolls: new[] { Sharpness }), 5);
+
+        result.Enchantments.Single().Key.Should().Be("minecraft:sharpness");
+    }
+
+    [Fact]
+    public void Odds_EnchantLandChance_CountsOnlyItemsThatCanCarryIt()
+    {
+        // ★5 box, spread 0: a sword and a bow, equally likely. Sharpness (100%) lands on half the boxes, power on
+        // the other half, poison (custom, 30%) on either.
+        var power = Roll(7, 108, "minecraft:power", false, 5, 100m, 1, 5);
+        var pool = new[] { Of(Item(1, 5), "minecraft:iron_sword"), Of(Item(2, 5), "minecraft:bow") };
+
+        var odds = LootboxRollEngine.ComputeOdds(Input(pool, spread: 0, rolls: new[] { Sharpness, power, Poison }), 5);
+
+        var sharpness = odds.Enchantments.Single(e => e.Roll.Key == "minecraft:sharpness");
+        sharpness.ApplicableItemCount.Should().Be(1);
+        sharpness.LandProbability.Should().BeApproximately(0.5, 1e-12);
+        odds.Enchantments.Single(e => e.Roll.Key == "minecraft:power").LandProbability.Should().BeApproximately(0.5, 1e-12);
+        var poison = odds.Enchantments.Single(e => e.Roll.Key == "poison");
+        poison.ApplicableItemCount.Should().Be(2);
+        poison.LandProbability.Should().BeApproximately(0.3, 1e-12);
+    }
+
+    [Fact]
+    public void Odds_EnchantLandChance_MatchesTheRoll_WithConflictsAndCaps()
+    {
+        // Armor-like box: chestplate ★4/★5 and a bow; protection/fire protection conflict; a default blast
+        // protection on one chestplate excludes both; the ★4 cap halves the levels but keeps them >= 1.
+        var blast = new LootEnchantment(107, "minecraft:blast_protection", false, 1);
+        var pool = new[]
+        {
+            Of(Item(1, 5), "minecraft:iron_chestplate"),
+            Of(Item(2, 4), "minecraft:diamond_chestplate"),
+            Of(Item(3, 5, defaults: blast), "minecraft:golden_chestplate"),
+            Of(Item(4, 4), "minecraft:bow"),
+        };
+        var input = Input(pool, spread: 1, rolls: new[] { Protection, FireProtection, Unbreaking, Knockback });
+        var odds = LootboxRollEngine.ComputeOdds(input, 5);
+        var engine = new LootboxRollEngine(new SeededRandom(777));
+
+        const int n = 200_000;
+        var landed = new Dictionary<string, int>();
+        for (var i = 0; i < n; i++)
+        {
+            var result = engine.Roll(input, 5);
+            result.Enchantments.Where(e => !(e.DefinitionId == 107)).ToList()
+                .ForEach(e => landed[e.Key] = landed.GetValueOrDefault(e.Key) + 1);
+            result.Enchantments.Should().NotContain(e => e.Key == "minecraft:knockback");
+            result.Enchantments.Count(e => e.Key.EndsWith("protection")).Should().BeLessThanOrEqualTo(1);
+        }
+
+        foreach (var e in odds.Enchantments)
+            ((double)landed.GetValueOrDefault(e.Roll.Key) / n).Should().BeApproximately(e.LandProbability, 0.005, e.Roll.Key);
+        odds.Enchantments.Single(e => e.Roll.Key == "minecraft:knockback").LandProbability.Should().Be(0);
+        odds.Enchantments.Single(e => e.Roll.Key == "minecraft:unbreaking").ApplicableItemCount.Should().Be(4);
+    }
+
     // ===== Pool (LootboxRollInputBuilder) =====
 
     private static Category Cat(int id, string name, int? parentId = null) => new() { Id = id, Name = name, ParentCategoryId = parentId };
@@ -498,6 +642,7 @@ public class LootboxRollEngineTests
         var pool = LootboxRollInputBuilder.BuildPool(type, new[] { Cat(1, "Mixed") }, blueprints);
 
         pool.Select(i => (i.BlueprintId, i.IsBook, i.IsStackable)).Should().Equal((1, true, false), (2, false, true), (3, false, false));
+        pool.Single(i => i.BlueprintId == 3).MaterialKey.Should().Be("minecraft:iron_sword", "the engine filters rolls by the blueprint's material");
     }
 
     [Fact]

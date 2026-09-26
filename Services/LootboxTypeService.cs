@@ -274,6 +274,8 @@ namespace knkwebapi_v2.Services
                     HitPercent = Percent(e.HitProbability),
                     MinLevel = e.Roll.MinLevel,
                     MaxLevel = e.Roll.MaxLevel,
+                    ApplicableItemCount = e.ApplicableItemCount,
+                    LandPercent = Percent(e.LandProbability),
                     LevelsByGrade = e.Levels.Select(l => new LootboxEnchantLevelRangeDto
                     {
                         GradeId = l.Grade.Id, Stars = l.Grade.Stars, MinLevel = l.MinLevel, MaxLevel = l.MaxLevel,

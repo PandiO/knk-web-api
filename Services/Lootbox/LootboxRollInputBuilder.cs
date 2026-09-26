@@ -108,7 +108,8 @@ public static class LootboxRollInputBuilder
         blueprint.DefaultEnchantments
             .Where(e => e.EnchantmentDefinition != null && e.Level > 0)
             .Select(e => new LootEnchantment(e.EnchantmentDefinitionId, e.EnchantmentDefinition.Key, e.EnchantmentDefinition.IsCustom, e.Level))
-            .ToList());
+            .ToList(),
+        blueprint.IconMaterial?.NamespaceKey);
 
     public static LootGrade ToLootGrade(Grade grade) =>
         new(grade.Id, grade.Name, grade.Stars, grade.DropChance, grade.EnchantLevelCapDivisor);

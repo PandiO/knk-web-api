@@ -410,6 +410,16 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("maxLevel")]
         public int MaxLevel { get; set; }
 
+        // Pool items in the window whose material can carry it (custom: every enchantable item). A vanilla roll never
+        // lands on an item that can't hold it (Sharpness on a bow) or next to one it conflicts with.
+        [JsonPropertyName("applicableItemCount")]
+        public int ApplicableItemCount { get; set; }
+
+        // Chance that a box of this grade gives an item with this enchantment from this roll: hit chance, applicable
+        // items, grade cap and conflicts together.
+        [JsonPropertyName("landPercent")]
+        public double LandPercent { get; set; }
+
         // The levels it can actually give on each item grade after the cap; null min/max = always dropped.
         [JsonPropertyName("levelsByGrade")]
         public List<LootboxEnchantLevelRangeDto> LevelsByGrade { get; set; } = new();

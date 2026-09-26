@@ -14,8 +14,10 @@ namespace knkwebapi_v2.Services.Lootbox;
 /// Two-stage so more ★3 items don't dilute the ★5 odds.</item>
 /// <item>Enchantments: each roll with MinBoxStars &lt;= B hits on ChancePercent with a uniform level; vanilla levels
 /// are clamped to <c>definitionMax / itemGrade.EnchantLevelCapDivisor</c> (KNG-6, dropped when below 1), custom
-/// ones only to the definition max; merged with the blueprint defaults as max(default, rolled). Books and
-/// stackable items get no rolls.</item>
+/// ones only to the definition max; merged with the blueprint defaults as max(default, rolled). A vanilla roll the
+/// item's material can't carry, or that conflicts with an enchantment already on it (a default or an earlier roll),
+/// is skipped without drawing (<see cref="VanillaEnchantmentRules"/>), so the minted instance never records an
+/// enchantment the ItemStack can't hold. Books and stackable items get no rolls.</item>
 /// </list>
 /// </summary>
 public sealed class LootboxRollEngine
@@ -109,6 +111,7 @@ public sealed class LootboxRollEngine
 
         foreach (var roll in ApplicableRolls(input, boxStars))
         {
+            if (!CanCarry(roll, item) || ConflictsWithAny(roll, result.Values)) continue;
             if (_random.NextInt(0, PerMillion) >= ChancePerMillionOf(roll.ChancePercent)) continue;
 
             var min = Math.Max(1, Math.Min(roll.MinLevel, roll.MaxLevel));
@@ -153,14 +156,88 @@ public sealed class LootboxRollEngine
             }
         }
 
-        var enchantments = ApplicableRolls(input, boxStars)
-            .Select(roll => new LootEnchantOdds(
+        var rolls = ApplicableRolls(input, boxStars).ToList();
+        var land = new double[rolls.Count];
+        var applicableItems = new int[rolls.Count];
+        foreach (var itemOdds in items)
+        {
+            var perItem = LandProbabilities(rolls, itemOdds.Item, itemOdds.Grade);
+            for (var r = 0; r < rolls.Count; r++)
+            {
+                land[r] += itemOdds.Probability * perItem[r];
+                if (CanRollEnchantments(itemOdds.Item) && CanCarry(rolls[r], itemOdds.Item)) applicableItems[r]++;
+            }
+        }
+
+        var enchantments = rolls
+            .Select((roll, r) => new LootEnchantOdds(
                 roll,
                 ChancePerMillionOf(roll.ChancePercent) / (double)PerMillion,
-                window.Grades.Select(g => LevelRange(roll, g.Grade)).ToList()))
+                window.Grades.Select(g => LevelRange(roll, g.Grade)).ToList(),
+                applicableItems[r],
+                land[r]))
             .ToList();
 
         return new LootOdds(boxStars, specials, noHitYet, window.Widened, grades, items, enchantments);
+    }
+
+    // Largest set of mutually dependent rolls whose hit patterns are enumerated exactly (2^n); beyond it, each
+    // conflict is treated as independent. Real configs have a handful of rolls, so this is never reached.
+    private const int MaxExactConflictRolls = 16;
+
+    /// <summary>
+    /// Per roll (same order as <paramref name="rolls"/>): the chance it lands on <paramref name="item"/> of
+    /// <paramref name="grade"/>, by the rules of <see cref="RollEnchantments"/>. A roll that the material can carry
+    /// and the cap leaves at least level 1 is eligible; an eligible roll lands when it hits and no enchantment already
+    /// on the item conflicts with it. Rolls that can't conflict with another eligible roll land on their own hit
+    /// chance (or never, when a default excludes them); the others are enumerated over their hit patterns in order.
+    /// </summary>
+    private static double[] LandProbabilities(IReadOnlyList<LootEnchantRollSpec> rolls, LootItem item, LootGrade grade)
+    {
+        var land = new double[rolls.Count];
+        if (!CanRollEnchantments(item)) return land;
+
+        var hit = rolls.Select(r => ChancePerMillionOf(r.ChancePercent) / (double)PerMillion).ToArray();
+        var eligible = rolls.Select(r => CanCarry(r, item) && LevelCap(r, grade) >= 1).ToArray();
+        var involved = Enumerable.Range(0, rolls.Count)
+            .Where(i => eligible[i] && Enumerable.Range(0, rolls.Count).Any(j => j != i && eligible[j] && Conflicts(rolls[i], rolls[j])))
+            .ToList();
+
+        for (var i = 0; i < rolls.Count; i++)
+        {
+            if (!eligible[i] || involved.Contains(i)) continue;
+            land[i] = ConflictsWithAny(rolls[i], item.DefaultEnchantments) ? 0 : hit[i];
+        }
+        if (involved.Count == 0) return land;
+
+        if (involved.Count > MaxExactConflictRolls)
+        {
+            foreach (var i in involved)
+            {
+                if (ConflictsWithAny(rolls[i], item.DefaultEnchantments)) continue;
+                land[i] = involved.Where(j => j < i && Conflicts(rolls[i], rolls[j]))
+                    .Aggregate(hit[i], (p, j) => p * (1 - hit[j]));
+            }
+            return land;
+        }
+
+        for (var mask = 0; mask < 1 << involved.Count; mask++)
+        {
+            var probability = 1.0;
+            for (var b = 0; b < involved.Count; b++)
+                probability *= (mask & (1 << b)) != 0 ? hit[involved[b]] : 1 - hit[involved[b]];
+            if (probability == 0) continue;
+
+            var onItem = item.DefaultEnchantments.ToList();
+            for (var b = 0; b < involved.Count; b++)
+            {
+                var roll = rolls[involved[b]];
+                if ((mask & (1 << b)) == 0 || ConflictsWithAny(roll, onItem)) continue;
+                land[involved[b]] += probability;
+                onItem.Add(new LootEnchantment(roll.DefinitionId, roll.Key, roll.IsCustom, 1));
+            }
+        }
+        return land;
     }
 
     private static LootEnchantLevelRange LevelRange(LootEnchantRollSpec roll, LootGrade grade)
@@ -189,6 +266,20 @@ public sealed class LootboxRollEngine
     }
 
     private static int Clamp(LootEnchantRollSpec roll, LootGrade grade, int level) => Math.Min(level, LevelCap(roll, grade));
+
+    /// <summary>
+    /// Whether <paramref name="item"/> can carry the roll's enchantment: custom ones always (lore), vanilla ones when
+    /// the item's material supports it; an item of unknown material isn't filtered.
+    /// </summary>
+    public static bool CanCarry(LootEnchantRollSpec roll, LootItem item) =>
+        roll.IsCustom || item.MaterialKey == null || VanillaEnchantmentRules.CanApply(roll.Key, item.MaterialKey);
+
+    private static bool Conflicts(LootEnchantRollSpec a, LootEnchantRollSpec b) =>
+        !a.IsCustom && !b.IsCustom && a.DefinitionId != b.DefinitionId && VanillaEnchantmentRules.Conflicts(a.Key, b.Key);
+
+    // Whether a vanilla enchantment of a different definition already on the item excludes the roll.
+    private static bool ConflictsWithAny(LootEnchantRollSpec roll, IEnumerable<LootEnchantment> onItem) =>
+        !roll.IsCustom && onItem.Any(e => !e.IsCustom && e.DefinitionId != roll.DefinitionId && VanillaEnchantmentRules.Conflicts(e.Key, roll.Key));
 
     /// <summary>Books teach their enchantment and stackables have no instance to hold one: neither gets rolls.</summary>
     public static bool CanRollEnchantments(LootItem item) => !item.IsBook && !item.IsStackable;

@@ -12,7 +12,9 @@ public sealed record LootEnchantment(int DefinitionId, string Key, bool IsCustom
 /// <summary>
 /// A blueprint that can come out of a box. <paramref name="GradeId"/> is the pool grade (the blueprint's grade or a
 /// pool entry's override); null only for an ungraded special. <paramref name="Weight"/> is relative among the pool
-/// items of the same grade. Books and stackable items never get rolled enchantments.
+/// items of the same grade. Books and stackable items never get rolled enchantments. <paramref name="MaterialKey"/> is
+/// the blueprint's material (<c>minecraft:bow</c>): a rolled vanilla enchantment only lands when the item can carry it
+/// (<see cref="VanillaEnchantmentRules"/>); null = unknown, not filtered (the plugin can't build such an item anyway).
 /// </summary>
 public sealed record LootItem(
     int BlueprintId,
@@ -22,7 +24,8 @@ public sealed record LootItem(
     int Quantity,
     bool IsStackable,
     bool IsBook,
-    IReadOnlyList<LootEnchantment> DefaultEnchantments);
+    IReadOnlyList<LootEnchantment> DefaultEnchantments,
+    string? MaterialKey = null);
 
 /// <summary>One <c>LootboxEnchantRoll</c> row plus its definition's key, kind and max level.</summary>
 public sealed record LootEnchantRollSpec(
@@ -81,8 +84,19 @@ public sealed record LootItemOdds(LootItem Item, LootGrade Grade, double Probabi
 /// <summary>The level range an enchant roll can actually produce on an item of <paramref name="Grade"/>; null = always dropped.</summary>
 public sealed record LootEnchantLevelRange(LootGrade Grade, int? MinLevel, int? MaxLevel);
 
-/// <summary>An enchant roll that applies to this box grade: its hit chance and effective levels per window grade.</summary>
-public sealed record LootEnchantOdds(LootEnchantRollSpec Roll, double HitProbability, IReadOnlyList<LootEnchantLevelRange> Levels);
+/// <summary>
+/// An enchant roll that applies to this box grade: its hit chance, effective levels per window grade, how many pool
+/// items in the window can carry it (<paramref name="ApplicableItemCount"/>, by material; books and stackables never),
+/// and <paramref name="LandProbability"/>: the chance that a box of this grade gives an item that gets the
+/// enchantment from this roll, after the special check, the item's material, the grade cap and conflicts with the
+/// item's defaults and earlier rolls - exactly the rules of the real roll.
+/// </summary>
+public sealed record LootEnchantOdds(
+    LootEnchantRollSpec Roll,
+    double HitProbability,
+    IReadOnlyList<LootEnchantLevelRange> Levels,
+    int ApplicableItemCount,
+    double LandProbability);
 
 /// <summary>The full preview for one box grade, computed from the same rules as the roll.</summary>
 public sealed record LootOdds(
