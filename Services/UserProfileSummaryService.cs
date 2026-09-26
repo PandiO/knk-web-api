@@ -56,10 +56,11 @@ namespace knkwebapi_v2.Services
 
             var salary = new SalaryStateDto
             {
+                TitleSalary = title.Salary,
                 GlobalMultiplier = globalMultiplier,
                 PersonalMultiplier = account.PersonalSalaryMultiplier,
                 RankMultiplier = rankMultiplier,
-                EffectiveHourlyRate = globalMultiplier * account.PersonalSalaryMultiplier * rankMultiplier,
+                EffectiveHourlyRate = title.Salary * globalMultiplier * account.PersonalSalaryMultiplier * rankMultiplier,
                 LastSalaryPayoutAt = account.LastSalaryPayoutAt,
                 NextEligibleAt = account.LastSalaryPayoutAt + MinimumPayoutInterval
             };

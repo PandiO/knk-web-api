@@ -12,14 +12,16 @@ namespace knkwebapi_v2.Tests.Services;
 /// <summary>
 /// Unit tests for SalaryService (docs/specs/user-features/DESIGN.md §5,
 /// IMPLEMENTATION_PLAN.md §6). Covers the 1-hour eligibility gate, the gap-covering payout math
-/// (global x personal x rank multipliers x hours elapsed), and the developer-confirmed "multiply
-/// every active membership's SalaryMultiplier together" rank-multiplier combination rule.
+/// (title salary x global x personal x rank multipliers x hours elapsed), and the
+/// developer-confirmed "multiply every active membership's SalaryMultiplier together"
+/// rank-multiplier combination rule.
 /// </summary>
 public class SalaryServiceTests
 {
     private readonly Mock<IUserRepository> _mockUserRepo;
     private readonly Mock<IUserPermissionGroupRepository> _mockMembershipRepo;
     private readonly Mock<ISalaryConfigurationService> _mockConfigService;
+    private readonly Mock<ITitleService> _mockTitleService;
     private readonly Mock<IAuditLogService> _mockAuditLogService;
     private readonly SalaryService _service;
 
@@ -28,11 +30,15 @@ public class SalaryServiceTests
         _mockUserRepo = new Mock<IUserRepository>();
         _mockMembershipRepo = new Mock<IUserPermissionGroupRepository>();
         _mockConfigService = new Mock<ISalaryConfigurationService>();
+        _mockTitleService = new Mock<ITitleService>();
         _mockAuditLogService = new Mock<IAuditLogService>();
-        _service = new SalaryService(_mockUserRepo.Object, _mockMembershipRepo.Object, _mockConfigService.Object, _mockAuditLogService.Object);
+        _service = new SalaryService(_mockUserRepo.Object, _mockMembershipRepo.Object, _mockConfigService.Object, _mockTitleService.Object, _mockAuditLogService.Object);
 
         _mockConfigService.Setup(c => c.GetAsync()).ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 1.0m });
         _mockMembershipRepo.Setup(r => r.GetByUserAsync(It.IsAny<int>())).ReturnsAsync(new List<UserPermissionGroup>());
+        // Serf (bracket 0) in the real title data.
+        _mockTitleService.Setup(t => t.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>()))
+            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 0, Salary = 650 });
     }
 
     private static User MakeUser(int id, DateTime lastPayout, decimal personalMultiplier = 1.0m, int coins = 0) => new()
@@ -100,8 +106,8 @@ public class SalaryServiceTests
         var result = await _service.PayOutAsync(1);
 
         Assert.Equal(1.0m, result.RankMultiplier);
-        // 10 (global) * 1.0 (personal) * 1.0 (rank) * 2 hours = 20, not 0.
-        Assert.Equal(20, result.AmountPaid);
+        // 650 (title) * 10 (global) * 1.0 (personal) * 1.0 (rank) * 2 hours = 13000, not 0.
+        Assert.Equal(13000, result.AmountPaid);
     }
 
     [Fact]
@@ -159,11 +165,13 @@ public class SalaryServiceTests
     }
 
     [Fact]
-    public async Task PayOutAsync_ScalesByAllThreeMultipliersAndHoursCovered()
+    public async Task PayOutAsync_ScalesTitleSalaryByAllThreeMultipliersAndHoursCovered()
     {
         var user = MakeUser(1, DateTime.UtcNow.AddHours(-3), personalMultiplier: 2.0m, coins: 50);
         _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
         _mockConfigService.Setup(c => c.GetAsync()).ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 5.0m });
+        _mockTitleService.Setup(t => t.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>()))
+            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 1, Salary = 10 });
 
         var group = new PermissionGroup { Id = 10, Name = "Rank", SalaryMultiplier = 1.5m };
         _mockMembershipRepo.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup>
@@ -173,11 +181,48 @@ public class SalaryServiceTests
 
         var result = await _service.PayOutAsync(1);
 
-        // 5 (global) * 2.0 (personal) * 1.5 (rank) * 3 hours = 45.
-        Assert.Equal(45, result.AmountPaid);
-        Assert.Equal(95, result.NewCoinsBalance); // 50 existing + 45
-        Assert.Equal(50 + 45, user.Coins);
-        _mockUserRepo.Verify(r => r.UpdateUserAsync(It.Is<User>(u => u.Coins == 95)), Times.Once);
+        // 10 (title) * 5 (global) * 2.0 (personal) * 1.5 (rank) * 3 hours = 450.
+        Assert.Equal(450, result.AmountPaid);
+        Assert.Equal(500, result.NewCoinsBalance); // 50 existing + 450
+        Assert.Equal(50 + 450, user.Coins);
+        _mockUserRepo.Verify(r => r.UpdateUserAsync(It.Is<User>(u => u.Coins == 500)), Times.Once);
+    }
+
+    [Fact]
+    public async Task PayOutAsync_UsesSalaryOfTitleResolvedFromUsersExperienceAndGender()
+    {
+        var user = MakeUser(1, DateTime.UtcNow.AddHours(-1));
+        user.ExperiencePoints = 10000;
+        user.Gender = Gender.Female;
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockTitleService.Setup(t => t.ResolveAsync(10000, Gender.Female))
+            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 5, TitleName = "Dame", Salary = 4800 });
+
+        var result = await _service.PayOutAsync(1);
+
+        // A Dame's full hourly salary at neutral multipliers — the bug this guards against paid
+        // GlobalMultiplier (1.0) coins an hour and ignored the title entirely.
+        Assert.Equal(4800, result.AmountPaid);
+        Assert.Equal(5, result.TitleBracketId);
+        Assert.Equal(4800, result.TitleSalary);
+        _mockTitleService.Verify(t => t.ResolveAsync(10000, Gender.Female), Times.Once);
+    }
+
+    [Fact]
+    public async Task PayOutAsync_PersonalAndRankMultipliersScaleTitleSalary()
+    {
+        var user = MakeUser(1, DateTime.UtcNow.AddHours(-1), personalMultiplier: 1.5m);
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        var premium = new PermissionGroup { Id = 20, Name = "Royal", SalaryMultiplier = 2.0m, IsPremiumTier = true };
+        _mockMembershipRepo.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup>
+        {
+            new() { UserId = 1, PermissionGroupId = 20, PermissionGroup = premium, ExpiresAt = null }
+        });
+
+        var result = await _service.PayOutAsync(1);
+
+        // 650 (Serf) * 1.0 (global) * 1.5 (personal) * 2.0 (premium rank) * ~1 hour = 1950.
+        Assert.Equal(1950, result.AmountPaid);
     }
 
     [Fact]

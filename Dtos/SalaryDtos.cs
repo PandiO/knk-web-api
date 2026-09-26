@@ -10,11 +10,9 @@ namespace knkwebapi_v2.Dtos
     public class SalaryConfigurationDto
     {
         /// <summary>
-        /// Base coins paid per hour at a neutral (1.0) personal/rank multiplier. Despite the name
-        /// (matching IMPLEMENTATION_PLAN.md §6's "global multiplier" language — one of three
-        /// multipliers applied to hours-elapsed alongside personal/rank), this is the only one of
-        /// the three with no other base rate to scale, so it doubles as the base hourly rate.
-        /// Default 1.0 is a placeholder — tune to a real economy value via PUT before relying on it.
+        /// Server-wide multiplier on every salary payout, applied alongside the personal and rank
+        /// multipliers to the base hourly rate — the Salary of the user's current title bracket
+        /// (TitleBracket.Salary). 1.0 (the default) pays titles' Salary as-is.
         /// </summary>
         [JsonPropertyName("globalMultiplier")]
         public decimal GlobalMultiplier { get; set; } = 1.0m;
@@ -48,6 +46,14 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("hoursCovered")]
         public decimal HoursCovered { get; set; }
+
+        /// <summary>The title bracket whose Salary was used as the hourly base rate.</summary>
+        [JsonPropertyName("titleBracketId")]
+        public int? TitleBracketId { get; set; }
+
+        /// <summary>Coins per hour of the user's title bracket, before any multiplier.</summary>
+        [JsonPropertyName("titleSalary")]
+        public int TitleSalary { get; set; }
 
         [JsonPropertyName("globalMultiplier")]
         public decimal GlobalMultiplier { get; set; }

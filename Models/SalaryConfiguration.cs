@@ -12,9 +12,8 @@ public class SalaryConfiguration
     public string Id { get; set; } = "global";
 
     /// <summary>
-    /// Base coins paid per hour at a neutral (1.0) personal/rank multiplier — see
-    /// SalaryConfigurationDto's doc comment for why this one field also functions as the base
-    /// hourly rate. Default 1.0 is a placeholder; tune via PUT before relying on real payouts.
+    /// Server-wide multiplier on the title-based hourly salary (TitleBracket.Salary), applied
+    /// alongside the personal and rank multipliers. 1.0 (the default) pays titles' Salary as-is.
     /// </summary>
     public decimal GlobalMultiplier { get; set; } = 1.0m;
 

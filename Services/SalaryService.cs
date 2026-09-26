@@ -10,10 +10,12 @@ using knkwebapi_v2.Services.Interfaces;
 namespace knkwebapi_v2.Services
 {
     /// <summary>
-    /// Salary payout logic (docs/specs/user-features/DESIGN.md §5). Independent of the
-    /// permission/rank system except for reading a user's currently-active PermissionGroup
-    /// memberships to compute the rank-based multiplier — DESIGN.md §5's own note on this being
-    /// "the one place Salary genuinely depends on the permission model".
+    /// Salary payout logic (docs/specs/user-features/DESIGN.md §5). The hourly base rate is the
+    /// Salary of the user's current title bracket (resolved from ExperiencePoints, same as
+    /// TitleService everywhere else), scaled by the global, personal and rank multipliers.
+    /// Independent of the permission/rank system except for reading a user's currently-active
+    /// PermissionGroup memberships to compute the rank-based multiplier — DESIGN.md §5's own note
+    /// on this being "the one place Salary genuinely depends on the permission model".
     /// </summary>
     public class SalaryService : ISalaryService
     {
@@ -25,17 +27,20 @@ namespace knkwebapi_v2.Services
         private readonly IUserRepository _userRepo;
         private readonly IUserPermissionGroupRepository _membershipRepo;
         private readonly ISalaryConfigurationService _configService;
+        private readonly ITitleService _titleService;
         private readonly IAuditLogService _auditLogService;
 
         public SalaryService(
             IUserRepository userRepo,
             IUserPermissionGroupRepository membershipRepo,
             ISalaryConfigurationService configService,
+            ITitleService titleService,
             IAuditLogService auditLogService)
         {
             _userRepo = userRepo;
             _membershipRepo = membershipRepo;
             _configService = configService;
+            _titleService = titleService;
             _auditLogService = auditLogService;
         }
 
@@ -62,11 +67,15 @@ namespace knkwebapi_v2.Services
                 };
             }
 
+            // Sequential awaits: these share one scoped DbContext (see UserProfileSummaryService).
             var config = await _configService.GetAsync();
+            var title = await _titleService.ResolveAsync(user.ExperiencePoints, user.Gender);
             var rankMultiplier = await ComputeRankMultiplierAsync(userId, now);
             var hoursCovered = (decimal)elapsed.TotalHours;
 
-            var rawPayout = config.GlobalMultiplier * user.PersonalSalaryMultiplier * rankMultiplier * hoursCovered;
+            // The title's Salary is the per-hour base; before this it was left out entirely and
+            // GlobalMultiplier (default 1.0) stood in as the base rate, paying ~1 coin an hour.
+            var rawPayout = title.Salary * config.GlobalMultiplier * user.PersonalSalaryMultiplier * rankMultiplier * hoursCovered;
             // Multipliers are validated non-negative at write time (SalaryConfigurationService,
             // PermissionGroupService) and PersonalSalaryMultiplier defaults to a non-negative 1.0,
             // but nothing currently stops a direct DB edit from making one negative — clamp
@@ -83,6 +92,8 @@ namespace knkwebapi_v2.Services
             {
                 amountPaid,
                 hoursCovered,
+                titleBracketId = title.TitleBracketId,
+                titleSalary = title.Salary,
                 globalMultiplier = config.GlobalMultiplier,
                 personalMultiplier = user.PersonalSalaryMultiplier,
                 rankMultiplier
@@ -93,6 +104,8 @@ namespace knkwebapi_v2.Services
                 Paid = true,
                 AmountPaid = amountPaid,
                 HoursCovered = hoursCovered,
+                TitleBracketId = title.TitleBracketId,
+                TitleSalary = title.Salary,
                 GlobalMultiplier = config.GlobalMultiplier,
                 PersonalMultiplier = user.PersonalSalaryMultiplier,
                 RankMultiplier = rankMultiplier,
