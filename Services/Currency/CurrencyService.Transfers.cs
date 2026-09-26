@@ -29,7 +29,10 @@ namespace knkwebapi_v2.Services
         /// <summary>Source type on a transfer posted by confirming a pending one.</summary>
         public const string PendingTransferSourceType = "PendingTransfer";
 
-        public async Task<TransferResultDto> TransferAsync(TransferRequest request, CurrencyContext ctx, CancellationToken ct = default)
+        public Task<TransferResultDto> TransferAsync(TransferRequest request, CurrencyContext ctx, CancellationToken ct = default) =>
+            ObserveAsync(() => TransferCoreAsync(request, ctx, ct), ctx);
+
+        private async Task<TransferResultDto> TransferCoreAsync(TransferRequest request, CurrencyContext ctx, CancellationToken ct)
         {
             ValidateTransferRequest(request);
             RequireTransferContext(ctx, request.SenderUserId);
@@ -64,8 +67,12 @@ namespace knkwebapi_v2.Services
             return await PostTransferAsync(request, policy, fee, ctx with { Reason = request.Note }, canonical, confirming: null, ct);
         }
 
-        public async Task<TransferResultDto> ConfirmTransferAsync(string pendingPublicId, int senderUserId, CurrencyContext ctx,
-            bool bypassLimits = false, CancellationToken ct = default)
+        public Task<TransferResultDto> ConfirmTransferAsync(string pendingPublicId, int senderUserId, CurrencyContext ctx,
+            bool bypassLimits = false, CancellationToken ct = default) =>
+            ObserveAsync(() => ConfirmTransferCoreAsync(pendingPublicId, senderUserId, ctx, bypassLimits, ct), ctx);
+
+        private async Task<TransferResultDto> ConfirmTransferCoreAsync(string pendingPublicId, int senderUserId, CurrencyContext ctx,
+            bool bypassLimits, CancellationToken ct)
         {
             RequireTransferContext(ctx, senderUserId);
             var pending = await FindSendersPendingAsync(pendingPublicId, senderUserId, ct);
@@ -402,6 +409,7 @@ namespace knkwebapi_v2.Services
             var tx = await _repo.FindByIdAsync(transactionId, ct)
                 ?? throw new CurrencyException(CurrencyErrorCode.TransactionNotFound, $"Transaction {transactionId} doesn't exist.");
             var balances = await _repo.GetBalancesAsync(new[] { pending.SenderUserId, pending.RecipientUserId }, ct);
+            _metrics?.RecordReplay(tx.ReasonCode);
             var result = await CompletedAsync(ToResult(tx, balances, replayed: true), pending.SenderUserId, pending.RecipientUserId,
                 pending.Currency, pending.Amount, ct);
             return result;

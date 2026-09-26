@@ -22,6 +22,12 @@ public interface IPlayerNotificationQueue
     long EnqueuePayment(int userId, string? uuid, string username, PaymentNotificationDto payment) =>
         Enqueue(userId, uuid, username, PlayerNotificationTypes.PaymentReceived, null);
 
+    /// <summary>A CurrencyAlert notification for online staff (currency Phase 5): UserId 0, no
+    /// player. The default only queues the type.</summary>
+    /// <returns>The new notification's id.</returns>
+    long EnqueueCurrencyAlert(CurrencyAlertNotificationDto alert) =>
+        Enqueue(0, null, "", PlayerNotificationTypes.CurrencyAlert, null);
+
     /// <summary>Every unacknowledged, unexpired notification, oldest first.</summary>
     IReadOnlyList<PlayerNotificationDto> GetPending();
 

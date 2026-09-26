@@ -44,6 +44,7 @@ namespace knkwebapi_v2.Controllers
         private readonly IPlayerNotificationQueue? _notifications;
         private readonly IMemoryCache? _cache;
         private readonly ILogger<CurrencyController>? _logger;
+        private readonly CurrencyMonitorSignals? _signals;
 
         public CurrencyController(
             ICurrencyService currency,
@@ -51,8 +52,10 @@ namespace knkwebapi_v2.Controllers
             IPermissionResolutionService permissions,
             IPlayerNotificationQueue? notifications = null,
             IMemoryCache? cache = null,
-            ILogger<CurrencyController>? logger = null)
+            ILogger<CurrencyController>? logger = null,
+            CurrencyMonitorSignals? signals = null)
         {
+            _signals = signals;
             _currency = currency;
             _transfers = transfers;
             _permissions = permissions;
@@ -170,6 +173,8 @@ namespace knkwebapi_v2.Controllers
             }
             catch (CurrencyException ex)
             {
+                // R9 probing (DESIGN.md §3.9): refused transfers per sender, counted in memory.
+                _signals?.RecordTransferDenial(request.SenderUserId, ex.Code);
                 return CurrencyHttp.ToResult(this, ex);
             }
         }
@@ -202,6 +207,7 @@ namespace knkwebapi_v2.Controllers
             }
             catch (CurrencyException ex)
             {
+                _signals?.RecordTransferDenial(caller.ActingUserId!.Value, ex.Code);
                 return CurrencyHttp.ToResult(this, ex);
             }
         }

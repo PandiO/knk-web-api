@@ -35,16 +35,24 @@ namespace knkwebapi_v2.Services
         private readonly IUserRepository _users;
         private readonly ILogger<CurrencyService> _logger;
         private readonly IPermissionResolutionService? _permissions;
+        private readonly CurrencyMetrics? _metrics;
+        private readonly CurrencyMonitorSignals? _signals;
 
         /// <param name="permissions">Resolves knk.admin.currency.unlimited for the per-staff daily
         /// grant cap; without it (some tests) nobody is exempt.</param>
+        /// <param name="metrics">OpenTelemetry counters (currency Phase 5); optional.</param>
+        /// <param name="signals">Where a refusal at the balance cap is reported for alert R8
+        /// (currency Phase 5); optional.</param>
         public CurrencyService(ICurrencyRepository repo, IUserRepository users, ILogger<CurrencyService> logger,
-            IPermissionResolutionService? permissions = null)
+            IPermissionResolutionService? permissions = null, CurrencyMetrics? metrics = null,
+            CurrencyMonitorSignals? signals = null)
         {
             _repo = repo;
             _users = users;
             _logger = logger;
             _permissions = permissions;
+            _metrics = metrics;
+            _signals = signals;
         }
 
         /// <summary>Window of the per-staff grant cap (CurrencyPolicy.AdminDailyGrantCapPerActor).</summary>
@@ -52,7 +60,10 @@ namespace knkwebapi_v2.Services
 
         // ===== Postings =====
 
-        public Task<PostingResult> PostAsync(IReadOnlyList<CurrencyLeg> legs, CurrencyContext ctx, CancellationToken ct = default)
+        public Task<PostingResult> PostAsync(IReadOnlyList<CurrencyLeg> legs, CurrencyContext ctx, CancellationToken ct = default) =>
+            ObserveAsync(() => PostCoreAsync(legs, ctx, ct), ctx);
+
+        private Task<PostingResult> PostCoreAsync(IReadOnlyList<CurrencyLeg> legs, CurrencyContext ctx, CancellationToken ct)
         {
             var reason = RequireReason(ctx);
             if (reason.Kind is not (CurrencyTransactionKind.Grant or CurrencyTransactionKind.Spend or CurrencyTransactionKind.Merge))
@@ -100,7 +111,10 @@ namespace knkwebapi_v2.Services
             }, ct);
         }
 
-        public Task<PostingResult> GrantAsync(int userId, Currency currency, long amount, CurrencyContext ctx, CancellationToken ct = default)
+        public Task<PostingResult> GrantAsync(int userId, Currency currency, long amount, CurrencyContext ctx, CancellationToken ct = default) =>
+            ObserveAsync(() => GrantCoreAsync(userId, currency, amount, ctx, ct), ctx);
+
+        private Task<PostingResult> GrantCoreAsync(int userId, Currency currency, long amount, CurrencyContext ctx, CancellationToken ct)
         {
             var reason = RequireReason(ctx);
             if (reason.Direction != CurrencyReasonDirection.Credit || reason.Kind == CurrencyTransactionKind.AdminAdjust)
@@ -111,7 +125,10 @@ namespace knkwebapi_v2.Services
             return PostAsync(new[] { new CurrencyLeg(userId, currency, amount) }, ctx, ct);
         }
 
-        public Task<PostingResult> SpendAsync(int userId, Currency currency, long amount, CurrencyContext ctx, CancellationToken ct = default)
+        public Task<PostingResult> SpendAsync(int userId, Currency currency, long amount, CurrencyContext ctx, CancellationToken ct = default) =>
+            ObserveAsync(() => SpendCoreAsync(userId, currency, amount, ctx, ct), ctx);
+
+        private Task<PostingResult> SpendCoreAsync(int userId, Currency currency, long amount, CurrencyContext ctx, CancellationToken ct)
         {
             var reason = RequireReason(ctx);
             if (reason.Direction != CurrencyReasonDirection.Debit || reason.Kind == CurrencyTransactionKind.AdminAdjust)
@@ -122,7 +139,10 @@ namespace knkwebapi_v2.Services
             return PostAsync(new[] { new CurrencyLeg(userId, currency, -amount) }, ctx, ct);
         }
 
-        public Task<PostingResult> AdminAdjustAsync(AdminAdjustRequest req, CurrencyContext ctx, CancellationToken ct = default)
+        public Task<PostingResult> AdminAdjustAsync(AdminAdjustRequest req, CurrencyContext ctx, CancellationToken ct = default) =>
+            ObserveAsync(() => AdminAdjustCoreAsync(req, ctx, ct), ctx);
+
+        private Task<PostingResult> AdminAdjustCoreAsync(AdminAdjustRequest req, CurrencyContext ctx, CancellationToken ct)
         {
             var reason = RequireReason(ctx);
             if (ctx.ReasonCode != CurrencyReasons.ForAdminMode(req.Mode))
@@ -209,7 +229,10 @@ namespace knkwebapi_v2.Services
                 new { currency = currency.ToString(), cap, grantedLast24h = granted, remaining, requested = amount });
         }
 
-        public async Task<PostingResult> ReverseAsync(long transactionId, ReversalOptions opts, CurrencyContext ctx, CancellationToken ct = default)
+        public Task<PostingResult> ReverseAsync(long transactionId, ReversalOptions opts, CurrencyContext ctx, CancellationToken ct = default) =>
+            ObserveAsync(() => ReverseCoreAsync(transactionId, opts, ctx, ct), ctx);
+
+        private async Task<PostingResult> ReverseCoreAsync(long transactionId, ReversalOptions opts, CurrencyContext ctx, CancellationToken ct)
         {
             var reason = RequireReason(ctx);
             if (reason.Kind != CurrencyTransactionKind.Reversal)
@@ -370,11 +393,13 @@ namespace knkwebapi_v2.Services
             var requestHash = Sha256(canonicalRequest);
             PostingResult? result = null;
             CurrencyTransaction? pending = null;
+            var waiting = System.Diagnostics.Stopwatch.StartNew();
 
             try
             {
                 await _users.RunWithUsersLockedAsync(lockIds, async () =>
                 {
+                    _metrics?.RecordLockWait(waiting.Elapsed);
                     var existing = await _repo.FindByIdempotencyAsync(ctx.IdempotencyScope, ctx.IdempotencyKey, ct);
                     if (existing != null)
                     {
@@ -453,7 +478,60 @@ namespace knkwebapi_v2.Services
                 throw;
             }
 
+            if (pending != null && result is { Replayed: false })
+            {
+                _metrics?.RecordPosting(pending.ReasonCode, pending.Kind, pending.Entries
+                    .Where(e => e.AccountKind == CurrencyAccountKind.User)
+                    .Select(e => (e.Currency, e.Amount)));
+            }
             return result!;
+        }
+
+        /// <summary>
+        /// Runs a public posting method so a refusal is counted once (knk.currency.denials) and a
+        /// refusal at the balance cap is reported for alert R8, however deeply the public methods
+        /// call each other. Synchronous validation errors surface as a faulted task.
+        /// </summary>
+        private async Task<T> ObserveAsync<T>(Func<Task<T>> work, CurrencyContext? ctx)
+        {
+            try
+            {
+                return await work();
+            }
+            catch (CurrencyException ex) when (!ex.Data.Contains(ObservedMarker))
+            {
+                ex.Data[ObservedMarker] = true;
+                _metrics?.RecordDenial(ex.Code);
+                if (ex.Code == CurrencyErrorCode.BalanceCapExceeded && _signals != null)
+                {
+                    var (userId, currency) = CapHitSubject(ex.Details);
+                    _signals.RecordCapHit(userId, currency, ctx?.ReasonCode);
+                }
+                throw;
+            }
+        }
+
+        private const string ObservedMarker = "knk.currency.observed";
+
+        /// <summary>The user and currency named in a BalanceCapExceeded refusal's details, when present.</summary>
+        private static (int? UserId, Currency? Currency) CapHitSubject(object? details)
+        {
+            if (details == null)
+            {
+                return (null, null);
+            }
+            try
+            {
+                var json = JsonSerializer.SerializeToElement(details);
+                int? userId = json.TryGetProperty("userId", out var u) && u.TryGetInt32(out var id) ? id : null;
+                Currency? currency = json.TryGetProperty("currency", out var c) && c.ValueKind == JsonValueKind.String
+                    && Enum.TryParse<Currency>(c.GetString(), out var parsed) ? parsed : null;
+                return (userId, currency);
+            }
+            catch (NotSupportedException)
+            {
+                return (null, null);
+            }
         }
 
         private async Task<PostingResult> ReplayAsync(CurrencyTransaction existing, string requestHash, CurrencyContext ctx, CancellationToken ct)
@@ -468,6 +546,7 @@ namespace knkwebapi_v2.Services
             }
             var userIds = existing.Entries.Where(e => e.UserId.HasValue).Select(e => e.UserId!.Value);
             var balances = await _repo.GetBalancesAsync(userIds, ct);
+            _metrics?.RecordReplay(existing.ReasonCode);
             return ToResult(existing, balances, replayed: true);
         }
 

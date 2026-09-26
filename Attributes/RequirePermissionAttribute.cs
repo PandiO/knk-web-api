@@ -45,6 +45,9 @@ namespace knkwebapi_v2.Attributes
         public const string CurrencyLock = "knk.admin.currency.lock";
         /// <summary>Exempt from the per-staff daily grant cap (CurrencyPolicy.AdminDailyGrantCapPerActor).</summary>
         public const string CurrencyUnlimited = "knk.admin.currency.unlimited";
+        /// <summary>See and acknowledge currency anomaly alerts, run the reconciliation, get the
+        /// in-game alert notices (currency Phase 5).</summary>
+        public const string CurrencyAlerts = "knk.admin.currency.alerts";
 
         /// <summary>Server-wide admin settings with no narrower node (audit-log retention).</summary>
         public const string ServerConfig = "knk.admin.config";

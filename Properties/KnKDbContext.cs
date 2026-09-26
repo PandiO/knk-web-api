@@ -1720,9 +1720,12 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.Rule).IsRequired().HasMaxLength(16);
             entity.Property(e => e.Severity).HasConversion<byte>();
             entity.Property(e => e.DetailsJson).HasColumnType("json");
+            entity.Property(e => e.Summary).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.DedupKey).HasMaxLength(200);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
 
             entity.HasIndex(e => new { e.AckedAt, e.CreatedAt });
+            entity.HasIndex(e => new { e.Rule, e.DedupKey, e.CreatedAt });
             entity.HasIndex(e => new { e.UserId, e.CreatedAt });
         });
 

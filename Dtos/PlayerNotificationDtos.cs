@@ -37,6 +37,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("payment")]
         public PaymentNotificationDto? Payment { get; set; }
 
+        /// <summary>Set when Type is CurrencyAlert (then UserId is 0: it is for staff, not one player).</summary>
+        [JsonPropertyName("currencyAlert")]
+        public CurrencyAlertNotificationDto? CurrencyAlert { get; set; }
+
         [JsonPropertyName("createdAt")]
         public DateTime CreatedAt { get; set; }
     }
@@ -58,6 +62,14 @@ namespace knkwebapi_v2.Dtos
         /// (within the queue's 24 h window; the ledger keeps the payment either way).
         /// </summary>
         public const string PaymentReceived = "PaymentReceived";
+
+        /// <summary>
+        /// A currency anomaly alert (currency Phase 5, DESIGN.md §3.9) for every online staff
+        /// member holding knk.admin.currency.alerts - not addressed to one player (UserId 0, no
+        /// UUID). Payload in CurrencyAlert. The alert itself stays on the web alerts page and in
+        /// /knk currency alerts until acknowledged.
+        /// </summary>
+        public const string CurrencyAlert = "CurrencyAlert";
     }
 
     public class AcknowledgePlayerNotificationsDto

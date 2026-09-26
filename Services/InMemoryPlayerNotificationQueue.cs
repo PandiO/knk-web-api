@@ -58,6 +58,16 @@ public class InMemoryPlayerNotificationQueue : IPlayerNotificationQueue
             Payment = payment
         });
 
+    public long EnqueueCurrencyAlert(CurrencyAlertNotificationDto alert) =>
+        Add(new PlayerNotificationDto
+        {
+            UserId = 0,
+            Uuid = null,
+            Username = "",
+            Type = PlayerNotificationTypes.CurrencyAlert,
+            CurrencyAlert = alert
+        });
+
     private long Add(PlayerNotificationDto notification)
     {
         var id = Interlocked.Increment(ref _nextId);

@@ -163,6 +163,18 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ITitleProgressionService, TitleProgressionService>();
             services.AddScoped<ICurrencyAdminService, CurrencyAdminService>();
             services.AddScoped<CurrencyReconciler>();
+            // Currency monitor (Phase 5): alerts R1–R9, reconciliation, metrics.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.CurrencyMonitorOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.CurrencyMonitorOptions.SectionName));
+            }
+            services.AddSingleton<CurrencyMetrics>();
+            services.AddSingleton<CurrencyMonitorSignals>();
+            services.AddSingleton<CurrencyReconciliationState>();
+            services.AddScoped<CurrencyAnomalyDetector>();
+            services.AddScoped<ICurrencyAlertService, CurrencyAlertService>();
+            services.AddHostedService<CurrencyMonitorService>();
 
             // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
