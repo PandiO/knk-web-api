@@ -157,6 +157,17 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// KNG-22: the plugin authenticates with this shared key (X-API-Key). Without it every
+// plugin-only and currency/admin write refuses the game server, unless a developer opted out.
+if (string.IsNullOrEmpty(app.Configuration[knkwebapi_v2.Attributes.PluginServiceAuth.ApiKeyConfigKey]))
+{
+    var bypass = app.Environment.IsDevelopment()
+        && bool.TryParse(app.Configuration[knkwebapi_v2.Attributes.PluginServiceAuth.AllowUnauthenticatedConfigKey], out var allow) && allow;
+    app.Logger.LogWarning(bypass
+        ? "Security:PluginApiKey is not set and Security:AllowUnauthenticatedPluginCalls is on: EVERY anonymous caller is treated as the game server. Development only."
+        : "Security:PluginApiKey is not set: game-server (knk-plugin) calls to protected endpoints will be refused with 401. Set the same value as the plugin's api.auth.api-key.");
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

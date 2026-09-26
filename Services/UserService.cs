@@ -210,25 +210,13 @@ namespace knkwebapi_v2.Services
             var originalUuid = existing.Uuid;
             var originalCreatedAt = existing.CreatedAt;
 
-            // Real gap found while retrofitting audit hooks (docs/specs/user-management/
-            // IMPLEMENTATION_PLAN.md §0): unlike ActiveMode/LastSalaryPayoutAt (already
-            // opt.Ignore()'d in UserMappingProfile precisely so a generic edit can't silently
-            // reset them), Coins/Gems/ExperiencePoints/PersonalSalaryMultiplier ARE mapped here,
-            // so this generic FormWizard path is a second, previously-unaudited write route to
-            // the exact fields AdjustBalancesAsync/PayOutAsync now audit. Captured before the
-            // mapper overwrites them so the diff can be logged after saving.
-            var previousCoins = existing.Coins;
-            var previousGems = existing.Gems;
-            var previousExperience = existing.ExperiencePoints;
-            var previousMultiplier = existing.PersonalSalaryMultiplier;
-            var previousGemBonusMultiplier = existing.PersonalGemBonusMultiplier;
-            var previousExpBonusMultiplier = existing.PersonalExpBonusMultiplier;
-            var previousTitle = await _titleService.ResolveAsync(previousExperience, existing.Gender);
-
             // Apply all editable UserDto fields onto the tracked entity. The mapping profile
-            // (UserMappingProfile: UserDto -> User) already ignores fields that must never be
-            // set from this endpoint (PasswordHash, LastPasswordChangeAt, LastEmailChangeAt,
-            // DeletedAt, DeletedReason, ArchiveUntil, LinkCodes).
+            // (UserMappingProfile: UserDto -> User) ignores fields that must never be set from
+            // this endpoint: credentials and soft-delete fields, service-managed state
+            // (ActiveMode, presence, LastSalaryPayoutAt) and, since KNG-22, Coins, Gems,
+            // ExperiencePoints and the personal multipliers. Those change only through
+            // PUT {id}/balances and PUT {id}/multipliers, which lock, validate and audit them
+            // (docs/specs/currency-payments/DESIGN.md §1.4 A1).
             _mapper.Map(userDto, existing);
 
             // CreatedAt is an immutable audit field: a generic edit form that doesn't include
@@ -244,59 +232,63 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.UpdateUserAsync(existing);
-
-            if (existing.Coins != previousCoins || existing.Gems != previousGems ||
-                existing.ExperiencePoints != previousExperience || existing.PersonalSalaryMultiplier != previousMultiplier ||
-                existing.PersonalGemBonusMultiplier != previousGemBonusMultiplier || existing.PersonalExpBonusMultiplier != previousExpBonusMultiplier)
-            {
-                await _auditLogService.RecordAsync(actorUserId, id, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
-                {
-                    source = "GenericProfileEdit",
-                    coinsDelta = existing.Coins - previousCoins,
-                    gemsDelta = existing.Gems - previousGems,
-                    experienceDelta = existing.ExperiencePoints - previousExperience,
-                    previousPersonalSalaryMultiplier = previousMultiplier,
-                    newPersonalSalaryMultiplier = existing.PersonalSalaryMultiplier,
-                    previousPersonalGemBonusMultiplier = previousGemBonusMultiplier,
-                    newPersonalGemBonusMultiplier = existing.PersonalGemBonusMultiplier,
-                    previousPersonalExpBonusMultiplier = previousExpBonusMultiplier,
-                    newPersonalExpBonusMultiplier = existing.PersonalExpBonusMultiplier
-                }));
-
-                if (existing.ExperiencePoints != previousExperience)
-                {
-                    var newTitle = await _titleService.ResolveAsync(existing.ExperiencePoints, existing.Gender);
-                    if (newTitle.TitleBracketId != previousTitle.TitleBracketId)
-                    {
-                        await _auditLogService.RecordAsync(actorUserId, id, AuditAction.TitleChanged, JsonSerializer.Serialize(new
-                        {
-                            fromTitleBracketId = previousTitle.TitleBracketId,
-                            fromTitleName = previousTitle.TitleName,
-                            toTitleBracketId = newTitle.TitleBracketId,
-                            toTitleName = newTitle.TitleName,
-                            direction = existing.ExperiencePoints > previousExperience ? "promotion" : "demotion"
-                        }));
-                    }
-                }
-            }
         }
 
-        public async Task UpdateCoinsAsync(int id, int coins)
+        /// <summary>Upper bound for a personal multiplier (KNG-22): keeps a typo or a hostile
+        /// edit from turning one salary payout into billions of coins.</summary>
+        public const decimal MaxPersonalMultiplier = 100m;
+
+        public async Task SetPersonalMultipliersAsync(int id, UpdatePersonalMultipliersDto request, int? actorUserId = null)
         {
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            ValidateMultiplier(request.PersonalSalaryMultiplier, nameof(request.PersonalSalaryMultiplier));
+            ValidateMultiplier(request.PersonalGemBonusMultiplier, nameof(request.PersonalGemBonusMultiplier));
+            ValidateMultiplier(request.PersonalExpBonusMultiplier, nameof(request.PersonalExpBonusMultiplier));
+
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"User with id {id} not found.");
 
-            await _repo.UpdateUserCoinsAsync(id, coins);
+            var previousMultiplier = existing.PersonalSalaryMultiplier;
+            var previousGemBonusMultiplier = existing.PersonalGemBonusMultiplier;
+            var previousExpBonusMultiplier = existing.PersonalExpBonusMultiplier;
+
+            existing.PersonalSalaryMultiplier = request.PersonalSalaryMultiplier ?? previousMultiplier;
+            existing.PersonalGemBonusMultiplier = request.PersonalGemBonusMultiplier ?? previousGemBonusMultiplier;
+            existing.PersonalExpBonusMultiplier = request.PersonalExpBonusMultiplier ?? previousExpBonusMultiplier;
+
+            if (existing.PersonalSalaryMultiplier == previousMultiplier
+                && existing.PersonalGemBonusMultiplier == previousGemBonusMultiplier
+                && existing.PersonalExpBonusMultiplier == previousExpBonusMultiplier)
+            {
+                return;
+            }
+
+            await _repo.UpdateUserAsync(existing);
+
+            // Same entry shape the generic edit used to write, so the web activity feed
+            // (knk-web-app utils/auditDetails.ts) keeps describing it.
+            await _auditLogService.RecordAsync(actorUserId, id, AuditAction.BalanceAdjusted, JsonSerializer.Serialize(new
+            {
+                source = "PersonalMultipliers",
+                coinsDelta = 0,
+                gemsDelta = 0,
+                experienceDelta = 0,
+                previousPersonalSalaryMultiplier = previousMultiplier,
+                newPersonalSalaryMultiplier = existing.PersonalSalaryMultiplier,
+                previousPersonalGemBonusMultiplier = previousGemBonusMultiplier,
+                newPersonalGemBonusMultiplier = existing.PersonalGemBonusMultiplier,
+                previousPersonalExpBonusMultiplier = previousExpBonusMultiplier,
+                newPersonalExpBonusMultiplier = existing.PersonalExpBonusMultiplier
+            }));
         }
 
-        public async Task UpdateCoinsByUuidAsync(string uuid, int coins)
+        private static void ValidateMultiplier(decimal? value, string name)
         {
-            if (string.IsNullOrWhiteSpace(uuid)) throw new ArgumentException("Invalid uuid.", nameof(uuid));
-            var existing = await _repo.GetByUuidAsync(uuid);
-            if (existing == null) throw new KeyNotFoundException($"User with uuid {uuid} not found.");
-
-            await _repo.UpdateUserCoinsByUuidAsync(uuid, coins);
+            if (value.HasValue && (value.Value < 0 || value.Value > MaxPersonalMultiplier))
+            {
+                throw new ArgumentException($"{name} must be between 0 and {MaxPersonalMultiplier}.", name);
+            }
         }
 
         public async Task UpdateGatePassThroughMethodAsync(int id, GatePassThroughMethod method)
@@ -657,46 +649,62 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Reason is required for balance adjustments.", nameof(reason));
             }
 
-            var user = await _repo.GetByIdAsync(userId);
-            if (user == null)
+            User user = null!;
+            TitleChangeResultDto? titleChange = null;
+
+            // One transaction with the user's row locked (DESIGN.md §1.4 A2): two adjustments, or
+            // an adjustment racing a salary payout or kit purchase, run one after the other
+            // instead of both starting from the same balance. The audit entry is written in the
+            // same transaction, so there is never a balance change without its entry.
+            await _repo.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
-                throw new KeyNotFoundException($"User with ID {userId} not found.");
+                user = await _repo.GetByIdAsync(userId)
+                    ?? throw new KeyNotFoundException($"User with ID {userId} not found.");
+                titleChange = await ApplyBalanceAdjustmentAsync(user, coinsDelta, gemsDelta, experienceDelta, reason, metadata, actorUserId);
+            });
+
+            // Only after the commit: the plugin must not announce a promotion that rolled back.
+            if (titleChange != null && notifyPlayer)
+            {
+                // The result below only reaches this request's caller. When that's the web app,
+                // the plugin would otherwise never learn of the change, so the player never got
+                // the in-game promotion moment - queue it for the plugin's poller to deliver.
+                _notificationQueue?.Enqueue(userId, user.Uuid, user.Username, PlayerNotificationTypes.TitleChanged, titleChange);
             }
 
-            // Calculate new balances
-            int newCoins = user.Coins + coinsDelta;
-            int newGems = user.Gems + gemsDelta;
-            int newExperience = user.ExperiencePoints + experienceDelta;
-
-            // Reject underflows (no negative balances)
-            if (newCoins < 0)
+            return new BalanceAdjustmentResultDto
             {
-                throw new InvalidOperationException($"Insufficient coins. Current: {user.Coins}, Attempted change: {coinsDelta}");
-            }
+                NewCoins = user.Coins,
+                NewGems = user.Gems,
+                NewExperiencePoints = user.ExperiencePoints,
+                TitleChange = titleChange
+            };
+        }
 
-            if (newGems < 0)
-            {
-                throw new InvalidOperationException($"Insufficient gems. Current: {user.Gems}, Attempted change: {gemsDelta}");
-            }
-
-            if (newExperience < 0)
-            {
-                throw new InvalidOperationException($"Insufficient experience points. Current: {user.ExperiencePoints}, Attempted change: {experienceDelta}");
-            }
-
-            // Resolved before the mutation so a resulting title change can be detected, and so the
-            // consolidation loop below has every bracket to walk between old and new XP.
+        /// <summary>
+        /// The body of AdjustBalancesAsync, run under the user's row lock: validates and applies
+        /// the deltas and any title-promotion bonuses, saves, and writes the audit entries.
+        /// Every new value is computed and checked (BalanceLimits: no negatives, caps, checked
+        /// arithmetic) before anything is assigned, so a rejected adjustment changes nothing.
+        /// </summary>
+        private async Task<TitleChangeResultDto?> ApplyBalanceAdjustmentAsync(User user, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata, int? actorUserId)
+        {
+            var userId = user.Id;
             var originalExperience = user.ExperiencePoints;
             var originalCoins = user.Coins;
             var originalGems = user.Gems;
+
+            // Rejects underflow ("Insufficient …") and anything above the caps.
+            var newCoins = BalanceLimits.ApplyCoins(originalCoins, coinsDelta);
+            var newGems = BalanceLimits.ApplyGems(originalGems, gemsDelta);
+            var newExperience = BalanceLimits.ApplyExperience(originalExperience, experienceDelta);
+
+            // Resolved before the mutation so a resulting title change can be detected, and so the
+            // consolidation loop below has every bracket to walk between old and new XP.
             var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
             TitleBracket? previousBracket = brackets != null && brackets.Count > 0
                 ? (brackets.LastOrDefault(b => b.MinExperience <= originalExperience) ?? brackets[0])
                 : null;
-
-            user.Coins = newCoins;
-            user.Gems = newGems;
-            user.ExperiencePoints = newExperience;
 
             TitleChangeResultDto? titleChange = null;
 
@@ -709,12 +717,12 @@ namespace knkwebapi_v2.Services
             if (previousBracket != null && brackets != null)
             {
                 var direction = newExperience > originalExperience ? "promotion" : "demotion";
-                var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
+                var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= newExperience) ?? brackets[0];
 
                 if (currentBracket.Id != previousBracket.Id)
                 {
                     var crossed = new List<TitleBracket>();
-                    int coinBonusTotal = 0, gemBonusTotal = 0, expBonusTotal = 0;
+                    long coinBonusTotal = 0, gemBonusTotal = 0, expBonusTotal = 0;
                     int coinBonusBase = 0, gemBonusBase = 0, expBonusBase = 0;
                     var coinMultipliers = new List<RewardMultiplierDto>();
                     var gemMultipliers = new List<RewardMultiplierDto>();
@@ -736,23 +744,23 @@ namespace knkwebapi_v2.Services
                         // Walk every bracket strictly above previousBracket up to (and possibly
                         // past, if ExpBonus pushes further) currentBracket, accumulating rewards.
                         var idx = brackets.FindIndex(b => b.Id == previousBracket.Id) + 1;
-                        while (idx < brackets.Count && brackets[idx].MinExperience <= user.ExperiencePoints)
+                        while (idx < brackets.Count && brackets[idx].MinExperience <= newExperience)
                         {
                             var tier = brackets[idx];
                             crossed.Add(tier);
                             var expBonus = ScaleBonus(tier.ExpBonus, expMultiplier);
-                            coinBonusTotal += ScaleBonus(tier.CoinBonus, coinMultiplier);
-                            gemBonusTotal += ScaleBonus(tier.GemBonus, gemMultiplier);
-                            expBonusTotal += expBonus;
+                            coinBonusTotal = checked(coinBonusTotal + ScaleBonus(tier.CoinBonus, coinMultiplier));
+                            gemBonusTotal = checked(gemBonusTotal + ScaleBonus(tier.GemBonus, gemMultiplier));
+                            expBonusTotal = checked(expBonusTotal + expBonus);
                             coinBonusBase += tier.CoinBonus;
                             gemBonusBase += tier.GemBonus;
                             expBonusBase += tier.ExpBonus;
-                            user.ExperiencePoints += expBonus; // may unlock further brackets
+                            newExperience = BalanceLimits.ApplyExperience(newExperience, expBonus); // may unlock further brackets
                             idx++;
                         }
-                        user.Coins += coinBonusTotal;
-                        user.Gems += gemBonusTotal;
-                        currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
+                        newCoins = BalanceLimits.ApplyCoins(newCoins, coinBonusTotal);
+                        newGems = BalanceLimits.ApplyGems(newGems, gemBonusTotal);
+                        currentBracket = brackets.LastOrDefault(b => b.MinExperience <= newExperience) ?? brackets[0];
                     }
                     // Demotion never claws back currency (matches v1's userDemotion, which only
                     // ever removed structural slots/skills — neither exists in v3), so no bonus
@@ -766,9 +774,10 @@ namespace knkwebapi_v2.Services
                         ToTitleBracketId = currentBracket.Id,
                         ToTitleName = currentBracket.NameFor(user.Gender),
                         CrossedTitles = crossed.Select(t => new TitleCrossingDto { TitleBracketId = t.Id, TitleName = t.NameFor(user.Gender) }).ToList(),
-                        CoinBonusGranted = coinBonusTotal,
-                        GemBonusGranted = gemBonusTotal,
-                        ExpBonusGranted = expBonusTotal,
+                        // Each total is at most its cap here (the Apply* calls above passed).
+                        CoinBonusGranted = (int)coinBonusTotal,
+                        GemBonusGranted = (int)gemBonusTotal,
+                        ExpBonusGranted = (int)expBonusTotal,
                         CoinBonusBase = coinBonusBase,
                         GemBonusBase = gemBonusBase,
                         ExpBonusBase = expBonusBase,
@@ -779,7 +788,10 @@ namespace knkwebapi_v2.Services
                 }
             }
 
-            await _repo.UpdateUserAsync(user);
+            user.Coins = newCoins;
+            user.Gems = newGems;
+            user.ExperiencePoints = newExperience;
+            await _repo.SaveBalancesAsync(user);
 
             // docs/specs/user-management/IMPLEMENTATION_PLAN.md §0: every user-features mutation
             // threads in an AuditLogEntry write as it's built, rather than user-management's
@@ -816,28 +828,15 @@ namespace knkwebapi_v2.Services
                     crossedTitles = titleChange.CrossedTitles.Select(t => t.TitleName),
                     direction = titleChange.Direction
                 }));
-
-                // The result below only reaches this request's caller. When that's the web app,
-                // the plugin would otherwise never learn of the change, so the player never got
-                // the in-game promotion moment - queue it for the plugin's poller to deliver.
-                if (notifyPlayer)
-                {
-                    _notificationQueue?.Enqueue(userId, user.Uuid, user.Username, PlayerNotificationTypes.TitleChanged, titleChange);
-                }
             }
 
-            return new BalanceAdjustmentResultDto
-            {
-                NewCoins = user.Coins,
-                NewGems = user.Gems,
-                NewExperiencePoints = user.ExperiencePoints,
-                TitleChange = titleChange
-            };
+            return titleChange;
         }
 
         /// <summary>A title promotion bonus scaled by its multiplier, rounded to whole units and
         /// never negative (a multiplier set negative by a direct DB edit pays nothing).</summary>
-        private static int ScaleBonus(int bonus, decimal multiplier) => CurrencyMultipliersDto.Scale(bonus, multiplier);
+        private static long ScaleBonus(int bonus, decimal multiplier) =>
+            BalanceLimits.ToWholeAmount(() => bonus * multiplier, "title bonus");
 
         // ===== NEW METHODS: LINK CODES =====
 
