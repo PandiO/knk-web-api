@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926153630_AddDomainDiscovery")]
+    partial class AddDomainDiscovery
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -280,330 +283,6 @@ namespace knkwebapi_v2.Migrations
                         .HasDatabaseName("IX_ConditionBinding_MenuItemTemplateId_SortOrder");
 
                     b.ToTable("menu_condition_bindings", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CurrencyAlert", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime?>("AckedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("AckedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("DetailsJson")
-                        .HasColumnType("json");
-
-                    b.Property<string>("Rule")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<byte>("Severity")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<long?>("TransactionId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("AckedAt", "CreatedAt");
-
-                    b.HasIndex("UserId", "CreatedAt");
-
-                    b.ToTable("currency_alerts", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CurrencyEntry", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<byte>("AccountKind")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<long>("Amount")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("BalanceAfter")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("BalanceBefore")
-                        .HasColumnType("bigint");
-
-                    b.Property<byte>("Currency")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<byte>("Operation")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<string>("SystemAccount")
-                        .HasMaxLength(30)
-                        .HasColumnType("varchar(30)");
-
-                    b.Property<long>("TransactionId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("TransactionId");
-
-                    b.HasIndex("SystemAccount", "Currency", "TransactionId");
-
-                    b.HasIndex("UserId", "Currency", "Id");
-
-                    b.ToTable("currency_entries", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_currency_entries_Account", "(`AccountKind` = 0 AND `UserId` IS NOT NULL AND `SystemAccount` IS NULL AND `BalanceBefore` IS NOT NULL AND `BalanceAfter` IS NOT NULL) OR (`AccountKind` = 1 AND `UserId` IS NULL AND `SystemAccount` IS NOT NULL AND `BalanceBefore` IS NULL AND `BalanceAfter` IS NULL)");
-
-                            t.HasCheckConstraint("CK_currency_entries_Balances", "`BalanceAfter` IS NULL OR (`BalanceBefore` >= 0 AND `BalanceAfter` >= 0 AND `BalanceBefore` + `Amount` = `BalanceAfter`)");
-                        });
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CurrencyPendingTransfer", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("Amount")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<byte>("Currency")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("IdempotencyKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .UseCollation("utf8mb4_bin");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<string>("PublicId")
-                        .IsRequired()
-                        .HasColumnType("char(26)");
-
-                    b.Property<int>("RecipientUserId")
-                        .HasColumnType("int");
-
-                    b.Property<long?>("ResultTransactionId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("SenderUserId")
-                        .HasColumnType("int");
-
-                    b.Property<byte>("Status")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("IdempotencyKey")
-                        .IsUnique();
-
-                    b.HasIndex("PublicId")
-                        .IsUnique();
-
-                    b.HasIndex("SenderUserId", "Status");
-
-                    b.ToTable("currency_pending_transfers", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CurrencyPolicy", b =>
-                {
-                    b.Property<byte>("Currency")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<long>("AdminDailyGrantCapPerActor")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("ConfirmThreshold")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("ConfirmTtlSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CooldownSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<long>("DailyReceiveCap")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("DailySendCap")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("MaxBalance")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("MaxTransfer")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("MaxTransfersPerHour")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MinSenderAccountAgeHours")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("MinSenderTitleBracketId")
-                        .HasColumnType("int");
-
-                    b.Property<long>("MinTransfer")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("TransferFeeBasisPoints")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("Transferable")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("TransfersEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("UpdatedByUserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Currency")
-                        .HasName("PRIMARY");
-
-                    b.ToTable("currency_policies", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CurrencyTransaction", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("CorrelationId")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("FromUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("IdempotencyKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .UseCollation("utf8mb4_bin");
-
-                    b.Property<string>("IdempotencyScope")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("varchar(40)")
-                        .UseCollation("utf8mb4_bin");
-
-                    b.Property<byte>("Initiator")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<string>("InitiatorComponent")
-                        .HasMaxLength(60)
-                        .HasColumnType("varchar(60)");
-
-                    b.Property<int?>("InitiatorUserId")
-                        .HasColumnType("int");
-
-                    b.Property<byte>("Kind")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<string>("MetadataJson")
-                        .HasColumnType("json");
-
-                    b.Property<string>("PublicId")
-                        .IsRequired()
-                        .HasColumnType("char(26)");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<string>("ReasonCode")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("varchar(40)");
-
-                    b.Property<string>("RequestHash")
-                        .IsRequired()
-                        .HasColumnType("char(64)");
-
-                    b.Property<long?>("ReversesTransactionId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("SourceRef")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<string>("SourceType")
-                        .HasMaxLength(40)
-                        .HasColumnType("varchar(40)");
-
-                    b.Property<int?>("ToUserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("CorrelationId");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("PublicId")
-                        .IsUnique();
-
-                    b.HasIndex("ReversesTransactionId")
-                        .IsUnique();
-
-                    b.HasIndex("FromUserId", "CreatedAt");
-
-                    b.HasIndex("IdempotencyScope", "IdempotencyKey")
-                        .IsUnique();
-
-                    b.HasIndex("InitiatorUserId", "CreatedAt");
-
-                    b.HasIndex("ReasonCode", "CreatedAt");
-
-                    b.HasIndex("ToUserId", "CreatedAt");
-
-                    b.ToTable("currency_transactions", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.DiscoveryRewardRule", b =>
@@ -2054,12 +1733,7 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("ShieldId");
 
-                    b.ToTable("kits", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_kits_CostAmount_NonNegative", "`CostAmount` IS NULL OR `CostAmount` >= 0");
-
-                            t.HasCheckConstraint("CK_kits_PremiumPriceGems_NonNegative", "`PremiumPriceGems` IS NULL OR `PremiumPriceGems` >= 0");
-                        });
+                    b.ToTable("kits", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.KitClaim", b =>
@@ -3181,13 +2855,6 @@ namespace knkwebapi_v2.Migrations
                     b.Property<decimal>("PersonalSalaryMultiplier")
                         .HasColumnType("decimal(65,30)");
 
-                    b.Property<string>("TransferLockReason")
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<DateTime?>("TransferLockedAt")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
@@ -3204,14 +2871,7 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("Uuid")
                         .IsUnique();
 
-                    b.ToTable("users", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_users_Coins_Range", "`Coins` >= 0 AND `Coins` <= 999999999");
-
-                            t.HasCheckConstraint("CK_users_ExperiencePoints_NonNegative", "`ExperiencePoints` >= 0");
-
-                            t.HasCheckConstraint("CK_users_Gems_Range", "`Gems` >= 0 AND `Gems` <= 999999");
-                        });
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>
@@ -3408,25 +3068,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ActionBinding");
 
                     b.Navigation("MenuItemTemplate");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CurrencyEntry", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.CurrencyTransaction", "Transaction")
-                        .WithMany("Entries")
-                        .HasForeignKey("TransactionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Transaction");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CurrencyTransaction", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.CurrencyTransaction", null)
-                        .WithOne()
-                        .HasForeignKey("knkwebapi_v2.Models.CurrencyTransaction", "ReversesTransactionId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.DisplayCondition", b =>
@@ -4200,11 +3841,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ChildCategories");
 
                     b.Navigation("Tags");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.CurrencyTransaction", b =>
-                {
-                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.DisplayConditionGroup", b =>

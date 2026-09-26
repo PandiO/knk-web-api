@@ -805,16 +805,13 @@ namespace knkwebapi_v2.Services
                         // KNG-16: each bonus is scaled by the player's personal x rank multiplier
                         // for that currency - coins by the salary multipliers, gems and XP by their
                         // own GemBonus/ExpBonus multipliers. No global multiplier applies.
-                        var ranks = await _membershipService.GetActiveRankMultipliersAsync(userId) ?? RankMultipliersDto.Neutral;
-                        var coinMultiplier = user.PersonalSalaryMultiplier * ranks.Salary;
-                        var gemMultiplier = user.PersonalGemBonusMultiplier * ranks.GemBonus;
-                        var expMultiplier = user.PersonalExpBonusMultiplier * ranks.ExpBonus;
-                        coinMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalSalaryMultiplier));
-                        coinMultipliers.AddRange(ranks.SalaryBreakdown());
-                        gemMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalGemBonusMultiplier));
-                        gemMultipliers.AddRange(ranks.GemBonusBreakdown());
-                        expMultipliers.Add(RewardMultiplierDto.Personal(user.PersonalExpBonusMultiplier));
-                        expMultipliers.AddRange(ranks.ExpBonusBreakdown());
+                        var multipliers = CurrencyMultipliersDto.For(user, await _membershipService.GetActiveRankMultipliersAsync(userId));
+                        var coinMultiplier = multipliers.Coins;
+                        var gemMultiplier = multipliers.Gems;
+                        var expMultiplier = multipliers.Exp;
+                        coinMultipliers.AddRange(multipliers.CoinBreakdown);
+                        gemMultipliers.AddRange(multipliers.GemBreakdown);
+                        expMultipliers.AddRange(multipliers.ExpBreakdown);
 
                         // Walk every bracket strictly above previousBracket up to (and possibly
                         // past, if ExpBonus pushes further) currentBracket, accumulating rewards.

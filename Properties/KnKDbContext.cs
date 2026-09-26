@@ -95,6 +95,11 @@ public partial class KnKDbContext : DbContext
 
     public virtual DbSet<AuditLogEntry> AuditLogEntries { get; set; } = null!;
 
+    // Domain discovery Phase 1 (docs/specs/domain-discovery/IMPLEMENTATION_PLAN.md)
+    public virtual DbSet<UserDomainDiscovery> UserDomainDiscoveries { get; set; } = null!;
+    public virtual DbSet<DiscoveryRewardRule> DiscoveryRewardRules { get; set; } = null!;
+    public virtual DbSet<DomainDiscoveryOverride> DomainDiscoveryOverrides { get; set; } = null!;
+
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
     public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
 
@@ -1345,6 +1350,69 @@ public partial class KnKDbContext : DbContext
             // Timestamp descending — see DESIGN.md §4/IMPLEMENTATION_PLAN.md Phase 2.
             entity.HasIndex(e => new { e.TargetUserId, e.Timestamp });
             entity.HasIndex(e => new { e.ActorUserId, e.Timestamp });
+        });
+
+        // Domain discovery (docs/specs/domain-discovery/DESIGN.md §3.1). The unique
+        // (UserId, DomainId) index is the idempotency guarantee: a domain rewards an account once.
+        modelBuilder.Entity<UserDomainDiscovery>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("user_domain_discoveries");
+
+            entity.Property(e => e.DiscoveredAt).HasColumnType("datetime");
+            entity.Property(e => e.Source)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(32);
+            entity.Property(e => e.CoinMultiplier).HasPrecision(10, 4);
+            entity.Property(e => e.GemMultiplier).HasPrecision(10, 4);
+            entity.Property(e => e.ExpMultiplier).HasPrecision(10, 4);
+
+            // Users are soft-deleted, so Restrict like KitPurchase; deleting a Domain drops its
+            // discoveries (the grants stay in the audit log) - DESIGN.md D8.
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Domain)
+                .WithMany()
+                .HasForeignKey(e => e.DomainId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UserId, e.DomainId }).IsUnique();
+            entity.HasIndex(e => e.DomainId);
+            entity.HasIndex(e => new { e.UserId, e.DiscoveredAt });
+        });
+
+        modelBuilder.Entity<DiscoveryRewardRule>(entity =>
+        {
+            entity.HasKey(e => e.DomainType).HasName("PRIMARY");
+            entity.ToTable("discovery_reward_rules");
+
+            entity.Property(e => e.DomainType).HasMaxLength(32);
+            entity.Property(e => e.ExpUnitsMin).HasPrecision(10, 4);
+            entity.Property(e => e.ExpUnitsMax).HasPrecision(10, 4);
+            entity.Property(e => e.CoinSalaryHoursMin).HasPrecision(10, 4);
+            entity.Property(e => e.CoinSalaryHoursMax).HasPrecision(10, 4);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+        });
+
+        modelBuilder.Entity<DomainDiscoveryOverride>(entity =>
+        {
+            entity.HasKey(e => e.DomainId).HasName("PRIMARY");
+            entity.ToTable("domain_discovery_overrides");
+
+            entity.Property(e => e.DomainId).ValueGeneratedNever();
+            entity.Property(e => e.ExpUnitsMin).HasPrecision(10, 4);
+            entity.Property(e => e.ExpUnitsMax).HasPrecision(10, 4);
+            entity.Property(e => e.CoinSalaryHoursMin).HasPrecision(10, 4);
+            entity.Property(e => e.CoinSalaryHoursMax).HasPrecision(10, 4);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasOne(e => e.Domain)
+                .WithOne()
+                .HasForeignKey<DomainDiscoveryOverride>(e => e.DomainId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

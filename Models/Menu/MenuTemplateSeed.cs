@@ -663,6 +663,10 @@ public static partial class MenuTemplateSeed
         // InventoryMenu content port (CONTENT_PORT_PLAN.md CP1-CP8) - see MenuTemplateSeed.Content.cs.
         foreach (var template in ContentTemplates())
             yield return template;
+
+        // Domain discovery (KNG-20) - see MenuTemplateSeed.Discovery.cs.
+        foreach (var template in DiscoveryTemplates())
+            yield return template;
     }
 
     /// <summary>
