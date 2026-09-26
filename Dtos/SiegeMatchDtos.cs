@@ -153,7 +153,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("holdingCount")] public int HoldingCount { get; set; }
         // Distinct objectives this player captured.
         [JsonPropertyName("captureCount")] public int CaptureCount { get; set; }
+        // Granted coins: BaseCoins (DESIGN §7.6) times CoinMultiplier (personal salary multiplier x
+        // rank/premium multiplier, smoke test 2026-09-26). A repeat call derives the multiplier from
+        // the stored amount (rounded to 2 decimals).
         [JsonPropertyName("coins")] public int Coins { get; set; }
+        [JsonPropertyName("baseCoins")] public int BaseCoins { get; set; }
+        [JsonPropertyName("coinMultiplier")] public decimal CoinMultiplier { get; set; } = 1.0m;
         [JsonPropertyName("experience")] public int Experience { get; set; }
         [JsonPropertyName("gems")] public int Gems { get; set; }
         // Only on the call that granted the rewards (a repeat call returns the stored amounts

@@ -1,6 +1,7 @@
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -22,17 +23,33 @@ namespace knkwebapi_v2.Services
         private readonly ITitleService _titleService;
         private readonly IPlayerNotificationQueue? _notificationQueue;
         private readonly ILogger<SiegeMatchService>? _logger;
+        private readonly IUserPermissionGroupRepository? _memberships;
 
         public SiegeMatchService(
             ISiegeMatchRepository repo,
             ITitleService titleService,
             IPlayerNotificationQueue? notificationQueue = null,
-            ILogger<SiegeMatchService>? logger = null)
+            ILogger<SiegeMatchService>? logger = null,
+            IUserPermissionGroupRepository? memberships = null)
         {
             _repo = repo;
             _titleService = titleService;
             _notificationQueue = notificationQueue;
             _logger = logger;
+            _memberships = memberships;
+        }
+
+        /// <summary>
+        /// Coin rewards get the player's personal salary multiplier times their rank (premium)
+        /// multiplier (smoke test 2026-09-26; <see cref="CoinRewardMultipliers"/>). Without the
+        /// membership repository (some tests) the rank part is neutral.
+        /// </summary>
+        private async Task<decimal> CoinMultiplierAsync(User user, DateTime asOf)
+        {
+            var rank = _memberships == null
+                ? 1.0m
+                : CoinRewardMultipliers.Rank(await _memberships.GetByUserAsync(user.Id), asOf);
+            return user.PersonalSalaryMultiplier * rank;
         }
 
         // ===== Reads =====
@@ -237,11 +254,16 @@ namespace knkwebapi_v2.Services
                 var brackets = grantees.Any(x => x.Reward.Experience > 0) ? await _titleService.GetAllOrderedAsync() : null;
 
                 var titleChangeByUser = new Dictionary<int, TitleChangeResultDto>();
+                var coinsByUser = new Dictionary<int, (int Coins, decimal Multiplier)>();
+                var now = DateTime.UtcNow;
                 foreach (var (row, reward) in grantees)
                 {
                     var user = users[row.UserId];
                     var previousExperience = user.ExperiencePoints;
-                    user.Coins += reward.Coins;
+                    var multiplier = reward.Coins > 0 ? await CoinMultiplierAsync(user, now) : 1.0m;
+                    var coins = CoinRewardMultipliers.Apply(reward.Coins, multiplier);
+                    coinsByUser[user.Id] = (coins, multiplier);
+                    user.Coins += coins;
                     user.Gems += reward.Gems;
                     user.ExperiencePoints += reward.Experience;
                     // XP goes through the shared title path, so brackets advance (and grant their
@@ -255,7 +277,7 @@ namespace knkwebapi_v2.Services
                         titleChanges.Add((user, change));
                     }
 
-                    row.CoinsAwarded = reward.Coins;
+                    row.CoinsAwarded = coins;
                     row.ExpAwarded = reward.Experience;
                     row.GemsAwarded = reward.Gems;
                 }
@@ -269,7 +291,8 @@ namespace knkwebapi_v2.Services
                     EndReason = match.EndReason,
                     WinningAllianceGroup = match.WinningAllianceGroup,
                     AlreadyCompleted = false,
-                    Rewards = rewards.Select(x => ToRewardDto(x.Reward, titleChangeByUser.GetValueOrDefault(x.Row.UserId))).ToList()
+                    Rewards = rewards.Select(x => ToRewardDto(x.Reward, titleChangeByUser.GetValueOrDefault(x.Row.UserId),
+                        coinsByUser.TryGetValue(x.Row.UserId, out var granted) ? granted : (x.Reward.Coins, 1.0m))).ToList()
                 };
             });
 
@@ -408,6 +431,8 @@ namespace knkwebapi_v2.Services
                         HoldingCount = computed.HoldingCount,
                         CaptureCount = computed.CaptureCount,
                         Coins = p.CoinsAwarded,
+                        BaseCoins = computed.Coins,
+                        CoinMultiplier = computed.Coins > 0 ? Math.Round((decimal)p.CoinsAwarded / computed.Coins, 2) : 1.0m,
                         Experience = p.ExpAwarded,
                         Gems = p.GemsAwarded
                     };
@@ -415,7 +440,8 @@ namespace knkwebapi_v2.Services
             };
         }
 
-        private static SiegeMatchRewardDto ToRewardDto(SiegeRewardCalculator.Reward reward, TitleChangeResultDto? titleChange) => new()
+        private static SiegeMatchRewardDto ToRewardDto(SiegeRewardCalculator.Reward reward, TitleChangeResultDto? titleChange,
+            (int Coins, decimal Multiplier) granted) => new()
         {
             UserId = reward.UserId,
             SiegeTeamId = reward.TeamId,
@@ -423,7 +449,9 @@ namespace knkwebapi_v2.Services
             Won = reward.Won,
             HoldingCount = reward.HoldingCount,
             CaptureCount = reward.CaptureCount,
-            Coins = reward.Coins,
+            Coins = granted.Coins,
+            BaseCoins = reward.Coins,
+            CoinMultiplier = granted.Multiplier,
             Experience = reward.Experience,
             Gems = reward.Gems,
             TitleChange = titleChange

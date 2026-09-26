@@ -71,7 +71,7 @@ namespace knkwebapi_v2.Services
             // PermissionGroupService) and PersonalSalaryMultiplier defaults to a non-negative 1.0,
             // but nothing currently stops a direct DB edit from making one negative — clamp
             // defensively rather than ever crediting negative coins through this path.
-            var amountPaid = Math.Max(0, (int)Math.Round(rawPayout, MidpointRounding.AwayFromZero));
+            var amountPaid = CoinRewardMultipliers.Apply(rawPayout, 1.0m);
 
             user.Coins += amountPaid;
             user.LastSalaryPayoutAt = now;
@@ -118,9 +118,7 @@ namespace knkwebapi_v2.Services
         private async Task<decimal> ComputeRankMultiplierAsync(int userId, DateTime asOf)
         {
             var memberships = await _membershipRepo.GetByUserAsync(userId);
-            return memberships
-                .Where(m => m.PermissionGroup != null && (m.ExpiresAt == null || m.ExpiresAt > asOf))
-                .Aggregate(1.0m, (product, m) => product * m.PermissionGroup!.SalaryMultiplier);
+            return CoinRewardMultipliers.Rank(memberships, asOf);
         }
     }
 }

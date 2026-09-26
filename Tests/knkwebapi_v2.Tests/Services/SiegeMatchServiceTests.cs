@@ -199,6 +199,48 @@ public class SiegeMatchServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Complete_CoinRewardsGetThePersonalAndActiveRankMultipliers_XpAndGemsDoNot()
+    {
+        // Smoke test 2026-09-26: coins x PersonalSalaryMultiplier x active groups' SalaryMultiplier.
+        var premium = new PermissionGroup { Id = 20, Name = "Royal", SalaryMultiplier = 1.5m, IsPremiumTier = true };
+        var expired = new PermissionGroup { Id = 21, Name = "Old", SalaryMultiplier = 3.0m };
+        _context.PermissionGroups.AddRange(premium, expired);
+        _context.UserPermissionGroups.Add(new UserPermissionGroup { UserId = 3, PermissionGroupId = 20 });
+        _context.UserPermissionGroups.Add(new UserPermissionGroup { UserId = 3, PermissionGroupId = 21, ExpiresAt = DateTime.UtcNow.AddDays(-1) });
+        var u = await _context.Users.SingleAsync(x => x.Id == 3);
+        u.PersonalSalaryMultiplier = 2.0m;
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+        var service = new SiegeMatchService(new SiegeMatchRepository(_context),
+            new TitleService(new TitleBracketRepository(_context)), _notifications.Object, null,
+            new UserPermissionGroupRepository(_context));
+
+        var created = await service.CreateAsync(new SiegeMatchCreateDto { SiegeLobbyId = 1, SiegeScenarioId = 100 });
+        await service.StartAsync(created.Id, new SiegeMatchStartDto
+        {
+            Participants = { new SiegeMatchParticipantStartDto { UserId = 3, SiegeTeamId = 202 },
+                             new SiegeMatchParticipantStartDto { UserId = 4, SiegeTeamId = 202 },
+                             new SiegeMatchParticipantStartDto { UserId = 1, SiegeTeamId = 201 } }
+        });
+        _context.ChangeTracker.Clear();
+
+        var dto = AttackersWin(Result(3, 202, captures: 1), Result(4, 202, captures: 1), Result(1, 201));
+        var result = await service.CompleteAsync(created.Id, dto);
+
+        var r3 = result.Rewards.Single(r => r.UserId == 3);
+        Assert.Equal((250, 3.0m, 750, 25, 1), (r3.BaseCoins, r3.CoinMultiplier, r3.Coins, r3.Experience, r3.Gems));
+        var r4 = result.Rewards.Single(r => r.UserId == 4); // no groups, personal 1.0
+        Assert.Equal((250, 1.0m, 250), (r4.BaseCoins, r4.CoinMultiplier, r4.Coins));
+        var u3 = await UserAsync(3);
+        Assert.Equal((10 + 750, 1, 25), (u3.Coins, u3.Gems, u3.ExperiencePoints));
+
+        _context.ChangeTracker.Clear();
+        var again = (await service.CompleteAsync(created.Id, dto)).Rewards.Single(r => r.UserId == 3);
+        Assert.Equal((250, 3.0m, 750), (again.BaseCoins, again.CoinMultiplier, again.Coins));
+        Assert.Equal(10 + 750, (await UserAsync(3)).Coins);
+    }
+
+    [Fact]
     public async Task Complete_Twice_ReturnsTheStoredResult_AndGrantsNothingMore()
     {
         var id = await StartedMatchAsync((3, 202), (4, 202), (1, 201));
