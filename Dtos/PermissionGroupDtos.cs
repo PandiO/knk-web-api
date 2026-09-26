@@ -25,7 +25,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("chatSuffix")]
         public string? ChatSuffix { get; set; }
 
-        /// <summary>Minecraft color names (KNG-7) — see PermissionGroup.ChatPrimaryColor.</summary>
+        /// <summary>Minecraft "&amp;" formatting codes (KNG-7) — see PermissionGroup.ChatPrimaryColor.</summary>
         [JsonPropertyName("chatPrimaryColor")]
         public string? ChatPrimaryColor { get; set; }
 

@@ -37,12 +37,13 @@ public class PermissionGroup : PermissionHolder
     public decimal SalaryMultiplier { get; set; } = 1.0m;
 
     /// <summary>
-    /// In-game chat colors for members whose display group this is (KNG-7): the premium tier's,
-    /// or the Default group's for players without one. Stored as a Minecraft color name
-    /// ("YELLOW", "DARK_RED", ... — see <see cref="knkwebapi_v2.Services.MinecraftChatColors"/>).
-    /// ChatPrimaryColor colors the title and username, ChatSecondaryColor the "-{ }-" brackets
-    /// around the title (v1 Donator.PrimaryColor/SecondColor). Null = the plugin's built-in
-    /// default.
+    /// In-game chat styles for members whose display group this is (KNG-7): the premium tier's,
+    /// or the Default group's for players without one. Stored as Minecraft "&amp;" formatting
+    /// codes only ("&amp;e", "&amp;6&amp;l", hex "&amp;x&amp;f&amp;f&amp;a&amp;a&amp;0&amp;0" —
+    /// see <see cref="knkwebapi_v2.Services.MinecraftTextStyle"/>), the format the FormWizard's
+    /// "Minecraft text coloring" field setting previews. ChatPrimaryColor styles the title and
+    /// username, ChatSecondaryColor the "-{ }-" brackets around the title (v1
+    /// Donator.PrimaryColor/SecondColor). Null = the plugin's built-in default.
     /// </summary>
     public string? ChatPrimaryColor { get; set; }
 
@@ -52,7 +53,9 @@ public class PermissionGroup : PermissionHolder
     /// <summary>
     /// Tab-list / nametag color (scoreboard team color) for members whose display group this is
     /// (KNG-7). Separate from the chat colors on purpose — v1 let them differ (Default: gray name,
-    /// green chat). Same color-name format as <see cref="ChatPrimaryColor"/>.
+    /// green chat). Same "&amp;" code format as <see cref="ChatPrimaryColor"/>; a scoreboard team
+    /// can only use the 16 named colors, so the plugin maps a hex color to the nearest one and
+    /// ignores bold/italic etc. here.
     /// </summary>
     public string? NameColor { get; set; }
 

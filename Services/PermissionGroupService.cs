@@ -124,13 +124,13 @@ namespace knkwebapi_v2.Services
             });
         }
 
-        /// <summary>Validates the KNG-7 color fields and stores them in canonical form ("dark_red" →
-        /// "DARK_RED", blank → null), so the plugin only ever sees names it can parse.</summary>
+        /// <summary>Validates the KNG-7 style fields and stores them in canonical form ("&amp;6&amp;L"
+        /// → "&amp;6&amp;l", blank → null), so the plugin only ever sees codes it can parse.</summary>
         private static void NormalizeColors(PermissionGroupDto dto)
         {
-            dto.ChatPrimaryColor = MinecraftChatColors.Normalize(dto.ChatPrimaryColor, "ChatPrimaryColor");
-            dto.ChatSecondaryColor = MinecraftChatColors.Normalize(dto.ChatSecondaryColor, "ChatSecondaryColor");
-            dto.NameColor = MinecraftChatColors.Normalize(dto.NameColor, "NameColor");
+            dto.ChatPrimaryColor = MinecraftTextStyle.Normalize(dto.ChatPrimaryColor, "ChatPrimaryColor");
+            dto.ChatSecondaryColor = MinecraftTextStyle.Normalize(dto.ChatSecondaryColor, "ChatSecondaryColor");
+            dto.NameColor = MinecraftTextStyle.Normalize(dto.NameColor, "NameColor");
         }
 
         /// <summary>Walks candidateParentId's own ancestor chain to make sure groupId doesn't

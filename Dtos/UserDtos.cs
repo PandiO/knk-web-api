@@ -118,7 +118,7 @@ namespace knkwebapi_v2.Dtos
         public DateTime? PremiumTierExpiresAt { get; set; }
 
         /// <summary>
-        /// Chat and tab-list colors (KNG-7) as Minecraft color names — taken from the premium tier
+        /// Chat and tab-list styles (KNG-7) as Minecraft "&amp;" formatting codes — taken from the premium tier
         /// above, falling back field by field to the "Default" PermissionGroup's colors (for a
         /// player without a tier, or a tier with a color left unset). Null = the plugin's built-in
         /// default.
@@ -232,7 +232,7 @@ namespace knkwebapi_v2.Dtos
         public DateTime? PremiumTierExpiresAt { get; set; }
 
         /// <summary>
-        /// Chat and tab-list colors (KNG-7) as Minecraft color names — taken from the premium tier
+        /// Chat and tab-list styles (KNG-7) as Minecraft "&amp;" formatting codes — taken from the premium tier
         /// above, falling back field by field to the "Default" PermissionGroup's colors (for a
         /// player without a tier, or a tier with a color left unset). Null = the plugin's built-in
         /// default.

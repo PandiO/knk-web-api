@@ -12,12 +12,12 @@ using knkwebapi_v2.Services.Interfaces;
 namespace knkwebapi_v2.Tests.Services;
 
 /// <summary>
-/// KNG-7: PermissionGroup chat/tab-list colors — validation on write, and resolution onto a
+/// KNG-7: PermissionGroup chat/tab-list styles (Minecraft "&amp;" codes) — validation on write, and resolution onto a
 /// user's DTO (premium tier first, then the "Default" group, field by field).
 /// </summary>
 public class PermissionGroupDisplayColorsTests
 {
-    #region MinecraftChatColors.Normalize
+    #region MinecraftTextStyle.Normalize
 
     [Theory]
     [InlineData(null)]
@@ -25,26 +25,31 @@ public class PermissionGroupDisplayColorsTests
     [InlineData("   ")]
     public void Normalize_Blank_ReturnsNull(string? value)
     {
-        Assert.Null(MinecraftChatColors.Normalize(value, "NameColor"));
+        Assert.Null(MinecraftTextStyle.Normalize(value, "NameColor"));
     }
 
     [Theory]
-    [InlineData("YELLOW", "YELLOW")]
-    [InlineData("dark_red", "DARK_RED")]
-    [InlineData(" Dark Red ", "DARK_RED")]
-    [InlineData("light_purple", "LIGHT_PURPLE")]
-    public void Normalize_KnownName_ReturnsCanonical(string value, string expected)
+    [InlineData("&e", "&e")]
+    [InlineData("&6&L", "&6&l")]
+    [InlineData(" §c ", "&c")]
+    [InlineData("&x&F&F&a&a&0&0", "&x&f&f&a&a&0&0")]
+    [InlineData("&x&f&f&a&a&0&0&l&o", "&x&f&f&a&a&0&0&l&o")]
+    [InlineData("&r&b", "&r&b")]
+    public void Normalize_FormattingCodes_ReturnsCanonical(string value, string expected)
     {
-        Assert.Equal(expected, MinecraftChatColors.Normalize(value, "NameColor"));
+        Assert.Equal(expected, MinecraftTextStyle.Normalize(value, "NameColor"));
     }
 
     [Theory]
-    [InlineData("PINK")]
+    [InlineData("YELLOW")]      // a color name, not a code
+    [InlineData("&eNoble")]     // text after the codes
+    [InlineData("&g")]          // not a code
+    [InlineData("&x&f&f&a&a")]  // hex cut short
     [InlineData("#FF0000")]
-    [InlineData("§e")]
-    public void Normalize_UnknownName_Throws(string value)
+    [InlineData("&")]
+    public void Normalize_NotOnlyCodes_Throws(string value)
     {
-        var ex = Assert.Throws<ArgumentException>(() => MinecraftChatColors.Normalize(value, "ChatPrimaryColor"));
+        var ex = Assert.Throws<ArgumentException>(() => MinecraftTextStyle.Normalize(value, "ChatPrimaryColor"));
         Assert.Contains("ChatPrimaryColor", ex.Message);
     }
 
@@ -65,11 +70,11 @@ public class PermissionGroupDisplayColorsTests
         await GroupService(repo).UpdateAsync(5, new PermissionGroupDto
         {
             Name = "Royal", Weight = 20, IsPremiumTier = true,
-            ChatPrimaryColor = "aqua", ChatSecondaryColor = "Blue", NameColor = " "
+            ChatPrimaryColor = "&B", ChatSecondaryColor = "§9", NameColor = " "
         });
 
-        Assert.Equal("AQUA", existing.ChatPrimaryColor);
-        Assert.Equal("BLUE", existing.ChatSecondaryColor);
+        Assert.Equal("&b", existing.ChatPrimaryColor);
+        Assert.Equal("&9", existing.ChatSecondaryColor);
         Assert.Null(existing.NameColor);
         repo.Verify(r => r.UpdateAsync(existing), Times.Once);
     }
@@ -97,14 +102,14 @@ public class PermissionGroupDisplayColorsTests
         var result = await GroupService(repo).CreateAsync(new PermissionGroupDto
         {
             Name = "Emperor", Weight = 40, IsPremiumTier = true,
-            ChatPrimaryColor = "light_purple", ChatSecondaryColor = "dark_purple", NameColor = "light_purple"
+            ChatPrimaryColor = "&D&L", ChatSecondaryColor = "&5", NameColor = "&x&F&F&5&5&F&F"
         });
 
         Assert.NotNull(saved);
-        Assert.Equal("LIGHT_PURPLE", saved!.ChatPrimaryColor);
-        Assert.Equal("DARK_PURPLE", saved.ChatSecondaryColor);
-        Assert.Equal("LIGHT_PURPLE", saved.NameColor);
-        Assert.Equal("LIGHT_PURPLE", result.NameColor);
+        Assert.Equal("&d&l", saved!.ChatPrimaryColor);
+        Assert.Equal("&5", saved.ChatSecondaryColor);
+        Assert.Equal("&x&f&f&5&5&f&f", saved.NameColor);
+        Assert.Equal("&x&f&f&5&5&f&f", result.NameColor);
     }
 
     #endregion
@@ -117,7 +122,7 @@ public class PermissionGroupDisplayColorsTests
         var noble = new PermissionGroup
         {
             Id = 101, Name = "Noble", Weight = 10, IsPremiumTier = true,
-            ChatPrimaryColor = "YELLOW", ChatSecondaryColor = "GOLD", NameColor = "YELLOW"
+            ChatPrimaryColor = "&e", ChatSecondaryColor = "&6", NameColor = "&e"
         };
         var repo = new Mock<IUserPermissionGroupRepository>();
         repo.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup>
@@ -130,9 +135,9 @@ public class PermissionGroupDisplayColorsTests
         var tier = await service.GetActivePremiumTierAsync(1);
 
         Assert.NotNull(tier);
-        Assert.Equal("YELLOW", tier!.ChatPrimaryColor);
-        Assert.Equal("GOLD", tier.ChatSecondaryColor);
-        Assert.Equal("YELLOW", tier.NameColor);
+        Assert.Equal("&e", tier!.ChatPrimaryColor);
+        Assert.Equal("&6", tier.ChatSecondaryColor);
+        Assert.Equal("&e", tier.NameColor);
     }
 
     #endregion
@@ -142,7 +147,7 @@ public class PermissionGroupDisplayColorsTests
     private static readonly PermissionGroup DefaultGroup = new()
     {
         Id = 1, Name = UserService.DefaultGroupName, Weight = 0,
-        ChatPrimaryColor = "GREEN", ChatSecondaryColor = "DARK_GREEN", NameColor = "GRAY"
+        ChatPrimaryColor = "&a", ChatSecondaryColor = "&2", NameColor = "&7"
     };
 
     private static (UserService Service, Mock<IPermissionGroupRepository> GroupRepo) UserServiceWith(
@@ -176,16 +181,16 @@ public class PermissionGroupDisplayColorsTests
         var tier = new UserPermissionGroupDto
         {
             PermissionGroupId = 103, PermissionGroupName = "Dragon Blood", IsPremiumTier = true,
-            ChatPrimaryColor = "RED", ChatSecondaryColor = "DARK_RED", NameColor = "RED"
+            ChatPrimaryColor = "&c", ChatSecondaryColor = "&4", NameColor = "&c"
         };
         var (service, _) = UserServiceWith(tier, DefaultGroup);
 
         var dto = await service.GetByIdAsync(7);
 
         Assert.Equal("Dragon Blood", dto!.PremiumTierName);
-        Assert.Equal("RED", dto.ChatPrimaryColor);
-        Assert.Equal("DARK_RED", dto.ChatSecondaryColor);
-        Assert.Equal("RED", dto.NameColor);
+        Assert.Equal("&c", dto.ChatPrimaryColor);
+        Assert.Equal("&4", dto.ChatSecondaryColor);
+        Assert.Equal("&c", dto.NameColor);
     }
 
     [Fact]
@@ -196,9 +201,9 @@ public class PermissionGroupDisplayColorsTests
         var dto = await service.GetByIdAsync(7);
 
         Assert.Null(dto!.PremiumTierName);
-        Assert.Equal("GREEN", dto.ChatPrimaryColor);
-        Assert.Equal("DARK_GREEN", dto.ChatSecondaryColor);
-        Assert.Equal("GRAY", dto.NameColor);
+        Assert.Equal("&a", dto.ChatPrimaryColor);
+        Assert.Equal("&2", dto.ChatSecondaryColor);
+        Assert.Equal("&7", dto.NameColor);
     }
 
     [Fact]
@@ -207,15 +212,15 @@ public class PermissionGroupDisplayColorsTests
         var tier = new UserPermissionGroupDto
         {
             PermissionGroupId = 110, PermissionGroupName = "Emperor", IsPremiumTier = true,
-            ChatPrimaryColor = "LIGHT_PURPLE"
+            ChatPrimaryColor = "&d"
         };
         var (service, _) = UserServiceWith(tier, DefaultGroup);
 
         var dto = await service.GetByIdAsync(7);
 
-        Assert.Equal("LIGHT_PURPLE", dto!.ChatPrimaryColor);
-        Assert.Equal("DARK_GREEN", dto.ChatSecondaryColor);
-        Assert.Equal("GRAY", dto.NameColor);
+        Assert.Equal("&d", dto!.ChatPrimaryColor);
+        Assert.Equal("&2", dto.ChatSecondaryColor);
+        Assert.Equal("&7", dto.NameColor);
     }
 
     [Fact]
@@ -238,7 +243,7 @@ public class PermissionGroupDisplayColorsTests
         var dtos = (await service.GetAllAsync()).ToList();
 
         Assert.Equal(2, dtos.Count);
-        Assert.All(dtos, d => Assert.Equal("GRAY", d.NameColor));
+        Assert.All(dtos, d => Assert.Equal("&7", d.NameColor));
         groupRepo.Verify(r => r.GetByNameAsync(UserService.DefaultGroupName), Times.Once);
     }
 

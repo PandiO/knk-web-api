@@ -140,7 +140,7 @@ public partial class KnKDbContext : DbContext
 
             entity.HasIndex(e => e.Name).IsUnique();
 
-            // Minecraft color names (KNG-7) — the longest is "LIGHT_PURPLE".
+            // Minecraft "&" formatting codes (KNG-7) — a hex color alone is 14 characters.
             entity.Property(e => e.ChatPrimaryColor).HasMaxLength(32);
             entity.Property(e => e.ChatSecondaryColor).HasMaxLength(32);
             entity.Property(e => e.NameColor).HasMaxLength(32);
