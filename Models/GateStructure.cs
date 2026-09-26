@@ -26,7 +26,12 @@ public class GateStructure : Structure
     // docs/features/gate-structure-animation/GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md item 5.0-A.
     public bool IsOverridable { get; set; } = true;
     public bool AnimateDuringSiege { get; set; } = true;
-    public int? CurrentSiegeId { get; set; }  // FK to Siege (future)
+    // FK to SiegeMatch.Id (nullable, SetNull) - set while a match has this gate locked down
+    // (docs/specs/siege-minigame/DESIGN.md §3.10, §8.2). Configured in KnKDbContext's siege block
+    // without a navigation property, so the gate's form metadata and DTOs are unchanged.
+    public int? CurrentSiegeId { get; set; }
+    // Runtime-maintained by the siege plugin (set at lockdown for objective gates, cleared on
+    // restore) - DESIGN §8.5; Phase 3 removes it from the gate's admin form.
     public bool IsSiegeObjective { get; set; } = false;
 
     // === Structure-level cascading overrides (decision 5.0-B) ===
