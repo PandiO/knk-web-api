@@ -20,9 +20,10 @@ namespace knkwebapi_v2.Tests.Services;
 
 /// <summary>
 /// Domain discovery grants end to end on the in-memory database with the real UserService,
-/// TitleService, rank multipliers and audit log (docs/specs/domain-discovery/DESIGN.md §3.4).
-/// The row lock and transaction only exist on MySQL; they were exercised there by hand (ten
-/// concurrent identical grants -> one set of rows, one credit, one audit row).
+/// CurrencyService (ledger), TitleService, rank multipliers and audit log
+/// (docs/specs/domain-discovery/DESIGN.md §3.4). The row lock and transaction only exist on
+/// MySQL: see MySql/DiscoveryLedgerMySqlTests (concurrent identical grants -> one set of rows,
+/// one posting per domain, reconciler clean).
 /// </summary>
 public class DiscoveryServiceTests : IDisposable
 {
@@ -71,7 +72,9 @@ public class DiscoveryServiceTests : IDisposable
             new Mock<ILinkCodeService>().Object, titles, memberships, audit, groupRepo,
             NullLogger<UserService>.Instance, _notifications.Object);
 
-        return new DiscoveryService(repo ?? new DiscoveryRepository(_db), userRepo, users, titles, memberships, audit,
+        var currency = new CurrencyService(new CurrencyRepository(_db), userRepo, NullLogger<CurrencyService>.Instance);
+
+        return new DiscoveryService(repo ?? new DiscoveryRepository(_db), userRepo, users, currency, titles, memberships, audit,
             NullLogger<DiscoveryService>.Instance,
             Options.Create(new DiscoveryOptions { MaxNewPerHour = maxNewPerHour }),
             new DiscoveryRewardCalculatorTests.FixedRandom(roll));
@@ -81,10 +84,21 @@ public class DiscoveryServiceTests : IDisposable
 
     private User Alice() => _db.Users.AsNoTracking().Single(u => u.Id == UserId);
 
+    private List<CurrencyTransaction> Postings() => _db.CurrencyTransactions.AsNoTracking()
+        .Include(t => t.Entries)
+        .OrderBy(t => t.Id)
+        .ToList();
+
+    private static List<(Currency Currency, long Amount)> UserLegs(CurrencyTransaction tx) => tx.Entries
+        .Where(e => e.AccountKind == CurrencyAccountKind.User)
+        .OrderBy(e => e.Currency)
+        .Select(e => (e.Currency, e.Amount))
+        .ToList();
+
     private List<AuditLogEntry> Audit() => _db.AuditLogEntries.AsNoTracking().Where(a => a.TargetUserId == UserId).OrderBy(a => a.Id).ToList();
 
     [Fact]
-    public async Task FirstGrant_WritesTheRowCreditsTheBalanceAndAuditsOnce()
+    public async Task FirstGrant_WritesTheRowAndCreditsTheBalanceThroughOneLedgerPosting()
     {
         var result = await Service().DiscoverAsync(UserId, new DiscoveryGrantRequestDto { WgRegionIds = new() { "town_kardenna" }, Source = "RegionEnter" });
 
@@ -105,12 +119,22 @@ public class DiscoveryServiceTests : IDisposable
         Assert.Equal((UserId, Kardenna, DiscoverySource.RegionEnter, 3250, 10, 63, (int?)1),
             (row.UserId, row.DomainId, row.Source, row.CoinsAwarded, row.GemsAwarded, row.ExpAwarded, row.TitleBracketId));
 
-        var entry = Assert.Single(Audit());
-        Assert.Equal(AuditAction.BalanceAdjusted, entry.Action);
-        Assert.Null(entry.ActorUserId);
-        using var details = JsonDocument.Parse(entry.Details!);
-        Assert.Equal("domain-discovery", details.RootElement.GetProperty("reason").GetString());
-        Assert.Equal(3250, details.RootElement.GetProperty("coinsDelta").GetInt32());
+        // One posting, a leg per currency, keyed by user and domain; the ledger replaces the
+        // BalanceAdjusted audit row the grant used to write.
+        var tx = Assert.Single(Postings());
+        Assert.Equal((CurrencyReasons.DiscoveryReward, CurrencyIdempotencyScopes.System, $"discovery:{UserId}:{Kardenna}"),
+            (tx.ReasonCode, tx.IdempotencyScope, tx.IdempotencyKey));
+        Assert.Equal((CurrencyInitiator.System, "DiscoveryService", (int?)null), (tx.Initiator, tx.InitiatorComponent, tx.InitiatorUserId));
+        Assert.Equal(("Domain", Kardenna.ToString()), (tx.SourceType, tx.SourceRef));
+        Assert.NotNull(tx.CorrelationId);
+        Assert.Equal(new[] { (Currency.Coins, 3250L), (Currency.Gems, 10L), (Currency.Experience, 63L) }, UserLegs(tx));
+        Assert.All(tx.Entries.GroupBy(e => e.Currency), g => Assert.Equal(0, g.Sum(e => e.Amount)));
+        using var metadata = JsonDocument.Parse(tx.MetadataJson!);
+        Assert.Equal(3250, metadata.RootElement.GetProperty("coinsBase").GetInt32());
+        Assert.Equal(63, metadata.RootElement.GetProperty("expBase").GetInt32());
+        Assert.Equal(1m, metadata.RootElement.GetProperty("coinMultiplier").GetDecimal());
+        Assert.Equal("RegionEnter", metadata.RootElement.GetProperty("source").GetString());
+        Assert.Empty(Audit());
     }
 
     [Fact]
@@ -132,6 +156,7 @@ public class DiscoveryServiceTests : IDisposable
         Assert.Equal((before.Coins, before.Gems, before.ExperiencePoints), (after.Coins, after.Gems, after.ExperiencePoints));
         Assert.Equal(2, _db.UserDomainDiscoveries.Count());
         Assert.Equal(auditCount, Audit().Count);
+        Assert.Equal(2, Postings().Count); // no second posting
     }
 
     [Fact]
@@ -143,8 +168,12 @@ public class DiscoveryServiceTests : IDisposable
             result.Granted.Select(g => (g.DomainId, g.DomainType, g.Source)));
         Assert.Equal("Rivia", result.Granted[1].ParentName);
         Assert.Equal(result.Granted.Sum(g => g.Coins), result.TotalCoins);
-        // Both in one credit: one BalanceAdjusted row.
-        Assert.Single(Audit(), a => a.Action == AuditAction.BalanceAdjusted);
+        // One posting per domain, grouped by one correlation id; no audit row.
+        var postings = Postings();
+        Assert.Equal(new[] { $"discovery:{UserId}:{Rivia}", $"discovery:{UserId}:{OldQuarter}" }, postings.Select(p => p.IdempotencyKey));
+        Assert.Single(postings.Select(p => p.CorrelationId).Distinct());
+        Assert.Equal(result.TotalCoins, postings.SelectMany(UserLegs).Where(l => l.Currency == Currency.Coins).Sum(l => l.Amount));
+        Assert.Empty(Audit());
     }
 
     [Fact]
@@ -375,9 +404,19 @@ public class DiscoveryServiceTests : IDisposable
         Assert.NotNull(result.TitleChange);
         Assert.Equal(("promotion", "Serf", "Peasant"), (result.TitleChange!.Direction, result.TitleChange.FromTitleName, result.TitleChange.ToTitleName));
         Assert.Equal(13500, result.TitleChange.CoinBonusGranted);
+        // The discovery XP is posted once (ledger), the bonus applied once on top - not the XP twice.
         Assert.Equal(2450 + result.TotalExp + 32, result.NewExperiencePoints);
         Assert.Equal(250 + result.TotalCoins + 13500, result.NewCoins);
+        var alice = Alice();
+        Assert.Equal((result.NewCoins, result.NewGems, result.NewExperiencePoints), (alice.Coins, alice.Gems, alice.ExperiencePoints));
+        Assert.Equal(result.TotalExp, Postings().SelectMany(UserLegs).Where(l => l.Currency == Currency.Experience).Sum(l => l.Amount));
         Assert.Single(Audit(), a => a.Action == AuditAction.TitleChanged);
+        // The bonuses (still outside the ledger until currency Phase 2) keep their audit row.
+        var bonus = Assert.Single(Audit(), a => a.Action == AuditAction.BalanceAdjusted);
+        using var details = JsonDocument.Parse(bonus.Details!);
+        Assert.Equal("domain-discovery", details.RootElement.GetProperty("reason").GetString());
+        Assert.Equal((0, 0, 13500, 32), (details.RootElement.GetProperty("coinsDelta").GetInt32(), details.RootElement.GetProperty("experienceDelta").GetInt32(),
+            details.RootElement.GetProperty("titleBonusCoins").GetInt32(), details.RootElement.GetProperty("titleBonusExp").GetInt32()));
         _notifications.Verify(q => q.Enqueue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TitleChangeResultDto?>()), Times.Never);
     }
 
@@ -395,6 +434,7 @@ public class DiscoveryServiceTests : IDisposable
         Assert.Single(result.Granted);
         Assert.Single(_db.UserDomainDiscoveries);
         Assert.Empty(Audit());
+        Assert.Empty(Postings());
         Assert.Equal(250, result.NewCoins);
     }
 
@@ -555,6 +595,37 @@ public class DiscoveryServiceTests : IDisposable
 
         var again = await service.DiscoverAsync(UserId, Regions("town_kardenna"));
         Assert.Single(again.Granted);
+        Assert.Equal(coinsAfterFirst + again.TotalCoins, Alice().Coins);
+
+        // The first posting stays in the ledger, so the rediscovery takes the next key.
+        Assert.True(await service.ResetAsync(UserId, Kardenna, actorUserId: 101));
+        await service.DiscoverAsync(UserId, Regions("town_kardenna"));
+        Assert.Equal(new[] { $"discovery:{UserId}:{Kardenna}", $"discovery:{UserId}:{Kardenna}:2", $"discovery:{UserId}:{Kardenna}:3" },
+            Postings().Select(p => p.IdempotencyKey));
+    }
+
+    [Theory]
+    [InlineData(new string[0], "discovery:7:5")]
+    [InlineData(new[] { "discovery:7:5" }, "discovery:7:5:2")]
+    [InlineData(new[] { "discovery:7:5", "discovery:7:5:2", "discovery:7:50", "discovery:7:5:x" }, "discovery:7:5:3")]
+    [InlineData(new[] { "discovery:7:50", "discovery:7:51:2" }, "discovery:7:5")]
+    [InlineData(new[] { "discovery:7:5:4" }, "discovery:7:5:5")]
+    public void RewardKey_IsPerUserAndDomainWithASuffixAfterAReset(string[] used, string expected)
+    {
+        Assert.Equal(expected, DiscoveryService.RewardKey(7, 5, used));
+    }
+
+    [Fact]
+    public async Task LedgerRefusal_FailsTheGrant()
+    {
+        // A balance at its cap: the ledger refuses the credit, the grant fails (the plugin gets a
+        // 409 and gives up) instead of paying part of it. The rollback itself needs MySQL.
+        _db.Users.Single(u => u.Id == UserId).Coins = (int)BalanceLimits.MaxCoins;
+        _db.SaveChanges();
+
+        var ex = await Assert.ThrowsAsync<CurrencyException>(() => Service().DiscoverAsync(UserId, Regions("town_kardenna")));
+        Assert.Equal(CurrencyErrorCode.BalanceCapExceeded, ex.Code);
+        Assert.Empty(Postings());
     }
 
     [Fact]

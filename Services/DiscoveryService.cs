@@ -24,17 +24,23 @@ namespace knkwebapi_v2.Services
     /// ancestors (IncludeAncestors), drops disabled domains, then - inside a transaction holding a
     /// row lock on the user - skips what the user already discovered, applies the hourly cap,
     /// rolls each reward (DiscoveryRewardCalculator), inserts the unique (UserId, DomainId) rows and
-    /// credits the sum through UserService.AdjustBalancesAsync, all on the same scoped DbContext so
-    /// rows and balances commit together. Rewards are scaled per currency like KNG-16's title
-    /// promotion bonuses (CurrencyMultipliersDto).
+    /// credits each domain's reward through the currency ledger (ICurrencyService, reason
+    /// DISCOVERY_REWARD), then runs title progression for the XP gained - all on the same scoped
+    /// DbContext, so rows, ledger postings and balances commit together. Rewards are scaled per
+    /// currency like KNG-16's title promotion bonuses (CurrencyMultipliersDto).
     /// </summary>
     public class DiscoveryService : IDiscoveryService
     {
         /// <summary>Most region + domain ids one grant request may carry.</summary>
         public const int MaxIdsPerRequest = 50;
 
-        /// <summary>BalanceAdjusted audit reason of every discovery credit.</summary>
+        /// <summary>Audit reason of the title bonuses a discovery's XP unlocks (the rewards
+        /// themselves are ledger postings, not audit rows).</summary>
         public const string BalanceReason = "domain-discovery";
+
+        /// <summary>Ledger initiator component and source type of discovery rewards.</summary>
+        public const string LedgerComponent = nameof(DiscoveryService);
+        public const string LedgerSourceType = "Domain";
 
         private static readonly DiscoverySource[] ClientSources =
         {
@@ -52,6 +58,7 @@ namespace knkwebapi_v2.Services
         private readonly IDiscoveryRepository _repo;
         private readonly IUserRepository _userRepo;
         private readonly IUserService _userService;
+        private readonly ICurrencyService _currency;
         private readonly ITitleService _titleService;
         private readonly IUserPermissionGroupService _membershipService;
         private readonly IAuditLogService _auditLogService;
@@ -63,6 +70,7 @@ namespace knkwebapi_v2.Services
             IDiscoveryRepository repo,
             IUserRepository userRepo,
             IUserService userService,
+            ICurrencyService currency,
             ITitleService titleService,
             IUserPermissionGroupService membershipService,
             IAuditLogService auditLogService,
@@ -73,6 +81,7 @@ namespace knkwebapi_v2.Services
             _repo = repo;
             _userRepo = userRepo;
             _userService = userService;
+            _currency = currency;
             _titleService = titleService;
             _membershipService = membershipService;
             _auditLogService = auditLogService;
@@ -120,7 +129,7 @@ namespace knkwebapi_v2.Services
 
         private async Task<DiscoveryGrantResultDto> GrantAsync(int userId, List<string> regionIds, List<int> domainIds, DiscoverySource source)
         {
-            // Read inside the lock, so the balances AdjustBalancesAsync starts from are current.
+            // Read inside the lock, so the XP the title is resolved from is current.
             var user = await _userRepo.GetByIdAsync(userId)
                 ?? throw new KeyNotFoundException($"User with id {userId} not found.");
 
@@ -283,19 +292,58 @@ namespace knkwebapi_v2.Services
             // 7. The unique (UserId, DomainId) rows first: a duplicate fails here, before any credit.
             await _repo.AddRangeAsync(rows);
 
-            if (result.TotalCoins != 0 || result.TotalGems != 0 || result.TotalExp != 0)
+            // 8. One ledger posting per domain (a leg per non-zero currency), keyed
+            // discovery:{userId}:{domainId}: the ledger's idempotency then matches the unique
+            // (UserId, DomainId) row one to one, and each posting points at its domain. The
+            // request's postings share a correlation id. They join this transaction.
+            var rewarded = result.Granted.Where(g => g.Coins > 0 || g.Gems > 0 || g.Exp > 0).ToList();
+            if (rewarded.Count > 0)
             {
-                // Same scoped DbContext as the rows above, so this commits or rolls back with them.
+                var previousExperience = user.ExperiencePoints;
+                var usedKeys = await _repo.GetRewardKeysAsync(RewardKeyPrefix(userId));
+                var correlationId = Guid.NewGuid().ToString("N");
+                foreach (var grant in rewarded)
+                {
+                    var legs = new List<CurrencyLeg>();
+                    if (grant.Coins > 0) legs.Add(new CurrencyLeg(userId, Currency.Coins, grant.Coins));
+                    if (grant.Gems > 0) legs.Add(new CurrencyLeg(userId, Currency.Gems, grant.Gems));
+                    if (grant.Exp > 0) legs.Add(new CurrencyLeg(userId, Currency.Experience, grant.Exp));
+
+                    var ctx = CurrencyContext.ForSystem(LedgerComponent, CurrencyReasons.DiscoveryReward, RewardKey(userId, grant.DomainId, usedKeys)) with
+                    {
+                        SourceType = LedgerSourceType,
+                        SourceRef = grant.DomainId.ToString(),
+                        CorrelationId = correlationId,
+                        MetadataJson = JsonSerializer.Serialize(new
+                        {
+                            domainId = grant.DomainId,
+                            domainType = grant.DomainType,
+                            source = grant.Source,
+                            titleBracketId = bracket?.Id,
+                            coinsBase = grant.CoinsBase,
+                            gemsBase = grant.GemsBase,
+                            expBase = grant.ExpBase,
+                            coinMultiplier = multipliers.Coins,
+                            gemMultiplier = multipliers.Gems,
+                            expMultiplier = multipliers.Exp
+                        })
+                    };
+                    await _currency.PostAsync(legs, ctx);
+                }
+
+                // Ledger XP postings don't run title progression (until currency Phase 2), so run
+                // it here once for the whole request, from the XP before the first posting - the
+                // XP isn't applied a second time, only the bonuses of the brackets crossed.
                 // notifyPlayer false: the plugin shows the title change from this response.
-                var balances = await _userService.AdjustBalancesAsync(userId, result.TotalCoins, result.TotalGems, result.TotalExp,
-                    BalanceReason,
-                    JsonSerializer.Serialize(new { domainIds = rows.Select(r => r.DomainId), source = source.ToString() }),
+                result.TitleChange = await _userService.ApplyTitleProgressionAsync(userId, previousExperience, BalanceReason,
+                    JsonSerializer.Serialize(new { domainIds = rows.Select(r => r.DomainId), source = source.ToString(), correlationId }),
                     actorUserId: null,
                     notifyPlayer: false);
-                result.NewCoins = balances.NewCoins;
-                result.NewGems = balances.NewGems;
-                result.NewExperiencePoints = balances.NewExperiencePoints;
-                result.TitleChange = balances.TitleChange;
+
+                var balances = await _currency.GetBalancesAsync(userId);
+                result.NewCoins = balances.Coins;
+                result.NewGems = balances.Gems;
+                result.NewExperiencePoints = balances.ExperiencePoints;
             }
 
             foreach (var grant in result.Granted)
@@ -590,6 +638,34 @@ namespace knkwebapi_v2.Services
                 if (string.Equals(k, key, StringComparison.OrdinalIgnoreCase)) return v;
             }
             return null;
+        }
+
+        private static string RewardKeyPrefix(int userId) => $"discovery:{userId}:";
+
+        /// <summary>
+        /// The ledger key of a domain's reward: <c>discovery:{userId}:{domainId}</c>. A staff reset
+        /// lets the domain be discovered and rewarded again (DESIGN.md D8) while its first posting
+        /// stays in the ledger, so each later discovery takes the next free suffix (:2, :3, ...)
+        /// among <paramref name="usedKeys"/>. Chosen under the user lock, so two grants can't pick
+        /// the same one.
+        /// </summary>
+        public static string RewardKey(int userId, int domainId, IEnumerable<string> usedKeys)
+        {
+            var key = RewardKeyPrefix(userId) + domainId;
+            var generation = 0;
+            foreach (var used in usedKeys)
+            {
+                if (used == key)
+                {
+                    generation = Math.Max(generation, 1);
+                }
+                else if (used.StartsWith(key + ":", StringComparison.Ordinal)
+                         && int.TryParse(used.AsSpan(key.Length + 1), out var n))
+                {
+                    generation = Math.Max(generation, n);
+                }
+            }
+            return generation == 0 ? key : $"{key}:{generation + 1}";
         }
 
         private static bool IsDuplicateKey(DbUpdateException ex) =>
