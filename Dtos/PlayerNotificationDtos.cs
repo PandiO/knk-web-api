@@ -33,6 +33,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("titleChange")]
         public TitleChangeResultDto? TitleChange { get; set; }
 
+        /// <summary>Set when Type is PaymentReceived.</summary>
+        [JsonPropertyName("payment")]
+        public PaymentNotificationDto? Payment { get; set; }
+
         [JsonPropertyName("createdAt")]
         public DateTime CreatedAt { get; set; }
     }
@@ -47,6 +51,13 @@ namespace knkwebapi_v2.Dtos
         /// No payload.
         /// </summary>
         public const string RankChanged = "RankChanged";
+
+        /// <summary>
+        /// Another player paid this user (/pay, currency Phase 3). Payload in Payment. Queued for
+        /// every completed transfer, so an offline recipient hears about it on their next join
+        /// (within the queue's 24 h window; the ledger keeps the payment either way).
+        /// </summary>
+        public const string PaymentReceived = "PaymentReceived";
     }
 
     public class AcknowledgePlayerNotificationsDto

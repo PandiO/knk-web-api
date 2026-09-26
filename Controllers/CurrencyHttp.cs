@@ -44,17 +44,25 @@ namespace knkwebapi_v2.Controllers
 
         /// <summary>
         /// A refused posting as a response: 404 for an unknown user, 409 when the request conflicts
-        /// with the current state (stale expectedCurrent, reused key, already reversed), 400 for
-        /// everything the caller must change (amount, funds, cap, malformed request).
+        /// with the current state (stale expectedCurrent, reused key, already reversed, a pending
+        /// transfer that is closed or expired), 422 for a player transfer the policy refuses
+        /// (currency DESIGN.md §3.4/§3.5), 400 for everything the caller must change (amount,
+        /// funds, cap, malformed request).
         /// </summary>
         public static IActionResult ToResult(ControllerBase controller, CurrencyException ex)
         {
             var body = new { error = ex.Code.ToString(), code = ex.Code.ToString(), message = ex.Message, details = ex.Details };
             return ex.Code switch
             {
-                CurrencyErrorCode.UserNotFound or CurrencyErrorCode.TransactionNotFound => controller.NotFound(body),
+                CurrencyErrorCode.UserNotFound or CurrencyErrorCode.TransactionNotFound
+                    or CurrencyErrorCode.RecipientNotFound or CurrencyErrorCode.PendingTransferNotFound => controller.NotFound(body),
                 CurrencyErrorCode.ExpectedBalanceMismatch or CurrencyErrorCode.IdempotencyKeyReuse
-                    or CurrencyErrorCode.AlreadyReversed => controller.Conflict(body),
+                    or CurrencyErrorCode.AlreadyReversed or CurrencyErrorCode.PendingTransferExpired
+                    or CurrencyErrorCode.PendingTransferClosed => controller.Conflict(body),
+                CurrencyErrorCode.NotTransferable or CurrencyErrorCode.SelfTransfer or CurrencyErrorCode.AccountLocked
+                    or CurrencyErrorCode.CooldownActive or CurrencyErrorCode.DailyCapExceeded
+                    or CurrencyErrorCode.RecipientDailyCapExceeded or CurrencyErrorCode.NewAccountRestricted
+                    or CurrencyErrorCode.TransfersDisabled => controller.UnprocessableEntity(body),
                 _ => controller.BadRequest(body)
             };
         }
