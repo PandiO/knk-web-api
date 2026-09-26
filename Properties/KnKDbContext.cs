@@ -1169,7 +1169,9 @@ public partial class KnKDbContext : DbContext
 
             entity.HasIndex(e => e.Key).IsUnique();
 
-            entity.HasOne(e => e.BackgroundMaterial)
+            entity.Property(e => e.BackgroundMaterial).HasMaxLength(64);
+
+            entity.HasOne(e => e.BackgroundMaterialRef)
                 .WithMany()
                 .HasForeignKey(e => e.BackgroundMaterialRefId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -1275,6 +1277,7 @@ public partial class KnKDbContext : DbContext
             entity.ToTable("menu_condition_bindings");
 
             entity.Property(e => e.ConditionTypeId).IsRequired().HasMaxLength(191);
+            entity.Property(e => e.Phase).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.ParamsJson).HasColumnType("longtext");
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");

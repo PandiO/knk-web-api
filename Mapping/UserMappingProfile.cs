@@ -89,7 +89,8 @@ namespace knkwebapi_v2.Mapping
                 // Likewise resolved from UserPermissionGroup memberships (IMPLEMENTATION_PLAN.md §5).
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
-                .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore());
+                .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore())
+                .ForMember(dest => dest.Gender, src => src.MapFrom(src => src.Gender));
 
             // Note: PersonalSalaryMultiplier/LastSalaryPayoutAt are deliberately not added to
             // UserSummaryDto (the plugin-facing lightweight DTO) — nothing consumes them there

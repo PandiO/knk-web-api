@@ -34,6 +34,12 @@ public class MenuSectionTemplate
     public MenuListMode ListMode { get; set; } = MenuListMode.Default;
     public MenuRenderPriority Priority { get; set; } = MenuRenderPriority.Medium;
 
+    /// <summary>
+    /// Rows at the top of this section's footprint a Dynamic menu never removes even when empty
+    /// (menu follow-up 2026-09-26). Null/0 = every empty row may go.
+    /// </summary>
+    public int? MinHeight { get; set; }
+
     /// <summary>Whole-section permission gate (DESIGN_REVIEW.md §2.4), e.g. "knk.admin.tools".</summary>
     public string? VisibilityPermission { get; set; }
 

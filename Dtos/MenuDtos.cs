@@ -32,6 +32,18 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("backgroundMaterialRefId")]
         public int? BackgroundMaterialRefId { get; set; }
 
+        /// <summary>InventoryMenu Phase 9 (E4): re-render open instances every N ticks; null = off.</summary>
+        [JsonPropertyName("autoRefreshTicks")]
+        public int? AutoRefreshTicks { get; set; }
+
+        /// <summary>Dynamic menus shrink to at least this many rows (null = 1).</summary>
+        [JsonPropertyName("minHeight")]
+        public int? MinHeight { get; set; }
+
+        /// <summary>Background filler material name; null = plugin default (light gray stained glass pane).</summary>
+        [JsonPropertyName("backgroundMaterial")]
+        public string? BackgroundMaterial { get; set; }
+
         [JsonPropertyName("sections")]
         public List<MenuSectionTemplateDto> Sections { get; set; } = new();
     }
@@ -99,6 +111,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("visibilityPermission")]
         public string? VisibilityPermission { get; set; }
 
+        /// <summary>Rows of this section a Dynamic menu always keeps (null/0 = none).</summary>
+        [JsonPropertyName("minHeight")]
+        public int? MinHeight { get; set; }
+
         [JsonPropertyName("searchable")]
         public bool Searchable { get; set; }
 
@@ -147,6 +163,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("actionPermission")]
         public string? ActionPermission { get; set; }
 
+        /// <summary>InventoryMenu Phase 9 (E3): renders each content-source row with root $row$.</summary>
+        [JsonPropertyName("isRowTemplate")]
+        public bool IsRowTemplate { get; set; }
+
         [JsonPropertyName("variableBindings")]
         public List<VariableBindingDto> VariableBindings { get; set; } = new();
 
@@ -169,7 +189,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("sortOrder")]
         public int SortOrder { get; set; }
 
-        [Required]
+        // InventoryMenu Phase 9 (E8): an empty expression is a legitimate blank lore
+        // line, so only null is rejected.
+        [Required(AllowEmptyStrings = true)]
         [JsonPropertyName("expression")]
         public string Expression { get; set; } = string.Empty;
 
@@ -213,5 +235,9 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("sortOrder")]
         public int SortOrder { get; set; }
+
+        /// <summary>InventoryMenu Phase 9 (E5): "Click" (default) or "Render".</summary>
+        [JsonPropertyName("phase")]
+        public string Phase { get; set; } = "Click";
     }
 }

@@ -42,6 +42,39 @@ namespace knkwebapi_v2.Dtos
         public int? NextTitleMinExperience { get; set; }
     }
 
+    /// <summary>
+    /// One title bracket as listed by <c>GET /api/title-brackets</c> (InventoryMenu content port
+    /// CP3: the in-game Profile menu's title list and the Player manager's title picker). Ordered
+    /// by <see cref="MinExperience"/>; the bonus fields are the one-time rewards for first reaching
+    /// the bracket.
+    /// </summary>
+    public class TitleBracketDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("maleName")]
+        public string MaleName { get; set; } = null!;
+
+        [JsonPropertyName("femaleName")]
+        public string FemaleName { get; set; } = null!;
+
+        [JsonPropertyName("minExperience")]
+        public int MinExperience { get; set; }
+
+        [JsonPropertyName("salary")]
+        public int Salary { get; set; }
+
+        [JsonPropertyName("coinBonus")]
+        public int CoinBonus { get; set; }
+
+        [JsonPropertyName("gemBonus")]
+        public int GemBonus { get; set; }
+
+        [JsonPropertyName("expBonus")]
+        public int ExpBonus { get; set; }
+    }
+
     /// <summary>One title bracket crossed during a consolidated promotion/demotion
     /// (UserService.AdjustBalancesAsync). See BalanceAdjustmentResultDto.</summary>
     public class TitleCrossingDto

@@ -92,4 +92,17 @@ namespace knkwebapi_v2.Enums
         OnDirty,
         Ttl
     }
+
+    /// <summary>
+    /// InventoryMenu Phase 9 (E5): when a ConditionBinding is evaluated.
+    /// Click (the default, Phase 6 behaviour) gates the click; Render is
+    /// evaluated on every render pass and hides the item (item-level) or drops
+    /// the action (action-level) when it denies - see
+    /// docs/specs/inventory-menu/IMPLEMENTATION_PLAN.md "Phase 9".
+    /// </summary>
+    public enum MenuConditionPhase
+    {
+        Click,
+        Render
+    }
 }

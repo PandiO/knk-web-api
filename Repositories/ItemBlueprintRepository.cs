@@ -82,6 +82,15 @@ namespace knkwebapi_v2.Repositories
                     ib.DefaultDisplayName.ToLower().Contains(searchLower));
             }
 
+            // Menu follow-up 2026-09-26 (in-game item catalogue): filter by category. "Category" is a
+            // category name (case-insensitive), "CategoryId" an id; either includes every
+            // sub-category below it, so filtering on "Weapons" also shows "Swords".
+            var categoryIds = await ResolveCategoryFilterAsync(query.Filters);
+            if (categoryIds != null)
+            {
+                queryable = queryable.Where(ib => ib.CategoryId != null && categoryIds.Contains(ib.CategoryId.Value));
+            }
+
             // Get total count before pagination
             var totalCount = await queryable.CountAsync();
 
@@ -111,6 +120,43 @@ namespace knkwebapi_v2.Repositories
                 PageNumber = query.PageNumber,
                 PageSize = query.PageSize
             };
+        }
+
+        /// <summary>
+        /// The category ids a "Category"/"CategoryId" filter selects (the named category and all its
+        /// descendants), or null when neither filter is set. An unknown category selects nothing.
+        /// </summary>
+        private async Task<HashSet<int>?> ResolveCategoryFilterAsync(Dictionary<string, string>? filters)
+        {
+            if (filters == null) return null;
+            string? name = null;
+            int? id = null;
+            foreach (var (key, value) in filters)
+            {
+                if (string.IsNullOrWhiteSpace(value)) continue;
+                if (key.Equals("Category", StringComparison.OrdinalIgnoreCase)) name = value.Trim();
+                else if (key.Equals("CategoryId", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out var parsed)) id = parsed;
+            }
+            if (name == null && id == null) return null;
+
+            var categories = await _context.Categories
+                .Select(c => new { c.Id, c.Name, c.ParentCategoryId })
+                .ToListAsync();
+            var roots = categories
+                .Where(c => (id != null && c.Id == id) || (name != null && string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)))
+                .Select(c => c.Id)
+                .ToList();
+            var selected = new HashSet<int>(roots);
+            var frontier = new Queue<int>(roots);
+            while (frontier.Count > 0)
+            {
+                var parent = frontier.Dequeue();
+                foreach (var child in categories.Where(c => c.ParentCategoryId == parent))
+                {
+                    if (selected.Add(child.Id)) frontier.Enqueue(child.Id);
+                }
+            }
+            return selected;
         }
     }
 }
