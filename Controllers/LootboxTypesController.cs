@@ -9,8 +9,8 @@ namespace knkwebapi_v2.Controllers
 {
     /// <summary>
     /// Lootbox types (docs/specs/lootboxes/DESIGN.md §3.3): FormWizard CRUD for the web app's admins, plus the odds
-    /// preview. The odds endpoint is read-only and has no permission check because knk-plugin's player command
-    /// <c>/lootbox odds</c> reads it too (the plugin calls anonymously).
+    /// preview, which knk-plugin's player command <c>/lootbox odds</c> reads with its service key and the web app's
+    /// admins with the lootbox node (KNG-22).
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -122,6 +122,7 @@ namespace knkwebapi_v2.Controllers
         /// percentages and each enchant roll's hit chance and capped level range - the same rules the claim rolls with.
         /// </summary>
         [HttpGet("{id:int}/odds")]
+        [RequireServiceOrPermission(StaffPermissions.ManageLootboxes)]
         public async Task<IActionResult> GetOdds(int id, [FromQuery] int? boxStars)
         {
             try

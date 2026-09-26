@@ -117,6 +117,8 @@ namespace knkwebapi_v2.DependencyInjection
             // I<Name> convention scan below; the roll engine and its randomness are registered here.
             services.AddSingleton<knkwebapi_v2.Services.Lootbox.ILootRandom, knkwebapi_v2.Services.Lootbox.CryptoLootRandom>();
             services.AddSingleton<knkwebapi_v2.Services.Lootbox.LootboxRollEngine>();
+            // The runtime's clock (Phase 2): the UTC-day claim cap and expiry read it, so tests can pin the time.
+            services.AddSingleton(TimeProvider.System);
 
             // Add MetadataService for dynamic form building
             services.AddSingleton<IMetadataService, MetadataService>();

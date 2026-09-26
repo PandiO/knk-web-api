@@ -421,7 +421,12 @@ public class LootboxConfigServicesTests
 
     // ===== Spawn areas =====
 
-    private static LootboxSpawnAreaService AreaService(KnKDbContext db) => new(new LootboxSpawnAreaRepository(db), Mapper());
+    private static LootboxSpawnAreaService AreaService(KnKDbContext db) => new(
+        new LootboxSpawnAreaRepository(db),
+        Mapper(),
+        new AuditLogService(new AuditLogRepository(db), new UserRepository(db)),
+        new UserRepository(db),
+        NullLogger<LootboxSpawnAreaService>.Instance);
 
     private static LootboxSpawnAreaDto NewArea(string name = "spawn") => new() { Name = name, World = "world", WgRegionId = "lootbox_spawn" };
 

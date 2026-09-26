@@ -41,10 +41,10 @@ namespace knkwebapi_v2.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteAsync(int id)
+        public async Task<List<int>> DeleteAsync(int id)
         {
             var entity = await _context.LootboxSpawnAreas.FindAsync(id);
-            if (entity == null) return;
+            if (entity == null) return new List<int>();
 
             var active = await _context.LootboxSpawns
                 .Where(s => s.SpawnAreaId == id && s.Status == LootboxSpawnStatus.Active)
@@ -56,6 +56,7 @@ namespace knkwebapi_v2.Repositories
 
             _context.LootboxSpawnAreas.Remove(entity);
             await _context.SaveChangesAsync();
+            return active.Select(s => s.Id).ToList();
         }
 
         public async Task<PagedResult<LootboxSpawnArea>> SearchAsync(PagedQuery query)
@@ -100,6 +101,14 @@ namespace knkwebapi_v2.Repositories
         {
             var lower = name.ToLower();
             return await _context.LootboxSpawnAreas.AnyAsync(a => a.Name.ToLower() == lower && (excludeAreaId == null || a.Id != excludeAreaId));
+        }
+
+        public async Task<bool> RegionTakenAsync(string world, string wgRegionId, int? excludeAreaId = null)
+        {
+            var worldLower = world.ToLower();
+            var regionLower = wgRegionId.ToLower();
+            return await _context.LootboxSpawnAreas.AnyAsync(a =>
+                a.World.ToLower() == worldLower && a.WgRegionId.ToLower() == regionLower && (excludeAreaId == null || a.Id != excludeAreaId));
         }
 
         public async Task<HashSet<int>> GetExistingTypeIdsAsync(IEnumerable<int> typeIds)

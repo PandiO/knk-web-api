@@ -21,9 +21,11 @@ public enum AuditAction
     PlayerUnfrozen = 10,
     KitGranted = 11,
     // 12 is allocated to teleport (PlayerTeleported) on its own branch.
-    // Lootboxes (docs/specs/lootboxes/DESIGN.md §3.2), numbers 13-14 allocated to this feature; written from Phase 2
-    // on. Player claims are logged in LootboxClaim, not here. LootboxAreaCreated/LootboxAreaDeleted (in-game area
-    // command) are added with Phase 2 once they have numbers.
+    // Lootboxes (docs/specs/lootboxes/DESIGN.md §3.2), numbers 13-14 allocated to this feature. Player claims are
+    // logged in LootboxClaim, not here. The range has no room for separate area values, so LootboxSpawnedByAdmin covers
+    // every staff change to where boxes spawn: Details.event is Spawned (/knk lootbox spawn), AreaCreated or
+    // AreaDeleted (/knk lootbox area create|delete), recorded against the staff member.
     LootboxSpawnedByAdmin = 13,
+    // A staff give (/knk lootbox give): target = the player who got the item.
     LootboxGranted = 14
 }

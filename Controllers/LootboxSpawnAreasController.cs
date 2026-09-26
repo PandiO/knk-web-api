@@ -9,7 +9,8 @@ namespace knkwebapi_v2.Controllers
 {
     /// <summary>
     /// Lootbox spawn areas (docs/specs/lootboxes/DESIGN.md §3.3, D17): FormWizard CRUD for the web app's admins. A
-    /// duplicate name is 409 <c>NameTaken</c>. The plugin's in-game create/delete endpoints come in Phase 2.
+    /// duplicate name is 409 <c>NameTaken</c>. <c>in-game</c> and <c>{id}/in-game-delete</c> serve knk-plugin's
+    /// <c>/knk lootbox area create|delete</c> (game server only; the staff member is the X-Acting-User-Id header).
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -107,6 +108,28 @@ namespace knkwebapi_v2.Controllers
             {
                 return Conflict(new { code = "DbConstraint", message = ex.Message });
             }
+        }
+
+        /// <summary>201 area; 409 <c>{code: NameTaken|RegionInUse}</c>; 400 invalid name.</summary>
+        [HttpPost("in-game")]
+        [RequirePluginService]
+        public async Task<IActionResult> CreateInGame([FromBody] LootboxInGameAreaCreateDto dto)
+        {
+            if (dto == null) return BadRequest();
+            return await LootboxResults.Run(this, async () =>
+            {
+                var created = await _service.CreateInGameAsync(dto, HttpContext.GetKnkCaller().ActorUserId);
+                return CreatedAtRoute("GetLootboxSpawnAreaById", new { id = created.Id }, created);
+            });
+        }
+
+        /// <summary>200 with the region id and the ids of the boxes that were removed.</summary>
+        [HttpPost("{id:int}/in-game-delete")]
+        [RequirePluginService]
+        public async Task<IActionResult> DeleteInGame(int id)
+        {
+            return await LootboxResults.Run(this, async () =>
+                Ok(await _service.DeleteInGameAsync(id, HttpContext.GetKnkCaller().ActorUserId)));
         }
 
         [HttpPost("search")]

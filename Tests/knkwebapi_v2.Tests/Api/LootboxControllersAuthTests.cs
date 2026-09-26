@@ -11,9 +11,9 @@ using Xunit;
 namespace knkwebapi_v2.Tests.Api;
 
 /// <summary>
-/// Lootboxes Phase 1: every web-admin lootbox endpoint requires <see cref="StaffPermissions.ManageLootboxes"/>; only the
-/// read-only odds preview is left open because knk-plugin's <c>/lootbox odds</c> calls it anonymously (until KNG-22 adds
-/// service auth).
+/// Lootboxes Phase 1: every web-admin lootbox endpoint requires <see cref="StaffPermissions.ManageLootboxes"/>. The odds
+/// preview is the exception: knk-plugin's <c>/lootbox odds</c> reads it too, so since Phase 2 it takes the plugin's key or
+/// the node (KNG-22). The Phase 2 in-game area endpoints are game-server-only.
 /// </summary>
 [Trait("Category", "API")]
 public class LootboxControllersAuthTests
@@ -40,8 +40,20 @@ public class LootboxControllersAuthTests
 
         foreach (var action in actions)
         {
-            var guarded = RequiresManageLootboxes(action) || RequiresManageLootboxes(controller);
-            guarded.Should().Be(action.Name != nameof(LootboxTypesController.GetOdds), $"{controller.Name}.{action.Name}");
+            var name = $"{controller.Name}.{action.Name}";
+            if (action.Name == nameof(LootboxTypesController.GetOdds))
+            {
+                action.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node)
+                    .Should().Equal(new[] { StaffPermissions.ManageLootboxes }, name);
+            }
+            else if (action.Name is nameof(LootboxSpawnAreasController.CreateInGame) or nameof(LootboxSpawnAreasController.DeleteInGame))
+            {
+                action.GetCustomAttribute<RequirePluginServiceAttribute>().Should().NotBeNull(name);
+            }
+            else
+            {
+                (RequiresManageLootboxes(action) || RequiresManageLootboxes(controller)).Should().BeTrue(name);
+            }
         }
     }
 

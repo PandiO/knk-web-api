@@ -108,6 +108,7 @@ if (telemetryOptions.Enabled)
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation();
+            metrics.AddMeter(knkwebapi_v2.Services.Lootbox.LootboxMetrics.MeterName);
             if (string.Equals(telemetryOptions.Exporter, "otlp", StringComparison.OrdinalIgnoreCase)
                 && telemetryOptions.Otlp.EnableMetrics)
             {
