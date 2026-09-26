@@ -33,6 +33,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore())
+                // Resolved alongside the premium tier (KNG-7).
+                .ForMember(dest => dest.ChatPrimaryColor, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
+                .ForMember(dest => dest.NameColor, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
                 // MySQL reads DateTime back as Unspecified — mark it UTC so it serializes with a
                 // "Z" (same fix UserPermissionGroupService.ToDto already applied for ExpiresAt).
@@ -90,6 +94,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore())
+                // Resolved alongside the premium tier (KNG-7).
+                .ForMember(dest => dest.ChatPrimaryColor, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
+                .ForMember(dest => dest.NameColor, opt => opt.Ignore())
                 .ForMember(dest => dest.Gender, src => src.MapFrom(src => src.Gender));
 
             // Note: PersonalSalaryMultiplier/LastSalaryPayoutAt are deliberately not added to

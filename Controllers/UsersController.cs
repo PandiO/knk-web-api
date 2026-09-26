@@ -275,6 +275,9 @@ namespace knkwebapi_v2.Controllers
                 PremiumTierGroupId = item.PremiumTierGroupId,
                 PremiumTierName = item.PremiumTierName,
                 PremiumTierExpiresAt = item.PremiumTierExpiresAt,
+                ChatPrimaryColor = item.ChatPrimaryColor,
+                ChatSecondaryColor = item.ChatSecondaryColor,
+                NameColor = item.NameColor,
                 IsFrozen = item.IsFrozen,
                 FrozenReason = item.FrozenReason,
                 Gender = item.Gender
@@ -311,6 +314,9 @@ namespace knkwebapi_v2.Controllers
                 PremiumTierGroupId = item.PremiumTierGroupId,
                 PremiumTierName = item.PremiumTierName,
                 PremiumTierExpiresAt = item.PremiumTierExpiresAt,
+                ChatPrimaryColor = item.ChatPrimaryColor,
+                ChatSecondaryColor = item.ChatSecondaryColor,
+                NameColor = item.NameColor,
                 IsFrozen = item.IsFrozen,
                 FrozenReason = item.FrozenReason,
                 Gender = item.Gender
