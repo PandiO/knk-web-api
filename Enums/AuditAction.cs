@@ -19,5 +19,9 @@ public enum AuditAction
     BalanceAdjusted = 8,
     PlayerFrozen = 9,
     PlayerUnfrozen = 10,
-    KitGranted = 11
+    KitGranted = 11,
+    /// <summary>Staff reset one domain discovery so it can be discovered (and rewarded) again
+    /// (docs/specs/domain-discovery/DESIGN.md §3.5). Grants themselves are covered by the
+    /// BalanceAdjusted row with reason "domain-discovery".</summary>
+    DiscoveryReset = 17
 }
