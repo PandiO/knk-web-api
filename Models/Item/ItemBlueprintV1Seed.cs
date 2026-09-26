@@ -45,16 +45,6 @@ public static class ItemBlueprintV1Seed
         ("Trinkets", "minecraft:diamond"),
     };
 
-    // v1's grade was a bare 1-5 star int; the names for 3-5 are new (only 1/2 exist from KitSeed).
-    private static readonly (string Name, int Stars)[] Grades =
-    {
-        ("Common", 1),
-        ("Uncommon", 2),
-        ("Rare", 3),
-        ("Epic", 4),
-        ("Legendary", 5),
-    };
-
     private static readonly (string Key, int Level)[] NoEnchantments = Array.Empty<(string, int)>();
 
     private sealed record BlueprintSpec(
@@ -212,12 +202,13 @@ public static class ItemBlueprintV1Seed
         var grades = (await context.Grades.ToListAsync(cancellationToken))
             .GroupBy(g => g.Stars)
             .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Id).First());
-        foreach (var (name, stars) in Grades)
+        // v1's grade was a bare 1-5 star int; 6-10 are KNG-6's new tiers (GradeDefaults), seeded here too.
+        foreach (var spec in GradeDefaults.All)
         {
-            if (grades.ContainsKey(stars)) continue;
-            var grade = new Grade { Name = name, Stars = stars };
+            if (grades.ContainsKey(spec.Stars)) continue;
+            var grade = spec.ToGrade();
             context.Grades.Add(grade);
-            grades[stars] = grade;
+            grades[spec.Stars] = grade;
             Count(nameof(Grade));
         }
 

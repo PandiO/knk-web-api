@@ -495,6 +495,8 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("grades");
+            // Percent with room for 0.05% and finer (KNG-6).
+            entity.Property(e => e.DropChance).HasPrecision(7, 4);
         });
         modelBuilder.Entity<Tag>(entity =>
         {

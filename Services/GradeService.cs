@@ -34,6 +34,7 @@ namespace knkwebapi_v2.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Name is required.", nameof(dto));
+            Validate(dto.DropChance, dto.EnchantLevelCapDivisor);
 
             var entity = _mapper.Map<Grade>(dto);
             await _repo.AddAsync(entity);
@@ -45,14 +46,28 @@ namespace knkwebapi_v2.Services
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Name is required.", nameof(dto));
+            Validate(dto.DropChance, dto.EnchantLevelCapDivisor);
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Grade with id {id} not found.");
 
             existing.Name = dto.Name;
             existing.Stars = dto.Stars;
+            // Only fields the request carried (see GradeUpdateDto): an older form without them keeps the values.
+            if (dto.HasDropChance) existing.DropChance = dto.DropChance;
+            if (dto.HasEnchantLevelCapDivisor) existing.EnchantLevelCapDivisor = dto.EnchantLevelCapDivisor;
 
             await _repo.UpdateAsync(existing);
+        }
+
+        // Same bounds as the DTOs' [Range]s, for callers that skip model validation. A divisor below 1 would
+        // divide by zero (or flip the sign of) knk-plugin's enchant-book level cap.
+        private static void Validate(decimal? dropChance, int? enchantLevelCapDivisor)
+        {
+            if (dropChance is < 0 or > 100)
+                throw new ArgumentException("DropChance must be between 0 and 100 (percent).", nameof(dropChance));
+            if (enchantLevelCapDivisor is < 1)
+                throw new ArgumentException("EnchantLevelCapDivisor must be at least 1, or empty for uncapped.", nameof(enchantLevelCapDivisor));
         }
 
         public async Task DeleteAsync(int id)
