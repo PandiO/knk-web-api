@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using knkwebapi_v2.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -97,6 +97,14 @@ public partial class KnKDbContext : DbContext
 
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
     public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
+
+    // Currency ledger (docs/specs/currency-payments/DESIGN.md §3.2, IMPLEMENTATION_PLAN.md Phase 1).
+    // Append-only: written only by CurrencyService through CurrencyRepository.
+    public virtual DbSet<CurrencyTransaction> CurrencyTransactions { get; set; } = null!;
+    public virtual DbSet<CurrencyEntry> CurrencyEntries { get; set; } = null!;
+    public virtual DbSet<CurrencyPolicy> CurrencyPolicies { get; set; } = null!;
+    public virtual DbSet<CurrencyPendingTransfer> CurrencyPendingTransfers { get; set; } = null!;
+    public virtual DbSet<CurrencyAlert> CurrencyAlerts { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1319,6 +1327,8 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => e.ActionBindingId);
         });
 
+        ConfigureCurrencyLedger(modelBuilder);
+
         modelBuilder.Entity<AuditLogEntry>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
@@ -1341,4 +1351,123 @@ public partial class KnKDbContext : DbContext
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+    /// <summary>
+    /// Currency ledger tables (docs/specs/currency-payments/DESIGN.md §3.2). No FKs to users on
+    /// purpose, same reason as AuditLogEntry: the ledger is kept forever and must keep referring
+    /// to a user id after that account is gone. MySQL also skips triggers for cascaded FK
+    /// actions, so a cascade could erase history the immutability triggers protect.
+    /// </summary>
+    private static void ConfigureCurrencyLedger(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CurrencyTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("currency_transactions");
+
+            entity.Property(e => e.PublicId).IsRequired().HasColumnType("char(26)");
+            entity.Property(e => e.Kind).HasConversion<byte>();
+            entity.Property(e => e.ReasonCode).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.SourceType).HasMaxLength(40);
+            entity.Property(e => e.SourceRef).HasMaxLength(64);
+            // Binary collation: keys are compared exactly, "Abc" and "abc" are different keys.
+            entity.Property(e => e.IdempotencyScope).IsRequired().HasMaxLength(40).UseCollation("utf8mb4_bin");
+            entity.Property(e => e.IdempotencyKey).IsRequired().HasMaxLength(100).UseCollation("utf8mb4_bin");
+            entity.Property(e => e.RequestHash).IsRequired().HasColumnType("char(64)");
+            entity.Property(e => e.Initiator).HasConversion<byte>();
+            entity.Property(e => e.InitiatorComponent).HasMaxLength(60);
+            entity.Property(e => e.MetadataJson).HasColumnType("json");
+            entity.Property(e => e.CorrelationId).HasMaxLength(64);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => new { e.IdempotencyScope, e.IdempotencyKey }).IsUnique();
+            // A transaction is reversed at most once (MySQL allows many NULLs in a unique index).
+            entity.HasIndex(e => e.ReversesTransactionId).IsUnique();
+            entity.HasIndex(e => new { e.FromUserId, e.CreatedAt });
+            entity.HasIndex(e => new { e.ToUserId, e.CreatedAt });
+            entity.HasIndex(e => new { e.ReasonCode, e.CreatedAt });
+            entity.HasIndex(e => new { e.InitiatorUserId, e.CreatedAt });
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.CorrelationId);
+
+            entity.HasOne<CurrencyTransaction>()
+                .WithOne()
+                .HasForeignKey<CurrencyTransaction>(e => e.ReversesTransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Entries)
+                .WithOne(e => e.Transaction)
+                .HasForeignKey(e => e.TransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CurrencyEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("currency_entries", t =>
+            {
+                // A user leg names a user and records its balances; a system leg names a system account.
+                t.HasCheckConstraint("CK_currency_entries_Account",
+                    "(`AccountKind` = 0 AND `UserId` IS NOT NULL AND `SystemAccount` IS NULL AND `BalanceBefore` IS NOT NULL AND `BalanceAfter` IS NOT NULL) OR "
+                    + "(`AccountKind` = 1 AND `UserId` IS NULL AND `SystemAccount` IS NOT NULL AND `BalanceBefore` IS NULL AND `BalanceAfter` IS NULL)");
+                t.HasCheckConstraint("CK_currency_entries_Balances",
+                    "`BalanceAfter` IS NULL OR (`BalanceBefore` >= 0 AND `BalanceAfter` >= 0 AND `BalanceBefore` + `Amount` = `BalanceAfter`)");
+            });
+
+            entity.Property(e => e.Currency).HasConversion<byte>();
+            entity.Property(e => e.AccountKind).HasConversion<byte>();
+            entity.Property(e => e.Operation).HasConversion<byte>();
+            entity.Property(e => e.SystemAccount).HasMaxLength(30);
+
+            // Statements and balance history per user and currency, in posting order.
+            entity.HasIndex(e => new { e.UserId, e.Currency, e.Id });
+            entity.HasIndex(e => new { e.SystemAccount, e.Currency, e.TransactionId });
+        });
+
+        modelBuilder.Entity<CurrencyPolicy>(entity =>
+        {
+            entity.HasKey(e => e.Currency).HasName("PRIMARY");
+            entity.ToTable("currency_policies");
+
+            entity.Property(e => e.Currency).HasConversion<byte>().ValueGeneratedNever();
+        });
+
+        modelBuilder.Entity<CurrencyPendingTransfer>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("currency_pending_transfers");
+
+            entity.Property(e => e.PublicId).IsRequired().HasColumnType("char(26)");
+            entity.Property(e => e.Currency).HasConversion<byte>();
+            entity.Property(e => e.Status).HasConversion<byte>();
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.IdempotencyKey).IsRequired().HasMaxLength(100).UseCollation("utf8mb4_bin");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ExpiresAt).HasColumnType("datetime(6)");
+
+            entity.HasIndex(e => e.PublicId).IsUnique();
+            entity.HasIndex(e => e.IdempotencyKey).IsUnique();
+            entity.HasIndex(e => new { e.SenderUserId, e.Status });
+        });
+
+        modelBuilder.Entity<CurrencyAlert>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("currency_alerts");
+
+            entity.Property(e => e.Rule).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.Severity).HasConversion<byte>();
+            entity.Property(e => e.DetailsJson).HasColumnType("json");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+
+            entity.HasIndex(e => new { e.AckedAt, e.CreatedAt });
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.Property(e => e.TransferLockReason).HasMaxLength(200);
+        });
+    }
 }
