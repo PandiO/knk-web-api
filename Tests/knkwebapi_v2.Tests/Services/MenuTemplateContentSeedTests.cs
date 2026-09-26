@@ -168,8 +168,33 @@ public class MenuTemplateContentSeedTests
 
         Assert.Equal("menu.page.prev", Assert.Single(ItemAt(kits, 45).Actions).ActionTypeId);
         Assert.Equal("menu.page.next", Assert.Single(ItemAt(kits, 53).Actions).ActionTypeId);
-        foreach (var slot in new[] { 48, 50 })
+        // Menu follow-up 2026-09-26: Confirm/Cancel live in the header row, so showing them
+        // never grows a Dynamic menu.
+        Assert.Equal(MenuGrowthMode.Dynamic, kits.Growth);
+        foreach (var slot in new[] { 2, 6 })
             Assert.Equal("kits.purchase-pending", Assert.Single(ItemAt(kits, slot).Conditions).ConditionTypeId);
+    }
+
+    [Fact]
+    public async Task ListMenus_AreDynamicWithTheirConfirmButtonsInTheHeader()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+
+        foreach (var key in new[] { MenuTemplateSeed.KitsOverviewMenuKey, MenuTemplateSeed.ProfileMenuKey,
+                     MenuTemplateSeed.ItemsCatalogMenuKey, MenuTemplateSeed.PremiumTiersMenuKey,
+                     MenuTemplateSeed.UserManagerMenuKey, MenuTemplateSeed.UserManagerTitlesMenuKey,
+                     MenuTemplateSeed.UserManagerGroupsMenuKey })
+        {
+            var menu = Single(seeded, key);
+            Assert.Equal(MenuGrowthMode.Dynamic, menu.Growth);
+            Assert.InRange(menu.MinHeight!.Value, 1, menu.Height);
+            var confirms = menu.Sections.SelectMany(s => s.Items)
+                .Where(i => i.Actions.Any(a => a.ActionTypeId is "menu.confirm.accept" or "menu.confirm.cancel"));
+            Assert.All(confirms, i => Assert.InRange(i.SlotOverride!.Value, 0, 8));
+        }
+        foreach (var key in new[] { MenuTemplateSeed.HubMenuKey, MenuTemplateSeed.UserManagerEditMenuKey })
+            Assert.Equal(MenuGrowthMode.Static, Single(seeded, key).Growth);
     }
 
     [Fact]

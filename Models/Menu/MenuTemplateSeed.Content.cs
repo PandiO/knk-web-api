@@ -72,12 +72,15 @@ public static partial class MenuTemplateSeed
                     Overflow = MenuOverflowMode.Hide,
                     Items =
                     {
-                        // The viewer's own head -> Profile & titles.
+                        // The viewer's own head -> Profile & titles. Menu follow-up 2026-09-26:
+                        // quick stats (title, rank, progress, balances, premium) in the lore.
                         OpenTile(4, 0, ProfileMenuKey,
                             Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
                             Bind("SkullOwner", "$player.getName$", VariableRefreshPolicy.OnDirty),
                             Bind("Name", "&f$player.getName$", VariableRefreshPolicy.OnDirty),
-                            Bind("Lore", "&7Click to view your profile", VariableRefreshPolicy.Static)),
+                            Lore(0, "$profile.getQuickStatsLines$", VariableRefreshPolicy.OnDirty),
+                            Lore(1, ""),
+                            Lore(2, "&eClick to view your profile")),
 
                         BackButton(8, 1),
 
@@ -118,7 +121,7 @@ public static partial class MenuTemplateSeed
                         WithPermissions(UserManagePermission, OpenTile(22, 6, UserManagerMenuKey,
                             Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
                             Bind("Name", "&cPlayer manager", VariableRefreshPolicy.Static),
-                            Bind("Lore", "&7Manage online players (staff)", VariableRefreshPolicy.Static))),
+                            Bind("Lore", "&7Manage players (staff)", VariableRefreshPolicy.Static))),
                     },
                 },
             },
@@ -145,7 +148,8 @@ public static partial class MenuTemplateSeed
             Name = "&8Kits",
             Description = "Every kit the viewer can see, claim or buy (kits.available). Content port CP2.",
             Height = 6,
-            Growth = MenuGrowthMode.Static,
+            MinHeight = 3,
+            Growth = MenuGrowthMode.Dynamic,
             AutoRefreshTicks = 20,
             Sections =
             {
@@ -165,6 +169,8 @@ public static partial class MenuTemplateSeed
                             Bind("Name", "&aKits", VariableRefreshPolicy.Static),
                             Lore(0, "&7Click a kit to claim it"),
                             Lore(1, "&7Premium kits are bought once, then claimed")),
+                        ConfirmButton(2, "kits.purchase-pending", "&7Buy the kit you picked (see chat)"),
+                        CancelButton(6, "kits.purchase-pending"),
                         BackButton(8, 1),
                     },
                 },
@@ -184,8 +190,6 @@ public static partial class MenuTemplateSeed
                         // Pinned below the grid (absolute slots, J16): pager 45/53, confirm 48/50.
                         PagerButton(45, "&aPrevious page", "menu.page.prev"),
                         PagerButton(53, "&aNext page", "menu.page.next"),
-                        ConfirmButton(48, "kits.purchase-pending", "&7Buy the kit you picked (see chat)"),
-                        CancelButton(50, "kits.purchase-pending"),
                         KitRowTemplate(),
                     },
                 },
@@ -269,7 +273,9 @@ public static partial class MenuTemplateSeed
     /// Financial tiles §3.1). Row 0 reads the plugin's <c>profile</c> root (a fresh read of the
     /// viewer); rows 2-5 list every title bracket (<c>titles.brackets</c>) with the viewer's
     /// current one HIGHLIGHTed, passed ones NORMAL and the rest DISABLED. 19 brackets fit on one
-    /// page; the pager (45/53) stays for safety. Read-only.
+    /// page; the pager (45/53) stays for safety. Read-only. Menu follow-up 2026-09-26: rows are
+    /// coloured by state (lime reached / golden helmet current / gray ahead), marked in the name
+    /// and numbered by stack Amount; the head shows quick stats, the progress item a bar.
     /// </summary>
     private static MenuTemplate ProfileTemplate()
     {
@@ -279,7 +285,8 @@ public static partial class MenuTemplateSeed
             Name = "&8Your profile",
             Description = "The viewer's balances, title progress, premium tier and every title bracket. Content port CP3.",
             Height = 6,
-            Growth = MenuGrowthMode.Static,
+            MinHeight = 3,
+            Growth = MenuGrowthMode.Dynamic,
             Sections =
             {
                 new MenuSectionTemplate
@@ -297,8 +304,7 @@ public static partial class MenuTemplateSeed
                             Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
                             Bind("SkullOwner", "$player.getName$", VariableRefreshPolicy.OnDirty),
                             Bind("Name", "&f$player.getName$", VariableRefreshPolicy.OnDirty),
-                            Lore(0, "$profile.getTitleLine$", VariableRefreshPolicy.OnDirty),
-                            Lore(1, "$profile.getPremiumLine$", VariableRefreshPolicy.OnDirty)),
+                            Lore(0, "$profile.getQuickStatsLines$", VariableRefreshPolicy.OnDirty)),
                         DemoItem(1, 1,
                             Bind("Material", "GOLD_INGOT", VariableRefreshPolicy.Static),
                             Bind("Name", "&6Balances", VariableRefreshPolicy.Static),
@@ -309,12 +315,16 @@ public static partial class MenuTemplateSeed
                         DemoItem(2, 2,
                             Bind("Material", "IRON_HELMET", VariableRefreshPolicy.Static),
                             Bind("Name", "&bTitle progress", VariableRefreshPolicy.Static),
-                            Lore(0, "$profile.getProgressLines$", VariableRefreshPolicy.OnDirty)),
+                            Lore(0, "$profile.getProgressLines$", VariableRefreshPolicy.OnDirty),
+                            Lore(1, "$profile.getTitleRankLine$", VariableRefreshPolicy.OnDirty),
+                            Lore(2, "$profile.getProgressBar$", VariableRefreshPolicy.OnDirty)),
                         DemoItem(4, 3,
                             Bind("Material", "BOOK", VariableRefreshPolicy.Static),
                             Bind("Name", "&eTitles", VariableRefreshPolicy.Static),
                             Lore(0, "&7There are &f$profile.getTitleCount$ &7titles", VariableRefreshPolicy.OnDirty),
-                            Lore(1, "&7Earn experience to climb them")),
+                            Lore(1, "&7Earn experience to climb them"),
+                            Lore(2, ""),
+                            Lore(3, "&a✔ &7reached  &6» &7current  &8■ &7ahead")),
                         BackButton(8, 4),
                     },
                 },
@@ -341,9 +351,10 @@ public static partial class MenuTemplateSeed
                             DisplayMode = MenuDisplayMode.Normal,
                             VariableBindings =
                             {
-                                Bind("Material", "IRON_HELMET", VariableRefreshPolicy.Static),
+                                Bind("Material", "$row.getMaterial$", VariableRefreshPolicy.OnDirty),
+                                Bind("Amount", "$row.getOrder$", VariableRefreshPolicy.OnDirty),
                                 Bind("DisplayMode", "$row.getDisplayMode$", VariableRefreshPolicy.OnDirty),
-                                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                                Bind("Name", "$row.getMarkedName$", VariableRefreshPolicy.OnDirty),
                                 Lore(0, "$row.getLoreLines$", VariableRefreshPolicy.OnDirty),
                             },
                         },
@@ -474,7 +485,8 @@ public static partial class MenuTemplateSeed
             Name = "&8Premium tiers",
             Description = "Every premium tier (premium permission groups by weight) and the viewer's own. Content port CP5.",
             Height = 3,
-            Growth = MenuGrowthMode.Static,
+            MinHeight = 2,
+            Growth = MenuGrowthMode.Dynamic,
             Sections =
             {
                 new MenuSectionTemplate
@@ -547,9 +559,10 @@ public static partial class MenuTemplateSeed
         {
             Key = UserManagerMenuKey,
             Name = "&8Player manager",
-            Description = "Online players the viewer outranks (users.online) -> the editor. Content port CP8.",
+            Description = "Online players the viewer outranks (users.online; with knk.admin.user.manage.all every player, online and offline, self included) -> the editor. Content port CP8.",
             Height = 6,
-            Growth = MenuGrowthMode.Static,
+            MinHeight = 3,
+            Growth = MenuGrowthMode.Dynamic,
             Sections =
             {
                 ManagerSection(new MenuSectionTemplate
@@ -565,9 +578,10 @@ public static partial class MenuTemplateSeed
                     {
                         DemoItem(4, 0,
                             Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
-                            Bind("Name", "&cOnline players", VariableRefreshPolicy.Static),
+                            Bind("Name", "&cPlayers", VariableRefreshPolicy.Static),
                             Lore(0, "&7Online now: &f$usersManager.getOnlineCount$", VariableRefreshPolicy.OnDirty),
-                            Lore(1, "&7Only players ranked below you are listed")),
+                            Lore(1, "&7Staff: online players ranked below you"),
+                            Lore(2, "&7Owners: every player, online and offline")),
                         BackButton(8, 1),
                     },
                 }),
@@ -580,11 +594,14 @@ public static partial class MenuTemplateSeed
                     Width = 9,
                     Height = 4,
                     Overflow = MenuOverflowMode.Scroll,
+                    MinHeight = 1,
+                    Searchable = true,
                     ContentSourceId = "users.online",
                     ContentSourceParamsJson = "{}",
                     Items =
                     {
                         PagerButton(45, "&aPrevious page", "menu.page.prev"),
+                        SearchButton(49),
                         PagerButton(53, "&aNext page", "menu.page.next"),
                         new MenuItemTemplate
                         {
@@ -597,7 +614,7 @@ public static partial class MenuTemplateSeed
                                 Bind("Material", "$row.getMaterial$", VariableRefreshPolicy.OnDirty),
                                 Bind("SkullOwner", "$row.getUuid$", VariableRefreshPolicy.OnDirty),
                                 Bind("DisplayMode", "$row.getDisplayMode$", VariableRefreshPolicy.OnDirty),
-                                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                                Bind("Name", "$row.getDisplayName$", VariableRefreshPolicy.OnDirty),
                                 Lore(0, "$row.getLoreLines$", VariableRefreshPolicy.OnDirty),
                             },
                             Actions =
@@ -755,7 +772,8 @@ public static partial class MenuTemplateSeed
             Name = "&8Set title",
             Description = "Pick a title bracket for the player in ctx.userId (users.titles); sets their XP to its minimum. Content port CP8.",
             Height = 4,
-            Growth = MenuGrowthMode.Static,
+            MinHeight = 2,
+            Growth = MenuGrowthMode.Dynamic,
             Sections =
             {
                 ManagerSection(new MenuSectionTemplate
@@ -774,6 +792,8 @@ public static partial class MenuTemplateSeed
                             Bind("Name", "&bTitle for &f$target.getName$", VariableRefreshPolicy.OnDirty),
                             Lore(0, "&7Current: &f$target.getTitleName$", VariableRefreshPolicy.OnDirty),
                             Lore(1, "&7Experience: &f$target.getExperience$", VariableRefreshPolicy.OnDirty)),
+                        ConfirmButton(2, "users.pending", "&7Set the title you picked (see chat)"),
+                        CancelButton(6, "users.pending"),
                         BackButton(8, 1),
                     },
                 }),
@@ -792,8 +812,6 @@ public static partial class MenuTemplateSeed
                     {
                         PagerButton(27, "&aPrevious page", "menu.page.prev"),
                         PagerButton(35, "&aNext page", "menu.page.next"),
-                        ConfirmButton(30, "users.pending", "&7Set the title you picked (see chat)"),
-                        CancelButton(32, "users.pending"),
                         row,
                     },
                 }),
@@ -839,7 +857,8 @@ public static partial class MenuTemplateSeed
             Name = "&8Groups",
             Description = "Every permission group; click to add the player in ctx.userId or (confirmed) remove them (users.groups). Content port CP8.",
             Height = 6,
-            Growth = MenuGrowthMode.Static,
+            MinHeight = 3,
+            Growth = MenuGrowthMode.Dynamic,
             Sections =
             {
                 ManagerSection(new MenuSectionTemplate
@@ -858,6 +877,8 @@ public static partial class MenuTemplateSeed
                             Bind("Name", "&eGroups of &f$target.getName$", VariableRefreshPolicy.OnDirty),
                             Lore(0, "&7Highlighted: current memberships"),
                             Lore(1, "&7Removing a group asks for confirmation")),
+                        ConfirmButton(2, "users.pending", "&7Confirm the removal you picked (see chat)"),
+                        CancelButton(6, "users.pending"),
                         BackButton(8, 1),
                     },
                 }),
@@ -876,8 +897,6 @@ public static partial class MenuTemplateSeed
                     {
                         PagerButton(45, "&aPrevious page", "menu.page.prev"),
                         PagerButton(53, "&aNext page", "menu.page.next"),
-                        ConfirmButton(48, "users.pending", "&7Confirm the removal you picked (see chat)"),
-                        CancelButton(50, "users.pending"),
                         row,
                     },
                 }),
