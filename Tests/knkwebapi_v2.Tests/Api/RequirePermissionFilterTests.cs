@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
-using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services;
 
 namespace knkwebapi_v2.Tests.Api;
 
