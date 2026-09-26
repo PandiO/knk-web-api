@@ -46,12 +46,6 @@ public static class KitSeed
 
     private static readonly string[] Tags = { "Open Beta", "Test", "Melee", "Protection" };
 
-    private static readonly (string Name, int Stars)[] Grades =
-    {
-        ("Common", 1),
-        ("Uncommon", 2),
-    };
-
     // MaxStackSize is not in SEED_DATA.md; it is set to the vanilla stack size rather than
     // ItemBlueprint's default of 64, since KitGrantPlacer caps each placed stack by it.
     private static readonly (string Name, string IconKey, string Category, string Grade, int DefaultQuantity, int MaxStackSize)[] ItemBlueprints =
@@ -157,13 +151,18 @@ public static class KitSeed
         }
 
         // --- Grade ---
-        var grades = ByKey(await context.Grades.ToListAsync(cancellationToken), g => g.Name, g => g.Id);
-        foreach (var (name, stars) in Grades)
+        // All 10 grades (KNG-6, GradeDefaults), not just the Common/Uncommon the kits use. Looked up by name as
+        // before, and also skipped when a grade with the same stars exists (ItemBlueprintV1Seed's key; the
+        // plugin's enchant-book cap looks grades up by stars), so the two seeds never make a duplicate.
+        var existingGrades = await context.Grades.ToListAsync(cancellationToken);
+        var grades = ByKey(existingGrades, g => g.Name, g => g.Id);
+        var takenStars = existingGrades.Select(g => g.Stars).ToHashSet();
+        foreach (var spec in GradeDefaults.All)
         {
-            if (grades.ContainsKey(name)) continue;
-            var grade = new Grade { Name = name, Stars = stars };
+            if (grades.ContainsKey(spec.Name) || !takenStars.Add(spec.Stars)) continue;
+            var grade = spec.ToGrade();
             context.Grades.Add(grade);
-            grades[name] = grade;
+            grades[spec.Name] = grade;
             Count(nameof(Grade));
         }
 
@@ -179,7 +178,8 @@ public static class KitSeed
                 DefaultDisplayName = "§7" + name,
                 IconMaterial = materials[iconKey],
                 Category = categories[categoryName],
-                Grade = grades[gradeName],
+                // Null only if an admin-authored grade already holds this grade's stars under another name.
+                Grade = grades.GetValueOrDefault(gradeName),
                 DefaultQuantity = defaultQuantity,
                 MaxStackSize = maxStackSize,
             };

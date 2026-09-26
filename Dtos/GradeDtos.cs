@@ -13,6 +13,12 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("stars")]
         public int Stars { get; set; }
+
+        [JsonPropertyName("dropChance")]
+        public decimal? DropChance { get; set; }
+
+        [JsonPropertyName("enchantLevelCapDivisor")]
+        public int? EnchantLevelCapDivisor { get; set; }
     }
 
     public class GradeCreateDto
@@ -23,6 +29,16 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("stars")]
         public int Stars { get; set; }
+
+        /// <summary>Percent 0-100; null = not set.</summary>
+        [Range(0, 100)]
+        [JsonPropertyName("dropChance")]
+        public decimal? DropChance { get; set; }
+
+        /// <summary>Enchant-book level cap divisor (KNG-6); null = uncapped.</summary>
+        [Range(1, int.MaxValue)]
+        [JsonPropertyName("enchantLevelCapDivisor")]
+        public int? EnchantLevelCapDivisor { get; set; }
     }
 
     public class GradeUpdateDto
@@ -37,6 +53,16 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("stars")]
         public int Stars { get; set; }
+
+        /// <summary>Percent 0-100; null = not set.</summary>
+        [Range(0, 100)]
+        [JsonPropertyName("dropChance")]
+        public decimal? DropChance { get; set; }
+
+        /// <summary>Enchant-book level cap divisor (KNG-6); null = uncapped.</summary>
+        [Range(1, int.MaxValue)]
+        [JsonPropertyName("enchantLevelCapDivisor")]
+        public int? EnchantLevelCapDivisor { get; set; }
     }
 
     public class GradeListDto
@@ -49,6 +75,12 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("stars")]
         public int Stars { get; set; }
+
+        [JsonPropertyName("dropChance")]
+        public decimal? DropChance { get; set; }
+
+        [JsonPropertyName("enchantLevelCapDivisor")]
+        public int? EnchantLevelCapDivisor { get; set; }
     }
 
     // Navigation DTO for relationships (e.g. ItemBlueprint.Grade)
@@ -62,5 +94,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("stars")]
         public int Stars { get; set; }
+
+        [JsonPropertyName("dropChance")]
+        public decimal? DropChance { get; set; }
+
+        [JsonPropertyName("enchantLevelCapDivisor")]
+        public int? EnchantLevelCapDivisor { get; set; }
     }
 }

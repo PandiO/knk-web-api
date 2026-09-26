@@ -48,7 +48,7 @@ public class KitSeedTests
         (await db.Categories.CountAsync()).Should().Be(3);
         (await db.Tags.CountAsync()).Should().Be(4);
         (await db.Set<CategoryTag>().CountAsync()).Should().Be(5);
-        (await db.Grades.CountAsync()).Should().Be(2);
+        (await db.Grades.CountAsync()).Should().Be(10); // all of GradeDefaults (KNG-6)
         (await db.ItemBlueprints.CountAsync()).Should().Be(9);
         (await db.Kits.CountAsync()).Should().Be(2);
         (await db.Set<KitContent>().CountAsync()).Should().Be(6);
@@ -131,7 +131,7 @@ public class KitSeedTests
         (await db.Categories.CountAsync()).Should().Be(3);
         (await db.Tags.CountAsync()).Should().Be(4);
         (await db.Set<CategoryTag>().CountAsync()).Should().Be(5);
-        (await db.Grades.CountAsync()).Should().Be(2);
+        (await db.Grades.CountAsync()).Should().Be(10); // all of GradeDefaults (KNG-6)
         (await db.ItemBlueprints.CountAsync()).Should().Be(9);
         (await db.Kits.CountAsync()).Should().Be(2);
         (await db.Set<KitContent>().CountAsync()).Should().Be(6);
@@ -164,7 +164,7 @@ public class KitSeedTests
         await using var check = NewContext();
         (await check.Categories.CountAsync()).Should().Be(3);
         (await check.Tags.CountAsync()).Should().Be(4);
-        (await check.Grades.CountAsync()).Should().Be(2);
+        (await check.Grades.CountAsync()).Should().Be(9); // authored Common holds 5 stars, so Legendary is skipped
         (await check.ItemBlueprints.CountAsync()).Should().Be(10); // 8 seeded + reused sword + Custom Thing
         (await check.Kits.CountAsync()).Should().Be(2);
         (await check.MinecraftMaterialRefs.CountAsync()).Should().Be(9);
@@ -192,6 +192,8 @@ public class KitSeedTests
         var common = await check.Grades.SingleAsync(g => g.Name == "Common");
         common.Id.Should().Be(commonId);
         common.Stars.Should().Be(5);
+        common.DropChance.Should().BeNull(); // reused as authored, not backfilled by the seed
+        (await check.Grades.CountAsync(g => g.Stars == 5)).Should().Be(1);
         (await check.Tags.SingleAsync(t => t.Name == "Open Beta")).Id.Should().Be(openBetaId);
 
         // Seeded rows point at the reused rows.
@@ -224,5 +226,44 @@ public class KitSeedTests
         (await db.ItemBlueprints.CountAsync(b => b.IconMaterialRefId == null)).Should().Be(0);
         (await db.Categories.CountAsync(c => c.IconMaterialRefId == null)).Should().Be(0);
         (await db.MinecraftMaterialRefs.Select(m => m.Category).Distinct().ToListAsync()).Should().Equal("ITEM");
+    }
+
+    [Fact]
+    public async Task FirstRun_SeedsAllTenGradesWithDropChanceAndCapDivisor()
+    {
+        await SeedAsync();
+
+        await using var db = NewContext();
+        var grades = await db.Grades.OrderBy(g => g.Stars).ToListAsync();
+        grades.Select(g => (g.Name, g.Stars, g.DropChance, g.EnchantLevelCapDivisor)).Should().Equal(
+            ("Common", 1, 70m, 5),
+            ("Uncommon", 2, 60m, 4),
+            ("Rare", 3, 40m, 3),
+            ("Epic", 4, 25m, 2),
+            ("Legendary", 5, 15m, 1),
+            ("Mythic", 6, 8m, (int?)null),
+            ("Ascended", 7, 5m, null),
+            ("Relic", 8, 1m, null),
+            ("Exalted", 9, 0.5m, null),
+            ("Divine", 10, 0.05m, null));
+    }
+
+    [Fact]
+    public async Task ExistingGradeWithTheSameStars_IsNotDuplicated()
+    {
+        await using (var db = NewContext())
+        {
+            db.Grades.Add(new Grade { Name = "Starter", Stars = 1 });
+            await db.SaveChangesAsync();
+        }
+
+        await SeedAsync();
+
+        await using var check = NewContext();
+        (await check.Grades.CountAsync(g => g.Stars == 1)).Should().Be(1);
+        (await check.Grades.AnyAsync(g => g.Name == "Common")).Should().BeFalse();
+        // The kit items that wanted "Common" are left ungraded rather than failing the seed.
+        (await check.ItemBlueprints.SingleAsync(b => b.Name == "Iron Sword")).GradeId.Should().BeNull();
+        (await check.ItemBlueprints.Include(b => b.Grade).SingleAsync(b => b.Name == "Iron Axe")).Grade!.Name.Should().Be("Uncommon");
     }
 }
