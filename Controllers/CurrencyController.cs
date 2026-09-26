@@ -11,15 +11,15 @@ namespace knkwebapi_v2.Controllers
     /// <summary>
     /// Player-facing currency routes (currency-payments DESIGN.md §3.4, IMPLEMENTATION_PLAN.md
     /// Phase 3): balances, the leaderboard, transfer limits, player transfers with their
-    /// confirmation step, and a player's own ledger history (KNG-23 folded in). Staff routes
-    /// (adjustments, reversals, locks, policy, the all-players event log) are Phase 4.
+    /// confirmation step, and a player's own ledger history (KNG-23 folded in).
     /// <para>
     /// Transfers are in-game only (DESIGN.md §5 Q4): only the game server may call them, and it
     /// must name the sending player in X-Acting-User-Id, so a request can't move someone else's
     /// money. The plugin checks the knk.pay / knk.balance / knk.baltop / knk.transactions nodes
     /// in-game before calling; the key alone passes here (same convention as every
     /// RequireServiceOrPermission route). Web users may read their own balance, limits and
-    /// history; reading someone else's needs knk.admin.currency.history.
+    /// history; reading someone else's needs knk.admin.currency.history. Staff routes live in
+    /// CurrencyAdminController (api/currency/admin, Phase 4).
     /// </para>
     /// </summary>
     [ApiController]
@@ -34,7 +34,7 @@ namespace knkwebapi_v2.Controllers
         public const string TransactionsNode = "knk.transactions";
 
         /// <summary>Staff: read any player's balance, limits and ledger history.</summary>
-        public const string CurrencyHistoryNode = "knk.admin.currency.history";
+        public const string CurrencyHistoryNode = StaffPermissions.CurrencyHistory;
 
         private static readonly TimeSpan LeaderboardCacheTime = TimeSpan.FromSeconds(60);
 

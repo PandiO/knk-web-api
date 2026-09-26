@@ -46,7 +46,7 @@ namespace knkwebapi_v2.Controllers
         /// A refused posting as a response: 404 for an unknown user, 409 when the request conflicts
         /// with the current state (stale expectedCurrent, reused key, already reversed, a pending
         /// transfer that is closed or expired), 422 for a player transfer the policy refuses
-        /// (currency DESIGN.md §3.4/§3.5), 400 for everything the caller must change (amount,
+        /// or a staff grant over the daily cap (currency DESIGN.md §3.4/§3.5), 400 for everything the caller must change (amount,
         /// funds, cap, malformed request).
         /// </summary>
         public static IActionResult ToResult(ControllerBase controller, CurrencyException ex)
@@ -62,7 +62,7 @@ namespace knkwebapi_v2.Controllers
                 CurrencyErrorCode.NotTransferable or CurrencyErrorCode.SelfTransfer or CurrencyErrorCode.AccountLocked
                     or CurrencyErrorCode.CooldownActive or CurrencyErrorCode.DailyCapExceeded
                     or CurrencyErrorCode.RecipientDailyCapExceeded or CurrencyErrorCode.NewAccountRestricted
-                    or CurrencyErrorCode.TransfersDisabled => controller.UnprocessableEntity(body),
+                    or CurrencyErrorCode.TransfersDisabled or CurrencyErrorCode.AdminDailyCapExceeded => controller.UnprocessableEntity(body),
                 _ => controller.BadRequest(body)
             };
         }

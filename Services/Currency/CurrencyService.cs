@@ -34,13 +34,21 @@ namespace knkwebapi_v2.Services
         private readonly ICurrencyRepository _repo;
         private readonly IUserRepository _users;
         private readonly ILogger<CurrencyService> _logger;
+        private readonly IPermissionResolutionService? _permissions;
 
-        public CurrencyService(ICurrencyRepository repo, IUserRepository users, ILogger<CurrencyService> logger)
+        /// <param name="permissions">Resolves knk.admin.currency.unlimited for the per-staff daily
+        /// grant cap; without it (some tests) nobody is exempt.</param>
+        public CurrencyService(ICurrencyRepository repo, IUserRepository users, ILogger<CurrencyService> logger,
+            IPermissionResolutionService? permissions = null)
         {
             _repo = repo;
             _users = users;
             _logger = logger;
+            _permissions = permissions;
         }
+
+        /// <summary>Window of the per-staff grant cap (CurrencyPolicy.AdminDailyGrantCapPerActor).</summary>
+        public static readonly TimeSpan AdminGrantCapWindow = TimeSpan.FromHours(24);
 
         // ===== Postings =====
 
@@ -138,7 +146,11 @@ namespace knkwebapi_v2.Services
 
             var canonical = $"admin|{reason.Code}|{req.UserId}:{(int)req.Currency}:{req.Mode}:{req.Amount}|expected:{req.ExpectedCurrent?.ToString() ?? "-"}";
 
-            return ExecuteAsync(ctx, reason, new[] { req.UserId }, canonical, (users, _) =>
+            // Per-staff daily grant cap (DESIGN.md §3.5, §5 Q9): the staff member's row is locked
+            // too, so their concurrent grants to different players are counted one after another.
+            var capActor = ctx.InitiatorUserId is > 0 && ctx.Initiator != CurrencyInitiator.PluginService ? ctx.InitiatorUserId : null;
+
+            return ExecuteAsync(ctx, reason, new[] { req.UserId }, canonical, async (users, token) =>
             {
                 var user = users[req.UserId];
                 var current = Balance(user, req.Currency);
@@ -155,11 +167,46 @@ namespace knkwebapi_v2.Services
                     _ => checked(req.Amount - current)
                 };
 
+                if (delta > 0 && capActor.HasValue)
+                {
+                    await RequireWithinAdminGrantCapAsync(capActor.Value, req.Currency, delta, token);
+                }
+
                 var plan = new EntryPlan();
                 plan.AddUserLeg(user, req.Currency, delta, req.Mode);
                 plan.BalanceWithSystemAccount(reason.SystemAccount!);
-                return Task.FromResult(plan.ToDraft());
-            }, ct);
+                return plan.ToDraft();
+            }, ct, alsoLock: capActor.HasValue ? new[] { capActor.Value } : null);
+        }
+
+        /// <summary>
+        /// Refuses a staff grant that takes <paramref name="actorUserId"/>'s rolling 24 h total of
+        /// <paramref name="currency"/> added through adjustments above the policy's
+        /// AdminDailyGrantCapPerActor (0 or no policy row = no cap), unless they hold
+        /// knk.admin.currency.unlimited. Runs under the staff member's row lock.
+        /// </summary>
+        private async Task RequireWithinAdminGrantCapAsync(int actorUserId, Currency currency, long amount, CancellationToken ct)
+        {
+            var policies = await _repo.GetPoliciesAsync(ct);
+            var cap = policies.TryGetValue(currency, out var policy) ? policy.AdminDailyGrantCapPerActor : 0;
+            if (cap <= 0)
+            {
+                return;
+            }
+            var granted = await _repo.SumAdminGrantedSinceAsync(actorUserId, currency, DateTime.UtcNow - AdminGrantCapWindow, ct);
+            if (checked(granted + amount) <= cap)
+            {
+                return;
+            }
+            if (_permissions != null
+                && (await _permissions.CheckAsync(actorUserId, Attributes.StaffPermissions.CurrencyUnlimited))?.Allowed == true)
+            {
+                return;
+            }
+            var remaining = Math.Max(0, cap - granted);
+            throw new CurrencyException(CurrencyErrorCode.AdminDailyCapExceeded,
+                $"That would pass your daily staff grant limit of {cap:N0} {Name(currency)}: you granted {granted:N0} in the last 24 hours, {remaining:N0} left. Staff with {Attributes.StaffPermissions.CurrencyUnlimited} have no limit.",
+                new { currency = currency.ToString(), cap, grantedLast24h = granted, remaining, requested = amount });
         }
 
         public async Task<PostingResult> ReverseAsync(long transactionId, ReversalOptions opts, CurrencyContext ctx, CancellationToken ct = default)
@@ -313,16 +360,20 @@ namespace knkwebapi_v2.Services
             string canonicalRequest,
             Func<Dictionary<int, User>, CancellationToken, Task<PostingDraft>> build,
             CancellationToken ct,
-            Func<CurrencyTransaction, Task>? afterPost = null)
+            Func<CurrencyTransaction, Task>? afterPost = null,
+            IEnumerable<int>? alsoLock = null)
         {
             var ids = userIds.Distinct().OrderBy(id => id).ToList();
+            // Rows locked with the posting's users (ascending together) that aren't part of the
+            // posting and needn't exist, e.g. the staff member whose daily grant cap is checked.
+            var lockIds = alsoLock == null ? ids : ids.Concat(alsoLock).Distinct().OrderBy(id => id).ToList();
             var requestHash = Sha256(canonicalRequest);
             PostingResult? result = null;
             CurrencyTransaction? pending = null;
 
             try
             {
-                await _users.RunWithUsersLockedAsync(ids, async () =>
+                await _users.RunWithUsersLockedAsync(lockIds, async () =>
                 {
                     var existing = await _repo.FindByIdempotencyAsync(ctx.IdempotencyScope, ctx.IdempotencyKey, ct);
                     if (existing != null)

@@ -712,8 +712,10 @@ namespace knkwebapi_v2.Services
 
             // One transaction with the user's row locked (DESIGN.md §1.4 A2): the postings, any
             // title bonuses and the audit entry commit together or not at all. XP goes last, so
-            // title progression runs once on the final XP.
-            await _repo.RunWithUsersLockedAsync(new[] { userId }, async () =>
+            // title progression runs once on the final XP. The acting staff member's row is locked
+            // too (ascending with the player's), as the ledger does for the per-staff grant cap.
+            var lockIds = ctx.InitiatorUserId is > 0 ? new[] { userId, ctx.InitiatorUserId.Value } : new[] { userId };
+            await _repo.RunWithUsersLockedAsync(lockIds, async () =>
             {
                 user = await _repo.GetByIdAsync(userId)
                     ?? throw new KeyNotFoundException($"User with ID {userId} not found.");

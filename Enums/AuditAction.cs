@@ -19,5 +19,12 @@ public enum AuditAction
     BalanceAdjusted = 8,
     PlayerFrozen = 9,
     PlayerUnfrozen = 10,
-    KitGranted = 11
+    KitGranted = 11,
+
+    // Currency payments (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phase 4); values
+    // 19–29 are reserved for this feature so parallel branches don't collide.
+    CurrencyPolicyChanged = 19,
+    CurrencyTransactionReversed = 20,
+    CurrencyTransferLocked = 21,
+    CurrencyTransferUnlocked = 22
 }

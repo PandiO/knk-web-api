@@ -279,6 +279,11 @@ namespace knkwebapi_v2.Repositories
                 LedgerSort.Amount => desc ? lines.OrderByDescending(e => e.Amount) : lines.OrderBy(e => e.Amount),
                 LedgerSort.UserId => desc ? lines.OrderByDescending(e => e.UserId) : lines.OrderBy(e => e.UserId),
                 LedgerSort.Currency => desc ? lines.OrderByDescending(e => e.Currency) : lines.OrderBy(e => e.Currency),
+                LedgerSort.Recipient => desc
+                    ? lines.OrderByDescending(e => _context.Users.Where(u => u.Id == e.UserId).Select(u => u.Username).FirstOrDefault())
+                    : lines.OrderBy(e => _context.Users.Where(u => u.Id == e.UserId).Select(u => u.Username).FirstOrDefault()),
+                LedgerSort.Operation => desc ? lines.OrderByDescending(e => e.Operation) : lines.OrderBy(e => e.Operation),
+                LedgerSort.BalanceAfter => desc ? lines.OrderByDescending(e => e.BalanceAfter) : lines.OrderBy(e => e.BalanceAfter),
                 LedgerSort.ReasonCode => desc ? lines.OrderByDescending(e => e.Transaction.ReasonCode) : lines.OrderBy(e => e.Transaction.ReasonCode),
                 LedgerSort.Initiator => desc
                     ? lines.OrderByDescending(e => e.Transaction.Initiator).ThenByDescending(e => e.Transaction.InitiatorComponent)
@@ -336,5 +341,18 @@ namespace knkwebapi_v2.Repositories
                 PageSize = query.PageSize
             };
         }
+
+        public async Task<long> SumAdminGrantedSinceAsync(int actorUserId, Currency currency, DateTime since, CancellationToken ct = default) =>
+            await _context.CurrencyEntries.AsNoTracking()
+                .Where(e => e.AccountKind == CurrencyAccountKind.User && e.Currency == currency && e.Amount > 0
+                    && e.Transaction.Kind == CurrencyTransactionKind.AdminAdjust
+                    && e.Transaction.InitiatorUserId == actorUserId
+                    && e.Transaction.CreatedAt >= since)
+                .SumAsync(e => (long?)e.Amount, ct) ?? 0;
+
+        public Task<CurrencyPolicy?> GetPolicyForUpdateAsync(Currency currency, CancellationToken ct = default) =>
+            _context.CurrencyPolicies.FirstOrDefaultAsync(p => p.Currency == currency, ct);
+
+        public Task SavePolicyAsync(CancellationToken ct = default) => _context.SaveChangesAsync(ct);
     }
 }

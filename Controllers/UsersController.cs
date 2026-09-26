@@ -716,6 +716,9 @@ namespace knkwebapi_v2.Controllers
         /// progression: promotion bonuses are paid once per bracket, ever. Requires an
         /// Idempotency-Key header (new per action, the same on a retry): a retry returns the
         /// stored result with "replayed": true and changes nothing.
+        /// Deprecated for single staff adjustments in favour of POST api/currency/admin/adjustments
+        /// (reason category + note ≥ 10 characters, currency Phase 4), which posts through this same
+        /// path; kept for the plugin's multi-currency /knk user and Player manager changes.
         /// </remarks>
         /// <param name="id">User ID</param>
         /// <param name="request">Changes and the reason</param>

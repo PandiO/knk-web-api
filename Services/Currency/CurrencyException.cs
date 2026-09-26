@@ -64,7 +64,11 @@ namespace knkwebapi_v2.Services
         PendingTransferClosed,
 
         /// <summary>The recipient has received their rolling 24 h limit of this currency.</summary>
-        RecipientDailyCapExceeded
+        RecipientDailyCapExceeded,
+
+        /// <summary>A staff grant would pass the staff member's rolling 24 h grant cap
+        /// (CurrencyPolicy.AdminDailyGrantCapPerActor; knk.admin.currency.unlimited bypasses it).</summary>
+        AdminDailyCapExceeded
     }
 
     /// <summary>

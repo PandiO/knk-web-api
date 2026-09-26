@@ -1,0 +1,312 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using Xunit;
+using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Enums;
+using knkwebapi_v2.Models;
+using knkwebapi_v2.Properties;
+using knkwebapi_v2.Repositories;
+using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Interfaces;
+
+namespace knkwebapi_v2.Tests.Services;
+
+/// <summary>
+/// Staff currency tooling (currency-payments IMPLEMENTATION_PLAN.md Phase 4) on the real ledger
+/// over EF InMemory: transaction detail, reversals (full, partial, already reversed, would go
+/// negative, retried) with their audit entries, transfer locks, policy edits, and the per-staff
+/// daily grant cap with its knk.admin.currency.unlimited bypass. Locking and the reversal race
+/// are covered against MySQL in Tests/MySql/CurrencyAdminMySqlTests.cs.
+/// </summary>
+public class CurrencyAdminServiceTests
+{
+    private const int Staff = 900;
+
+    private readonly string _db = $"currency-admin-{Guid.NewGuid()}";
+    private readonly Mock<IPermissionResolutionService> _permissions = new();
+
+    private KnKDbContext NewContext() =>
+        new(new DbContextOptionsBuilder<KnKDbContext>().UseInMemoryDatabase(_db).Options);
+
+    private (CurrencyService Currency, CurrencyAdminService Admin) Services(KnKDbContext ctx)
+    {
+        var users = new UserRepository(ctx);
+        var titles = new TitleService(new TitleBracketRepository(ctx));
+        var audit = new AuditLogService(new AuditLogRepository(ctx), users);
+        var memberships = new UserPermissionGroupService(new UserPermissionGroupRepository(ctx), users, new PermissionGroupRepository(ctx), audit);
+        var currency = new CurrencyService(new CurrencyRepository(ctx), users, NullLogger<CurrencyService>.Instance, _permissions.Object);
+        var admin = new CurrencyAdminService(currency, new CurrencyRepository(ctx), users, audit,
+            new TitleProgressionService(currency, users, titles, memberships, audit));
+        return (currency, admin);
+    }
+
+    private async Task SeedAsync()
+    {
+        await using var ctx = NewContext();
+        ctx.Users.Add(new User { Id = 1, Username = "alice", Coins = 100 });
+        ctx.Users.Add(new User { Id = 2, Username = "bob", Coins = 0 });
+        ctx.Users.Add(new User { Id = Staff, Username = "moderator" });
+        ctx.CurrencyPolicies.Add(new CurrencyPolicy
+        {
+            Currency = Currency.Coins, Transferable = true, MinTransfer = 10, MaxTransfer = 1_000_000, DailySendCap = 2_000_000,
+            DailyReceiveCap = 4_000_000, ConfirmThreshold = 100_000, MaxBalance = 999_999_999, AdminDailyGrantCapPerActor = 1_000, SignupGrant = 250
+        });
+        ctx.CurrencyPolicies.Add(new CurrencyPolicy
+        {
+            Currency = Currency.Gems, MinTransfer = 1, MaxTransfer = 100, DailySendCap = 500, DailyReceiveCap = 500,
+            ConfirmThreshold = 10, MaxBalance = 999_999, AdminDailyGrantCapPerActor = 0, SignupGrant = 50
+        });
+        ctx.TitleBrackets.Add(new TitleBracket { Id = 1, MaleName = "Peasant", FemaleName = "Peasant", MinExperience = 0 });
+        await ctx.SaveChangesAsync();
+    }
+
+    private static KnkCaller WebStaff => new(isPluginService: false, isWebUser: true, webUserId: Staff, actingUserId: null);
+
+    private static CurrencyContext StaffCtx(CurrencyOperation mode, string key, int actor = Staff,
+        CurrencyInitiator initiator = CurrencyInitiator.Admin) => new()
+    {
+        IdempotencyKey = key,
+        IdempotencyScope = CurrencyIdempotencyScopes.Web,
+        ReasonCode = CurrencyReasons.ForAdminMode(mode),
+        Reason = "Compensation: lost items to lag",
+        Initiator = initiator,
+        InitiatorUserId = initiator == CurrencyInitiator.PluginService ? null : actor,
+        InitiatorComponent = "Test"
+    };
+
+    private async Task<User> UserAsync(int id)
+    {
+        await using var ctx = NewContext();
+        return await ctx.Users.AsNoTracking().SingleAsync(u => u.Id == id);
+    }
+
+    private async Task<List<AuditLogEntry>> AuditAsync(AuditAction action)
+    {
+        await using var ctx = NewContext();
+        return await ctx.AuditLogEntries.AsNoTracking().Where(a => a.Action == action).ToListAsync();
+    }
+
+    private async Task<PostingResult> GrantAsync(int userId, long amount, string key)
+    {
+        await using var ctx = NewContext();
+        return await Services(ctx).Currency.GrantAsync(userId, Currency.Coins, amount,
+            CurrencyContext.ForSystem("SalaryService", CurrencyReasons.Salary, key));
+    }
+
+    // ===== Detail =====
+
+    [Fact]
+    public async Task Detail_ShowsEveryLegWithNames_AndAcceptsTheInGameTxPrefix()
+    {
+        await SeedAsync();
+        var grant = await GrantAsync(1, 50, "salary:1:t0");
+        await using var ctx = NewContext();
+
+        var detail = await Services(ctx).Admin.GetTransactionAsync($"tx {grant.PublicId.ToLowerInvariant()}");
+
+        Assert.Equal((grant.PublicId, "SALARY", "System", "SalaryService"), (detail.PublicId, detail.ReasonCode, detail.Initiator, detail.InitiatorComponent));
+        Assert.True(detail.Reversible);
+        var user = Assert.Single(detail.Entries, e => e.AccountKind == "User");
+        Assert.Equal(("alice", 50L, (long?)100, (long?)150), (user.Username, user.Amount, user.BalanceBefore, user.BalanceAfter));
+        var system = Assert.Single(detail.Entries, e => e.AccountKind == "System");
+        Assert.Equal((CurrencyReasons.SysSalary, -50L), (system.SystemAccount, system.Amount));
+
+        var missing = await Assert.ThrowsAsync<CurrencyException>(() => Services(ctx).Admin.GetTransactionAsync("nope"));
+        Assert.Equal(CurrencyErrorCode.TransactionNotFound, missing.Code);
+    }
+
+    // ===== Reversals =====
+
+    [Fact]
+    public async Task Reverse_UndoesTheGrant_AuditsIt_AndLinksBothWays()
+    {
+        await SeedAsync();
+        var grant = await GrantAsync(1, 50, "salary:1:t0");
+        await using var ctx = NewContext();
+        var (_, admin) = Services(ctx);
+
+        var result = await admin.ReverseAsync(grant.PublicId, new ReverseTransactionDto { Note = "Paid twice by a bug" }, WebStaff, "WebAppLedger");
+
+        Assert.False(result.Partial);
+        Assert.False(result.Posting.Replayed);
+        Assert.Equal(100, (await UserAsync(1)).Coins);
+        var audit = Assert.Single(await AuditAsync(AuditAction.CurrencyTransactionReversed));
+        Assert.Equal((Staff, 1), (audit.ActorUserId, audit.TargetUserId));
+        Assert.Contains(grant.PublicId, audit.Details);
+
+        await using var read = NewContext();
+        var original = await Services(read).Admin.GetTransactionAsync(grant.PublicId);
+        Assert.Equal((result.Posting.PublicId, false), (original.ReversedByPublicId, original.Reversible));
+        var reversal = await Services(read).Admin.GetTransactionAsync(result.Posting.PublicId);
+        Assert.Equal((grant.PublicId, "Admin", Staff, "moderator", false), (reversal.ReversesPublicId, reversal.Initiator, reversal.InitiatorUserId, reversal.InitiatorUsername, reversal.Reversible));
+        Assert.Equal("Paid twice by a bug", reversal.Reason);
+    }
+
+    [Fact]
+    public async Task Reverse_Retried_Replays_AndFromAnotherCaller_IsAlreadyReversed()
+    {
+        await SeedAsync();
+        var grant = await GrantAsync(1, 50, "salary:1:t0");
+        await using var ctx = NewContext();
+        var (_, admin) = Services(ctx);
+        var request = new ReverseTransactionDto { Note = "Paid twice by a bug" };
+
+        var first = await admin.ReverseAsync(grant.PublicId, request, WebStaff, "WebAppLedger");
+        var retry = await admin.ReverseAsync(grant.PublicId, request, WebStaff, "WebAppLedger");
+        Assert.True(retry.Posting.Replayed);
+        Assert.Equal(first.Posting.PublicId, retry.Posting.PublicId);
+
+        var plugin = new KnkCaller(isPluginService: true, isWebUser: false, webUserId: null, actingUserId: Staff);
+        var again = await Assert.ThrowsAsync<CurrencyException>(() => admin.ReverseAsync(grant.PublicId, request, plugin, "PluginCurrencyAdmin"));
+        Assert.Equal(CurrencyErrorCode.AlreadyReversed, again.Code);
+
+        Assert.Equal(100, (await UserAsync(1)).Coins);
+        Assert.Single(await AuditAsync(AuditAction.CurrencyTransactionReversed));
+    }
+
+    [Fact]
+    public async Task Reverse_OfSpentMoney_IsRefused_UnlessPartial()
+    {
+        await SeedAsync();
+        var grant = await GrantAsync(2, 50, "salary:2:t0");
+        await using (var spend = NewContext())
+        {
+            await Services(spend).Currency.SpendAsync(2, Currency.Coins, 30,
+                CurrencyContext.ForSystem("KitService", CurrencyReasons.KitPurchase, "kit-purchase:1:2"));
+        }
+        await using var ctx = NewContext();
+        var (_, admin) = Services(ctx);
+
+        var refused = await Assert.ThrowsAsync<CurrencyException>(() =>
+            admin.ReverseAsync(grant.PublicId, new ReverseTransactionDto { Note = "Wrong player got it" }, WebStaff, "WebAppLedger"));
+        Assert.Equal(CurrencyErrorCode.ReversalWouldGoNegative, refused.Code);
+        Assert.Empty(await AuditAsync(AuditAction.CurrencyTransactionReversed));
+
+        await using var ctx2 = NewContext();
+        var partial = await Services(ctx2).Admin.ReverseAsync(grant.PublicId,
+            new ReverseTransactionDto { Note = "Wrong player got it", AllowPartial = true }, WebStaff, "WebAppLedger");
+        Assert.True(partial.Partial);
+        Assert.Equal(0, (await UserAsync(2)).Coins);
+        Assert.Equal(-20, Assert.Single(partial.Posting.Entries).Amount);
+    }
+
+    [Fact]
+    public async Task Reverse_NeedsANoteOfTenCharacters_AndCantReverseAReversal()
+    {
+        await SeedAsync();
+        var grant = await GrantAsync(1, 50, "salary:1:t0");
+        await using var ctx = NewContext();
+        var (_, admin) = Services(ctx);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => admin.ReverseAsync(grant.PublicId, new ReverseTransactionDto { Note = "  oops  " }, WebStaff, "WebAppLedger"));
+        var reversal = await admin.ReverseAsync(grant.PublicId, new ReverseTransactionDto { Note = "Paid twice by a bug" }, WebStaff, "WebAppLedger");
+        var undo = await Assert.ThrowsAsync<CurrencyException>(() =>
+            admin.ReverseAsync(reversal.Posting.PublicId, new ReverseTransactionDto { Note = "Undo that reversal" }, WebStaff, "WebAppLedger"));
+        Assert.Equal(CurrencyErrorCode.NotReversible, undo.Code);
+    }
+
+    // ===== Per-staff daily grant cap =====
+
+    [Fact]
+    public async Task AdminGrants_OverTheDailyCap_AreRefused_AndRemovalsDontCount()
+    {
+        await SeedAsync();
+        await using var ctx = NewContext();
+        var (currency, _) = Services(ctx);
+
+        await currency.AdminAdjustAsync(new AdminAdjustRequest(1, Currency.Coins, CurrencyOperation.Add, 600), StaffCtx(CurrencyOperation.Add, "a1"));
+        await currency.AdminAdjustAsync(new AdminAdjustRequest(1, Currency.Coins, CurrencyOperation.Remove, 500), StaffCtx(CurrencyOperation.Remove, "a2"));
+        // Set upward is a grant too: 200 → 500 is +300 (900 of 1,000 used).
+        await currency.AdminAdjustAsync(new AdminAdjustRequest(1, Currency.Coins, CurrencyOperation.Set, 500), StaffCtx(CurrencyOperation.Set, "a3"));
+
+        var over = await Assert.ThrowsAsync<CurrencyException>(() =>
+            currency.AdminAdjustAsync(new AdminAdjustRequest(2, Currency.Coins, CurrencyOperation.Add, 101), StaffCtx(CurrencyOperation.Add, "a4")));
+        Assert.Equal(CurrencyErrorCode.AdminDailyCapExceeded, over.Code);
+        Assert.Equal(0, (await UserAsync(2)).Coins);
+
+        // Exactly up to the cap is fine; another staff member has their own allowance.
+        await currency.AdminAdjustAsync(new AdminAdjustRequest(2, Currency.Coins, CurrencyOperation.Add, 100), StaffCtx(CurrencyOperation.Add, "a5"));
+        await currency.AdminAdjustAsync(new AdminAdjustRequest(2, Currency.Coins, CurrencyOperation.Add, 1_000), StaffCtx(CurrencyOperation.Add, "a6", actor: 1));
+        Assert.Equal(1_100, (await UserAsync(2)).Coins);
+    }
+
+    [Fact]
+    public async Task AdminGrants_WithTheUnlimitedNode_OrWithoutACap_AreNotCapped()
+    {
+        await SeedAsync();
+        _permissions.Setup(p => p.CheckAsync(Staff, StaffPermissions.CurrencyUnlimited))
+            .ReturnsAsync(new PermissionCheckResponseDto { Result = PermissionResolutionResult.Granted });
+        await using var ctx = NewContext();
+        var (currency, _) = Services(ctx);
+
+        await currency.AdminAdjustAsync(new AdminAdjustRequest(2, Currency.Coins, CurrencyOperation.Add, 5_000), StaffCtx(CurrencyOperation.Add, "b1"));
+        // Gems policy cap 0 = none; the plugin service with no staff member named isn't capped either.
+        await currency.AdminAdjustAsync(new AdminAdjustRequest(2, Currency.Gems, CurrencyOperation.Add, 5_000), StaffCtx(CurrencyOperation.Add, "b2", actor: 1));
+        await currency.AdminAdjustAsync(new AdminAdjustRequest(2, Currency.Coins, CurrencyOperation.Add, 5_000),
+            StaffCtx(CurrencyOperation.Add, "b3", initiator: CurrencyInitiator.PluginService));
+
+        var bob = await UserAsync(2);
+        Assert.Equal((10_000, 5_000), (bob.Coins, bob.Gems));
+    }
+
+    // ===== Transfer locks =====
+
+    [Fact]
+    public async Task TransferLock_SetAndClear_AreAudited_AndNeedAReason()
+    {
+        await SeedAsync();
+        await using var ctx = NewContext();
+        var (_, admin) = Services(ctx);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => admin.SetTransferLockAsync(1, "  ", Staff));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => admin.SetTransferLockAsync(404, "Alt funnel", Staff));
+
+        var locked = await admin.SetTransferLockAsync(1, "Suspected alt funnel", Staff);
+        Assert.True(locked.Locked);
+        Assert.NotNull(locked.LockedAt);
+        Assert.Equal("Suspected alt funnel", (await UserAsync(1)).TransferLockReason);
+        await admin.SetTransferLockAsync(1, "Suspected alt funnel", Staff); // repeat: no second entry
+
+        var unlocked = await admin.ClearTransferLockAsync(1, Staff);
+        Assert.False(unlocked.Locked);
+        Assert.Null((await UserAsync(1)).TransferLockReason);
+
+        Assert.Single(await AuditAsync(AuditAction.CurrencyTransferLocked));
+        Assert.Single(await AuditAsync(AuditAction.CurrencyTransferUnlocked));
+    }
+
+    // ===== Policy =====
+
+    [Fact]
+    public async Task Policy_Update_SavesAndAuditsTheChangedFields_AndRejectsBadValues()
+    {
+        await SeedAsync();
+        await using var ctx = NewContext();
+        var (_, admin) = Services(ctx);
+        var gems = (await admin.GetPoliciesAsync()).Single(p => p.Currency == "Gems");
+        Assert.False(gems.Transferable);
+        Assert.Equal(999_999, gems.HardMaxBalance);
+
+        gems.Transferable = true;
+        gems.TransferFeeBasisPoints = 200;
+        var saved = await admin.UpdatePolicyAsync(Currency.Gems, gems, Staff);
+
+        Assert.Equal((true, 200, (int?)Staff), (saved.Transferable, saved.TransferFeeBasisPoints, saved.UpdatedByUserId));
+        var audit = Assert.Single(await AuditAsync(AuditAction.CurrencyPolicyChanged));
+        Assert.Contains("transferable", audit.Details);
+        Assert.Contains("transferFeeBasisPoints", audit.Details);
+        Assert.DoesNotContain("maxTransfer", audit.Details);
+
+        await admin.UpdatePolicyAsync(Currency.Gems, saved, Staff); // unchanged: nothing to audit
+        Assert.Single(await AuditAsync(AuditAction.CurrencyPolicyChanged));
+
+        saved.MaxBalance = 5_000_000; // above the gem cap the database enforces
+        await Assert.ThrowsAsync<ArgumentException>(() => admin.UpdatePolicyAsync(Currency.Gems, saved, Staff));
+        saved.MaxBalance = 999_999;
+        saved.MinSenderTitleBracketId = 77;
+        await Assert.ThrowsAsync<ArgumentException>(() => admin.UpdatePolicyAsync(Currency.Gems, saved, Staff));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => admin.UpdatePolicyAsync(Currency.Experience, saved, Staff));
+    }
+}

@@ -32,9 +32,19 @@ namespace knkwebapi_v2.Attributes
         public const string ManageKits = "knk.kit.manage";
         public const string GiveKits = "knk.kit.give";
 
-        /// <summary>Economy settings (salary configuration; currency policy later) —
+        /// <summary>Economy settings (salary configuration, currency policy) —
         /// docs/specs/currency-payments/DESIGN.md §3.8.</summary>
         public const string CurrencyPolicy = "knk.admin.currency.policy";
+
+        // The rest of the knk.admin.currency umbrella (currency DESIGN.md §3.8, Phase 4).
+        /// <summary>Read any player's ledger history and the all-players balance event log.</summary>
+        public const string CurrencyHistory = "knk.admin.currency.history";
+        /// <summary>Reverse a ledger transaction.</summary>
+        public const string CurrencyReverse = "knk.admin.currency.reverse";
+        /// <summary>Lock or unlock a player's transfers.</summary>
+        public const string CurrencyLock = "knk.admin.currency.lock";
+        /// <summary>Exempt from the per-staff daily grant cap (CurrencyPolicy.AdminDailyGrantCapPerActor).</summary>
+        public const string CurrencyUnlimited = "knk.admin.currency.unlimited";
 
         /// <summary>Server-wide admin settings with no narrower node (audit-log retention).</summary>
         public const string ServerConfig = "knk.admin.config";

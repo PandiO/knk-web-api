@@ -178,6 +178,11 @@ namespace knkwebapi_v2.Services
         UserId,
         Currency,
         ReasonCode,
-        Initiator
+        Initiator,
+
+        /// <summary>The affected player's username (event log "recipient" column).</summary>
+        Recipient,
+        Operation,
+        BalanceAfter
     }
 }

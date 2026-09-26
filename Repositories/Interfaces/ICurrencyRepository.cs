@@ -103,5 +103,19 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         /// <summary>User legs matching the query, newest first by default (balance history, event log).</summary>
         Task<PagedResult<LedgerLineDto>> SearchLinesAsync(LedgerQuery query, CancellationToken ct = default);
+
+        /// <summary>What staff member <paramref name="actorUserId"/> added to players' balances of
+        /// <paramref name="currency"/> through staff adjustments since <paramref name="since"/>
+        /// (the per-staff daily grant cap, currency Phase 4). Call under the staff member's row
+        /// lock so two grants can't both slip under the cap.</summary>
+        Task<long> SumAdminGrantedSinceAsync(int actorUserId, Currency currency, DateTime since, CancellationToken ct = default);
+
+        // Policy rows are admin-editable settings, not ledger rows (currency Phase 4).
+
+        /// <summary>The currency's policy row, tracked for an edit; null if none.</summary>
+        Task<CurrencyPolicy?> GetPolicyForUpdateAsync(Currency currency, CancellationToken ct = default);
+
+        /// <summary>Saves changes made to a tracked policy row.</summary>
+        Task SavePolicyAsync(CancellationToken ct = default);
     }
 }

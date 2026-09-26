@@ -161,6 +161,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ICurrencyService>(sp => sp.GetRequiredService<CurrencyService>());
             services.AddScoped<ICurrencyTransferService>(sp => sp.GetRequiredService<CurrencyService>());
             services.AddScoped<ITitleProgressionService, TitleProgressionService>();
+            services.AddScoped<ICurrencyAdminService, CurrencyAdminService>();
             services.AddScoped<CurrencyReconciler>();
 
             // Retention policy service - background task for cleaning up old records
