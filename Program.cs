@@ -208,6 +208,10 @@ using (var scope = app.Services.CreateScope())
     var v1BlueprintSeedLogger = loggerFactory.CreateLogger("ItemBlueprintV1Seed");
     var enchantmentCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftEnchantmentCatalogService>();
     await knkwebapi_v2.Models.ItemBlueprintV1Seed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, v1BlueprintSeedLogger);
+
+    // After the ability (custom) and V1 (vanilla) seeds: permanent enchantment books reuse their EnchantmentDefinitions (KNG-5).
+    var enchantBookSeedLogger = loggerFactory.CreateLogger("EnchantBookSeed");
+    await knkwebapi_v2.Models.EnchantBookSeed.SeedCanonicalAsync(dbContext, materialCatalog, enchantBookSeedLogger);
 }
 
 app.Run();
