@@ -192,19 +192,22 @@ public class MenuTemplateContentSeedTests
     }
 
     [Fact]
-    public async Task ItemsCatalog_IsASearchablePagedCatalogWithoutFilters()
+    public async Task ItemsCatalog_IsASearchableCategoryFilteredDynamicCatalog()
     {
         var (context, seeded) = await SeedTwiceAsync();
         await using var _ = context;
         var catalog = Single(seeded, MenuTemplateSeed.ItemsCatalogMenuKey);
 
+        Assert.Equal(MenuGrowthMode.Dynamic, catalog.Growth);
+        Assert.Equal(3, catalog.MinHeight);
         var grid = catalog.Sections.Single(s => s.Name == "Items");
-        Assert.Equal("catalog.itemblueprints", grid.ContentSourceId);
+        Assert.Equal("items.catalog", grid.ContentSourceId);
         Assert.True(grid.Searchable);
-        Assert.DoesNotContain(grid.Items, i => i.IsRowTemplate);
-        var actions = grid.Items.SelectMany(i => i.Actions).Select(a => a.ActionTypeId).ToList();
-        Assert.Equal(new[] { "menu.page.prev", "menu.page.next", "menu.search.prompt" }, actions);
-        Assert.DoesNotContain(actions, a => a.StartsWith("menu.filter"));
+        Assert.Empty(Assert.Single(grid.Items, i => i.IsRowTemplate).Actions);
+        var actions = grid.Items.OrderBy(i => i.SlotOverride).SelectMany(i => i.Actions).Select(a => a.ActionTypeId).ToList();
+        Assert.Equal(new[] { "menu.page.prev", "menu.filter.cycle", "menu.search.prompt", "menu.filter.clear", "menu.page.next" }, actions);
+        var cycle = grid.Items.SelectMany(i => i.Actions).Single(a => a.ActionTypeId == "menu.filter.cycle");
+        Assert.Contains("$itemsCatalog.getCategoryValues$", cycle.ParamsJson);
         Assert.Contains(ItemAt(catalog, 4).VariableBindings, b => b.Expression == "$itemsCatalog.getTotalLine$");
     }
 

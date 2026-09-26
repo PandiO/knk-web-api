@@ -36,6 +36,14 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("autoRefreshTicks")]
         public int? AutoRefreshTicks { get; set; }
 
+        /// <summary>Dynamic menus shrink to at least this many rows (null = 1).</summary>
+        [JsonPropertyName("minHeight")]
+        public int? MinHeight { get; set; }
+
+        /// <summary>Background filler material name; null = plugin default (light gray stained glass pane).</summary>
+        [JsonPropertyName("backgroundMaterial")]
+        public string? BackgroundMaterial { get; set; }
+
         [JsonPropertyName("sections")]
         public List<MenuSectionTemplateDto> Sections { get; set; } = new();
     }
@@ -102,6 +110,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("visibilityPermission")]
         public string? VisibilityPermission { get; set; }
+
+        /// <summary>Rows of this section a Dynamic menu always keeps (null/0 = none).</summary>
+        [JsonPropertyName("minHeight")]
+        public int? MinHeight { get; set; }
 
         [JsonPropertyName("searchable")]
         public bool Searchable { get; set; }

@@ -65,6 +65,8 @@ namespace knkwebapi_v2.Services
                 Growth = ParseEnum<MenuGrowthMode>(dto.Growth, nameof(dto.Growth)),
                 BackgroundMaterialRefId = dto.BackgroundMaterialRefId,
                 AutoRefreshTicks = NormalizeAutoRefreshTicks(dto.AutoRefreshTicks),
+                MinHeight = NormalizeMinHeight(dto.MinHeight, dto.Height, "MenuTemplate"),
+                BackgroundMaterial = NormalizeMaterialName(dto.BackgroundMaterial),
             };
 
             foreach (var sectionDto in dto.Sections)
@@ -98,6 +100,8 @@ namespace knkwebapi_v2.Services
             existing.Growth = ParseEnum<MenuGrowthMode>(dto.Growth, nameof(dto.Growth));
             existing.BackgroundMaterialRefId = dto.BackgroundMaterialRefId;
             existing.AutoRefreshTicks = NormalizeAutoRefreshTicks(dto.AutoRefreshTicks);
+            existing.MinHeight = NormalizeMinHeight(dto.MinHeight, dto.Height, "MenuTemplate");
+            existing.BackgroundMaterial = NormalizeMaterialName(dto.BackgroundMaterial);
             existing.UpdatedAt = DateTime.UtcNow;
 
             // Full-replace strategy for the nested tree (mirrors ItemBlueprintService's
@@ -139,6 +143,7 @@ namespace knkwebapi_v2.Services
                 ListMode = ParseEnum<MenuListMode>(dto.ListMode, nameof(dto.ListMode)),
                 Priority = ParseEnum<MenuRenderPriority>(dto.Priority, nameof(dto.Priority)),
                 VisibilityPermission = dto.VisibilityPermission,
+                MinHeight = NormalizeMinHeight(dto.MinHeight, dto.Height, $"MenuSectionTemplate '{dto.Name}'", allowZero: true),
                 Searchable = dto.Searchable,
                 ContentSourceId = dto.ContentSourceId,
                 ContentSourceParamsJson = string.IsNullOrWhiteSpace(dto.ContentSourceParamsJson) ? "{}" : dto.ContentSourceParamsJson,
@@ -252,6 +257,19 @@ namespace knkwebapi_v2.Services
         /// can only ever mean "don't refresh".
         /// </summary>
         private static int? NormalizeAutoRefreshTicks(int? ticks) => ticks is > 0 ? ticks : null;
+
+        /// <summary>Menu follow-up 2026-09-26: MinHeight must fit its Height; null stays null.</summary>
+        private static int? NormalizeMinHeight(int? minHeight, int height, string owner, bool allowZero = false)
+        {
+            if (minHeight == null) return null;
+            var lowest = allowZero ? 0 : 1;
+            if (minHeight < lowest || minHeight > height)
+                throw new ArgumentException($"{owner}.MinHeight must be between {lowest} and its Height ({height}), got {minHeight}.");
+            return minHeight;
+        }
+
+        private static string? NormalizeMaterialName(string? name) =>
+            string.IsNullOrWhiteSpace(name) ? null : name.Trim();
 
         /// <summary>
         /// InventoryMenu Phase 9 (E3): a row template renders each row a content

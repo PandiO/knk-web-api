@@ -354,22 +354,40 @@ public static partial class MenuTemplateSeed
     }
 
     /// <summary>
-    /// CP4 - <c>items.catalog</c> (v1 List of items §3.11), built from the <c>example.catalog</c>
-    /// seed: the engine's <c>catalog.itemblueprints</c> source with search (shift-click clears) and
-    /// paging. No filter buttons: the source forwards filters to
-    /// <c>ItemBlueprintRepository.SearchAsync</c>, which applies none (only the search term), so a
-    /// facet would do nothing. The header's total comes from the plugin's <c>itemsCatalog</c> root.
-    /// Read-only - catalogue items carry no actions.
+    /// CP4 - <c>items.catalog</c> (v1 List of items §3.11). Menu follow-up 2026-09-26: rows come
+    /// from the plugin's <c>items.catalog</c> source, which renders each blueprint as the exact
+    /// ItemStack a player is granted (name, lore, enchantments, material); the row template's
+    /// bindings are only the fallback when that item can't be built. Search (shift-click clears),
+    /// a Category filter (cycles <c>$itemsCatalog.getCategoryValues$</c>, the live category list;
+    /// includes subcategories - <c>ItemBlueprintRepository.SearchAsync</c>) and paging. The menu
+    /// shrinks to fit a short result (Growth Dynamic, MinHeight 3). Read-only.
     /// </summary>
     private static MenuTemplate ItemsCatalogTemplate()
     {
+        var filter = DemoItem(47, 147,
+            Bind("Material", "HOPPER", VariableRefreshPolicy.Static),
+            Bind("Name", "&eFilter by category", VariableRefreshPolicy.Static),
+            Lore(0, "&7Click to show the next category"),
+            Lore(1, "&7(after the last one: every category again)"));
+        filter.Actions.Add(new ActionBinding
+        {
+            ActionTypeId = "menu.filter.cycle",
+            ParamsJson = "{\"facetKey\":\"Category\",\"values\":\"$itemsCatalog.getCategoryValues$\"}",
+            SortOrder = 0,
+        });
+        var clear = DemoItem(51, 151,
+            Bind("Material", "BARRIER", VariableRefreshPolicy.Static),
+            Bind("Name", "&cClear category filter", VariableRefreshPolicy.Static));
+        clear.Actions.Add(new ActionBinding { ActionTypeId = "menu.filter.clear", ParamsJson = "{\"facetKey\":\"Category\"}", SortOrder = 0 });
+
         return new MenuTemplate
         {
             Key = ItemsCatalogMenuKey,
             Name = "&8Item catalogue",
-            Description = "Every item blueprint, searchable and paged (catalog.itemblueprints). Content port CP4.",
+            Description = "Every item blueprint as granted, searchable, filterable by category and paged (items.catalog). Content port CP4.",
             Height = 6,
-            Growth = MenuGrowthMode.Static,
+            MinHeight = 3,
+            Growth = MenuGrowthMode.Dynamic,
             Sections =
             {
                 new MenuSectionTemplate
@@ -399,16 +417,31 @@ public static partial class MenuTemplateSeed
                     DisplaySlot = 9,
                     Width = 9,
                     Height = 4,
+                    MinHeight = 1,
                     Overflow = MenuOverflowMode.Scroll,
                     ListMode = MenuListMode.Grid,
                     Searchable = true,
-                    ContentSourceId = "catalog.itemblueprints",
+                    ContentSourceId = "items.catalog",
                     ContentSourceParamsJson = "{}",
                     Items =
                     {
+                        new MenuItemTemplate
+                        {
+                            SortOrder = 0,
+                            Amount = 1,
+                            IsRowTemplate = true,
+                            DisplayMode = MenuDisplayMode.Normal,
+                            VariableBindings =
+                            {
+                                Bind("Material", "PAPER", VariableRefreshPolicy.Static),
+                                Bind("Name", "&f$row.getName$", VariableRefreshPolicy.OnDirty),
+                            },
+                        },
                         PagerButton(45, "&aPrevious page", "menu.page.prev"),
-                        PagerButton(53, "&aNext page", "menu.page.next"),
+                        filter,
                         SearchButton(49),
+                        clear,
+                        PagerButton(53, "&aNext page", "menu.page.next"),
                     },
                 },
             },
