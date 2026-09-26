@@ -66,4 +66,22 @@ public class RequirePluginServiceKeyAttributeTests
         new RequirePluginServiceKeyAttribute().OnAuthorization(custom);
         Assert.Null(custom.Result);
     }
+
+    [Fact]
+    public void WithoutAServiceKey_ThePluginApiKeyIsRequired()
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            [RequirePluginServiceKeyAttribute.KeySetting] = "",
+            [RequirePluginServiceKeyAttribute.FallbackKeySetting] = "shared",
+        };
+
+        var missing = Context(settings);
+        new RequirePluginServiceKeyAttribute().OnAuthorization(missing);
+        Assert.IsType<UnauthorizedObjectResult>(missing.Result);
+
+        var ok = Context(settings, ("X-API-Key", "shared"));
+        new RequirePluginServiceKeyAttribute().OnAuthorization(ok);
+        Assert.Null(ok.Result);
+    }
 }

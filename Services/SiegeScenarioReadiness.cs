@@ -29,7 +29,6 @@ namespace knkwebapi_v2.Services
 
         // Warnings
         public const string NoInstantVictoryObjective = "NO_INSTANT_VICTORY_OBJECTIVE";
-        public const string LockdownWithoutDistricts = "LOCKDOWN_WITHOUT_DISTRICTS";
         public const string SpatialChecksSkipped = "SPATIAL_CHECKS_SKIPPED";
         public const string SpatialChecksUnavailable = "SPATIAL_CHECKS_UNAVAILABLE";
         public const string TownHasNoRegion = "TOWN_HAS_NO_REGION";
@@ -146,9 +145,8 @@ namespace knkwebapi_v2.Services
                         nameof(GateStructure), gate.GateStructureId);
             }
 
-            if (scenario.LockdownScenarioArea && scenario.Districts.Count == 0)
-                Warning(result, SiegeReadinessCodes.LockdownWithoutDistricts,
-                    "Area lockdown is on but no districts are selected, so nothing will be locked down.");
+            // (LOCKDOWN_WITHOUT_DISTRICTS removed 2026-09-26: the plugin no longer locks the scenario area
+            // down, so LockdownScenarioArea has no effect.)
 
             result.IsReady = result.Errors.Count == 0;
             return result;

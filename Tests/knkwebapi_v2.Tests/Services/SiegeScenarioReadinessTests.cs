@@ -141,15 +141,16 @@ public class SiegeScenarioReadinessTests
     }
 
     [Fact]
-    public async Task LockdownWithoutDistricts_IsOnlyAWarning()
+    public async Task NoDistricts_IsReadyWithoutWarnings()
     {
+        // The area lockdown was removed (2026-09-26), so a scenario without districts gets no warning.
         var scenario = SiegeTestData.ValidScenario();
         scenario.Districts.Clear();   // the gate is still in the town, which is the area without districts
 
         var result = await ReadinessOf(scenario);
 
         Assert.True(result.IsReady);
-        Assert.Equal(SiegeReadinessCodes.LockdownWithoutDistricts, Assert.Single(result.Warnings).Code);
+        Assert.Empty(result.Warnings);
     }
 
     [Fact]

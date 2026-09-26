@@ -15,6 +15,9 @@ namespace knkwebapi_v2.Attributes
     /// <item>Set: the request must carry that key in the <c>Security:PluginServiceKeyHeader</c> header
     /// (default <c>X-API-Key</c>, what the plugin's <c>api.auth.type: apikey</c> sends), else 401.</item>
     /// </list>
+    /// With <c>Security:PluginServiceKey</c> empty, <c>Security:PluginApiKey</c> (the plugin's shared key
+    /// the users endpoints check, same header) is used instead, so one key configures both
+    /// (siege audit 2026-09-26: two settings for the same header could drift apart).
     /// With <see cref="AllowAdmins"/>, a caller whose JWT carries the Admin role (the
     /// <c>RequireAdmin</c> policy's rule) is let through without the key too.
     /// </summary>
@@ -22,6 +25,7 @@ namespace knkwebapi_v2.Attributes
     public sealed class RequirePluginServiceKeyAttribute : Attribute, IAuthorizationFilter
     {
         public const string KeySetting = "Security:PluginServiceKey";
+        public const string FallbackKeySetting = "Security:PluginApiKey";
         public const string HeaderSetting = "Security:PluginServiceKeyHeader";
         public const string DefaultHeader = "X-API-Key";
 
@@ -32,6 +36,7 @@ namespace knkwebapi_v2.Attributes
         {
             var configuration = context.HttpContext.RequestServices.GetService<IConfiguration>();
             var expected = configuration?[KeySetting];
+            if (string.IsNullOrEmpty(expected)) expected = configuration?[FallbackKeySetting];
             if (string.IsNullOrEmpty(expected)) return;
 
             var header = configuration?[HeaderSetting];

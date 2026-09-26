@@ -59,7 +59,9 @@ public class SiegeScenario
     public int CoinRewardCapture { get; set; } = 50;
     public int ExpRewardCapture { get; set; } = 5;
 
-    public bool LockdownScenarioArea { get; set; } = true;   // §8.5, D6
+    // §8.5, D6. No effect since 2026-09-26: the plugin no longer locks the scenario area down (non-members
+    // stay in the area). Kept to avoid a migration; remove with the next siege schema change.
+    public bool LockdownScenarioArea { get; set; } = true;
     public bool AllowRecapture { get; set; } = false;        // §7.3, D5
     public bool EnchantDropsEnabled { get; set; } = true;    // §9.4, D7
 
