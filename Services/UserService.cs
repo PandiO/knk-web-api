@@ -687,6 +687,8 @@ namespace knkwebapi_v2.Services
             // Resolved before the mutation so a resulting title change can be detected, and so the
             // consolidation loop below has every bracket to walk between old and new XP.
             var originalExperience = user.ExperiencePoints;
+            var originalCoins = user.Coins;
+            var originalGems = user.Gems;
             var brackets = experienceDelta != 0 ? await _titleService.GetAllOrderedAsync() : null;
             TitleBracket? previousBracket = brackets != null && brackets.Count > 0
                 ? (brackets.LastOrDefault(b => b.MinExperience <= originalExperience) ?? brackets[0])
@@ -795,7 +797,14 @@ namespace knkwebapi_v2.Services
                 metadata,
                 titleBonusCoins = titleChange?.CoinBonusGranted ?? 0,
                 titleBonusGems = titleChange?.GemBonusGranted ?? 0,
-                titleBonusExp = titleChange?.ExpBonusGranted ?? 0
+                titleBonusExp = titleChange?.ExpBonusGranted ?? 0,
+                // Before/after (bonuses included) for the moderation activity feed.
+                coinsBefore = originalCoins,
+                coinsAfter = user.Coins,
+                gemsBefore = originalGems,
+                gemsAfter = user.Gems,
+                experienceBefore = originalExperience,
+                experienceAfter = user.ExperiencePoints
             }));
 
             if (titleChange != null)

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
@@ -55,6 +56,7 @@ namespace knkwebapi_v2.Controllers
         /// <param name="id">User ID</param>
         /// <response code="200">Returns the composite profile summary</response>
         /// <response code="404">User not found</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
         [HttpGet("{id:int}/profile-summary")]
         [ProducesResponseType(typeof(UserProfileSummaryDto), 200)]
         public async Task<IActionResult> GetProfileSummary(int id)
@@ -78,6 +80,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Returns the resulting membership</response>
         /// <response code="400">Validation failed</response>
         /// <response code="404">User or PermissionGroup not found</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
         [HttpPost("{id:int}/groups")]
         public async Task<IActionResult> AssignGroup(int id, [FromBody] AssignGroupRequestDto request)
         {
@@ -105,6 +108,7 @@ namespace knkwebapi_v2.Controllers
         /// <summary>Quick action: remove a group membership. Same underlying write UserPermissionGroupsController's generic DELETE uses.</summary>
         /// <response code="204">Removed successfully</response>
         /// <response code="404">User is not a member of that group</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
         [HttpDelete("{id:int}/groups/{groupId:int}")]
         public async Task<IActionResult> RemoveGroup(int id, int groupId)
         {
@@ -127,6 +131,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Returns the created grant</response>
         /// <response code="400">Validation failed</response>
         /// <response code="404">User not found</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
         [HttpPost("{id:int}/grants")]
         public async Task<IActionResult> GrantNode(int id, [FromBody] GrantNodeRequestDto request)
         {
@@ -156,6 +161,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="204">Updated successfully</response>
         /// <response code="400">Unknown mode value</response>
         /// <response code="404">User not found</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
         [HttpPost("{id:int}/vanish-mode")]
         public async Task<IActionResult> ToggleVanishMode(int id, [FromBody] UpdateActiveModeDto request)
         {
@@ -732,6 +738,7 @@ namespace knkwebapi_v2.Controllers
         /// </summary>
         /// <param name="groupId">PermissionGroup id to filter by.</param>
         /// <param name="onlineOnly">When true, further narrows to users with IsOnline=true.</param>
+        [RequirePermission(StaffPermissions.ManageUsers)]
         [HttpGet("search")]
         public async Task<ActionResult<IEnumerable<UserListDto>>> SearchByGroup([FromQuery] int groupId, [FromQuery] bool? onlineOnly)
         {

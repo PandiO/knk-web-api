@@ -84,6 +84,7 @@ namespace knkwebapi_v2.Services
             // defensively rather than ever crediting negative coins through this path.
             var amountPaid = Math.Max(0, (int)Math.Round(rawPayout, MidpointRounding.AwayFromZero));
 
+            var coinsBefore = user.Coins;
             user.Coins += amountPaid;
             user.LastSalaryPayoutAt = now;
             await _userRepo.UpdateUserAsync(user);
@@ -99,7 +100,9 @@ namespace knkwebapi_v2.Services
                 titleSalary = title.Salary,
                 globalMultiplier = config.GlobalMultiplier,
                 personalMultiplier = user.PersonalSalaryMultiplier,
-                rankMultiplier
+                rankMultiplier,
+                coinsBefore,
+                coinsAfter = user.Coins
             }));
 
             return new SalaryPayoutResultDto
