@@ -87,7 +87,8 @@ namespace knkwebapi_v2.Services
         // Everything the plugin caches between matches: the global configuration, enabled lobbies,
         // and their rotation scenarios fully resolved. Only READY scenarios enter a rotation (§3.3);
         // the rest are reported per lobby under SkippedScenarios. Readiness here is the structural
-        // §3.9 rule set only - the WorldGuard-region checks call back into the plugin, which is the
+        // §3.9 rule set only - the configured field-validation rules (a location-inside-region rule
+        // calls back into the plugin) are skipped: the plugin is the
         // caller of this endpoint (possibly while it is still starting), so they stay an authoring-
         // time check on GET …/readiness.
         public async Task<SiegeRuntimeConfigDto> GetRuntimeConfigAsync()

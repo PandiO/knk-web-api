@@ -53,7 +53,7 @@ public class SiegeScenarioServiceTests
             .Callback<SiegeObjective>(o => { o.Id = 888; _addedObjective = o; })
             .Returns(Task.CompletedTask);
 
-        _service = new SiegeScenarioService(_repo.Object, _locationService.Object, Array.Empty<IValidationMethod>(), SiegeTestData.Mapper());
+        _service = new SiegeScenarioService(_repo.Object, _locationService.Object, SiegeTestData.NoRules(), SiegeTestData.Mapper());
     }
 
     private static SiegeScenarioUpsertDto ScenarioDto() => new()

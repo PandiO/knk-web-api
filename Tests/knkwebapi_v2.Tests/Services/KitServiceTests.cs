@@ -28,6 +28,7 @@ public class KitServiceTests
     private readonly Mock<IPermissionResolutionService> _permissionResolutionService = new();
     private readonly Mock<IAuditLogService> _auditLogService = new();
     private readonly AutoMapper.IMapper _mapper;
+    private readonly FakeCurrencyService _currency;
     private readonly KitService _service;
 
     private static readonly User PlainUser = new() { Id = 1, Username = "alice", Coins = 250, Gems = 50, ExperiencePoints = 0 };
@@ -54,7 +55,8 @@ public class KitServiceTests
             _userPermissionGroupService.Object,
             _permissionResolutionService.Object,
             _auditLogService.Object,
-            _mapper);
+            _mapper,
+            _currency = new FakeCurrencyService(id => _userRepo.Object.GetByIdAsync(id).Result));
 
         _titleBracketRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(new List<TitleBracket>());
         // The row lock is a DB concern; here it just runs the work (see UserRepository).
@@ -73,6 +75,16 @@ public class KitServiceTests
         Contents = new List<KitContent>()
     };
 
+    /// <summary>The game server's claim, as KitsController builds it from the Idempotency-Key header.</summary>
+    private static CurrencyContext ClaimCtx(string key = "claim-key-1") => new()
+    {
+        IdempotencyKey = key,
+        IdempotencyScope = CurrencyIdempotencyScopes.Plugin,
+        ReasonCode = CurrencyReasons.KitClaimCost,
+        Initiator = CurrencyInitiator.PluginService,
+        InitiatorComponent = "KitsController"
+    };
+
     private void SetUser(User user) => _userRepo.Setup(r => r.GetByIdAsync(user.Id)).ReturnsAsync(user);
     private void SetKit(Kit kit) => _kitRepo.Setup(r => r.GetByIdAsync(kit.Id)).ReturnsAsync(kit);
 
@@ -84,10 +96,10 @@ public class KitServiceTests
         SetUser(PlainUser);
         SetKit(PlainKit());
 
-        var result = await _service.ClaimKitAsync(PlainUser.Id, 10);
+        var result = await _service.ClaimKitAsync(PlainUser.Id, 10, ClaimCtx());
 
         Assert.Equal(10, result.KitId);
-        _kitRepo.Verify(r => r.AddClaimAsync(It.Is<KitClaim>(c => c.KitId == 10 && c.UserId == PlainUser.Id), null), Times.Once);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.Is<KitClaim>(c => c.KitId == 10 && c.UserId == PlainUser.Id)), Times.Once);
     }
 
     [Fact]
@@ -106,9 +118,9 @@ public class KitServiceTests
         SetUser(user);
         SetKit(kit);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
         Assert.Contains("Knight", ex.Message);
-        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>(), It.IsAny<User?>()), Times.Never);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Never);
     }
 
     [Fact]
@@ -127,7 +139,7 @@ public class KitServiceTests
         SetUser(user);
         SetKit(kit);
 
-        var result = await _service.ClaimKitAsync(user.Id, kit.Id);
+        var result = await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
         Assert.Equal(kit.Id, result.KitId);
     }
 
@@ -140,7 +152,7 @@ public class KitServiceTests
         SetKit(kit);
         _userPermissionGroupService.Setup(s => s.GetByUserAsync(user.Id)).ReturnsAsync(new List<UserPermissionGroupDto>());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
     }
 
     [Fact]
@@ -155,7 +167,7 @@ public class KitServiceTests
             new() { UserId = user.Id, PermissionGroupId = 55, IsActive = true }
         });
 
-        var result = await _service.ClaimKitAsync(user.Id, kit.Id);
+        var result = await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
         Assert.Equal(kit.Id, result.KitId);
     }
 
@@ -171,7 +183,7 @@ public class KitServiceTests
             new() { UserId = user.Id, PermissionGroupId = 55, IsActive = false }
         });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
     }
 
     [Fact]
@@ -184,7 +196,7 @@ public class KitServiceTests
         _permissionResolutionService.Setup(s => s.CheckAsync(user.Id, "knk.kit.veteran"))
             .ReturnsAsync(new PermissionCheckResponseDto { Result = PermissionResolutionResult.Denied });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
     }
 
     [Fact]
@@ -197,7 +209,7 @@ public class KitServiceTests
         _permissionResolutionService.Setup(s => s.CheckAsync(user.Id, "knk.kit.veteran"))
             .ReturnsAsync(new PermissionCheckResponseDto { Result = PermissionResolutionResult.Granted });
 
-        var result = await _service.ClaimKitAsync(user.Id, kit.Id);
+        var result = await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
         Assert.Equal(kit.Id, result.KitId);
     }
 
@@ -222,7 +234,7 @@ public class KitServiceTests
         _permissionResolutionService.Setup(s => s.CheckAsync(user.Id, "knk.kit.veteran"))
             .ReturnsAsync(new PermissionCheckResponseDto { Result = PermissionResolutionResult.Granted });
 
-        var result = await _service.ClaimKitAsync(user.Id, kit.Id);
+        var result = await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
         Assert.Equal(kit.Id, result.KitId);
     }
 
@@ -245,7 +257,7 @@ public class KitServiceTests
         _permissionResolutionService.Setup(s => s.CheckAsync(user.Id, "knk.kit.veteran"))
             .ReturnsAsync(new PermissionCheckResponseDto { Result = PermissionResolutionResult.Granted });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
     }
 
     #endregion
@@ -262,7 +274,7 @@ public class KitServiceTests
         _kitRepo.Setup(r => r.GetLastClaimAsync(kit.Id, user.Id))
             .ReturnsAsync(new KitClaim { KitId = kit.Id, UserId = user.Id, ClaimedAt = DateTime.UtcNow.AddSeconds(-59) });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
     }
 
     [Fact]
@@ -275,7 +287,7 @@ public class KitServiceTests
         _kitRepo.Setup(r => r.GetLastClaimAsync(kit.Id, user.Id))
             .ReturnsAsync(new KitClaim { KitId = kit.Id, UserId = user.Id, ClaimedAt = DateTime.UtcNow.AddSeconds(-61) });
 
-        var result = await _service.ClaimKitAsync(user.Id, kit.Id);
+        var result = await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
         Assert.Equal(kit.Id, result.KitId);
     }
 
@@ -291,7 +303,7 @@ public class KitServiceTests
         _kitRepo.Setup(r => r.GetLastClaimAsync(kit.Id, user.Id))
             .ReturnsAsync(new KitClaim { KitId = kit.Id, UserId = user.Id, ClaimedAt = claimedAt });
 
-        var result = await _service.ClaimKitAsync(user.Id, kit.Id);
+        var result = await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
         Assert.Equal(kit.Id, result.KitId);
     }
 
@@ -307,11 +319,11 @@ public class KitServiceTests
         SetUser(user);
         SetKit(kit);
 
-        await _service.ClaimKitAsync(user.Id, kit.Id);
+        await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
 
         Assert.Equal(60, user.Coins);
         Assert.Equal(100, user.Gems);
-        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>(), user), Times.Once);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Once);
     }
 
     [Fact]
@@ -322,7 +334,7 @@ public class KitServiceTests
         SetUser(user);
         SetKit(kit);
 
-        await _service.ClaimKitAsync(user.Id, kit.Id);
+        await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
 
         Assert.Equal(100, user.Coins);
         Assert.Equal(60, user.Gems);
@@ -336,10 +348,10 @@ public class KitServiceTests
         SetUser(user);
         SetKit(kit);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
 
         Assert.Equal(10, user.Coins); // untouched
-        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>(), It.IsAny<User?>()), Times.Never);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Never);
     }
 
     [Fact]
@@ -350,7 +362,7 @@ public class KitServiceTests
         SetUser(user);
         SetKit(kit);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
 
         Assert.Equal(100, user.Coins);
         Assert.Equal(10, user.Gems);
@@ -369,7 +381,7 @@ public class KitServiceTests
         SetKit(kit);
         _kitRepo.Setup(r => r.GetPurchaseAsync(kit.Id, user.Id)).ReturnsAsync((KitPurchase?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx()));
     }
 
     [Fact]
@@ -385,12 +397,12 @@ public class KitServiceTests
         _kitRepo.Setup(r => r.GetPurchaseAsync(kit.Id, user.Id))
             .ReturnsAsync(new KitPurchase { KitId = kit.Id, UserId = user.Id, GemsPaid = 200 });
 
-        var result = await _service.ClaimKitAsync(user.Id, kit.Id);
+        var result = await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
 
         Assert.Equal(kit.Id, result.KitId);
         _kitRepo.Verify(r => r.GetLastClaimAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         Assert.Equal(0, user.Gems); // no per-claim cost charged
-        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>(), null), Times.Once);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Once);
     }
 
     [Fact]
@@ -430,7 +442,7 @@ public class KitServiceTests
 
         Assert.Equal(200, result.GemsPaid);
         Assert.Equal(300, user.Gems);
-        _kitRepo.Verify(r => r.AddPurchaseAsync(It.IsAny<KitPurchase>(), user), Times.Once);
+        _kitRepo.Verify(r => r.AddPurchaseAsync(It.IsAny<KitPurchase>()), Times.Once);
     }
 
     [Fact]
@@ -467,7 +479,7 @@ public class KitServiceTests
         Assert.Single(results);
         Assert.Equal(0, user.Coins); // never charged
         _kitRepo.Verify(r => r.GetLastClaimAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
-        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>(), null), Times.Once);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Once);
     }
 
     [Fact]
@@ -492,7 +504,7 @@ public class KitServiceTests
         var results = await _service.GrantFirstJoinKitsAsync(user.Id);
 
         Assert.Empty(results);
-        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>(), It.IsAny<User?>()), Times.Never);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Never);
     }
 
     [Fact]
@@ -559,7 +571,7 @@ public class KitServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => _service.PurchaseKitAsync(user.Id, kit.Id));
 
         Assert.Equal(50, user.Gems);
-        _kitRepo.Verify(r => r.AddPurchaseAsync(It.IsAny<KitPurchase>(), It.IsAny<User>()), Times.Never);
+        _kitRepo.Verify(r => r.AddPurchaseAsync(It.IsAny<KitPurchase>()), Times.Never);
     }
 
     [Fact]
@@ -582,7 +594,7 @@ public class KitServiceTests
         SetUser(PlainUser);
         SetKit(PlainKit());
 
-        await _service.ClaimKitAsync(PlainUser.Id, 10);
+        await _service.ClaimKitAsync(PlainUser.Id, 10, ClaimCtx());
 
         _userRepo.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { PlainUser.Id })), It.IsAny<Func<Task>>()), Times.Once);
     }
@@ -611,7 +623,7 @@ public class KitServiceTests
         Assert.Equal(0, target.Coins); // never charged
         _permissionResolutionService.Verify(s => s.CheckAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
         _kitRepo.Verify(r => r.GetLastClaimAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
-        _kitRepo.Verify(r => r.AddClaimAsync(It.Is<KitClaim>(c => c.UserId == target.Id && c.KitId == kit.Id), null), Times.Once);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.Is<KitClaim>(c => c.UserId == target.Id && c.KitId == kit.Id)), Times.Once);
     }
 
     [Fact]
@@ -642,7 +654,7 @@ public class KitServiceTests
         SetUser(user);
         SetKit(kit);
 
-        await _service.ClaimKitAsync(user.Id, kit.Id);
+        await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx());
 
         _auditLogService.Verify(s => s.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<AuditAction>(), It.IsAny<string?>()), Times.Never);
     }
@@ -803,13 +815,13 @@ public class KitServiceTests
     private KitService ServiceWithTokenGrants(Mock<ILootboxTokenGrantService> grants) => new(
         _kitRepo.Object, _userRepo.Object, _itemBlueprintRepo.Object, _titleBracketRepo.Object, _permissionGroupRepo.Object,
         _titleService.Object, _userPermissionGroupService.Object, _permissionResolutionService.Object, _auditLogService.Object,
-        _mapper, grants.Object);
+        _mapper, new FakeCurrencyService(id => _userRepo.Object.GetByIdAsync(id).Result), grants.Object);
 
     private void NumberClaims()
     {
         var next = 100;
-        _kitRepo.Setup(r => r.AddClaimAsync(It.IsAny<KitClaim>(), It.IsAny<User?>()))
-            .ReturnsAsync((KitClaim claim, User? _) => { claim.Id = next++; return claim; });
+        _kitRepo.Setup(r => r.AddClaimAsync(It.IsAny<KitClaim>()))
+            .ReturnsAsync((KitClaim claim) => { claim.Id = next++; return claim; });
     }
 
     [Fact]
@@ -842,6 +854,88 @@ public class KitServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => ServiceWithTokenGrants(grants).ClaimKitAsync(PlainUser.Id, 10));
 
         grants.Verify(g => g.IssueForKitAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int?>()), Times.Never);
+    }
+
+    #endregion
+
+    #region Currency ledger (currency-payments Phase 2)
+
+    [Fact]
+    public async Task ClaimKitAsync_Cost_IsAKitClaimCostPostingKeyedByTheClientKey()
+    {
+        var user = new User { Id = 40, Username = "ledger", Coins = 100 };
+        var kit = PlainKit(); kit.CostAmount = 40; kit.CostCurrency = KitCostCurrency.Coins;
+        SetUser(user);
+        SetKit(kit);
+
+        await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx("abc-123"));
+
+        var posting = Assert.Single(_currency.Postings);
+        Assert.Equal(CurrencyReasons.KitClaimCost, posting.Ctx.ReasonCode);
+        Assert.Equal("kit-claim:abc-123", posting.Ctx.IdempotencyKey);
+        Assert.Equal(("Kit", "10"), (posting.Ctx.SourceType, posting.Ctx.SourceRef));
+        Assert.Equal((Currency.Coins, -40L), (posting.Legs[0].Currency, posting.Legs[0].Amount));
+    }
+
+    [Fact]
+    public async Task ClaimKitAsync_RetryWithTheSameKey_NeitherPaysNorClaimsTwice()
+    {
+        var user = new User { Id = 41, Username = "retry", Coins = 100 };
+        var kit = PlainKit(); kit.CostAmount = 40; kit.CostCurrency = KitCostCurrency.Coins;
+        SetUser(user);
+        SetKit(kit);
+
+        await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx("same"));
+        await _service.ClaimKitAsync(user.Id, kit.Id, ClaimCtx("same"));
+
+        Assert.Equal(60, user.Coins);
+        Assert.Single(_currency.Postings);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClaimKitAsync_CostWithoutAKey_IsRejected()
+    {
+        var user = new User { Id = 42, Username = "nokey", Coins = 100 };
+        var kit = PlainKit(); kit.CostAmount = 40; kit.CostCurrency = KitCostCurrency.Coins;
+        SetUser(user);
+        SetKit(kit);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.ClaimKitAsync(user.Id, kit.Id));
+
+        Assert.Equal(100, user.Coins);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ClaimKitAsync_FreeKit_NeedsNoKeyAndPostsNothing()
+    {
+        SetUser(PlainUser);
+        SetKit(PlainKit());
+
+        await _service.ClaimKitAsync(PlainUser.Id, 10);
+
+        Assert.Empty(_currency.Postings);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task PurchaseKitAsync_IsAKitPurchasePostingUnderTheOncePerUserKey()
+    {
+        var user = new User { Id = 43, Username = "buyer", Gems = 500 };
+        var kit = PlainKit(); kit.IsSinglePurchasePremium = true; kit.PremiumPriceGems = 200;
+        SetUser(user);
+        SetKit(kit);
+        _kitRepo.Setup(r => r.GetPurchaseAsync(kit.Id, user.Id)).ReturnsAsync((KitPurchase?)null);
+
+        await _service.PurchaseKitAsync(user.Id, kit.Id, ClaimCtx("ignored") with { ReasonCode = CurrencyReasons.KitPurchase });
+
+        var posting = Assert.Single(_currency.Postings);
+        Assert.Equal(CurrencyReasons.KitPurchase, posting.Ctx.ReasonCode);
+        Assert.Equal("kit-purchase:10:43", posting.Ctx.IdempotencyKey);
+        Assert.Equal(CurrencyIdempotencyScopes.System, posting.Ctx.IdempotencyScope);
+        Assert.Equal(CurrencyInitiator.PluginService, posting.Ctx.Initiator);
+        Assert.Equal((Currency.Gems, -200L), (posting.Legs[0].Currency, posting.Legs[0].Amount));
     }
 
     #endregion

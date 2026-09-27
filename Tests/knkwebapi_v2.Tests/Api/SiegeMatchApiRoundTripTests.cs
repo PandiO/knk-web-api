@@ -38,9 +38,7 @@ public class SiegeMatchApiRoundTripTests : IAsyncLifetime
         await _context.SaveChangesAsync();
         _context.ChangeTracker.Clear();
 
-        _controller = new SiegeMatchesController(new SiegeMatchService(
-            new SiegeMatchRepository(_context),
-            new TitleService(new TitleBracketRepository(_context))));
+        _controller = new SiegeMatchesController(SiegeTestData.MatchService(_context));
     }
 
     public async Task DisposeAsync() => await _context.DisposeAsync();

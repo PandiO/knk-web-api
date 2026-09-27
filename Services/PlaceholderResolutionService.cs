@@ -575,6 +575,29 @@ public class PlaceholderResolutionService : IPlaceholderResolutionService
         return result;
     }
 
+    /// <inheritdoc/>
+    public async Task<object?> LoadEntityByIdAsync(string entityTypeName, object id)
+    {
+        var entityType = GetEntityType(entityTypeName);
+        var keyType = entityType == null
+            ? null
+            : _dbContext.Model.FindEntityType(entityType)?.FindPrimaryKey()?.Properties.SingleOrDefault()?.ClrType;
+        if (entityType == null || keyType == null) return null;
+
+        object key;
+        try
+        {
+            // FindAsync needs the key's exact CLR type (an int key rejects a long from JSON).
+            key = Convert.ChangeType(id, Nullable.GetUnderlyingType(keyType) ?? keyType, System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
+        {
+            return null;
+        }
+
+        return await GetEntityByIdAsync(entityType, key);
+    }
+
     #region Helper Methods
 
     /// <summary>

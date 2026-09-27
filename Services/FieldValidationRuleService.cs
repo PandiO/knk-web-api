@@ -191,7 +191,13 @@ namespace knkwebapi_v2.Services
             foreach (var rule in rules)
             {
                 // Check 1: Dependency field exists
-                if (rule.DependsOnFieldId.HasValue)
+                // A field of another configuration is a parent-form field: a child form's rule may
+                // depend on a field of the form it is opened from (the wizard and saved-entity checks
+                // resolve it from the parent's values), so it has no position to check here.
+                var isParentFormDependency = rule.DependsOnFieldId.HasValue
+                    && !fieldOrderMap.ContainsKey(rule.DependsOnFieldId.Value)
+                    && rule.DependsOnField != null;
+                if (rule.DependsOnFieldId.HasValue && !isParentFormDependency)
                 {
                     if (!fieldOrderMap.ContainsKey(rule.DependsOnFieldId.Value))
                     {
@@ -323,6 +329,10 @@ namespace knkwebapi_v2.Services
                         });
                         continue;
                     }
+
+                    // A parent-form dependency (field of another configuration) has no position here.
+                    if (!fieldPositionMap.ContainsKey(rule.DependsOnFieldId.Value) && rule.DependsOnField != null)
+                        continue;
 
                     if (!fieldPositionMap.ContainsKey(rule.DependsOnFieldId.Value))
                     {

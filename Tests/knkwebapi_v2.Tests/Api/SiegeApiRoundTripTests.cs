@@ -44,7 +44,8 @@ public class SiegeApiRoundTripTests : IAsyncLifetime
         await SiegeTestData.SeedSharedRowsAsync(_context);
 
         var mapper = SiegeTestData.Mapper();
-        // The real LocationInsideRegion rule; the plugin's region endpoint says "inside".
+        // A real LocationInsideRegion rule on the spawnpoint form, depending on the scenario form's
+        // Town (a parent-form field); the plugin's region endpoint says "inside".
         var regionService = new Mock<IRegionService>();
         regionService.Setup(r => r.IsLocationInsideRegionAsync(It.IsAny<string>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<bool>()))
             .ReturnsAsync(true);
@@ -52,7 +53,9 @@ public class SiegeApiRoundTripTests : IAsyncLifetime
         var validators = new IValidationMethod[] { new LocationInsideRegionValidator(regionService.Object, locationService.Object) };
 
         var scenarioRepo = new SiegeScenarioRepository(_context);
-        var scenarioService = new SiegeScenarioService(scenarioRepo, locationService.Object, validators, mapper);
+        var forms = new SiegeFormRules();
+        forms.AddLocationInsideTownRule(SiegeFormRules.SpawnpointLocationFieldId);
+        var scenarioService = new SiegeScenarioService(scenarioRepo, locationService.Object, forms.Validator(validators), mapper);
         var configurationService = new SiegeConfigurationService(new SiegeConfigurationRepository(_context));
 
         _scenarios = new SiegeScenariosController(scenarioService);
@@ -139,6 +142,7 @@ public class SiegeApiRoundTripTests : IAsyncLifetime
         readiness = Ok<SiegeScenarioReadinessDto>(await Call(() => _scenarios.GetReadiness(s)));
         Assert.True(readiness.IsReady, string.Join("; ", readiness.Errors.Select(e => e.Message)));
         Assert.True(readiness.SpatialChecksRun);
+        Assert.Equal(2, readiness.FieldRuleChecks);   // both spawnpoints, loaded by the real repository
 
         // 8. GET /api/SiegeScenarios/{id} - the whole graph comes back
         var graph = Ok<SiegeScenarioReadDto>(await Call(() => _scenarios.GetById(s)));

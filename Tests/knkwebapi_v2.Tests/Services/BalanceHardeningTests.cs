@@ -80,16 +80,35 @@ public class BalanceHardeningTests
     private readonly Mock<IUserPermissionGroupService> _membershipService = new();
     private readonly Mock<IAuditLogService> _auditLog = new();
 
-    private UserService Service(IUserRepository repo, IMapper mapper) => new(
-        repo,
-        mapper,
-        new Mock<IPasswordService>().Object,
-        new Mock<ILinkCodeService>().Object,
-        _titleService.Object,
-        _membershipService.Object,
-        _auditLog.Object,
-        new Mock<IPermissionGroupRepository>().Object,
-        Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance);
+    private UserService Service(IUserRepository repo, IMapper mapper)
+    {
+        var currency = new FakeCurrencyService(id => repo.GetByIdAsync(id).Result);
+        return new(
+            repo,
+            mapper,
+            new Mock<IPasswordService>().Object,
+            new Mock<ILinkCodeService>().Object,
+            _titleService.Object,
+            _membershipService.Object,
+            _auditLog.Object,
+            new Mock<IPermissionGroupRepository>().Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+            currency,
+            new TitleProgressionService(currency, repo, _titleService.Object, _membershipService.Object, _auditLog.Object));
+    }
+
+    private static CurrencyContext Staff() => new()
+    {
+        IdempotencyKey = Guid.NewGuid().ToString("N"),
+        IdempotencyScope = CurrencyIdempotencyScopes.Plugin,
+        ReasonCode = CurrencyReasons.AdminGrant,
+        Reason = "test",
+        Initiator = CurrencyInitiator.PluginService,
+        InitiatorComponent = "Test"
+    };
+
+    private static List<BalanceChangeDto> Add(Currency currency, long amount) =>
+        new() { new BalanceChangeDto { Currency = currency, Mode = CurrencyOperation.Add, Amount = amount } };
 
     private UserService MockedService()
     {
@@ -105,11 +124,11 @@ public class BalanceHardeningTests
         var user = new User { Id = 1, Username = "rich", Coins = BalanceLimits.MaxCoins - 1 };
         _repo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
 
-        await Assert.ThrowsAsync<BalanceCapExceededException>(() =>
-            MockedService().AdjustBalancesAsync(1, coinsDelta: 2, gemsDelta: 0, experienceDelta: 0, reason: "test"));
+        var ex = await Assert.ThrowsAsync<CurrencyException>(() =>
+            MockedService().AdjustBalancesAsync(1, Add(Currency.Coins, 2), Staff()));
 
+        Assert.Equal(CurrencyErrorCode.BalanceCapExceeded, ex.Code);
         Assert.Equal(BalanceLimits.MaxCoins - 1, user.Coins);
-        _repo.Verify(r => r.SaveBalancesAsync(It.IsAny<User>()), Times.Never);
         _auditLog.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<AuditAction>(), It.IsAny<string?>()), Times.Never);
     }
 
@@ -118,21 +137,23 @@ public class BalanceHardeningTests
     {
         _repo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "gemmy", Gems = 10 });
 
-        await Assert.ThrowsAsync<BalanceCapExceededException>(() =>
-            MockedService().AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: BalanceLimits.MaxGems, experienceDelta: 0, reason: "test"));
+        var ex = await Assert.ThrowsAsync<CurrencyException>(() =>
+            MockedService().AdjustBalancesAsync(1, Add(Currency.Gems, BalanceLimits.MaxGems), Staff()));
+        Assert.Equal(CurrencyErrorCode.BalanceCapExceeded, ex.Code);
     }
 
     [Fact]
-    public async Task AdjustBalances_RunsUnderTheUsersRowLockAndSavesBalances()
+    public async Task AdjustBalances_RunsUnderTheUsersRowLockAndPostsToTheLedger()
     {
         var user = new User { Id = 1, Username = "p", Coins = 100 };
         _repo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
 
-        var result = await MockedService().AdjustBalancesAsync(1, coinsDelta: 50, gemsDelta: 0, experienceDelta: 0, reason: "test");
+        var result = await MockedService().AdjustBalancesAsync(1, Add(Currency.Coins, 50), Staff());
 
         Assert.Equal(150, result.NewCoins);
         _repo.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 1 })), It.IsAny<Func<Task>>()), Times.Once);
-        _repo.Verify(r => r.SaveBalancesAsync(user), Times.Once);
+        // Balances are written by the ledger only, never by the user repository.
+        _repo.Verify(r => r.SaveBalancesAsync(It.IsAny<User>()), Times.Never);
         _repo.Verify(r => r.UpdateUserAsync(It.IsAny<User>()), Times.Never);
     }
 
@@ -149,10 +170,12 @@ public class BalanceHardeningTests
         _membershipService.Setup(m => m.GetActiveRankMultipliersAsync(1)).ReturnsAsync(RankMultipliersDto.Neutral);
         var service = MockedService();
 
-        await Assert.ThrowsAsync<BalanceCapExceededException>(() =>
-            service.AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 100, reason: "test"));
+        // The XP posting went through but its bonus can't: in the real (MySQL) transaction both
+        // roll back together; here (no transaction) only the refusal and the untouched coins show.
+        var ex = await Assert.ThrowsAsync<CurrencyException>(() =>
+            service.AdjustBalancesAsync(1, Add(Currency.Experience, 100), Staff()));
 
-        Assert.Equal(0, user.ExperiencePoints);
+        Assert.Equal(CurrencyErrorCode.BalanceCapExceeded, ex.Code);
         Assert.Equal(BalanceLimits.MaxCoins - 5, user.Coins);
     }
 
@@ -169,7 +192,7 @@ public class BalanceHardeningTests
         _membershipService.Setup(m => m.GetActiveRankMultipliersAsync(1)).ReturnsAsync(RankMultipliersDto.Neutral);
 
         await Assert.ThrowsAsync<BalanceCapExceededException>(() =>
-            MockedService().AdjustBalancesAsync(1, coinsDelta: 0, gemsDelta: 0, experienceDelta: 100, reason: "test"));
+            MockedService().AdjustBalancesAsync(1, Add(Currency.Experience, 100), Staff()));
     }
 
     [Theory]
@@ -265,13 +288,9 @@ public class BalanceHardeningTests
 
         await using (var requestB = NewContext(dbName))
         {
-            var repoB = new UserRepository(requestB);
-            await repoB.RunWithUsersLockedAsync(new[] { id }, async () =>
-            {
-                var fresh = await repoB.GetByIdAsync(id);
-                fresh!.Coins += 1000;
-                await repoB.SaveBalancesAsync(fresh);
-            });
+            var ledger = new CurrencyService(new CurrencyRepository(requestB), new UserRepository(requestB),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<CurrencyService>.Instance);
+            await ledger.GrantAsync(id, Currency.Coins, 1000, CurrencyContext.ForSystem("Test", CurrencyReasons.Salary, $"salary:{id}:stale-test"));
         }
 
         await repoA.UpdatePresenceAsync(id, true);
@@ -350,9 +369,11 @@ public class BalanceHardeningTests
         config.Setup(c => c.GetAsync()).ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 1m, OfflinePayoutMaxHours = 720 });
         var titles = new Mock<ITitleService>();
         titles.Setup(t => t.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto { Salary = 650 });
-        var service = new SalaryService(repo.Object, memberships.Object, config.Object, titles.Object, _auditLog.Object);
+        var service = new SalaryService(repo.Object, memberships.Object, config.Object, titles.Object, _auditLog.Object,
+            new FakeCurrencyService(id => repo.Object.GetByIdAsync(id).Result));
 
-        await Assert.ThrowsAsync<BalanceCapExceededException>(() => service.PayOutAsync(1));
+        var ex = await Assert.ThrowsAsync<CurrencyException>(() => service.PayOutAsync(1));
+        Assert.Equal(CurrencyErrorCode.BalanceCapExceeded, ex.Code);
 
         Assert.Equal(BalanceLimits.MaxCoins, user.Coins);
         Assert.Equal(lastPayout, user.LastSalaryPayoutAt);

@@ -5,7 +5,6 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
-using knkwebapi_v2.Services.ValidationMethods;
 using Xunit;
 
 namespace knkwebapi_v2.Tests.Services;
@@ -13,27 +12,28 @@ namespace knkwebapi_v2.Tests.Services;
 /// <summary>
 /// Siege Phase 2 (docs/specs/siege-minigame/IMPLEMENTATION_PLAN.md Phase 2): the readiness matrix -
 /// the complete scenario is ready, and breaking each DESIGN §3.9 rule on its own produces exactly
-/// that one error. Spatial rules go through the LocationInsideRegion validation method.
+/// that one error. Location checks are field-validation rules configured on the siege forms (see
+/// SiegeScenarioFieldRuleReadinessTests); with none configured nothing spatial is checked.
 /// </summary>
 public class SiegeScenarioReadinessTests
 {
     private readonly Mock<ISiegeScenarioRepository> _repo = new();
     private readonly Mock<ILocationService> _locationService = new();
 
-    private SiegeScenarioService Service(params IValidationMethod[] validators) =>
-        new(_repo.Object, _locationService.Object, validators, SiegeTestData.Mapper());
+    private SiegeScenarioService Service() =>
+        new(_repo.Object, _locationService.Object, SiegeTestData.NoRules(), SiegeTestData.Mapper());
 
-    private async Task<SiegeScenarioReadinessDto> ReadinessOf(SiegeScenario scenario, IValidationMethod? validator = null)
+    private async Task<SiegeScenarioReadinessDto> ReadinessOf(SiegeScenario scenario)
     {
         _repo.Setup(r => r.GetByIdAsync(scenario.Id)).ReturnsAsync(scenario);
-        return await Service(validator ?? SiegeTestData.RegionValidator().Object).GetReadinessAsync(scenario.Id);
+        return await Service().GetReadinessAsync(scenario.Id);
     }
 
     private static SiegeTeam Team(SiegeScenario s, int id) => s.Teams.Single(t => t.Id == id);
     private static SiegeObjective Objective(SiegeScenario s, int id) => s.Objectives.Single(o => o.Id == id);
 
     [Fact]
-    public async Task CompleteScenario_IsReady_WithSpatialChecksRun()
+    public async Task CompleteScenario_WithoutConfiguredRules_IsReady()
     {
         var result = await ReadinessOf(SiegeTestData.ValidScenario());
 
@@ -41,6 +41,7 @@ public class SiegeScenarioReadinessTests
         Assert.Empty(result.Errors);
         Assert.Empty(result.Warnings);
         Assert.True(result.SpatialChecksRun);
+        Assert.Equal(0, result.FieldRuleChecks);
     }
 
     public static IEnumerable<object[]> BrokenRules() => new List<object[]>
@@ -97,37 +98,6 @@ public class SiegeScenarioReadinessTests
         Assert.Equal(new[] { expectedCode }, result.Errors.Select(e => e.Code).ToArray());
     }
 
-    [Theory]
-    [InlineData(1000, SiegeReadinessCodes.HubOutsideTown)]
-    [InlineData(1002, SiegeReadinessCodes.SpawnpointOutsideTown)]
-    [InlineData(1004, SiegeReadinessCodes.ObjectiveOutsideTown)]   // own capture location
-    [InlineData(1003, SiegeReadinessCodes.ObjectiveOutsideTown)]   // capture point taken from the objective's gate
-    public async Task EachSpatialRule_FailsAlone(int outsideLocationId, string expectedCode)
-    {
-        var validator = SiegeTestData.RegionValidator(new HashSet<int> { outsideLocationId });
-
-        var result = await ReadinessOf(SiegeTestData.ValidScenario(), validator.Object);
-
-        Assert.False(result.IsReady);
-        var error = Assert.Single(result.Errors);
-        Assert.Equal(expectedCode, error.Code);
-        Assert.Contains("outside Cinix", error.Message);
-    }
-
-    [Fact]
-    public async Task SpatialCheck_PassesTheTownRegionToTheValidator()
-    {
-        var validator = SiegeTestData.RegionValidator();
-
-        await ReadinessOf(SiegeTestData.ValidScenario(), validator.Object);
-
-        // Hub + 2 spawnpoints + 2 objective capture points.
-        validator.Verify(v => v.ValidateAsync(
-            It.IsAny<Location>(),
-            It.Is<Dictionary<string, object>>(d => (string)d["WgRegionId"] == "cinix"),
-            null, null), Times.Exactly(5));
-    }
-
     [Fact]
     public async Task NoInstantVictoryObjective_IsOnlyAWarning()
     {
@@ -151,65 +121,6 @@ public class SiegeScenarioReadinessTests
 
         Assert.True(result.IsReady);
         Assert.Empty(result.Warnings);
-    }
-
-    [Fact]
-    public async Task PluginUnreachable_IsAWarning_AndReportsSpatialChecksNotRun()
-    {
-        var result = await ReadinessOf(SiegeTestData.ValidScenario(), SiegeTestData.RegionValidator(unreachable: true).Object);
-
-        Assert.True(result.IsReady);
-        Assert.False(result.SpatialChecksRun);
-        Assert.Equal(SiegeReadinessCodes.SpatialChecksUnavailable, Assert.Single(result.Warnings).Code);
-    }
-
-    [Fact]
-    public async Task TownWithoutRegion_SkipsSpatialChecks_WithAWarning()
-    {
-        var scenario = SiegeTestData.ValidScenario();
-        scenario.Town.WgRegionId = "";
-        var validator = SiegeTestData.RegionValidator();
-
-        var result = await ReadinessOf(scenario, validator.Object);
-
-        Assert.True(result.IsReady);
-        Assert.False(result.SpatialChecksRun);
-        Assert.Equal(SiegeReadinessCodes.TownHasNoRegion, Assert.Single(result.Warnings).Code);
-        validator.Verify(v => v.ValidateAsync(It.IsAny<object?>(), It.IsAny<object?>(), It.IsAny<string?>(), It.IsAny<Dictionary<string, object>?>()), Times.Never);
-    }
-
-    // The real LocationInsideRegionValidator (not a mock) behind the readiness check: proves the
-    // reuse actually reaches IRegionService with the town's region and each point's x/z.
-    [Fact]
-    public async Task RealLocationInsideRegionValidator_ReportsAPointOutsideTheTown()
-    {
-        var scenario = SiegeTestData.ValidScenario();
-        scenario.HubLocation.X = 5000;
-        var regionService = new Mock<IRegionService>();
-        regionService.Setup(r => r.IsLocationInsideRegionAsync("cinix", It.IsAny<double>(), It.IsAny<double>(), false))
-            .ReturnsAsync((string region, double x, double z, bool boundary) => x < 1000);
-        var validator = new LocationInsideRegionValidator(regionService.Object, _locationService.Object);
-
-        var result = await ReadinessOf(scenario, validator);
-
-        var error = Assert.Single(result.Errors);
-        Assert.Equal(SiegeReadinessCodes.HubOutsideTown, error.Code);
-        Assert.Contains("Cinix", error.Message);
-        Assert.True(result.SpatialChecksRun);
-    }
-
-    [Fact]
-    public async Task RealLocationInsideRegionValidator_PluginDown_IsAWarning()
-    {
-        var regionService = new Mock<IRegionService>();
-        regionService.Setup(r => r.IsLocationInsideRegionAsync(It.IsAny<string>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<bool>()))
-            .ThrowsAsync(new RegionServiceUnavailableException("down", new HttpRequestException()));
-        var validator = new LocationInsideRegionValidator(regionService.Object, _locationService.Object);
-
-        var result = await ReadinessOf(SiegeTestData.ValidScenario(), validator);
-
-        Assert.True(result.IsReady);
-        Assert.Equal(SiegeReadinessCodes.SpatialChecksUnavailable, Assert.Single(result.Warnings).Code);
     }
 
     [Fact]
