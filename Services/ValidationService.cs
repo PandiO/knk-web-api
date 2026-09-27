@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
@@ -256,6 +258,61 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>
+        /// When the dependency field is an entity reference (an Object field), the form often holds
+        /// only part of the picked record - an edit loads a read DTO's FK plus display name as
+        /// {id, name} - while validators read other properties off it (Town.WgRegionId). So a
+        /// dependency value that carries an id is replaced by the saved record. A loaded entity (the
+        /// saved-entity checks pass one), an unsaved record without an id, or an id that isn't found
+        /// stays as it is.
+        /// </summary>
+        private async Task<object?> ResolveDependencyRecordAsync(FieldValidationRule rule, object? dependencyValue)
+        {
+            var field = rule.DependsOnField;
+            if (dependencyValue == null || field == null || field.FieldType != FieldType.Object || string.IsNullOrWhiteSpace(field.ObjectType))
+                return dependencyValue;
+
+            var id = ReferencedId(dependencyValue);
+            if (id == null) return dependencyValue;
+
+            try
+            {
+                return await _placeholderService.LoadEntityByIdAsync(field.ObjectType, id) ?? dependencyValue;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Could not load {field.ObjectType} {id}: {ex.Message}");
+                return dependencyValue;
+            }
+        }
+
+        // The id of a form value that references a record: a bare id, or form JSON / a dictionary
+        // with an "id". Anything else (e.g. an entity object) has none to resolve.
+        private static object? ReferencedId(object value)
+        {
+            switch (value)
+            {
+                case int or long:
+                    return value;
+                case string text:
+                    return long.TryParse(text, out var parsed) ? parsed : null;
+                case JsonElement { ValueKind: JsonValueKind.Number } number:
+                    return number.TryGetInt64(out var n) ? n : null;
+                case JsonElement { ValueKind: JsonValueKind.String } str:
+                    return long.TryParse(str.GetString(), out var s) ? s : null;
+                case JsonElement { ValueKind: JsonValueKind.Object } obj:
+                    foreach (var property in obj.EnumerateObject())
+                        if (property.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
+                            return ReferencedId(property.Value);
+                    return null;
+                case IDictionary<string, object?> dictionary:
+                    var key = dictionary.Keys.FirstOrDefault(k => k.Equals("id", StringComparison.OrdinalIgnoreCase));
+                    return key != null && dictionary[key] is { } idValue ? ReferencedId(idValue) : null;
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
         /// Execute a single validation rule with optional placeholder resolution.
         /// </summary>
         private async Task<ValidationResultDto> ExecuteValidationRuleAsync(
@@ -280,7 +337,9 @@ namespace knkwebapi_v2.Services
                     Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Extracted dependencyValue from formContextData['{dependencyFieldName}']");
                 }
             }
-            
+
+            dependencyValue = await ResolveDependencyRecordAsync(rule, dependencyValue);
+
             // Check if dependency is required but not filled
             if (rule.DependsOnFieldId.HasValue && dependencyValue == null && !rule.RequiresDependencyFilled)
             {

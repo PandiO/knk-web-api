@@ -700,6 +700,27 @@ public class PlaceholderResolutionServiceTests : IDisposable
 
     #endregion
 
+    #region LoadEntityByIdAsync
+
+    [Theory]
+    [InlineData(100L)]      // an id from JSON arrives as a long; the key is an int
+    [InlineData("100")]
+    public async Task LoadEntityByIdAsync_FindsTheRecordByTypeNameAndId(object id)
+    {
+        var town = Assert.IsType<Town>(await _service.LoadEntityByIdAsync("town", id));
+        Assert.Equal("Springfield", town.Name);
+    }
+
+    [Fact]
+    public async Task LoadEntityByIdAsync_UnknownTypeOrId_ReturnsNull()
+    {
+        Assert.Null(await _service.LoadEntityByIdAsync("NoSuchEntity", 100));
+        Assert.Null(await _service.LoadEntityByIdAsync("Town", 999));
+        Assert.Null(await _service.LoadEntityByIdAsync("Town", "not a number"));
+    }
+
+    #endregion
+
     public void Dispose()
     {
         _dbContext?.Dispose();

@@ -17,9 +17,6 @@ namespace knkwebapi_v2.Services
         public const string PlayersMaxBelowMin = "PLAYERS_MAX_BELOW_MIN";
         public const string DurationRangeInvalid = "DURATION_RANGE_INVALID";
         public const string DistrictOutsideTown = "DISTRICT_OUTSIDE_TOWN";
-        public const string HubOutsideTown = "HUB_OUTSIDE_TOWN";
-        public const string SpawnpointOutsideTown = "SPAWNPOINT_OUTSIDE_TOWN";
-        public const string ObjectiveOutsideTown = "OBJECTIVE_OUTSIDE_TOWN";
         public const string ObjectivesMinOne = "OBJECTIVES_MIN_ONE";
         public const string ObjectiveNoCaptureLocation = "OBJECTIVE_NO_CAPTURE_LOCATION";
         public const string ObjectiveGateNotSelected = "OBJECTIVE_GATE_NOT_SELECTED";
@@ -27,19 +24,24 @@ namespace knkwebapi_v2.Services
         public const string GateOwnerNotInScenario = "GATE_OWNER_NOT_IN_SCENARIO";
         public const string GateOutsideScenarioArea = "GATE_OUTSIDE_SCENARIO_AREA";
 
+        // A field-validation rule configured on a siege form failed: an error when the rule is
+        // blocking, a warning when it isn't. (Replaced the hard-coded HUB_/SPAWNPOINT_/
+        // OBJECTIVE_OUTSIDE_TOWN checks on 2026-09-27 - those are now rules an admin adds or not.)
+        public const string FieldRuleFailed = "FIELD_RULE_FAILED";
+
         // Warnings
         public const string NoInstantVictoryObjective = "NO_INSTANT_VICTORY_OBJECTIVE";
-        public const string SpatialChecksSkipped = "SPATIAL_CHECKS_SKIPPED";
+        // A configured rule couldn't reach a verdict (the Minecraft server/plugin is unreachable).
+        // The code keeps its original name: the plugin and the web app already know it.
         public const string SpatialChecksUnavailable = "SPATIAL_CHECKS_UNAVAILABLE";
-        public const string TownHasNoRegion = "TOWN_HAS_NO_REGION";
     }
 
     /// <summary>
     /// The structural half of scenario validation (docs/specs/siege-minigame/DESIGN.md §3.9): every
     /// rule that can be decided from the loaded scenario graph alone. Pure, so SiegeLobbyService's
-    /// runtime-config and SiegeScenarioService's readiness endpoint share one rule set. The spatial
-    /// half (hub/spawnpoint/objective locations inside the town's WorldGuard region) needs the plugin
-    /// and is added by SiegeScenarioService.
+    /// runtime-config and SiegeScenarioService's readiness endpoint share one rule set. The
+    /// field-validation rules configured on the siege forms (e.g. a location inside the town's
+    /// WorldGuard region, which needs the plugin) are added by SiegeScenarioService.
     ///
     /// Expects the graph SiegeScenarioRepository.GetByIdAsync loads (teams with clan + spawnpoints,
     /// objectives with location + gate location, gates with the gate's district, districts).

@@ -118,6 +118,9 @@ public static class SiegeTestData
         return mock;
     }
 
+    /// <summary>No siege form has validation rules: readiness runs no field-rule checks.</summary>
+    public static ISavedEntityRuleValidator NoRules() => new SiegeFormRules().Validator();
+
     // ---- InMemory database (real repositories) ----
 
     public static KnKDbContext NewContext(string name) =>
