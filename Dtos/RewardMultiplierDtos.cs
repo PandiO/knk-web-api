@@ -114,8 +114,8 @@ namespace knkwebapi_v2.Dtos
     /// <summary>
     /// A player's multiplier for each currency, with the breakdown the plugin shows (KNG-16):
     /// coins x personal salary x rank salary multipliers, gems and XP x their own personal and
-    /// rank GemBonus/ExpBonus multipliers. No global multiplier (that one is salary-only). Used for
-    /// title promotion bonuses and domain discovery rewards alike.
+    /// rank GemBonus/ExpBonus multipliers. No global multiplier (that one is salary-only). Domain
+    /// discovery rewards use it; TitleProgressionService applies the same multipliers to title bonuses.
     /// </summary>
     public class CurrencyMultipliersDto
     {

@@ -230,9 +230,14 @@ namespace knkwebapi_v2.Dtos
         // True when there are no errors; warnings never block readiness.
         [JsonPropertyName("isReady")] public bool IsReady { get; set; }
 
-        // False when the WorldGuard-region checks were skipped (runtime-config) or couldn't run
-        // (plugin unreachable, town without a region) - see the warnings.
+        // False when the configured field-validation rules were skipped (runtime-config) or some
+        // couldn't run (plugin unreachable) - see the warnings. The name predates the rules: these
+        // were hard-coded location-inside-town checks until 2026-09-27.
         [JsonPropertyName("spatialChecksRun")] public bool SpatialChecksRun { get; set; }
+
+        // How many field-validation rule checks ran (a field with rules, per saved entity that has a
+        // value there). 0 = no rules configured on the siege forms, so nothing was checked.
+        [JsonPropertyName("fieldRuleChecks")] public int FieldRuleChecks { get; set; }
 
         [JsonPropertyName("errors")] public List<SiegeReadinessIssueDto> Errors { get; set; } = new();
         [JsonPropertyName("warnings")] public List<SiegeReadinessIssueDto> Warnings { get; set; } = new();

@@ -19,15 +19,13 @@ namespace knkwebapi_v2.Repositories
         /// haven't bought it (DESIGN.md §2.4).</summary>
         Task<KitPurchase?> GetPurchaseAsync(int kitId, int userId);
 
-        /// <summary>Persists a new claim row and, if a balance was deducted for this claim,
-        /// the mutated User in the SAME SaveChanges call - EF Core commits one SaveChangesAsync
-        /// as a single DB transaction, which is what DESIGN.md §5.1's "deduct-then-record, one
-        /// transaction, a failed deduction never produces a claim row" actually requires: this
-        /// is the one place both writes must land together or not at all.</summary>
-        Task<KitClaim> AddClaimAsync(KitClaim claim, User? userToPersist = null);
+        /// <summary>Persists a new claim row. KitService calls it inside the user's locked
+        /// transaction, after the claim's cost posting (ICurrencyService), so both commit together
+        /// or not at all (DESIGN.md §5.1: a refused payment never produces a claim row).</summary>
+        Task<KitClaim> AddClaimAsync(KitClaim claim);
 
-        /// <summary>Persists a new purchase row and the Gems-deducted User in one SaveChanges
-        /// call, same atomicity reasoning as AddClaimAsync (DESIGN.md §5.2).</summary>
-        Task<KitPurchase> AddPurchaseAsync(KitPurchase purchase, User userToPersist);
+        /// <summary>Persists a new purchase row; same transaction as its KIT_PURCHASE posting
+        /// (DESIGN.md §5.2).</summary>
+        Task<KitPurchase> AddPurchaseAsync(KitPurchase purchase);
     }
 }

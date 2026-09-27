@@ -108,33 +108,18 @@ namespace knkwebapi_v2.Repositories
                 .FirstOrDefaultAsync(p => p.KitId == kitId && p.UserId == userId);
         }
 
-        public async Task<KitClaim> AddClaimAsync(KitClaim claim, User? userToPersist = null)
+        public async Task<KitClaim> AddClaimAsync(KitClaim claim)
         {
-            AttachIfDetached(userToPersist);
             await _context.KitClaims.AddAsync(claim);
             await _context.SaveChangesAsync();
             return claim;
         }
 
-        public async Task<KitPurchase> AddPurchaseAsync(KitPurchase purchase, User userToPersist)
+        public async Task<KitPurchase> AddPurchaseAsync(KitPurchase purchase)
         {
-            AttachIfDetached(userToPersist);
             await _context.KitPurchases.AddAsync(purchase);
             await _context.SaveChangesAsync();
             return purchase;
-        }
-
-        /// <summary>
-        /// A user loaded through this context is tracked, so SaveChanges writes just the balance
-        /// that changed. Users.Update() would rewrite the whole row from this request's copy
-        /// (currency DESIGN.md §1.4 A2), so it is only used for a detached user.
-        /// </summary>
-        private void AttachIfDetached(User? user)
-        {
-            if (user != null && _context.Entry(user).State == EntityState.Detached)
-            {
-                _context.Users.Update(user);
-            }
         }
     }
 }

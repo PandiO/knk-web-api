@@ -50,6 +50,13 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// <summary>Adds the rows and saves. Throws DbUpdateException on a (UserId, DomainId) duplicate.</summary>
         Task AddRangeAsync(IEnumerable<UserDomainDiscovery> discoveries);
 
+        /// <summary>
+        /// Idempotency keys of the user's DISCOVERY_REWARD ledger postings starting with
+        /// <paramref name="keyPrefix"/> (system scope), so a domain discovered again after a reset
+        /// gets a fresh key.
+        /// </summary>
+        Task<List<string>> GetRewardKeysAsync(string keyPrefix);
+
         Task<UserDomainDiscovery?> GetAsync(int userId, int domainId);
 
         Task DeleteAsync(UserDomainDiscovery discovery);

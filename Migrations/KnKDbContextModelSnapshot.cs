@@ -181,6 +181,11 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("PrivateMessageRetentionDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
                     b.Property<int>("RetentionDays")
                         .HasColumnType("int");
 
@@ -393,6 +398,10 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("DedupKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
                     b.Property<string>("DetailsJson")
                         .HasColumnType("json");
 
@@ -403,6 +412,11 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<byte>("Severity")
                         .HasColumnType("tinyint unsigned");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
 
                     b.Property<long?>("TransactionId")
                         .HasColumnType("bigint");
@@ -416,6 +430,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("AckedAt", "CreatedAt");
 
                     b.HasIndex("UserId", "CreatedAt");
+
+                    b.HasIndex("Rule", "DedupKey", "CreatedAt");
 
                     b.ToTable("currency_alerts", (string)null);
                 });
@@ -572,6 +588,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     b.Property<long>("MinTransfer")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("SignupGrant")
                         .HasColumnType("bigint");
 
                     b.Property<int>("TransferFeeBasisPoints")
@@ -2090,6 +2109,80 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("ItemBlueprintTag");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemInstance", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("CustomDisplayName")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<int?>("GradeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsGhosted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsSoulbound")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("OriginRef")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("OwnerCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OwnerUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("GradeId");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.HasIndex("Origin", "OriginRef");
+
+                    b.ToTable("item_instances", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemInstanceEnchantment", b =>
+                {
+                    b.Property<long>("ItemInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("EnchantmentDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.HasKey("ItemInstanceId", "EnchantmentDefinitionId");
+
+                    b.HasIndex("EnchantmentDefinitionId");
+
+                    b.ToTable("item_instance_enchantments", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Kit", b =>
                 {
                     b.Property<int>("Id")
@@ -2328,6 +2421,596 @@ namespace knkwebapi_v2.Migrations
                         .HasName("PRIMARY");
 
                     b.ToTable("locations", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxClaim", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoxGradeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ClaimedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("DeliveryMethod")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("DeliveryNote")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<bool>("IsSpecial")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ItemGradeId")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("ItemInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("LootboxSpawnId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("LootboxTokenId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("BoxGradeId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ItemGradeId");
+
+                    b.HasIndex("ItemInstanceId")
+                        .IsUnique();
+
+                    b.HasIndex("LootboxSpawnId")
+                        .IsUnique();
+
+                    b.HasIndex("LootboxTokenId")
+                        .IsUnique();
+
+                    b.HasIndex("LootboxTypeId");
+
+                    b.HasIndex("UserId", "ClaimedAt");
+
+                    b.ToTable("lootbox_claims", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxConfiguration", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("AnnounceMinItemStars")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AnnounceSpawnMinBoxStars")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DropAnnouncementTemplate")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("GlobalMaxActive")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxClaimsPerPlayerPerDay")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SpawnAnnouncementTemplate")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("lootbox_configurations", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxEnchantRoll", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ChancePercent")
+                        .HasPrecision(7, 4)
+                        .HasColumnType("decimal(7,4)");
+
+                    b.Property<int>("EnchantmentDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxLevel")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinBoxStars")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinLevel")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("EnchantmentDefinitionId");
+
+                    b.HasIndex("LootboxTypeId", "SortOrder");
+
+                    b.ToTable("lootbox_enchant_rolls", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxPoolEntry", b =>
+                {
+                    b.Property<int>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("GradeIdOverride")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<decimal?>("WeightOverride")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.HasKey("LootboxTypeId", "ItemBlueprintId");
+
+                    b.HasIndex("GradeIdOverride");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.ToTable("lootbox_pool_entries", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawn", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoxGradeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int?>("ClaimedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ServerId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int?>("SpawnAreaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SpawnedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<Guid>("Token")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("World")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("X")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Y")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Z")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("BoxGradeId");
+
+                    b.HasIndex("ClaimedByUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("LootboxTypeId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("SpawnAreaId", "Status");
+
+                    b.HasIndex("Status", "ExpiresAt");
+
+                    b.ToTable("lootbox_spawns", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawnArea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ExcludedRegionIds")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.Property<int>("LifetimeMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxActive")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinDistanceFromPlayers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinOnlinePlayers")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<decimal>("SpawnChancePercent")
+                        .HasPrecision(7, 4)
+                        .HasColumnType("decimal(7,4)");
+
+                    b.Property<int>("SpawnIntervalSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WgRegionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("World")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("lootbox_spawn_areas", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawnAreaType", b =>
+                {
+                    b.Property<int>("LootboxSpawnAreaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("LootboxSpawnAreaId", "LootboxTypeId");
+
+                    b.HasIndex("LootboxTypeId");
+
+                    b.ToTable("lootbox_spawn_area_types", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpecialEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ChancePerMillion")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinBoxStars")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("LootboxTypeId");
+
+                    b.ToTable("lootbox_special_entries", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoxGradeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("IssueIndex")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IssueKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int?>("IssuedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IssuedReason")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("IssuedToUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime?>("RedeemedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int?>("RedeemedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int?>("SourceSpawnId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<Guid>("Token")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("BoxGradeId");
+
+                    b.HasIndex("IssuedByUserId");
+
+                    b.HasIndex("IssuedToUserId");
+
+                    b.HasIndex("LootboxTypeId");
+
+                    b.HasIndex("RedeemedByUserId");
+
+                    b.HasIndex("SourceSpawnId")
+                        .IsUnique();
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("IssueKey", "IssueIndex")
+                        .IsUnique();
+
+                    b.ToTable("lootbox_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxTokenGrant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BoxStars")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("KitId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PermissionGroupId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("KitId");
+
+                    b.HasIndex("LootboxTypeId");
+
+                    b.HasIndex("PermissionGroupId");
+
+                    b.ToTable("lootbox_token_grants", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AnnounceMinItemStars")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DisplayMaterialRefId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IncludeSubcategories")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ItemStarSpread")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxBoxStars")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxClaimsPerPlayerPerDay")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinBoxStars")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<int>("SpawnWeight")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CategoryId")
+                        .IsUnique();
+
+                    b.HasIndex("DisplayMaterialRefId");
+
+                    b.ToTable("lootbox_types", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxTypeGradeWeight", b =>
+                {
+                    b.Property<int>("LootboxTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.HasKey("LootboxTypeId", "GradeId");
+
+                    b.HasIndex("GradeId");
+
+                    b.ToTable("lootbox_type_grade_weights", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>
@@ -2695,6 +3378,64 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("permission_holders", (string)null);
 
                     b.UseTptMappingStrategy();
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PrivateMessageLogEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ClientMessageId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("RecipientName")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("RecipientUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("SenderUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("ViaReply")
+                        .HasColumnType("tinyint(1)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ClientMessageId")
+                        .IsUnique();
+
+                    b.HasIndex("SentAt");
+
+                    b.HasIndex("RecipientUserId", "SentAt");
+
+                    b.HasIndex("SenderUserId", "SentAt");
+
+                    b.ToTable("private_message_log_entries", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SalaryConfiguration", b =>
@@ -3560,6 +4301,33 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("user_domain_discoveries", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("IgnoredUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IgnoredUserId");
+
+                    b.HasIndex("UserId", "IgnoredUserId")
+                        .IsUnique();
+
+                    b.ToTable("user_ignores", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
                 {
                     b.Property<int>("UserId")
@@ -3868,7 +4636,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("Coins")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -3886,7 +4656,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<int>("ExperiencePoints")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("FrozenAt")
                         .HasColumnType("datetime(6)");
@@ -3901,7 +4673,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("Gems")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int?>("Gender")
                         .HasColumnType("int");
@@ -4615,6 +5389,50 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Tag");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemInstance", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("OwnerUser");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemInstanceEnchantment", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.EnchantmentDefinition", "EnchantmentDefinition")
+                        .WithMany("AppliedToInstances")
+                        .HasForeignKey("EnchantmentDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemInstance", "ItemInstance")
+                        .WithMany("Enchantments")
+                        .HasForeignKey("ItemInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EnchantmentDefinition");
+
+                    b.Navigation("ItemInstance");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Kit", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "Boots")
@@ -4739,6 +5557,310 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxClaim", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Grade", "BoxGrade")
+                        .WithMany()
+                        .HasForeignKey("BoxGradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Grade", "ItemGrade")
+                        .WithMany()
+                        .HasForeignKey("ItemGradeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.ItemInstance", "ItemInstance")
+                        .WithMany()
+                        .HasForeignKey("ItemInstanceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxSpawn", "LootboxSpawn")
+                        .WithMany()
+                        .HasForeignKey("LootboxSpawnId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxToken", "LootboxToken")
+                        .WithOne("Claim")
+                        .HasForeignKey("knkwebapi_v2.Models.LootboxClaim", "LootboxTokenId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany()
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BoxGrade");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ItemGrade");
+
+                    b.Navigation("ItemInstance");
+
+                    b.Navigation("LootboxSpawn");
+
+                    b.Navigation("LootboxToken");
+
+                    b.Navigation("LootboxType");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxEnchantRoll", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.EnchantmentDefinition", "EnchantmentDefinition")
+                        .WithMany()
+                        .HasForeignKey("EnchantmentDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany("EnchantRolls")
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EnchantmentDefinition");
+
+                    b.Navigation("LootboxType");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxPoolEntry", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Grade", "GradeOverride")
+                        .WithMany()
+                        .HasForeignKey("GradeIdOverride")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany("PoolEntries")
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GradeOverride");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("LootboxType");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawn", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Grade", "BoxGrade")
+                        .WithMany()
+                        .HasForeignKey("BoxGradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "ClaimedByUser")
+                        .WithMany()
+                        .HasForeignKey("ClaimedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany()
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxSpawnArea", "SpawnArea")
+                        .WithMany()
+                        .HasForeignKey("SpawnAreaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("BoxGrade");
+
+                    b.Navigation("ClaimedByUser");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("LootboxType");
+
+                    b.Navigation("SpawnArea");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawnArea", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawnAreaType", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.LootboxSpawnArea", "LootboxSpawnArea")
+                        .WithMany("AllowedTypes")
+                        .HasForeignKey("LootboxSpawnAreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany()
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LootboxSpawnArea");
+
+                    b.Navigation("LootboxType");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpecialEntry", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany()
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("LootboxType");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxToken", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Grade", "BoxGrade")
+                        .WithMany()
+                        .HasForeignKey("BoxGradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "IssuedByUser")
+                        .WithMany()
+                        .HasForeignKey("IssuedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "IssuedToUser")
+                        .WithMany()
+                        .HasForeignKey("IssuedToUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany()
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "RedeemedByUser")
+                        .WithMany()
+                        .HasForeignKey("RedeemedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxSpawn", "SourceSpawn")
+                        .WithMany()
+                        .HasForeignKey("SourceSpawnId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("BoxGrade");
+
+                    b.Navigation("IssuedByUser");
+
+                    b.Navigation("IssuedToUser");
+
+                    b.Navigation("LootboxType");
+
+                    b.Navigation("RedeemedByUser");
+
+                    b.Navigation("SourceSpawn");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxTokenGrant", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Kit", "Kit")
+                        .WithMany()
+                        .HasForeignKey("KitId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany()
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "PermissionGroup")
+                        .WithMany()
+                        .HasForeignKey("PermissionGroupId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Kit");
+
+                    b.Navigation("LootboxType");
+
+                    b.Navigation("PermissionGroup");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxType", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "DisplayMaterial")
+                        .WithMany()
+                        .HasForeignKey("DisplayMaterialRefId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Category");
+
+                    b.Navigation("DisplayMaterial");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxTypeGradeWeight", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.LootboxType", "LootboxType")
+                        .WithMany("GradeWeights")
+                        .HasForeignKey("LootboxTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("LootboxType");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>
@@ -5094,6 +6216,25 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.User", "IgnoredUser")
+                        .WithMany()
+                        .HasForeignKey("IgnoredUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IgnoredUser");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.PermissionGroup", "PermissionGroup")
@@ -5308,6 +6449,8 @@ namespace knkwebapi_v2.Migrations
                 {
                     b.Navigation("AbilityDefinition");
 
+                    b.Navigation("AppliedToInstances");
+
                     b.Navigation("DefaultForBlueprints");
                 });
 
@@ -5358,9 +6501,33 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Tags");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemInstance", b =>
+                {
+                    b.Navigation("Enchantments");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Kit", b =>
                 {
                     b.Navigation("Contents");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawnArea", b =>
+                {
+                    b.Navigation("AllowedTypes");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxToken", b =>
+                {
+                    b.Navigation("Claim");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LootboxType", b =>
+                {
+                    b.Navigation("EnchantRolls");
+
+                    b.Navigation("GradeWeights");
+
+                    b.Navigation("PoolEntries");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>

@@ -63,8 +63,11 @@ public class AccountManagementIntegrationTests
         var auditLogService = new AuditLogService(new AuditLogRepository(_dbContext), _userRepository);
         var membershipService = new UserPermissionGroupService(
             new UserPermissionGroupRepository(_dbContext), _userRepository, new PermissionGroupRepository(_dbContext), auditLogService);
+        var currency = new CurrencyService(new CurrencyRepository(_dbContext), _userRepository,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CurrencyService>.Instance);
         _userService = new UserService(_userRepository, _mapper, _passwordService, _linkCodeService, titleService, membershipService, auditLogService,
-            new PermissionGroupRepository(_dbContext), Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance);
+            new PermissionGroupRepository(_dbContext), Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+            currency, new TitleProgressionService(currency, _userRepository, titleService, membershipService, auditLogService));
     }
 
     #region Web App First Flow Tests

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
 using knkwebapi_v2.Repositories.Interfaces;
+using knkwebapi_v2.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace knkwebapi_v2.Repositories
@@ -131,6 +132,14 @@ namespace knkwebapi_v2.Repositories
             await _context.UserDomainDiscoveries.AddRangeAsync(discoveries);
             await _context.SaveChangesAsync();
         }
+
+        public Task<List<string>> GetRewardKeysAsync(string keyPrefix) =>
+            _context.CurrencyTransactions.AsNoTracking()
+                .Where(t => t.IdempotencyScope == CurrencyIdempotencyScopes.System
+                            && t.ReasonCode == CurrencyReasons.DiscoveryReward
+                            && t.IdempotencyKey.StartsWith(keyPrefix))
+                .Select(t => t.IdempotencyKey)
+                .ToListAsync();
 
         public Task<UserDomainDiscovery?> GetAsync(int userId, int domainId) =>
             _context.UserDomainDiscoveries.FirstOrDefaultAsync(d => d.UserId == userId && d.DomainId == domainId);

@@ -324,6 +324,25 @@ public class CurrencyServiceTests
     }
 
     [Fact]
+    public async Task SameKeySameAmountForAnotherSource_IsIdempotencyKeyReuse_NotAReplay()
+    {
+        // A kit claim cost keyed by the client's key: reusing it for a different kit at the same
+        // price must not come back "already paid" (the caller would hand out the second kit free).
+        var id = await SeedUserAsync(coins: 1_000);
+        await using var ctx = NewContext();
+        var service = Service(ctx);
+        CurrencyContext Claim(string kitId) => System(CurrencyReasons.KitClaimCost, "kit-claim:k1") with { SourceType = "Kit", SourceRef = kitId };
+
+        await service.SpendAsync(id, Currency.Coins, 100, Claim("1"));
+        var retry = await service.SpendAsync(id, Currency.Coins, 100, Claim("1"));
+        var ex = await Assert.ThrowsAsync<CurrencyException>(() => service.SpendAsync(id, Currency.Coins, 100, Claim("2")));
+
+        Assert.True(retry.Replayed);
+        Assert.Equal(CurrencyErrorCode.IdempotencyKeyReuse, ex.Code);
+        Assert.Equal(900, (await ReloadAsync(id)).Coins);
+    }
+
+    [Fact]
     public async Task KeysAreUniquePerScope()
     {
         var id = await SeedUserAsync(coins: 0);

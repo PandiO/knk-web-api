@@ -37,9 +37,12 @@ public class CurrencyLedgerMySqlTests : IClassFixture<MySqlTestDatabase>
     private async Task<int> SeedUserAsync(int coins = 0, int gems = 0)
     {
         await using var ctx = _db.NewContext();
-        var user = new User { Username = "u" + Guid.NewGuid().ToString("N")[..12], Coins = coins, Gems = gems };
+        var user = new User { Username = "u" + Guid.NewGuid().ToString("N")[..12] };
         ctx.Users.Add(user);
         await ctx.SaveChangesAsync();
+        // EF never writes balances (PropertySaveBehavior.Ignore, currency Phase 2): set the
+        // starting (pre-ledger) balance directly.
+        await ctx.Database.ExecuteSqlInterpolatedAsync($"UPDATE users SET Coins = {coins}, Gems = {gems} WHERE Id = {user.Id}");
         return user.Id;
     }
 

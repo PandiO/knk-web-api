@@ -12,7 +12,8 @@ namespace knkwebapi_v2.Services
     /// lifecycle the plugin checkpoints (create at the draw, start, left, complete or abort) and the
     /// history read. The plugin is authoritative for the live match; this service is authoritative
     /// for the result and the rewards, which it grants server-side exactly once per match.
-    /// Rewards are not written to the admin AuditLog - the match rows are their audit trail.
+    /// Rewards are one ledger posting per match (reason SIEGE_REWARD, key siege-match:{id}); they
+    /// are not written to the admin AuditLog - the ledger and the match rows are their audit trail.
     /// </summary>
     public class SiegeMatchService : ISiegeMatchService
     {
@@ -24,14 +25,20 @@ namespace knkwebapi_v2.Services
         private readonly IPlayerNotificationQueue? _notificationQueue;
         private readonly ILogger<SiegeMatchService>? _logger;
         private readonly IUserPermissionGroupRepository? _memberships;
+        private readonly ICurrencyService? _currency;
+        private readonly ITitleProgressionService? _titleProgression;
 
         public SiegeMatchService(
             ISiegeMatchRepository repo,
             ITitleService titleService,
             IPlayerNotificationQueue? notificationQueue = null,
             ILogger<SiegeMatchService>? logger = null,
-            IUserPermissionGroupRepository? memberships = null)
+            IUserPermissionGroupRepository? memberships = null,
+            ICurrencyService? currency = null,
+            ITitleProgressionService? titleProgression = null)
         {
+            _currency = currency;
+            _titleProgression = titleProgression;
             _repo = repo;
             _titleService = titleService;
             _notificationQueue = notificationQueue;
@@ -247,40 +254,53 @@ namespace knkwebapi_v2.Services
                     .ToList();
 
                 var grantees = rewards.Where(x => x.Reward.Coins > 0 || x.Reward.Experience > 0 || x.Reward.Gems > 0).ToList();
-                await _repo.LockUsersAsync(grantees.Select(x => x.Row.UserId));
+                // Read for the personal multipliers only; the ledger locks the rows (ascending id,
+                // inside this transaction) before it reads or writes a balance.
                 var users = (await _repo.GetUsersAsync(grantees.Select(x => x.Row.UserId))).ToDictionary(u => u.Id);
-                var brackets = grantees.Any(x => x.Reward.Experience > 0) ? await _titleService.GetAllOrderedAsync() : null;
 
                 var titleChangeByUser = new Dictionary<int, TitleChangeResultDto>();
                 var coinsByUser = new Dictionary<int, (int Coins, decimal Multiplier, List<RewardMultiplierDto> Breakdown)>();
+                var legs = new List<CurrencyLeg>();
                 var now = DateTime.UtcNow;
                 foreach (var (row, reward) in grantees)
                 {
                     var user = users[row.UserId];
-                    var previousExperience = user.ExperiencePoints;
                     var ranks = await RanksAsync(user.Id, now);
                     var multiplier = user.PersonalSalaryMultiplier * ranks.Salary;
-                    var coins = TitleProgression.ScaleBonus(reward.Coins, multiplier);
+                    // Within the coin cap (BalanceLimits), so it fits an int.
+                    var coins = (int)TitleProgressionService.ScaleBonus(reward.Coins, multiplier);
                     var breakdown = new List<RewardMultiplierDto> { RewardMultiplierDto.Personal(user.PersonalSalaryMultiplier) };
                     breakdown.AddRange(ranks.SalaryBreakdown());
                     coinsByUser[user.Id] = (coins, multiplier, breakdown);
-                    user.Coins += coins;
-                    user.Gems += reward.Gems;
-                    user.ExperiencePoints += reward.Experience;
-                    // XP goes through the shared title path, so brackets advance (and grant their
-                    // bonuses) exactly as for any other XP gain.
-                    var change = reward.Experience > 0
-                        ? TitleProgression.ApplyExperienceChange(user, previousExperience, brackets, ranks)
-                        : null;
-                    if (change != null)
-                    {
-                        titleChangeByUser[user.Id] = change;
-                        titleChanges.Add((user, change));
-                    }
+                    if (coins > 0) legs.Add(new CurrencyLeg(user.Id, Currency.Coins, coins));
+                    if (reward.Gems > 0) legs.Add(new CurrencyLeg(user.Id, Currency.Gems, reward.Gems));
+                    if (reward.Experience > 0) legs.Add(new CurrencyLeg(user.Id, Currency.Experience, reward.Experience));
 
                     row.CoinsAwarded = coins;
                     row.ExpAwarded = reward.Experience;
                     row.GemsAwarded = reward.Gems;
+                }
+
+                if (legs.Count > 0)
+                {
+                    if (_currency == null || _titleProgression == null)
+                        throw new InvalidOperationException("SiegeMatchService needs ICurrencyService and ITitleProgressionService to grant rewards.");
+                    // One ledger posting for the whole match (currency DESIGN.md §3.10 step 5), keyed by
+                    // the match so it can never be paid twice; it enlists in this transaction. XP goes
+                    // through the shared title path, so brackets advance (and pay their bonuses, once
+                    // per bracket ever) exactly as for any other XP gain.
+                    var posting = await _currency.PostAsync(legs,
+                        CurrencyContext.ForSystem(nameof(SiegeMatchService), CurrencyReasons.SiegeReward, $"siege-match:{match.Id}",
+                            $"Siege match {match.Id} reward") with
+                        {
+                            SourceType = "SiegeMatch",
+                            SourceRef = match.Id.ToString()
+                        });
+                    foreach (var (userId, change) in await _titleProgression.ApplyForPostingAsync(posting, null))
+                    {
+                        titleChangeByUser[userId] = change;
+                        titleChanges.Add((users[userId], change));
+                    }
                 }
 
                 await _repo.SaveChangesAsync();

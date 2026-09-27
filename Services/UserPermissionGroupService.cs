@@ -14,19 +14,22 @@ namespace knkwebapi_v2.Services
         private readonly IPermissionGroupRepository _groupRepo;
         private readonly IAuditLogService _auditLogService;
         private readonly IPlayerNotificationQueue? _notificationQueue;
+        private readonly ILootboxTokenGrantService? _lootboxTokenGrants;
 
         public UserPermissionGroupService(
             IUserPermissionGroupRepository repo,
             IUserRepository userRepo,
             IPermissionGroupRepository groupRepo,
             IAuditLogService auditLogService,
-            IPlayerNotificationQueue? notificationQueue = null)
+            IPlayerNotificationQueue? notificationQueue = null,
+            ILootboxTokenGrantService? lootboxTokenGrants = null)
         {
             _repo = repo;
             _userRepo = userRepo;
             _groupRepo = groupRepo;
             _auditLogService = auditLogService;
             _notificationQueue = notificationQueue;
+            _lootboxTokenGrants = lootboxTokenGrants;
         }
 
         /// <summary>
@@ -75,6 +78,8 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetAsync(dto.UserId, dto.PermissionGroupId);
             if (existing != null)
             {
+                // A lapsed membership coming back counts as joining the tier again (lootbox tokens below).
+                var wasLapsed = existing.ExpiresAt.HasValue && existing.ExpiresAt.Value <= now;
                 existing.ExpiresAt = expiresAt;
                 await _repo.UpdateAsync(existing);
                 existing.PermissionGroup ??= group;
@@ -88,6 +93,7 @@ namespace knkwebapi_v2.Services
                 }));
 
                 await AfterMembershipChangeAsync(user, group, now, actorUserId);
+                if (wasLapsed) await IssueLootboxTokensAsync(user, group, actorUserId);
                 return ToDto(existing, now);
             }
 
@@ -109,7 +115,19 @@ namespace knkwebapi_v2.Services
             }));
 
             await AfterMembershipChangeAsync(user, group, now, actorUserId);
+            await IssueLootboxTokensAsync(user, group, actorUserId);
             return ToDto(membership, now);
+        }
+
+        /// <summary>
+        /// Joining a premium tier issues its lootbox token items (v1's donator rank boxes; knk-workspace
+        /// docs/specs/lootboxes/IMPLEMENTATION_PLAN.md Phase 5). Only on joining: extending an active membership
+        /// issues nothing. The grant service never throws, so a failed issue can't undo the rank change.
+        /// </summary>
+        private async Task IssueLootboxTokensAsync(User user, PermissionGroup group, int? actorUserId)
+        {
+            if (_lootboxTokenGrants == null || !group.IsPremiumTier) return;
+            await _lootboxTokenGrants.IssueForPremiumTierAsync(user.Id, group.Id, actorUserId);
         }
 
         /// <summary>

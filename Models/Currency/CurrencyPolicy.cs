@@ -5,8 +5,8 @@ namespace knkwebapi_v2.Models;
 
 /// <summary>
 /// Per-currency transfer and admin limits (currency DESIGN.md §3.5), one row per currency,
-/// seeded with the §3.5 defaults by migration AddCurrencyLedger. Read by the transfer policy
-/// (currency Phase 3) and the admin daily cap (Phase 4); nothing reads it in Phase 1. Balance
+/// seeded with the §3.5 defaults by migration AddCurrencyLedger. Read for the signup grant
+/// (currency Phase 2), the transfer policy (Phase 3) and the admin daily cap (Phase 4). Balance
 /// caps themselves stay in Services/BalanceLimits (mirrored by the users CHECK constraints);
 /// MaxBalance here may only lower them.
 /// </summary>
@@ -52,7 +52,40 @@ public class CurrencyPolicy
     /// <summary>What one staff member may grant per 24 h without knk.admin.currency.unlimited.</summary>
     public long AdminDailyGrantCapPerActor { get; set; }
 
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    /// Starting balance a new account receives as a SIGNUP_GRANT posting (currency Phase 2;
+    /// 250 coins / 50 gems, the old User defaults). 0 = none. <see cref="DefaultSignupGrant"/>
+    /// applies when a currency has no policy row.
+    /// </summary>
+    public long SignupGrant { get; set; }
+
+    /// <summary>The seeded starting balances, used when the policy row is missing.</summary>
+    public static long DefaultSignupGrant(Currency currency) => currency switch
+    {
+        Currency.Coins => 250,
+        Currency.Gems => 50,
+        _ => 0
+    };
+
+    /// <summary>
+    /// When the row last changed; also its version for optimistic concurrency: a staff edit must
+    /// send back the value it loaded (PUT api/currency/admin/policy/{currency}), so a form opened
+    /// before the R1 kill switch can't quietly switch transfers back on. Written via
+    /// <see cref="VersionStamp"/> so it survives the datetime(6) column unchanged.
+    /// </summary>
+    public DateTime UpdatedAt { get; set; } = VersionStamp(DateTime.UtcNow);
 
     public int? UpdatedByUserId { get; set; }
+
+    /// <summary><paramref name="utc"/> cut to whole microseconds, the precision of the
+    /// datetime(6) column (MySQL would otherwise round, and the value sent back wouldn't match).</summary>
+    public static DateTime VersionStamp(DateTime utc) =>
+        new(utc.Ticks - utc.Ticks % 10, DateTimeKind.Utc);
+
+    /// <summary>Whether a client's <paramref name="loaded"/> UpdatedAt is this row's current version.</summary>
+    public bool IsVersion(DateTime loaded)
+    {
+        if (loaded.Kind == DateTimeKind.Local) loaded = loaded.ToUniversalTime();
+        return VersionStamp(loaded).Ticks == VersionStamp(UpdatedAt).Ticks;
+    }
 }

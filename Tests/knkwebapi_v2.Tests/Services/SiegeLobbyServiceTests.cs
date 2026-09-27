@@ -159,7 +159,7 @@ public class SiegeLobbyServiceTests : IAsyncLifetime
         _context.ChangeTracker.Clear();
         var scenarios = new SiegeScenarioService(new SiegeScenarioRepository(_context),
             new Moq.Mock<knkwebapi_v2.Services.ILocationService>().Object,
-            Array.Empty<knkwebapi_v2.Services.Interfaces.IValidationMethod>(), SiegeTestData.Mapper());
+            SiegeTestData.NoRules(), SiegeTestData.Mapper());
 
         var page = await scenarios.SearchTeamsAsync(new PagedQueryDto
         {

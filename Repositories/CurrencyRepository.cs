@@ -37,6 +37,18 @@ namespace knkwebapi_v2.Repositories
         public Task<CurrencyTransaction?> FindReversalOfAsync(long transactionId, CancellationToken ct = default) =>
             WithEntries().FirstOrDefaultAsync(t => t.ReversesTransactionId == transactionId, ct);
 
+        public Task<List<int>> GetUsersMergedIntoAsync(int userId, CancellationToken ct = default)
+        {
+            var source = userId.ToString();
+            return _context.CurrencyEntries.AsNoTracking()
+                .Where(e => e.Transaction.ReasonCode == CurrencyReasons.MergeForfeit
+                    && e.Transaction.SourceType == "User" && e.Transaction.SourceRef == source
+                    && e.UserId != null && e.UserId != userId)
+                .Select(e => e.UserId!.Value)
+                .Distinct()
+                .ToListAsync(ct);
+        }
+
         public async Task<Dictionary<int, User>> GetUsersForUpdateAsync(IEnumerable<int> userIds, CancellationToken ct = default)
         {
             var ids = userIds.Distinct().ToList();
@@ -57,8 +69,40 @@ namespace knkwebapi_v2.Repositories
         public async Task AddTransactionAsync(CurrencyTransaction transaction, CancellationToken ct = default)
         {
             await _context.CurrencyTransactions.AddAsync(transaction, ct);
+            // Ledger rows first: if this insert loses an idempotency race (unique index), no
+            // balance has been written yet, so the caller's transaction stays clean.
             await _context.SaveChangesAsync(ct);
+
+            if (!_context.Database.IsRelational())
+            {
+                // EF InMemory (tests) has no ExecuteUpdate and doesn't apply PropertySaveBehavior,
+                // so the SaveChanges above already stored the tracked users' new balances.
+                return;
+            }
+
+            // Coins/Gems/ExperiencePoints are PropertySaveBehavior.Ignore (KnKDbContext), so
+            // SaveChanges never writes them: this is the only write, inside the locked ledger
+            // transaction. SaveChanges already made the tracked users' values the "original"
+            // ones, so the entities and the rows agree afterwards.
+            var finalBalances = transaction.Entries
+                .Where(e => e.AccountKind == CurrencyAccountKind.User)
+                .GroupBy(e => (UserId: e.UserId!.Value, e.Currency))
+                .Select(g => (g.Key.UserId, g.Key.Currency, Value: checked((int)g.Last().BalanceAfter!.Value)));
+            foreach (var (userId, currency, value) in finalBalances)
+            {
+                var row = _context.Users.Where(u => u.Id == userId);
+                _ = currency switch
+                {
+                    Currency.Coins => await row.ExecuteUpdateAsync(set => set.SetProperty(u => u.Coins, value), ct),
+                    Currency.Gems => await row.ExecuteUpdateAsync(set => set.SetProperty(u => u.Gems, value), ct),
+                    Currency.Experience => await row.ExecuteUpdateAsync(set => set.SetProperty(u => u.ExperiencePoints, value), ct),
+                    _ => throw new ArgumentOutOfRangeException(nameof(currency))
+                };
+            }
         }
+
+        public async Task<Dictionary<Currency, CurrencyPolicy>> GetPoliciesAsync(CancellationToken ct = default) =>
+            await _context.CurrencyPolicies.AsNoTracking().ToDictionaryAsync(p => p.Currency, ct);
 
         public void Discard(CurrencyTransaction transaction)
         {
@@ -73,22 +117,125 @@ namespace knkwebapi_v2.Repositories
         public bool IsUniqueViolation(DbUpdateException exception) =>
             exception.InnerException is MySqlException { ErrorCode: MySqlErrorCode.DuplicateKeyEntry };
 
-        public async Task<long> SumSentSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default)
+        public async Task<List<(DateTime CreatedAt, long Amount)>> GetTransfersSentSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default)
         {
-            return await _context.CurrencyEntries.AsNoTracking()
-                .Where(e => e.UserId == userId
-                            && e.Currency == currency
-                            && e.Amount < 0
-                            && e.Transaction.Kind == CurrencyTransactionKind.Transfer
-                            && e.Transaction.FromUserId == userId
-                            && e.Transaction.CreatedAt >= since)
-                .SumAsync(e => -e.Amount, ct);
+            // What the recipient got (not the sender's debit, which also carries any fee), per
+            // transfer, less what a reversal took back from them (KNG-21: a reversed transfer
+            // stops counting); transfers of the other currency, and fully reversed ones, come back
+            // as 0 and are dropped.
+            var rows = await _context.CurrencyTransactions.AsNoTracking()
+                .Where(t => t.FromUserId == userId && t.Kind == CurrencyTransactionKind.Transfer && t.CreatedAt >= since)
+                .Select(t => new
+                {
+                    t.CreatedAt,
+                    Amount = t.Entries.Where(e => e.UserId == t.ToUserId && e.Currency == currency && e.Amount > 0).Sum(e => e.Amount)
+                        + _context.CurrencyEntries
+                            .Where(e => e.Transaction.ReversesTransactionId == t.Id && e.UserId == t.ToUserId && e.Currency == currency)
+                            .Sum(e => e.Amount)
+                })
+                .ToListAsync(ct);
+            return rows.Where(r => r.Amount > 0).Select(r => (r.CreatedAt, r.Amount)).OrderBy(r => r.CreatedAt).ToList();
+        }
+
+        public async Task<long> SumReceivedSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default)
+        {
+            var transfers = _context.CurrencyTransactions.AsNoTracking()
+                .Where(t => t.ToUserId == userId && t.Kind == CurrencyTransactionKind.Transfer && t.CreatedAt >= since);
+            var received = await transfers
+                .SelectMany(t => t.Entries.Where(e => e.UserId == userId && e.Currency == currency && e.Amount > 0))
+                .SumAsync(e => (long?)e.Amount, ct) ?? 0;
+            if (received == 0)
+            {
+                return 0;
+            }
+            // Less what reversals of those transfers took back (KNG-21: a reversed transfer stops
+            // counting against the receive cap; a partial reversal by what it reversed).
+            var transferIds = transfers.Select(t => t.Id);
+            var reversed = await _context.CurrencyEntries.AsNoTracking()
+                .Where(e => e.UserId == userId && e.Currency == currency && e.Transaction.ReversesTransactionId != null
+                    && transferIds.Contains(e.Transaction.ReversesTransactionId.Value))
+                .SumAsync(e => (long?)e.Amount, ct) ?? 0;
+            return Math.Max(0, received + reversed);
         }
 
         public Task<DateTime?> LastTransferAtAsync(int userId, CancellationToken ct = default) =>
             _context.CurrencyTransactions.AsNoTracking()
                 .Where(t => t.FromUserId == userId && t.Kind == CurrencyTransactionKind.Transfer)
                 .MaxAsync(t => (DateTime?)t.CreatedAt, ct);
+
+        public Task<TitleBracket?> GetTitleBracketAsync(int id, CancellationToken ct = default) =>
+            _context.TitleBrackets.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id, ct);
+
+        // ===== Pending transfers (not ledger rows: their status changes) =====
+
+        public Task<CurrencyPendingTransfer?> FindPendingAsync(string publicId, CancellationToken ct = default) =>
+            _context.CurrencyPendingTransfers.FirstOrDefaultAsync(p => p.PublicId == publicId, ct);
+
+        public Task<CurrencyPendingTransfer?> FindPendingByKeyAsync(string idempotencyKey, CancellationToken ct = default) =>
+            _context.CurrencyPendingTransfers.FirstOrDefaultAsync(p => p.IdempotencyKey == idempotencyKey, ct);
+
+        public Task<List<CurrencyPendingTransfer>> GetOpenPendingForSenderAsync(int senderUserId, CancellationToken ct = default) =>
+            _context.CurrencyPendingTransfers
+                .Where(p => p.SenderUserId == senderUserId && p.Status == CurrencyPendingTransferStatus.Pending)
+                .ToListAsync(ct);
+
+        public Task ReloadPendingAsync(CurrencyPendingTransfer pending, CancellationToken ct = default) =>
+            _context.Entry(pending).ReloadAsync(ct);
+
+        public async Task<Dictionary<int, (string Username, string? Uuid)>> GetIdentitiesAsync(IEnumerable<int> userIds, CancellationToken ct = default)
+        {
+            var ids = userIds.Distinct().ToList();
+            var rows = await _context.Users.AsNoTracking()
+                .Where(u => ids.Contains(u.Id))
+                .Select(u => new { u.Id, u.Username, u.Uuid })
+                .ToListAsync(ct);
+            return rows.ToDictionary(r => r.Id, r => (r.Username, r.Uuid));
+        }
+
+        public async Task AddPendingAsync(CurrencyPendingTransfer pending, CancellationToken ct = default)
+        {
+            await _context.CurrencyPendingTransfers.AddAsync(pending, ct);
+            await _context.SaveChangesAsync(ct);
+        }
+
+        public Task SavePendingChangesAsync(CancellationToken ct = default) => _context.SaveChangesAsync(ct);
+
+        public void DiscardPending(CurrencyPendingTransfer pending) =>
+            _context.Entry(pending).State = EntityState.Detached;
+
+        // ===== Leaderboard =====
+
+        public async Task<(int TotalCount, List<LeaderboardEntryDto> Entries)> GetLeaderboardAsync(
+            Currency currency, string exemptNode, int skip, int take, CancellationToken ct = default)
+        {
+            var now = DateTime.UtcNow;
+            // Exact-node grants only (a user's own, or a group they belong to): wildcard holders
+            // such as "*" admins are not left out automatically.
+            var exemptHolders = _context.PermissionGrants
+                .Where(g => g.Node == exemptNode && g.Value && (g.ExpiresAt == null || g.ExpiresAt > now))
+                .Select(g => g.HolderId);
+            var exemptMembers = _context.UserPermissionGroups
+                .Where(m => exemptHolders.Contains(m.PermissionGroupId) && (m.ExpiresAt == null || m.ExpiresAt > now))
+                .Select(m => m.UserId);
+
+            var users = _context.Users.AsNoTracking()
+                .Where(u => u.IsActive && u.DeletedAt == null && u.TransferLockReason == null
+                            && !exemptHolders.Contains(u.Id) && !exemptMembers.Contains(u.Id));
+
+            var ranked = currency == Currency.Gems
+                ? users.Where(u => u.Gems > 0).OrderByDescending(u => u.Gems).ThenBy(u => u.Id)
+                    .Select(u => new LeaderboardEntryDto { UserId = u.Id, Username = u.Username, Balance = u.Gems })
+                : users.Where(u => u.Coins > 0).OrderByDescending(u => u.Coins).ThenBy(u => u.Id)
+                    .Select(u => new LeaderboardEntryDto { UserId = u.Id, Username = u.Username, Balance = u.Coins });
+
+            var total = await ranked.CountAsync(ct);
+            var entries = await ranked.Skip(skip).Take(take).ToListAsync(ct);
+            for (var i = 0; i < entries.Count; i++)
+            {
+                entries[i].Rank = skip + i + 1;
+            }
+            return (total, entries);
+        }
 
         public async Task<PagedResult<LedgerLineDto>> SearchLinesAsync(LedgerQuery query, CancellationToken ct = default)
         {
@@ -164,6 +311,11 @@ namespace knkwebapi_v2.Repositories
                 LedgerSort.Amount => desc ? lines.OrderByDescending(e => e.Amount) : lines.OrderBy(e => e.Amount),
                 LedgerSort.UserId => desc ? lines.OrderByDescending(e => e.UserId) : lines.OrderBy(e => e.UserId),
                 LedgerSort.Currency => desc ? lines.OrderByDescending(e => e.Currency) : lines.OrderBy(e => e.Currency),
+                LedgerSort.Recipient => desc
+                    ? lines.OrderByDescending(e => _context.Users.Where(u => u.Id == e.UserId).Select(u => u.Username).FirstOrDefault())
+                    : lines.OrderBy(e => _context.Users.Where(u => u.Id == e.UserId).Select(u => u.Username).FirstOrDefault()),
+                LedgerSort.Operation => desc ? lines.OrderByDescending(e => e.Operation) : lines.OrderBy(e => e.Operation),
+                LedgerSort.BalanceAfter => desc ? lines.OrderByDescending(e => e.BalanceAfter) : lines.OrderBy(e => e.BalanceAfter),
                 LedgerSort.ReasonCode => desc ? lines.OrderByDescending(e => e.Transaction.ReasonCode) : lines.OrderBy(e => e.Transaction.ReasonCode),
                 LedgerSort.Initiator => desc
                     ? lines.OrderByDescending(e => e.Transaction.Initiator).ThenByDescending(e => e.Transaction.InitiatorComponent)
@@ -201,7 +353,15 @@ namespace knkwebapi_v2.Repositories
                     SourceRef = e.Transaction.SourceRef,
                     CorrelationId = e.Transaction.CorrelationId,
                     ReversesTransactionId = e.Transaction.ReversesTransactionId,
-                    MetadataJson = e.Transaction.MetadataJson
+                    MetadataJson = e.Transaction.MetadataJson,
+                    CounterpartyUserId = e.Transaction.Kind == CurrencyTransactionKind.Transfer
+                        ? (e.UserId == e.Transaction.FromUserId ? e.Transaction.ToUserId : e.Transaction.FromUserId)
+                        : null,
+                    CounterpartyUsername = e.Transaction.Kind == CurrencyTransactionKind.Transfer
+                        ? _context.Users
+                            .Where(u => u.Id == (e.UserId == e.Transaction.FromUserId ? e.Transaction.ToUserId : e.Transaction.FromUserId))
+                            .Select(u => u.Username).FirstOrDefault()
+                        : null
                 })
                 .ToListAsync(ct);
 
@@ -213,5 +373,27 @@ namespace knkwebapi_v2.Repositories
                 PageSize = query.PageSize
             };
         }
+
+        public async Task<long> SumAdminGrantedSinceAsync(int actorUserId, Currency currency, DateTime since, CancellationToken ct = default)
+        {
+            // The staff member's own adjustments, plus the title bonuses their XP increases
+            // triggered (KNG-21): a bonus carries the triggering adjustment's public id as its
+            // correlation id.
+            var adjustments = _context.CurrencyTransactions
+                .Where(t => t.Kind == CurrencyTransactionKind.AdminAdjust && t.InitiatorUserId == actorUserId && t.CreatedAt >= since)
+                .Select(t => t.PublicId);
+            return await _context.CurrencyEntries.AsNoTracking()
+                .Where(e => e.AccountKind == CurrencyAccountKind.User && e.Currency == currency && e.Amount > 0
+                    && e.Transaction.CreatedAt >= since
+                    && ((e.Transaction.Kind == CurrencyTransactionKind.AdminAdjust && e.Transaction.InitiatorUserId == actorUserId)
+                        || (e.Transaction.ReasonCode == CurrencyReasons.TitleBonus && e.Transaction.CorrelationId != null
+                            && adjustments.Contains(e.Transaction.CorrelationId))))
+                .SumAsync(e => (long?)e.Amount, ct) ?? 0;
+        }
+
+        public Task<CurrencyPolicy?> GetPolicyForUpdateAsync(Currency currency, CancellationToken ct = default) =>
+            _context.CurrencyPolicies.FirstOrDefaultAsync(p => p.Currency == currency, ct);
+
+        public Task SavePolicyAsync(CancellationToken ct = default) => _context.SaveChangesAsync(ct);
     }
 }

@@ -349,7 +349,17 @@ namespace knkwebapi_v2.Controllers
         public async Task<IActionResult> Create([FromBody] UserCreateDto user)
         {
             if (user == null) return BadRequest(new { error = "InvalidRequest", message = "User data is required" });
-            
+
+            // A Minecraft UUID is only ever supplied by the game server for the player who just
+            // joined. From anyone else it would let them attach their own Minecraft account to
+            // someone's pre-registered web account (taking it and its balance over), or squat a
+            // player's UUID under their own email and password before that player first joins.
+            // Web sign-up never sends one.
+            if (!string.IsNullOrEmpty(user.Uuid) && HttpContext?.GetKnkCaller().IsPluginService != true)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = "Only the game server can create or link an account by Minecraft UUID." });
+            }
+
             try
             {
                 // Web app first linking (BEFORE validation): If providing UUID + username, check for existing pre-registered account
@@ -737,25 +747,33 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Adjust a user's coins/gems/experience by a signed delta, with an audit reason.
+        /// Staff change to a user's coins, gems and/or experience: Add, Remove or Set per currency,
+        /// with a reason, posted to the currency ledger.
         /// </summary>
         /// <remarks>
-        /// Wraps UserService.AdjustBalancesAsync (previously implemented but unreachable via the
-        /// API — no controller route called it). This is the deduction/adjustment hook
-        /// docs/specs/user-features/IMPLEMENTATION_PLAN.md §4 calls for: a negative
-        /// experienceDelta here is how XP is deducted for misconduct, and the resolved title on
-        /// the next GET automatically reflects the new bracket — TitleService has no separate
-        /// "demotion" code path, since it always jumps straight to whatever bracket the current
-        /// XP total resolves to.
+        /// Each change is an ADMIN_GRANT / ADMIN_TAKE / ADMIN_SET ledger posting (currency-payments
+        /// Phase 2). "Set" is applied by the server under the row lock — clients send the target,
+        /// never a delta they computed from a cached balance (audit A6); an optional
+        /// expectedCurrent refuses a set made from a stale screen (409). XP changes run title
+        /// progression: promotion bonuses are paid once per bracket, ever. An XP increase (Add, or
+        /// Set above the current value) needs knk.admin.user.xp, .coins and .gems from a logged-in
+        /// caller, and the coin/gem bonuses it triggers count against the acting staff member's
+        /// daily grant cap for web and plugin callers alike (KNG-21). Requires an
+        /// Idempotency-Key header (new per action, the same on a retry): a retry returns the
+        /// stored result with "replayed": true and changes nothing.
+        /// Deprecated for single staff adjustments in favour of POST api/currency/admin/adjustments
+        /// (reason category + note ≥ 10 characters, currency Phase 4), which posts through this same
+        /// path; kept for the plugin's multi-currency /knk user and Player manager changes.
         /// </remarks>
         /// <param name="id">User ID</param>
-        /// <param name="request">Signed deltas and an audit reason</param>
-        /// <returns>No content</returns>
-        /// <response code="204">Adjusted successfully</response>
-        /// <response code="400">Missing reason, a delta would underflow a balance below zero, or a balance would pass its cap</response>
+        /// <param name="request">Changes and the reason</param>
+        /// <response code="200">Applied (or replayed); the new balances and what each change did</response>
+        /// <response code="400">Missing reason or Idempotency-Key, bad amount, insufficient balance, or a balance would pass its cap</response>
         /// <response code="401">Neither the game server nor logged in</response>
-        /// <response code="403">Logged in without the node for a changed balance (knk.admin.user.coins/gems/xp)</response>
+        /// <response code="403">Logged in without the node for a changed balance (knk.admin.user.coins/gems/xp; an XP increase needs all three)</response>
         /// <response code="404">User not found</response>
+        /// <response code="409">expectedCurrent didn't match, or the Idempotency-Key was used for a different request</response>
+        /// <response code="422">AdminDailyCapExceeded: the title bonuses an XP increase triggers would pass the acting staff member's daily grant cap (nothing is changed)</response>
         [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPut("{id:int}/balances")]
         public async Task<IActionResult> AdjustBalances(int id, [FromBody] AdjustBalancesDto request)
@@ -764,12 +782,19 @@ namespace knkwebapi_v2.Controllers
 
             // A web caller needs the in-game node for each balance it changes, as /knk user does
             // in-game; the plugin checks those nodes itself before calling.
-            var denied = await RequireBalanceNodesAsync(request);
+            var denied = await RequireBalanceNodesAsync(id, request);
             if (denied != null) return denied;
+
+            var key = CurrencyHttp.ReadKey(this, required: true, out var keyError);
+            if (keyError != null) return keyError;
 
             try
             {
-                var result = await _service.AdjustBalancesAsync(id, request.CoinsDelta, request.GemsDelta, request.ExperienceDelta, request.Reason, request.Metadata, GetActorUserId(), request.NotifyPlayer);
+                var caller = HttpContext.GetKnkCaller();
+                var ctx = CurrencyContext.ForCaller(caller, CurrencyReasons.AdminSet, key!,
+                    caller.IsWebUser ? "WebAppPlayerProfile" : "PluginUserAdmin",
+                    staffAction: true, reason: request.Reason);
+                var result = await _service.AdjustBalancesAsync(id, request.Changes, ctx, request.Metadata, request.NotifyPlayer);
                 return Ok(result);
             }
             catch (KeyNotFoundException)
@@ -780,17 +805,17 @@ namespace knkwebapi_v2.Controllers
             {
                 return BadRequest(new { error = "ValidationFailed", message = ex.Message });
             }
+            catch (CurrencyException ex)
+            {
+                return CurrencyHttp.ToResult(this, ex);
+            }
             catch (BalanceCapExceededException ex)
             {
                 return BadRequest(new { error = BalanceCapExceededException.Code, message = ex.Message });
             }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { error = "InsufficientBalance", message = ex.Message });
-            }
         }
 
-        private async Task<IActionResult?> RequireBalanceNodesAsync(AdjustBalancesDto request)
+        private async Task<IActionResult?> RequireBalanceNodesAsync(int id, AdjustBalancesDto request)
         {
             var caller = HttpContext?.GetKnkCaller();
             if (caller?.IsPluginService == true)
@@ -802,11 +827,16 @@ namespace knkwebapi_v2.Controllers
                 return Unauthorized(new { error = "Unauthorized", message = "Log in to use this." });
             }
 
+            // An XP increase also needs the coins and gems nodes (KNG-21): the title bonuses it can
+            // trigger pay out coins and gems.
             var nodes = new List<string>();
-            if (request.CoinsDelta != 0) nodes.Add(StaffPermissions.UserCoins);
-            if (request.GemsDelta != 0) nodes.Add(StaffPermissions.UserGems);
-            if (request.ExperienceDelta != 0) nodes.Add(StaffPermissions.UserXp);
-            foreach (var node in nodes)
+            foreach (var change in (request.Changes ?? new List<BalanceChangeDto>()).Where(c => c != null))
+            {
+                var increasesExperience = await CurrencyHttp.IncreasesExperienceAsync(change.Currency, change.Mode, change.Amount,
+                    async () => (await _service.GetByIdAsync(id))?.ExperiencePoints);
+                nodes.AddRange(CurrencyHttp.BalanceNodes(change.Currency, increasesExperience));
+            }
+            foreach (var node in nodes.Distinct())
             {
                 var check = await _permissionResolutionService.CheckAsync(caller.WebUserId.Value, node);
                 if (check?.Allowed != true)
@@ -876,6 +906,11 @@ namespace knkwebapi_v2.Controllers
             catch (BalanceCapExceededException ex)
             {
                 return Conflict(new { error = BalanceCapExceededException.Code, message = ex.Message });
+            }
+            catch (CurrencyException ex)
+            {
+                // The payout would pass the coin cap: nothing is paid and the gap stays open.
+                return Conflict(new { error = ex.Code.ToString(), code = ex.Code.ToString(), message = ex.Message });
             }
         }
 
@@ -1156,6 +1191,10 @@ namespace knkwebapi_v2.Controllers
         /// Keeps the primary account and soft-deletes the secondary account.
         /// Primary account retains all its data (winner takes all strategy).
         /// Foreign key relationships are updated to point to primary account.
+        /// Balances: the primary ends with the higher of the two accounts' coins, gems and XP,
+        /// each separately; the ledger records the secondary's balances as MERGE_FORFEIT and any
+        /// increase of the primary as MERGE_CARRYOVER (an XP increase can promote the primary,
+        /// paying only bonuses it wasn't paid before).
         /// </remarks>
         /// <param name="request">Merge request with primary and secondary user IDs</param>
         /// <returns>Merged user account</returns>
@@ -1293,6 +1332,10 @@ namespace knkwebapi_v2.Controllers
             {
                 return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
             }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { error = "UserHasCurrencyHistory", message = ex.Message });
+            }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { error = "ValidationFailed", message = ex.Message });
@@ -1315,7 +1358,9 @@ namespace knkwebapi_v2.Controllers
         /// Requires a valid link code generated from Minecraft (/account link command).
         /// 
         /// If the link code points to an existing Minecraft account (with UUID), 
-        /// the system will automatically merge the accounts (keep web app account as primary).
+        /// the system will automatically merge the accounts (keep web app account as primary);
+        /// the web app account keeps the higher of the two balances of each currency, as for
+        /// POST merge.
         /// </remarks>
         /// <param name="request">Link request with link code only</param>
         /// <returns>Updated user account with linked Minecraft UUID</returns>

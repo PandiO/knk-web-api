@@ -20,7 +20,9 @@ namespace knkwebapi_v2.Services
         private readonly IUserPermissionGroupService _userPermissionGroupService;
         private readonly IPermissionResolutionService _permissionResolutionService;
         private readonly IAuditLogService _auditLogService;
+        private readonly ICurrencyService _currency;
         private readonly IMapper _mapper;
+        private readonly ILootboxTokenGrantService? _lootboxTokenGrants;
 
         public KitService(
             IKitRepository kitRepo,
@@ -32,8 +34,11 @@ namespace knkwebapi_v2.Services
             IUserPermissionGroupService userPermissionGroupService,
             IPermissionResolutionService permissionResolutionService,
             IAuditLogService auditLogService,
-            IMapper mapper)
+            IMapper mapper,
+            ICurrencyService currency,
+            ILootboxTokenGrantService? lootboxTokenGrants = null)
         {
+            _currency = currency;
             _kitRepo = kitRepo;
             _userRepo = userRepo;
             _itemBlueprintRepo = itemBlueprintRepo;
@@ -44,6 +49,7 @@ namespace knkwebapi_v2.Services
             _permissionResolutionService = permissionResolutionService;
             _auditLogService = auditLogService;
             _mapper = mapper;
+            _lootboxTokenGrants = lootboxTokenGrants;
         }
 
         // ===== CRUD (FormWizard-only, DESIGN.md §4.0) =====
@@ -202,26 +208,41 @@ namespace knkwebapi_v2.Services
             return dto;
         }
 
-        public async Task<KitClaimResultDto> ClaimKitAsync(int userId, int kitId)
+        public async Task<KitClaimResultDto> ClaimKitAsync(int userId, int kitId, CurrencyContext? costContext = null)
         {
             var kit = await _kitRepo.GetByIdAsync(kitId)
                 ?? throw new KeyNotFoundException($"Kit with id {kitId} not found.");
 
             // Under the user's row lock (currency DESIGN.md §1.4 A2): the cooldown, balance and
-            // cost deduction are read and written with no other claim, purchase or balance write
+            // cost posting are read and written with no other claim, purchase or balance write
             // for this user in between, so two quick claims can't both pass the cooldown or both
             // spend the same coins.
+            KitClaim? claim = null;
             await _userRepo.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
                 var user = await _userRepo.GetByIdAsync(userId)
                     ?? throw new KeyNotFoundException($"User with id {userId} not found.");
-                await ClaimLockedAsync(user, kit);
+                claim = await ClaimLockedAsync(user, kit, costContext);
             });
 
+            await IssueLootboxTokensAsync(userId, kit, claim, null);
             return _mapper.Map<KitClaimResultDto>(kit);
         }
 
-        private async Task ClaimLockedAsync(User user, Kit kit)
+        /// <summary>
+        /// A granted kit issues its lootbox token items (knk-workspace docs/specs/lootboxes/IMPLEMENTATION_PLAN.md
+        /// Phase 5), keyed by the KitClaim so it happens once per grant. After the claim is committed, and the grant
+        /// service never throws, so a failed issue can't undo the kit.
+        /// </summary>
+        private async Task IssueLootboxTokensAsync(int userId, Kit kit, KitClaim? claim, int? actorUserId)
+        {
+            if (_lootboxTokenGrants == null || claim == null || claim.Id <= 0) return;
+            await _lootboxTokenGrants.IssueForKitAsync(userId, kit.Id, claim.Id, actorUserId);
+        }
+
+        /// <returns>The new claim, or null when the cost posting was a replay of a claim that already went through
+        /// (its tokens were issued then).</returns>
+        private async Task<KitClaim?> ClaimLockedAsync(User user, Kit kit, CurrencyContext? costContext)
         {
             var userId = user.Id;
             var kitId = kit.Id;
@@ -238,8 +259,6 @@ namespace knkwebapi_v2.Services
             if (kit.IsSinglePurchasePremium && !isPurchased)
                 throw new InvalidOperationException("This kit must be purchased before it can be claimed.");
 
-            User? userToPersist = null;
-
             // Purchased single-purchase-premium kits skip cooldown and cost entirely (DESIGN.md §2.4).
             if (!isPurchased)
             {
@@ -252,18 +271,37 @@ namespace knkwebapi_v2.Services
 
                 if (kit.CostAmount.HasValue && kit.CostAmount.Value > 0 && kit.CostCurrency.HasValue)
                 {
-                    DeductCost(user, kit.CostCurrency.Value, kit.CostAmount.Value);
-                    userToPersist = user;
+                    // The cost is a KIT_CLAIM_COST ledger posting keyed by the game server's
+                    // Idempotency-Key (currency Phase 2), in this transaction with the claim row.
+                    if (costContext == null)
+                        throw new ArgumentException("An Idempotency-Key is required to claim a kit that costs coins or gems.");
+                    var currency = kit.CostCurrency.Value == KitCostCurrency.Coins ? Currency.Coins : Currency.Gems;
+                    var ctx = costContext with
+                    {
+                        ReasonCode = CurrencyReasons.KitClaimCost,
+                        IdempotencyKey = $"kit-claim:{costContext.IdempotencyKey}",
+                        SourceType = "Kit",
+                        SourceRef = kitId.ToString(),
+                        Reason = costContext.Reason ?? $"Claimed kit {kit.Name}"
+                    };
+                    var posting = await _currency.SpendAsync(userId, currency, kit.CostAmount.Value, ctx);
+                    if (posting.Replayed)
+                    {
+                        // A retry of a claim that already went through (same key): it was
+                        // recorded and paid then; don't record a second claim.
+                        return null;
+                    }
                 }
             }
 
-            // Deduct-then-record, one SaveChanges call (DESIGN.md §5.1) - a failed deduction
-            // above throws before this line is ever reached, so no claim row is written for it.
+            // Pay-then-record in one transaction (DESIGN.md §5.1) - a refused posting above throws
+            // before this line is ever reached, so no claim row is written for it.
             var claim = new KitClaim { KitId = kitId, UserId = userId, ClaimedAt = DateTime.UtcNow };
-            await _kitRepo.AddClaimAsync(claim, userToPersist);
+            await _kitRepo.AddClaimAsync(claim);
+            return claim;
         }
 
-        public async Task<KitPurchaseResultDto> PurchaseKitAsync(int userId, int kitId)
+        public async Task<KitPurchaseResultDto> PurchaseKitAsync(int userId, int kitId, CurrencyContext? purchaseContext = null)
         {
             var kit = await _kitRepo.GetByIdAsync(kitId)
                 ?? throw new KeyNotFoundException($"Kit with id {kitId} not found.");
@@ -279,8 +317,8 @@ namespace knkwebapi_v2.Services
                 throw new InvalidOperationException("This kit has no valid gem price, so it can't be purchased.");
 
             KitPurchase purchase = null!;
-            // Same row lock as ClaimKitAsync: the balance check and the deduction see no other
-            // write for this user in between (A2 — a racing write can no longer restore the gems).
+            // Same row lock as ClaimKitAsync: the balance check and the gem posting see no other
+            // write for this user in between.
             await _userRepo.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
                 var user = await _userRepo.GetByIdAsync(userId)
@@ -293,7 +331,19 @@ namespace knkwebapi_v2.Services
                 if (user.Gems < price)
                     throw new InvalidOperationException("Insufficient Gems to purchase this kit.");
 
-                user.Gems = BalanceLimits.ApplyGems(user.Gems, -price);
+                // KIT_PURCHASE under the deterministic, once-per-user-and-kit key (currency Phase 2),
+                // in this transaction with the purchase row (whose unique index stays the guard).
+                var ctx = (purchaseContext ?? CurrencyContext.ForSystem(nameof(KitService), CurrencyReasons.KitPurchase, "-")) with
+                {
+                    ReasonCode = CurrencyReasons.KitPurchase,
+                    IdempotencyKey = $"kit-purchase:{kitId}:{userId}",
+                    IdempotencyScope = CurrencyIdempotencyScopes.System,
+                    SourceType = "Kit",
+                    SourceRef = kitId.ToString(),
+                    Reason = $"Bought kit {kit.Name}"
+                };
+                await _currency.SpendAsync(userId, Currency.Gems, price, ctx);
+
                 purchase = new KitPurchase
                 {
                     KitId = kitId,
@@ -301,7 +351,7 @@ namespace knkwebapi_v2.Services
                     PurchasedAt = DateTime.UtcNow,
                     GemsPaid = price
                 };
-                await _kitRepo.AddPurchaseAsync(purchase, user);
+                await _kitRepo.AddPurchaseAsync(purchase);
             });
 
             return new KitPurchaseResultDto
@@ -341,6 +391,7 @@ namespace knkwebapi_v2.Services
                 claimId = claim.Id
             }));
 
+            await IssueLootboxTokensAsync(targetUserId, kit, claim, actorUserId);
             return _mapper.Map<KitClaimResultDto>(kit);
         }
 
@@ -361,6 +412,7 @@ namespace knkwebapi_v2.Services
 
                 var claim = new KitClaim { KitId = kit.Id, UserId = userId, ClaimedAt = DateTime.UtcNow };
                 await _kitRepo.AddClaimAsync(claim);
+                await IssueLootboxTokensAsync(userId, kit, claim, null);
                 results.Add(_mapper.Map<KitClaimResultDto>(kit));
             }
 
@@ -444,12 +496,6 @@ namespace knkwebapi_v2.Services
 
             reason = $"Insufficient {kit.CostCurrency.Value} to claim this kit.";
             return true;
-        }
-
-        private static void DeductCost(User user, KitCostCurrency currency, int amount)
-        {
-            if (currency == KitCostCurrency.Coins) user.Coins = BalanceLimits.ApplyCoins(user.Coins, -amount);
-            else user.Gems = BalanceLimits.ApplyGems(user.Gems, -amount);
         }
 
         /// <summary>No negative prices (currency DESIGN.md §1.4 A4): a negative cost or premium

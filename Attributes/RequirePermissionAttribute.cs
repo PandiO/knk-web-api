@@ -17,6 +17,13 @@ namespace knkwebapi_v2.Attributes
         public const string ManageUsers = "knk.admin.user.manage";
 
         /// <summary>
+        /// Web lootbox administration: types, specials, spawn areas, the singleton configuration and the
+        /// item-instance lookup (knk-workspace docs/specs/lootboxes/DESIGN.md §3.3, §3.6). Web-only: the in-game
+        /// admin commands use the knk.lootbox.admin.* nodes. Also matched by knk.admin.* and *.
+        /// </summary>
+        public const string ManageLootboxes = "knk.admin.lootbox.manage";
+
+        /// <summary>
         /// Domain discovery administration: reward rules, per-domain overrides, statistics and
         /// resetting a player's discovery. The same node as the in-game /knk discovery subcommand
         /// (docs/specs/domain-discovery/DESIGN.md §3.6); also matched by knk.admin.* and *.
@@ -39,12 +46,37 @@ namespace knkwebapi_v2.Attributes
         public const string ManageKits = "knk.kit.manage";
         public const string GiveKits = "knk.kit.give";
 
-        /// <summary>Economy settings (salary configuration; currency policy later) —
+        /// <summary>Economy settings (salary configuration, currency policy) —
         /// docs/specs/currency-payments/DESIGN.md §3.8.</summary>
         public const string CurrencyPolicy = "knk.admin.currency.policy";
 
+        // The rest of the knk.admin.currency umbrella (currency DESIGN.md §3.8, Phase 4).
+        /// <summary>Read any player's ledger history and the all-players balance event log.</summary>
+        public const string CurrencyHistory = "knk.admin.currency.history";
+        /// <summary>Reverse a ledger transaction.</summary>
+        public const string CurrencyReverse = "knk.admin.currency.reverse";
+        /// <summary>Lock or unlock a player's transfers.</summary>
+        public const string CurrencyLock = "knk.admin.currency.lock";
+        /// <summary>Exempt from the per-staff daily grant cap (CurrencyPolicy.AdminDailyGrantCapPerActor).</summary>
+        public const string CurrencyUnlimited = "knk.admin.currency.unlimited";
+        /// <summary>See and acknowledge currency anomaly alerts, run the reconciliation, get the
+        /// in-game alert notices (currency Phase 5).</summary>
+        public const string CurrencyAlerts = "knk.admin.currency.alerts";
+
+        /// <summary>Siege setup: SiegeConfiguration, scenarios, lobbies, teams, objectives,
+        /// spawnpoints (the web-app forms; plugin.yml "/siege admin manage"). Scenario rewards
+        /// are a currency lever (currency DESIGN.md §3.4).</summary>
+        public const string SiegeManage = "knk.siege.admin.manage";
+
+        /// <summary>Gate administration (plugin.yml knk.gate.admin): the structure-level gate overrides.</summary>
+        public const string GateAdmin = "knk.gate.admin";
+
         /// <summary>Server-wide admin settings with no narrower node (audit-log retention).</summary>
         public const string ServerConfig = "knk.admin.config";
+
+        /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
+        /// owner group; every read is audited.</summary>
+        public const string ReadPrivateMessages = "knk.pmlog.read";
     }
 
     /// <summary>

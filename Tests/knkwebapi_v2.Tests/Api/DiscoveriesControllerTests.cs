@@ -4,6 +4,7 @@ using System.Text.Json;
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Controllers;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -91,6 +92,28 @@ public class DiscoveriesControllerTests
         _service.Setup(s => s.DiscoverAsync(7, It.IsAny<DiscoveryGrantRequestDto>())).ThrowsAsync(new KeyNotFoundException());
 
         Assert.IsType<NotFoundObjectResult>((await Controller().Grant(7, new DiscoveryGrantRequestDto())).Result);
+    }
+
+    [Fact]
+    public async Task Grant_LedgerRefusalIs409()
+    {
+        _service.Setup(s => s.DiscoverAsync(7, It.IsAny<DiscoveryGrantRequestDto>()))
+            .ThrowsAsync(new CurrencyException(CurrencyErrorCode.BalanceCapExceeded, "Coins would exceed the cap."));
+
+        var conflict = Assert.IsType<ConflictObjectResult>((await Controller().Grant(7, new DiscoveryGrantRequestDto())).Result);
+        Assert.Contains("BalanceCapExceeded", JsonSerializer.Serialize(conflict.Value));
+    }
+
+    [Fact]
+    public async Task Grant_TitleBonusOverTheCapIs409()
+    {
+        // ApplyTitleProgressionAsync throws BalanceCapExceededException (an InvalidOperationException)
+        // when the bonuses of a crossed bracket don't fit; a 500 would make the plugin spool it.
+        _service.Setup(s => s.DiscoverAsync(7, It.IsAny<DiscoveryGrantRequestDto>()))
+            .ThrowsAsync(new BalanceCapExceededException("gems", 999_990, 50, BalanceLimits.MaxGems));
+
+        var conflict = Assert.IsType<ConflictObjectResult>((await Controller().Grant(7, new DiscoveryGrantRequestDto())).Result);
+        Assert.Contains(BalanceCapExceededException.Code, JsonSerializer.Serialize(conflict.Value));
     }
 
     [Fact]
