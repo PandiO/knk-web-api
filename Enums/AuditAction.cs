@@ -35,6 +35,11 @@ public enum AuditAction
     /// </summary>
     PrivateMessagesViewed = 15,
 
+    /// <summary>Staff reset one domain discovery so it can be discovered (and rewarded) again
+    /// (docs/specs/domain-discovery/DESIGN.md §3.5). Grants themselves are DISCOVERY_REWARD
+    /// ledger postings (plus a TitleChanged row when their XP crosses a title bracket).</summary>
+    DiscoveryReset = 17,
+
     // Currency payments (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phase 4); values
     // 19–29 are reserved for this feature so parallel branches don't collide.
     CurrencyPolicyChanged = 19,

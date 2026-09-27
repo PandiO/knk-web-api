@@ -23,6 +23,13 @@ namespace knkwebapi_v2.Attributes
         /// </summary>
         public const string ManageLootboxes = "knk.admin.lootbox.manage";
 
+        /// <summary>
+        /// Domain discovery administration: reward rules, per-domain overrides, statistics and
+        /// resetting a player's discovery. The same node as the in-game /knk discovery subcommand
+        /// (docs/specs/domain-discovery/DESIGN.md §3.6); also matched by knk.admin.* and *.
+        /// </summary>
+        public const string ManageDiscovery = "knk.admin.discovery";
+
         // The in-game /knk user nodes (knk-plugin plugin.yml), checked for web callers of the
         // same writes (KNG-22). All are children of knk.admin, so knk.admin.* and * match too.
         public const string UserCoins = "knk.admin.user.coins";
@@ -117,7 +124,8 @@ namespace knkwebapi_v2.Attributes
             }
         }
 
-        private static int? UserIdFrom(ClaimsPrincipal? principal)
+        /// <summary>The logged-in user's id from their JWT claims, or null.</summary>
+        public static int? UserIdFrom(ClaimsPrincipal? principal)
         {
             if (principal?.Identity?.IsAuthenticated != true)
             {

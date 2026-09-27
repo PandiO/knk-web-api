@@ -40,6 +40,11 @@ namespace knkwebapi_v2.DependencyInjection
             {
                 services.Configure<knkwebapi_v2.Configuration.EmailSettings>(emailSection);
             }
+            var discoverySection = configuration?.GetSection(knkwebapi_v2.Configuration.DiscoveryOptions.SectionName);
+            if (discoverySection != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.DiscoveryOptions>(discoverySection);
+            }
             var emailProvider = emailSection?["Provider"];
             if (string.Equals(emailProvider, "Smtp", System.StringComparison.OrdinalIgnoreCase))
             {

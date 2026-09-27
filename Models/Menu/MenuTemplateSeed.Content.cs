@@ -118,6 +118,13 @@ public static partial class MenuTemplateSeed
                             Bind("Name", "&6Premium tiers", VariableRefreshPolicy.Static),
                             Bind("Lore", "&7See every premium tier and your own", VariableRefreshPolicy.Static)),
 
+                        // Domain discovery (KNG-20, DESIGN.md §3.7) - v1's Knowledge tile copy.
+                        OpenTile(20, 7, DiscoveriesMenuKey,
+                            Bind("Material", "BOOK", VariableRefreshPolicy.Static),
+                            Bind("Name", "&eDiscoveries", VariableRefreshPolicy.Static),
+                            Lore(0, "&7See all discovered places"),
+                            Lore(1, "$discoveries.getCountLine$", VariableRefreshPolicy.OnDirty)),
+
                         WithPermissions(UserManagePermission, OpenTile(22, 6, UserManagerMenuKey,
                             Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
                             Bind("Name", "&cPlayer manager", VariableRefreshPolicy.Static),

@@ -719,6 +719,49 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("currency_transactions", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.DiscoveryRewardRule", b =>
+                {
+                    b.Property<string>("DomainType")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<decimal>("CoinSalaryHoursMax")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<decimal>("CoinSalaryHoursMin")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<decimal>("ExpUnitsMax")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<decimal>("ExpUnitsMin")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<int>("GemsMax")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GemsMin")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IncludeAncestors")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.HasKey("DomainType")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("discovery_reward_rules", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.DisplayCondition", b =>
                 {
                     b.Property<int>("Id")
@@ -1034,6 +1077,48 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("domains", (string)null);
 
                     b.UseTptMappingStrategy();
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.DomainDiscoveryOverride", b =>
+                {
+                    b.Property<int>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CoinSalaryHoursMax")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<decimal?>("CoinSalaryHoursMin")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<decimal?>("ExpUnitsMax")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<decimal?>("ExpUnitsMin")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<int?>("GemsMax")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("GemsMin")
+                        .HasColumnType("int");
+
+                    b.Property<bool?>("IncludeAncestors")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool?>("IsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.HasKey("DomainId")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("domain_discovery_overrides", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
@@ -4104,6 +4189,65 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("title_brackets", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.UserDomainDiscovery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CoinMultiplier")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<int>("CoinsAwarded")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DiscoveredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExpAwarded")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ExpMultiplier")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<decimal>("GemMultiplier")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<int>("GemsAwarded")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int?>("TitleBracketId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("DomainId");
+
+                    b.HasIndex("UserId", "DiscoveredAt");
+
+                    b.HasIndex("UserId", "DomainId")
+                        .IsUnique();
+
+                    b.ToTable("user_domain_discoveries", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
                 {
                     b.Property<int>("Id")
@@ -4864,6 +5008,17 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.DomainDiscoveryOverride", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.DomainDiscoveryOverride", "DomainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Domain");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
@@ -5954,6 +6109,25 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowSession");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.UserDomainDiscovery", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
+                        .WithMany()
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Domain");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>

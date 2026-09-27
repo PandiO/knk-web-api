@@ -88,4 +88,18 @@ public class InMemoryPlayerNotificationQueueTests
         Assert.Null(pending[1].TitleChange);
         Assert.Equal(_now, pending[1].CreatedAt);
     }
+
+    [Fact]
+    public void EnqueueDiscoveryReset_CarriesTheDomain()
+    {
+        var queue = CreateQueue();
+
+        var id = queue.EnqueueDiscoveryReset(3, "uuid-3", "carol", new DiscoveryResetNotificationDto { DomainId = 12, WgRegionId = "town_rivia" });
+
+        var note = Assert.Single(queue.GetPending());
+        Assert.Equal((id, PlayerNotificationTypes.DiscoveryReset, 3, "uuid-3"), (note.Id, note.Type, note.UserId, note.Uuid));
+        Assert.Equal((12, "town_rivia"), (note.DiscoveryReset!.DomainId, note.DiscoveryReset.WgRegionId));
+        Assert.Null(note.TitleChange);
+        Assert.Null(note.Payment);
+    }
 }
