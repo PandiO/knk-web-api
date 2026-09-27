@@ -25,6 +25,10 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// <summary>The reversal of transaction <paramref name="transactionId"/>, if any.</summary>
         Task<CurrencyTransaction?> FindReversalOfAsync(long transactionId, CancellationToken ct = default);
 
+        /// <summary>The users whose account was merged into <paramref name="userId"/>'s: the
+        /// holders of a MERGE_FORFEIT posting whose source is that user (one level, not transitive).</summary>
+        Task<List<int>> GetUsersMergedIntoAsync(int userId, CancellationToken ct = default);
+
         /// <summary>The users, tracked, for a balance change. Call inside
         /// RunWithUsersLockedAsync so the values are the locked, current ones.</summary>
         Task<Dictionary<int, User>> GetUsersForUpdateAsync(IEnumerable<int> userIds, CancellationToken ct = default);

@@ -37,6 +37,18 @@ namespace knkwebapi_v2.Repositories
         public Task<CurrencyTransaction?> FindReversalOfAsync(long transactionId, CancellationToken ct = default) =>
             WithEntries().FirstOrDefaultAsync(t => t.ReversesTransactionId == transactionId, ct);
 
+        public Task<List<int>> GetUsersMergedIntoAsync(int userId, CancellationToken ct = default)
+        {
+            var source = userId.ToString();
+            return _context.CurrencyEntries.AsNoTracking()
+                .Where(e => e.Transaction.ReasonCode == CurrencyReasons.MergeForfeit
+                    && e.Transaction.SourceType == "User" && e.Transaction.SourceRef == source
+                    && e.UserId != null && e.UserId != userId)
+                .Select(e => e.UserId!.Value)
+                .Distinct()
+                .ToListAsync(ct);
+        }
+
         public async Task<Dictionary<int, User>> GetUsersForUpdateAsync(IEnumerable<int> userIds, CancellationToken ct = default)
         {
             var ids = userIds.Distinct().ToList();

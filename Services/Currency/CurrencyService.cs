@@ -362,6 +362,25 @@ namespace knkwebapi_v2.Services
             return ToResult(existing, await _repo.GetBalancesAsync(userIds, ct), replayed: true);
         }
 
+        public async Task<IReadOnlyList<int>> GetMergedAccountIdsAsync(int userId, CancellationToken ct = default)
+        {
+            var found = new List<int>();
+            var seen = new HashSet<int> { userId };
+            var pending = new Queue<int>(seen);
+            while (pending.Count > 0)
+            {
+                foreach (var merged in await _repo.GetUsersMergedIntoAsync(pending.Dequeue(), ct))
+                {
+                    if (seen.Add(merged))
+                    {
+                        found.Add(merged);
+                        pending.Enqueue(merged);
+                    }
+                }
+            }
+            return found;
+        }
+
         public async Task<IReadOnlyDictionary<Currency, CurrencyPolicy>> GetPoliciesAsync(CancellationToken ct = default) =>
             await _repo.GetPoliciesAsync(ct);
 

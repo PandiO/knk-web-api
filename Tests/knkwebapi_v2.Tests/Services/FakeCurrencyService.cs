@@ -75,6 +75,27 @@ public sealed class FakeCurrencyService : ICurrencyService
     public Task<PostingResult?> FindAsync(string scope, string idempotencyKey, CancellationToken ct = default) =>
         Task.FromResult(_byKey.TryGetValue((scope, idempotencyKey), out var stored) ? Replay(stored) : null);
 
+    /// <summary>From the recorded MERGE_FORFEIT postings (source User = the survivor), transitively, like the ledger.</summary>
+    public Task<IReadOnlyList<int>> GetMergedAccountIdsAsync(int userId, CancellationToken ct = default)
+    {
+        var found = new List<int>();
+        var pending = new Queue<int>(new[] { userId });
+        while (pending.Count > 0)
+        {
+            var into = pending.Dequeue().ToString();
+            foreach (var merged in Postings
+                .Where(p => p.Ctx.ReasonCode == CurrencyReasons.MergeForfeit && p.Ctx.SourceType == "User" && p.Ctx.SourceRef == into)
+                .SelectMany(p => p.Legs.Select(l => l.UserId))
+                .Where(id => id != userId && !found.Contains(id))
+                .Distinct().ToList())
+            {
+                found.Add(merged);
+                pending.Enqueue(merged);
+            }
+        }
+        return Task.FromResult<IReadOnlyList<int>>(found);
+    }
+
     public Task<IReadOnlyDictionary<Currency, CurrencyPolicy>> GetPoliciesAsync(CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyDictionary<Currency, CurrencyPolicy>>(Policies);
 

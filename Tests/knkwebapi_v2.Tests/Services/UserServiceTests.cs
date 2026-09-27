@@ -651,6 +651,64 @@ public class UserServiceTests
     }
 
     [Fact]
+    public async Task MergeAccountsAsync_XpCarryOverAcrossABracketTheSecondaryWasPaid_PaysNoSecondBonus()
+    {
+        // Exploit fix: farm a bracket bonus on an alt, merge it into a lower-XP main. The XP
+        // carry-over crosses the bracket, but its bonus was already paid (to the alt): once, ever.
+        var main = new User { Id = 1, Username = "main", Coins = 5 };
+        var alt = new User { Id = 2, Username = "alt" };
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(main);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(alt);
+        _mockMapper.Setup(m => m.Map<UserDto>(It.IsAny<User>())).Returns(new UserDto { Id = 1, Username = "main" });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Serf", FemaleName = "Serf", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Peasant", FemaleName = "Peasant", MinExperience = 500, CoinBonus = 30, GemBonus = 2 }
+        });
+        await _userService.AdjustBalancesAsync(2, Change(Enums.Currency.Experience, 600), StaffCtx(key: "alt-xp"));
+        Assert.Equal((30, 2, 600), (alt.Coins, alt.Gems, alt.ExperiencePoints));
+
+        await _userService.MergeAccountsAsync(1, 2);
+
+        Assert.Equal((30, 2, 600), (main.Coins, main.Gems, main.ExperiencePoints)); // max per currency, no bonus
+        Assert.Equal((0, 0, 0), (alt.Coins, alt.Gems, alt.ExperiencePoints));
+        Assert.Equal(new[] { "title-bonus:2:2" },
+            _currency.Postings.Where(p => p.Ctx.ReasonCode == CurrencyReasons.TitleBonus).Select(p => p.Ctx.IdempotencyKey));
+
+        // Nor later: demoted and promoted again, the survivor still counts it as paid.
+        await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Experience, 600, Enums.CurrencyOperation.Remove), StaffCtx(key: "down"));
+        var again = await _userService.AdjustBalancesAsync(1, Change(Enums.Currency.Experience, 600), StaffCtx(key: "up"));
+        Assert.Equal(("promotion", 0, 0), (again.TitleChange!.Direction, again.TitleChange.CoinBonusGranted, again.TitleChange.GemBonusGranted));
+        Assert.Single(_currency.Postings, p => p.Ctx.ReasonCode == CurrencyReasons.TitleBonus);
+    }
+
+    [Fact]
+    public async Task MergeAccountsAsync_ThroughAChainOfMerges_StillCountsTheFirstAltsBonusAsPaid()
+    {
+        // alt1 earns the bracket, is merged into a fresh alt2 (XP carried, no bonus), which is
+        // then merged into main: alt1 is among main's merged accounts through alt2.
+        var main = new User { Id = 1, Username = "main" };
+        var alt2 = new User { Id = 2, Username = "alt2", Coins = 1 };
+        var alt1 = new User { Id = 3, Username = "alt1" };
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(main);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(alt2);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(3)).ReturnsAsync(alt1);
+        _mockMapper.Setup(m => m.Map<UserDto>(It.IsAny<User>())).Returns(new UserDto { Id = 1, Username = "main" });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Serf", FemaleName = "Serf", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Peasant", FemaleName = "Peasant", MinExperience = 500, CoinBonus = 30 }
+        });
+        await _userService.AdjustBalancesAsync(3, Change(Enums.Currency.Experience, 600), StaffCtx(key: "alt1-xp"));
+
+        await _userService.MergeAccountsAsync(2, 3);
+        await _userService.MergeAccountsAsync(1, 2);
+
+        Assert.Equal((30, 600), (main.Coins, main.ExperiencePoints));
+        Assert.Equal("title-bonus:3:2", Assert.Single(_currency.Postings, p => p.Ctx.ReasonCode == CurrencyReasons.TitleBonus).Ctx.IdempotencyKey);
+    }
+
+    [Fact]
     public async Task LinkMinecraftAccountAsync_MergingTheMinecraftAccount_KeepsTheHigherBalances()
     {
         // The Minecraft-account link merge takes the same path as POST merge (KNG-21).

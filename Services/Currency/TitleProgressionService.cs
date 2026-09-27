@@ -150,6 +150,7 @@ namespace knkwebapi_v2.Services
 
                 // Walk every bracket strictly above previousBracket up to the current XP. A paid XP
                 // bonus raises the XP, so the loop re-checks and may cross further brackets.
+                IReadOnlyList<int>? mergedAccounts = null;
                 var idx = brackets.FindIndex(b => b.Id == previousBracket.Id) + 1;
                 while (idx < brackets.Count && brackets[idx].MinExperience <= user.ExperiencePoints)
                 {
@@ -160,6 +161,14 @@ namespace knkwebapi_v2.Services
                     if (await _currency.FindAsync(CurrencyIdempotencyScopes.System, key, ct) != null)
                     {
                         continue; // reached before (e.g. demoted and promoted again): paid once, ever
+                    }
+                    // Paid to an account merged into this one counts as paid here too: otherwise
+                    // bonuses farmed on an alt would be paid again when a merge carries its XP
+                    // over (or on a later promotion), once per account instead of once, ever.
+                    mergedAccounts ??= await _currency.GetMergedAccountIdsAsync(user.Id, ct);
+                    if (await AnyPaidAsync(mergedAccounts, tier.Id, ct))
+                    {
+                        continue;
                     }
 
                     var coins = ScaleBonus(tier.CoinBonus, coinMultiplier);
@@ -225,6 +234,18 @@ namespace knkwebapi_v2.Services
                 GemBonusMultipliers = gemMultipliers,
                 ExpBonusMultipliers = expMultipliers
             };
+        }
+
+        private async Task<bool> AnyPaidAsync(IReadOnlyList<int> userIds, int bracketId, CancellationToken ct)
+        {
+            foreach (var id in userIds)
+            {
+                if (await _currency.FindAsync(CurrencyIdempotencyScopes.System, BonusKey(id, bracketId), ct) != null)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static long Posted(PostingResult posting, Currency currency) =>

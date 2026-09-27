@@ -38,7 +38,8 @@ public class TitleBracket
 
     /// <summary>One-time coin bonus granted on first reaching this tier: paid once per user ever,
     /// as the TITLE_BONUS ledger posting keyed <c>title-bonus:{userId}:{bracketId}</c>, so a
-    /// demotion and re-promotion pays nothing again (currency DESIGN.md D10, audit A5).</summary>
+    /// demotion and re-promotion pays nothing again (currency DESIGN.md D10, audit A5). A bonus
+    /// paid to an account merged into the user's counts as paid to the user.</summary>
     public int CoinBonus { get; set; }
 
     /// <summary>One-time gem bonus granted on first reaching this tier (same once-ever rule).</summary>

@@ -441,6 +441,43 @@ public class LedgerRoutingMySqlTests : IClassFixture<MySqlTestDatabase>
         await AssertReconciledAsync(main, alt);
     }
 
+    [MySqlFact]
+    public async Task Merge_XpCarryOverAcrossABracketTheAltWasPaid_PaysNoSecondBonus()
+    {
+        // Exploit fix: the alt earns Peasant's bonus, then is merged into a lower-XP main. The
+        // carry-over lifts the main past Peasant, but that bonus was already paid (to the alt).
+        var main = await SignUpAsync("xmain");
+        var alt = await SignUpAsync("xalt");
+        async Task Adjust(int id, Currency currency, CurrencyOperation mode, long amount)
+        {
+            await using var r = NewRequest();
+            await r.Users.AdjustBalancesAsync(id, Change(currency, mode, amount), Staff(Name("x")));
+        }
+        await Adjust(main, Currency.Experience, CurrencyOperation.Add, 100);
+        await Adjust(alt, Currency.Experience, CurrencyOperation.Add, 3_000); // +13,500 coins, +3 gems, +32 XP
+        var altBefore = await ReloadAsync(alt);
+        Assert.Equal((13_750, 53, 3_032), (altBefore.Coins, altBefore.Gems, altBefore.ExperiencePoints));
+
+        await using (var r = NewRequest())
+        {
+            await r.Users.MergeAccountsAsync(main, alt);
+        }
+
+        var survivor = await ReloadAsync(main);
+        Assert.Equal((13_750, 53, 3_032), (survivor.Coins, survivor.Gems, survivor.ExperiencePoints));
+        Assert.DoesNotContain(await TransactionsForAsync(main), t => t.ReasonCode == CurrencyReasons.TitleBonus);
+        var bonus = Assert.Single(await TransactionsForAsync(alt), t => t.ReasonCode == CurrencyReasons.TitleBonus);
+        Assert.StartsWith($"title-bonus:{alt}:", bonus.IdempotencyKey);
+
+        // Nor on a later demotion and promotion of the survivor.
+        await Adjust(main, Currency.Experience, CurrencyOperation.Set, 0);
+        await Adjust(main, Currency.Experience, CurrencyOperation.Add, 3_000);
+        var repromoted = await ReloadAsync(main);
+        Assert.Equal((13_750, 53, 3_000), (repromoted.Coins, repromoted.Gems, repromoted.ExperiencePoints));
+        Assert.DoesNotContain(await TransactionsForAsync(main), t => t.ReasonCode == CurrencyReasons.TitleBonus);
+        await AssertReconciledAsync(main, alt);
+    }
+
     // ===== The acceptance script =====
 
     [MySqlFact]

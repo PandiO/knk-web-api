@@ -982,8 +982,9 @@ namespace knkwebapi_v2.Services
         /// the ledger: one MERGE_FORFEIT posting zeroes the secondary's full balances (key
         /// <c>merge:{secondaryId}</c>), and one MERGE_CARRYOVER posting credits the survivor with
         /// secondary − primary wherever that is positive (key <c>merge-carry:{secondaryId}</c>).
-        /// An XP carry-over runs title progression once; a bracket's bonus the survivor was
-        /// already paid is not paid again (once per bracket, ever). Both rows are locked; the
+        /// An XP carry-over runs title progression once; a bracket's bonus already paid to either
+        /// account is not paid again (once per bracket, ever: the forfeit posted first puts the
+        /// secondary among the survivor's merged accounts, whose bonuses count as paid). Both rows are locked; the
         /// postings, the bonuses and the soft delete commit together.
         /// </summary>
         private async Task MergeWithForfeitAsync(int primaryUserId, int secondaryUserId)

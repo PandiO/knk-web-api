@@ -70,7 +70,7 @@ namespace knkwebapi_v2.Services
         /// <summary>Siege match rewards, one multi-leg posting per match. Key: <c>siege-match:{matchId}</c>.</summary>
         public const string SiegeReward = "SIEGE_REWARD";
 
-        /// <summary>One-time coin/gem/XP bonus of a title reached. Key: <c>title-bonus:{userId}:{bracketId}</c>, one posting with a leg per currency (once ever, DESIGN.md D10).</summary>
+        /// <summary>One-time coin/gem/XP bonus of a title reached. Key: <c>title-bonus:{userId}:{bracketId}</c>, one posting with a leg per currency (once ever, DESIGN.md D10; one paid to an account merged into the user's counts as paid).</summary>
         public const string TitleBonus = "TITLE_BONUS";
 
         /// <summary>Cost of claiming a kit. Key: <c>kit-claim:{clientKey}</c>.</summary>

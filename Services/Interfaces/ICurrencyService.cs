@@ -71,6 +71,13 @@ namespace knkwebapi_v2.Services.Interfaces
         /// </summary>
         Task<PostingResult?> FindAsync(string scope, string idempotencyKey, CancellationToken ct = default);
 
+        /// <summary>
+        /// Every account merged into <paramref name="userId"/>'s, transitively (an account merged
+        /// into one of those counts too), from the ledger's MERGE_FORFEIT postings. A once-ever
+        /// posting already made to one of them counts as made to the survivor (title bonuses).
+        /// </summary>
+        Task<IReadOnlyList<int>> GetMergedAccountIdsAsync(int userId, CancellationToken ct = default);
+
         /// <summary>The policy row of each currency that has one (signup grant, transfer rules).</summary>
         Task<IReadOnlyDictionary<Currency, Models.CurrencyPolicy>> GetPoliciesAsync(CancellationToken ct = default);
 

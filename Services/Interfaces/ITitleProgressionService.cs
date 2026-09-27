@@ -8,7 +8,9 @@ namespace knkwebapi_v2.Services.Interfaces
     /// resolves the bracket before and after, and on a promotion pays each crossed bracket's
     /// Coin/Gem/Exp bonus as a TITLE_BONUS ledger posting keyed
     /// <c>title-bonus:{userId}:{bracketId}</c> — once per user and bracket, ever (currency
-    /// DESIGN.md D10; fixes audit A5, the demote/re-promote re-grant loop). An XP bonus can push
+    /// DESIGN.md D10; fixes audit A5, the demote/re-promote re-grant loop). A bracket paid to an
+    /// account merged into the user's (ICurrencyService.GetMergedAccountIdsAsync) counts as paid,
+    /// so an account merge can't collect a bracket's bonus a second time. An XP bonus can push
     /// into a further bracket, which is then crossed too. Demotions never claw anything back.
     /// Bonuses are scaled by the KNG-16 multipliers (coins by personal x rank salary, gems and XP
     /// by their own bonus multipliers). Writes one TitleChanged audit entry per change.
