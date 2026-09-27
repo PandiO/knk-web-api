@@ -795,4 +795,65 @@ public class UsersControllerTests
     }
 
     #endregion
+
+    #region Create with a Minecraft UUID is game-server only (currency final review)
+
+    [Fact]
+    public async Task Create_WithUuid_FromAnAnonymousCaller_Is403_AndTouchesNoAccount()
+    {
+        SetRequest(configuredKey: "secret");
+        var dto = new UserCreateDto { Username = "victim", Uuid = "11111111-2222-3333-4444-555555555555" };
+
+        var result = await _controller.Create(dto);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+        _mockUserService.Verify(s => s.GetByUsernameAsync(It.IsAny<string>()), Times.Never);
+        _mockUserService.Verify(s => s.UpdateAsync(It.IsAny<int>(), It.IsAny<UserDto>(), It.IsAny<int?>()), Times.Never);
+        _mockUserService.Verify(s => s.CreateAsync(It.IsAny<UserCreateDto>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_WithUuid_FromALoggedInWebUser_Is403()
+    {
+        SetRequest(user: LoggedIn(4), configuredKey: "secret");
+
+        var result = await _controller.Create(new UserCreateDto { Username = "victim", Uuid = "11111111-2222-3333-4444-555555555555" });
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WithUuid_FromTheGameServer_LinksThePreRegisteredAccount()
+    {
+        SetRequest(apiKey: "secret", configuredKey: "secret");
+        _mockUserService.Setup(s => s.GetByUsernameAsync("joiner")).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Email = "j@example.com" });
+        _mockUserService.Setup(s => s.GetByIdAsync(12)).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
+
+        var result = await _controller.Create(new UserCreateDto { Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
+
+        Assert.IsType<CreatedAtRouteResult>(result);
+        _mockUserService.Verify(s => s.UpdateAsync(12, It.Is<UserDto>(u => u.Uuid == "11111111-2222-3333-4444-555555555555"), It.IsAny<int?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Create_WithoutUuid_StaysOpenForWebSignUp()
+    {
+        SetRequest(configuredKey: "secret");
+        _mockUserService.Setup(s => s.ValidateUserCreationAsync(It.IsAny<UserCreateDto>(), It.IsAny<int?>())).ReturnsAsync((true, null));
+        _mockUserService.Setup(s => s.CheckUsernameTakenAsync("newbie", null)).ReturnsAsync((false, null));
+        _mockUserService.Setup(s => s.CheckEmailTakenAsync("n@example.com", null)).ReturnsAsync((false, null));
+        _mockUserService.Setup(s => s.CreateAsync(It.IsAny<UserCreateDto>())).ReturnsAsync(new UserDto { Id = 13, Username = "newbie", Email = "n@example.com", Uuid = "u" });
+
+        var result = await _controller.Create(new UserCreateDto
+        {
+            Username = "newbie",
+            Email = "n@example.com",
+            Password = "SecurePass123!",
+            PasswordConfirmation = "SecurePass123!"
+        });
+
+        Assert.IsType<CreatedAtRouteResult>(result);
+    }
+
+    #endregion
 }

@@ -349,7 +349,17 @@ namespace knkwebapi_v2.Controllers
         public async Task<IActionResult> Create([FromBody] UserCreateDto user)
         {
             if (user == null) return BadRequest(new { error = "InvalidRequest", message = "User data is required" });
-            
+
+            // A Minecraft UUID is only ever supplied by the game server for the player who just
+            // joined. From anyone else it would let them attach their own Minecraft account to
+            // someone's pre-registered web account (taking it and its balance over), or squat a
+            // player's UUID under their own email and password before that player first joins.
+            // Web sign-up never sends one.
+            if (!string.IsNullOrEmpty(user.Uuid) && HttpContext?.GetKnkCaller().IsPluginService != true)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = "Only the game server can create or link an account by Minecraft UUID." });
+            }
+
             try
             {
                 // Web app first linking (BEFORE validation): If providing UUID + username, check for existing pre-registered account
