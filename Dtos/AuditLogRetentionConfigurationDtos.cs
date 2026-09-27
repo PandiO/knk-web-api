@@ -13,6 +13,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("retentionDays")]
         public int RetentionDays { get; set; } = 180;
 
+        /// <summary>How long private message log entries are kept (docs/specs/private-messages/DESIGN.md §3.1).</summary>
+        [JsonPropertyName("privateMessageRetentionDays")]
+        public int PrivateMessageRetentionDays { get; set; } = 30;
+
         [JsonPropertyName("updatedAt")]
         public DateTime UpdatedAt { get; set; }
     }
@@ -24,5 +28,9 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("retentionDays")]
         public int RetentionDays { get; set; } = 180;
+
+        /// <summary>Left out (null) = unchanged, so callers that only send retentionDays keep working.</summary>
+        [JsonPropertyName("privateMessageRetentionDays")]
+        public int? PrivateMessageRetentionDays { get; set; }
     }
 }
