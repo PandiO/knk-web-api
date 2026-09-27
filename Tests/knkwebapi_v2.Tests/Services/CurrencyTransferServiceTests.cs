@@ -154,6 +154,45 @@ public class CurrencyTransferServiceTests
     }
 
     [Fact]
+    public async Task PartialReversal_OfATransferWithAFee_IsRefused_NotFundedFromSysFees()
+    {
+        // Bob spent most of what Alice sent. Balancing Bob's shortfall against SYS_FEES would
+        // refund Alice in full while Bob returns only part: the difference would be minted.
+        await SetPolicyAsync(Currency.Coins, p => p.TransferFeeBasisPoints = 200);
+        var alice = await SeedUserAsync("alice", coins: 5000);
+        var bob = await SeedUserAsync("bob");
+        await using var ctx = NewContext();
+        var service = Service(ctx);
+        var sent = await service.TransferAsync(new TransferRequest(alice, bob, Currency.Coins, 1000), Pay(alice, "fee-rev-1"));
+        await service.SpendAsync(bob, Currency.Coins, 600, CurrencyContext.ForSystem("Test", CurrencyReasons.KitPurchase, "kit-purchase:9:" + bob));
+
+        var reversal = new CurrencyContext
+        {
+            IdempotencyKey = $"reverse:{sent.TransactionId}",
+            IdempotencyScope = CurrencyIdempotencyScopes.Web,
+            ReasonCode = CurrencyReasons.Reversal,
+            Reason = "Scam reported by alice",
+            Initiator = CurrencyInitiator.Admin,
+            InitiatorUserId = 999,
+            InitiatorComponent = "Test"
+        };
+        var ex = await Assert.ThrowsAsync<CurrencyException>(() =>
+            service.ReverseAsync(sent.TransactionId!.Value, new ReversalOptions(AllowPartial: true), reversal));
+
+        Assert.Equal(CurrencyErrorCode.ReversalWouldGoNegative, ex.Code);
+        Assert.Equal((3980, 400), ((await ReloadAsync(alice)).Coins, (await ReloadAsync(bob)).Coins));
+        Assert.Equal(2, (await TransactionsAsync()).Count);
+
+        // With the money still there the full reversal works and refunds the fee too.
+        await service.GrantAsync(bob, Currency.Coins, 600, CurrencyContext.ForSystem("Test", CurrencyReasons.EventReward, "event:fee-rev:" + bob));
+        var full = await service.ReverseAsync(sent.TransactionId!.Value, new ReversalOptions(), reversal with { IdempotencyKey = "reverse-full" });
+        Assert.False(full.Replayed);
+        Assert.Equal((5000, 0), ((await ReloadAsync(alice)).Coins, (await ReloadAsync(bob)).Coins));
+        await using var check = NewContext();
+        Assert.Empty(await new CurrencyReconciler(check).FindMismatchesAsync());
+    }
+
+    [Fact]
     public async Task RefusedTransfer_WritesNothing_AndARetryIsEvaluatedAgain()
     {
         var alice = await SeedUserAsync("alice", coins: 500);

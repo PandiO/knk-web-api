@@ -295,16 +295,20 @@ namespace knkwebapi_v2.Services
                         .Where(e => e.AccountKind == CurrencyAccountKind.System && e.Currency == currency)
                         .ToList();
                     var accountNames = accounts.Select(e => e.SystemAccount!).Distinct().ToList();
+                    // A clamped debit may only shrink what a single system account takes back.
+                    // If the reversal also credits a player in this currency (a transfer's sender,
+                    // also when it paid a fee to SYS_FEES), balancing the shortfall against the
+                    // system account would mint it for that player; with several (or no) system
+                    // accounts it would move it onto someone else.
+                    var creditsAPlayer = userLegs.Any(e => e.Currency == currency && e.Amount < 0);
+                    if (clamped.Contains(currency) && (accountNames.Count != 1 || creditsAPlayer))
+                    {
+                        throw new CurrencyException(CurrencyErrorCode.ReversalWouldGoNegative,
+                            $"Transaction {original.PublicId} can't be partially reversed.");
+                    }
                     if (accountNames.Count == 1)
                     {
                         plan.BalanceWithSystemAccount(accountNames[0], currency);
-                    }
-                    else if (clamped.Contains(currency))
-                    {
-                        // User-to-user (or multi-account) postings can't be partially reversed
-                        // without moving the shortfall onto someone else.
-                        throw new CurrencyException(CurrencyErrorCode.ReversalWouldGoNegative,
-                            $"Transaction {original.PublicId} can't be partially reversed.");
                     }
                     else
                     {
