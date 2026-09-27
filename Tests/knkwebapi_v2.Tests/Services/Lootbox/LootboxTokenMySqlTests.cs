@@ -211,4 +211,61 @@ public class LootboxTokenMySqlTests
             await DropAsync();
         }
     }
+
+    // A world box picked up (DESIGN.md §3.8): its own DbContext and connection per click, started together.
+    private static async Task<(LootboxPickupResultDto? Result, string? Code)> PickupAttemptAsync(int spawnId, Guid token, int userId, Barrier start)
+    {
+        await using var db = NewContext();
+        var runtime = Runtime(db);
+        await db.Database.OpenConnectionAsync();
+        start.SignalAndWait(TimeSpan.FromSeconds(30));
+        try
+        {
+            return (await runtime.PickupAsync(spawnId, new LootboxPickupRequestDto { Token = token, UserId = userId }), null);
+        }
+        catch (LootboxConflictException ex)
+        {
+            return (null, ex.Code);
+        }
+    }
+
+    [MySqlFact]
+    public async Task ConcurrentPickupsOfOneWorldBox_GiveExactlyOneToken()
+    {
+        var seeded = await FreshDatabaseAsync();
+        try
+        {
+            for (var round = 0; round < 5; round++)
+            {
+                LootboxSpawnDto spawn;
+                await using (var db = NewContext())
+                {
+                    spawn = await Runtime(db).AdminSpawnAsync(new LootboxAdminSpawnRequestDto
+                    {
+                        TypeId = seeded.Weapons, BoxStars = 3, World = "world", X = round, Y = 64, Z = 0,
+                    }, null);
+                }
+                // Alice twice (a double click, two servers) and Bob three times, all at once.
+                var pickers = new[] { seeded.Alice, seeded.Alice, seeded.Bob, seeded.Bob, seeded.Bob };
+                using var start = new Barrier(pickers.Length);
+                var attempts = await Task.WhenAll(pickers.Select(user =>
+                    Task.Run(() => PickupAttemptAsync(spawn.Id, spawn.Token, user, start))));
+
+                var winners = attempts.Where(a => a.Result != null).Select(a => a.Result!.LootboxToken.Token).Distinct().ToList();
+                winners.Should().ContainSingle($"round {round}: one token for the box (a same-player retry may replay it)");
+                attempts.Where(a => a.Result == null).Select(a => a.Code).Should().OnlyContain(c => c == "AlreadyClaimed");
+
+                await using var read = NewContext();
+                var tokens = await read.LootboxTokens.Where(t => t.SourceSpawnId == spawn.Id).ToListAsync();
+                tokens.Should().ContainSingle();
+                var box = await read.LootboxSpawns.SingleAsync(s => s.Id == spawn.Id);
+                (box.Status, box.ClaimedByUserId).Should().Be((LootboxSpawnStatus.Claimed, tokens[0].IssuedToUserId));
+                attempts.Where(a => a.Result != null).Should().OnlyContain(a => a.Result!.LootboxToken.IssuedToUserId == tokens[0].IssuedToUserId);
+            }
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
 }
