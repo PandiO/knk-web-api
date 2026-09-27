@@ -65,6 +65,7 @@ namespace knkwebapi_v2.Services
         private readonly ILogger<DiscoveryService> _logger;
         private readonly DiscoveryOptions _options;
         private readonly Random _random;
+        private readonly IPlayerNotificationQueue? _notifications;
 
         public DiscoveryService(
             IDiscoveryRepository repo,
@@ -76,7 +77,8 @@ namespace knkwebapi_v2.Services
             IAuditLogService auditLogService,
             ILogger<DiscoveryService> logger,
             IOptions<DiscoveryOptions>? options = null,
-            Random? random = null)
+            Random? random = null,
+            IPlayerNotificationQueue? notifications = null)
         {
             _repo = repo;
             _userRepo = userRepo;
@@ -88,6 +90,7 @@ namespace knkwebapi_v2.Services
             _logger = logger;
             _options = options?.Value ?? new DiscoveryOptions();
             _random = random ?? Random.Shared;
+            _notifications = notifications;
         }
 
         public async Task<DiscoveryGrantResultDto> DiscoverAsync(int userId, DiscoveryGrantRequestDto request)
@@ -445,6 +448,9 @@ namespace knkwebapi_v2.Services
 
             var node = (await _repo.GetDomainNodesAsync(new[] { domainId })).FirstOrDefault();
             await _repo.DeleteAsync(discovery);
+            // The delete is committed: tell the plugin, whose per-session known set would otherwise
+            // keep filtering this domain out until the player rejoins.
+            await NotifyResetAsync(userId, domainId, node?.WgRegionId);
             // No claw-back (DESIGN.md D8): the reward stays, the domain can be discovered again.
             await _auditLogService.RecordAsync(actorUserId, userId, AuditAction.DiscoveryReset, JsonSerializer.Serialize(new
             {
@@ -621,6 +627,23 @@ namespace knkwebapi_v2.Services
                 return parsed;
             }
             throw new ArgumentException("source must be RegionEnter, JoinInside or Replay.", nameof(source));
+        }
+
+        private async Task NotifyResetAsync(int userId, int domainId, string? wgRegionId)
+        {
+            if (_notifications == null) return;
+            try
+            {
+                var user = await _userRepo.GetByIdAsync(userId);
+                if (user == null) return;
+                _notifications.EnqueueDiscoveryReset(user.Id, user.Uuid, user.Username,
+                    new DiscoveryResetNotificationDto { DomainId = domainId, WgRegionId = wgRegionId });
+            }
+            catch (Exception ex)
+            {
+                // Only the in-game resync is lost; the reset itself is committed.
+                _logger.LogWarning(ex, "Could not queue the DiscoveryReset notification for user {UserId}, domain {DomainId}", userId, domainId);
+            }
         }
 
         private async Task EnsureUserAsync(int userId)

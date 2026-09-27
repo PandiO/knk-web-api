@@ -41,6 +41,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("currencyAlert")]
         public CurrencyAlertNotificationDto? CurrencyAlert { get; set; }
 
+        /// <summary>Set when Type is DiscoveryReset.</summary>
+        [JsonPropertyName("discoveryReset")]
+        public DiscoveryResetNotificationDto? DiscoveryReset { get; set; }
+
         [JsonPropertyName("createdAt")]
         public DateTime CreatedAt { get; set; }
     }
@@ -70,6 +74,26 @@ namespace knkwebapi_v2.Dtos
         /// /knk currency alerts until acknowledged.
         /// </summary>
         public const string CurrencyAlert = "CurrencyAlert";
+
+        /// <summary>
+        /// One of this user's discoveries was reset (web admin player profile or /knk discovery
+        /// reset, domain discovery DESIGN.md §3.6). The plugin keeps a per-session known set loaded
+        /// at join; on this it re-reads that set and re-checks the player's current location, so
+        /// the reset place can be discovered again without a rejoin. Payload in DiscoveryReset.
+        /// Harmless for an offline player: the known set is loaded fresh on join anyway.
+        /// </summary>
+        public const string DiscoveryReset = "DiscoveryReset";
+    }
+
+    /// <summary>Payload of a DiscoveryReset player notification.</summary>
+    public class DiscoveryResetNotificationDto
+    {
+        [JsonPropertyName("domainId")]
+        public int DomainId { get; set; }
+
+        /// <summary>The domain's WorldGuard region id, null when it has none.</summary>
+        [JsonPropertyName("wgRegionId")]
+        public string? WgRegionId { get; set; }
     }
 
     public class AcknowledgePlayerNotificationsDto

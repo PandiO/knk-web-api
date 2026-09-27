@@ -32,6 +32,7 @@ public class DiscoveryServiceTests : IDisposable
 
     private readonly KnKDbContext _db;
     private readonly Mock<IPlayerNotificationQueue> _notifications = new();
+    private readonly InMemoryPlayerNotificationQueue _resetQueue = new();
 
     public DiscoveryServiceTests()
     {
@@ -77,7 +78,7 @@ public class DiscoveryServiceTests : IDisposable
         return new DiscoveryService(repo ?? new DiscoveryRepository(_db), userRepo, users, currency, titles, memberships, audit,
             NullLogger<DiscoveryService>.Instance,
             Options.Create(new DiscoveryOptions { MaxNewPerHour = maxNewPerHour }),
-            new DiscoveryRewardCalculatorTests.FixedRandom(roll));
+            new DiscoveryRewardCalculatorTests.FixedRandom(roll), _resetQueue);
     }
 
     private static DiscoveryGrantRequestDto Regions(params string[] ids) => new() { WgRegionIds = ids.ToList() };
@@ -634,6 +635,27 @@ public class DiscoveryServiceTests : IDisposable
     {
         Assert.False(await Service().ResetAsync(UserId, Kardenna, null));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => Service().ResetAsync(999, Kardenna, null));
+        Assert.Empty(_resetQueue.GetPending()); // nothing removed, nothing to resync
+    }
+
+    [Fact]
+    public async Task Reset_QueuesADiscoveryResetNotificationForThePlugin()
+    {
+        var service = Service();
+        await service.DiscoverAsync(UserId, Regions("district_oldquarter"));
+        Assert.Empty(_resetQueue.GetPending());
+
+        Assert.True(await service.ResetAsync(UserId, OldQuarter, actorUserId: 101));
+
+        // Queued once the delete is committed, for the player whose known set is now stale.
+        var note = Assert.Single(_resetQueue.GetPending());
+        Assert.Equal((PlayerNotificationTypes.DiscoveryReset, UserId, "uuid-a", "alice"), (note.Type, note.UserId, note.Uuid, note.Username));
+        Assert.Equal((OldQuarter, "district_oldquarter"), (note.DiscoveryReset!.DomainId, note.DiscoveryReset.WgRegionId));
+        Assert.DoesNotContain(_db.UserDomainDiscoveries.AsNoTracking(), d => d.DomainId == OldQuarter);
+
+        // A second reset of the same domain removes nothing and queues nothing.
+        Assert.False(await service.ResetAsync(UserId, OldQuarter, actorUserId: 101));
+        Assert.Single(_resetQueue.GetPending());
     }
 
     [Fact]
