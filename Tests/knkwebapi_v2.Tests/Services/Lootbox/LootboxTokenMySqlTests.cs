@@ -10,6 +10,7 @@ using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Lootbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using MySqlConnector;
 using Xunit;
 
 namespace knkwebapi_v2.Tests.Services.Lootbox;
@@ -34,14 +35,30 @@ public sealed class MySqlFactAttribute : FactAttribute
 /// player holding a copy) produces exactly one claim and one ItemInstance; parallel retries of one click replay it;
 /// the unique <c>lootbox_claims.LootboxTokenId</c> refuses a second claim row for a token outright.
 /// <para>
-/// Opt-in: <c>KNK_TEST_MYSQL="Server=127.0.0.1;Port=3306;Database=knk_scratch;User=…;Password=…;Allow User Variables=True;"</c>.
+/// Opt-in: <c>KNK_TEST_MYSQL="Server=127.0.0.1;Port=3306;[Database=knk_scratch;]User=…;Password=…;Allow User Variables=True;"</c>.
 /// The database is dropped, every migration is applied, and the database is dropped again at the end.
 /// </para>
 /// </summary>
-[Trait("Category", "MySql")]
+[Trait("Category", "requires-mysql")]
 public class LootboxTokenMySqlTests
 {
-    private static string ConnectionString => Environment.GetEnvironmentVariable(MySqlFactAttribute.EnvironmentVariable)!;
+    /// <summary>
+    /// The shared <c>KNK_TEST_MYSQL</c> convention (<c>MySql/MySqlTestDatabase</c>) is a server connection without
+    /// <c>Database=</c>; this class then uses its own scratch database under <c>KNK_TEST_MYSQL_DB_PREFIX</c>.
+    /// </summary>
+    private static string ConnectionString
+    {
+        get
+        {
+            var builder = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable(MySqlFactAttribute.EnvironmentVariable)!)
+            {
+                AllowUserVariables = true
+            };
+            if (string.IsNullOrEmpty(builder.Database))
+                builder.Database = (Environment.GetEnvironmentVariable("KNK_TEST_MYSQL_DB_PREFIX") ?? "knk_test_") + "lootbox_tokens";
+            return builder.ConnectionString;
+        }
+    }
 
     private static KnKDbContext NewContext()
     {
