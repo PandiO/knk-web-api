@@ -674,6 +674,36 @@ public class UsersControllerTests
     }
 
     [Fact]
+    public async Task AdjustBalances_LoggedIn_AnXpIncreaseAlsoNeedsTheCoinsAndGemsNodes()
+    {
+        // KNG-21 smoke test: the title bonuses an XP increase can trigger pay coins and gems, so
+        // raising XP needs all three nodes; lowering it only the XP node.
+        Holds(5, "knk.admin.user.xp", granted: true);
+        Holds(5, "knk.admin.user.coins", granted: true);
+        Holds(5, "knk.admin.user.gems", granted: false);
+        SetRequest(user: LoggedIn(5));
+        _mockUserService.Setup(s => s.GetByIdAsync(7)).ReturnsAsync(new UserDto { Id = 7, ExperiencePoints = 1_000 });
+        Task<IActionResult> Xp(knkwebapi_v2.Enums.CurrencyOperation mode, long amount) => _controller.AdjustBalances(7, new AdjustBalancesDto
+        {
+            Changes = { new BalanceChangeDto { Currency = knkwebapi_v2.Enums.Currency.Experience, Mode = mode, Amount = amount } },
+            Reason = "xp fix"
+        });
+
+        var add = Assert.IsType<ObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Add, 1));
+        Assert.Equal(StatusCodes.Status403Forbidden, add.StatusCode);
+        Assert.Contains("knk.admin.user.gems", System.Text.Json.JsonSerializer.Serialize(add.Value));
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<ObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Set, 1_001)).StatusCode);
+        VerifyNotAdjusted();
+
+        Assert.IsType<OkObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Remove, 1));
+        Assert.IsType<OkObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Set, 1_000));
+        Assert.IsType<OkObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Set, 10));
+
+        Holds(5, "knk.admin.user.gems", granted: true);
+        Assert.IsType<OkObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Add, 1));
+    }
+
+    [Fact]
     public async Task AdjustBalances_PluginKeyConfiguredButMissing_IsRefused()
     {
         SetRequest(actingUserId: "42", configuredKey: "secret");

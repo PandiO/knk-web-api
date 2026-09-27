@@ -342,13 +342,22 @@ namespace knkwebapi_v2.Repositories
             };
         }
 
-        public async Task<long> SumAdminGrantedSinceAsync(int actorUserId, Currency currency, DateTime since, CancellationToken ct = default) =>
-            await _context.CurrencyEntries.AsNoTracking()
+        public async Task<long> SumAdminGrantedSinceAsync(int actorUserId, Currency currency, DateTime since, CancellationToken ct = default)
+        {
+            // The staff member's own adjustments, plus the title bonuses their XP increases
+            // triggered (KNG-21): a bonus carries the triggering adjustment's public id as its
+            // correlation id.
+            var adjustments = _context.CurrencyTransactions
+                .Where(t => t.Kind == CurrencyTransactionKind.AdminAdjust && t.InitiatorUserId == actorUserId && t.CreatedAt >= since)
+                .Select(t => t.PublicId);
+            return await _context.CurrencyEntries.AsNoTracking()
                 .Where(e => e.AccountKind == CurrencyAccountKind.User && e.Currency == currency && e.Amount > 0
-                    && e.Transaction.Kind == CurrencyTransactionKind.AdminAdjust
-                    && e.Transaction.InitiatorUserId == actorUserId
-                    && e.Transaction.CreatedAt >= since)
+                    && e.Transaction.CreatedAt >= since
+                    && ((e.Transaction.Kind == CurrencyTransactionKind.AdminAdjust && e.Transaction.InitiatorUserId == actorUserId)
+                        || (e.Transaction.ReasonCode == CurrencyReasons.TitleBonus && e.Transaction.CorrelationId != null
+                            && adjustments.Contains(e.Transaction.CorrelationId))))
                 .SumAsync(e => (long?)e.Amount, ct) ?? 0;
+        }
 
         public Task<CurrencyPolicy?> GetPolicyForUpdateAsync(Currency currency, CancellationToken ct = default) =>
             _context.CurrencyPolicies.FirstOrDefaultAsync(p => p.Currency == currency, ct);

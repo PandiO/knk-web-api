@@ -341,6 +341,62 @@ public class LedgerRoutingMySqlTests : IClassFixture<MySqlTestDatabase>
         await AssertReconciledAsync(id);
     }
 
+    /// <summary>A named staff member's change, from the web app or through the plugin's acting-user header.</summary>
+    private static CurrencyContext StaffAs(int staffUserId, string key, bool plugin = false) => new()
+    {
+        IdempotencyKey = key,
+        IdempotencyScope = plugin ? CurrencyIdempotencyScopes.Plugin : CurrencyIdempotencyScopes.Web,
+        ReasonCode = CurrencyReasons.AdminGrant,
+        Reason = "Scripted staff change",
+        Initiator = CurrencyInitiator.Admin,
+        InitiatorUserId = staffUserId,
+        InitiatorComponent = plugin ? "PluginUserAdmin" : "WebAppPlayerProfile"
+    };
+
+    [MySqlFact]
+    public async Task StaffXpIncrease_WhoseTitleBonusPassesTheirDailyCap_IsRefusedWhole()
+    {
+        // KNG-21 smoke test: the seeded coin cap is 5,000,000 per staff member per 24 h and
+        // reaching Peasant pays 13,500 coins, so a staff member with 4,990,000 used can't raise XP
+        // past 2,500 - and the XP itself must not stick either.
+        var staff = await SignUpAsync("staff");
+        var other = await SignUpAsync("rich");
+        var id = await SignUpAsync("xpcap");
+        await using (var r = NewRequest())
+        {
+            await r.Users.AdjustBalancesAsync(other, Change(Currency.Coins, CurrencyOperation.Add, 4_990_000), StaffAs(staff, Name("fill")));
+        }
+        await using (var r = NewRequest())
+        {
+            var ex = await Assert.ThrowsAsync<CurrencyException>(() =>
+                r.Users.AdjustBalancesAsync(id, Change(Currency.Experience, CurrencyOperation.Add, 2_500), StaffAs(staff, Name("xp"))));
+            Assert.Equal(CurrencyErrorCode.AdminDailyCapExceeded, ex.Code);
+        }
+        var refused = await ReloadAsync(id);
+        Assert.Equal((250, 50, 0), (refused.Coins, refused.Gems, refused.ExperiencePoints));
+        Assert.Equal(new[] { CurrencyReasons.SignupGrant }, (await TransactionsForAsync(id)).Select(t => t.ReasonCode));
+
+        // Through the plugin (acting-user header) the rule is the same; with room it pays, and
+        // the bonus then counts against that staff member's allowance.
+        var helper = await SignUpAsync("helper");
+        await using (var r = NewRequest())
+        {
+            var paid = await r.Users.AdjustBalancesAsync(id, Change(Currency.Experience, CurrencyOperation.Add, 2_500), StaffAs(helper, Name("xp"), plugin: true));
+            Assert.Equal(13_500, paid.TitleChange!.CoinBonusGranted);
+        }
+        await using (var r = NewRequest())
+        {
+            var ex = await Assert.ThrowsAsync<CurrencyException>(() =>
+                r.Users.AdjustBalancesAsync(other, Change(Currency.Coins, CurrencyOperation.Add, 5_000_000 - 13_500 + 1), StaffAs(helper, Name("g"), plugin: true)));
+            Assert.Equal(CurrencyErrorCode.AdminDailyCapExceeded, ex.Code);
+        }
+        await using (var r = NewRequest())
+        {
+            await r.Users.AdjustBalancesAsync(other, Change(Currency.Coins, CurrencyOperation.Add, 5_000_000 - 13_500), StaffAs(helper, Name("g"), plugin: true));
+        }
+        await AssertReconciledAsync(id, other);
+    }
+
     // ===== The acceptance script =====
 
     [MySqlFact]

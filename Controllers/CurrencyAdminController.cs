@@ -187,11 +187,14 @@ namespace knkwebapi_v2.Controllers
         /// category and a note of at least 10 characters, and an Idempotency-Key (new per action,
         /// the same on a retry). Set is computed server-side under the row lock; expectedCurrent
         /// refuses a set from a stale screen (409). Grants count against the staff member's daily
-        /// cap (422 AdminDailyCapExceeded) unless they hold knk.admin.currency.unlimited.
+        /// cap (422 AdminDailyCapExceeded) unless they hold knk.admin.currency.unlimited; so do the
+        /// coin/gem title bonuses an XP increase triggers, and over the cap the whole change is
+        /// refused. An XP increase (Add, or Set above the current value) needs knk.admin.user.xp,
+        /// .coins and .gems from a logged-in caller (KNG-21).
         /// </summary>
         /// <response code="200">Applied (or replayed): balances before/after and the ledger id</response>
         /// <response code="400">Bad category, note, amount, funds or cap; missing Idempotency-Key</response>
-        /// <response code="403">Without the node for that balance (knk.admin.user.coins/gems/xp)</response>
+        /// <response code="403">Without the node for that balance (knk.admin.user.coins/gems/xp; an XP increase needs all three)</response>
         /// <response code="404">No such player</response>
         /// <response code="409">expectedCurrent didn't match, or the key was used for a different request</response>
         /// <response code="422">Over the staff member's daily grant cap</response>
@@ -205,7 +208,7 @@ namespace knkwebapi_v2.Controllers
             {
                 return BadRequest(new { error = "ValidationFailed", message = "currency must be Coins, Gems or Experience and mode Add, Remove or Set." });
             }
-            var denied = await RequireBalanceNodeAsync(caller, request.Currency);
+            var denied = await RequireBalanceNodeAsync(caller, request);
             if (denied != null) return denied;
 
             var category = request.Category?.Trim().ToUpperInvariant() ?? "";
@@ -342,8 +345,9 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
-        /// <summary>A web caller needs the in-game node of the balance it changes (the plugin checks it in-game).</summary>
-        private async Task<IActionResult?> RequireBalanceNodeAsync(KnkCaller caller, Currency currency)
+        /// <summary>A web caller needs the in-game node of the balance it changes, and for an XP
+        /// increase the coins and gems nodes too (KNG-21); the plugin checks them in-game.</summary>
+        private async Task<IActionResult?> RequireBalanceNodeAsync(KnkCaller caller, AdminAdjustmentDto request)
         {
             if (caller.IsPluginService)
             {
@@ -353,16 +357,17 @@ namespace knkwebapi_v2.Controllers
             {
                 return Unauthorized(new { error = "Unauthorized", message = "Log in to use this." });
             }
-            var node = currency switch
+            var increasesExperience = await CurrencyHttp.IncreasesExperienceAsync(request.Currency, request.Mode, request.Amount,
+                async () => (await _users.GetByIdAsync(request.TargetUserId))?.ExperiencePoints);
+            foreach (var node in CurrencyHttp.BalanceNodes(request.Currency, increasesExperience))
             {
-                Currency.Coins => StaffPermissions.UserCoins,
-                Currency.Gems => StaffPermissions.UserGems,
-                _ => StaffPermissions.UserXp
-            };
-            var check = await _permissions.CheckAsync(caller.WebUserId.Value, node);
-            return check?.Allowed == true
-                ? null
-                : StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = $"Requires the {node} permission." });
+                var check = await _permissions.CheckAsync(caller.WebUserId.Value, node);
+                if (check?.Allowed != true)
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = $"Requires the {node} permission." });
+                }
+            }
+            return null;
         }
 
         internal static LedgerSort? ParseSort(string? value) => (value?.Trim().ToLowerInvariant() ?? "") switch

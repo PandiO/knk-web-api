@@ -723,7 +723,10 @@ namespace knkwebapi_v2.Controllers
         /// Phase 2). "Set" is applied by the server under the row lock — clients send the target,
         /// never a delta they computed from a cached balance (audit A6); an optional
         /// expectedCurrent refuses a set made from a stale screen (409). XP changes run title
-        /// progression: promotion bonuses are paid once per bracket, ever. Requires an
+        /// progression: promotion bonuses are paid once per bracket, ever. An XP increase (Add, or
+        /// Set above the current value) needs knk.admin.user.xp, .coins and .gems from a logged-in
+        /// caller, and the coin/gem bonuses it triggers count against the acting staff member's
+        /// daily grant cap for web and plugin callers alike (KNG-21). Requires an
         /// Idempotency-Key header (new per action, the same on a retry): a retry returns the
         /// stored result with "replayed": true and changes nothing.
         /// Deprecated for single staff adjustments in favour of POST api/currency/admin/adjustments
@@ -735,9 +738,10 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Applied (or replayed); the new balances and what each change did</response>
         /// <response code="400">Missing reason or Idempotency-Key, bad amount, insufficient balance, or a balance would pass its cap</response>
         /// <response code="401">Neither the game server nor logged in</response>
-        /// <response code="403">Logged in without the node for a changed balance (knk.admin.user.coins/gems/xp)</response>
+        /// <response code="403">Logged in without the node for a changed balance (knk.admin.user.coins/gems/xp; an XP increase needs all three)</response>
         /// <response code="404">User not found</response>
         /// <response code="409">expectedCurrent didn't match, or the Idempotency-Key was used for a different request</response>
+        /// <response code="422">AdminDailyCapExceeded: the title bonuses an XP increase triggers would pass the acting staff member's daily grant cap (nothing is changed)</response>
         [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPut("{id:int}/balances")]
         public async Task<IActionResult> AdjustBalances(int id, [FromBody] AdjustBalancesDto request)
@@ -746,7 +750,7 @@ namespace knkwebapi_v2.Controllers
 
             // A web caller needs the in-game node for each balance it changes, as /knk user does
             // in-game; the plugin checks those nodes itself before calling.
-            var denied = await RequireBalanceNodesAsync(request);
+            var denied = await RequireBalanceNodesAsync(id, request);
             if (denied != null) return denied;
 
             var key = CurrencyHttp.ReadKey(this, required: true, out var keyError);
@@ -779,7 +783,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
-        private async Task<IActionResult?> RequireBalanceNodesAsync(AdjustBalancesDto request)
+        private async Task<IActionResult?> RequireBalanceNodesAsync(int id, AdjustBalancesDto request)
         {
             var caller = HttpContext?.GetKnkCaller();
             if (caller?.IsPluginService == true)
@@ -791,15 +795,16 @@ namespace knkwebapi_v2.Controllers
                 return Unauthorized(new { error = "Unauthorized", message = "Log in to use this." });
             }
 
-            var nodes = (request.Changes ?? new List<BalanceChangeDto>())
-                .Select(c => c?.Currency switch
-                {
-                    Enums.Currency.Coins => StaffPermissions.UserCoins,
-                    Enums.Currency.Gems => StaffPermissions.UserGems,
-                    _ => StaffPermissions.UserXp
-                })
-                .Distinct();
-            foreach (var node in nodes)
+            // An XP increase also needs the coins and gems nodes (KNG-21): the title bonuses it can
+            // trigger pay out coins and gems.
+            var nodes = new List<string>();
+            foreach (var change in (request.Changes ?? new List<BalanceChangeDto>()).Where(c => c != null))
+            {
+                var increasesExperience = await CurrencyHttp.IncreasesExperienceAsync(change.Currency, change.Mode, change.Amount,
+                    async () => (await _service.GetByIdAsync(id))?.ExperiencePoints);
+                nodes.AddRange(CurrencyHttp.BalanceNodes(change.Currency, increasesExperience));
+            }
+            foreach (var node in nodes.Distinct())
             {
                 var check = await _permissionResolutionService.CheckAsync(caller.WebUserId.Value, node);
                 if (check?.Allowed != true)

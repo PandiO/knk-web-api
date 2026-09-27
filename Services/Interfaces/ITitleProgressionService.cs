@@ -24,6 +24,10 @@ namespace knkwebapi_v2.Services.Interfaces
         /// Runs <see cref="ApplyAsync"/> for every user whose XP the posting changed, using the
         /// XP leg's BalanceBefore as the previous value. A replayed posting changed nothing, so it
         /// returns no changes. Keyed by user id; users whose title didn't change are absent.
+        /// When the posting is a staff adjustment (ADMIN_GRANT/ADMIN_SET) by
+        /// <paramref name="actorUserId"/>, the coin and gem bonuses count against that staff
+        /// member's daily grant cap (KNG-21): over it, this throws AdminDailyCapExceeded and the
+        /// caller's transaction must roll the XP change back with it.
         /// </summary>
         Task<Dictionary<int, TitleChangeResultDto>> ApplyForPostingAsync(PostingResult posting, int? actorUserId, CancellationToken ct = default);
 

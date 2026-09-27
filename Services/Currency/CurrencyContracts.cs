@@ -65,6 +65,16 @@ namespace knkwebapi_v2.Services
         /// <summary>Optional id grouping the transactions of one logical operation (≤ 64).</summary>
         public string? CorrelationId { get; init; }
 
+        /// <summary>
+        /// The staff member whose per-staff daily grant cap (CurrencyPolicy.AdminDailyGrantCapPerActor)
+        /// this posting's coin and gem credits count against, although they didn't post it
+        /// themselves: the title bonuses a staff XP increase triggers (KNG-21). Checked under that
+        /// staff member's row lock; over the cap the posting is refused with AdminDailyCapExceeded.
+        /// The posting must carry the triggering staff posting's public id as
+        /// <see cref="CorrelationId"/>, which is how later cap sums attribute it.
+        /// </summary>
+        public int? GrantCapActorUserId { get; init; }
+
         /// <summary>A server component posting on its own, with a deterministic key in the system scope.</summary>
         public static CurrencyContext ForSystem(string component, string reasonCode, string idempotencyKey, string? reason = null) => new()
         {

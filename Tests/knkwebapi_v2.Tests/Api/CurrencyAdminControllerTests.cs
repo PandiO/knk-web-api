@@ -175,6 +175,52 @@ public class CurrencyAdminControllerTests
         _users.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task Adjust_AnXpIncrease_AlsoNeedsTheCoinsAndGemsNodes_ADecreaseOnlyTheXpNode()
+    {
+        // KNG-21 smoke test: an XP increase can trigger title bonuses that pay coins and gems.
+        SetRequest(webUserId: StaffId);
+        Grant(StaffPermissions.UserXp);
+        _users.Setup(u => u.GetByIdAsync(7)).ReturnsAsync(new UserDto { Id = 7, ExperiencePoints = 300 });
+        _users.Setup(u => u.AdjustBalancesAsync(7, It.IsAny<IReadOnlyList<BalanceChangeDto>>(), It.IsAny<CurrencyContext>(), It.IsAny<string?>(), It.IsAny<bool>()))
+            .ReturnsAsync(new BalanceAdjustmentResultDto());
+        AdminAdjustmentDto Xp(CurrencyOperation mode, long amount) => new()
+        {
+            TargetUserId = 7, Currency = Currency.Experience, Mode = mode, Amount = amount, Category = "compensation", Note = "Lost items to a lag spike"
+        };
+        async Task<int?> Status(AdminAdjustmentDto request) =>
+            (await _controller.Adjust(request, CancellationToken.None)) is ObjectResult o ? o.StatusCode ?? 200 : null;
+
+        Assert.Equal(403, await Status(Xp(CurrencyOperation.Add, 10)));
+        Assert.Equal(403, await Status(Xp(CurrencyOperation.Set, 301)));
+        Assert.Equal(200, await Status(Xp(CurrencyOperation.Remove, 10)));
+        Assert.Equal(200, await Status(Xp(CurrencyOperation.Set, 300)));
+        Assert.Equal(200, await Status(Xp(CurrencyOperation.Set, 0)));
+
+        Grant(StaffPermissions.UserCoins);
+        var forbidden = Assert.IsType<ObjectResult>(await _controller.Adjust(Xp(CurrencyOperation.Add, 10), CancellationToken.None));
+        Assert.Equal(403, forbidden.StatusCode);
+        Assert.Contains(StaffPermissions.UserGems, System.Text.Json.JsonSerializer.Serialize(forbidden.Value));
+        Grant(StaffPermissions.UserGems);
+        Assert.Equal(200, await Status(Xp(CurrencyOperation.Add, 10)));
+        Assert.Equal(200, await Status(Xp(CurrencyOperation.Set, 5_000)));
+        _users.Verify(u => u.AdjustBalancesAsync(7, It.IsAny<IReadOnlyList<BalanceChangeDto>>(), It.IsAny<CurrencyContext>(), It.IsAny<string?>(), It.IsAny<bool>()), Times.Exactly(5));
+    }
+
+    [Fact]
+    public async Task Adjust_FromThePlugin_LeavesTheNodeChecksToThePlugin()
+    {
+        SetRequest(plugin: true);
+        _users.Setup(u => u.AdjustBalancesAsync(7, It.IsAny<IReadOnlyList<BalanceChangeDto>>(), It.IsAny<CurrencyContext>(), It.IsAny<string?>(), It.IsAny<bool>()))
+            .ReturnsAsync(new BalanceAdjustmentResultDto());
+
+        Assert.IsType<OkObjectResult>(await _controller.Adjust(new AdminAdjustmentDto
+        {
+            TargetUserId = 7, Currency = Currency.Experience, Mode = CurrencyOperation.Add, Amount = 10, Category = "compensation", Note = "Lost items to a lag spike"
+        }, CancellationToken.None));
+        _permissions.VerifyNoOtherCalls();
+    }
+
     [Theory]
     [InlineData(CurrencyErrorCode.AdminDailyCapExceeded, 422)]
     [InlineData(CurrencyErrorCode.ExpectedBalanceMismatch, 409)]

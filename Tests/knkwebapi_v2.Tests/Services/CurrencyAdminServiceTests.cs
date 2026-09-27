@@ -252,6 +252,101 @@ public class CurrencyAdminServiceTests
         Assert.Equal((10_000, 5_000), (bob.Coins, bob.Gems));
     }
 
+    private async Task AddBracketAsync(int id, int minExperience, int coinBonus, int gemBonus = 0)
+    {
+        await using var ctx = NewContext();
+        ctx.TitleBrackets.Add(new TitleBracket { Id = id, MaleName = $"T{id}", FemaleName = $"T{id}", MinExperience = minExperience, CoinBonus = coinBonus, GemBonus = gemBonus });
+        await ctx.SaveChangesAsync();
+    }
+
+    /// <summary>What UserService.AdjustBalancesAsync does for a staff XP add: the adjustment, then
+    /// title progression for it (the caller's transaction rolls both back on a refusal).</summary>
+    private async Task<Dictionary<int, TitleChangeResultDto>> StaffXpAsync(int userId, long amount, string key, int actor = Staff)
+    {
+        await using var ctx = NewContext();
+        var users = new UserRepository(ctx);
+        var (currency, _) = Services(ctx);
+        var titles = new TitleProgressionService(currency, users, new TitleService(new TitleBracketRepository(ctx)),
+            new UserPermissionGroupService(new UserPermissionGroupRepository(ctx), users, new PermissionGroupRepository(ctx),
+                new AuditLogService(new AuditLogRepository(ctx), users)),
+            new AuditLogService(new AuditLogRepository(ctx), users));
+        var posting = await currency.AdminAdjustAsync(new AdminAdjustRequest(userId, Currency.Experience, CurrencyOperation.Add, amount),
+            StaffCtx(CurrencyOperation.Add, key, actor));
+        return await titles.ApplyForPostingAsync(posting, actor);
+    }
+
+    private async Task<List<CurrencyTransaction>> TitleBonusesAsync()
+    {
+        await using var ctx = NewContext();
+        return await ctx.CurrencyTransactions.AsNoTracking().Include(t => t.Entries)
+            .Where(t => t.ReasonCode == CurrencyReasons.TitleBonus).ToListAsync();
+    }
+
+    [Fact]
+    public async Task TitleBonus_OfAStaffXpIncrease_CountsAgainstTheirDailyCap_AndOverItIsRefused()
+    {
+        // KNG-21 smoke test: raising XP must not be a way around the per-staff coin cap.
+        await SeedAsync();
+        await AddBracketAsync(2, 100, coinBonus: 800);
+        await using (var ctx = NewContext())
+        {
+            await Services(ctx).Currency.AdminAdjustAsync(new AdminAdjustRequest(1, Currency.Coins, CurrencyOperation.Add, 300), StaffCtx(CurrencyOperation.Add, "c1"));
+        }
+
+        // 300 granted + an 800 bonus > 1,000.
+        var over = await Assert.ThrowsAsync<CurrencyException>(() => StaffXpAsync(2, 100, "x1"));
+        Assert.Equal(CurrencyErrorCode.AdminDailyCapExceeded, over.Code);
+        Assert.Contains("title promotion bonus", over.Message);
+        Assert.Empty(await TitleBonusesAsync());
+        Assert.Equal(0, (await UserAsync(2)).Coins);
+
+        // Another staff member with room pays it, and it then counts against their allowance.
+        const int other = 901;
+        await using (var ctx = NewContext())
+        {
+            ctx.Users.Add(new User { Id = other, Username = "helper" });
+            ctx.Users.Add(new User { Id = 3, Username = "carol" });
+            await ctx.SaveChangesAsync();
+        }
+        var change = Assert.Single(await StaffXpAsync(3, 100, "x2", other));
+        Assert.Equal(800, change.Value.CoinBonusGranted);
+        var bonus = Assert.Single(await TitleBonusesAsync());
+        Assert.Equal(CurrencyInitiator.System, bonus.Initiator);
+        Assert.NotNull(bonus.CorrelationId);
+        await using (var ctx = NewContext())
+        {
+            var currency = Services(ctx).Currency;
+            var capped = await Assert.ThrowsAsync<CurrencyException>(() =>
+                currency.AdminAdjustAsync(new AdminAdjustRequest(1, Currency.Coins, CurrencyOperation.Add, 201), StaffCtx(CurrencyOperation.Add, "c2", other)));
+            Assert.Equal(CurrencyErrorCode.AdminDailyCapExceeded, capped.Code);
+            await currency.AdminAdjustAsync(new AdminAdjustRequest(1, Currency.Coins, CurrencyOperation.Add, 200), StaffCtx(CurrencyOperation.Add, "c3", other));
+        }
+    }
+
+    [Fact]
+    public async Task TitleBonus_OfAStaffXpIncrease_WithTheUnlimitedNode_OrFromAGame_IsNotCapped()
+    {
+        await SeedAsync();
+        await AddBracketAsync(2, 100, coinBonus: 5_000, gemBonus: 3);
+        _permissions.Setup(p => p.CheckAsync(Staff, StaffPermissions.CurrencyUnlimited))
+            .ReturnsAsync(new PermissionCheckResponseDto { Result = PermissionResolutionResult.Granted });
+
+        Assert.Equal(5_000, Assert.Single(await StaffXpAsync(2, 100, "x1")).Value.CoinBonusGranted);
+
+        // A non-staff XP source (siege, salary…) triggers bonuses outside any staff cap.
+        _permissions.Setup(p => p.CheckAsync(Staff, StaffPermissions.CurrencyUnlimited))
+            .ReturnsAsync(new PermissionCheckResponseDto { Result = PermissionResolutionResult.Denied });
+        await using var ctx = NewContext();
+        var users = new UserRepository(ctx);
+        var (currency, _) = Services(ctx);
+        var audit = new AuditLogService(new AuditLogRepository(ctx), users);
+        var titles = new TitleProgressionService(currency, users, new TitleService(new TitleBracketRepository(ctx)),
+            new UserPermissionGroupService(new UserPermissionGroupRepository(ctx), users, new PermissionGroupRepository(ctx), audit), audit);
+        var siege = await currency.PostAsync(new[] { new CurrencyLeg(1, Currency.Experience, 100) },
+            CurrencyContext.ForSystem("SiegeMatchService", CurrencyReasons.SiegeReward, "siege-match:1"));
+        Assert.Equal(5_000, Assert.Single(await titles.ApplyForPostingAsync(siege, Staff)).Value.CoinBonusGranted);
+    }
+
     // ===== Transfer locks =====
 
     [Fact]

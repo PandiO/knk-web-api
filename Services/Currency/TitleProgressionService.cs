@@ -49,12 +49,17 @@ namespace knkwebapi_v2.Services
             {
                 return changes;
             }
+            // KNG-21: the coin and gem bonuses a staff XP increase triggers count against that
+            // staff member's daily grant cap; over it, the bonus is refused and so is the change.
+            var capActor = actorUserId is > 0 && CurrencyReasons.Find(posting.ReasonCode)?.Kind == CurrencyTransactionKind.AdminAdjust
+                ? actorUserId
+                : null;
             var xpLegs = posting.Entries
                 .Where(e => e.Currency == nameof(Currency.Experience) && e.Amount != 0)
                 .GroupBy(e => e.UserId);
             foreach (var legs in xpLegs)
             {
-                var change = await ApplyAsync(legs.Key, legs.First().BalanceBefore, actorUserId, posting.PublicId, ct);
+                var change = await ApplyCoreAsync(legs.Key, legs.First().BalanceBefore, actorUserId, posting.PublicId, capActor, ct);
                 if (change != null)
                 {
                     changes[legs.Key] = change;
@@ -63,8 +68,14 @@ namespace knkwebapi_v2.Services
             return changes;
         }
 
-        public async Task<TitleChangeResultDto?> ApplyAsync(int userId, long previousExperience, int? actorUserId,
-            string? correlationId = null, CancellationToken ct = default)
+        public Task<TitleChangeResultDto?> ApplyAsync(int userId, long previousExperience, int? actorUserId,
+            string? correlationId = null, CancellationToken ct = default) =>
+            ApplyCoreAsync(userId, previousExperience, actorUserId, correlationId, null, ct);
+
+        /// <param name="capActorUserId">The staff member whose daily grant cap the bonuses count
+        /// against (their XP adjustment is <paramref name="correlationId"/>); null for none.</param>
+        private async Task<TitleChangeResultDto?> ApplyCoreAsync(int userId, long previousExperience, int? actorUserId,
+            string? correlationId, int? capActorUserId, CancellationToken ct)
         {
             var brackets = await _titleService.GetAllOrderedAsync();
             if (brackets == null || brackets.Count == 0)
@@ -73,11 +84,13 @@ namespace knkwebapi_v2.Services
             }
 
             TitleChangeResultDto? change = null;
-            await _users.RunWithUsersLockedAsync(new[] { userId }, async () =>
+            // The cap's staff member is locked with the player (ascending), as the ledger does.
+            var lockIds = capActorUserId.HasValue ? new[] { userId, capActorUserId.Value } : new[] { userId };
+            await _users.RunWithUsersLockedAsync(lockIds, async () =>
             {
                 var user = await _users.GetByIdAsync(userId)
                     ?? throw new KeyNotFoundException($"User with id {userId} not found.");
-                change = await ApplyLockedAsync(user, previousExperience, brackets, correlationId, ct);
+                change = await ApplyLockedAsync(user, previousExperience, brackets, correlationId, capActorUserId, ct);
                 if (change != null)
                 {
                     // One consolidated audit entry for the whole crossing, not one per tier.
@@ -99,7 +112,7 @@ namespace knkwebapi_v2.Services
         }
 
         private async Task<TitleChangeResultDto?> ApplyLockedAsync(User user, long previousExperience, List<TitleBracket> brackets,
-            string? correlationId, CancellationToken ct)
+            string? correlationId, int? capActorUserId, CancellationToken ct)
         {
             var previousBracket = brackets.LastOrDefault(b => b.MinExperience <= previousExperience) ?? brackets[0];
             var currentBracket = brackets.LastOrDefault(b => b.MinExperience <= user.ExperiencePoints) ?? brackets[0];
@@ -167,6 +180,7 @@ namespace knkwebapi_v2.Services
                         SourceType = "TitleBracket",
                         SourceRef = tier.Id.ToString(),
                         CorrelationId = correlationId,
+                        GrantCapActorUserId = capActorUserId,
                         MetadataJson = JsonSerializer.Serialize(new
                         {
                             coinBonusBase = tier.CoinBonus,

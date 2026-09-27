@@ -105,9 +105,10 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<PagedResult<LedgerLineDto>> SearchLinesAsync(LedgerQuery query, CancellationToken ct = default);
 
         /// <summary>What staff member <paramref name="actorUserId"/> added to players' balances of
-        /// <paramref name="currency"/> through staff adjustments since <paramref name="since"/>
-        /// (the per-staff daily grant cap, currency Phase 4). Call under the staff member's row
-        /// lock so two grants can't both slip under the cap.</summary>
+        /// <paramref name="currency"/> through staff adjustments since <paramref name="since"/>,
+        /// including the title bonuses their XP increases triggered (KNG-21: a TITLE_BONUS whose
+        /// correlation id is one of those adjustments) - the per-staff daily grant cap, currency
+        /// Phase 4. Call under the staff member's row lock so two grants can't both slip under the cap.</summary>
         Task<long> SumAdminGrantedSinceAsync(int actorUserId, Currency currency, DateTime since, CancellationToken ct = default);
 
         // Policy rows are admin-editable settings, not ledger rows (currency Phase 4).

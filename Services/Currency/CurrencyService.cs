@@ -103,16 +103,32 @@ namespace knkwebapi_v2.Services
                 .Select(l => $"{l.UserId}:{(int)l.Currency}:{l.Amount}"))
                 + $"|source:{ctx.SourceType}:{ctx.SourceRef}";
 
-            return ExecuteAsync(ctx, reason, legs.Select(l => l.UserId), canonical, (users, _) =>
+            // A title bonus triggered by a staff XP increase counts against that staff member's
+            // daily grant cap (KNG-21); their row is locked with the posting's users.
+            var capActor = ctx.GrantCapActorUserId is > 0 ? ctx.GrantCapActorUserId : null;
+            if (capActor.HasValue && string.IsNullOrEmpty(ctx.CorrelationId))
             {
+                throw Invalid("A posting counted against a staff grant cap needs the staff posting's id as correlation id.");
+            }
+
+            return ExecuteAsync(ctx, reason, legs.Select(l => l.UserId), canonical, async (users, token) =>
+            {
+                if (capActor.HasValue)
+                {
+                    foreach (var credit in legs.Where(l => l.Amount > 0 && l.Currency != Currency.Experience).GroupBy(l => l.Currency))
+                    {
+                        await RequireWithinAdminGrantCapAsync(capActor.Value, credit.Key, credit.Sum(l => l.Amount), token,
+                            $"The {CurrencyReasons.Find(ctx.ReasonCode)?.Description.ToLowerInvariant() ?? "bonus"} this change pays");
+                    }
+                }
                 var plan = new EntryPlan();
                 foreach (var leg in legs)
                 {
                     plan.AddUserLeg(users[leg.UserId], leg.Currency, leg.Amount, leg.Amount < 0 ? CurrencyOperation.Remove : CurrencyOperation.Add);
                 }
                 plan.BalanceWithSystemAccount(reason.SystemAccount!);
-                return Task.FromResult(plan.ToDraft());
-            }, ct);
+                return plan.ToDraft();
+            }, ct, alsoLock: capActor.HasValue ? new[] { capActor.Value } : null);
         }
 
         public Task<PostingResult> GrantAsync(int userId, Currency currency, long amount, CurrencyContext ctx, CancellationToken ct = default) =>
@@ -208,8 +224,11 @@ namespace knkwebapi_v2.Services
         /// <paramref name="currency"/> added through adjustments above the policy's
         /// AdminDailyGrantCapPerActor (0 or no policy row = no cap), unless they hold
         /// knk.admin.currency.unlimited. Runs under the staff member's row lock.
+        /// <paramref name="what"/> names a credit the staff member triggered rather than granted
+        /// (a title bonus) in the refusal message.
         /// </summary>
-        private async Task RequireWithinAdminGrantCapAsync(int actorUserId, Currency currency, long amount, CancellationToken ct)
+        private async Task RequireWithinAdminGrantCapAsync(int actorUserId, Currency currency, long amount, CancellationToken ct,
+            string? what = null)
         {
             var policies = await _repo.GetPoliciesAsync(ct);
             var cap = policies.TryGetValue(currency, out var policy) ? policy.AdminDailyGrantCapPerActor : 0;
@@ -229,8 +248,8 @@ namespace knkwebapi_v2.Services
             }
             var remaining = Math.Max(0, cap - granted);
             throw new CurrencyException(CurrencyErrorCode.AdminDailyCapExceeded,
-                $"That would pass your daily staff grant limit of {cap:N0} {Name(currency)}: you granted {granted:N0} in the last 24 hours, {remaining:N0} left. Staff with {Attributes.StaffPermissions.CurrencyUnlimited} have no limit.",
-                new { currency = currency.ToString(), cap, grantedLast24h = granted, remaining, requested = amount });
+                $"{(what == null ? "That" : $"{what} ({amount:N0} {Name(currency)})")} would pass your daily staff grant limit of {cap:N0} {Name(currency)}: you granted {granted:N0} in the last 24 hours, {remaining:N0} left. Staff with {Attributes.StaffPermissions.CurrencyUnlimited} have no limit.",
+                new { currency = currency.ToString(), cap, grantedLast24h = granted, remaining, requested = amount, triggered = what != null });
         }
 
         public Task<PostingResult> ReverseAsync(long transactionId, ReversalOptions opts, CurrencyContext ctx, CancellationToken ct = default) =>

@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Services;
 
 namespace knkwebapi_v2.Controllers
@@ -40,6 +42,54 @@ namespace knkwebapi_v2.Controllers
                 return null;
             }
             return value;
+        }
+
+        /// <summary>
+        /// The in-game nodes a logged-in staff member needs for one balance change (the /knk user
+        /// nodes; the plugin checks them itself before calling): the changed currency's node, and
+        /// for an XP increase (Add, or Set above the current value) the coins and gems nodes too,
+        /// since the title bonuses it can trigger pay out coins and gems (KNG-21). An XP decrease
+        /// only needs the XP node.
+        /// </summary>
+        public static IEnumerable<string> BalanceNodes(Currency currency, bool increasesExperience)
+        {
+            switch (currency)
+            {
+                case Currency.Coins:
+                    yield return StaffPermissions.UserCoins;
+                    break;
+                case Currency.Gems:
+                    yield return StaffPermissions.UserGems;
+                    break;
+                default:
+                    yield return StaffPermissions.UserXp;
+                    if (increasesExperience)
+                    {
+                        yield return StaffPermissions.UserCoins;
+                        yield return StaffPermissions.UserGems;
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Whether an XP change raises the balance: always for Add, never for Remove, and for Set
+        /// when the target is above <paramref name="currentExperience"/> (read when needed).
+        /// </summary>
+        public static async Task<bool> IncreasesExperienceAsync(Currency currency, CurrencyOperation mode, long amount,
+            Func<Task<long?>> currentExperience)
+        {
+            if (currency != Currency.Experience || mode == CurrencyOperation.Remove)
+            {
+                return false;
+            }
+            if (mode == CurrencyOperation.Add)
+            {
+                return true;
+            }
+            var current = await currentExperience();
+            // An unknown player is reported as such by the posting itself.
+            return current == null || amount > current.Value;
         }
 
         /// <summary>
