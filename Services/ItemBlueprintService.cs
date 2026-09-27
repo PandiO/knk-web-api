@@ -165,6 +165,12 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"ItemBlueprint with id {id} not found.");
 
+            // No cascade into instances or lootbox config (docs/specs/lootboxes/DESIGN.md §3.2): refuse with a
+            // readable 409 instead of a raw FK error.
+            var blocker = await _repo.FindDeleteBlockerAsync(id);
+            if (blocker != null)
+                throw new InvalidOperationException($"ItemBlueprint {id} can't be deleted: {blocker}.");
+
             await _repo.DeleteAsync(id);
         }
 

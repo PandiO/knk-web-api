@@ -28,6 +28,11 @@ public interface IPlayerNotificationQueue
     long EnqueueCurrencyAlert(CurrencyAlertNotificationDto alert) =>
         Enqueue(0, null, "", PlayerNotificationTypes.CurrencyAlert, null);
 
+    /// <summary>A server-wide lootbox change (UserId 0), see PlayerNotificationTypes.LootboxWorldChanged. The
+    /// default only queues the type.</summary>
+    long EnqueueLootboxWorldChanged(LootboxWorldChangedNotificationDto change) =>
+        Enqueue(0, null, "", PlayerNotificationTypes.LootboxWorldChanged, null);
+
     /// <summary>A DiscoveryReset notification (domain discovery): one of the user's discoveries
     /// was reset, so the plugin re-syncs its known set. The default only queues the type.</summary>
     /// <returns>The new notification's id.</returns>

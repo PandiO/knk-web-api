@@ -810,6 +810,54 @@ public class KitServiceTests
 
     #endregion
 
+    #region Lootbox token hook (knk-workspace docs/specs/lootboxes/IMPLEMENTATION_PLAN.md Phase 5)
+
+    private KitService ServiceWithTokenGrants(Mock<ILootboxTokenGrantService> grants) => new(
+        _kitRepo.Object, _userRepo.Object, _itemBlueprintRepo.Object, _titleBracketRepo.Object, _permissionGroupRepo.Object,
+        _titleService.Object, _userPermissionGroupService.Object, _permissionResolutionService.Object, _auditLogService.Object,
+        _mapper, new FakeCurrencyService(id => _userRepo.Object.GetByIdAsync(id).Result), grants.Object);
+
+    private void NumberClaims()
+    {
+        var next = 100;
+        _kitRepo.Setup(r => r.AddClaimAsync(It.IsAny<KitClaim>()))
+            .ReturnsAsync((KitClaim claim) => { claim.Id = next++; return claim; });
+    }
+
+    [Fact]
+    public async Task ClaimAndGive_IssueTheKitsLootboxTokens_KeyedByTheKitClaim()
+    {
+        SetUser(PlainUser);
+        var staff = new User { Id = 7, Username = "staff" };
+        SetUser(staff);
+        SetKit(PlainKit());
+        NumberClaims();
+        var grants = new Mock<ILootboxTokenGrantService>();
+        var service = ServiceWithTokenGrants(grants);
+
+        await service.ClaimKitAsync(PlainUser.Id, 10);
+        await service.GiveKitAsync(staff.Id, PlainUser.Id, 10);
+
+        grants.Verify(g => g.IssueForKitAsync(PlainUser.Id, 10, 100, null), Times.Once);
+        grants.Verify(g => g.IssueForKitAsync(PlainUser.Id, 10, 101, staff.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task RefusedClaim_IssuesNoLootboxTokens()
+    {
+        SetUser(PlainUser);
+        var kit = PlainKit();
+        kit.IsSinglePurchasePremium = true; // not purchased: refused
+        SetKit(kit);
+        var grants = new Mock<ILootboxTokenGrantService>();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ServiceWithTokenGrants(grants).ClaimKitAsync(PlainUser.Id, 10));
+
+        grants.Verify(g => g.IssueForKitAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int?>()), Times.Never);
+    }
+
+    #endregion
+
     #region Currency ledger (currency-payments Phase 2)
 
     [Fact]

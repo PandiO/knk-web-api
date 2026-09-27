@@ -135,6 +135,13 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IMenuTemplateRepository, MenuTemplateRepository>();
             services.AddScoped<IMenuTemplateService, MenuTemplateService>();
 
+            // Lootboxes (docs/specs/lootboxes/IMPLEMENTATION_PLAN.md Phase 1). The repositories/services follow the
+            // I<Name> convention scan below; the roll engine and its randomness are registered here.
+            services.AddSingleton<knkwebapi_v2.Services.Lootbox.ILootRandom, knkwebapi_v2.Services.Lootbox.CryptoLootRandom>();
+            services.AddSingleton<knkwebapi_v2.Services.Lootbox.LootboxRollEngine>();
+            // The runtime's clock (Phase 2): the UTC-day claim cap and expiry read it, so tests can pin the time.
+            services.AddSingleton(TimeProvider.System);
+
             // Private messages Phase 2 — ignore list (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §2)
             services.AddScoped<IUserIgnoreRepository, UserIgnoreRepository>();
             services.AddScoped<IUserIgnoreService, UserIgnoreService>();
