@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 
 namespace knkwebapi_v2.Controllers
@@ -123,14 +124,30 @@ namespace knkwebapi_v2.Controllers
         [HttpPost("{id:int}/claim")]
         public async Task<IActionResult> Claim(int id, [FromQuery] int userId)
         {
+            // A kit with a cost is paid with a KIT_CLAIM_COST ledger posting keyed by this header
+            // (currency Phase 2): a retried claim is neither paid nor recorded twice.
+            var key = CurrencyHttp.ReadKey(this, required: false, out var keyError);
+            if (keyError != null) return keyError;
+
             try
             {
-                var result = await _service.ClaimKitAsync(userId, id);
+                var costContext = key == null
+                    ? null
+                    : CurrencyContext.ForCaller(HttpContext.GetKnkCaller(), CurrencyReasons.KitClaimCost, key, "KitsController", staffAction: false);
+                var result = await _service.ClaimKitAsync(userId, id, costContext);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { code = "IdempotencyKeyRequired", message = ex.Message });
+            }
+            catch (CurrencyException ex)
+            {
+                return Conflict(new { code = ex.Code.ToString(), message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
@@ -144,7 +161,10 @@ namespace knkwebapi_v2.Controllers
         {
             try
             {
-                var result = await _service.PurchaseKitAsync(userId, id);
+                // The key is the deterministic kit-purchase:{kitId}:{userId}; the caller only
+                // names the initiator on the ledger row.
+                var ctx = CurrencyContext.ForCaller(HttpContext.GetKnkCaller(), CurrencyReasons.KitPurchase, "kit-purchase", "KitsController", staffAction: false);
+                var result = await _service.PurchaseKitAsync(userId, id, ctx);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
@@ -154,6 +174,10 @@ namespace knkwebapi_v2.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
+            }
+            catch (CurrencyException ex)
+            {
+                return Conflict(new { code = ex.Code.ToString(), message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {

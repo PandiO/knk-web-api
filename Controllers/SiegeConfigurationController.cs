@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,7 @@ public class SiegeConfigurationController : ControllerBase
         return Ok(await _service.GetAsync());
     }
 
+    [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
     [HttpPut]
     [ProducesResponseType(typeof(SiegeConfigurationDto), 200)]
     [ProducesResponseType(400)]

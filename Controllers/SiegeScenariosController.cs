@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -30,6 +31,7 @@ namespace KnKWebAPI.Controllers
             return item == null ? NotFound() : Ok(item);
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] SiegeScenarioUpsertDto dto)
         {
@@ -45,6 +47,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeScenarioUpsertDto dto)
         {
@@ -64,6 +67,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -131,6 +135,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost("{id:int}/teams")]
         public async Task<IActionResult> CreateTeam(int id, [FromBody] SiegeTeamUpsertDto dto)
         {
@@ -165,6 +170,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost("{id:int}/objectives")]
         public async Task<IActionResult> CreateObjective(int id, [FromBody] SiegeObjectiveUpsertDto dto)
         {

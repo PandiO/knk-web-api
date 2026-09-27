@@ -69,4 +69,23 @@ public class InMemoryPlayerNotificationQueueTests
 
         Assert.Equal(new[] { second, third }, queue.GetPending().Select(n => n.Id));
     }
+
+    [Fact]
+    public void EnqueuePayment_CarriesThePayment_InQueueOrder()
+    {
+        var queue = CreateQueue();
+        var title = queue.Enqueue(1, "uuid-1", "alice", PlayerNotificationTypes.TitleChanged, Promotion());
+
+        var payment = queue.EnqueuePayment(2, "uuid-2", "bob", new PaymentNotificationDto
+        {
+            Amount = 500, Currency = "Coins", FromUserId = 1, FromUsername = "alice", TransactionPublicId = "01J", BalanceAfter = 750
+        });
+
+        var pending = queue.GetPending();
+        Assert.Equal(new[] { title, payment }, pending.Select(n => n.Id));
+        Assert.Equal(PlayerNotificationTypes.PaymentReceived, pending[1].Type);
+        Assert.Equal((500L, "alice", 750L), (pending[1].Payment!.Amount, pending[1].Payment!.FromUsername, pending[1].Payment!.BalanceAfter));
+        Assert.Null(pending[1].TitleChange);
+        Assert.Equal(_now, pending[1].CreatedAt);
+    }
 }

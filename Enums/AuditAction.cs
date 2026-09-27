@@ -27,5 +27,12 @@ public enum AuditAction
     /// A staff member (or the game server) read a player's private messages
     /// (docs/specs/private-messages/DESIGN.md §3.2) - target = the player whose messages were read.
     /// </summary>
-    PrivateMessagesViewed = 15
+    PrivateMessagesViewed = 15,
+
+    // Currency payments (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phase 4); values
+    // 19–29 are reserved for this feature so parallel branches don't collide.
+    CurrencyPolicyChanged = 19,
+    CurrencyTransactionReversed = 20,
+    CurrencyTransferLocked = 21,
+    CurrencyTransferUnlocked = 22
 }

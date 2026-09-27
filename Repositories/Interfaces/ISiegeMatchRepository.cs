@@ -17,7 +17,7 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         Task<bool> LobbyExistsAsync(int siegeLobbyId);
 
-        /// <summary>The users among <paramref name="userIds"/> that exist; tracked (load them after <see cref="LockUsersAsync"/>).</summary>
+        /// <summary>The users among <paramref name="userIds"/> that exist; tracked.</summary>
         Task<List<User>> GetUsersAsync(IEnumerable<int> userIds);
 
         /// <summary>The ids among <paramref name="userIds"/> that exist; untracked.</summary>
@@ -41,9 +41,6 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// non-relational provider (InMemory tests) the work simply runs.
         /// </summary>
         Task<T> RunLockedAsync<T>(int matchId, Func<Task<T>> work);
-
-        /// <summary>Inside <see cref="RunLockedAsync{T}"/>: row-locks these users before their balances change.</summary>
-        Task LockUsersAsync(IEnumerable<int> userIds);
 
         // ---- Phase 7a: gate lockdown ----
 

@@ -9,7 +9,7 @@ namespace KnKWebAPI.Controllers
     // Siege Phase 6 (docs/specs/siege-minigame/DESIGN.md §3.10, §7.6, §11.2): the plugin's match
     // lifecycle checkpoints and the match history. Served at the DESIGN kebab-case path
     // (/api/siege-matches) and at the PascalCase controller path every other controller uses.
-    // Writes carry [RequirePluginServiceKey] (open until Security:PluginServiceKey is set).
+    // Writes carry [RequirePluginService] (X-API-Key = Security:PluginApiKey; fails closed, KNG-22).
     // Phase 7a adds the gate lockdown: GET {id}/gate-snapshots, POST {id}/gate-lockdown,
     // POST {id}/gate-restore, POST restore-stale-gates.
     [ApiController]
@@ -45,7 +45,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPost]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> Create([FromBody] SiegeMatchCreateDto dto)
         {
             if (dto == null) return BadRequest();
@@ -57,7 +57,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPost("{id:int}/start")]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> Start(int id, [FromBody] SiegeMatchStartDto dto)
         {
             if (dto == null) return BadRequest();
@@ -65,7 +65,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPost("{id:int}/participants/{userId:int}/left")]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> ParticipantLeft(int id, int userId, [FromBody] SiegeMatchParticipantLeftDto? dto)
         {
             return await Run(async () =>
@@ -77,7 +77,7 @@ namespace KnKWebAPI.Controllers
 
         // Grants the rewards once; a repeat call returns the stored result ("alreadyCompleted": true).
         [HttpPost("{id:int}/complete")]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> Complete(int id, [FromBody] SiegeMatchCompleteDto dto)
         {
             if (dto == null) return BadRequest();
@@ -85,7 +85,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPost("{id:int}/abort")]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> Abort(int id, [FromBody] SiegeMatchAbortDto? dto)
         {
             return await Run(async () => Ok(await _service.AbortAsync(id, dto ?? new SiegeMatchAbortDto())));
@@ -93,7 +93,7 @@ namespace KnKWebAPI.Controllers
 
         // Plugin startup recovery: every Created/InProgress match is aborted (default ServerRestart).
         [HttpPost("abort-unfinished")]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> AbortUnfinished([FromBody] SiegeMatchAbortUnfinishedDto? dto)
         {
             return await Run(async () => Ok(await _service.AbortUnfinishedAsync(dto ?? new SiegeMatchAbortUnfinishedDto())));
@@ -109,7 +109,7 @@ namespace KnKWebAPI.Controllers
 
         // Snapshot → CurrentSiegeId → overrides for the listed gates (one transaction).
         [HttpPost("{id:int}/gate-lockdown")]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> GateLockdown(int id, [FromBody] SiegeGateLockdownDto dto)
         {
             if (dto == null) return BadRequest();
@@ -118,7 +118,7 @@ namespace KnKWebAPI.Controllers
 
         // Re-applies and deletes the match's snapshots; returns them for the runtime restore.
         [HttpPost("{id:int}/gate-restore")]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> GateRestore(int id)
         {
             return await Run(async () => Ok(await Gates().RestoreAsync(id)));
@@ -126,7 +126,7 @@ namespace KnKWebAPI.Controllers
 
         // Plugin startup recovery (nothing runs yet): every leftover snapshot is re-applied.
         [HttpPost("restore-stale-gates")]
-        [RequirePluginServiceKey]
+        [RequirePluginService]
         public async Task<IActionResult> RestoreStaleGates()
         {
             return await Run(async () => Ok(await Gates().RestoreStaleAsync()));

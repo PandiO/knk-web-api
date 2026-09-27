@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -38,6 +39,7 @@ namespace KnKWebAPI.Controllers
             return Ok(await _service.GetRuntimeConfigAsync());
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] SiegeLobbyUpsertDto dto)
         {
@@ -57,6 +59,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeLobbyUpsertDto dto)
         {
@@ -80,6 +83,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
