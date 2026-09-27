@@ -86,10 +86,10 @@ namespace knkwebapi_v2.Controllers
 
         /// <summary>
         /// Richest players (/baltop): active accounts only, leaving out transfer-locked ones and
-        /// holders of knk.baltop.exempt. Cached for 60 s.
+        /// holders of knk.baltop.exempt. Cached for 60 s per currency, page and page size.
         /// </summary>
         /// <param name="currency">coins (default) or gems</param>
-        /// <param name="page">1-based</param>
+        /// <param name="page">1-based, 1–100 (clamped, like pageSize)</param>
         /// <param name="pageSize">1–50, default 10</param>
         [RequireServiceOrPermission(BaltopNode)]
         [HttpGet("leaderboard")]
@@ -98,7 +98,9 @@ namespace knkwebapi_v2.Controllers
         {
             var parsed = ParseCurrency(currency, Currency.Coins, allowExperience: false);
             if (parsed == null) return BadRequest(new { error = "InvalidCurrency", message = "currency must be coins or gems." });
-            page = Math.Max(1, page);
+            // Clamped before building the cache key, so the cache holds at most
+            // 2 currencies × 100 pages × 50 sizes entries however the endpoint is called.
+            page = Math.Clamp(page, 1, CurrencyService.MaxLeaderboardPage);
             pageSize = Math.Clamp(pageSize, 1, CurrencyService.MaxLeaderboardPageSize);
 
             var key = $"currency:leaderboard:{parsed}:{page}:{pageSize}";

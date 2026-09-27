@@ -26,6 +26,12 @@ namespace knkwebapi_v2.Services
 
         public const int MaxLeaderboardPageSize = 50;
 
+        /// <summary>
+        /// Deepest leaderboard page served (top 5,000 at the largest page size); later pages are
+        /// clamped to it. Bounds the controller's per-page cache entries and the query's offset.
+        /// </summary>
+        public const int MaxLeaderboardPage = 100;
+
         /// <summary>Source type on a transfer posted by confirming a pending one.</summary>
         public const string PendingTransferSourceType = "PendingTransfer";
 
@@ -175,7 +181,7 @@ namespace knkwebapi_v2.Services
             {
                 throw Invalid("The leaderboard ranks coins or gems.");
             }
-            page = Math.Max(1, page);
+            page = Math.Clamp(page, 1, MaxLeaderboardPage);
             pageSize = Math.Clamp(pageSize, 1, MaxLeaderboardPageSize);
             var (total, entries) = await _repo.GetLeaderboardAsync(currency, BaltopExemptNode, (page - 1) * pageSize, pageSize, ct);
             return new LeaderboardDto

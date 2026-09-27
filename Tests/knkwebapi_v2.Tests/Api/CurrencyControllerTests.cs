@@ -186,6 +186,28 @@ public class CurrencyControllerTests
     }
 
     [Fact]
+    public async Task Leaderboard_ClampsPageAndSize_BeforeCachingAndQuerying()
+    {
+        using var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var controller = new CurrencyController(_currency.Object, _transfers.Object, _permissions.Object, _notifications.Object, cache);
+        var calls = new List<(int Page, int Size)>();
+        _transfers.Setup(t => t.GetLeaderboardAsync(Currency.Coins, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<Currency, int, int, CancellationToken>((_, page, size, _) => calls.Add((page, size)))
+            .ReturnsAsync((Currency _, int page, int size, CancellationToken _) => new LeaderboardDto { Currency = "Coins", Page = page, PageSize = size });
+
+        // However far past the limits, every request lands on the same bounded key and query.
+        foreach (var page in new[] { 101, 5_000, int.MaxValue })
+        {
+            var board = Assert.IsType<LeaderboardDto>(Assert.IsType<OkObjectResult>(await controller.GetLeaderboard("coins", page, 10_000)).Value);
+            Assert.Equal((CurrencyService.MaxLeaderboardPage, CurrencyService.MaxLeaderboardPageSize), (board.Page, board.PageSize));
+        }
+        await controller.GetLeaderboard("coins", -3, 0);
+
+        Assert.Equal(new[] { (100, 50), (1, 1) }, calls);
+        Assert.Equal(2, cache.Count);
+    }
+
+    [Fact]
     public void GameServerOnlyRoutes_CarryTheServiceFilter()
     {
         foreach (var name in new[] { nameof(CurrencyController.CreateTransfer), nameof(CurrencyController.ConfirmTransfer), nameof(CurrencyController.CancelTransfer) })

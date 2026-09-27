@@ -464,6 +464,11 @@ public class CurrencyTransferServiceTests
         Assert.Equal(new[] { (1, rich, 9000L), (2, middle, 5000L) }, board.Entries.Select(e => (e.Rank, e.UserId, e.Balance)));
         var page2 = await Service(read).GetLeaderboardAsync(Currency.Coins, 2, 1);
         Assert.Equal((2, "middle"), (page2.Entries.Single().Rank, page2.Entries.Single().Username));
+
+        // Out-of-range paging is clamped (no offset overflow on a huge page number).
+        var far = await Service(read).GetLeaderboardAsync(Currency.Coins, int.MaxValue, int.MaxValue);
+        Assert.Equal((CurrencyService.MaxLeaderboardPage, CurrencyService.MaxLeaderboardPageSize, 2), (far.Page, far.PageSize, far.TotalCount));
+        Assert.Empty(far.Entries);
     }
 
     [Fact]
