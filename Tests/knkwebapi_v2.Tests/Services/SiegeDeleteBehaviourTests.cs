@@ -32,7 +32,7 @@ public class SiegeDeleteBehaviourTests : IAsyncLifetime
 
     private SiegeScenarioService ScenarioService() => new(
         new SiegeScenarioRepository(_context), new Mock<ILocationService>().Object,
-        Array.Empty<IValidationMethod>(), SiegeTestData.Mapper());
+        SiegeTestData.NoRules(), SiegeTestData.Mapper());
 
     // ---- Model delete rules ----
 

@@ -400,6 +400,52 @@ namespace knkwebapi_v2.Tests.Services
             Assert.Contains(result, i => i.Severity == "Error" && i.Message.Contains("non-existent"));
         }
 
+        // A child form's rule may depend on a field of the form it's opened from (e.g. the siege
+        // spawnpoint's Location on the scenario form's Town): that field exists, just not here.
+        [Fact]
+        public async Task ValidateConfigurationHealthAsync_DependencyOnAParentFormField_IsNotAnIssue()
+        {
+            int configId = 29;
+            var config = new FormConfiguration
+            {
+                Id = configId,
+                Steps = new List<FormStep>
+                {
+                    new FormStep { Id = 1, Fields = new List<FormField> { new FormField { Id = 2901, FieldGuid = Guid.NewGuid() } } }
+                }
+            };
+            var rules = new List<FieldValidationRule>
+            {
+                new FieldValidationRule
+                {
+                    Id = 1,
+                    FormFieldId = 2901,
+                    ValidationType = "LocationInsideRegion",
+                    DependsOnFieldId = 3201,
+                    DependsOnField = new FormField { Id = 3201, FieldName = "TownId" }
+                }
+            };
+            _mockConfigRepository.Setup(c => c.GetByIdAsync(configId)).ReturnsAsync(config);
+            _mockRuleRepository.Setup(r => r.GetByFormConfigurationIdAsync(configId)).ReturnsAsync(rules);
+            var mockValidationMethod = new Mock<IValidationMethod>();
+            mockValidationMethod.Setup(m => m.ValidationType).Returns("LocationInsideRegion");
+
+            var service = new FieldValidationRuleService(
+                _mockRuleRepository.Object,
+                _mockFieldRepository.Object,
+                _mockConfigRepository.Object,
+                new List<IValidationMethod> { mockValidationMethod.Object },
+                _mockMapper.Object,
+                _mockLogger.Object);
+
+            Assert.Empty(await service.ValidateConfigurationHealthAsync(configId));
+            Assert.Empty(await service.ValidateDraftConfigurationAsync(new FormConfigurationDto
+            {
+                Id = configId.ToString(),
+                Steps = new List<FormStepDto> { new FormStepDto { Fields = new List<FormFieldDto> { new FormFieldDto { Id = "2901" } } } }
+            }));
+        }
+
         [Fact]
         public async Task ValidateConfigurationHealthAsync_WithUnknownValidationType_ReturnsError()
         {

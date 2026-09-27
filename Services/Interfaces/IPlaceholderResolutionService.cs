@@ -205,4 +205,10 @@ public interface IPlaceholderResolutionService
     string InterpolatePlaceholders(
         string messageTemplate,
         Dictionary<string, string> placeholders);
+
+    /// <summary>
+    /// Load a saved entity by its type name (a FormField.ObjectType, e.g. "Town") and id.
+    /// Returns null when the type is unknown or no row has that id.
+    /// </summary>
+    Task<object?> LoadEntityByIdAsync(string entityTypeName, object id);
 }

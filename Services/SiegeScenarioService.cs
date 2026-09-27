@@ -13,29 +13,27 @@ namespace knkwebapi_v2.Services
     // Validation happens in two places. On save, each row's own fields are checked where that
     // doesn't depend on later saves (the scenario is authored in several saves, so "≥ 2 teams" can't
     // be a save rule). GET …/readiness then runs the full §3.9 set: the structural rules
-    // (SiegeScenarioReadiness) and the spatial rules below, which reuse the LocationInsideRegion
-    // field-validation rule (and so the plugin's region endpoint) rather than re-implementing it.
+    // (SiegeScenarioReadiness) and the field-validation rules an admin configured on the siege forms
+    // (see AddFieldRuleChecksAsync).
     //
     // Error convention: ArgumentException -> 400, KeyNotFoundException -> 404,
     // InvalidOperationException -> 409.
     public class SiegeScenarioService : ISiegeScenarioService
     {
-        public const string LocationInsideRegionType = "LocationInsideRegion";
-
         private readonly ISiegeScenarioRepository _repo;
         private readonly ILocationService _locationService;
-        private readonly IValidationMethod? _locationInsideRegion;
+        private readonly ISavedEntityRuleValidator _ruleValidator;
         private readonly IMapper _mapper;
 
         public SiegeScenarioService(
             ISiegeScenarioRepository repo,
             ILocationService locationService,
-            IEnumerable<IValidationMethod> validationMethods,
+            ISavedEntityRuleValidator ruleValidator,
             IMapper mapper)
         {
             _repo = repo;
             _locationService = locationService;
-            _locationInsideRegion = validationMethods.FirstOrDefault(v => v.ValidationType == LocationInsideRegionType);
+            _ruleValidator = ruleValidator;
             _mapper = mapper;
         }
 
@@ -103,71 +101,71 @@ namespace knkwebapi_v2.Services
                 ?? throw new KeyNotFoundException($"SiegeScenario with id {id} not found.");
 
             var result = SiegeScenarioReadiness.EvaluateStructure(scenario);
-            await AddSpatialChecksAsync(scenario, result);
+            await AddFieldRuleChecksAsync(scenario, result);
             result.IsReady = result.Errors.Count == 0;
             return result;
         }
 
-        // Hub, spawnpoint and objective capture locations must lie inside the town's WorldGuard
-        // region. If the check can't run (no validator, town without a region, plugin unreachable)
-        // that is a warning, not an error: authoring without the Minecraft server running must still
-        // be able to reach "ready", and SpatialChecksRun tells the panel the check didn't happen.
-        private async Task AddSpatialChecksAsync(SiegeScenario scenario, SiegeScenarioReadinessDto result)
+        // The field-validation rules configured on the default SiegeScenario, SiegeTeam,
+        // SiegeSpawnpoint and SiegeObjective forms (FormConfigBuilder → Cross-Field Validation), run
+        // against the saved scenario graph. Nothing spatial is hard-coded: whether e.g. a spawnpoint
+        // must lie inside the town is the admin's choice, made by adding a Location Inside Region rule
+        // to the spawnpoint form's Location field that depends on the scenario form's Town field
+        // (a child form sees its parents' fields, as in the wizard). A blocking rule that fails is an
+        // error, a non-blocking one a warning. A rule that can't run (plugin unreachable) is a warning,
+        // not an error: authoring without the Minecraft server must still be able to reach "ready", and
+        // SpatialChecksRun tells the panel the checks didn't all happen.
+        private async Task AddFieldRuleChecksAsync(SiegeScenario scenario, SiegeScenarioReadinessDto result)
         {
-            if (_locationInsideRegion == null)
+            var couldNotRun = false;
+
+            void Report(SavedEntityRuleValidation validation, string label, string entityType, int entityId)
             {
-                SiegeScenarioReadiness.Warning(result, SiegeReadinessCodes.SpatialChecksUnavailable,
-                    "Location-inside-town checks aren't available on this server, so they were skipped.");
-                return;
-            }
-
-            var town = scenario.Town;
-            if (town == null || string.IsNullOrWhiteSpace(town.WgRegionId))
-            {
-                SiegeScenarioReadiness.Warning(result, SiegeReadinessCodes.TownHasNoRegion,
-                    "The scenario's town has no WorldGuard region, so locations couldn't be checked against it.");
-                return;
-            }
-
-            var points = new List<(Location location, string code, string label, string entityType, int entityId)>();
-            if (scenario.HubLocation != null)
-                points.Add((scenario.HubLocation, SiegeReadinessCodes.HubOutsideTown, "Hub location", nameof(SiegeScenario), scenario.Id));
-            foreach (var team in scenario.Teams.OrderBy(t => t.SortOrder).ThenBy(t => t.Id))
-                foreach (var spawn in team.Spawnpoints.OrderBy(p => p.SortOrder).ThenBy(p => p.Id))
-                    if (spawn.Location != null)
-                        points.Add((spawn.Location, SiegeReadinessCodes.SpawnpointOutsideTown,
-                            $"Spawnpoint '{spawn.Name}' of team {SiegeScenarioReadiness.TeamLabel(team)}", nameof(SiegeSpawnpoint), spawn.Id));
-            foreach (var objective in scenario.Objectives.OrderBy(o => o.SortOrder).ThenBy(o => o.Id))
-                if (SiegeScenarioReadiness.CaptureLocationOf(objective) is { } capture)
-                    points.Add((capture, SiegeReadinessCodes.ObjectiveOutsideTown,
-                        $"Objective '{objective.Name}' capture point", nameof(SiegeObjective), objective.Id));
-
-            // The validator reads the region through a property path; a dictionary is the shape its
-            // path lookup handles for any caller (form JSON arrives the same way).
-            var townValue = new Dictionary<string, object>
-            {
-                ["WgRegionId"] = town.WgRegionId,
-                ["Name"] = town.Name ?? "the town"
-            };
-
-            foreach (var point in points)
-            {
-                var check = await _locationInsideRegion.ValidateAsync(point.location, townValue, null, null);
-                if (check.IsValid) continue;
-
-                if (check.Metadata != null && check.Metadata.TryGetValue("failureReason", out var reason)
-                    && Equals(reason, "PluginUnreachable"))
+                foreach (var check in validation.Results)
                 {
-                    SiegeScenarioReadiness.Warning(result, SiegeReadinessCodes.SpatialChecksUnavailable,
-                        "Couldn't check that locations are inside the town: the Minecraft server or knk-plugin isn't reachable. " +
-                        "Start it and re-check readiness.");
-                    return;
-                }
+                    result.FieldRuleChecks++;
+                    if (check.Result.IsValid) continue;
 
-                SiegeScenarioReadiness.Error(result, point.code, $"{point.label}: {check.Message}", point.entityType, point.entityId);
+                    if (check.CouldNotRun)
+                    {
+                        if (!couldNotRun)
+                            SiegeScenarioReadiness.Warning(result, SiegeReadinessCodes.SpatialChecksUnavailable,
+                                $"Some validation rules couldn't run ({check.Message}). Start the Minecraft server and re-check readiness.");
+                        couldNotRun = true;
+                        continue;
+                    }
+
+                    var message = $"{label} - {check.FieldLabel}: {check.Message}";
+                    if (check.Result.IsBlocking)
+                        SiegeScenarioReadiness.Error(result, SiegeReadinessCodes.FieldRuleFailed, message, entityType, entityId);
+                    else
+                        SiegeScenarioReadiness.Warning(result, SiegeReadinessCodes.FieldRuleFailed, message, entityType, entityId);
+                }
             }
 
-            result.SpatialChecksRun = true;
+            var scenarioCheck = await _ruleValidator.ValidateAsync(nameof(SiegeScenario), scenario);
+            Report(scenarioCheck, "Scenario", nameof(SiegeScenario), scenario.Id);
+
+            foreach (var team in scenario.Teams.OrderBy(t => t.SortOrder).ThenBy(t => t.Id))
+            {
+                var teamLabel = SiegeScenarioReadiness.TeamLabel(team);
+                var teamCheck = await _ruleValidator.ValidateAsync(nameof(SiegeTeam), team, scenarioCheck.Context);
+                Report(teamCheck, $"Team {teamLabel}", nameof(SiegeTeam), team.Id);
+
+                foreach (var spawn in team.Spawnpoints.OrderBy(p => p.SortOrder).ThenBy(p => p.Id))
+                {
+                    var spawnCheck = await _ruleValidator.ValidateAsync(nameof(SiegeSpawnpoint), spawn, teamCheck.Context);
+                    Report(spawnCheck, $"Spawnpoint '{spawn.Name}' of team {teamLabel}", nameof(SiegeSpawnpoint), spawn.Id);
+                }
+            }
+
+            foreach (var objective in scenario.Objectives.OrderBy(o => o.SortOrder).ThenBy(o => o.Id))
+            {
+                var objectiveCheck = await _ruleValidator.ValidateAsync(nameof(SiegeObjective), objective, scenarioCheck.Context);
+                Report(objectiveCheck, $"Objective '{objective.Name}'", nameof(SiegeObjective), objective.Id);
+            }
+
+            result.SpatialChecksRun = !couldNotRun;
         }
 
         // ==== Teams ====
