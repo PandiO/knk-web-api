@@ -154,12 +154,15 @@ namespace knkwebapi_v2.Controllers
         /// Reverses a transaction (DESIGN.md D11): posts its mirror as a REVERSAL, once. It never
         /// takes a balance below zero: when a player has spent some of it, the reversal is refused
         /// (400 ReversalWouldGoNegative) unless allowPartial, which reverses what is
-        /// there and records the shortfall. A retried request returns the same reversal.
+        /// there and records the shortfall. A transaction that already has a reversal - also when
+        /// this is a retry of the request that made it - gets 409 AlreadyReversed with
+        /// <c>details</c> { reversalTransactionPublicId, reversedAt, reversedByUserId,
+        /// reversedByUsername } (the last two null when no named staff member reversed it).
         /// </summary>
-        /// <response code="200">Reversed (or replayed)</response>
+        /// <response code="200">Reversed</response>
         /// <response code="400">Note shorter than 10 characters; would go negative; not reversible</response>
         /// <response code="404">No such transaction</response>
-        /// <response code="409">Already reversed</response>
+        /// <response code="409">AlreadyReversed, with the existing reversal in details</response>
         [RequireServiceOrPermission(StaffPermissions.CurrencyReverse)]
         [HttpPost("transactions/{publicId}/reverse")]
         public async Task<IActionResult> Reverse(string publicId, [FromBody] ReverseTransactionDto request, CancellationToken ct)

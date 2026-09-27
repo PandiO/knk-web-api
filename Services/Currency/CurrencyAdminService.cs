@@ -58,6 +58,10 @@ namespace knkwebapi_v2.Services
             {
                 userIds.Add(tx.InitiatorUserId.Value);
             }
+            if (reversal?.InitiatorUserId != null)
+            {
+                userIds.Add(reversal.InitiatorUserId.Value);
+            }
             var names = await _repo.GetIdentitiesAsync(userIds, ct);
             string? NameOf(int? id) => id.HasValue && names.TryGetValue(id.Value, out var who) ? who.Username : null;
 
@@ -80,6 +84,9 @@ namespace knkwebapi_v2.Services
                 MetadataJson = tx.MetadataJson,
                 ReversesPublicId = reverses?.PublicId,
                 ReversedByPublicId = reversal?.PublicId,
+                ReversedAt = reversal?.CreatedAt,
+                ReversedByUserId = reversal?.InitiatorUserId,
+                ReversedByUsername = NameOf(reversal?.InitiatorUserId),
                 Reversible = tx.Kind != CurrencyTransactionKind.Reversal && reversal == null,
                 Entries = tx.Entries
                     .OrderBy(e => e.AccountKind).ThenBy(e => e.UserId).ThenBy(e => e.Currency).ThenBy(e => e.Id)
@@ -106,6 +113,13 @@ namespace knkwebapi_v2.Services
             if (request == null) throw new ArgumentNullException(nameof(request));
             var note = RequireNote(request.Note);
             var original = await FindAsync(publicId, ct);
+            // Already reversed: say so, with when and by whom - also for a retry of the request
+            // that reversed it, which the ledger would otherwise replay as a fresh success.
+            var prior = await _repo.FindReversalOfAsync(original.Id, ct);
+            if (prior != null)
+            {
+                throw await AlreadyReversedAsync(original, prior, ct);
+            }
 
             var ctx = CurrencyContext.ForCaller(caller, CurrencyReasons.Reversal, ReversalKey(original.Id), component,
                 staffAction: true, reason: note) with
@@ -118,28 +132,41 @@ namespace knkwebapi_v2.Services
             PostingResult posting = null!;
             var titleChanges = new Dictionary<int, TitleChangeResultDto>();
             // The reversal, its audit entries and the title change of reversed XP commit together.
-            await _users.RunWithUsersLockedAsync(affected, async () =>
+            try
             {
-                posting = await _currency.ReverseAsync(original.Id, new ReversalOptions(request.AllowPartial), ctx, ct);
-                if (posting.Replayed)
+                await _users.RunWithUsersLockedAsync(affected, async () =>
                 {
-                    return; // a retried request: audited the first time
-                }
-                titleChanges = await _titleProgression.ApplyForPostingAsync(posting, ctx.InitiatorUserId, ct);
-                foreach (var userId in affected)
-                {
-                    await _auditLog.RecordAsync(ctx.InitiatorUserId, userId, AuditAction.CurrencyTransactionReversed, JsonSerializer.Serialize(new
+                    posting = await _currency.ReverseAsync(original.Id, new ReversalOptions(request.AllowPartial), ctx, ct);
+                    if (posting.Replayed)
                     {
-                        reversedPublicId = original.PublicId,
-                        reversedReasonCode = original.ReasonCode,
-                        reversalPublicId = posting.PublicId,
-                        allowPartial = request.AllowPartial,
-                        reason = note,
-                        changes = posting.Entries.Where(e => e.UserId == userId)
-                            .Select(e => new { currency = e.Currency, amount = e.Amount, before = e.BalanceBefore, after = e.BalanceAfter })
-                    }));
-                }
-            });
+                        // The same request committed while this one waited for the lock.
+                        throw new CurrencyException(CurrencyErrorCode.AlreadyReversed, $"Transaction {original.PublicId} was already reversed.");
+                    }
+                    titleChanges = await _titleProgression.ApplyForPostingAsync(posting, ctx.InitiatorUserId, ct);
+                    foreach (var userId in affected)
+                    {
+                        await _auditLog.RecordAsync(ctx.InitiatorUserId, userId, AuditAction.CurrencyTransactionReversed, JsonSerializer.Serialize(new
+                        {
+                            reversedPublicId = original.PublicId,
+                            reversedReasonCode = original.ReasonCode,
+                            reversalPublicId = posting.PublicId,
+                            allowPartial = request.AllowPartial,
+                            reason = note,
+                            changes = posting.Entries.Where(e => e.UserId == userId)
+                                .Select(e => new { currency = e.Currency, amount = e.Amount, before = e.BalanceBefore, after = e.BalanceAfter })
+                        }));
+                    }
+                });
+            }
+            catch (CurrencyException ex) when (ex.Code == CurrencyErrorCode.AlreadyReversed && ex.Details is not AlreadyReversedDetailsDto
+                                               || ex.Code == CurrencyErrorCode.IdempotencyKeyReuse)
+            {
+                // Lost a race to another reversal (the same request, or one with the other
+                // allowPartial under the same reverse: key): report the one that won, as above.
+                var winner = await _repo.FindReversalOfAsync(original.Id, ct);
+                if (winner == null) throw;
+                throw await AlreadyReversedAsync(original, winner, ct);
+            }
 
             foreach (var (userId, change) in titleChanges)
             {
@@ -155,6 +182,27 @@ namespace knkwebapi_v2.Services
                 Posting = posting,
                 Partial = reversedTotal < originalTotal
             };
+        }
+
+        /// <summary>409 AlreadyReversed with the reversal that exists (AlreadyReversedDetailsDto).</summary>
+        private async Task<CurrencyException> AlreadyReversedAsync(CurrencyTransaction original, CurrencyTransaction reversal, CancellationToken ct)
+        {
+            string? by = null;
+            if (reversal.InitiatorUserId.HasValue)
+            {
+                by = (await _repo.GetIdentitiesAsync(new[] { reversal.InitiatorUserId.Value }, ct))
+                    .GetValueOrDefault(reversal.InitiatorUserId.Value).Username;
+            }
+            var who = by ?? reversal.InitiatorComponent ?? reversal.Initiator.ToString();
+            return new CurrencyException(CurrencyErrorCode.AlreadyReversed,
+                $"Transaction {original.PublicId} was already reversed on {reversal.CreatedAt:yyyy-MM-dd HH:mm} UTC by {who} (reversal {reversal.PublicId}).",
+                new AlreadyReversedDetailsDto
+                {
+                    ReversalTransactionPublicId = reversal.PublicId,
+                    ReversedAt = DateTime.SpecifyKind(reversal.CreatedAt, DateTimeKind.Utc),
+                    ReversedByUserId = reversal.InitiatorUserId,
+                    ReversedByUsername = by
+                });
         }
 
         private async Task<CurrencyTransaction> FindAsync(string publicId, CancellationToken ct)

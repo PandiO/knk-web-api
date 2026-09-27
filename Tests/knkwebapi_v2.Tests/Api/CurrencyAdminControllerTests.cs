@@ -237,6 +237,31 @@ public class CurrencyAdminControllerTests
     // ===== Reverse, locks, policy =====
 
     [Fact]
+    public async Task Reverse_AlreadyReversed_Is409WithTheReversalInDetails()
+    {
+        // The contract the plugin and the web app display (KNG-21 smoke test).
+        SetRequest(plugin: true);
+        var at = new DateTime(2026, 9, 27, 10, 30, 0, DateTimeKind.Utc);
+        _admin.Setup(a => a.ReverseAsync(It.IsAny<string>(), It.IsAny<ReverseTransactionDto>(), It.IsAny<KnkCaller>(), "PluginCurrencyAdmin", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new CurrencyException(CurrencyErrorCode.AlreadyReversed, "already reversed", new AlreadyReversedDetailsDto
+            {
+                ReversalTransactionPublicId = "01JREVERSAL0000000000000000", ReversedAt = at, ReversedByUserId = StaffId, ReversedByUsername = "moderator"
+            }));
+
+        var result = Assert.IsType<ConflictObjectResult>(await _controller.Reverse("01JABCDEFGHJKMNPQRSTVWXYZ0", new ReverseTransactionDto { Note = "Granted twice" }, CancellationToken.None));
+
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(result.Value));
+        Assert.Equal("AlreadyReversed", json.RootElement.GetProperty("error").GetString());
+        Assert.Equal("AlreadyReversed", json.RootElement.GetProperty("code").GetString());
+        var details = json.RootElement.GetProperty("details");
+        Assert.Equal("01JREVERSAL0000000000000000", details.GetProperty("reversalTransactionPublicId").GetString());
+        Assert.Equal(at, details.GetProperty("reversedAt").GetDateTime());
+        Assert.Equal(StaffId, details.GetProperty("reversedByUserId").GetInt32());
+        Assert.Equal("moderator", details.GetProperty("reversedByUsername").GetString());
+    }
+
+
+    [Fact]
     public async Task Reverse_NamesTheWebComponent_AndMapsRefusals()
     {
         SetRequest(webUserId: StaffId);

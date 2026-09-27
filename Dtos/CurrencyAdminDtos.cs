@@ -93,6 +93,28 @@ public class ReversalResultDto
     public bool Partial { get; set; }
 }
 
+/// <summary>
+/// The <c>details</c> of a 409 AlreadyReversed (KNG-21 smoke test): every reverse request for a
+/// transaction that already has a reversal gets this - a retry of the same request too - so staff
+/// never see a success message for a reversal someone else (or they themselves) already made.
+/// </summary>
+public class AlreadyReversedDetailsDto
+{
+    [JsonPropertyName("reversalTransactionPublicId")]
+    public string ReversalTransactionPublicId { get; set; } = null!;
+
+    /// <summary>UTC.</summary>
+    [JsonPropertyName("reversedAt")]
+    public DateTime ReversedAt { get; set; }
+
+    /// <summary>Null when the reversal wasn't made by a named staff member.</summary>
+    [JsonPropertyName("reversedByUserId")]
+    public int? ReversedByUserId { get; set; }
+
+    [JsonPropertyName("reversedByUsername")]
+    public string? ReversedByUsername { get; set; }
+}
+
 /// <summary>One leg of a transaction in the staff detail view — user and system accounts.</summary>
 public class CurrencyEntryDetailDto
 {
@@ -183,6 +205,17 @@ public class CurrencyTransactionDetailDto
     /// <summary>Set when this transaction has been reversed.</summary>
     [JsonPropertyName("reversedByPublicId")]
     public string? ReversedByPublicId { get; set; }
+
+    /// <summary>When it was reversed (the reversal's CreatedAt, UTC); null if not reversed.</summary>
+    [JsonPropertyName("reversedAt")]
+    public DateTime? ReversedAt { get; set; }
+
+    /// <summary>The staff member who reversed it; null if not reversed or reversed without a named staff member.</summary>
+    [JsonPropertyName("reversedByUserId")]
+    public int? ReversedByUserId { get; set; }
+
+    [JsonPropertyName("reversedByUsername")]
+    public string? ReversedByUsername { get; set; }
 
     /// <summary>Not a reversal and not reversed yet.</summary>
     [JsonPropertyName("reversible")]

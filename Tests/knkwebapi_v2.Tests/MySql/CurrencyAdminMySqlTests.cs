@@ -111,10 +111,19 @@ public class CurrencyAdminMySqlTests : IClassFixture<MySqlTestDatabase>
             await Admin(ctx).ReverseAsync(grant.PublicId, new ReverseTransactionDto { Note = "Granted by mistake" }, caller, "MySqlTest");
         });
 
-        // Same-scope retries replay; the other scope finds the reversal already there.
-        Assert.All(errors.Where(e => e != null), e => Assert.Equal(CurrencyErrorCode.AlreadyReversed, Assert.IsType<CurrencyException>(e).Code));
+        // Exactly one succeeds; every other request - a same-key retry too (KNG-21) - is told it
+        // was already reversed, with which reversal and by whom.
+        Assert.Single(errors, e => e == null);
         await using var check = _db.NewContext();
-        Assert.Equal(1, await check.CurrencyTransactions.CountAsync(t => t.ReversesTransactionId == grant.TransactionId));
+        var reversal = await check.CurrencyTransactions.SingleAsync(t => t.ReversesTransactionId == grant.TransactionId);
+        Assert.All(errors.Where(e => e != null), e =>
+        {
+            var ex = Assert.IsType<CurrencyException>(e);
+            Assert.Equal(CurrencyErrorCode.AlreadyReversed, ex.Code);
+            var details = Assert.IsType<AlreadyReversedDetailsDto>(ex.Details);
+            Assert.Equal((reversal.PublicId, (int?)staff), (details.ReversalTransactionPublicId, details.ReversedByUserId));
+            Assert.NotNull(details.ReversedByUsername);
+        });
         Assert.Equal(1, await check.AuditLogEntries.CountAsync(a => a.TargetUserId == player && a.Action == AuditAction.CurrencyTransactionReversed));
         Assert.Equal(0, (await ReloadAsync(player)).Coins);
         await AssertReconciledAsync(player);

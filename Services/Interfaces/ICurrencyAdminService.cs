@@ -19,8 +19,10 @@ namespace knkwebapi_v2.Services.Interfaces
 
         /// <summary>
         /// Reverses <paramref name="publicId"/> for <paramref name="caller"/> (reason REVERSAL, key
-        /// <c>reverse:{transactionId}</c>, so a retried request replays and a second reversal is
-        /// refused with AlreadyReversed). The note needs ≥ 10 characters. The posting, its audit
+        /// <c>reverse:{transactionId}</c>). Any request for a transaction that already has a
+        /// reversal - a retry of the one that made it included - is refused with AlreadyReversed,
+        /// whose details are an AlreadyReversedDetailsDto (which reversal, when, by whom), so staff
+        /// never see a false "reversed". The note needs ≥ 10 characters. The posting, its audit
         /// entries and any title change from reversed XP commit together.
         /// </summary>
         Task<ReversalResultDto> ReverseAsync(string publicId, ReverseTransactionDto request, KnkCaller caller, string component, CancellationToken ct = default);

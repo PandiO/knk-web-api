@@ -146,8 +146,10 @@ public class CurrencyAdminServiceTests
     }
 
     [Fact]
-    public async Task Reverse_Retried_Replays_AndFromAnotherCaller_IsAlreadyReversed()
+    public async Task Reverse_Again_IsAlreadyReversed_WithWhenAndByWhom_EvenAsASameKeyRetry()
     {
+        // KNG-21 smoke test: a retry used to replay the stored reversal, so staff saw "reversed"
+        // for a transaction that had been reversed long before.
         await SeedAsync();
         var grant = await GrantAsync(1, 50, "salary:1:t0");
         await using var ctx = NewContext();
@@ -155,16 +157,26 @@ public class CurrencyAdminServiceTests
         var request = new ReverseTransactionDto { Note = "Paid twice by a bug" };
 
         var first = await admin.ReverseAsync(grant.PublicId, request, WebStaff, "WebAppLedger");
-        var retry = await admin.ReverseAsync(grant.PublicId, request, WebStaff, "WebAppLedger");
-        Assert.True(retry.Posting.Replayed);
-        Assert.Equal(first.Posting.PublicId, retry.Posting.PublicId);
 
         var plugin = new KnkCaller(isPluginService: true, isWebUser: false, webUserId: null, actingUserId: Staff);
-        var again = await Assert.ThrowsAsync<CurrencyException>(() => admin.ReverseAsync(grant.PublicId, request, plugin, "PluginCurrencyAdmin"));
-        Assert.Equal(CurrencyErrorCode.AlreadyReversed, again.Code);
+        foreach (var (caller, component, partial) in new[] { (WebStaff, "WebAppLedger", false), (WebStaff, "WebAppLedger", true), (plugin, "PluginCurrencyAdmin", false) })
+        {
+            var again = await Assert.ThrowsAsync<CurrencyException>(() =>
+                admin.ReverseAsync(grant.PublicId, new ReverseTransactionDto { Note = request.Note, AllowPartial = partial }, caller, component));
+            Assert.Equal(CurrencyErrorCode.AlreadyReversed, again.Code);
+            var details = Assert.IsType<AlreadyReversedDetailsDto>(again.Details);
+            Assert.Equal((first.Posting.PublicId, (int?)Staff, "moderator"), (details.ReversalTransactionPublicId, details.ReversedByUserId, details.ReversedByUsername));
+            Assert.Equal(first.Posting.CreatedAt, details.ReversedAt, TimeSpan.FromSeconds(1));
+            Assert.Contains("moderator", again.Message);
+        }
 
         Assert.Equal(100, (await UserAsync(1)).Coins);
         Assert.Single(await AuditAsync(AuditAction.CurrencyTransactionReversed));
+
+        var detail = await admin.GetTransactionAsync(grant.PublicId);
+        Assert.Equal((first.Posting.PublicId, (int?)Staff, "moderator", false),
+            (detail.ReversedByPublicId, detail.ReversedByUserId, detail.ReversedByUsername, detail.Reversible));
+        Assert.NotNull(detail.ReversedAt);
     }
 
     [Fact]
