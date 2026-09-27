@@ -119,7 +119,7 @@ public class LootboxConfigServicesTests
     }
 
     [Fact]
-    public async Task Odds_UnknownTypeIsNull_AndStarsOutsideOneToFiveAreRefused()
+    public async Task Odds_UnknownTypeIsNull_AndStarsOutsideTheGradeScaleAreRefused()
     {
         await SeedAllAsync();
         var weapons = await TypeIdAsync("Weapons");
@@ -127,7 +127,7 @@ public class LootboxConfigServicesTests
         var service = TypeService(db);
 
         (await service.GetOddsAsync(99_999, 5)).Should().BeNull();
-        await service.Invoking(s => s.GetOddsAsync(weapons, 6)).Should().ThrowAsync<ArgumentException>();
+        await service.Invoking(s => s.GetOddsAsync(weapons, 11)).Should().ThrowAsync<ArgumentException>();
         await service.Invoking(s => s.GetOddsAsync(weapons, 0)).Should().ThrowAsync<ArgumentException>();
         (await service.GetOddsAsync(weapons, null))!.BoxStars.Should().Be(5, "defaults to the type's MaxBoxStars");
     }
@@ -171,7 +171,7 @@ public class LootboxConfigServicesTests
 
     public static IEnumerable<object[]> InvalidTypes()
     {
-        yield return new object[] { (Action<LootboxTypeDto>)(t => t.MaxBoxStars = 6) };
+        yield return new object[] { (Action<LootboxTypeDto>)(t => t.MaxBoxStars = 11) };
         yield return new object[] { (Action<LootboxTypeDto>)(t => t.MinBoxStars = 0) };
         yield return new object[] { (Action<LootboxTypeDto>)(t => { t.MinBoxStars = 4; t.MaxBoxStars = 3; }) };
         yield return new object[] { (Action<LootboxTypeDto>)(t => t.ItemStarSpread = 10) };
@@ -231,7 +231,7 @@ public class LootboxConfigServicesTests
             .Should().ThrowAsync<ArgumentException>();
         await FluentActions.Invoking(() => UpdateWith(new() { EnchantmentDefinitionId = knockbackId, ChancePercent = 100.5m, MinLevel = 1, MaxLevel = 1 }))
             .Should().ThrowAsync<ArgumentException>();
-        await FluentActions.Invoking(() => UpdateWith(new() { EnchantmentDefinitionId = knockbackId, ChancePercent = 50, MinLevel = 1, MaxLevel = 2, MinBoxStars = 6 }))
+        await FluentActions.Invoking(() => UpdateWith(new() { EnchantmentDefinitionId = knockbackId, ChancePercent = 50, MinLevel = 1, MaxLevel = 2, MinBoxStars = 11 }))
             .Should().ThrowAsync<ArgumentException>();
         await UpdateWith(new() { EnchantmentDefinitionId = knockbackId, ChancePercent = 50, MinLevel = 1, MaxLevel = 2 });
     }
@@ -401,7 +401,7 @@ public class LootboxConfigServicesTests
             var service = new LootboxSpecialEntryService(new LootboxSpecialEntryRepository(db), Mapper());
             await service.Invoking(s => s.CreateAsync(new LootboxSpecialEntryDto { ItemBlueprintId = golemheart, ChancePerMillion = 1_000_001 }))
                 .Should().ThrowAsync<ArgumentException>();
-            await service.Invoking(s => s.CreateAsync(new LootboxSpecialEntryDto { ItemBlueprintId = golemheart, ChancePerMillion = 10, MinBoxStars = 6 }))
+            await service.Invoking(s => s.CreateAsync(new LootboxSpecialEntryDto { ItemBlueprintId = golemheart, ChancePerMillion = 10, MinBoxStars = 11 }))
                 .Should().ThrowAsync<ArgumentException>();
             await service.Invoking(s => s.CreateAsync(new LootboxSpecialEntryDto { ItemBlueprintId = golemheart, LootboxTypeId = 99_999, ChancePerMillion = 10 }))
                 .Should().ThrowAsync<ArgumentException>();

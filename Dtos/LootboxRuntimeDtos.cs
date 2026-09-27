@@ -633,6 +633,10 @@ namespace knkwebapi_v2.Dtos
         // The drop-log row the redeem wrote.
         [JsonPropertyName("claimId")]
         public int? ClaimId { get; set; }
+
+        // The world box it was picked up from (reason WorldPickup), else null.
+        [JsonPropertyName("sourceSpawnId")]
+        public int? SourceSpawnId { get; set; }
     }
 
     /// <summary>POST api/LootboxTokens/{token}/redeem.</summary>
@@ -662,6 +666,47 @@ namespace knkwebapi_v2.Dtos
         // How many were newly marked delivered (tokens already delivered or issued to someone else are skipped).
         [JsonPropertyName("updated")]
         public int Updated { get; set; }
+    }
+
+    /// <summary>POST api/LootboxSpawns/{id}/pickup (DESIGN.md §3.8): the clicking player takes the world box as a token
+    /// item. One box, one token: a repeat by the same player returns the stored token (<c>replay</c>).</summary>
+    public class LootboxPickupRequestDto
+    {
+        [JsonPropertyName("token")]
+        public Guid Token { get; set; }
+
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+    }
+
+    public class LootboxPickupResultDto
+    {
+        [JsonPropertyName("replay")]
+        public bool Replay { get; set; }
+
+        [JsonPropertyName("spawnId")]
+        public int SpawnId { get; set; }
+
+        [JsonPropertyName("lootboxToken")]
+        public LootboxTokenDto LootboxToken { get; set; } = null!;
+    }
+
+    /// <summary>POST api/LootboxTokens/status: the plugin asks what became of token items it found in an inventory
+    /// (a join scan), and removes revoked and opened ones.</summary>
+    public class LootboxTokenStatusRequestDto
+    {
+        [JsonPropertyName("tokens")]
+        public List<Guid> Tokens { get; set; } = new();
+    }
+
+    public class LootboxTokenStatusDto
+    {
+        [JsonPropertyName("token")]
+        public Guid Token { get; set; }
+
+        // Issued | Redeemed | Revoked, or Unknown for a token the API never issued.
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = string.Empty;
     }
 
     /// <summary>A token grant rule (premium tier or kit → tokens), for the web app.</summary>

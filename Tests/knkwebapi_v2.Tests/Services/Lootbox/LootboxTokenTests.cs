@@ -479,7 +479,7 @@ public class LootboxTokenTests
             new LootboxTokenGrantDto { LootboxTypeId = _weapons, Quantity = 1, PermissionGroupId = _noble, KitId = _kit },
             new LootboxTokenGrantDto { LootboxTypeId = _weapons, Quantity = 1, PermissionGroupId = _defaultGroup },
             new LootboxTokenGrantDto { LootboxTypeId = _weapons, Quantity = 0, KitId = _kit },
-            new LootboxTokenGrantDto { LootboxTypeId = _weapons, Quantity = 1, KitId = _kit, BoxStars = 6 },
+            new LootboxTokenGrantDto { LootboxTypeId = _weapons, Quantity = 1, KitId = _kit, BoxStars = 11 },
             new LootboxTokenGrantDto { LootboxTypeId = 999, Quantity = 1, KitId = _kit },
         })
         {

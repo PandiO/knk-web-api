@@ -85,6 +85,20 @@ namespace knkwebapi_v2.Controllers
             if (request == null) return BadRequest();
             return await LootboxResults.Run(this, async () => Ok(await _service.ClaimAsync(id, request)));
         }
+
+        /// <summary>
+        /// A player clicked a world box: they take it as a token item (DESIGN.md §3.8) and open it later. 200
+        /// <see cref="LootboxPickupResultDto"/> (<c>replay=true</c> when this player already took it); 409
+        /// <c>{code: AlreadyClaimed|Expired|Removed|TokenMismatch|Disabled|Frozen|UserInactive}</c>; 429
+        /// <c>{code: DailyPickupLimit, scope: Global|Type, limit, resetsAt}</c>.
+        /// </summary>
+        [HttpPost("{id:int}/pickup")]
+        [RequirePluginService]
+        public async Task<IActionResult> Pickup(int id, [FromBody] LootboxPickupRequestDto request)
+        {
+            if (request == null) return BadRequest();
+            return await LootboxResults.Run(this, async () => Ok(await _service.PickupAsync(id, request)));
+        }
     }
 
     /// <summary>The lootbox runtime's error mapping: 400 / 404 / 409 <c>{code, message}</c> / 429 daily limit.</summary>

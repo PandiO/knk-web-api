@@ -26,13 +26,18 @@ namespace knkwebapi_v2.Services
         private readonly IUserRepository _users;
         private readonly ILogger<LootboxSpawnAreaService> _logger;
 
+        // LootboxWorldChanged for a web delete's active boxes (optional: tests run without one).
+        private readonly IPlayerNotificationQueue? _notifications;
+
         public LootboxSpawnAreaService(
             ILootboxSpawnAreaRepository repo,
             IMapper mapper,
             IAuditLogService audit,
             IUserRepository users,
-            ILogger<LootboxSpawnAreaService> logger)
+            ILogger<LootboxSpawnAreaService> logger,
+            IPlayerNotificationQueue? notifications = null)
         {
+            _notifications = notifications;
             _repo = repo;
             _mapper = mapper;
             _audit = audit;
@@ -104,7 +109,12 @@ namespace knkwebapi_v2.Services
             if (await _repo.GetByIdAsync(id) == null) throw new KeyNotFoundException($"LootboxSpawnArea with id {id} not found.");
             // A delete from the web app can't reach WorldGuard, so a lootbox_ region the in-game command made stays
             // behind (DESIGN.md §3.4).
-            await _repo.DeleteAsync(id);
+            var removed = await _repo.DeleteAsync(id);
+            // Its active boxes vanish in game within seconds, not at the plugin's next refresh.
+            if (_notifications != null && removed.Count > 0)
+            {
+                _notifications.EnqueueLootboxWorldChanged(new LootboxWorldChangedNotificationDto { RemovedSpawnIds = removed.ToList() });
+            }
         }
 
         // ===== In game (/knk lootbox area create|delete, DESIGN.md §3.4) =====

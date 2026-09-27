@@ -131,6 +131,15 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// SearchTerm is a token id or part of a username. Newest first by default.</summary>
         Task<PagedResult<LootboxToken>> SearchTokensAsync(PagedQuery query);
 
+        /// <summary>The token picked up from a world box (DESIGN.md §3.8), with its includes; null when nobody took it.</summary>
+        Task<LootboxToken?> GetTokenBySourceSpawnAsync(int spawnId);
+
+        /// <summary>World boxes picked up by the user in [from, to), optionally of one type (the daily pickup cap).</summary>
+        Task<int> CountPickupsAsync(int userId, DateTime from, DateTime to, int? lootboxTypeId = null);
+
+        /// <summary>Status by token id for the given ids; unknown ids are left out.</summary>
+        Task<Dictionary<Guid, LootboxTokenStatus>> GetTokenStatusesAsync(IEnumerable<Guid> tokens);
+
         /// <summary>A blueprint as the claim needs it (MaxStackSize, default enchantments). No tracking.</summary>
         Task<ItemBlueprint?> GetBlueprintAsync(int id);
     }

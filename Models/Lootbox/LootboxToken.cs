@@ -40,6 +40,11 @@ public class LootboxToken
 
     public string? Note { get; set; }
 
+    // The world box this token was picked up from (IssuedReason WorldPickup, DESIGN.md §3.8); unique, so a box yields
+    // at most one token. SetNull keeps the token if spawn history is ever pruned.
+    public int? SourceSpawnId { get; set; }
+    public LootboxSpawn? SourceSpawn { get; set; }
+
     public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
 
     // The plugin put the item in the player's inventory (or dropped it owner-locked at their feet).

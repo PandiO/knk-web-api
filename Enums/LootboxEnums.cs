@@ -45,5 +45,8 @@ public enum LootboxTokenReason
     Kit = 2,
     PvpKill = 3,
     Referral = 4,
-    Other = 5
+    Other = 5,
+    // Picked up from a world box (DESIGN.md §3.8): clicking a spawned box gives the player this token instead of
+    // opening it on the spot. LootboxToken.SourceSpawnId points at the box.
+    WorldPickup = 6
 }

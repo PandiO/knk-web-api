@@ -28,7 +28,8 @@ public class LootboxType
     // Relative weight of this type among the enabled types allowed in a spawn area.
     public int SpawnWeight { get; set; } = 10;
 
-    // Box grades ★1-5 only (DESIGN.md Q3/D5): MaxBoxStars is validated <= 5.
+    // Box grades: any grade of the Grade table (★1-10, validated <= LootboxRollEngine.MaxBoxStars); new types default to
+    // ★1-5 (DESIGN.md D5, amended 2026-09-27). A window above the stocked grades widens downward (logged).
     public int MinBoxStars { get; set; } = 1;
     public int MaxBoxStars { get; set; } = 5;
 

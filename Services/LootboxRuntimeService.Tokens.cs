@@ -128,8 +128,9 @@ namespace knkwebapi_v2.Services
         private static LootboxTokenReason ParseReason(string? raw)
         {
             if (string.IsNullOrWhiteSpace(raw)) return LootboxTokenReason.Admin;
+            // WorldPickup is only ever written by a pickup (it needs its world box).
             if (Enum.TryParse<LootboxTokenReason>(raw.Trim(), true, out var reason) && Enum.IsDefined(reason)
-                && !int.TryParse(raw.Trim(), out _))
+                && reason != LootboxTokenReason.WorldPickup && !int.TryParse(raw.Trim(), out _))
                 return reason;
             throw new ArgumentException("reason must be Admin, PremiumTier, Kit, PvpKill, Referral or Other.");
         }
@@ -322,6 +323,8 @@ namespace knkwebapi_v2.Services
                     throw await TokenGoneAsync(row.Id);
                 }
                 _logger.LogInformation("Lootbox token {TokenId} revoked by user {ActorUserId}", row.Id, actor);
+                // Every online copy is taken away at once; offline holders lose it at their next join (plugin scan).
+                NotifyWorldChanged(null, new[] { row.Token });
             }
             return ToTokenDto((await _repo.GetTokensAsync(new[] { row.Id })).Single());
         }
@@ -371,6 +374,7 @@ namespace knkwebapi_v2.Services
             RedeemedByUsername = token.RedeemedByUser?.Username,
             RevokedAt = Utc(token.RevokedAt),
             ClaimId = token.Claim?.Id,
+            SourceSpawnId = token.SourceSpawnId,
         };
     }
 }

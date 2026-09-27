@@ -170,6 +170,7 @@ namespace knkwebapi_v2.Repositories
             .Include(c => c.ItemInstance)
                 .ThenInclude(i => i!.Enchantments)
                     .ThenInclude(e => e.EnchantmentDefinition)
+            .Include(c => c.LootboxToken)
             .AsSplitQuery();
 
         public async Task<LootboxClaim?> GetClaimAsync(int id)
@@ -248,8 +249,10 @@ namespace knkwebapi_v2.Repositories
                 {
                     queryable = source?.Trim().ToLowerInvariant() switch
                     {
-                        "world" => queryable.Where(c => c.LootboxSpawnId != null),
-                        "token" => queryable.Where(c => c.LootboxTokenId != null),
+                        // A world box is picked up as a token (DESIGN.md §3.8) and opened later: still a world drop.
+                        "world" => queryable.Where(c => c.LootboxSpawnId != null
+                            || (c.LootboxToken != null && c.LootboxToken.IssuedReason == LootboxTokenReason.WorldPickup)),
+                        "token" => queryable.Where(c => c.LootboxToken != null && c.LootboxToken.IssuedReason != LootboxTokenReason.WorldPickup),
                         "admingive" => queryable.Where(c => c.LootboxSpawnId == null && c.LootboxTokenId == null),
                         _ => queryable,
                     };
@@ -280,6 +283,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(c => c.BoxGrade)
                 .Include(c => c.ItemGrade)
                 .Include(c => c.ItemBlueprint)
+                .Include(c => c.LootboxToken)
                 .ToListAsync();
 
             return new PagedResult<LootboxClaim>
@@ -322,6 +326,28 @@ namespace knkwebapi_v2.Repositories
             .Include(t => t.IssuedToUser)
             .Include(t => t.RedeemedByUser)
             .Include(t => t.Claim);
+
+        public async Task<LootboxToken?> GetTokenBySourceSpawnAsync(int spawnId)
+        {
+            return await TokensWithIncludes().AsNoTracking().FirstOrDefaultAsync(t => t.SourceSpawnId == spawnId);
+        }
+
+        public async Task<int> CountPickupsAsync(int userId, DateTime from, DateTime to, int? lootboxTypeId = null)
+        {
+            return await _context.LootboxTokens.CountAsync(t =>
+                t.IssuedToUserId == userId
+                && t.IssuedReason == LootboxTokenReason.WorldPickup
+                && t.IssuedAt >= from && t.IssuedAt < to
+                && (lootboxTypeId == null || t.LootboxTypeId == lootboxTypeId));
+        }
+
+        public async Task<Dictionary<Guid, LootboxTokenStatus>> GetTokenStatusesAsync(IEnumerable<Guid> tokens)
+        {
+            var list = tokens.Distinct().ToList();
+            return await _context.LootboxTokens.AsNoTracking()
+                .Where(t => list.Contains(t.Token))
+                .ToDictionaryAsync(t => t.Token, t => t.Status);
+        }
 
         public void AddTokens(IEnumerable<LootboxToken> tokens)
         {

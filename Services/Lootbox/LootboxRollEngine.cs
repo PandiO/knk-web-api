@@ -1,3 +1,5 @@
+using knkwebapi_v2.Models;
+
 namespace knkwebapi_v2.Services.Lootbox;
 
 /// <summary>
@@ -22,7 +24,9 @@ namespace knkwebapi_v2.Services.Lootbox;
 /// </summary>
 public sealed class LootboxRollEngine
 {
-    public const int MaxBoxStars = 5;
+    // The highest grade in the Grade table (GradeDefaults: ★10 Divine). Box grades were ★1-5 only (DESIGN.md Q3) until
+    // the 2026-09-27 smoke test asked for the full grade scale; each type still defaults to ★1-5 (LootboxType).
+    public static readonly int MaxBoxStars = GradeDefaults.All.Max(g => g.Stars);
     public const int SpecialFallbackStars = 5;
 
     private const int PerMillion = 1_000_000;

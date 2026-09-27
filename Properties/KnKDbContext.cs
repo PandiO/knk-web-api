@@ -1105,6 +1105,13 @@ public partial class KnKDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(t => t.RedeemedByUserId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // One token per picked-up world box (MySQL allows many NULLs in a unique index).
+            entity.HasIndex(e => e.SourceSpawnId).IsUnique();
+            entity.HasOne(t => t.SourceSpawn)
+                .WithMany()
+                .HasForeignKey(t => t.SourceSpawnId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Token grant rules: configuration owned by their premium tier or kit (Cascade from those), Restrict to the type.

@@ -88,6 +88,19 @@ namespace knkwebapi_v2.Services.Interfaces
 
         /// <summary>Paged tokens for the web app.</summary>
         Task<PagedResultDto<LootboxTokenDto>> SearchTokensAsync(PagedQueryDto query);
+
+        /// <summary>
+        /// DESIGN.md §3.8: the clicking player takes a world box as a token item (reason WorldPickup). 409
+        /// AlreadyClaimed/Expired/Removed/TokenMismatch/Disabled/Frozen/UserInactive; 429 DailyPickupLimit; the same
+        /// player again gets their stored token (replay).
+        /// </summary>
+        Task<LootboxPickupResultDto> PickupAsync(int spawnId, LootboxPickupRequestDto request);
+
+        /// <summary>What became of token items the plugin found (its join scan): Issued, Redeemed, Revoked or Unknown.</summary>
+        Task<List<LootboxTokenStatusDto>> GetTokenStatusesAsync(LootboxTokenStatusRequestDto request);
+
+        /// <summary>Queues a LootboxWorldChanged notification for spawns another service removed (a web area delete).</summary>
+        void NotifySpawnsRemoved(IEnumerable<int> spawnIds);
     }
 
     public static class LootboxRuntimeServiceConstants
@@ -100,5 +113,6 @@ namespace knkwebapi_v2.Services.Interfaces
         public const int MaxTokensPerIssue = 64;
         public const int MaxTokenNoteLength = 256;
         public const int MaxTokenIssueKeyLength = 100;
+        public const int MaxTokenStatusLookup = 256;
     }
 }

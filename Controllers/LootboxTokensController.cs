@@ -63,8 +63,17 @@ namespace knkwebapi_v2.Controllers
             return await LootboxResults.Run(this, async () => Ok(await _service.MarkTokensDeliveredAsync(request)));
         }
 
-        /// <summary>An unopened token can no longer be opened (the item stays but is refused and removed when used).
-        /// 409 AlreadyRedeemed.</summary>
+        /// <summary>What became of the given tokens (the plugin's join scan removes revoked and opened copies).</summary>
+        [HttpPost("status")]
+        [RequirePluginService]
+        public async Task<IActionResult> Status([FromBody] LootboxTokenStatusRequestDto request)
+        {
+            if (request == null) return BadRequest();
+            return await LootboxResults.Run(this, async () => Ok(await _service.GetTokenStatusesAsync(request)));
+        }
+
+        /// <summary>An unopened token can no longer be opened. The game server removes every online copy within seconds
+        /// (LootboxWorldChanged) and offline copies at the holder's next join. 409 AlreadyRedeemed.</summary>
         [HttpPost("{token:guid}/revoke")]
         [RequireServiceOrPermission(StaffPermissions.ManageLootboxes)]
         public async Task<IActionResult> Revoke(Guid token)

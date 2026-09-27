@@ -41,6 +41,8 @@ namespace knkwebapi_v2.Services
         private readonly ILootRandom _random;
         private readonly TimeProvider _time;
         private readonly ILogger<LootboxRuntimeService> _logger;
+        // LootboxWorldChanged notifications for the game server (optional: tests and tools run without one).
+        private readonly IPlayerNotificationQueue? _notifications;
 
         public LootboxRuntimeService(
             ILootboxRuntimeRepository repo,
@@ -51,8 +53,10 @@ namespace knkwebapi_v2.Services
             LootboxRollEngine engine,
             ILootRandom random,
             TimeProvider time,
-            ILogger<LootboxRuntimeService> logger)
+            ILogger<LootboxRuntimeService> logger,
+            IPlayerNotificationQueue? notifications = null)
         {
+            _notifications = notifications;
             _repo = repo;
             _types = types;
             _instances = instances;
@@ -331,6 +335,8 @@ namespace knkwebapi_v2.Services
                 {
                     await _repo.SaveChangesAsync();
                     _logger.LogInformation("Lootbox spawn {SpawnId} removed by user {ActorUserId}", spawnId, actorUserId);
+                    // A web despawn: the game server drops the box within seconds, not at its next refresh.
+                    NotifyWorldChanged(new[] { spawnId }, null);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -864,8 +870,10 @@ namespace knkwebapi_v2.Services
             await _audit.RecordAsync(actorUserId, targetId, action, JsonSerializer.Serialize(details));
         }
 
+        // A picked-up world box (a WorldPickup token) is still a world drop in the log.
         private static string ClaimSource(LootboxClaim claim) =>
-            claim.LootboxSpawnId != null ? "World" : claim.LootboxTokenId != null ? "Token" : "AdminGive";
+            claim.LootboxSpawnId != null || claim.LootboxToken?.IssuedReason == LootboxTokenReason.WorldPickup ? "World"
+            : claim.LootboxTokenId != null ? "Token" : "AdminGive";
 
         private static string BoxLabel(Grade? grade, LootboxType? type) =>
             $"{grade?.Name} {type?.Name}".Trim();

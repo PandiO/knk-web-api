@@ -68,6 +68,16 @@ public class InMemoryPlayerNotificationQueue : IPlayerNotificationQueue
             CurrencyAlert = alert
         });
 
+    public long EnqueueLootboxWorldChanged(LootboxWorldChangedNotificationDto change) =>
+        Add(new PlayerNotificationDto
+        {
+            UserId = 0,
+            Uuid = null,
+            Username = "",
+            Type = PlayerNotificationTypes.LootboxWorldChanged,
+            LootboxWorldChanged = change
+        });
+
     public long EnqueueDiscoveryReset(int userId, string? uuid, string username, DiscoveryResetNotificationDto reset) =>
         Add(new PlayerNotificationDto
         {

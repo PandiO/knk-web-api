@@ -32,6 +32,7 @@ public class LootboxRuntimeControllersAuthTests
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.Spawn), "plugin" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.AdminSpawn), "plugin" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.Claim), "plugin" },
+        new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.Pickup), "plugin" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.GetActive), "service-or-node" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.Despawn), "service-or-node" },
         new object?[] { typeof(LootboxClaimsController), nameof(LootboxClaimsController.Delivered), "plugin" },
@@ -47,6 +48,7 @@ public class LootboxRuntimeControllersAuthTests
         new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Redeem), "plugin" },
         new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Undelivered), "plugin" },
         new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Delivered), "plugin" },
+        new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Status), "plugin" },
         new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Revoke), "service-or-node" },
         new object?[] { typeof(LootboxTokensController), nameof(LootboxTokensController.Search), "web" },
     };
