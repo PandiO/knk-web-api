@@ -170,6 +170,10 @@ public class CurrencyAdminServiceTests
             Assert.Contains("moderator", again.Message);
         }
 
+        // Whatever else is wrong with the request, the answer is that it's already reversed.
+        Assert.Equal(CurrencyErrorCode.AlreadyReversed, (await Assert.ThrowsAsync<CurrencyException>(() =>
+            admin.ReverseAsync(grant.PublicId, new ReverseTransactionDto { Note = "oops" }, WebStaff, "WebAppLedger"))).Code);
+
         Assert.Equal(100, (await UserAsync(1)).Coins);
         Assert.Single(await AuditAsync(AuditAction.CurrencyTransactionReversed));
 

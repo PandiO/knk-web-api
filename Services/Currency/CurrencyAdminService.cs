@@ -111,7 +111,6 @@ namespace knkwebapi_v2.Services
             CancellationToken ct = default)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
-            var note = RequireNote(request.Note);
             var original = await FindAsync(publicId, ct);
             // Already reversed: say so, with when and by whom - also for a retry of the request
             // that reversed it, which the ledger would otherwise replay as a fresh success.
@@ -120,6 +119,7 @@ namespace knkwebapi_v2.Services
             {
                 throw await AlreadyReversedAsync(original, prior, ct);
             }
+            var note = RequireNote(request.Note);
 
             var ctx = CurrencyContext.ForCaller(caller, CurrencyReasons.Reversal, ReversalKey(original.Id), component,
                 staffAction: true, reason: note) with
