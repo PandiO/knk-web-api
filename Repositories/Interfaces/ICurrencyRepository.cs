@@ -53,12 +53,14 @@ namespace knkwebapi_v2.Repositories.Interfaces
         bool IsUniqueViolation(DbUpdateException exception);
 
         /// <summary>Each player transfer of <paramref name="currency"/> the user sent since
-        /// <paramref name="since"/>: when, and what the recipient got (fees excluded), oldest
-        /// first (transfer daily cap, cooldown and hourly limit, currency Phase 3). Call under the
-        /// sender's row lock so a concurrent transfer can't slip past the cap.</summary>
+        /// <paramref name="since"/>: when, and what the recipient got (fees excluded) less what a
+        /// reversal of it took back, oldest first; fully reversed transfers are left out (transfer
+        /// daily cap and hourly limit, currency Phase 3, KNG-21). Call under the sender's row lock
+        /// so a concurrent transfer can't slip past the cap.</summary>
         Task<List<(DateTime CreatedAt, long Amount)>> GetTransfersSentSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default);
 
-        /// <summary>Total the user received from player transfers of <paramref name="currency"/> since <paramref name="since"/>.</summary>
+        /// <summary>Total the user received from player transfers of <paramref name="currency"/> since
+        /// <paramref name="since"/>, less what reversals of those transfers took back (KNG-21).</summary>
         Task<long> SumReceivedSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default);
 
         /// <summary>When the user last sent a player transfer of any currency (cooldowns, currency Phase 3).</summary>

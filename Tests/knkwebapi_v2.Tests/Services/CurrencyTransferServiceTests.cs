@@ -257,6 +257,45 @@ public class CurrencyTransferServiceTests
     }
 
     [Fact]
+    public async Task ReversedTransfer_StopsCountingTowardTheCapsAndTheHourlyLimit()
+    {
+        // KNG-21 developer decision: a reversed transfer frees the sender's daily send cap and
+        // hourly count and the recipient's daily receive cap.
+        await SetPolicyAsync(Currency.Coins, p => { p.DailySendCap = 1000; p.DailyReceiveCap = 1000; p.CooldownSeconds = 0; p.MaxTransfersPerHour = 1; });
+        var alice = await SeedUserAsync("alice", coins: 5000);
+        var bob = await SeedUserAsync("bob");
+        var carol = await SeedUserAsync("carol", coins: 5000);
+        var dave = await SeedUserAsync("dave", coins: 5000);
+        await using var ctx = NewContext();
+        var service = Service(ctx);
+
+        var sent = await service.TransferAsync(new TransferRequest(alice, bob, Currency.Coins, 1000), Pay(alice, "r1"));
+        Assert.Equal(CurrencyErrorCode.CooldownActive, (await Assert.ThrowsAsync<CurrencyException>(() =>
+            service.TransferAsync(new TransferRequest(alice, bob, Currency.Coins, 10), Pay(alice, "r2")))).Code);
+        Assert.Equal(CurrencyErrorCode.RecipientDailyCapExceeded, (await Assert.ThrowsAsync<CurrencyException>(() =>
+            service.TransferAsync(new TransferRequest(carol, bob, Currency.Coins, 10), Pay(carol, "r3")))).Code);
+
+        await service.ReverseAsync(sent.TransactionId!.Value, new ReversalOptions(), new CurrencyContext
+        {
+            IdempotencyKey = $"reverse:{sent.TransactionId}",
+            IdempotencyScope = CurrencyIdempotencyScopes.Web,
+            ReasonCode = CurrencyReasons.Reversal,
+            Reason = "Scam reported by alice",
+            Initiator = CurrencyInitiator.Admin,
+            InitiatorUserId = 999,
+            InitiatorComponent = "Test"
+        });
+
+        var limits = await service.GetTransferLimitsAsync(alice, Currency.Coins);
+        Assert.Equal((0L, 1000L, (DateTime?)null), (limits.SentLast24h, limits.RemainingToday, limits.NextTransferAt));
+        await service.TransferAsync(new TransferRequest(carol, bob, Currency.Coins, 400), Pay(carol, "r4"));
+        await service.TransferAsync(new TransferRequest(alice, bob, Currency.Coins, 600), Pay(alice, "r5"));
+        Assert.Equal(1000, (await ReloadAsync(bob)).Coins);
+        Assert.Equal(CurrencyErrorCode.RecipientDailyCapExceeded, (await Assert.ThrowsAsync<CurrencyException>(() =>
+            service.TransferAsync(new TransferRequest(dave, bob, Currency.Coins, 10), Pay(dave, "r6")))).Code);
+    }
+
+    [Fact]
     public async Task Cooldown_RefusesAnImmediateSecondSend()
     {
         var alice = await SeedUserAsync("alice", coins: 5000);

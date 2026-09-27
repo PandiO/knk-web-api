@@ -95,6 +95,64 @@ public class PlayerTransferMySqlTests : IClassFixture<MySqlTestDatabase>
     }
 
     [MySqlFact]
+    public async Task ReversedTransfer_FreesTheSendReceiveAndHourlyAllowance()
+    {
+        // KNG-21 developer decision: a reversed PLAYER_TRANSFER stops counting toward the
+        // sender's daily send cap and hourly count and the recipient's daily receive cap.
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.Database.ExecuteSqlRawAsync(
+                "UPDATE currency_policies SET CooldownSeconds = 0, MaxTransfersPerHour = 1, DailySendCap = 1000, DailyReceiveCap = 1000, ConfirmThreshold = 100000, MinTransfer = 1, TransferFeeBasisPoints = 0, TransfersEnabled = 1, Transferable = 1 WHERE Currency = 0");
+        }
+        var sender = await SeedUserAsync(coins: 5000);
+        var other = await SeedUserAsync(coins: 5000);
+        var third = await SeedUserAsync(coins: 5000);
+        var recipient = await SeedUserAsync();
+
+        long sentId;
+        await using (var ctx = _db.NewContext())
+        {
+            sentId = (await Service(ctx).TransferAsync(new TransferRequest(sender, recipient, Currency.Coins, 1000),
+                Pay(sender, Guid.NewGuid().ToString("N")))).TransactionId!.Value;
+        }
+        async Task<CurrencyErrorCode?> TryPay(int from, long amount)
+        {
+            await using var ctx = _db.NewContext();
+            try
+            {
+                await Service(ctx).TransferAsync(new TransferRequest(from, recipient, Currency.Coins, amount), Pay(from, Guid.NewGuid().ToString("N")));
+                return null;
+            }
+            catch (CurrencyException ex)
+            {
+                return ex.Code;
+            }
+        }
+        Assert.Equal(CurrencyErrorCode.CooldownActive, await TryPay(sender, 10));
+        Assert.Equal(CurrencyErrorCode.RecipientDailyCapExceeded, await TryPay(other, 10));
+
+        await using (var ctx = _db.NewContext())
+        {
+            await Service(ctx).ReverseAsync(sentId, new ReversalOptions(), new CurrencyContext
+            {
+                IdempotencyKey = $"reverse:{sentId}",
+                IdempotencyScope = CurrencyIdempotencyScopes.Web,
+                ReasonCode = CurrencyReasons.Reversal,
+                Reason = "Scam reported by the sender",
+                Initiator = CurrencyInitiator.Admin,
+                InitiatorUserId = other,
+                InitiatorComponent = "MySqlTest"
+            });
+        }
+
+        Assert.Null(await TryPay(other, 400));
+        Assert.Null(await TryPay(sender, 600));
+        Assert.Equal(CurrencyErrorCode.RecipientDailyCapExceeded, await TryPay(third, 1));
+        Assert.Equal((4400, 1000), ((await ReloadAsync(sender)).Coins, (await ReloadAsync(recipient)).Coins));
+        await AssertReconciledAsync(sender, other, third, recipient);
+    }
+
+    [MySqlFact]
     public async Task ConcurrentSendsFromOneSender_CantOverdraw()
     {
         await SetCoinPolicyAsync();

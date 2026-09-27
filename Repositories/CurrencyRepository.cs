@@ -108,23 +108,43 @@ namespace knkwebapi_v2.Repositories
         public async Task<List<(DateTime CreatedAt, long Amount)>> GetTransfersSentSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default)
         {
             // What the recipient got (not the sender's debit, which also carries any fee), per
-            // transfer; transfers of the other currency come back as 0 and are dropped.
+            // transfer, less what a reversal took back from them (KNG-21: a reversed transfer
+            // stops counting); transfers of the other currency, and fully reversed ones, come back
+            // as 0 and are dropped.
             var rows = await _context.CurrencyTransactions.AsNoTracking()
                 .Where(t => t.FromUserId == userId && t.Kind == CurrencyTransactionKind.Transfer && t.CreatedAt >= since)
                 .Select(t => new
                 {
                     t.CreatedAt,
                     Amount = t.Entries.Where(e => e.UserId == t.ToUserId && e.Currency == currency && e.Amount > 0).Sum(e => e.Amount)
+                        + _context.CurrencyEntries
+                            .Where(e => e.Transaction.ReversesTransactionId == t.Id && e.UserId == t.ToUserId && e.Currency == currency)
+                            .Sum(e => e.Amount)
                 })
                 .ToListAsync(ct);
             return rows.Where(r => r.Amount > 0).Select(r => (r.CreatedAt, r.Amount)).OrderBy(r => r.CreatedAt).ToList();
         }
 
-        public Task<long> SumReceivedSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default) =>
-            _context.CurrencyTransactions.AsNoTracking()
-                .Where(t => t.ToUserId == userId && t.Kind == CurrencyTransactionKind.Transfer && t.CreatedAt >= since)
+        public async Task<long> SumReceivedSinceAsync(int userId, Currency currency, DateTime since, CancellationToken ct = default)
+        {
+            var transfers = _context.CurrencyTransactions.AsNoTracking()
+                .Where(t => t.ToUserId == userId && t.Kind == CurrencyTransactionKind.Transfer && t.CreatedAt >= since);
+            var received = await transfers
                 .SelectMany(t => t.Entries.Where(e => e.UserId == userId && e.Currency == currency && e.Amount > 0))
-                .SumAsync(e => e.Amount, ct);
+                .SumAsync(e => (long?)e.Amount, ct) ?? 0;
+            if (received == 0)
+            {
+                return 0;
+            }
+            // Less what reversals of those transfers took back (KNG-21: a reversed transfer stops
+            // counting against the receive cap; a partial reversal by what it reversed).
+            var transferIds = transfers.Select(t => t.Id);
+            var reversed = await _context.CurrencyEntries.AsNoTracking()
+                .Where(e => e.UserId == userId && e.Currency == currency && e.Transaction.ReversesTransactionId != null
+                    && transferIds.Contains(e.Transaction.ReversesTransactionId.Value))
+                .SumAsync(e => (long?)e.Amount, ct) ?? 0;
+            return Math.Max(0, received + reversed);
+        }
 
         public Task<DateTime?> LastTransferAtAsync(int userId, CancellationToken ct = default) =>
             _context.CurrencyTransactions.AsNoTracking()
