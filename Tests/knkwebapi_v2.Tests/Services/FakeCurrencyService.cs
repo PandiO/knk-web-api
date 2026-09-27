@@ -84,8 +84,16 @@ public sealed class FakeCurrencyService : ICurrencyService
         return Task.FromResult(new BalancesDto { UserId = userId, Coins = user.Coins, Gems = user.Gems, ExperiencePoints = user.ExperiencePoints });
     }
 
+    /// <summary>Only the count is real (user and currency filters): enough for callers that ask "any history?".</summary>
     public Task<PagedResultDto<LedgerLineDto>> GetHistoryAsync(LedgerQuery q, CancellationToken ct = default) =>
-        throw new NotSupportedException();
+        Task.FromResult(new PagedResultDto<LedgerLineDto>
+        {
+            Items = new List<LedgerLineDto>(),
+            TotalCount = Postings.SelectMany(p => p.Result.Entries)
+                .Count(e => (q.UserId == null || e.UserId == q.UserId) && (q.Currency == null || e.Currency == q.Currency.ToString())),
+            PageNumber = q.Page,
+            PageSize = q.PageSize
+        });
 
     private PostingResult Apply(List<(int UserId, Currency Currency, long Amount, CurrencyOperation Op)> legs, CurrencyContext ctx)
     {

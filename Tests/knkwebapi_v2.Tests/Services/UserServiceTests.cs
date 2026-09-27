@@ -1196,4 +1196,42 @@ public class UserServiceTests
     }
 
     #endregion
+
+    #region DeleteAsync keeps accounts with money (currency final review)
+
+    [Fact]
+    public async Task DeleteAsync_WithABalance_IsRefusedAndDeletesNothing()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(7)).ReturnsAsync(new User { Id = 7, Username = "rich", Coins = 1 });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _userService.DeleteAsync(7));
+
+        _mockUserRepository.Verify(r => r.DeleteUserAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithLedgerHistoryButNoBalance_IsRefused()
+    {
+        var user = new User { Id = 8, Username = "spent" };
+        _mockUserRepository.Setup(r => r.GetByIdAsync(8)).ReturnsAsync(user);
+        await _currency.GrantAsync(8, knkwebapi_v2.Enums.Currency.Coins, 50, CurrencyContext.ForSystem("Test", CurrencyReasons.EventReward, "event:del:8"));
+        await _currency.SpendAsync(8, knkwebapi_v2.Enums.Currency.Coins, 50, CurrencyContext.ForSystem("Test", CurrencyReasons.KitPurchase, "kit-purchase:1:8"));
+        Assert.Equal(0, user.Coins);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _userService.DeleteAsync(8));
+
+        _mockUserRepository.Verify(r => r.DeleteUserAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithoutBalanceOrHistory_Deletes()
+    {
+        _mockUserRepository.Setup(r => r.GetByIdAsync(9)).ReturnsAsync(new User { Id = 9, Username = "empty" });
+
+        await _userService.DeleteAsync(9);
+
+        _mockUserRepository.Verify(r => r.DeleteUserAsync(9), Times.Once);
+    }
+
+    #endregion
 }

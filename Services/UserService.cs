@@ -400,6 +400,18 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"User with id {id} not found.");
 
+            // A hard delete takes the balance columns with the row, outside the ledger, and
+            // leaves ledger rows for a user the reconciler can no longer find: a permanent R1
+            // mismatch that switches player transfers off again every day (currency DESIGN.md
+            // §3.1 invariants 1 and 6, §3.9). An account with money or money history stays;
+            // merge it into another account instead (MERGE_FORFEIT, soft delete).
+            var history = await _currency.GetHistoryAsync(new LedgerQuery { UserId = id, Page = 1, PageSize = 1 });
+            if (existing.Coins != 0 || existing.Gems != 0 || history.TotalCount > 0)
+            {
+                throw new InvalidOperationException(
+                    $"User {id} has a currency balance or ledger history, so it can't be deleted; merge the account instead.");
+            }
+
             await _repo.DeleteUserAsync(id);
         }
 

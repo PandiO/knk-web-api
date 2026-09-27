@@ -1281,6 +1281,10 @@ namespace knkwebapi_v2.Controllers
             {
                 return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
             }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { error = "UserHasCurrencyHistory", message = ex.Message });
+            }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { error = "ValidationFailed", message = ex.Message });
