@@ -48,9 +48,23 @@ namespace knkwebapi_v2.Services
         {
             if (userId <= 0) throw new ArgumentException("Invalid user id.", nameof(userId));
 
-            var user = await _userRepo.GetByIdAsync(userId);
-            if (user == null) throw new KeyNotFoundException($"User with id {userId} not found.");
+            SalaryPayoutResultDto result = null!;
+            // The user's row is locked before LastSalaryPayoutAt is read (currency DESIGN.md §1.4
+            // A2/A3): two overlapping payout calls (join + hourly scheduler, or a client retry)
+            // run one after the other, and the second sees the first's new timestamp and pays
+            // nothing. The audit entry commits with the payout.
+            await _userRepo.RunWithUsersLockedAsync(new[] { userId }, async () =>
+            {
+                var user = await _userRepo.GetByIdAsync(userId)
+                    ?? throw new KeyNotFoundException($"User with id {userId} not found.");
+                result = await PayOutLockedAsync(user);
+            });
+            return result;
+        }
 
+        private async Task<SalaryPayoutResultDto> PayOutLockedAsync(Models.User user)
+        {
+            var userId = user.Id;
             var now = DateTime.UtcNow;
             // MySQL reads DateTime back as Unspecified — mark it UTC before arithmetic (same
             // convention UserPermissionGroupService.ToDto already established for ExpiresAt).
@@ -77,17 +91,18 @@ namespace knkwebapi_v2.Services
 
             // The title's Salary is the per-hour base; before this it was left out entirely and
             // GlobalMultiplier (default 1.0) stood in as the base rate, paying ~1 coin an hour.
-            var rawPayout = title.Salary * config.GlobalMultiplier * user.PersonalSalaryMultiplier * rankMultiplier * paidHours;
             // Multipliers are validated non-negative at write time (SalaryConfigurationService,
-            // PermissionGroupService) and PersonalSalaryMultiplier defaults to a non-negative 1.0,
-            // but nothing currently stops a direct DB edit from making one negative — clamp
-            // defensively rather than ever crediting negative coins through this path.
-            var amountPaid = Math.Max(0, (int)Math.Round(rawPayout, MidpointRounding.AwayFromZero));
+            // PermissionGroupService, UserService.SetPersonalMultipliersAsync), but nothing stops
+            // a direct DB edit from making one negative or huge — ToWholeAmount clamps negatives
+            // to 0 and turns an overflow into BalanceCapExceeded rather than a crash.
+            var amountPaid = (int)BalanceLimits.ToWholeAmount(
+                () => title.Salary * config.GlobalMultiplier * user.PersonalSalaryMultiplier * rankMultiplier * paidHours,
+                "salary");
 
             var coinsBefore = user.Coins;
-            user.Coins += amountPaid;
+            user.Coins = BalanceLimits.ApplyCoins(user.Coins, amountPaid);
             user.LastSalaryPayoutAt = now;
-            await _userRepo.UpdateUserAsync(user);
+            await _userRepo.SaveBalancesAsync(user);
 
             // System-initiated (actorUserId null) — closes user-features IMPLEMENTATION_PLAN.md
             // §6 carried-forward item 4's "PayOutAsync's coin mutation has no audit write hook".

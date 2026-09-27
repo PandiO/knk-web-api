@@ -98,6 +98,12 @@ public partial class KnKDbContext : DbContext
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
     public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
 
+    // Private messages Phase 2 — ignore list (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §2)
+    public virtual DbSet<UserIgnore> UserIgnores { get; set; } = null!;
+
+    // Private messages Phase 3 — server-side PM log (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §3)
+    public virtual DbSet<PrivateMessageLogEntry> PrivateMessageLogEntries { get; set; } = null!;
+
     // Siege Phase 1 — banner + minimal clan (docs/specs/siege-minigame/DESIGN.md §3.1–3.2)
     public virtual DbSet<BannerDesign> BannerDesigns { get; set; } = null!;
     public virtual DbSet<BannerLayer> BannerLayers { get; set; } = null!;
@@ -141,7 +147,15 @@ public partial class KnKDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.ToTable("users");
+            // Balance bounds enforced by MySQL too (MySQL >= 8.0.16 enforces CHECK), so no code
+            // path can store a negative or over-cap balance (currency DESIGN.md §1.4 A9, KNG-22).
+            // Same limits as Services/BalanceLimits.
+            entity.ToTable("users", t =>
+            {
+                t.HasCheckConstraint("CK_users_Coins_Range", $"`Coins` >= 0 AND `Coins` <= {knkwebapi_v2.Services.BalanceLimits.MaxCoins}");
+                t.HasCheckConstraint("CK_users_Gems_Range", $"`Gems` >= 0 AND `Gems` <= {knkwebapi_v2.Services.BalanceLimits.MaxGems}");
+                t.HasCheckConstraint("CK_users_ExperiencePoints_NonNegative", "`ExperiencePoints` >= 0");
+            });
 
             // Unique constraints on Username, Email, UUID (with null handling)
             entity.HasIndex(e => e.Username).IsUnique();
@@ -576,7 +590,12 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<Kit>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
-            entity.ToTable("kits");
+            // A negative price minted currency (currency DESIGN.md §1.4 A4, KNG-22).
+            entity.ToTable("kits", t =>
+            {
+                t.HasCheckConstraint("CK_kits_CostAmount_NonNegative", "`CostAmount` IS NULL OR `CostAmount` >= 0");
+                t.HasCheckConstraint("CK_kits_PremiumPriceGems_NonNegative", "`PremiumPriceGems` IS NULL OR `PremiumPriceGems` >= 0");
+            });
 
             entity.Property(e => e.CostCurrency).HasConversion<string>().HasMaxLength(20);
 
@@ -1227,6 +1246,10 @@ public partial class KnKDbContext : DbContext
 
             entity.Property(e => e.Id)
                 .HasMaxLength(64);
+
+            // The existing "global" row gets 30 days, not 0 (which would delete every PM on the next run).
+            entity.Property(e => e.PrivateMessageRetentionDays)
+                .HasDefaultValue(AuditLogRetentionConfiguration.DefaultPrivateMessageRetentionDays);
         });
 
         modelBuilder.Entity<GameSettings>(entity =>
@@ -1568,6 +1591,52 @@ public partial class KnKDbContext : DbContext
             // Timestamp descending — see DESIGN.md §4/IMPLEMENTATION_PLAN.md Phase 2.
             entity.HasIndex(e => new { e.TargetUserId, e.Timestamp });
             entity.HasIndex(e => new { e.ActorUserId, e.Timestamp });
+        });
+
+        // UserIgnore — a player's ignore list (docs/specs/private-messages/DESIGN.md §3.1).
+        modelBuilder.Entity<UserIgnore>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("user_ignores");
+
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+
+            // An ignore row means nothing once either player is gone - cascade both FKs.
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.IgnoredUser)
+                .WithMany()
+                .HasForeignKey(e => e.IgnoredUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UserId, e.IgnoredUserId }).IsUnique();
+            entity.HasIndex(e => e.IgnoredUserId);
+        });
+
+        // PrivateMessageLogEntry — server-side PM log (docs/specs/private-messages/DESIGN.md §3.1).
+        // No FKs to users on purpose (see the model's summary).
+        modelBuilder.Entity<PrivateMessageLogEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("private_message_log_entries");
+
+            entity.Property(e => e.SenderName).IsRequired().HasMaxLength(PrivateMessageLogEntry.NameMaxLength);
+            entity.Property(e => e.RecipientName).IsRequired().HasMaxLength(PrivateMessageLogEntry.NameMaxLength);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(PrivateMessageLogEntry.ContentMaxLength);
+            entity.Property(e => e.Outcome)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(32);
+
+            entity.HasIndex(e => e.ClientMessageId).IsUnique();
+            // The staff read path filters by one participant and orders by SentAt descending;
+            // retention deletes by SentAt.
+            entity.HasIndex(e => new { e.SenderUserId, e.SentAt });
+            entity.HasIndex(e => new { e.RecipientUserId, e.SentAt });
+            entity.HasIndex(e => e.SentAt);
         });
 
         OnModelCreatingPartial(modelBuilder);

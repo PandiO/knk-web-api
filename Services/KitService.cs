@@ -64,6 +64,7 @@ namespace knkwebapi_v2.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Name is required.", nameof(dto));
+            ValidatePrices(dto);
 
             await ValidateReferencesAsync(dto);
 
@@ -79,6 +80,8 @@ namespace knkwebapi_v2.Services
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Name is required.", nameof(dto));
+
+            ValidatePrices(dto);
 
             var existing = await _kitRepo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Kit with id {id} not found.");
@@ -201,10 +204,27 @@ namespace knkwebapi_v2.Services
 
         public async Task<KitClaimResultDto> ClaimKitAsync(int userId, int kitId)
         {
-            var user = await _userRepo.GetByIdAsync(userId)
-                ?? throw new KeyNotFoundException($"User with id {userId} not found.");
             var kit = await _kitRepo.GetByIdAsync(kitId)
                 ?? throw new KeyNotFoundException($"Kit with id {kitId} not found.");
+
+            // Under the user's row lock (currency DESIGN.md §1.4 A2): the cooldown, balance and
+            // cost deduction are read and written with no other claim, purchase or balance write
+            // for this user in between, so two quick claims can't both pass the cooldown or both
+            // spend the same coins.
+            await _userRepo.RunWithUsersLockedAsync(new[] { userId }, async () =>
+            {
+                var user = await _userRepo.GetByIdAsync(userId)
+                    ?? throw new KeyNotFoundException($"User with id {userId} not found.");
+                await ClaimLockedAsync(user, kit);
+            });
+
+            return _mapper.Map<KitClaimResultDto>(kit);
+        }
+
+        private async Task ClaimLockedAsync(User user, Kit kit)
+        {
+            var userId = user.Id;
+            var kitId = kit.Id;
 
             // Never trust a caller's own prior gating check (DESIGN.md §4.1) - re-validate
             // everything here even though GetAvailableForUserAsync may have just said "yes".
@@ -241,37 +261,48 @@ namespace knkwebapi_v2.Services
             // above throws before this line is ever reached, so no claim row is written for it.
             var claim = new KitClaim { KitId = kitId, UserId = userId, ClaimedAt = DateTime.UtcNow };
             await _kitRepo.AddClaimAsync(claim, userToPersist);
-
-            return _mapper.Map<KitClaimResultDto>(kit);
         }
 
         public async Task<KitPurchaseResultDto> PurchaseKitAsync(int userId, int kitId)
         {
-            var user = await _userRepo.GetByIdAsync(userId)
-                ?? throw new KeyNotFoundException($"User with id {userId} not found.");
             var kit = await _kitRepo.GetByIdAsync(kitId)
                 ?? throw new KeyNotFoundException($"Kit with id {kitId} not found.");
 
             if (!kit.IsSinglePurchasePremium)
                 throw new ArgumentException("Kit is not a single-purchase premium kit.", nameof(kitId));
 
-            var existing = await _kitRepo.GetPurchaseAsync(kitId, userId);
-            if (existing != null)
-                throw new InvalidOperationException("This kit has already been purchased by this user.");
-
+            // A negative price used to credit gems ("Gems -= price", currency DESIGN.md §1.4 A4),
+            // and a missing one handed the kit out for free. Create/Update now reject negative
+            // prices; this also covers rows saved before that check.
             var price = kit.PremiumPriceGems ?? 0;
-            if (user.Gems < price)
-                throw new InvalidOperationException("Insufficient Gems to purchase this kit.");
+            if (price <= 0)
+                throw new InvalidOperationException("This kit has no valid gem price, so it can't be purchased.");
 
-            user.Gems -= price;
-            var purchase = new KitPurchase
+            KitPurchase purchase = null!;
+            // Same row lock as ClaimKitAsync: the balance check and the deduction see no other
+            // write for this user in between (A2 — a racing write can no longer restore the gems).
+            await _userRepo.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
-                KitId = kitId,
-                UserId = userId,
-                PurchasedAt = DateTime.UtcNow,
-                GemsPaid = price
-            };
-            await _kitRepo.AddPurchaseAsync(purchase, user);
+                var user = await _userRepo.GetByIdAsync(userId)
+                    ?? throw new KeyNotFoundException($"User with id {userId} not found.");
+
+                var existing = await _kitRepo.GetPurchaseAsync(kitId, userId);
+                if (existing != null)
+                    throw new InvalidOperationException("This kit has already been purchased by this user.");
+
+                if (user.Gems < price)
+                    throw new InvalidOperationException("Insufficient Gems to purchase this kit.");
+
+                user.Gems = BalanceLimits.ApplyGems(user.Gems, -price);
+                purchase = new KitPurchase
+                {
+                    KitId = kitId,
+                    UserId = userId,
+                    PurchasedAt = DateTime.UtcNow,
+                    GemsPaid = price
+                };
+                await _kitRepo.AddPurchaseAsync(purchase, user);
+            });
 
             return new KitPurchaseResultDto
             {
@@ -282,10 +313,15 @@ namespace knkwebapi_v2.Services
             };
         }
 
-        public async Task<KitClaimResultDto> GiveKitAsync(int actorUserId, int targetUserId, int kitId)
+        public async Task<KitClaimResultDto> GiveKitAsync(int? actorUserId, int targetUserId, int kitId)
         {
-            _ = await _userRepo.GetByIdAsync(actorUserId)
-                ?? throw new KeyNotFoundException($"User with id {actorUserId} not found.");
+            // Null actor = the game server gave it without naming the staff member (a plugin
+            // call without X-Acting-User-Id); the audit entry then shows it as system.
+            if (actorUserId.HasValue)
+            {
+                _ = await _userRepo.GetByIdAsync(actorUserId.Value)
+                    ?? throw new KeyNotFoundException($"User with id {actorUserId} not found.");
+            }
             _ = await _userRepo.GetByIdAsync(targetUserId)
                 ?? throw new KeyNotFoundException($"User with id {targetUserId} not found.");
             var kit = await _kitRepo.GetByIdAsync(kitId)
@@ -412,8 +448,26 @@ namespace knkwebapi_v2.Services
 
         private static void DeductCost(User user, KitCostCurrency currency, int amount)
         {
-            if (currency == KitCostCurrency.Coins) user.Coins -= amount;
-            else user.Gems -= amount;
+            if (currency == KitCostCurrency.Coins) user.Coins = BalanceLimits.ApplyCoins(user.Coins, -amount);
+            else user.Gems = BalanceLimits.ApplyGems(user.Gems, -amount);
+        }
+
+        /// <summary>No negative prices (currency DESIGN.md §1.4 A4): a negative cost or premium
+        /// price turned a claim or purchase into a coin/gem mint. Also capped at what a balance
+        /// can hold.</summary>
+        private static void ValidatePrices(KitDto dto)
+        {
+            var costCap = string.Equals(dto.CostCurrency, nameof(KitCostCurrency.Gems), StringComparison.OrdinalIgnoreCase)
+                ? BalanceLimits.MaxGems
+                : BalanceLimits.MaxCoins;
+            if (dto.CostAmount is < 0)
+                throw new ArgumentException("CostAmount can't be negative.", nameof(dto));
+            if (dto.CostAmount > costCap)
+                throw new ArgumentException($"CostAmount can't be more than {costCap:N0}.", nameof(dto));
+            if (dto.PremiumPriceGems is < 0)
+                throw new ArgumentException("PremiumPriceGems can't be negative.", nameof(dto));
+            if (dto.PremiumPriceGems > BalanceLimits.MaxGems)
+                throw new ArgumentException($"PremiumPriceGems can't be more than {BalanceLimits.MaxGems:N0}.", nameof(dto));
         }
 
         // ===== CRUD validation / M2M helpers =====

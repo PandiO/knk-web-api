@@ -10,9 +10,35 @@ namespace knkwebapi_v2.Repositories
         Task<User?> GetByUuidAsync(string uuid);
         Task<User?> GetByUsernameAsync(string username);
         Task AddUserAsync(User user);
+
+        /// <summary>
+        /// Saves a user's changed columns, except the balance columns (Coins, Gems,
+        /// ExperiencePoints, LastSalaryPayoutAt): those are only written by
+        /// <see cref="SaveBalancesAsync"/> under a row lock, so an unrelated edit made from an
+        /// older copy of the row can't put an old balance back (currency DESIGN.md §1.4 A2).
+        /// </summary>
         Task UpdateUserAsync(User user);
-        Task UpdateUserCoinsAsync(int id, int coins);
-        Task UpdateUserCoinsByUuidAsync(string uuid, int coins);
+
+        /// <summary>
+        /// Saves a user including the balance columns. Only call it inside
+        /// <see cref="RunWithUsersLockedAsync"/>, on a user loaded inside that same call.
+        /// </summary>
+        Task SaveBalancesAsync(User user);
+
+        /// <summary>
+        /// Runs <paramref name="work"/> in one database transaction that first locks the users'
+        /// rows (SELECT … FOR UPDATE, ascending id — the siege-rewards precedent), so balance
+        /// read-modify-writes on the same user run one after another. Reuses an ambient
+        /// transaction if one is open. Users already tracked are re-read after the lock. On
+        /// failure the transaction rolls back and unsaved changes to those users are discarded.
+        /// A no-op wrapper on non-relational providers (EF InMemory in tests).
+        /// </summary>
+        Task RunWithUsersLockedAsync(IEnumerable<int> userIds, Func<Task> work);
+
+        /// <summary>SELECT … FOR UPDATE on the users' rows in ascending id order, inside the
+        /// caller's open transaction. No-op on non-relational providers.</summary>
+        Task LockUsersAsync(IEnumerable<int> userIds);
+
         Task UpdateGatePassThroughMethodAsync(int id, GatePassThroughMethod method);
         Task UpdateActiveModeAsync(int id, ActiveMode mode);
         Task DeleteUserAsync(int id);

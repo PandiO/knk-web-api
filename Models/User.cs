@@ -45,18 +45,23 @@ public class User : PermissionHolder
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Primary in-game currency. Tied to real-money purchases (premium).
+    /// Gameplay currency: earned in game (salary, title bonuses, siege rewards) and spent on kits
+    /// and services. Not premium — gems are (developer decision 2026-09-26, currency-payments
+    /// DESIGN.md §5 Q1; this comment used to say the opposite).
     /// Default: 250 coins on account creation.
-    /// Non-negative; mutations atomic and logged to audit trail.
-    /// CRITICAL: Update only through service methods, never direct assignment.
+    /// 0..999,999,999 (BalanceLimits.MaxCoins), enforced in code and by a DB CHECK constraint.
+    /// CRITICAL: Update only through the locked balance paths (UserRepository.SaveBalancesAsync),
+    /// never through the generic user edit.
     /// </summary>
     public int Coins { get; set; } = 250;
 
     /// <summary>
-    /// Secondary in-game currency. Earned through gameplay (free-to-play).
+    /// Premium currency, tied to real-money purchases (premium kits, ranks). Never transferable
+    /// between players (currency-payments DESIGN.md §5 Q2).
     /// Default: 50 gems on account creation.
-    /// Non-negative; mutations atomic and logged with recoverable metadata.
-    /// CRITICAL: Update only through service methods, never direct assignment.
+    /// 0..999,999 (BalanceLimits.MaxGems), enforced in code and by a DB CHECK constraint.
+    /// CRITICAL: Update only through the locked balance paths (UserRepository.SaveBalancesAsync),
+    /// never through the generic user edit.
     /// </summary>
     public int Gems { get; set; } = 50;
 

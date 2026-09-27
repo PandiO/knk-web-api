@@ -41,6 +41,9 @@ public class UserServiceTests
         _mockMembershipService = new Mock<IUserPermissionGroupService>();
         _mockAuditLogService = new Mock<IAuditLogService>();
         _mockPermissionGroupRepository = new Mock<IPermissionGroupRepository>();
+        // The row lock is a DB concern; here it just runs the work (see UserRepository).
+        _mockUserRepository.Setup(r => r.RunWithUsersLockedAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<Func<Task>>()))
+            .Returns((IEnumerable<int> _, Func<Task> work) => work());
 
         _userService = new UserService(
             _mockUserRepository.Object,

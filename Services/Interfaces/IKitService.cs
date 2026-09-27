@@ -33,7 +33,7 @@ namespace knkwebapi_v2.Services.Interfaces
 
         /// <summary>Staff-initiated grant - bypasses gating, cooldown, and cost entirely by
         /// design (DESIGN.md §4.1, §0b). Still writes a normal KitClaim row.</summary>
-        Task<KitClaimResultDto> GiveKitAsync(int actorUserId, int targetUserId, int kitId);
+        Task<KitClaimResultDto> GiveKitAsync(int? actorUserId, int targetUserId, int kitId);
 
         /// <summary>Grants every GrantOnFirstJoin kit the user is gated to receive, ignoring
         /// cost/cooldown entirely (DESIGN.md §4.4).</summary>

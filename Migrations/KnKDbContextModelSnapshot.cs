@@ -181,6 +181,11 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("PrivateMessageRetentionDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
                     b.Property<int>("RetentionDays")
                         .HasColumnType("int");
 
@@ -1739,7 +1744,12 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("ShieldId");
 
-                    b.ToTable("kits", (string)null);
+                    b.ToTable("kits", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_kits_CostAmount_NonNegative", "`CostAmount` IS NULL OR `CostAmount` >= 0");
+
+                            t.HasCheckConstraint("CK_kits_PremiumPriceGems_NonNegative", "`PremiumPriceGems` IS NULL OR `PremiumPriceGems` >= 0");
+                        });
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.KitClaim", b =>
@@ -2259,6 +2269,64 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("permission_holders", (string)null);
 
                     b.UseTptMappingStrategy();
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PrivateMessageLogEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ClientMessageId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("RecipientName")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("RecipientUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("SenderUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("ViaReply")
+                        .HasColumnType("tinyint(1)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ClientMessageId")
+                        .IsUnique();
+
+                    b.HasIndex("SentAt");
+
+                    b.HasIndex("RecipientUserId", "SentAt");
+
+                    b.HasIndex("SenderUserId", "SentAt");
+
+                    b.ToTable("private_message_log_entries", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SalaryConfiguration", b =>
@@ -3040,6 +3108,33 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("title_brackets", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("IgnoredUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IgnoredUserId");
+
+                    b.HasIndex("UserId", "IgnoredUserId")
+                        .IsUnique();
+
+                    b.ToTable("user_ignores", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
                 {
                     b.Property<int>("UserId")
@@ -3426,7 +3521,14 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("Uuid")
                         .IsUnique();
 
-                    b.ToTable("users", (string)null);
+                    b.ToTable("users", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_users_Coins_Range", "`Coins` >= 0 AND `Coins` <= 999999999");
+
+                            t.HasCheckConstraint("CK_users_ExperiencePoints_NonNegative", "`ExperiencePoints` >= 0");
+
+                            t.HasCheckConstraint("CK_users_Gems_Range", "`Gems` >= 0 AND `Gems` <= 999999");
+                        });
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>
@@ -4483,6 +4585,25 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowSession");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.User", "IgnoredUser")
+                        .WithMany()
+                        .HasForeignKey("IgnoredUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IgnoredUser");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>

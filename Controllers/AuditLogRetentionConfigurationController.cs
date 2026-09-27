@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Attributes;
 
 namespace knkwebapi_v2.Controllers;
 
@@ -30,6 +31,8 @@ public class AuditLogRetentionConfigurationController : ControllerBase
         return Ok(config);
     }
 
+    // Lowering retention erases audit history, so it is no longer anonymous (KNG-22).
+    [RequireServiceOrPermission(StaffPermissions.ServerConfig)]
     [HttpPut]
     [ProducesResponseType(typeof(AuditLogRetentionConfigurationDto), 200)]
     [ProducesResponseType(400)]

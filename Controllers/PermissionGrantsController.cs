@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Extensions;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Attributes;
 
 namespace KnKWebAPI.Controllers
 {
@@ -35,13 +36,17 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        // Every write here hands out or takes away nodes, including the ones the currency and
+        // admin routes check, so none of them is anonymous any more (KNG-22). The plugin's
+        // /knk user perm calls the by-node routes with its key and names the staff member.
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] PermissionGrantDto dto)
         {
             if (dto == null) return BadRequest();
             try
             {
-                var created = await _service.CreateAsync(dto, User.GetUserId());
+                var created = await _service.CreateAsync(dto, HttpContext.GetKnkCaller().ActorUserId);
                 return CreatedAtRoute("GetPermissionGrantById", new { id = created.Id }, created);
             }
             catch (ArgumentException ex)
@@ -50,13 +55,14 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] PermissionGrantDto dto)
         {
             if (dto == null) return BadRequest();
             try
             {
-                await _service.UpdateAsync(id, dto, User.GetUserId());
+                await _service.UpdateAsync(id, dto, HttpContext.GetKnkCaller().ActorUserId);
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -69,12 +75,13 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
             try
             {
-                await _service.DeleteAsync(id, User.GetUserId());
+                await _service.DeleteAsync(id, HttpContext.GetKnkCaller().ActorUserId);
                 return NoContent();
             }
             catch (KeyNotFoundException)
@@ -94,13 +101,14 @@ namespace KnKWebAPI.Controllers
             return Ok(result);
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpPut("by-node")]
         public async Task<IActionResult> UpsertByNode([FromBody] UpsertPermissionGrantByNodeDto dto)
         {
             if (dto == null) return BadRequest();
             try
             {
-                var result = await _service.UpsertByNodeAsync(dto.HolderId, dto.Node, dto.Value, dto.ExpiresAt, User.GetUserId());
+                var result = await _service.UpsertByNodeAsync(dto.HolderId, dto.Node, dto.Value, dto.ExpiresAt, HttpContext.GetKnkCaller().ActorUserId);
                 return Ok(result);
             }
             catch (ArgumentException ex)
@@ -109,12 +117,13 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpDelete("by-node")]
         public async Task<IActionResult> RevokeByNode([FromQuery] int holderId, [FromQuery] string node)
         {
             try
             {
-                await _service.RevokeByNodeAsync(holderId, node, User.GetUserId());
+                await _service.RevokeByNodeAsync(holderId, node, HttpContext.GetKnkCaller().ActorUserId);
                 return NoContent();
             }
             catch (ArgumentException ex)

@@ -20,6 +20,15 @@ public class AuditLogRetentionConfiguration
     /// </summary>
     public int RetentionDays { get; set; } = 180;
 
+    /// <summary>
+    /// How many days a PrivateMessageLogEntry is kept (docs/specs/private-messages/DESIGN.md §3.1,
+    /// developer decision 2026-09-26: 30). Much shorter than the audit trail on purpose - it is
+    /// players' private message content, kept only for moderation.
+    /// </summary>
+    public int PrivateMessageRetentionDays { get; set; } = DefaultPrivateMessageRetentionDays;
+
+    public const int DefaultPrivateMessageRetentionDays = 30;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

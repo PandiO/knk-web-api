@@ -16,6 +16,9 @@ namespace knkwebapi_v2.Services
     /// - Deletes AuditLogEntry records older than the configurable retention window
     ///   (AuditLogRetentionConfiguration, docs/specs/user-management/DESIGN.md §7 item 3 —
     ///   default 180 days, re-read each run so a config change takes effect without a restart).
+    /// - Deletes PrivateMessageLogEntry records older than
+    ///   AuditLogRetentionConfiguration.PrivateMessageRetentionDays (docs/specs/private-messages/
+    ///   DESIGN.md §3.1 — default 30 days, also re-read each run).
     /// Runs once per day at startup and then every 24 hours.
     /// </summary>
     public class RetentionPolicyService : BackgroundService
@@ -66,6 +69,29 @@ namespace knkwebapi_v2.Services
 
         private async Task RunCleanupAsync(CancellationToken cancellationToken)
         {
+            // Each cleanup gets its own scope (DbContext) and try/catch, so a failing one (e.g.
+            // the form-submission delete) never skips or poisons the others - the private message
+            // cleanup in particular is a privacy promise (30 days), not housekeeping.
+            await RunInScopeAsync(RunFormSubmissionCleanupAsync);
+            await RunInScopeAsync(RunAuditLogCleanupAsync);
+            await RunInScopeAsync(RunPrivateMessageLogCleanupAsync);
+        }
+
+        private async Task RunInScopeAsync(Func<IServiceProvider, Task> cleanup)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                await cleanup(scope.ServiceProvider);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error running retention policy cleanup");
+            }
+        }
+
+        private async Task RunFormSubmissionCleanupAsync(IServiceProvider scopedProvider)
+        {
             try
             {
                 var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
@@ -74,18 +100,12 @@ namespace knkwebapi_v2.Services
                     "Running retention policy cleanup. Deleting FormSubmissionProgress records completed before {CutoffDate}",
                     cutoffDate);
 
-                // Create a new scope for the scoped repository
-                using (var scope = _serviceProvider.CreateScope())
-                {
-                    var repository = scope.ServiceProvider.GetRequiredService<IFormSubmissionProgressRepository>();
-                    int deletedCount = await repository.DeleteCompletedOlderThanAsync(cutoffDate);
+                var repository = scopedProvider.GetRequiredService<IFormSubmissionProgressRepository>();
+                int deletedCount = await repository.DeleteCompletedOlderThanAsync(cutoffDate);
 
-                    _logger.LogInformation(
-                        "Retention policy cleanup completed. Deleted {Count} completed form submissions",
-                        deletedCount);
-
-                    await RunAuditLogCleanupAsync(scope.ServiceProvider);
-                }
+                _logger.LogInformation(
+                    "Retention policy cleanup completed. Deleted {Count} completed form submissions",
+                    deletedCount);
             }
             catch (Exception ex)
             {
@@ -120,6 +140,36 @@ namespace knkwebapi_v2.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error running audit log retention cleanup");
+            }
+        }
+
+        /// <summary>
+        /// Private message content (KNG-18 Phase 3). Its own try/catch, like the audit cleanup, so
+        /// one failing block never stops the others.
+        /// </summary>
+        private async Task RunPrivateMessageLogCleanupAsync(IServiceProvider scopedProvider)
+        {
+            try
+            {
+                var retentionConfigService = scopedProvider.GetRequiredService<IAuditLogRetentionConfigurationService>();
+                var retentionConfig = await retentionConfigService.GetAsync();
+                var cutoffDate = DateTime.UtcNow.AddDays(-retentionConfig.PrivateMessageRetentionDays);
+
+                _logger.LogInformation(
+                    "Running private message log retention cleanup. Deleting PrivateMessageLogEntry records sent before {CutoffDate} ({RetentionDays}-day retention)",
+                    cutoffDate,
+                    retentionConfig.PrivateMessageRetentionDays);
+
+                var repository = scopedProvider.GetRequiredService<IPrivateMessageLogRepository>();
+                int deletedCount = await repository.DeleteOlderThanAsync(cutoffDate);
+
+                _logger.LogInformation(
+                    "Private message log retention cleanup completed. Deleted {Count} private messages",
+                    deletedCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error running private message log retention cleanup");
             }
         }
     }

@@ -57,6 +57,9 @@ public class KitServiceTests
             _mapper);
 
         _titleBracketRepo.Setup(r => r.GetAllOrderedByMinExperienceAsync()).ReturnsAsync(new List<TitleBracket>());
+        // The row lock is a DB concern; here it just runs the work (see UserRepository).
+        _userRepo.Setup(r => r.RunWithUsersLockedAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<Func<Task>>()))
+            .Returns((IEnumerable<int> _, Func<Task> work) => work());
         _userPermissionGroupService.Setup(s => s.GetByUserAsync(It.IsAny<int>())).ReturnsAsync(new List<UserPermissionGroupDto>());
         _permissionResolutionService.Setup(s => s.CheckAsync(It.IsAny<int>(), It.IsAny<string>()))
             .ReturnsAsync(new PermissionCheckResponseDto { Result = PermissionResolutionResult.Undeclared });
@@ -509,6 +512,83 @@ public class KitServiceTests
 
     #endregion
 
+    #region Price validation and minting guards (KNG-22, currency DESIGN.md §1.4 A4)
+
+    [Theory]
+    [InlineData(-1, null)]
+    [InlineData(null, -5)]
+    public async Task CreateAsync_NegativePrice_IsRejected(int? costAmount, int? premiumPriceGems)
+    {
+        var dto = new KitDto { Name = "Mint", CostAmount = costAmount, CostCurrency = "Gems", PremiumPriceGems = premiumPriceGems };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(dto));
+        _kitRepo.Verify(r => r.AddAsync(It.IsAny<Kit>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_NegativePremiumPrice_IsRejected()
+    {
+        SetKit(PlainKit());
+        var dto = new KitDto { Name = "Default", IsSinglePurchasePremium = true, PremiumPriceGems = -100 };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(10, dto));
+        _kitRepo.Verify(r => r.UpdateAsync(It.IsAny<Kit>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_PriceAboveTheGemCap_IsRejected()
+    {
+        var dto = new KitDto { Name = "Pricey", IsSinglePurchasePremium = true, PremiumPriceGems = BalanceLimits.MaxGems + 1 };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(dto));
+    }
+
+    [Theory]
+    [InlineData(-100)]
+    [InlineData(0)]
+    [InlineData(null)]
+    public async Task PurchaseKitAsync_NonPositivePrice_IsRejectedAndNeverCreditsGems(int? price)
+    {
+        // A kit row saved before the create/update check: "Gems -= -100" used to mint 100 gems.
+        var user = new User { Id = 24, Username = "xena", Gems = 50 };
+        var kit = PlainKit(); kit.IsSinglePurchasePremium = true; kit.PremiumPriceGems = price;
+        SetUser(user);
+        SetKit(kit);
+        _kitRepo.Setup(r => r.GetPurchaseAsync(kit.Id, user.Id)).ReturnsAsync((KitPurchase?)null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.PurchaseKitAsync(user.Id, kit.Id));
+
+        Assert.Equal(50, user.Gems);
+        _kitRepo.Verify(r => r.AddPurchaseAsync(It.IsAny<KitPurchase>(), It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PurchaseKitAsync_RunsUnderTheUsersRowLock()
+    {
+        var user = new User { Id = 25, Username = "yuri", Gems = 500 };
+        var kit = PlainKit(); kit.IsSinglePurchasePremium = true; kit.PremiumPriceGems = 200;
+        SetUser(user);
+        SetKit(kit);
+        _kitRepo.Setup(r => r.GetPurchaseAsync(kit.Id, user.Id)).ReturnsAsync((KitPurchase?)null);
+
+        await _service.PurchaseKitAsync(user.Id, kit.Id);
+
+        _userRepo.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 25 })), It.IsAny<Func<Task>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClaimKitAsync_RunsUnderTheUsersRowLock()
+    {
+        SetUser(PlainUser);
+        SetKit(PlainKit());
+
+        await _service.ClaimKitAsync(PlainUser.Id, 10);
+
+        _userRepo.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { PlainUser.Id })), It.IsAny<Func<Task>>()), Times.Once);
+    }
+
+    #endregion
+
     #region GiveKitAsync
 
     [Fact]
@@ -590,6 +670,20 @@ public class KitServiceTests
         _kitRepo.Setup(r => r.GetByIdAsync(404)).ReturnsAsync((Kit?)null);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.GiveKitAsync(actor.Id, target.Id, 404));
+    }
+
+    [Fact]
+    public async Task GiveKitAsync_NoActor_IsRecordedAsSystem()
+    {
+        // KNG-15/22: the plugin gives with its key; without X-Acting-User-Id there is no actor.
+        var target = new User { Id = 35, Username = "target4" };
+        var kit = PlainKit();
+        SetUser(target);
+        SetKit(kit);
+
+        await _service.GiveKitAsync(null, target.Id, kit.Id);
+
+        _auditLogService.Verify(s => s.RecordAsync(null, target.Id, AuditAction.KitGranted, It.IsAny<string?>()), Times.Once);
     }
 
     #endregion
