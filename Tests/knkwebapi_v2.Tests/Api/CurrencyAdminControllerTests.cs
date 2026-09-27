@@ -221,5 +221,13 @@ public class CurrencyAdminControllerTests
         Assert.IsType<BadRequestObjectResult>(await _controller.UpdatePolicy("xp", new CurrencyPolicyDto(), CancellationToken.None));
         _admin.Setup(a => a.UpdatePolicyAsync(Currency.Gems, It.IsAny<CurrencyPolicyDto>(), StaffId, It.IsAny<CancellationToken>())).ThrowsAsync(new ArgumentException("range"));
         Assert.IsType<BadRequestObjectResult>(await _controller.UpdatePolicy("gems", new CurrencyPolicyDto(), CancellationToken.None));
+
+        var current = new CurrencyPolicyDto { Currency = "Coins", TransfersEnabled = false };
+        _admin.Setup(a => a.UpdatePolicyAsync(Currency.Coins, It.IsAny<CurrencyPolicyDto>(), StaffId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new CurrencyException(CurrencyErrorCode.PolicyChanged, "changed", current));
+        var conflict = Assert.IsType<ConflictObjectResult>(await _controller.UpdatePolicy("coins", new CurrencyPolicyDto(), CancellationToken.None));
+        var body = System.Text.Json.JsonSerializer.SerializeToElement(conflict.Value);
+        Assert.Equal("PolicyChanged", body.GetProperty("error").GetString());
+        Assert.False(body.GetProperty("details").GetProperty("transfersEnabled").GetBoolean());
     }
 }

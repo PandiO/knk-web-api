@@ -81,7 +81,7 @@ namespace knkwebapi_v2.Services
                     if (policy is { TransfersEnabled: true })
                     {
                         policy.TransfersEnabled = false;
-                        policy.UpdatedAt = now;
+                        policy.UpdatedAt = CurrencyPolicy.VersionStamp(now); // a policy form loaded before this now gets 409 PolicyChanged
                         policy.UpdatedByUserId = null;
                         disabled.Add(currency.ToString());
                     }

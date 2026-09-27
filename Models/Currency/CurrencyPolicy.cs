@@ -67,7 +67,25 @@ public class CurrencyPolicy
         _ => 0
     };
 
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    /// When the row last changed; also its version for optimistic concurrency: a staff edit must
+    /// send back the value it loaded (PUT api/currency/admin/policy/{currency}), so a form opened
+    /// before the R1 kill switch can't quietly switch transfers back on. Written via
+    /// <see cref="VersionStamp"/> so it survives the datetime(6) column unchanged.
+    /// </summary>
+    public DateTime UpdatedAt { get; set; } = VersionStamp(DateTime.UtcNow);
 
     public int? UpdatedByUserId { get; set; }
+
+    /// <summary><paramref name="utc"/> cut to whole microseconds, the precision of the
+    /// datetime(6) column (MySQL would otherwise round, and the value sent back wouldn't match).</summary>
+    public static DateTime VersionStamp(DateTime utc) =>
+        new(utc.Ticks - utc.Ticks % 10, DateTimeKind.Utc);
+
+    /// <summary>Whether a client's <paramref name="loaded"/> UpdatedAt is this row's current version.</summary>
+    public bool IsVersion(DateTime loaded)
+    {
+        if (loaded.Kind == DateTimeKind.Local) loaded = loaded.ToUniversalTime();
+        return VersionStamp(loaded).Ticks == VersionStamp(UpdatedAt).Ticks;
+    }
 }

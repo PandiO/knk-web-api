@@ -286,11 +286,16 @@ namespace knkwebapi_v2.Controllers
         [HttpGet("policy")]
         public async Task<IActionResult> GetPolicies(CancellationToken ct) => Ok(await _admin.GetPoliciesAsync(ct));
 
-        /// <summary>Edits a currency's policy; every change is audit-logged (CurrencyPolicyChanged).</summary>
+        /// <summary>
+        /// Edits a currency's policy; every change is audit-logged (CurrencyPolicyChanged). The body's
+        /// updatedAt must be the value last loaded (optimistic concurrency), so a stale form can't
+        /// undo a change made meanwhile - notably the R1 kill switch turning transfers off.
+        /// </summary>
         /// <param name="currency">coins or gems</param>
         /// <response code="200">The saved policy</response>
-        /// <response code="400">A value out of range</response>
+        /// <response code="400">A value out of range, or no updatedAt</response>
         /// <response code="404">No policy for that currency</response>
+        /// <response code="409">PolicyChanged: the policy changed since it was loaded; details hold the current one</response>
         [RequirePermission(StaffPermissions.CurrencyPolicy)]
         [HttpPut("policy/{currency}")]
         public async Task<IActionResult> UpdatePolicy(string currency, [FromBody] CurrencyPolicyDto request, CancellationToken ct)
@@ -312,6 +317,10 @@ namespace knkwebapi_v2.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+            catch (CurrencyException ex)
+            {
+                return CurrencyHttp.ToResult(this, ex);
             }
         }
 

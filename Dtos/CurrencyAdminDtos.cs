@@ -221,7 +221,8 @@ public class SetTransferLockDto
 
 /// <summary>
 /// A currency's policy row (DESIGN.md §3.5): the transfer rules, the admin grant cap and the
-/// signup grant. The same shape is PUT back to edit it (Currency/UpdatedAt/UpdatedBy ignored).
+/// signup grant. The same shape is PUT back to edit it (Currency/UpdatedBy/HardMaxBalance ignored;
+/// UpdatedAt must be the value loaded - a newer row answers 409 PolicyChanged).
 /// 0 on a cap, cooldown or hourly limit means "no limit".
 /// </summary>
 public class CurrencyPolicyDto
@@ -283,6 +284,7 @@ public class CurrencyPolicyDto
     [JsonPropertyName("signupGrant")]
     public long SignupGrant { get; set; }
 
+    /// <summary>The row's version: send back exactly what was loaded.</summary>
     [JsonPropertyName("updatedAt")]
     public DateTime UpdatedAt { get; set; }
 

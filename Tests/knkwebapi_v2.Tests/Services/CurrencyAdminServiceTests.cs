@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -308,5 +309,78 @@ public class CurrencyAdminServiceTests
         saved.MinSenderTitleBracketId = 77;
         await Assert.ThrowsAsync<ArgumentException>(() => admin.UpdatePolicyAsync(Currency.Gems, saved, Staff));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => admin.UpdatePolicyAsync(Currency.Experience, saved, Staff));
+    }
+
+    [Fact]
+    public async Task Policy_Update_FromAFormLoadedBeforeTheKillSwitch_IsRefused_AndTransfersStayOff()
+    {
+        await SeedAsync();
+        await using var ctx = NewContext();
+        var (_, admin) = Services(ctx);
+        var loaded = (await admin.GetPoliciesAsync()).Single(p => p.Currency == "Coins");
+        Assert.True(loaded.TransfersEnabled);
+
+        // The client echoes the JSON it got; the version must survive that round trip.
+        var stale = JsonSerializer.Deserialize<CurrencyPolicyDto>(JsonSerializer.Serialize(loaded))!;
+        stale.MaxTransfer = 500_000;
+
+        // Meanwhile a reconciliation mismatch fires the R1 kill switch (in another request).
+        await using (var monitorCtx = NewContext())
+        {
+            var options = new knkwebapi_v2.Configuration.CurrencyMonitorOptions();
+            var alerts = new CurrencyAlertService(monitorCtx, new CurrencyReconciler(monitorCtx),
+                new CurrencyAnomalyDetector(monitorCtx, Microsoft.Extensions.Options.Options.Create(options)),
+                new CurrencyReconciliationState(), new CurrencyMonitorSignals(), NullLogger<CurrencyAlertService>.Instance,
+                Microsoft.Extensions.Options.Options.Create(options));
+            await alerts.RaiseAsync(new CurrencyAlertDraft(CurrencyAlertRules.Reconciliation, CurrencyAlertSeverity.Critical,
+                "mismatch", "R1:test", TimeSpan.FromHours(24)) { DisableTransfersFor = new[] { Currency.Coins } });
+        }
+
+        await using var staffCtx = NewContext();
+        var (_, staffAdmin) = Services(staffCtx);
+        var ex = await Assert.ThrowsAsync<CurrencyException>(() => staffAdmin.UpdatePolicyAsync(Currency.Coins, stale, Staff));
+        Assert.Equal(CurrencyErrorCode.PolicyChanged, ex.Code);
+        Assert.Contains("safety shut-off", ex.Message);
+        var current = Assert.IsType<CurrencyPolicyDto>(ex.Details);
+        Assert.False(current.TransfersEnabled);
+        Assert.Equal(1_000_000, current.MaxTransfer);
+
+        await using (var check = NewContext())
+        {
+            var row = await check.CurrencyPolicies.AsNoTracking().SingleAsync(p => p.Currency == Currency.Coins);
+            Assert.Equal((false, 1_000_000L), (row.TransfersEnabled, row.MaxTransfer));
+        }
+        Assert.Empty(await AuditAsync(AuditAction.CurrencyPolicyChanged));
+
+        // Reloaded, the staff member can turn transfers back on deliberately.
+        current.TransfersEnabled = true;
+        var saved = await staffAdmin.UpdatePolicyAsync(Currency.Coins, current, Staff);
+        Assert.True(saved.TransfersEnabled);
+
+        // And the version they saved over is now stale too (another staff member's form).
+        await Assert.ThrowsAsync<CurrencyException>(() => staffAdmin.UpdatePolicyAsync(Currency.Coins, current, Staff));
+    }
+
+    [Fact]
+    public async Task Policy_Update_WithoutAVersion_IsRejected()
+    {
+        await SeedAsync();
+        await using var ctx = NewContext();
+        var (_, admin) = Services(ctx);
+        var gems = (await admin.GetPoliciesAsync()).Single(p => p.Currency == "Gems");
+        gems.UpdatedAt = default;
+        await Assert.ThrowsAsync<ArgumentException>(() => admin.UpdatePolicyAsync(Currency.Gems, gems, Staff));
+    }
+
+    [Fact]
+    public void Policy_Version_IsComparedAtTheColumnsMicrosecondPrecision()
+    {
+        var at = new DateTime(2026, 9, 27, 10, 0, 0, DateTimeKind.Utc).AddTicks(1_234_567);
+        var policy = new CurrencyPolicy { UpdatedAt = CurrencyPolicy.VersionStamp(at) };
+        Assert.Equal(1_234_560, policy.UpdatedAt.Ticks % TimeSpan.TicksPerSecond);
+        Assert.True(policy.IsVersion(DateTime.SpecifyKind(policy.UpdatedAt, DateTimeKind.Unspecified))); // as read from MySQL
+        Assert.True(policy.IsVersion(at));
+        Assert.False(policy.IsVersion(at.AddTicks(10)));
+        Assert.False(policy.IsVersion(at.AddMilliseconds(-1)));
     }
 }

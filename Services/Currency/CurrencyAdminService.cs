@@ -257,6 +257,18 @@ namespace knkwebapi_v2.Services
             if (request == null) throw new ArgumentNullException(nameof(request));
             var policy = await _repo.GetPolicyForUpdateAsync(currency, ct)
                 ?? throw new KeyNotFoundException($"There is no {currency} policy.");
+            // Optimistic concurrency: the edit must be based on the row as it is now. A form loaded
+            // before the R1 kill switch (or another staff member's save) would otherwise undo it.
+            if (request.UpdatedAt == default)
+            {
+                throw new ArgumentException("updatedAt (the version of the policy you loaded) is required.", nameof(request));
+            }
+            if (!policy.IsVersion(request.UpdatedAt))
+            {
+                throw new CurrencyException(CurrencyErrorCode.PolicyChanged,
+                    $"The {currency} policy was changed since you loaded it{(policy.UpdatedByUserId == null ? " (possibly by an automatic safety shut-off)" : "")}. Reload it and review before saving again.",
+                    ToPolicyDto(policy));
+            }
             ValidatePolicy(currency, request);
             if (request.MinSenderTitleBracketId.HasValue && await _repo.GetTitleBracketAsync(request.MinSenderTitleBracketId.Value, ct) == null)
             {
@@ -287,7 +299,7 @@ namespace knkwebapi_v2.Services
             {
                 return before;
             }
-            policy.UpdatedAt = DateTime.UtcNow;
+            policy.UpdatedAt = CurrencyPolicy.VersionStamp(DateTime.UtcNow);
             policy.UpdatedByUserId = actorUserId;
             await _repo.SavePolicyAsync(ct);
 

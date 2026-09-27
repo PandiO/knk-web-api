@@ -68,7 +68,12 @@ namespace knkwebapi_v2.Services
 
         /// <summary>A staff grant would pass the staff member's rolling 24 h grant cap
         /// (CurrencyPolicy.AdminDailyGrantCapPerActor; knk.admin.currency.unlimited bypasses it).</summary>
-        AdminDailyCapExceeded
+        AdminDailyCapExceeded,
+
+        /// <summary>A policy edit was based on an older version of the row (its updatedAt no
+        /// longer matches) - e.g. the R1 kill switch fired since the form was loaded. Details
+        /// carry the current policy.</summary>
+        PolicyChanged
     }
 
     /// <summary>
