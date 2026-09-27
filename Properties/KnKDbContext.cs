@@ -1,6 +1,7 @@
 using System;
 using knkwebapi_v2.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 // Updated with FieldValidationRule relationship configuration
 namespace knkwebapi_v2.Properties;
@@ -103,6 +104,12 @@ public partial class KnKDbContext : DbContext
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
     public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
 
+    // Private messages Phase 2 — ignore list (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §2)
+    public virtual DbSet<UserIgnore> UserIgnores { get; set; } = null!;
+
+    // Private messages Phase 3 — server-side PM log (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §3)
+    public virtual DbSet<PrivateMessageLogEntry> PrivateMessageLogEntries { get; set; } = null!;
+
     // Currency ledger (docs/specs/currency-payments/DESIGN.md §3.2, IMPLEMENTATION_PLAN.md Phase 1).
     // Append-only: written only by CurrencyService through CurrencyRepository.
     public virtual DbSet<CurrencyTransaction> CurrencyTransactions { get; set; } = null!;
@@ -163,6 +170,20 @@ public partial class KnKDbContext : DbContext
                 t.HasCheckConstraint("CK_users_Gems_Range", $"`Gems` >= 0 AND `Gems` <= {knkwebapi_v2.Services.BalanceLimits.MaxGems}");
                 t.HasCheckConstraint("CK_users_ExperiencePoints_NonNegative", "`ExperiencePoints` >= 0");
             });
+
+            // Only the currency ledger writes balances (currency DESIGN.md §3.1 invariant 1, §3.2):
+            // EF ignores these columns on insert and update, so no Users.Update(user) or
+            // SaveChanges anywhere can put a stale or hand-computed balance back (audit A2).
+            // CurrencyRepository writes them with ExecuteUpdate inside the locked ledger
+            // transaction. New rows get the DB default 0 and their starting balance as a
+            // SIGNUP_GRANT posting.
+            foreach (var balance in new[] { nameof(User.Coins), nameof(User.Gems), nameof(User.ExperiencePoints) })
+            {
+                var property = entity.Property(balance);
+                property.HasDefaultValue(0);
+                property.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+                property.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+            }
 
             // Unique constraints on Username, Email, UUID (with null handling)
             entity.HasIndex(e => e.Username).IsUnique();
@@ -1253,6 +1274,10 @@ public partial class KnKDbContext : DbContext
 
             entity.Property(e => e.Id)
                 .HasMaxLength(64);
+
+            // The existing "global" row gets 30 days, not 0 (which would delete every PM on the next run).
+            entity.Property(e => e.PrivateMessageRetentionDays)
+                .HasDefaultValue(AuditLogRetentionConfiguration.DefaultPrivateMessageRetentionDays);
         });
 
         modelBuilder.Entity<GameSettings>(entity =>
@@ -1661,6 +1686,52 @@ public partial class KnKDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // UserIgnore — a player's ignore list (docs/specs/private-messages/DESIGN.md §3.1).
+        modelBuilder.Entity<UserIgnore>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("user_ignores");
+
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+
+            // An ignore row means nothing once either player is gone - cascade both FKs.
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.IgnoredUser)
+                .WithMany()
+                .HasForeignKey(e => e.IgnoredUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UserId, e.IgnoredUserId }).IsUnique();
+            entity.HasIndex(e => e.IgnoredUserId);
+        });
+
+        // PrivateMessageLogEntry — server-side PM log (docs/specs/private-messages/DESIGN.md §3.1).
+        // No FKs to users on purpose (see the model's summary).
+        modelBuilder.Entity<PrivateMessageLogEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("private_message_log_entries");
+
+            entity.Property(e => e.SenderName).IsRequired().HasMaxLength(PrivateMessageLogEntry.NameMaxLength);
+            entity.Property(e => e.RecipientName).IsRequired().HasMaxLength(PrivateMessageLogEntry.NameMaxLength);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(PrivateMessageLogEntry.ContentMaxLength);
+            entity.Property(e => e.Outcome)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(32);
+
+            entity.HasIndex(e => e.ClientMessageId).IsUnique();
+            // The staff read path filters by one participant and orders by SentAt descending;
+            // retention deletes by SentAt.
+            entity.HasIndex(e => new { e.SenderUserId, e.SentAt });
+            entity.HasIndex(e => new { e.RecipientUserId, e.SentAt });
+            entity.HasIndex(e => e.SentAt);
+        });
+
         OnModelCreatingPartial(modelBuilder);
     }
 
@@ -1773,9 +1844,12 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.Rule).IsRequired().HasMaxLength(16);
             entity.Property(e => e.Severity).HasConversion<byte>();
             entity.Property(e => e.DetailsJson).HasColumnType("json");
+            entity.Property(e => e.Summary).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.DedupKey).HasMaxLength(200);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
 
             entity.HasIndex(e => new { e.AckedAt, e.CreatedAt });
+            entity.HasIndex(e => new { e.Rule, e.DedupKey, e.CreatedAt });
             entity.HasIndex(e => new { e.UserId, e.CreatedAt });
         });
 

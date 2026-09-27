@@ -52,7 +52,28 @@ namespace knkwebapi_v2.Services
 
         /// <summary>The request itself is malformed: unknown or misused reason code, missing
         /// initiator or reason text, duplicate legs, invalid metadata JSON, bad key.</summary>
-        InvalidRequest
+        InvalidRequest,
+
+        /// <summary>No pending transfer with that id belongs to this sender (currency Phase 3).</summary>
+        PendingTransferNotFound,
+
+        /// <summary>The pending transfer's confirmation window has passed; send it again.</summary>
+        PendingTransferExpired,
+
+        /// <summary>The pending transfer was already cancelled (or confirmed, for a cancel).</summary>
+        PendingTransferClosed,
+
+        /// <summary>The recipient has received their rolling 24 h limit of this currency.</summary>
+        RecipientDailyCapExceeded,
+
+        /// <summary>A staff grant would pass the staff member's rolling 24 h grant cap
+        /// (CurrencyPolicy.AdminDailyGrantCapPerActor; knk.admin.currency.unlimited bypasses it).</summary>
+        AdminDailyCapExceeded,
+
+        /// <summary>A policy edit was based on an older version of the row (its updatedAt no
+        /// longer matches) - e.g. the R1 kill switch fired since the form was loaded. Details
+        /// carry the current policy.</summary>
+        PolicyChanged
     }
 
     /// <summary>

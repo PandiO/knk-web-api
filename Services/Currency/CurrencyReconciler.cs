@@ -17,9 +17,9 @@ namespace knkwebapi_v2.Services
     /// column = first BalanceBefore + Σ entries. Every transaction must also sum to zero per
     /// currency. Users without ledger rows aren't checked (their balance predates the ledger).
     /// </para>
-    /// Note: until currency Phase 2 routes every write path through ICurrencyService, a balance
-    /// changed by a pre-ledger path (salary, kits, admin adjust…) after a user's first ledger
-    /// posting shows up here as a Chain/BalanceColumn mismatch — that is the reconciler working.
+    /// Since currency Phase 2 every write path goes through ICurrencyService and EF can't write the
+    /// balance columns, so a Chain/BalanceColumn mismatch means a write outside the application
+    /// (a manual SQL edit) or a bug — that is the reconciler working.
     /// </summary>
     public class CurrencyReconciler
     {
@@ -32,6 +32,24 @@ namespace knkwebapi_v2.Services
 
         /// <summary>All mismatches (empty = reconciled), optionally for one user only.</summary>
         public async Task<List<CurrencyMismatchDto>> FindMismatchesAsync(int? userId = null, CancellationToken ct = default)
+        {
+            // Every read below must see the same moment. The balances and the legs are separate
+            // queries; read one after the other in autocommit mode, a posting committed in
+            // between shows up as a leg whose BalanceAfter the (older) users column doesn't have
+            // yet - a false R1 mismatch that switches player transfers off. A REPEATABLE READ
+            // transaction gives all of them one InnoDB snapshot (taken at the first read) and
+            // holds no locks, so postings carry on meanwhile.
+            if (!_context.Database.IsRelational() || _context.Database.CurrentTransaction != null)
+            {
+                return await FindMismatchesCoreAsync(userId, ct);
+            }
+            await using var snapshot = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
+            var result = await FindMismatchesCoreAsync(userId, ct);
+            await snapshot.CommitAsync(ct);
+            return result;
+        }
+
+        private async Task<List<CurrencyMismatchDto>> FindMismatchesCoreAsync(int? userId, CancellationToken ct)
         {
             var mismatches = new List<CurrencyMismatchDto>();
 

@@ -29,19 +29,25 @@ namespace knkwebapi_v2.Services
         private readonly ISalaryConfigurationService _configService;
         private readonly ITitleService _titleService;
         private readonly IAuditLogService _auditLogService;
+        private readonly ICurrencyService _currency;
+
+        /// <summary>InitiatorComponent of salary postings.</summary>
+        public const string Component = "SalaryService";
 
         public SalaryService(
             IUserRepository userRepo,
             IUserPermissionGroupRepository membershipRepo,
             ISalaryConfigurationService configService,
             ITitleService titleService,
-            IAuditLogService auditLogService)
+            IAuditLogService auditLogService,
+            ICurrencyService currency)
         {
             _userRepo = userRepo;
             _membershipRepo = membershipRepo;
             _configService = configService;
             _titleService = titleService;
             _auditLogService = auditLogService;
+            _currency = currency;
         }
 
         public async Task<SalaryPayoutResultDto> PayOutAsync(int userId)
@@ -52,7 +58,9 @@ namespace knkwebapi_v2.Services
             // The user's row is locked before LastSalaryPayoutAt is read (currency DESIGN.md §1.4
             // A2/A3): two overlapping payout calls (join + hourly scheduler, or a client retry)
             // run one after the other, and the second sees the first's new timestamp and pays
-            // nothing. The audit entry commits with the payout.
+            // nothing. The ledger posting, the new timestamp and the audit entry commit together
+            // (currency Phase 2); the posting's key is the previous timestamp, so the same gap can
+            // never be paid twice even by a retry.
             await _userRepo.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
                 var user = await _userRepo.GetByIdAsync(userId)
@@ -100,7 +108,28 @@ namespace knkwebapi_v2.Services
                 "salary");
 
             var coinsBefore = user.Coins;
-            user.Coins = BalanceLimits.ApplyCoins(user.Coins, amountPaid);
+            PostingResult? posting = null;
+            if (amountPaid > 0)
+            {
+                // Before the timestamp is set: the posting re-reads the locked row, which would
+                // drop an unsaved change to the tracked user.
+                var ctx = CurrencyContext.ForSystem(Component, CurrencyReasons.Salary,
+                    $"salary:{userId}:{lastPayout:O}") with
+                {
+                    SourceType = "Salary",
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        hoursCovered,
+                        paidHours,
+                        titleBracketId = title.TitleBracketId,
+                        titleSalary = title.Salary,
+                        globalMultiplier = config.GlobalMultiplier,
+                        personalMultiplier = user.PersonalSalaryMultiplier,
+                        rankMultiplier
+                    })
+                };
+                posting = await _currency.GrantAsync(userId, Enums.Currency.Coins, amountPaid, ctx);
+            }
             user.LastSalaryPayoutAt = now;
             await _userRepo.SaveBalancesAsync(user);
 
@@ -117,7 +146,8 @@ namespace knkwebapi_v2.Services
                 personalMultiplier = user.PersonalSalaryMultiplier,
                 rankMultiplier,
                 coinsBefore,
-                coinsAfter = user.Coins
+                coinsAfter = user.Coins,
+                ledgerTransactionId = posting?.PublicId
             }));
 
             return new SalaryPayoutResultDto

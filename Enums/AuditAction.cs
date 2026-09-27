@@ -20,9 +20,24 @@ public enum AuditAction
     PlayerFrozen = 9,
     PlayerUnfrozen = 10,
     KitGranted = 11,
+
+    // 12-14 belong to other features' branches (teleport, lootboxes) - cross-branch allocation.
+
+    /// <summary>
+    /// A staff member (or the game server) read a player's private messages
+    /// (docs/specs/private-messages/DESIGN.md §3.2) - target = the player whose messages were read.
+    /// </summary>
+    PrivateMessagesViewed = 15,
+
     /// <summary>Staff reset one domain discovery so it can be discovered (and rewarded) again
     /// (docs/specs/domain-discovery/DESIGN.md §3.5). Grants themselves are DISCOVERY_REWARD
-    /// ledger postings (plus a BalanceAdjusted row with reason "domain-discovery" when their XP
-    /// unlocks title bonuses).</summary>
-    DiscoveryReset = 17
+    /// ledger postings (plus a TitleChanged row when their XP crosses a title bracket).</summary>
+    DiscoveryReset = 17,
+
+    // Currency payments (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phase 4); values
+    // 19–29 are reserved for this feature so parallel branches don't collide.
+    CurrencyPolicyChanged = 19,
+    CurrencyTransactionReversed = 20,
+    CurrencyTransferLocked = 21,
+    CurrencyTransferUnlocked = 22
 }

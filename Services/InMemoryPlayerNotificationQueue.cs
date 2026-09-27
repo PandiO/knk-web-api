@@ -38,19 +38,42 @@ public class InMemoryPlayerNotificationQueue : IPlayerNotificationQueue
         _utcNow = utcNow;
     }
 
-    public long Enqueue(int userId, string? uuid, string username, string type, TitleChangeResultDto? titleChange)
-    {
-        var id = Interlocked.Increment(ref _nextId);
-        _pending[id] = new PlayerNotificationDto
+    public long Enqueue(int userId, string? uuid, string username, string type, TitleChangeResultDto? titleChange) =>
+        Add(new PlayerNotificationDto
         {
-            Id = id,
             UserId = userId,
             Uuid = uuid,
             Username = username,
             Type = type,
-            TitleChange = titleChange,
-            CreatedAt = _utcNow()
-        };
+            TitleChange = titleChange
+        });
+
+    public long EnqueuePayment(int userId, string? uuid, string username, PaymentNotificationDto payment) =>
+        Add(new PlayerNotificationDto
+        {
+            UserId = userId,
+            Uuid = uuid,
+            Username = username,
+            Type = PlayerNotificationTypes.PaymentReceived,
+            Payment = payment
+        });
+
+    public long EnqueueCurrencyAlert(CurrencyAlertNotificationDto alert) =>
+        Add(new PlayerNotificationDto
+        {
+            UserId = 0,
+            Uuid = null,
+            Username = "",
+            Type = PlayerNotificationTypes.CurrencyAlert,
+            CurrencyAlert = alert
+        });
+
+    private long Add(PlayerNotificationDto notification)
+    {
+        var id = Interlocked.Increment(ref _nextId);
+        notification.Id = id;
+        notification.CreatedAt = _utcNow();
+        _pending[id] = notification;
         Prune();
         return id;
     }

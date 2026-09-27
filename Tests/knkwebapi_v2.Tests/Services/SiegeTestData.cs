@@ -5,7 +5,10 @@ using knkwebapi_v2.Enums;
 using knkwebapi_v2.Mapping;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
+using knkwebapi_v2.Repositories;
+using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace knkwebapi_v2.Tests.Services;
 
@@ -20,6 +23,24 @@ namespace knkwebapi_v2.Tests.Services;
 /// </summary>
 public static class SiegeTestData
 {
+    /// <summary>
+    /// A SiegeMatchService with the real ledger (CurrencyService + TitleProgressionService) on
+    /// <paramref name="context"/>, so match rewards post exactly as in production (currency Phase 2
+    /// siege merge).
+    /// </summary>
+    public static SiegeMatchService MatchService(KnKDbContext context, IPlayerNotificationQueue? notifications = null,
+        IUserPermissionGroupRepository? memberships = null)
+    {
+        var users = new UserRepository(context);
+        var titles = new TitleService(new TitleBracketRepository(context));
+        var audit = new AuditLogService(new AuditLogRepository(context), users);
+        var membershipService = new UserPermissionGroupService(
+            new UserPermissionGroupRepository(context), users, new PermissionGroupRepository(context), audit);
+        var currency = new CurrencyService(new CurrencyRepository(context), users, NullLogger<CurrencyService>.Instance);
+        return new SiegeMatchService(new SiegeMatchRepository(context), titles, notifications, null, memberships,
+            currency, new TitleProgressionService(currency, users, titles, membershipService, audit));
+    }
+
     public static IMapper Mapper() => new MapperConfiguration(cfg =>
     {
         cfg.AddProfile<SiegeMappingProfile>();

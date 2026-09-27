@@ -17,6 +17,14 @@ namespace knkwebapi_v2.Services
         public const string System = "system";
     }
 
+    /// <summary>Idempotency keys a client sends in the Idempotency-Key header.</summary>
+    public static class CurrencyClientKeys
+    {
+        /// <summary>Longest client key: the server adds a prefix or suffix ("kit-claim:",
+        /// ":coins") and ledger keys are at most 100 characters.</summary>
+        public const int MaxLength = 90;
+    }
+
     /// <summary>
     /// Who, why and which idempotency key, for one ledger posting (currency DESIGN.md §3.3, KNG-23).
     /// <list type="bullet">
@@ -56,6 +64,16 @@ namespace knkwebapi_v2.Services
 
         /// <summary>Optional id grouping the transactions of one logical operation (≤ 64).</summary>
         public string? CorrelationId { get; init; }
+
+        /// <summary>
+        /// The staff member whose per-staff daily grant cap (CurrencyPolicy.AdminDailyGrantCapPerActor)
+        /// this posting's coin and gem credits count against, although they didn't post it
+        /// themselves: the title bonuses a staff XP increase triggers (KNG-21). Checked under that
+        /// staff member's row lock; over the cap the posting is refused with AdminDailyCapExceeded.
+        /// The posting must carry the triggering staff posting's public id as
+        /// <see cref="CorrelationId"/>, which is how later cap sums attribute it.
+        /// </summary>
+        public int? GrantCapActorUserId { get; init; }
 
         /// <summary>A server component posting on its own, with a deterministic key in the system scope.</summary>
         public static CurrencyContext ForSystem(string component, string reasonCode, string idempotencyKey, string? reason = null) => new()
@@ -110,6 +128,15 @@ namespace knkwebapi_v2.Services
     public sealed record AdminAdjustRequest(int UserId, Currency Currency, CurrencyOperation Mode, long Amount, long? ExpectedCurrent = null);
 
     /// <summary>
+    /// A player-to-player transfer (currency DESIGN.md §3.5, IMPLEMENTATION_PLAN.md Phase 3):
+    /// <paramref name="Amount"/> of <paramref name="Currency"/> from the sender to the recipient,
+    /// reason PLAYER_TRANSFER. <paramref name="BypassLimits"/> is knk.pay.bypass (see
+    /// TransferPolicyInput.BypassLimits).
+    /// </summary>
+    public sealed record TransferRequest(int SenderUserId, int RecipientUserId, Currency Currency, long Amount,
+        string? Note = null, bool BypassLimits = false);
+
+    /// <summary>
     /// Reversal options (DESIGN.md D11). A reversal never takes a balance below zero: with
     /// <paramref name="AllowPartial"/> false it is refused (ReversalWouldGoNegative); with true it
     /// reverses what is there and records the shortfall in the reversal's metadata.
@@ -161,6 +188,11 @@ namespace knkwebapi_v2.Services
         UserId,
         Currency,
         ReasonCode,
-        Initiator
+        Initiator,
+
+        /// <summary>The affected player's username (event log "recipient" column).</summary>
+        Recipient,
+        Operation,
+        BalanceAfter
     }
 }

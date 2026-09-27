@@ -181,6 +181,11 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("PrivateMessageRetentionDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
                     b.Property<int>("RetentionDays")
                         .HasColumnType("int");
 
@@ -393,6 +398,10 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("DedupKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
                     b.Property<string>("DetailsJson")
                         .HasColumnType("json");
 
@@ -403,6 +412,11 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<byte>("Severity")
                         .HasColumnType("tinyint unsigned");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
 
                     b.Property<long?>("TransactionId")
                         .HasColumnType("bigint");
@@ -416,6 +430,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("AckedAt", "CreatedAt");
 
                     b.HasIndex("UserId", "CreatedAt");
+
+                    b.HasIndex("Rule", "DedupKey", "CreatedAt");
 
                     b.ToTable("currency_alerts", (string)null);
                 });
@@ -572,6 +588,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     b.Property<long>("MinTransfer")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("SignupGrant")
                         .HasColumnType("bigint");
 
                     b.Property<int>("TransferFeeBasisPoints")
@@ -2675,6 +2694,64 @@ namespace knkwebapi_v2.Migrations
                     b.UseTptMappingStrategy();
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.PrivateMessageLogEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ClientMessageId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("RecipientName")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("RecipientUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("SenderUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("ViaReply")
+                        .HasColumnType("tinyint(1)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ClientMessageId")
+                        .IsUnique();
+
+                    b.HasIndex("SentAt");
+
+                    b.HasIndex("RecipientUserId", "SentAt");
+
+                    b.HasIndex("SenderUserId", "SentAt");
+
+                    b.ToTable("private_message_log_entries", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SalaryConfiguration", b =>
                 {
                     b.Property<string>("Id")
@@ -3513,6 +3590,33 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("user_domain_discoveries", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("IgnoredUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IgnoredUserId");
+
+                    b.HasIndex("UserId", "IgnoredUserId")
+                        .IsUnique();
+
+                    b.ToTable("user_ignores", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.UserPermissionGroup", b =>
                 {
                     b.Property<int>("UserId")
@@ -3812,7 +3916,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("Coins")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -3830,7 +3936,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<int>("ExperiencePoints")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("FrozenAt")
                         .HasColumnType("datetime(6)");
@@ -3845,7 +3953,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("Gems")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int?>("Gender")
                         .HasColumnType("int");
@@ -5017,6 +5127,25 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("Domain");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.UserIgnore", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.User", "IgnoredUser")
+                        .WithMany()
+                        .HasForeignKey("IgnoredUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IgnoredUser");
 
                     b.Navigation("User");
                 });

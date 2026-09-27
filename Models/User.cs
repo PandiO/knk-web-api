@@ -48,30 +48,31 @@ public class User : PermissionHolder
     /// Gameplay currency: earned in game (salary, title bonuses, siege rewards) and spent on kits
     /// and services. Not premium — gems are (developer decision 2026-09-26, currency-payments
     /// DESIGN.md §5 Q1; this comment used to say the opposite).
-    /// Default: 250 coins on account creation.
+    /// A new account is inserted at 0 and receives its starting balance as a SIGNUP_GRANT ledger
+    /// posting (CurrencyPolicy.SignupGrant, 250 by default).
     /// 0..999,999,999 (BalanceLimits.MaxCoins), enforced in code and by a DB CHECK constraint.
-    /// CRITICAL: Update only through the locked balance paths (UserRepository.SaveBalancesAsync),
-    /// never through the generic user edit.
+    /// CRITICAL: written only by the currency ledger (ICurrencyService). EF never writes this
+    /// column (PropertySaveBehavior.Ignore, KnKDbContext), so assigning it anywhere else has no
+    /// effect on the database (currency-payments DESIGN.md §3.1 invariant 1).
     /// </summary>
-    public int Coins { get; set; } = 250;
+    public int Coins { get; set; }
 
     /// <summary>
     /// Premium currency, tied to real-money purchases (premium kits, ranks). Never transferable
     /// between players (currency-payments DESIGN.md §5 Q2).
-    /// Default: 50 gems on account creation.
+    /// Starts at 0; the starting balance is a SIGNUP_GRANT ledger posting (50 by default).
     /// 0..999,999 (BalanceLimits.MaxGems), enforced in code and by a DB CHECK constraint.
-    /// CRITICAL: Update only through the locked balance paths (UserRepository.SaveBalancesAsync),
-    /// never through the generic user edit.
+    /// CRITICAL: written only by the currency ledger (ICurrencyService); EF never writes it.
     /// </summary>
-    public int Gems { get; set; } = 50;
+    public int Gems { get; set; }
 
     /// <summary>
     /// Player progression experience points.
     /// Default: 0 on account creation.
-    /// Non-negative; mutations atomic and logged with recoverable metadata.
-    /// CRITICAL: Update only through service methods, never direct assignment.
+    /// Non-negative. Kept in the currency ledger like coins and gems (KNG-23): written only by
+    /// ICurrencyService, with title progression run by ITitleProgressionService; EF never writes it.
     /// </summary>
-    public int ExperiencePoints { get; set; } = 0;
+    public int ExperiencePoints { get; set; }
 
     // ===== AUTHENTICATION & METADATA =====
 
@@ -129,7 +130,7 @@ public class User : PermissionHolder
     /// <summary>
     /// Per-player multiplier on the one-time gem bonus of each title reached (TitleBracket.GemBonus,
     /// KNG-16). Multiplied with the rank-based PermissionGroup.GemBonusMultiplier by
-    /// UserService.AdjustBalancesAsync. Default 1.0 (neutral). The coin bonus uses the salary
+    /// TitleProgressionService. Default 1.0 (neutral). The coin bonus uses the salary
     /// multipliers instead.
     /// </summary>
     public decimal PersonalGemBonusMultiplier { get; set; } = 1.0m;

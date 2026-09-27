@@ -87,26 +87,36 @@ namespace knkwebapi_v2.Services
 
         // ===== NEW METHODS: BALANCES (COINS, GEMS, XP) =====
         /// <summary>
-        /// Adjust user balances (Coins, Gems, ExperiencePoints).
-        /// All mutations are atomic; rejects underflows; requires reason for audit.
+        /// Staff changes to a user's Coins, Gems and/or ExperiencePoints, each posted to the
+        /// currency ledger as ADMIN_GRANT / ADMIN_TAKE / ADMIN_SET (currency-payments Phase 2):
+        /// Add/Remove by an amount, or Set to a target the server applies under the row lock.
+        /// All changes, any title-promotion bonuses (ITitleProgressionService) and the
+        /// BalanceAdjusted audit entry commit in one transaction. Refusals throw
+        /// CurrencyException (insufficient funds, cap, stale expectedCurrent, key reuse).
         /// </summary>
         /// <param name="userId">User ID</param>
-        /// <param name="coinsDelta">Coins change (can be negative)</param>
-        /// <param name="gemsDelta">Gems change (can be negative)</param>
-        /// <param name="experienceDelta">Experience change (can be negative)</param>
-        /// <param name="reason">Reason for balance change (required for audit)</param>
-        /// <param name="metadata">Optional metadata for audit trail</param>
+        /// <param name="changes">At most one change per currency</param>
+        /// <param name="ctx">
+        /// Who and why: <c>CurrencyContext.ForCaller(...)</c> with the client's Idempotency-Key
+        /// (≤ <see cref="CurrencyClientKeys.MaxLength"/> characters) and the required reason
+        /// text. Each change is posted under the key plus ":coins" / ":gems" / ":xp"; the reason
+        /// code is set per change.
+        /// </param>
+        /// <param name="metadata">Optional metadata for the audit trail</param>
         /// <param name="notifyPlayer">Queue a resulting title change for the plugin to show in-game (see AdjustBalancesDto.NotifyPlayer)</param>
-        Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, int coinsDelta, int gemsDelta, int experienceDelta, string reason, string? metadata = null, int? actorUserId = null, bool notifyPlayer = true);
+        Task<BalanceAdjustmentResultDto> AdjustBalancesAsync(int userId, IReadOnlyList<BalanceChangeDto> changes, CurrencyContext ctx, string? metadata = null, bool notifyPlayer = true);
 
         /// <summary>
-        /// Title progression for XP that already changed through the ledger (ICurrencyService XP
-        /// postings don't run it until currency Phase 2): resolves the title at
-        /// <paramref name="previousExperience"/> and at the user's current XP and, when a bracket
-        /// was crossed, applies the consolidated promotion bonuses and writes the BalanceAdjusted
-        /// (bonuses only) and TitleChanged audit rows, exactly as AdjustBalancesAsync does for its
-        /// own XP delta - the XP itself is not applied again. Joins the caller's transaction.
-        /// Returns null (and writes nothing) when the title didn't change.
+        /// Title progression for XP that another path already posted to the ledger (e.g. a
+        /// DISCOVERY_REWARD or SIEGE_REWARD XP leg): resolves the title at
+        /// <paramref name="previousExperience"/> and at the user's current XP and, on a promotion,
+        /// posts each crossed bracket's bonus as TITLE_BONUS (once per user and bracket, ever) via
+        /// ITitleProgressionService, plus the TitleChanged audit row. The XP itself is not applied
+        /// again. Joins the caller's transaction. Returns null when the title didn't change.
+        /// <paramref name="reason"/> and <paramref name="metadata"/> are kept for callers written
+        /// against the pre-ledger signature; the bonus postings carry their own reason. With
+        /// <paramref name="notifyPlayer"/> the change is queued for the plugin right away, so a
+        /// caller inside its own transaction should pass false and queue after its commit.
         /// </summary>
         Task<TitleChangeResultDto?> ApplyTitleProgressionAsync(int userId, int previousExperience, string reason, string? metadata = null, int? actorUserId = null, bool notifyPlayer = true);
 
@@ -146,7 +156,11 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// Merge two user accounts.
-        /// Keeps primary account intact, soft-deletes secondary account.
+        /// Keeps primary account intact, soft-deletes secondary account. The primary ends with the
+        /// higher of the two balances of each currency (coins, gems, XP separately): the
+        /// secondary's balances are zeroed by a MERGE_FORFEIT posting and the primary is credited
+        /// the difference where the secondary had more (MERGE_CARRYOVER; an XP carry-over runs
+        /// title progression once), in the same transaction as the soft delete (KNG-21).
         /// </summary>
         Task<UserDto> MergeAccountsAsync(int primaryUserId, int secondaryUserId);
 

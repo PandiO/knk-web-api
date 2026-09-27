@@ -134,6 +134,14 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IMenuTemplateRepository, MenuTemplateRepository>();
             services.AddScoped<IMenuTemplateService, MenuTemplateService>();
 
+            // Private messages Phase 2 — ignore list (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §2)
+            services.AddScoped<IUserIgnoreRepository, UserIgnoreRepository>();
+            services.AddScoped<IUserIgnoreService, UserIgnoreService>();
+
+            // Private messages Phase 3 — server-side PM log (docs/specs/private-messages/IMPLEMENTATION_PLAN.md §3)
+            services.AddScoped<IPrivateMessageLogRepository, PrivateMessageLogRepository>();
+            services.AddScoped<IPrivateMessageLogService, PrivateMessageLogService>();
+
             // Add MetadataService for dynamic form building
             services.AddSingleton<IMetadataService, MetadataService>();
 
@@ -159,12 +167,29 @@ namespace knkwebapi_v2.DependencyInjection
                 new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl)
             );
 
-            // Retention policy service - background task for cleaning up old records
-            // Currency ledger (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phase 1)
+            // Currency ledger (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phases 1-2)
             services.AddScoped<ICurrencyRepository, CurrencyRepository>();
-            services.AddScoped<ICurrencyService, CurrencyService>();
+            // One scoped CurrencyService per request behind both interfaces (Phase 3 transfers).
+            services.AddScoped<CurrencyService>();
+            services.AddScoped<ICurrencyService>(sp => sp.GetRequiredService<CurrencyService>());
+            services.AddScoped<ICurrencyTransferService>(sp => sp.GetRequiredService<CurrencyService>());
+            services.AddScoped<ITitleProgressionService, TitleProgressionService>();
+            services.AddScoped<ICurrencyAdminService, CurrencyAdminService>();
             services.AddScoped<CurrencyReconciler>();
+            // Currency monitor (Phase 5): alerts R1–R9, reconciliation, metrics.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.CurrencyMonitorOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.CurrencyMonitorOptions.SectionName));
+            }
+            services.AddSingleton<CurrencyMetrics>();
+            services.AddSingleton<CurrencyMonitorSignals>();
+            services.AddSingleton<CurrencyReconciliationState>();
+            services.AddScoped<CurrencyAnomalyDetector>();
+            services.AddScoped<ICurrencyAlertService, CurrencyAlertService>();
+            services.AddHostedService<CurrencyMonitorService>();
 
+            // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
             // Temporary ranks expiring: back to Default + tell the plugin (RANK_DISPLAY.md).
             services.AddHostedService<RankExpirySweepService>();

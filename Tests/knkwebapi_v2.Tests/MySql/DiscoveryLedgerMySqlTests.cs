@@ -39,10 +39,11 @@ public class DiscoveryLedgerMySqlTests : IClassFixture<MySqlTestDatabase>
         var audit = new AuditLogService(new AuditLogRepository(ctx), userRepo);
         var titles = new TitleService(new TitleBracketRepository(ctx));
         var memberships = new UserPermissionGroupService(new UserPermissionGroupRepository(ctx), userRepo, groupRepo, audit);
+        var currency = new CurrencyService(new CurrencyRepository(ctx), userRepo, NullLogger<CurrencyService>.Instance);
+        var titleProgression = new TitleProgressionService(currency, userRepo, titles, memberships, audit);
         var users = new UserService(userRepo, new Mock<IMapper>().Object, new Mock<IPasswordService>().Object,
             new Mock<ILinkCodeService>().Object, titles, memberships, audit, groupRepo,
-            NullLogger<UserService>.Instance, new Mock<IPlayerNotificationQueue>().Object);
-        var currency = new CurrencyService(new CurrencyRepository(ctx), userRepo, NullLogger<CurrencyService>.Instance);
+            NullLogger<UserService>.Instance, currency, titleProgression, new Mock<IPlayerNotificationQueue>().Object);
         return new DiscoveryService(new DiscoveryRepository(ctx), userRepo, users, currency, titles, memberships, audit,
             NullLogger<DiscoveryService>.Instance, Options.Create(new DiscoveryOptions { MaxNewPerHour = 120 }));
     }
@@ -60,6 +61,9 @@ public class DiscoveryLedgerMySqlTests : IClassFixture<MySqlTestDatabase>
         var district = new District { Name = "District " + tag, Description = "", WgRegionId = "district_" + tag, TownId = town.Id };
         ctx.Districts.Add(district);
         await ctx.SaveChangesAsync();
+        // EF never writes the balance columns (currency Phase 2): seed them directly, as an
+        // opening balance before any ledger posting.
+        await ctx.Database.ExecuteSqlInterpolatedAsync($"UPDATE users SET Coins = {coins}, ExperiencePoints = {experience} WHERE Id = {user.Id}");
         return (user.Id, district.WgRegionId, town.Id, district.Id);
     }
 
@@ -181,5 +185,10 @@ public class DiscoveryLedgerMySqlTests : IClassFixture<MySqlTestDatabase>
         Assert.Equal(2450 + result.TotalExp + result.TitleChange.ExpBonusGranted, user.ExperiencePoints);
         Assert.Equal(result.TotalCoins + result.TitleChange.CoinBonusGranted, user.Coins);
         Assert.Equal(1, await check.AuditLogEntries.CountAsync(a => a.TargetUserId == userId && a.Action == AuditAction.TitleChanged));
+        // The bonus is the ledger's once-ever TITLE_BONUS posting for the bracket reached.
+        var bonusKey = $"title-bonus:{userId}:{result.TitleChange.ToTitleBracketId}";
+        var bonus = await check.CurrencyTransactions.AsNoTracking().SingleAsync(t => t.IdempotencyKey == bonusKey);
+        Assert.Equal(CurrencyReasons.TitleBonus, bonus.ReasonCode);
+        Assert.Empty(await MismatchesAsync(userId));
     }
 }

@@ -50,7 +50,7 @@ public class SiegeMatchGateServiceTests : IAsyncLifetime
 
         var repo = new SiegeMatchRepository(_context);
         _gates = new SiegeMatchGateService(repo);
-        _matches = new SiegeMatchService(repo, new TitleService(new TitleBracketRepository(_context)));
+        _matches = SiegeTestData.MatchService(_context);
     }
 
     public async Task DisposeAsync() => await _context.DisposeAsync();

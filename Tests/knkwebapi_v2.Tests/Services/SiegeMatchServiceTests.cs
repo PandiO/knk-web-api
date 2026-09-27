@@ -49,10 +49,7 @@ public class SiegeMatchServiceTests : IAsyncLifetime
         _context.ChangeTracker.Clear();
 
         _notifications = new Mock<IPlayerNotificationQueue>();
-        _service = new SiegeMatchService(
-            new SiegeMatchRepository(_context),
-            new TitleService(new TitleBracketRepository(_context)),
-            _notifications.Object);
+        _service = SiegeTestData.MatchService(_context, _notifications.Object);
     }
 
     public async Task DisposeAsync() => await _context.DisposeAsync();
@@ -211,9 +208,7 @@ public class SiegeMatchServiceTests : IAsyncLifetime
         u.PersonalSalaryMultiplier = 2.0m;
         await _context.SaveChangesAsync();
         _context.ChangeTracker.Clear();
-        var service = new SiegeMatchService(new SiegeMatchRepository(_context),
-            new TitleService(new TitleBracketRepository(_context)), _notifications.Object, null,
-            new UserPermissionGroupRepository(_context));
+        var service = SiegeTestData.MatchService(_context, _notifications.Object, new UserPermissionGroupRepository(_context));
 
         var created = await service.CreateAsync(new SiegeMatchCreateDto { SiegeLobbyId = 1, SiegeScenarioId = 100 });
         await service.StartAsync(created.Id, new SiegeMatchStartDto

@@ -108,6 +108,8 @@ if (telemetryOptions.Enabled)
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation();
+            // Currency ledger counters and lock-wait histogram (currency-payments Phase 5).
+            metrics.AddMeter(knkwebapi_v2.Services.CurrencyMetrics.MeterName);
             if (string.Equals(telemetryOptions.Exporter, "otlp", StringComparison.OrdinalIgnoreCase)
                 && telemetryOptions.Otlp.EnableMetrics)
             {

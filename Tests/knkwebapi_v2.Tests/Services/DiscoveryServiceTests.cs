@@ -68,11 +68,11 @@ public class DiscoveryServiceTests : IDisposable
         var audit = new AuditLogService(new AuditLogRepository(_db), userRepo);
         var titles = new TitleService(new TitleBracketRepository(_db));
         var memberships = new UserPermissionGroupService(new UserPermissionGroupRepository(_db), userRepo, groupRepo, audit);
+        var currency = new CurrencyService(new CurrencyRepository(_db), userRepo, NullLogger<CurrencyService>.Instance);
+        var titleProgression = new TitleProgressionService(currency, userRepo, titles, memberships, audit);
         var users = new UserService(userRepo, new Mock<IMapper>().Object, new Mock<IPasswordService>().Object,
             new Mock<ILinkCodeService>().Object, titles, memberships, audit, groupRepo,
-            NullLogger<UserService>.Instance, _notifications.Object);
-
-        var currency = new CurrencyService(new CurrencyRepository(_db), userRepo, NullLogger<CurrencyService>.Instance);
+            NullLogger<UserService>.Instance, currency, titleProgression, _notifications.Object);
 
         return new DiscoveryService(repo ?? new DiscoveryRepository(_db), userRepo, users, currency, titles, memberships, audit,
             NullLogger<DiscoveryService>.Instance,
@@ -409,14 +409,15 @@ public class DiscoveryServiceTests : IDisposable
         Assert.Equal(250 + result.TotalCoins + 13500, result.NewCoins);
         var alice = Alice();
         Assert.Equal((result.NewCoins, result.NewGems, result.NewExperiencePoints), (alice.Coins, alice.Gems, alice.ExperiencePoints));
-        Assert.Equal(result.TotalExp, Postings().SelectMany(UserLegs).Where(l => l.Currency == Currency.Experience).Sum(l => l.Amount));
+        var discoveryPostings = Postings().Where(t => t.ReasonCode == CurrencyReasons.DiscoveryReward).ToList();
+        Assert.Equal(result.TotalExp, discoveryPostings.SelectMany(UserLegs).Where(l => l.Currency == Currency.Experience).Sum(l => l.Amount));
         Assert.Single(Audit(), a => a.Action == AuditAction.TitleChanged);
-        // The bonuses (still outside the ledger until currency Phase 2) keep their audit row.
-        var bonus = Assert.Single(Audit(), a => a.Action == AuditAction.BalanceAdjusted);
-        using var details = JsonDocument.Parse(bonus.Details!);
-        Assert.Equal("domain-discovery", details.RootElement.GetProperty("reason").GetString());
-        Assert.Equal((0, 0, 13500, 32), (details.RootElement.GetProperty("coinsDelta").GetInt32(), details.RootElement.GetProperty("experienceDelta").GetInt32(),
-            details.RootElement.GetProperty("titleBonusCoins").GetInt32(), details.RootElement.GetProperty("titleBonusExp").GetInt32()));
+        // The bonuses are one TITLE_BONUS ledger posting per bracket crossed (currency Phase 2),
+        // keyed title-bonus:{userId}:{bracketId} so they are paid once ever; no BalanceAdjusted row.
+        var bonus = Assert.Single(Postings(), t => t.ReasonCode == CurrencyReasons.TitleBonus);
+        Assert.Equal($"title-bonus:{UserId}:{result.TitleChange.ToTitleBracketId}", bonus.IdempotencyKey);
+        Assert.Equal(new List<(Currency, long)> { (Currency.Coins, 13500), (Currency.Gems, 3), (Currency.Experience, 32) }, UserLegs(bonus));
+        Assert.DoesNotContain(Audit(), a => a.Action == AuditAction.BalanceAdjusted);
         _notifications.Verify(q => q.Enqueue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TitleChangeResultDto?>()), Times.Never);
     }
 

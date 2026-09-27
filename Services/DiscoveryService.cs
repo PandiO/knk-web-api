@@ -331,10 +331,11 @@ namespace knkwebapi_v2.Services
                     await _currency.PostAsync(legs, ctx);
                 }
 
-                // Ledger XP postings don't run title progression (until currency Phase 2), so run
-                // it here once for the whole request, from the XP before the first posting - the
-                // XP isn't applied a second time, only the bonuses of the brackets crossed.
-                // notifyPlayer false: the plugin shows the title change from this response.
+                // Ledger XP postings don't run title progression, so run it here once for the
+                // whole request, from the XP before the first posting - the XP isn't applied a
+                // second time. Each bracket crossed pays its bonus as a TITLE_BONUS posting keyed
+                // title-bonus:{userId}:{bracketId} (once ever, also across merged accounts), in
+                // this transaction. notifyPlayer false: the plugin shows it from this response.
                 result.TitleChange = await _userService.ApplyTitleProgressionAsync(userId, previousExperience, BalanceReason,
                     JsonSerializer.Serialize(new { domainIds = rows.Select(r => r.DomainId), source = source.ToString(), correlationId }),
                     actorUserId: null,
