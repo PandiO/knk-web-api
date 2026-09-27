@@ -28,6 +28,12 @@ public interface IPlayerNotificationQueue
     long EnqueueCurrencyAlert(CurrencyAlertNotificationDto alert) =>
         Enqueue(0, null, "", PlayerNotificationTypes.CurrencyAlert, null);
 
+    /// <summary>A DiscoveryReset notification (domain discovery): one of the user's discoveries
+    /// was reset, so the plugin re-syncs its known set. The default only queues the type.</summary>
+    /// <returns>The new notification's id.</returns>
+    long EnqueueDiscoveryReset(int userId, string? uuid, string username, DiscoveryResetNotificationDto reset) =>
+        Enqueue(userId, uuid, username, PlayerNotificationTypes.DiscoveryReset, null);
+
     /// <summary>Every unacknowledged, unexpired notification, oldest first.</summary>
     IReadOnlyList<PlayerNotificationDto> GetPending();
 
