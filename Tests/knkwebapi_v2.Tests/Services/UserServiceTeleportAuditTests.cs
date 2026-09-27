@@ -42,7 +42,9 @@ public class UserServiceTeleportAuditTests
             new Mock<IUserPermissionGroupService>().Object,
             _audit.Object,
             new Mock<IPermissionGroupRepository>().Object,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+            new Mock<ICurrencyService>().Object,
+            new Mock<ITitleProgressionService>().Object);
     }
 
     private static TeleportAuditDto Body(int subject = 1, int? visited = 2) => new()
