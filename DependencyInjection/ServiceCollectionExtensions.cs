@@ -115,6 +115,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ISiegeMatchRepository, SiegeMatchRepository>();
             services.AddScoped<ISiegeMatchService, SiegeMatchService>();
             services.AddScoped<ISiegeMatchGateService, SiegeMatchGateService>();
+            // Road navigation (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
+            services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();
+            services.AddScoped<IRoadNetworkService, RoadNetworkService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();
