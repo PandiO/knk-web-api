@@ -95,9 +95,13 @@ namespace knkwebapi_v2.Services
                 }
             }
 
+            // The source is part of the request: the same key reused for another kit (or
+            // teleport, lootbox, …) at the same price is a different request, not a replay that
+            // reports "paid" for something that never was.
             var canonical = "post|" + reason.Code + "|" + string.Join(";", legs
                 .OrderBy(l => l.UserId).ThenBy(l => l.Currency)
-                .Select(l => $"{l.UserId}:{(int)l.Currency}:{l.Amount}"));
+                .Select(l => $"{l.UserId}:{(int)l.Currency}:{l.Amount}"))
+                + $"|source:{ctx.SourceType}:{ctx.SourceRef}";
 
             return ExecuteAsync(ctx, reason, legs.Select(l => l.UserId), canonical, (users, _) =>
             {
