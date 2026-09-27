@@ -45,6 +45,8 @@ namespace knkwebapi_v2.Repositories
             // the columns that changed. _context.Users.Update() would mark every column modified
             // and write back the whole (possibly stale) row, which is how a presence or profile
             // write used to erase a salary payout or refund a kit purchase (DESIGN.md §1.4 A2).
+            // Coins/Gems/ExperiencePoints can't be written this way at all since currency Phase 2
+            // (PropertySaveBehavior.Ignore); they're listed below for EF InMemory, which ignores that.
             var entry = _context.Entry(user);
             if (entry.State == EntityState.Detached)
             {
@@ -57,7 +59,7 @@ namespace knkwebapi_v2.Repositories
             await _context.SaveChangesAsync();
         }
 
-        /// <summary>Written only by the locked balance paths (SaveBalancesAsync).</summary>
+        /// <summary>Written only by the ledger (balances) and the locked salary path (SaveBalancesAsync).</summary>
         private static readonly string[] BalanceColumns =
         {
             nameof(User.Coins), nameof(User.Gems), nameof(User.ExperiencePoints), nameof(User.LastSalaryPayoutAt)
@@ -349,31 +351,23 @@ namespace knkwebapi_v2.Repositories
 
         public async Task MergeUsersAsync(int primaryUserId, int secondaryUserId)
         {
-            using (var transaction = await _context.Database.BeginTransactionAsync())
+            // Joins the caller's transaction (UserService forfeits the secondary's balance in the
+            // same one), or opens its own.
+            await RunWithUsersLockedAsync(new[] { primaryUserId, secondaryUserId }, async () =>
             {
-                try
-                {
-                    var primaryUser = await _context.Users.FindAsync(primaryUserId);
-                    var secondaryUser = await _context.Users.FindAsync(secondaryUserId);
+                var primaryUser = await _context.Users.FindAsync(primaryUserId);
+                var secondaryUser = await _context.Users.FindAsync(secondaryUserId);
 
-                    if (primaryUser == null || secondaryUser == null)
-                        throw new InvalidOperationException("One or both users not found.");
+                if (primaryUser == null || secondaryUser == null)
+                    throw new InvalidOperationException("One or both users not found.");
 
-                    // Soft delete the secondary user
-                    secondaryUser.IsActive = false;
-                    secondaryUser.DeletedAt = DateTime.UtcNow;
-                    secondaryUser.DeletedReason = $"Merged with user {primaryUserId}";
-                    secondaryUser.ArchiveUntil = DateTime.UtcNow.AddDays(90);
-                    await _context.SaveChangesAsync();
-
-                    await transaction.CommitAsync();
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            }
+                // Soft delete the secondary user
+                secondaryUser.IsActive = false;
+                secondaryUser.DeletedAt = DateTime.UtcNow;
+                secondaryUser.DeletedReason = $"Merged with user {primaryUserId}";
+                secondaryUser.ArchiveUntil = DateTime.UtcNow.AddDays(90);
+                await _context.SaveChangesAsync();
+            });
         }
 
         // ===== NEW METHODS: LINK CODE OPERATIONS =====

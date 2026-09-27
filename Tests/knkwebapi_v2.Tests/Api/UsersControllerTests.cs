@@ -550,7 +550,7 @@ public class UsersControllerTests
     #region Acting user (plugin X-Acting-User-Id header) and balance nodes (KNG-22)
 
     private void SetRequest(ClaimsPrincipal? user = null, string? actingUserId = null, string? apiKey = null, string? configuredKey = null,
-        bool development = false, bool allowUnauthenticated = false)
+        bool development = false, bool allowUnauthenticated = false, string? idempotencyKey = "test-key-1")
     {
         var configuration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
         configuration.Setup(c => c["Security:PluginApiKey"]).Returns(configuredKey);
@@ -565,12 +565,16 @@ public class UsersControllerTests
         if (user != null) httpContext.User = user;
         if (actingUserId != null) httpContext.Request.Headers[UsersController.ActingUserHeader] = actingUserId;
         if (apiKey != null) httpContext.Request.Headers[UsersController.PluginApiKeyHeader] = apiKey;
+        if (idempotencyKey != null) httpContext.Request.Headers["Idempotency-Key"] = idempotencyKey;
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
-        _mockUserService.Setup(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(),
-                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<bool>()))
+        _mockUserService.Setup(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<IReadOnlyList<BalanceChangeDto>>(),
+                It.IsAny<CurrencyContext>(), It.IsAny<string?>(), It.IsAny<bool>()))
             .ReturnsAsync(new BalanceAdjustmentResultDto());
     }
+
+    private static BalanceChangeDto CoinsChange(long amount, knkwebapi_v2.Enums.CurrencyOperation mode = knkwebapi_v2.Enums.CurrencyOperation.Add) =>
+        new() { Currency = knkwebapi_v2.Enums.Currency.Coins, Mode = mode, Amount = amount };
 
     private static ClaimsPrincipal LoggedIn(int userId) =>
         new(new ClaimsIdentity(new[] { new Claim("uid", userId.ToString()) }, "Bearer"));
@@ -585,14 +589,17 @@ public class UsersControllerTests
             });
 
     private Task<IActionResult> AdjustCoins() =>
-        _controller.AdjustBalances(7, new AdjustBalancesDto { CoinsDelta = 500, Reason = "event prize" });
+        _controller.AdjustBalances(7, new AdjustBalancesDto { Changes = { CoinsChange(500) }, Reason = "event prize" });
 
     private void VerifyActor(int? actor) =>
-        _mockUserService.Verify(s => s.AdjustBalancesAsync(7, 500, 0, 0, "event prize", It.IsAny<string?>(), actor, It.IsAny<bool>()), Times.Once);
+        _mockUserService.Verify(s => s.AdjustBalancesAsync(7,
+            It.Is<IReadOnlyList<BalanceChangeDto>>(c => c.Count == 1 && c[0].Amount == 500),
+            It.Is<CurrencyContext>(ctx => ctx.InitiatorUserId == actor && ctx.Reason == "event prize" && ctx.IdempotencyKey == "test-key-1"),
+            It.IsAny<string?>(), It.IsAny<bool>()), Times.Once);
 
     private void VerifyNotAdjusted() =>
-        _mockUserService.Verify(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(),
-            It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<bool>()), Times.Never);
+        _mockUserService.Verify(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<IReadOnlyList<BalanceChangeDto>>(),
+            It.IsAny<CurrencyContext>(), It.IsAny<string?>(), It.IsAny<bool>()), Times.Never);
 
     [Fact]
     public async Task AdjustBalances_NoKeyConfigured_AnonymousCallIsRefused()
@@ -656,10 +663,44 @@ public class UsersControllerTests
         Holds(5, "knk.admin.user.gems", granted: false);
         SetRequest(user: LoggedIn(5));
 
-        var result = await _controller.AdjustBalances(7, new AdjustBalancesDto { CoinsDelta = 1, GemsDelta = 1, Reason = "x" });
+        var result = await _controller.AdjustBalances(7, new AdjustBalancesDto
+        {
+            Changes = { CoinsChange(1), new BalanceChangeDto { Currency = knkwebapi_v2.Enums.Currency.Gems, Mode = knkwebapi_v2.Enums.CurrencyOperation.Add, Amount = 1 } },
+            Reason = "x"
+        });
 
         Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<ObjectResult>(result).StatusCode);
         VerifyNotAdjusted();
+    }
+
+    [Fact]
+    public async Task AdjustBalances_LoggedIn_AnXpIncreaseAlsoNeedsTheCoinsAndGemsNodes()
+    {
+        // KNG-21 smoke test: the title bonuses an XP increase can trigger pay coins and gems, so
+        // raising XP needs all three nodes; lowering it only the XP node.
+        Holds(5, "knk.admin.user.xp", granted: true);
+        Holds(5, "knk.admin.user.coins", granted: true);
+        Holds(5, "knk.admin.user.gems", granted: false);
+        SetRequest(user: LoggedIn(5));
+        _mockUserService.Setup(s => s.GetByIdAsync(7)).ReturnsAsync(new UserDto { Id = 7, ExperiencePoints = 1_000 });
+        Task<IActionResult> Xp(knkwebapi_v2.Enums.CurrencyOperation mode, long amount) => _controller.AdjustBalances(7, new AdjustBalancesDto
+        {
+            Changes = { new BalanceChangeDto { Currency = knkwebapi_v2.Enums.Currency.Experience, Mode = mode, Amount = amount } },
+            Reason = "xp fix"
+        });
+
+        var add = Assert.IsType<ObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Add, 1));
+        Assert.Equal(StatusCodes.Status403Forbidden, add.StatusCode);
+        Assert.Contains("knk.admin.user.gems", System.Text.Json.JsonSerializer.Serialize(add.Value));
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<ObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Set, 1_001)).StatusCode);
+        VerifyNotAdjusted();
+
+        Assert.IsType<OkObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Remove, 1));
+        Assert.IsType<OkObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Set, 1_000));
+        Assert.IsType<OkObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Set, 10));
+
+        Holds(5, "knk.admin.user.gems", granted: true);
+        Assert.IsType<OkObjectResult>(await Xp(knkwebapi_v2.Enums.CurrencyOperation.Add, 1));
     }
 
     [Fact]
@@ -704,13 +745,71 @@ public class UsersControllerTests
     public async Task AdjustBalances_CapExceeded_Returns400WithItsOwnCode()
     {
         SetRequest(apiKey: "secret", configuredKey: "secret");
-        _mockUserService.Setup(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(),
-                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<bool>()))
-            .ThrowsAsync(new BalanceCapExceededException("coins", 999_999_000, 5_000, BalanceLimits.MaxCoins));
+        _mockUserService.Setup(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<IReadOnlyList<BalanceChangeDto>>(),
+                It.IsAny<CurrencyContext>(), It.IsAny<string?>(), It.IsAny<bool>()))
+            .ThrowsAsync(new CurrencyException(CurrencyErrorCode.BalanceCapExceeded, "coins can't go above 999,999,999"));
 
         var result = Assert.IsType<BadRequestObjectResult>(await AdjustCoins());
 
         Assert.Contains("BalanceCapExceeded", System.Text.Json.JsonSerializer.Serialize(result.Value));
+    }
+
+    [Fact]
+    public async Task AdjustBalances_WithoutAnIdempotencyKey_IsRejected()
+    {
+        // Currency Phase 2: a retried balance change must be recognisable, so the key is required.
+        SetRequest(apiKey: "secret", configuredKey: "secret", idempotencyKey: null);
+
+        var result = Assert.IsType<BadRequestObjectResult>(await AdjustCoins());
+
+        Assert.Contains("IdempotencyKeyRequired", System.Text.Json.JsonSerializer.Serialize(result.Value));
+        VerifyNotAdjusted();
+    }
+
+    [Theory]
+    [InlineData("has space")]
+    [InlineData("semi;colon")]
+    public async Task AdjustBalances_MalformedIdempotencyKey_IsRejected(string key)
+    {
+        SetRequest(apiKey: "secret", configuredKey: "secret", idempotencyKey: key);
+
+        Assert.IsType<BadRequestObjectResult>(await AdjustCoins());
+        VerifyNotAdjusted();
+    }
+
+    [Fact]
+    public async Task AdjustBalances_Set_IsPassedThroughForTheServerToApply()
+    {
+        SetRequest(actingUserId: "42", apiKey: "secret", configuredKey: "secret");
+
+        await _controller.AdjustBalances(7, new AdjustBalancesDto
+        {
+            Changes = { CoinsChange(1000, knkwebapi_v2.Enums.CurrencyOperation.Set) },
+            Reason = "reset"
+        });
+
+        _mockUserService.Verify(s => s.AdjustBalancesAsync(7,
+            It.Is<IReadOnlyList<BalanceChangeDto>>(c => c[0].Mode == knkwebapi_v2.Enums.CurrencyOperation.Set && c[0].Amount == 1000),
+            It.Is<CurrencyContext>(ctx => ctx.Initiator == knkwebapi_v2.Enums.CurrencyInitiator.Admin && ctx.IdempotencyScope == CurrencyIdempotencyScopes.Plugin),
+            It.IsAny<string?>(), It.IsAny<bool>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(CurrencyErrorCode.InsufficientFunds, StatusCodes.Status400BadRequest)]
+    [InlineData(CurrencyErrorCode.ExpectedBalanceMismatch, StatusCodes.Status409Conflict)]
+    [InlineData(CurrencyErrorCode.IdempotencyKeyReuse, StatusCodes.Status409Conflict)]
+    [InlineData(CurrencyErrorCode.UserNotFound, StatusCodes.Status404NotFound)]
+    public async Task AdjustBalances_LedgerRefusals_MapToStatusCodes(CurrencyErrorCode code, int status)
+    {
+        SetRequest(apiKey: "secret", configuredKey: "secret");
+        _mockUserService.Setup(s => s.AdjustBalancesAsync(It.IsAny<int>(), It.IsAny<IReadOnlyList<BalanceChangeDto>>(),
+                It.IsAny<CurrencyContext>(), It.IsAny<string?>(), It.IsAny<bool>()))
+            .ThrowsAsync(new CurrencyException(code, "refused"));
+
+        var result = Assert.IsAssignableFrom<ObjectResult>(await AdjustCoins());
+
+        Assert.Equal(status, result.StatusCode);
+        Assert.Contains(code.ToString(), System.Text.Json.JsonSerializer.Serialize(result.Value));
     }
 
     [Fact]
@@ -723,6 +822,67 @@ public class UsersControllerTests
 
         Assert.IsType<UnauthorizedObjectResult>(result);
         _mockUserService.Verify(s => s.GenerateLinkCodeAsync(It.IsAny<int?>()), Times.Never);
+    }
+
+    #endregion
+
+    #region Create with a Minecraft UUID is game-server only (currency final review)
+
+    [Fact]
+    public async Task Create_WithUuid_FromAnAnonymousCaller_Is403_AndTouchesNoAccount()
+    {
+        SetRequest(configuredKey: "secret");
+        var dto = new UserCreateDto { Username = "victim", Uuid = "11111111-2222-3333-4444-555555555555" };
+
+        var result = await _controller.Create(dto);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+        _mockUserService.Verify(s => s.GetByUsernameAsync(It.IsAny<string>()), Times.Never);
+        _mockUserService.Verify(s => s.UpdateAsync(It.IsAny<int>(), It.IsAny<UserDto>(), It.IsAny<int?>()), Times.Never);
+        _mockUserService.Verify(s => s.CreateAsync(It.IsAny<UserCreateDto>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_WithUuid_FromALoggedInWebUser_Is403()
+    {
+        SetRequest(user: LoggedIn(4), configuredKey: "secret");
+
+        var result = await _controller.Create(new UserCreateDto { Username = "victim", Uuid = "11111111-2222-3333-4444-555555555555" });
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WithUuid_FromTheGameServer_LinksThePreRegisteredAccount()
+    {
+        SetRequest(apiKey: "secret", configuredKey: "secret");
+        _mockUserService.Setup(s => s.GetByUsernameAsync("joiner")).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Email = "j@example.com" });
+        _mockUserService.Setup(s => s.GetByIdAsync(12)).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
+
+        var result = await _controller.Create(new UserCreateDto { Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
+
+        Assert.IsType<CreatedAtRouteResult>(result);
+        _mockUserService.Verify(s => s.UpdateAsync(12, It.Is<UserDto>(u => u.Uuid == "11111111-2222-3333-4444-555555555555"), It.IsAny<int?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Create_WithoutUuid_StaysOpenForWebSignUp()
+    {
+        SetRequest(configuredKey: "secret");
+        _mockUserService.Setup(s => s.ValidateUserCreationAsync(It.IsAny<UserCreateDto>(), It.IsAny<int?>())).ReturnsAsync((true, null));
+        _mockUserService.Setup(s => s.CheckUsernameTakenAsync("newbie", null)).ReturnsAsync((false, null));
+        _mockUserService.Setup(s => s.CheckEmailTakenAsync("n@example.com", null)).ReturnsAsync((false, null));
+        _mockUserService.Setup(s => s.CreateAsync(It.IsAny<UserCreateDto>())).ReturnsAsync(new UserDto { Id = 13, Username = "newbie", Email = "n@example.com", Uuid = "u" });
+
+        var result = await _controller.Create(new UserCreateDto
+        {
+            Username = "newbie",
+            Email = "n@example.com",
+            Password = "SecurePass123!",
+            PasswordConfirmation = "SecurePass123!"
+        });
+
+        Assert.IsType<CreatedAtRouteResult>(result);
     }
 
     #endregion

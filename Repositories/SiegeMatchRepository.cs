@@ -157,16 +157,5 @@ namespace knkwebapi_v2.Repositories
         {
             _context.SiegeMatchGateSnapshots.RemoveRange(snapshots);
         }
-
-        public async Task LockUsersAsync(IEnumerable<int> userIds)
-        {
-            var ids = userIds.Distinct().OrderBy(id => id).ToList();
-            if (ids.Count == 0 || !_context.Database.IsRelational()) return;
-            // ints only, so the joined list can't inject anything.
-#pragma warning disable EF1002
-            await _context.Database.ExecuteSqlRawAsync(
-                $"SELECT Id FROM users WHERE Id IN ({string.Join(",", ids)}) FOR UPDATE");
-#pragma warning restore EF1002
-        }
     }
 }

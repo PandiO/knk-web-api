@@ -23,6 +23,7 @@ public class SalaryServiceTests
     private readonly Mock<ISalaryConfigurationService> _mockConfigService;
     private readonly Mock<ITitleService> _mockTitleService;
     private readonly Mock<IAuditLogService> _mockAuditLogService;
+    private readonly FakeCurrencyService _currency;
     private readonly SalaryService _service;
 
     public SalaryServiceTests()
@@ -32,7 +33,8 @@ public class SalaryServiceTests
         _mockConfigService = new Mock<ISalaryConfigurationService>();
         _mockTitleService = new Mock<ITitleService>();
         _mockAuditLogService = new Mock<IAuditLogService>();
-        _service = new SalaryService(_mockUserRepo.Object, _mockMembershipRepo.Object, _mockConfigService.Object, _mockTitleService.Object, _mockAuditLogService.Object);
+        _currency = new FakeCurrencyService(id => _mockUserRepo.Object.GetByIdAsync(id).Result);
+        _service = new SalaryService(_mockUserRepo.Object, _mockMembershipRepo.Object, _mockConfigService.Object, _mockTitleService.Object, _mockAuditLogService.Object, _currency);
         // The row lock is a DB concern; here it just runs the work (see UserRepository).
         _mockUserRepo.Setup(r => r.RunWithUsersLockedAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<Func<Task>>()))
             .Returns((IEnumerable<int> _, Func<Task> work) => work());
@@ -194,7 +196,7 @@ public class SalaryServiceTests
         Assert.Equal(275, result.AmountPaid);
         Assert.Equal(325, result.NewCoinsBalance); // 50 existing + 275
         Assert.Equal(50 + 275, user.Coins);
-        _mockUserRepo.Verify(r => r.SaveBalancesAsync(It.Is<User>(u => u.Coins == 325)), Times.Once);
+        _mockUserRepo.Verify(r => r.SaveBalancesAsync(user), Times.Once);
     }
 
     [Fact]
@@ -327,5 +329,46 @@ public class SalaryServiceTests
         Assert.True(result.LastSalaryPayoutAt >= before && result.LastSalaryPayoutAt <= after);
         Assert.Equal(result.LastSalaryPayoutAt, user.LastSalaryPayoutAt);
         Assert.NotEqual(lastPayout, user.LastSalaryPayoutAt);
+    }
+
+    // ===== Currency ledger (currency-payments Phase 2) =====
+
+    [Fact]
+    public async Task PayOutAsync_PostsASalaryGrantKeyedByThePreviousPayoutTime()
+    {
+        var lastPayout = new DateTime(2026, 9, 26, 10, 0, 0, DateTimeKind.Utc);
+        var user = MakeUser(1, lastPayout, coins: 100);
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+
+        var result = await _service.PayOutAsync(1);
+
+        var posting = Assert.Single(_currency.Postings);
+        Assert.Equal(CurrencyReasons.Salary, posting.Ctx.ReasonCode);
+        Assert.Equal("salary:1:2026-09-26T10:00:00.0000000Z", posting.Ctx.IdempotencyKey);
+        Assert.Equal(CurrencyIdempotencyScopes.System, posting.Ctx.IdempotencyScope);
+        Assert.Equal(SalaryService.Component, posting.Ctx.InitiatorComponent);
+        var leg = Assert.Single(posting.Legs);
+        Assert.Equal((Enums.Currency.Coins, (long)result.AmountPaid), (leg.Currency, leg.Amount));
+        Assert.Equal(100 + result.AmountPaid, result.NewCoinsBalance);
+        // The audit entry links the ledger row.
+        _mockAuditLogService.Verify(a => a.RecordAsync(null, 1, Enums.AuditAction.SalaryPayout,
+            It.Is<string?>(d => d!.Contains(posting.Result.PublicId))), Times.Once);
+    }
+
+    [Fact]
+    public async Task PayOutAsync_ZeroSalary_AdvancesTheClockWithoutAPosting()
+    {
+        var user = MakeUser(1, DateTime.UtcNow.AddHours(-2), coins: 100);
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockTitleService.Setup(t => t.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>()))
+            .ReturnsAsync(new TitleResolutionDto { TitleBracketId = 0, Salary = 0 });
+
+        var result = await _service.PayOutAsync(1);
+
+        Assert.True(result.Paid);
+        Assert.Equal(0, result.AmountPaid);
+        Assert.Empty(_currency.Postings);
+        Assert.Equal(100, user.Coins);
+        _mockUserRepo.Verify(r => r.SaveBalancesAsync(user), Times.Once);
     }
 }
