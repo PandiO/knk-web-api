@@ -404,7 +404,7 @@ namespace knkwebapi_v2.Services
             // leaves ledger rows for a user the reconciler can no longer find: a permanent R1
             // mismatch that switches player transfers off again every day (currency DESIGN.md
             // §3.1 invariants 1 and 6, §3.9). An account with money or money history stays;
-            // merge it into another account instead (MERGE_FORFEIT, soft delete).
+            // merge it into another account instead (MERGE_FORFEIT/MERGE_CARRYOVER, soft delete).
             var history = await _currency.GetHistoryAsync(new LedgerQuery { UserId = id, Page = 1, PageSize = 1 });
             if (existing.Coins != 0 || existing.Gems != 0 || history.TotalCount > 0)
             {
@@ -976,33 +976,65 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>
-        /// Soft-deletes the secondary account and forfeits its coins and gems as one
-        /// MERGE_FORFEIT ledger posting (currency DESIGN.md §5 Q6: forfeited, not added to the
-        /// primary — that would turn alt accounts into a funnel — but recorded instead of left
-        /// orphaned on a deleted row, audit A10). XP is progression, not currency, and stays on
-        /// the archived row. Both rows are locked; the posting and the soft delete commit together.
+        /// Soft-deletes the secondary account; the surviving (primary) account ends with the
+        /// higher of the two balances of each currency - coins, gems and XP separately (developer
+        /// decision, KNG-21 smoke test; supersedes the forfeit-only rule of DESIGN.md §5 Q6). In
+        /// the ledger: one MERGE_FORFEIT posting zeroes the secondary's full balances (key
+        /// <c>merge:{secondaryId}</c>), and one MERGE_CARRYOVER posting credits the survivor with
+        /// secondary − primary wherever that is positive (key <c>merge-carry:{secondaryId}</c>).
+        /// An XP carry-over runs title progression once; a bracket's bonus the survivor was
+        /// already paid is not paid again (once per bracket, ever). Both rows are locked; the
+        /// postings, the bonuses and the soft delete commit together.
         /// </summary>
         private async Task MergeWithForfeitAsync(int primaryUserId, int secondaryUserId)
         {
+            User primary = null!;
+            TitleChangeResultDto? titleChange = null;
             await _repo.RunWithUsersLockedAsync(new[] { primaryUserId, secondaryUserId }, async () =>
             {
+                primary = await _repo.GetByIdAsync(primaryUserId)
+                    ?? throw new KeyNotFoundException($"Primary user with ID {primaryUserId} not found.");
                 var secondary = await _repo.GetByIdAsync(secondaryUserId)
                     ?? throw new KeyNotFoundException($"Secondary user with ID {secondaryUserId} not found.");
-                var legs = new List<CurrencyLeg>();
-                if (secondary.Coins > 0) legs.Add(new CurrencyLeg(secondaryUserId, Currency.Coins, -secondary.Coins));
-                if (secondary.Gems > 0) legs.Add(new CurrencyLeg(secondaryUserId, Currency.Gems, -secondary.Gems));
-                if (legs.Count > 0)
+                var balances = new[]
                 {
-                    var ctx = CurrencyContext.ForSystem("UserService", CurrencyReasons.MergeForfeit, $"merge:{secondaryUserId}",
-                        $"Account merged into user {primaryUserId}") with
+                    (Currency: Currency.Coins, Primary: (long)primary.Coins, Secondary: (long)secondary.Coins),
+                    (Currency: Currency.Gems, Primary: (long)primary.Gems, Secondary: (long)secondary.Gems),
+                    (Currency: Currency.Experience, Primary: (long)primary.ExperiencePoints, Secondary: (long)secondary.ExperiencePoints)
+                };
+
+                var forfeit = balances.Where(b => b.Secondary > 0)
+                    .Select(b => new CurrencyLeg(secondaryUserId, b.Currency, -b.Secondary)).ToList();
+                if (forfeit.Count > 0)
+                {
+                    await _currency.PostAsync(forfeit, CurrencyContext.ForSystem("UserService", CurrencyReasons.MergeForfeit,
+                        CurrencyReasons.MergeForfeitKey(secondaryUserId), $"Account merged into user {primaryUserId}") with
                     {
                         SourceType = "User",
                         SourceRef = primaryUserId.ToString()
-                    };
-                    await _currency.PostAsync(legs, ctx);
+                    });
+                }
+
+                var carry = balances.Where(b => b.Secondary > b.Primary)
+                    .Select(b => new CurrencyLeg(primaryUserId, b.Currency, b.Secondary - b.Primary)).ToList();
+                if (carry.Count > 0)
+                {
+                    var posting = await _currency.PostAsync(carry, CurrencyContext.ForSystem("UserService", CurrencyReasons.MergeCarryover,
+                        CurrencyReasons.MergeCarryoverKey(secondaryUserId), $"Higher balance kept from merged user {secondaryUserId}") with
+                    {
+                        SourceType = "User",
+                        SourceRef = secondaryUserId.ToString()
+                    });
+                    titleChange = (await _titleProgression.ApplyForPostingAsync(posting, null)).GetValueOrDefault(primaryUserId);
                 }
                 await _repo.MergeUsersAsync(primaryUserId, secondaryUserId);
             });
+
+            // Only after the commit, as for a staff XP change.
+            if (titleChange != null)
+            {
+                _notificationQueue?.Enqueue(primaryUserId, primary.Uuid, primary.Username, PlayerNotificationTypes.TitleChanged, titleChange);
+            }
         }
 
         // ===== HELPER METHODS =====

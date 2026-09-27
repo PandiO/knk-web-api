@@ -1159,6 +1159,10 @@ namespace knkwebapi_v2.Controllers
         /// Keeps the primary account and soft-deletes the secondary account.
         /// Primary account retains all its data (winner takes all strategy).
         /// Foreign key relationships are updated to point to primary account.
+        /// Balances: the primary ends with the higher of the two accounts' coins, gems and XP,
+        /// each separately; the ledger records the secondary's balances as MERGE_FORFEIT and any
+        /// increase of the primary as MERGE_CARRYOVER (an XP increase can promote the primary,
+        /// paying only bonuses it wasn't paid before).
         /// </remarks>
         /// <param name="request">Merge request with primary and secondary user IDs</param>
         /// <returns>Merged user account</returns>
@@ -1322,7 +1326,9 @@ namespace knkwebapi_v2.Controllers
         /// Requires a valid link code generated from Minecraft (/account link command).
         /// 
         /// If the link code points to an existing Minecraft account (with UUID), 
-        /// the system will automatically merge the accounts (keep web app account as primary).
+        /// the system will automatically merge the accounts (keep web app account as primary);
+        /// the web app account keeps the higher of the two balances of each currency, as for
+        /// POST merge.
         /// </remarks>
         /// <param name="request">Link request with link code only</param>
         /// <returns>Updated user account with linked Minecraft UUID</returns>

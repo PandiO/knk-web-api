@@ -397,6 +397,50 @@ public class LedgerRoutingMySqlTests : IClassFixture<MySqlTestDatabase>
         await AssertReconciledAsync(id, other);
     }
 
+    [MySqlFact]
+    public async Task Merge_SurvivorKeepsTheHigherBalanceOfEachCurrency_WithoutRepayingItsTitleBonus()
+    {
+        // KNG-21 developer decision. The survivor was promoted to Peasant (paid) and demoted
+        // again; the alt has more gems and XP, but fewer coins.
+        var main = await SignUpAsync("mmain");
+        var alt = await SignUpAsync("malt");
+        async Task Adjust(int id, Currency currency, CurrencyOperation mode, long amount)
+        {
+            await using var r = NewRequest();
+            await r.Users.AdjustBalancesAsync(id, Change(currency, mode, amount), Staff(Name("m")));
+        }
+        await Adjust(main, Currency.Coins, CurrencyOperation.Set, 20_000);
+        await Adjust(main, Currency.Experience, CurrencyOperation.Add, 2_500); // +13,500 coins, +3 gems, +32 XP
+        await Adjust(main, Currency.Experience, CurrencyOperation.Set, 0);
+        await Adjust(alt, Currency.Experience, CurrencyOperation.Add, 3_000);  // alt's own Peasant bonus
+        await Adjust(alt, Currency.Gems, CurrencyOperation.Add, 10);
+        var before = (await ReloadAsync(main), await ReloadAsync(alt));
+        Assert.Equal((33_500, 53, 0), (before.Item1.Coins, before.Item1.Gems, before.Item1.ExperiencePoints));
+        Assert.Equal((13_750, 63, 3_032), (before.Item2.Coins, before.Item2.Gems, before.Item2.ExperiencePoints));
+
+        await using (var r = NewRequest())
+        {
+            await r.Users.MergeAccountsAsync(main, alt);
+        }
+
+        var survivor = await ReloadAsync(main);
+        Assert.Equal((33_500, 63, 3_032), (survivor.Coins, survivor.Gems, survivor.ExperiencePoints));
+        var archived = await ReloadAsync(alt);
+        Assert.Equal((0, 0, 0), (archived.Coins, archived.Gems, archived.ExperiencePoints));
+        Assert.NotNull(archived.DeletedAt);
+
+        var forfeit = Assert.Single(await TransactionsForAsync(alt), t => t.ReasonCode == CurrencyReasons.MergeForfeit);
+        Assert.Equal($"merge:{alt}", forfeit.IdempotencyKey);
+        var mainTx = await TransactionsForAsync(main);
+        var carry = Assert.Single(mainTx, t => t.ReasonCode == CurrencyReasons.MergeCarryover);
+        Assert.Equal($"merge-carry:{alt}", carry.IdempotencyKey);
+        Assert.Equal(forfeit.Id + 1, carry.Id);
+        Assert.Equal(new[] { (Currency.Gems, 10L), (Currency.Experience, 3_032L) },
+            carry.Entries.Where(e => e.UserId == main).OrderBy(e => e.Currency).Select(e => (e.Currency, e.Amount)));
+        Assert.Single(mainTx, t => t.ReasonCode == CurrencyReasons.TitleBonus); // back to Peasant: paid once, ever
+        await AssertReconciledAsync(main, alt);
+    }
+
     // ===== The acceptance script =====
 
     [MySqlFact]

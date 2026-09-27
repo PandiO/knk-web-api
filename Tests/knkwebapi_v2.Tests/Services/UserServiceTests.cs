@@ -604,14 +604,71 @@ public class UserServiceTests
         Assert.Equal(primaryUserId, result.Id);
         _mockUserRepository.Verify(r => r.MergeUsersAsync(primaryUserId, secondaryUserId), Times.Once);
 
-        // Currency Phase 2 (DESIGN.md §5 Q6): the secondary's coins and gems are forfeited as one
-        // MERGE_FORFEIT posting (not moved to the primary); XP stays on the archived row.
+        // KNG-21: the secondary's full balances are zeroed by one MERGE_FORFEIT posting; the
+        // primary already has more of everything, so nothing is carried over.
         var forfeit = Assert.Single(_currency.Postings);
         Assert.Equal(CurrencyReasons.MergeForfeit, forfeit.Ctx.ReasonCode);
         Assert.Equal("merge:2", forfeit.Ctx.IdempotencyKey);
-        Assert.Equal((0, 0, 1000), (secondaryUser.Coins, secondaryUser.Gems, secondaryUser.ExperiencePoints));
-        Assert.Equal((500, 100), (primaryUser.Coins, primaryUser.Gems));
+        Assert.Equal((0, 0, 0), (secondaryUser.Coins, secondaryUser.Gems, secondaryUser.ExperiencePoints));
+        Assert.Equal((500, 100, 5000), (primaryUser.Coins, primaryUser.Gems, primaryUser.ExperiencePoints));
         _mockUserRepository.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => ids.OrderBy(i => i).SequenceEqual(new[] { 1, 2 })), It.IsAny<Func<Task>>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task MergeAccountsAsync_PrimaryKeepsTheHigherBalanceOfEachCurrency()
+    {
+        // KNG-21 developer decision: max(primary, secondary) per currency, separately.
+        var primary = new User { Id = 1, Username = "primary", Coins = 500, Gems = 5, ExperiencePoints = 100 };
+        var secondary = new User { Id = 2, Username = "secondary", Coins = 100, Gems = 40, ExperiencePoints = 700 };
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(primary);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(secondary);
+        _mockMapper.Setup(m => m.Map<UserDto>(It.IsAny<User>())).Returns(new UserDto { Id = 1, Username = "primary" });
+        _mockTitleService.Setup(s => s.GetAllOrderedAsync()).ReturnsAsync(new List<TitleBracket>
+        {
+            new() { Id = 1, MaleName = "Serf", FemaleName = "Serf", MinExperience = 0 },
+            new() { Id = 2, MaleName = "Peasant", FemaleName = "Peasant", MinExperience = 500, CoinBonus = 30 }
+        });
+
+        await _userService.MergeAccountsAsync(1, 2);
+
+        Assert.Equal((0, 0, 0), (secondary.Coins, secondary.Gems, secondary.ExperiencePoints));
+        // Gems 5 → 40 and XP 100 → 700 carried over; XP 700 reaches Peasant, paying its bonus once.
+        Assert.Equal((500 + 30, 40, 700), (primary.Coins, primary.Gems, primary.ExperiencePoints));
+        Assert.Collection(_currency.Postings,
+            p =>
+            {
+                Assert.Equal((CurrencyReasons.MergeForfeit, "merge:2"), (p.Ctx.ReasonCode, p.Ctx.IdempotencyKey));
+                Assert.Equal(new[] { (2, Enums.Currency.Coins, -100L), (2, Enums.Currency.Gems, -40L), (2, Enums.Currency.Experience, -700L) },
+                    p.Legs.Select(l => (l.UserId, l.Currency, l.Amount)));
+            },
+            p =>
+            {
+                Assert.Equal((CurrencyReasons.MergeCarryover, "merge-carry:2"), (p.Ctx.ReasonCode, p.Ctx.IdempotencyKey));
+                Assert.Equal(new[] { (1, Enums.Currency.Gems, 35L), (1, Enums.Currency.Experience, 600L) },
+                    p.Legs.Select(l => (l.UserId, l.Currency, l.Amount)));
+            },
+            p => Assert.Equal((CurrencyReasons.TitleBonus, "title-bonus:1:2"), (p.Ctx.ReasonCode, p.Ctx.IdempotencyKey)));
+    }
+
+    [Fact]
+    public async Task LinkMinecraftAccountAsync_MergingTheMinecraftAccount_KeepsTheHigherBalances()
+    {
+        // The Minecraft-account link merge takes the same path as POST merge (KNG-21).
+        var web = new User { Id = 1, Username = "web", Coins = 10, Gems = 60 };
+        var minecraft = new User { Id = 2, Username = "mc", Uuid = "uuid-2", Coins = 900, Gems = 1 };
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(web);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(minecraft);
+        _mockMapper.Setup(m => m.Map<UserDto>(It.IsAny<User>())).Returns((object u) => new UserDto { Id = ((User)u).Id, Uuid = ((User)u).Uuid });
+        var code = new LinkCode { Code = "ABC123", UserId = 2 };
+        _mockLinkCodeService.Setup(l => l.ValidateLinkCodeAsync("ABC123")).ReturnsAsync((true, code, (string?)null));
+        _mockLinkCodeService.Setup(l => l.ConsumeLinkCodeAsync("ABC123")).ReturnsAsync((true, code, (string?)null));
+
+        await _userService.LinkMinecraftAccountAsync(1, "ABC123");
+
+        Assert.Equal((900, 60), (web.Coins, web.Gems));
+        Assert.Equal((0, 0), (minecraft.Coins, minecraft.Gems));
+        Assert.Equal(new[] { CurrencyReasons.MergeForfeit, CurrencyReasons.MergeCarryover }, _currency.Postings.Select(p => p.Ctx.ReasonCode));
+        _mockUserRepository.Verify(r => r.MergeUsersAsync(1, 2), Times.Once);
     }
 
     [Fact]

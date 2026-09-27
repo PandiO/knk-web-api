@@ -115,8 +115,19 @@ namespace knkwebapi_v2.Services
         /// <summary>Undo of an earlier transaction. Key: <c>reverse:{transactionId}</c>.</summary>
         public const string Reversal = "REVERSAL";
 
-        /// <summary>Secondary account's balance forfeited on account merge (DESIGN.md §5 Q6). Key: <c>merge:{secondaryUserId}</c>.</summary>
+        /// <summary>Secondary account's full balances (coins, gems, XP) zeroed on account merge. Key: <c>merge:{secondaryUserId}</c>.</summary>
         public const string MergeForfeit = "MERGE_FORFEIT";
+
+        /// <summary>
+        /// On account merge the survivor keeps the higher balance of each currency (KNG-21): it is
+        /// credited secondary − primary where positive, in the same transaction as the
+        /// MERGE_FORFEIT. Key: <c>merge-carry:{secondaryUserId}</c>.
+        /// </summary>
+        public const string MergeCarryover = "MERGE_CARRYOVER";
+
+        public static string MergeForfeitKey(int secondaryUserId) => $"merge:{secondaryUserId}";
+
+        public static string MergeCarryoverKey(int secondaryUserId) => $"merge-carry:{secondaryUserId}";
 
         private static readonly Dictionary<string, CurrencyReasonInfo> Table = new()
         {
@@ -139,6 +150,7 @@ namespace knkwebapi_v2.Services
             [AdminSet] = new(AdminSet, CurrencyTransactionKind.AdminAdjust, CurrencyReasonDirection.Set, SysAdmin, "Staff set balance"),
             [Reversal] = new(Reversal, CurrencyTransactionKind.Reversal, CurrencyReasonDirection.Special, null, "Reversal"),
             [MergeForfeit] = new(MergeForfeit, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Debit, SysMerge, "Balance forfeited on account merge"),
+            [MergeCarryover] = new(MergeCarryover, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Credit, SysMerge, "Higher balance kept on account merge"),
         };
 
         /// <summary>Every known reason, for docs, dropdowns and tests.</summary>

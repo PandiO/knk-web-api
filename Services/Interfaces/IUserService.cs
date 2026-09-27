@@ -156,9 +156,11 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// Merge two user accounts.
-        /// Keeps primary account intact, soft-deletes secondary account. The secondary account's
-        /// coins and gems are forfeited as a MERGE_FORFEIT ledger posting (currency DESIGN.md §5
-        /// Q6), in the same transaction as the soft delete.
+        /// Keeps primary account intact, soft-deletes secondary account. The primary ends with the
+        /// higher of the two balances of each currency (coins, gems, XP separately): the
+        /// secondary's balances are zeroed by a MERGE_FORFEIT posting and the primary is credited
+        /// the difference where the secondary had more (MERGE_CARRYOVER; an XP carry-over runs
+        /// title progression once), in the same transaction as the soft delete (KNG-21).
         /// </summary>
         Task<UserDto> MergeAccountsAsync(int primaryUserId, int secondaryUserId);
 
