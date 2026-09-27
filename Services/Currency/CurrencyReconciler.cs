@@ -33,6 +33,24 @@ namespace knkwebapi_v2.Services
         /// <summary>All mismatches (empty = reconciled), optionally for one user only.</summary>
         public async Task<List<CurrencyMismatchDto>> FindMismatchesAsync(int? userId = null, CancellationToken ct = default)
         {
+            // Every read below must see the same moment. The balances and the legs are separate
+            // queries; read one after the other in autocommit mode, a posting committed in
+            // between shows up as a leg whose BalanceAfter the (older) users column doesn't have
+            // yet - a false R1 mismatch that switches player transfers off. A REPEATABLE READ
+            // transaction gives all of them one InnoDB snapshot (taken at the first read) and
+            // holds no locks, so postings carry on meanwhile.
+            if (!_context.Database.IsRelational() || _context.Database.CurrentTransaction != null)
+            {
+                return await FindMismatchesCoreAsync(userId, ct);
+            }
+            await using var snapshot = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
+            var result = await FindMismatchesCoreAsync(userId, ct);
+            await snapshot.CommitAsync(ct);
+            return result;
+        }
+
+        private async Task<List<CurrencyMismatchDto>> FindMismatchesCoreAsync(int? userId, CancellationToken ct)
+        {
             var mismatches = new List<CurrencyMismatchDto>();
 
             // R2: every transaction balances per currency.

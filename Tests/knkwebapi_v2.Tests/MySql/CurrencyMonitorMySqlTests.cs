@@ -213,3 +213,84 @@ public class CurrencyMonitorRulesMySqlTests : IClassFixture<MySqlTestDatabase>
         }
     }
 }
+
+/// <summary>
+/// The reconciler reads the users columns and the ledger legs in separate queries. A posting
+/// that commits between them must not look like a mismatch (a false R1 alert switches player
+/// transfers off for everyone): all its reads come from one snapshot.
+/// </summary>
+[Trait("Category", "requires-mysql")]
+public class CurrencyReconcilerSnapshotMySqlTests : IClassFixture<MySqlTestDatabase>
+{
+    private readonly MySqlTestDatabase _db;
+
+    public CurrencyReconcilerSnapshotMySqlTests(MySqlTestDatabase db)
+    {
+        _db = db;
+    }
+
+    /// <summary>Runs <see cref="Between"/> once, right after the reconciler's users-balance query.</summary>
+    private sealed class AfterBalancesRead : Microsoft.EntityFrameworkCore.Diagnostics.DbCommandInterceptor
+    {
+        public Func<Task>? Between { get; set; }
+
+        public override async ValueTask<System.Data.Common.DbDataReader> ReaderExecutedAsync(System.Data.Common.DbCommand command,
+            Microsoft.EntityFrameworkCore.Diagnostics.CommandExecutedEventData eventData, System.Data.Common.DbDataReader result,
+            CancellationToken cancellationToken = default)
+        {
+            if (Between != null && command.CommandText.Contains("`users`") && command.CommandText.Contains("`ExperiencePoints`")
+                && !command.CommandText.Contains("currency_entries"))
+            {
+                var between = Between;
+                Between = null;
+                await between();
+            }
+            return result;
+        }
+    }
+
+    [MySqlFact]
+    public async Task APostingCommittedMidRun_IsNotReportedAsAMismatch()
+    {
+        int id;
+        await using (var ctx = _db.NewContext())
+        {
+            var user = new User { Username = "s" + Guid.NewGuid().ToString("N")[..12], CreatedAt = DateTime.UtcNow.AddDays(-30) };
+            ctx.Users.Add(user);
+            await ctx.SaveChangesAsync();
+            id = user.Id;
+        }
+        static CurrencyService Currency(KnKDbContext ctx) =>
+            new(new CurrencyRepository(ctx), new UserRepository(ctx), NullLogger<CurrencyService>.Instance);
+        await using (var ctx = _db.NewContext())
+        {
+            await Currency(ctx).GrantAsync(id, Enums.Currency.Coins, 1_000, CurrencyContext.ForSystem("MySqlTest", CurrencyReasons.EventReward, $"event:s1:{id}"));
+        }
+
+        var interceptor = new AfterBalancesRead
+        {
+            Between = async () =>
+            {
+                await using var other = _db.NewContext();
+                await Currency(other).GrantAsync(id, Enums.Currency.Coins, 250, CurrencyContext.ForSystem("MySqlTest", CurrencyReasons.EventReward, $"event:s2:{id}"));
+            }
+        };
+        var options = new DbContextOptionsBuilder<KnKDbContext>()
+            .UseMySql(_db.ConnectionString, ServerVersion.AutoDetect(_db.ConnectionString))
+            .AddInterceptors(interceptor)
+            .Options;
+        await using (var ctx = new KnKDbContext(options))
+        {
+            var mismatches = await new CurrencyReconciler(ctx).FindMismatchesAsync();
+            Assert.Null(interceptor.Between); // the posting did land mid-run
+            Assert.Empty(mismatches);
+        }
+
+        // Both postings are there, and a fresh run reconciles them.
+        await using (var ctx = _db.NewContext())
+        {
+            Assert.Equal(1_250, (await ctx.Users.AsNoTracking().SingleAsync(u => u.Id == id)).Coins);
+            Assert.Empty(await new CurrencyReconciler(ctx).FindMismatchesAsync());
+        }
+    }
+}
