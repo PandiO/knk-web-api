@@ -183,11 +183,6 @@ namespace knkwebapi_v2.Repositories
             return await _context.LootboxClaims.AsNoTracking().FirstOrDefaultAsync(c => c.IdempotencyKey == idempotencyKey);
         }
 
-        public async Task<bool> SpawnHasClaimAsync(int spawnId)
-        {
-            return await _context.LootboxClaims.AnyAsync(c => c.LootboxSpawnId == spawnId);
-        }
-
         public async Task<int> CountClaimsAsync(int userId, DateTime from, DateTime to, int? lootboxTypeId = null)
         {
             return await _context.LootboxClaims.CountAsync(c =>

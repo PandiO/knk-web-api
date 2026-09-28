@@ -8,8 +8,9 @@ namespace knkwebapi_v2.Controllers
 {
     /// <summary>
     /// World boxes at runtime (docs/specs/lootboxes/DESIGN.md §3.3, IMPLEMENTATION_PLAN.md Phase 2). The plugin reads
-    /// the runtime config and active boxes, asks to spawn, and claims; the API decides whether a box may spawn, what
-    /// it is, and what it gives. Everything is game-server-only (<see cref="RequirePluginServiceAttribute"/>) except
+    /// the runtime config and active boxes, asks to spawn, and picks boxes up (DESIGN.md §3.8; the player opens the
+    /// resulting token item through <c>api/LootboxTokens/{token}/redeem</c>); the API decides whether a box may spawn,
+    /// what it is, and what it gives. Everything is game-server-only (<see cref="RequirePluginServiceAttribute"/>) except
     /// the active list and despawn, which the web app's admin page uses too. The staff member behind an admin action
     /// is the plugin's X-Acting-User-Id header (<c>HttpContext.GetKnkCaller()</c>), never a body field.
     /// </summary>
@@ -71,19 +72,6 @@ namespace knkwebapi_v2.Controllers
         {
             return await LootboxResults.Run(this, async () =>
                 Ok(await _service.DespawnAsync(id, HttpContext.GetKnkCaller().ActorUserId)));
-        }
-
-        /// <summary>
-        /// 200 <see cref="LootboxClaimResultDto"/> (<c>replay=true</c> for a repeated idempotency key); 409
-        /// <c>{code: AlreadyClaimed|Expired|Removed|TokenMismatch|Disabled|Frozen|UserInactive|EmptyPool|IdempotencyKeyReused}</c>;
-        /// 429 <c>{code: DailyLimit, scope: Global|Type, limit, resetsAt}</c>.
-        /// </summary>
-        [HttpPost("{id:int}/claim")]
-        [RequirePluginService]
-        public async Task<IActionResult> Claim(int id, [FromBody] LootboxClaimRequestDto request)
-        {
-            if (request == null) return BadRequest();
-            return await LootboxResults.Run(this, async () => Ok(await _service.ClaimAsync(id, request)));
         }
 
         /// <summary>

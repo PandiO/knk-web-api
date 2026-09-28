@@ -15,11 +15,15 @@ using Xunit;
 namespace knkwebapi_v2.Tests.Services.Lootbox;
 
 /// <summary>
-/// Lootboxes Phase 2 (docs/specs/lootboxes/IMPLEMENTATION_PLAN.md "LootboxRuntimeServiceTests"): spawn caps, the claim
-/// transaction (instance mint, idempotent replay, double and concurrent claims, expiry, token), the per-UTC-day cap,
-/// admin spawn/give, delivery and pending, and the in-game area endpoints. EF InMemory with the real repositories and
-/// services, a scripted RNG and a pinned clock. InMemory enforces the Status concurrency token but not unique indexes;
-/// those were checked on MySQL 8 (see the phase notes).
+/// Lootboxes Phase 2 (docs/specs/lootboxes/IMPLEMENTATION_PLAN.md "LootboxRuntimeServiceTests"): spawn caps, despawn,
+/// a world box picked up and opened (the instance mint with default and rolled enchantments), the per-UTC-day open cap
+/// (day boundaries, whole-second timestamps, per type, admin gives not counted), admin spawn/give, delivery and pending,
+/// the drop log, and the in-game area endpoints. A world box is opened the way the plugin does it since smoke test
+/// round 1: pickup, then token redeem (the old open-on-the-spot claim endpoint is gone). Pickup rules (replay, races,
+/// expiry, token, frozen player, pickup cap) are in <c>LootboxPickupTests</c>, redeem rules (idempotent retry, duplicates,
+/// key reuse) in <c>LootboxTokenTests</c>. EF InMemory with the real repositories and services, a scripted RNG and a
+/// pinned clock. InMemory enforces the Status concurrency token but not unique indexes; those were checked on MySQL 8
+/// (see the phase notes).
 /// </summary>
 public class LootboxRuntimeServiceTests
 {
@@ -115,21 +119,23 @@ public class LootboxRuntimeServiceTests
         return spawn;
     }
 
-    private static LootboxClaimRequestDto Claim(LootboxSpawn spawn, int userId, string? key = null) =>
-        new() { Token = spawn.Token, UserId = userId, IdempotencyKey = key ?? $"{spawn.Token}:{userId}" };
-
-    private async Task<LootboxClaimResultDto> ClaimAsync(LootboxSpawn spawn, int userId, string? key = null)
+    // A click on a world box: the player takes it as a WorldPickup token item (DESIGN.md §3.8).
+    private async Task<LootboxPickupResultDto> PickUpAsync(LootboxSpawn spawn, int userId)
     {
         await using var db = NewContext();
-        return await Runtime(db).ClaimAsync(spawn.Id, Claim(spawn, userId, key));
+        return await Runtime(db).PickupAsync(spawn.Id, new LootboxPickupRequestDto { Token = spawn.Token, UserId = userId });
     }
 
-    private async Task<LootboxConflictException> ClaimFailsAsync(LootboxSpawn spawn, int userId, string? key = null)
+    // The whole world-box path: pick the box up, then open the token item (the redeem writes the claim).
+    private async Task<LootboxClaimResultDto> OpenWorldBoxAsync(LootboxSpawn spawn, int userId)
     {
+        var token = (await PickUpAsync(spawn, userId)).LootboxToken.Token;
         await using var db = NewContext();
-        return (await Runtime(db).Invoking(s => s.ClaimAsync(spawn.Id, Claim(spawn, userId, key)))
-            .Should().ThrowAsync<LootboxConflictException>()).Which;
+        return await Runtime(db).RedeemTokenAsync(token, new LootboxTokenRedeemRequestDto { UserId = userId, IdempotencyKey = $"open:{token:N}" });
     }
+
+    private async Task<LootboxClaimResultDto> OpenWorldBoxAsync(int typeId, int userId) =>
+        await OpenWorldBoxAsync(await AddSpawnAsync(typeId), userId);
 
     private async Task UpdateAsync(Action<KnKDbContext> change)
     {
@@ -231,7 +237,7 @@ public class LootboxRuntimeServiceTests
         await SeedAsync();
         var active = await AddSpawnAsync(_weapons);
         var claimed = await AddSpawnAsync(_weapons);
-        await ClaimAsync(claimed, _alice);
+        await PickUpAsync(claimed, _alice);
         await using var db = NewContext();
 
         (await Runtime(db).DespawnAsync(active.Id, _staff)).Status.Should().Be("Removed");
@@ -239,15 +245,24 @@ public class LootboxRuntimeServiceTests
         (await Runtime(db).GetActiveAsync()).Should().BeEmpty();
     }
 
-    // ===== Claim =====
+    // ===== Opening a world box (pickup, then redeem) =====
 
     [Fact]
-    public async Task Claim_MintsOneInstanceOwnedByTheClaimer_WithTheRolledEnchantments()
+    public async Task AWorldBox_PickedUpAndOpened_MintsOneInstanceOwnedByTheOpener_WithTheDefaultAndRolledEnchantments()
     {
         await SeedAsync();
         var spawn = await AddSpawnAsync(_weapons);
 
-        var result = await ClaimAsync(spawn, _alice);
+        var picked = (await PickUpAsync(spawn, _alice)).LootboxToken;
+        await using (var claimDb = NewContext())
+        {
+            (await claimDb.LootboxClaims.AnyAsync()).Should().BeFalse("nothing is rolled until the token is opened");
+        }
+        LootboxClaimResultDto result;
+        await using (var openDb = NewContext())
+        {
+            result = await Runtime(openDb).RedeemTokenAsync(picked.Token, new LootboxTokenRedeemRequestDto { UserId = _alice, IdempotencyKey = "open-1" });
+        }
 
         result.Replay.Should().BeFalse();
         (result.ItemBlueprintId, result.ItemName, result.ItemGradeStars, result.Quantity, result.IsSpecial, result.BoxStars)
@@ -259,7 +274,8 @@ public class LootboxRuntimeServiceTests
 
         await using var db = NewContext();
         var claim = await db.LootboxClaims.SingleAsync();
-        (claim.Id, claim.UserId, claim.LootboxSpawnId, claim.ItemInstanceId).Should().Be((result.ClaimId, _alice, (int?)spawn.Id, result.ItemInstanceId));
+        (claim.Id, claim.UserId, claim.LootboxSpawnId, claim.LootboxTokenId, claim.ItemInstanceId)
+            .Should().Be((result.ClaimId, _alice, (int?)null, (int?)picked.Id, result.ItemInstanceId));
         var instance = await db.ItemInstances.Include(i => i.Enchantments).SingleAsync();
         (instance.Id, instance.Origin, instance.OriginRef, instance.OwnerUserId, instance.ItemBlueprintId, instance.GradeId)
             .Should().Be((result.ItemInstanceId!.Value, ItemInstanceOrigin.Lootbox, result.ClaimId.ToString(), (int?)_alice, _sword, (int?)_grade3));
@@ -269,122 +285,28 @@ public class LootboxRuntimeServiceTests
         (stored.Status, stored.ClaimedByUserId, stored.ClaimedAt).Should().Be((LootboxSpawnStatus.Claimed, (int?)_alice, (DateTime?)Now));
     }
 
-    [Fact]
-    public async Task Claim_OfAStackableItem_HasNoInstance()
-    {
-        await SeedAsync();
-        var spawn = await AddSpawnAsync(_food);
-
-        var result = await ClaimAsync(spawn, _alice);
-
-        (result.ItemBlueprintId, result.Quantity, result.ItemInstanceId).Should().Be((_bread, 8, (long?)null));
-        await using var db = NewContext();
-        (await db.ItemInstances.AnyAsync()).Should().BeFalse();
-        (await db.LootboxClaims.SingleAsync()).ItemInstanceId.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Claim_SameIdempotencyKey_ReplaysTheSameResult_WithoutRollingOrMintingAgain()
-    {
-        await SeedAsync();
-        var spawn = await AddSpawnAsync(_weapons);
-
-        var first = await ClaimAsync(spawn, _alice);
-        var rollsAfterFirst = _random.Calls;
-        var second = await ClaimAsync(spawn, _alice);
-
-        second.Replay.Should().BeTrue();
-        second.Should().BeEquivalentTo(first, o => o.Excluding(r => r.Replay));
-        _random.Calls.Should().Be(rollsAfterFirst, "a replay never rolls");
-        await using var db = NewContext();
-        (await db.LootboxClaims.CountAsync()).Should().Be(1);
-        (await db.ItemInstances.CountAsync()).Should().Be(1);
-    }
-
-    [Fact]
-    public async Task Claim_BySomeoneElse_IsAlreadyClaimed()
-    {
-        await SeedAsync();
-        var spawn = await AddSpawnAsync(_weapons);
-        await ClaimAsync(spawn, _alice);
-
-        (await ClaimFailsAsync(spawn, _bob)).Code.Should().Be("AlreadyClaimed");
-    }
-
-    [Fact]
-    public async Task Claim_ReusingSomeoneElsesIdempotencyKey_IsRefused()
-    {
-        await SeedAsync();
-        var spawn = await AddSpawnAsync(_weapons);
-        await ClaimAsync(spawn, _alice);
-
-        (await ClaimFailsAsync(spawn, _bob, $"{spawn.Token}:{_alice}")).Code.Should().Be("IdempotencyKeyReused");
-    }
-
-    [Fact]
-    public async Task Claim_RacingAnotherClaim_LosesOnTheStatusConcurrencyCheck()
-    {
-        await SeedAsync();
-        var spawn = await AddSpawnAsync(_weapons);
-
-        // Bob's request has already read the box as Active when Alice's claim commits.
-        await using var bobDb = NewContext();
-        (await bobDb.LootboxSpawns.FindAsync(spawn.Id))!.Status.Should().Be(LootboxSpawnStatus.Active);
-        await ClaimAsync(spawn, _alice);
-
-        var lost = await Runtime(bobDb).Invoking(s => s.ClaimAsync(spawn.Id, Claim(spawn, _bob)))
-            .Should().ThrowAsync<LootboxConflictException>();
-        lost.Which.Code.Should().Be("AlreadyClaimed");
-
-        await using var db = NewContext();
-        (await db.LootboxClaims.SingleAsync()).UserId.Should().Be(_alice);
-        (await db.ItemInstances.CountAsync()).Should().Be(1);
-    }
-
-    [Fact]
-    public async Task Claim_AfterExpiry_IsRefused_AndTheSweepMarksItExpired()
-    {
-        await SeedAsync();
-        var spawn = await AddSpawnAsync(_weapons, expiresAt: Now.AddMinutes(5));
-        _clock.Advance(TimeSpan.FromMinutes(5));
-
-        (await ClaimFailsAsync(spawn, _alice)).Code.Should().Be("Expired");
-
-        await using var db = NewContext();
-        (await db.LootboxSpawns.SingleAsync()).Status.Should().Be(LootboxSpawnStatus.Expired);
-        (await Runtime(db).GetActiveAsync()).Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task Claim_WithTheWrongToken_IsRefused()
-    {
-        await SeedAsync();
-        var spawn = await AddSpawnAsync(_weapons);
-        await using var db = NewContext();
-
-        var refused = await Runtime(db).Invoking(s => s.ClaimAsync(spawn.Id, new LootboxClaimRequestDto { Token = Guid.NewGuid(), UserId = _alice, IdempotencyKey = "k" }))
-            .Should().ThrowAsync<LootboxConflictException>();
-
-        refused.Which.Code.Should().Be("TokenMismatch");
-    }
-
-    [Fact]
-    public async Task Claim_ByAFrozenPlayer_IsRefused()
-    {
-        await SeedAsync();
-        await UpdateAsync(db => db.Users.Single(u => u.Id == _alice).IsFrozen = true);
-        var spawn = await AddSpawnAsync(_weapons);
-
-        (await ClaimFailsAsync(spawn, _alice)).Code.Should().Be("Frozen");
-    }
-
     // ===== Daily cap (UTC calendar day) =====
+    //
+    // Two counters since the pickup rework, both limited by MaxClaimsPerPlayerPerDay (and the type's own limit): world
+    // boxes picked up (DailyPickupLimit, LootboxPickupTests) and boxes opened (DailyLimit, below). D21 keeps them
+    // separate. The world boxes here are picked up and opened, so both counters move together.
 
+    // An unopened token put straight into the store: it counts on neither counter (not a pickup, not yet an open), so
+    // opening it asks the open cap alone.
     private async Task<LootboxDailyLimitException> CapHitAsync(int typeId, int userId)
     {
-        var spawn = await AddSpawnAsync(typeId);
+        var token = new LootboxToken
+        {
+            LootboxTypeId = typeId,
+            BoxGradeId = _grade3,
+            IssuedToUserId = userId,
+            IssuedReason = LootboxTokenReason.Admin,
+            IssueKey = $"test:{Guid.NewGuid():N}",
+            IssuedAt = Now,
+        };
+        await UpdateAsync(db => db.LootboxTokens.Add(token));
         await using var db = NewContext();
-        return (await Runtime(db).Invoking(s => s.ClaimAsync(spawn.Id, Claim(spawn, userId)))
+        return (await Runtime(db).Invoking(s => s.RedeemTokenAsync(token.Token, new LootboxTokenRedeemRequestDto { UserId = userId, IdempotencyKey = $"open:{token.Token:N}" }))
             .Should().ThrowAsync<LootboxDailyLimitException>()).Which;
     }
 
@@ -395,7 +317,7 @@ public class LootboxRuntimeServiceTests
         _clock.Set(new DateTimeOffset(2026, 9, 26, 0, 0, 0, TimeSpan.Zero));
         for (var i = 0; i < 10; i++)
         {
-            await ClaimAsync(await AddSpawnAsync(i % 2 == 0 ? _weapons : _food), _alice);
+            await OpenWorldBoxAsync(i % 2 == 0 ? _weapons : _food, _alice);
             _clock.Advance(TimeSpan.FromHours(2));
         }
 
@@ -404,26 +326,33 @@ public class LootboxRuntimeServiceTests
         var refused = await CapHitAsync(_weapons, _alice);
         (refused.Code, refused.Scope, refused.Limit).Should().Be(("DailyLimit", "Global", 10));
         refused.ResetsAt.Should().Be(new DateTime(2026, 9, 27, 0, 0, 0, DateTimeKind.Utc));
+        // The eleventh world box can't even be picked up: ten pickups today as well.
+        await using (var db = NewContext())
+        {
+            var box = await AddSpawnAsync(_weapons);
+            (await Runtime(db).Invoking(s => s.PickupAsync(box.Id, new LootboxPickupRequestDto { Token = box.Token, UserId = _alice }))
+                .Should().ThrowAsync<LootboxDailyLimitException>()).Which.Code.Should().Be("DailyPickupLimit");
+        }
 
-        (await ClaimAsync(await AddSpawnAsync(_weapons), _bob)).Replay.Should().BeFalse("the cap is per player");
+        (await OpenWorldBoxAsync(_weapons, _bob)).Replay.Should().BeFalse("the cap is per player");
 
         _clock.Set(new DateTimeOffset(2026, 9, 27, 0, 0, 0, TimeSpan.Zero));
-        (await ClaimAsync(await AddSpawnAsync(_weapons), _alice)).Replay.Should().BeFalse("00:00 UTC starts a fresh count");
+        (await OpenWorldBoxAsync(_weapons, _alice)).Replay.Should().BeFalse("00:00 UTC starts a fresh count");
     }
 
     [Fact]
-    public async Task DailyCap_AClaimAt235959_CountsForThatDay()
+    public async Task DailyCap_AnOpenAt235959_CountsForThatDay()
     {
         await SeedAsync();
         await UpdateAsync(db => db.LootboxConfigurations.Single().MaxClaimsPerPlayerPerDay = 1);
 
         _clock.Set(new DateTimeOffset(2026, 9, 26, 23, 59, 59, 700, TimeSpan.Zero));
-        var late = await ClaimAsync(await AddSpawnAsync(_weapons), _alice);
+        var late = await OpenWorldBoxAsync(_weapons, _alice);
         late.ClaimedAt.Should().Be(new DateTime(2026, 9, 26, 23, 59, 59, DateTimeKind.Utc), "stored in whole seconds, never rounded into tomorrow");
         (await CapHitAsync(_weapons, _alice)).ResetsAt.Should().Be(new DateTime(2026, 9, 27, 0, 0, 0, DateTimeKind.Utc));
 
         _clock.Set(new DateTimeOffset(2026, 9, 27, 0, 0, 0, TimeSpan.Zero));
-        (await ClaimAsync(await AddSpawnAsync(_weapons), _alice)).ClaimId.Should().BeGreaterThan(late.ClaimId);
+        (await OpenWorldBoxAsync(_weapons, _alice)).ClaimId.Should().BeGreaterThan(late.ClaimId);
     }
 
     [Fact]
@@ -432,12 +361,12 @@ public class LootboxRuntimeServiceTests
         await SeedAsync();
         await UpdateAsync(db => db.LootboxTypes.Single(t => t.Id == _weapons).MaxClaimsPerPlayerPerDay = 2);
 
-        await ClaimAsync(await AddSpawnAsync(_weapons), _alice);
-        await ClaimAsync(await AddSpawnAsync(_weapons), _alice);
+        await OpenWorldBoxAsync(_weapons, _alice);
+        await OpenWorldBoxAsync(_weapons, _alice);
         var refused = await CapHitAsync(_weapons, _alice);
 
         (refused.Scope, refused.Limit).Should().Be(("Type", 2));
-        (await ClaimAsync(await AddSpawnAsync(_food), _alice)).ItemBlueprintId.Should().Be(_bread);
+        (await OpenWorldBoxAsync(_food, _alice)).ItemBlueprintId.Should().Be(_bread);
     }
 
     [Fact]
@@ -455,7 +384,7 @@ public class LootboxRuntimeServiceTests
             }
         }
 
-        (await ClaimAsync(await AddSpawnAsync(_weapons), _alice)).Replay.Should().BeFalse("admin gives aren't counted");
+        (await OpenWorldBoxAsync(_weapons, _alice)).Replay.Should().BeFalse("admin gives aren't counted");
         (await CapHitAsync(_weapons, _alice)).Scope.Should().Be("Global");
 
         await using var read = NewContext();
@@ -486,9 +415,9 @@ public class LootboxRuntimeServiceTests
     public async Task Pending_ListsUndeliveredClaimsOlderThan30Seconds_AndDeliveredIsIdempotent()
     {
         await SeedAsync();
-        var old = await ClaimAsync(await AddSpawnAsync(_weapons), _alice);
+        var old = await OpenWorldBoxAsync(_weapons, _alice);
         _clock.Advance(TimeSpan.FromSeconds(20));
-        var fresh = await ClaimAsync(await AddSpawnAsync(_food), _alice);
+        var fresh = await OpenWorldBoxAsync(_food, _alice);
         _clock.Advance(TimeSpan.FromSeconds(15));
         await using var db = NewContext();
         var runtime = Runtime(db);
@@ -540,8 +469,8 @@ public class LootboxRuntimeServiceTests
     public async Task SearchClaims_FiltersTheDropLog()
     {
         await SeedAsync();
-        await ClaimAsync(await AddSpawnAsync(_weapons), _alice);
-        await ClaimAsync(await AddSpawnAsync(_food), _bob);
+        await OpenWorldBoxAsync(_weapons, _alice);
+        await OpenWorldBoxAsync(_food, _bob);
         await using var db = NewContext();
         await Runtime(db).AdminGiveAsync(new LootboxAdminGiveRequestDto { UserId = _bob, TypeId = _weapons }, _staff);
 

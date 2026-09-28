@@ -17,7 +17,8 @@ namespace knkwebapi_v2.Tests.Services.Lootbox;
 
 /// <summary>
 /// Smoke test round 1 (2026-09-27, docs/specs/lootboxes/DESIGN.md §3.8-§3.9): clicking a world box picks it up as a
-/// token item instead of opening it; the daily cap counts pickups; token status for the plugin's join scan; and the
+/// token item instead of opening it (replay, races, expiry, wrong token, frozen player); the daily cap counts pickups;
+/// token status for the plugin's join scan; and the
 /// LootboxWorldChanged notifications that make web despawns, web area deletes and token revokes reach the game
 /// server within seconds. EF InMemory with the real repositories and services, a scripted RNG and a pinned clock.
 /// </summary>
@@ -171,6 +172,62 @@ public class LootboxPickupTests
         (await PickupFailsAsync(wrong, _alice, Guid.NewGuid())).Code.Should().Be("TokenMismatch");
         (await PickupFailsAsync(expired, _alice)).Code.Should().Be("Expired");
         (await PickupFailsAsync(removed, _alice)).Code.Should().Be("Removed");
+    }
+
+    // Ported from the removed open-on-the-spot claim's tests (LootboxRuntimeServiceTests), KNG-31.
+
+    [Fact]
+    public async Task Pickup_AfterTheLifetime_IsRefused_AndTheSweepMarksTheBoxExpired()
+    {
+        await SeedAsync();
+        var spawn = await SpawnAsync(_weapons);
+        _clock.Set(_clock.GetUtcNow().AddMinutes(LootboxRuntimeServiceConstants.DefaultLifetimeMinutes));
+
+        (await PickupFailsAsync(spawn, _alice)).Code.Should().Be("Expired");
+
+        await using var db = NewContext();
+        (await db.LootboxSpawns.SingleAsync()).Status.Should().Be(LootboxSpawnStatus.Expired);
+        (await Runtime(db).GetActiveAsync()).Should().BeEmpty();
+        db.LootboxTokens.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Pickup_RacingAnotherPickup_LosesOnTheStatusConcurrencyCheck()
+    {
+        await SeedAsync();
+        var spawn = await SpawnAsync(_weapons);
+
+        // Bob's request has already read the box as Active when another pickup flips it (its token not yet visible, as
+        // inside that pickup's uncommitted transaction), so Bob gets past the replay lookup and the status check.
+        await using var bobDb = NewContext();
+        (await bobDb.LootboxSpawns.FindAsync(spawn.Id))!.Status.Should().Be(LootboxSpawnStatus.Active);
+        await UpdateAsync(db =>
+        {
+            var box = db.LootboxSpawns.Single(s => s.Id == spawn.Id);
+            box.Status = LootboxSpawnStatus.Claimed;
+            box.ClaimedByUserId = _alice;
+        });
+
+        (await Runtime(bobDb).Invoking(s => s.PickupAsync(spawn.Id, new LootboxPickupRequestDto { Token = spawn.Token, UserId = _bob }))
+            .Should().ThrowAsync<LootboxConflictException>()).Which.Code.Should().Be("AlreadyClaimed");
+
+        await using var read = NewContext();
+        read.LootboxTokens.Should().BeEmpty("the losing pickup wrote nothing");
+        (await read.LootboxSpawns.SingleAsync()).ClaimedByUserId.Should().Be(_alice);
+    }
+
+    [Fact]
+    public async Task Pickup_ByAFrozenPlayer_IsRefused_AndLeavesTheBox()
+    {
+        await SeedAsync();
+        await UpdateAsync(db => db.Users.Single(u => u.Id == _alice).IsFrozen = true);
+        var spawn = await SpawnAsync(_weapons);
+
+        (await PickupFailsAsync(spawn, _alice)).Code.Should().Be("Frozen");
+
+        await using var db = NewContext();
+        (await db.LootboxSpawns.SingleAsync()).Status.Should().Be(LootboxSpawnStatus.Active);
+        db.LootboxTokens.Should().BeEmpty();
     }
 
     [Fact]
