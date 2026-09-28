@@ -75,12 +75,12 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// <summary>The claim stored under <paramref name="idempotencyKey"/>, or null. No tracking.</summary>
         Task<LootboxClaim?> GetClaimByIdempotencyKeyAsync(string idempotencyKey);
 
-        Task<bool> SpawnHasClaimAsync(int spawnId);
-
         /// <summary>
-        /// How many world-box claims and token redeems <paramref name="userId"/> made with ClaimedAt in
-        /// [<paramref name="from"/>, <paramref name="to"/>), optionally of one type. Admin gives (neither a spawn nor
-        /// a token) are not counted (DESIGN.md §3.3 step 3; a token redeem is a claim like any other, Phase 5).
+        /// How many token redeems (and legacy world-box claims, written by the removed open-on-the-spot endpoint)
+        /// <paramref name="userId"/> made with ClaimedAt in [<paramref name="from"/>, <paramref name="to"/>),
+        /// optionally of one type. Admin gives (neither a spawn nor a token) are not counted (DESIGN.md §3.3 step 3;
+        /// a token redeem is a claim like any other, Phase 5). Pickups are counted separately
+        /// (<see cref="CountPickupsAsync"/>).
         /// </summary>
         Task<int> CountClaimsAsync(int userId, DateTime from, DateTime to, int? lootboxTypeId = null);
 

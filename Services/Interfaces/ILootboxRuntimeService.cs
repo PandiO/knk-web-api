@@ -36,13 +36,6 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <summary>An Active box becomes Removed; any other status is returned unchanged.</summary>
         Task<LootboxSpawnDto> DespawnAsync(int spawnId, int? actorUserId);
 
-        /// <summary>
-        /// Opens a box (DESIGN.md §3.3 claim transaction). The same idempotency key replays the stored result
-        /// (<c>replay=true</c>) without rolling again. 409 codes: TokenMismatch, AlreadyClaimed, Expired, Removed,
-        /// Disabled, Frozen, UserInactive, EmptyPool, IdempotencyKeyReused; 429 DailyLimit (scope Global or Type).
-        /// </summary>
-        Task<LootboxClaimResultDto> ClaimAsync(int spawnId, LootboxClaimRequestDto request);
-
         /// <summary>Roll and mint without a world box (<c>LootboxSpawnId = null</c>); audited LootboxGranted; not
         /// counted against the daily cap.</summary>
         Task<LootboxClaimResultDto> AdminGiveAsync(LootboxAdminGiveRequestDto request, int? actorUserId);
