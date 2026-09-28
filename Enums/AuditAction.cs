@@ -20,7 +20,9 @@ public enum AuditAction
     PlayerFrozen = 9,
     PlayerUnfrozen = 10,
     KitGranted = 11,
-    // 12 is allocated to teleport (PlayerTeleported) on its own branch.
+    // A staff /tp, /tphere (and later /spawn <p>, /warp <d> <p>) made in game - recorded by the
+    // plugin through POST /api/users/{id}/teleport-audit (docs/specs/teleport/DESIGN.md §3.10).
+    PlayerTeleported = 12,
     // Lootboxes (docs/specs/lootboxes/DESIGN.md §3.2), numbers 13-14 allocated to this feature. Player claims are
     // logged in LootboxClaim, not here. The range has no room for separate area values, so LootboxSpawnedByAdmin covers
     // every staff change to where boxes spawn: Details.event is Spawned (/knk lootbox spawn), AreaCreated or

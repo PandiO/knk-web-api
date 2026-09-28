@@ -214,6 +214,7 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(UsersController), nameof(UsersController.UpdatePresence), null),
         R(typeof(UsersController), nameof(UsersController.UpdateActiveMode), null),
         R(typeof(UsersController), nameof(UsersController.UpdateGatePassThroughMethod), null),
+        R(typeof(UsersController), nameof(UsersController.RecordTeleportAudit), null),
         // KitsController
         R(typeof(KitsController), nameof(KitsController.Create), "knk.kit.manage"),
         R(typeof(KitsController), nameof(KitsController.Update), "knk.kit.manage"),

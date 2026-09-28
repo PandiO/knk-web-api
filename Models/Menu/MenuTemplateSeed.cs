@@ -668,6 +668,10 @@ public static partial class MenuTemplateSeed
         foreach (var template in DiscoveryTemplates())
             yield return template;
 
+        // Teleport menu (KNG-17 Phase 6) - see MenuTemplateSeed.Teleport.cs.
+        foreach (var template in TeleportTemplates())
+            yield return template;
+
         // Siege Phase 8b (siege-minigame MENU_TEMPLATES.md Part C) - see MenuTemplateSeed.Siege.cs.
         foreach (var template in SiegeTemplates())
             yield return template;

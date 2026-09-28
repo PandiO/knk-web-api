@@ -8,6 +8,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
+using knkwebapi_v2.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace knkwebapi_v2.Services
@@ -21,6 +22,7 @@ namespace knkwebapi_v2.Services
         private readonly IMapper _mapper;
         private readonly IRegionService _regionService;
         private readonly ILogger<DistrictService> _logger;
+        private readonly ITeleportDestinationService _teleportDestinations;
 
         public DistrictService(
             IDistrictRepository repo,
@@ -29,7 +31,8 @@ namespace knkwebapi_v2.Services
             IStreetRepository streetRepo,
             IMapper mapper,
             IRegionService regionService,
-            ILogger<DistrictService> logger)
+            ILogger<DistrictService> logger,
+            ITeleportDestinationService teleportDestinations)
         {
             _repo = repo;
             _townRepo = townRepo;
@@ -38,6 +41,7 @@ namespace knkwebapi_v2.Services
             _mapper = mapper;
             _regionService = regionService;
             _logger = logger;
+            _teleportDestinations = teleportDestinations;
         }
 
         public async Task<IEnumerable<DistrictDto>> GetAllAsync()
@@ -106,6 +110,7 @@ namespace knkwebapi_v2.Services
             // Validate that Town exists
             var town = await _townRepo.GetByIdAsync(districtDto.TownId);
             if (town == null) throw new ArgumentException($"Town with id {districtDto.TownId} not found.", nameof(districtDto));
+            await _teleportDestinations.ValidateSettingsAsync(districtDto);
             // Cascade create/update for Location if embedded payload provided
             if (districtDto.Location != null)
             {
@@ -151,6 +156,7 @@ namespace knkwebapi_v2.Services
 
             var district = _mapper.Map<District>(districtDto);
             district.CreatedAt = DateTime.UtcNow;
+            DomainTeleportSettings.Apply(district, districtDto);
 
             // Handle Street relationships
             if (districtDto.StreetIds != null && districtDto.StreetIds.Any())
@@ -186,6 +192,7 @@ namespace knkwebapi_v2.Services
             
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"District with id {id} not found.");
+            await _teleportDestinations.ValidateSettingsAsync(districtDto);
 
             // Validate that Town exists if changing
             if (existing.TownId != districtDto.TownId)
@@ -241,6 +248,7 @@ namespace knkwebapi_v2.Services
             existing.WgRegionId = districtDto.WgRegionId;
             existing.LocationId = districtDto.LocationId;
             existing.TownId = districtDto.TownId;
+            DomainTeleportSettings.Apply(existing, districtDto);
 
             // Handle Street relationships
             if (districtDto.StreetIds != null)

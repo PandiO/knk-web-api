@@ -1064,6 +1064,21 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<bool>("TeleportEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("TeleportMinPremiumGroupId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportMinTitleBracketId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeleportPriceGems")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("TeleportRequiresDiscovery")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("WgRegionId")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -1074,7 +1089,14 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("LocationId")
                         .IsUnique();
 
-                    b.ToTable("domains", (string)null);
+                    b.HasIndex("TeleportMinPremiumGroupId");
+
+                    b.HasIndex("TeleportMinTitleBracketId");
+
+                    b.ToTable("domains", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+                        });
 
                     b.UseTptMappingStrategy();
                 });
@@ -4153,6 +4175,31 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("tags", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.TeleportFeeVoid", b =>
+                {
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .UseCollation("utf8mb4_bin");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdempotencyKey")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("teleport_fee_voids", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.TitleBracket", b =>
                 {
                     b.Property<int>("Id")
@@ -4490,7 +4537,10 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("TownId");
 
-                    b.ToTable("districts", (string)null);
+                    b.ToTable("districts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+                        });
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Structure", b =>
@@ -4510,14 +4560,20 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("StreetId");
 
-                    b.ToTable("structures", (string)null);
+                    b.ToTable("structures", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+                        });
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Town", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
 
-                    b.ToTable("towns", (string)null);
+                    b.ToTable("towns", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+                        });
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
@@ -4765,7 +4821,10 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("IconMaterialRefId");
 
-                    b.ToTable("gate_structures", (string)null);
+                    b.ToTable("gate_structures", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+                        });
                 });
 
             modelBuilder.Entity("DistrictStreet", b =>
@@ -5013,7 +5072,21 @@ namespace knkwebapi_v2.Migrations
                         .HasForeignKey("knkwebapi_v2.Models.Domain", "LocationId")
                         .OnDelete(DeleteBehavior.Cascade);
 
+                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "TeleportMinPremiumGroup")
+                        .WithMany()
+                        .HasForeignKey("TeleportMinPremiumGroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.TitleBracket", "TeleportMinTitleBracket")
+                        .WithMany()
+                        .HasForeignKey("TeleportMinTitleBracketId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Location");
+
+                    b.Navigation("TeleportMinPremiumGroup");
+
+                    b.Navigation("TeleportMinTitleBracket");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.DomainDiscoveryOverride", b =>

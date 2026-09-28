@@ -6,6 +6,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
+using knkwebapi_v2.Services.Interfaces;
 
 namespace knkwebapi_v2.Services
 {
@@ -16,19 +17,22 @@ namespace knkwebapi_v2.Services
         private readonly IDistrictRepository _districtRepo;
         private readonly ILocationRepository _locationRepo;
         private readonly IMapper _mapper;
+        private readonly ITeleportDestinationService _teleportDestinations;
 
         public StructureService(
             IStructureRepository repo,
             IStreetRepository streetRepo,
             IDistrictRepository districtRepo,
             ILocationRepository locationRepo,
-            IMapper mapper)
+            IMapper mapper,
+            ITeleportDestinationService teleportDestinations)
         {
             _repo = repo;
             _streetRepo = streetRepo;
             _districtRepo = districtRepo;
             _locationRepo = locationRepo;
             _mapper = mapper;
+            _teleportDestinations = teleportDestinations;
         }
 
         public async Task<IEnumerable<StructureDto>> GetAllAsync()
@@ -61,6 +65,7 @@ namespace knkwebapi_v2.Services
             // Validate that District exists
             var district = await _districtRepo.GetByIdAsync(structureDto.DistrictId);
             if (district == null) throw new ArgumentException($"District with id {structureDto.DistrictId} not found.", nameof(structureDto));
+            await _teleportDestinations.ValidateSettingsAsync(structureDto);
 
             // Validate LocationId if provided
             if (structureDto.LocationId.HasValue)
@@ -72,6 +77,7 @@ namespace knkwebapi_v2.Services
 
             var structure = _mapper.Map<Structure>(structureDto);
             structure.CreatedAt = DateTime.UtcNow;
+            DomainTeleportSettings.Apply(structure, structureDto);
             await _repo.AddStructureAsync(structure);
             return _mapper.Map<StructureDto>(structure);
         }
@@ -88,6 +94,7 @@ namespace knkwebapi_v2.Services
             
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Structure with id {id} not found.");
+            await _teleportDestinations.ValidateSettingsAsync(structureDto);
 
             // Validate that Street exists if changing
             if (existing.StreetId != structureDto.StreetId)
@@ -120,6 +127,7 @@ namespace knkwebapi_v2.Services
             existing.StreetId = structureDto.StreetId;
             existing.DistrictId = structureDto.DistrictId;
             existing.HouseNumber = structureDto.HouseNumber;
+            DomainTeleportSettings.Apply(existing, structureDto);
 
             await _repo.UpdateStructureAsync(existing);
         }

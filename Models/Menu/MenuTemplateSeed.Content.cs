@@ -125,6 +125,13 @@ public static partial class MenuTemplateSeed
                             Lore(0, "&7See all discovered places"),
                             Lore(1, "$discoveries.getCountLine$", VariableRefreshPolicy.OnDirty)),
 
+                        // Teleport menu (KNG-17, teleport DESIGN.md §3.8) - v1's Personal menu COMPASS copy.
+                        OpenTile(24, 8, TeleportMenuKey,
+                            Bind("Material", "COMPASS", VariableRefreshPolicy.Static),
+                            Bind("Name", "&aTeleport to points on the map", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Teleport to important points in the world"),
+                            Lore(1, "&7Price will be paid in gems!")),
+
                         WithPermissions(UserManagePermission, OpenTile(22, 6, UserManagerMenuKey,
                             Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
                             Bind("Name", "&cPlayer manager", VariableRefreshPolicy.Static),
