@@ -309,7 +309,9 @@ namespace knkwebapi_v2.Services
                 {
                     _logger.LogInformation($"Finalizing region name for District {district.Id}: {district.WgRegionId} -> {finalRegionName}");
                     
-                    bool renameSuccess = await _regionService.RenameRegionAsync(district.WgRegionId, finalRegionName);
+                    // The plugin also sets the region up as a District: parent = its Town's region, priority, flags.
+                    var town = district.TownId > 0 ? await _townRepo.GetByIdAsync(district.TownId) : null;
+                    bool renameSuccess = await _regionService.RenameRegionAsync(district.WgRegionId, finalRegionName, "District", town?.WgRegionId);
                     
                     if (renameSuccess)
                     {
