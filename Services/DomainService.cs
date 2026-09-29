@@ -191,7 +191,10 @@ namespace knkwebapi_v2.Services
                 {
                     _logger.LogInformation($"Finalizing region name for Domain {domain.Id}: {domain.WgRegionId} -> {finalRegionName}");
                     
-                    bool renameSuccess = await _regionService.RenameRegionAsync(domain.WgRegionId, finalRegionName);
+                    // Only a concrete subtype tells the plugin what the region is; a bare Domain is left to its startup repair.
+                    string? domainType = domain.GetType() != typeof(Domain) ? domain.GetType().Name : null;
+                    string? parentRegionId = domain is Structure structure ? structure.District?.WgRegionId : null;
+                    bool renameSuccess = await _regionService.RenameRegionAsync(domain.WgRegionId, finalRegionName, domainType, parentRegionId);
                     
                     if (renameSuccess)
                     {

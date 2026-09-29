@@ -23,9 +23,11 @@ namespace KnKWebAPI.Controllers
         /// </summary>
         /// <param name="oldRegionId">The current/temporary region ID</param>
         /// <param name="newRegionId">The desired new region ID</param>
+        /// <param name="domainType">Optional concrete domain type (Town, District, Structure, GateStructure): the plugin then also applies the managed-region parent, priority and flags</param>
+        /// <param name="parentRegionId">Optional WorldGuard region ID of the domain's parent (District's Town, Structure's District)</param>
         /// <returns>true if successful, false otherwise</returns>
         [HttpPost("rename")]
-        public async Task<ActionResult<bool>> RenameRegion([FromQuery] string oldRegionId, [FromQuery] string newRegionId)
+        public async Task<ActionResult<bool>> RenameRegion([FromQuery] string oldRegionId, [FromQuery] string newRegionId, [FromQuery] string? domainType = null, [FromQuery] string? parentRegionId = null)
         {
             if (string.IsNullOrWhiteSpace(oldRegionId) || string.IsNullOrWhiteSpace(newRegionId))
             {
@@ -34,7 +36,7 @@ namespace KnKWebAPI.Controllers
 
             try
             {
-                var result = await _regionService.RenameRegionAsync(oldRegionId, newRegionId);
+                var result = await _regionService.RenameRegionAsync(oldRegionId, newRegionId, domainType, parentRegionId);
                 return Ok(result);
             }
             catch (ArgumentException ex)
