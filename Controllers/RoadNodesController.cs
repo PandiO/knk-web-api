@@ -41,4 +41,26 @@ public class RoadNodesController : RoadControllerBase
     [ProducesResponseType(404)]
     public Task<IActionResult> Merge([FromBody] RoadNodeMergeDto dto) =>
         Run(async () => Ok(await _service.MergeNodesAsync(dto)));
+
+    /// <summary>
+    /// Removes the dead end ending at endpoint {id} and keeps a Pruned tombstone there, so rebuilds
+    /// leave that arm out (a junction left with two arms dissolves).
+    /// </summary>
+    [HttpPost("{id:int}/prune")]
+    [ProducesResponseType(typeof(RoadNodeDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public Task<IActionResult> Prune(int id) =>
+        Run(async () => Ok(await _service.PruneNodeAsync(id)));
+
+    /// <summary>Deletes the Pruned tombstone {id}: the next build brings the arm back.</summary>
+    [HttpDelete("{id:int}/prune")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public Task<IActionResult> Unprune(int id) =>
+        Run(async () => await _service.UnpruneNodeAsync(id)
+            ? NoContent()
+            : NotFound(new { error = "NotFound", message = $"Road node {id} not found." }));
 }

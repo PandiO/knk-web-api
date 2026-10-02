@@ -43,6 +43,8 @@ public interface IRoadNetworkService
     Task<RoadNodeDto> UpdateNodeAsync(int id, RoadNodeUpdateDto dto);
     Task<RoadNodeDto> CreateAnchorAsync(RoadNodeAnchorDto dto);
     Task<RoadNodeDto> MergeNodesAsync(RoadNodeMergeDto dto);
+    Task<RoadNodeDto> PruneNodeAsync(int id);
+    Task<bool> UnpruneNodeAsync(int id);
 
     // Edges
     Task<PagedResultDto<RoadEdgeDto>> SearchEdgesAsync(PagedQueryDto query);

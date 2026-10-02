@@ -493,6 +493,92 @@ public class RoadNetworkServiceTests : IDisposable
         Assert.Single(after.Nodes.Select(n => n.ComponentId).Distinct());
     }
 
+    // ------------------------------------------------------------ Prune
+
+    /// <summary>The straight road plus a 30-block dead end south of the junction (endpoint E at z = 130).</summary>
+    private static RoadTileGraphUpsertDto RoadWithSpur(int? b0 = null, int? j = null, int? b1 = null, int? e = null)
+    {
+        var dto = StraightRoad(b0, j, b1);
+        dto.Nodes.Add(Node("e", 200, 130, RoadNodeKind.Endpoint, e));
+        dto.Edges.Add(Edge("j", "e", new[] { P(200, 64, 100), P(200, 64, 130) }));
+        return dto;
+    }
+
+    [Fact]
+    public async Task PruneNode_RemovesTheDeadEndAndLeavesALockedTombstone()
+    {
+        await _service.UpsertTileGraphAsync(World, 0, 0, RoadWithSpur());
+        var before = (await _service.GetTileGraphAsync(World, 0, 0))!;
+        var end = before.Nodes.Single(n => n.Kind == RoadNodeKind.Endpoint);
+
+        var pruned = await _service.PruneNodeAsync(end.Id);
+        var after = (await _service.GetTileGraphAsync(World, 0, 0))!;
+
+        Assert.Equal((end.Id, RoadNodeKind.Pruned, true), (pruned.Id, pruned.Kind, pruned.Locked));
+        Assert.Equal(2, after.Edges.Count);
+        Assert.DoesNotContain(after.Edges, e => e.FromNodeId == end.Id || e.ToNodeId == end.Id);
+        Assert.Equal(before.Tile.Version + 1, after.Tile.Version);
+        Assert.Equal(RoadNodeKind.Pruned, (await _service.PruneNodeAsync(end.Id)).Kind); // again: no-op
+    }
+
+    [Fact]
+    public async Task PruneNode_TheTombstoneSurvivesRebuilds_UntilTheBuilderPutsANodeOnIt()
+    {
+        await _service.UpsertTileGraphAsync(World, 0, 0, RoadWithSpur());
+        var graph = (await _service.GetTileGraphAsync(World, 0, 0))!;
+        int Id(int x, int z) => graph.Nodes.Single(n => n.X == x && n.Z == z).Id;
+        var tombstone = await _service.PruneNodeAsync(Id(200, 130));
+
+        // The builder left the arm out: the tombstone stays, uncounted.
+        var rebuilt = await _service.UpsertTileGraphAsync(World, 0, 0, StraightRoad(Id(0, 100), Id(200, 100), Id(511, 100)));
+        Assert.Equal(0, rebuilt.NodesDeleted);
+        Assert.Equal(3, rebuilt.Tile.NodeCount);
+        Assert.Contains((await _service.GetTileGraphAsync(World, 0, 0))!.Nodes, n => n.Id == tombstone.Id && n.Kind == RoadNodeKind.Pruned);
+
+        // A payload that refers to the tombstone is refused; one that puts a node on its block wins.
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.UpsertTileGraphAsync(World, 0, 0, RoadWithSpur(Id(0, 100), Id(200, 100), Id(511, 100), tombstone.Id)));
+        await _service.UpsertTileGraphAsync(World, 0, 0, RoadWithSpur(Id(0, 100), Id(200, 100), Id(511, 100)));
+        var final = (await _service.GetTileGraphAsync(World, 0, 0))!;
+        Assert.DoesNotContain(final.Nodes, n => n.Kind == RoadNodeKind.Pruned);
+        Assert.Contains(final.Nodes, n => n.X == 200 && n.Z == 130 && n.Kind == RoadNodeKind.Endpoint);
+    }
+
+    [Fact]
+    public async Task PruneNode_OnlyEndpointsWithoutARecording()
+    {
+        await _service.UpsertTileGraphAsync(World, 0, 0, RoadWithSpur());
+        var graph = (await _service.GetTileGraphAsync(World, 0, 0))!;
+        var junction = graph.Nodes.Single(n => n.Kind == RoadNodeKind.Junction);
+        var end = graph.Nodes.Single(n => n.Kind == RoadNodeKind.Endpoint);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.PruneNodeAsync(junction.Id));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.PruneNodeAsync(99999));
+        await _service.CreateRecordedEdgeAsync(new RoadEdgeRecordDto
+        {
+            World = World, Geometry = new[] { P(200, 64, 130), P(200, 64, 160) }
+        });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.PruneNodeAsync(end.Id));
+    }
+
+    [Fact]
+    public async Task UnpruneNode_DeletesTheTombstone_AndPrunedNodesCannotBeEditedOrMerged()
+    {
+        await _service.UpsertTileGraphAsync(World, 0, 0, RoadWithSpur());
+        var graph = (await _service.GetTileGraphAsync(World, 0, 0))!;
+        var junction = graph.Nodes.Single(n => n.Kind == RoadNodeKind.Junction);
+        var tombstone = await _service.PruneNodeAsync(graph.Nodes.Single(n => n.Kind == RoadNodeKind.Endpoint).Id);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.UpdateNodeAsync(tombstone.Id, new RoadNodeUpdateDto { Name = "Well" }));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateNodeAsync(junction.Id, new RoadNodeUpdateDto { Kind = RoadNodeKind.Pruned }));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.MergeNodesAsync(new RoadNodeMergeDto { KeepNodeId = junction.Id, MergeNodeId = tombstone.Id }));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UnpruneNodeAsync(junction.Id));
+
+        Assert.True(await _service.UnpruneNodeAsync(tombstone.Id));
+        Assert.DoesNotContain((await _service.GetTileGraphAsync(World, 0, 0))!.Nodes, n => n.Id == tombstone.Id);
+        Assert.False(await _service.UnpruneNodeAsync(tombstone.Id));
+    }
+
     [Fact]
     public async Task RecordedEdge_SnapsToNearbyNodesAndCreatesAnchorsElsewhere()
     {
