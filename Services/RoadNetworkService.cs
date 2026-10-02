@@ -943,6 +943,13 @@ public class RoadNetworkService : IRoadNetworkService
 
             var tile = await GetOrCreateTileAtAsync(dto.World, dto.Geometry[0][0], dto.Geometry[0][2]);
             tile.Version++;
+            // A detected node the recording snapped to is admin cleanup now: lock it, so the builder
+            // keeps it and merges its rebuilt duplicates into it (smoke test fix plan 5.5 item 6).
+            foreach (var end in new[] { from, to }.Where(n => !n.Locked))
+            {
+                end.Locked = true;
+                if (end.TileId != tile.Id) await BumpTileAsync(end.TileId);
+            }
             var box = RoadGeometry.BoundingBox(geometry);
             var edge = new RoadEdge
             {

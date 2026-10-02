@@ -507,6 +507,8 @@ public class RoadNetworkServiceTests : IDisposable
 
         Assert.Equal(RoadEdgeSource.Recorded, edge.Source);
         Assert.Equal(junction.Id, edge.FromNodeId);
+        Assert.False(junction.Locked);
+        Assert.True(graph!.Nodes.Single(n => n.Id == junction.Id).Locked, "the detected node it snapped to is locked now");
         var anchor = graph!.Nodes.Single(n => n.Id == edge.ToNodeId);
         Assert.Equal((201, 70, 160, RoadNodeKind.Anchor, RoadNodeSource.Manual, true), (anchor.X, anchor.Y, anchor.Z, anchor.Kind, anchor.Source, anchor.Locked));
         Assert.Equal((2, RoadStreetSource.Manual), (edge.StreetId, edge.StreetSource));
