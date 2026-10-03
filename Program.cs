@@ -111,6 +111,8 @@ if (telemetryOptions.Enabled)
             metrics.AddMeter(knkwebapi_v2.Services.Lootbox.LootboxMetrics.MeterName);
             // Currency ledger counters and lock-wait histogram (currency-payments Phase 5).
             metrics.AddMeter(knkwebapi_v2.Services.CurrencyMetrics.MeterName);
+            // Player statistics ingestion and projection (KNG-34).
+            metrics.AddMeter(knkwebapi_v2.Services.Statistics.StatisticsMetrics.MeterName);
             if (string.Equals(telemetryOptions.Exporter, "otlp", StringComparison.OrdinalIgnoreCase)
                 && telemetryOptions.Otlp.EnableMetrics)
             {

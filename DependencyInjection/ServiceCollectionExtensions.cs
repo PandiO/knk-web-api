@@ -197,6 +197,24 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ICurrencyAlertService, CurrencyAlertService>();
             services.AddHostedService<CurrencyMonitorService>();
 
+            // Player statistics (KNG-34, knk-workspace docs/specs/player-statistics/IMPLEMENTATION_PLAN.md §4).
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.StatisticsOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.StatisticsOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.Statistics.StatisticsMetrics>();
+            services.AddScoped<IStatisticsRepository, StatisticsRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Statistics.LedgerStatisticsProjector>();
+            services.AddScoped<knkwebapi_v2.Services.Statistics.SiegeStatisticsProjector>();
+            services.AddScoped<knkwebapi_v2.Services.Statistics.IStatisticsViewerResolver, knkwebapi_v2.Services.Statistics.StatisticsViewerResolver>();
+            services.AddScoped<IStatisticsIngestionService, knkwebapi_v2.Services.Statistics.StatisticsIngestionService>();
+            services.AddScoped<IStatisticsQueryService, knkwebapi_v2.Services.Statistics.StatisticsQueryService>();
+            services.AddScoped<IStatisticsVisibilityService, knkwebapi_v2.Services.Statistics.StatisticsVisibilityService>();
+            services.AddScoped<IStatisticsRebuildService, knkwebapi_v2.Services.Statistics.StatisticsRebuildService>();
+            services.AddHostedService<knkwebapi_v2.Services.Statistics.StatisticsProjectionService>();
+            services.AddHostedService<knkwebapi_v2.Services.Statistics.StatisticsRetentionService>();
+
             // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
             // Temporary ranks expiring: back to Default + tell the plugin (RANK_DISPLAY.md).

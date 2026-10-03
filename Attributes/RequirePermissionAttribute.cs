@@ -77,6 +77,11 @@ namespace knkwebapi_v2.Attributes
         /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
         /// owner group; every read is audited.</summary>
         public const string ReadPrivateMessages = "knk.pmlog.read";
+
+        /// <summary>See every non-internal statistic of any player regardless of their visibility
+        /// settings, and read their settings (moderation view; KNG-34 DESIGN.md §F.4, L1-20). Not
+        /// diagnostics — those are owner-only (OwnerPermissions). Also matched by knk.admin.* and *.</summary>
+        public const string ViewStatistics = "knk.admin.statistics.view";
     }
 
     /// <summary>
