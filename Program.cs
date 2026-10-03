@@ -113,6 +113,8 @@ if (telemetryOptions.Enabled)
             metrics.AddMeter(knkwebapi_v2.Services.CurrencyMetrics.MeterName);
             // Player statistics ingestion and projection (KNG-34).
             metrics.AddMeter(knkwebapi_v2.Services.Statistics.StatisticsMetrics.MeterName);
+            // Diagnostic telemetry pipeline (KNG-34 link 6).
+            metrics.AddMeter(knkwebapi_v2.Services.Telemetry.TelemetryMetrics.MeterName);
             if (string.Equals(telemetryOptions.Exporter, "otlp", StringComparison.OrdinalIgnoreCase)
                 && telemetryOptions.Otlp.EnableMetrics)
             {
@@ -186,6 +188,9 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Diagnostic api.request_failed events for 5xx answers and unhandled exceptions (KNG-34 link 6).
+app.UseMiddleware<knkwebapi_v2.Middleware.ApiFailureTelemetryMiddleware>();
 
 // Client activity tracking middleware
 app.UseMiddleware<knkwebapi_v2.Middleware.ClientActivityMiddleware>();

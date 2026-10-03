@@ -29,15 +29,52 @@ public class StatisticsController : ControllerBase
     private readonly IStatisticsVisibilityService _visibility;
     private readonly IStatisticsViewerResolver _viewers;
     private readonly StatisticsOptions _options;
+    private readonly IStatisticsRebuildService? _rebuild;
 
     public StatisticsController(IStatisticsIngestionService ingestion, IStatisticsQueryService query,
-        IStatisticsVisibilityService visibility, IStatisticsViewerResolver viewers, IOptions<StatisticsOptions>? options = null)
+        IStatisticsVisibilityService visibility, IStatisticsViewerResolver viewers, IOptions<StatisticsOptions>? options = null,
+        IStatisticsRebuildService? rebuild = null)
     {
         _ingestion = ingestion;
         _query = query;
         _visibility = visibility;
         _viewers = viewers;
         _options = options?.Value ?? new StatisticsOptions();
+        _rebuild = rebuild;
+    }
+
+    /// <summary>
+    /// Deletes and recomputes the ledger and/or Siege projections (economy, XP gained, title history;
+    /// match results) for one player or for everyone (KNG-34 link 6, IMPLEMENTATION_PLAN.md §4).
+    /// Owner only (exact grant of knk.owner.telemetry.manage). Runs in the request — for everyone it
+    /// re-projects the whole ledger, so prefer a userId.
+    /// </summary>
+    /// <response code="200">Rebuilt; reprojected = source records re-projected</response>
+    /// <response code="400">InvalidProjection (ledger, siege or all)</response>
+    /// <response code="401">No signed-in owner</response>
+    /// <response code="403">No exact grant of knk.owner.telemetry.manage</response>
+    /// <response code="503">Statistics:Enabled is false</response>
+    [RequireOwnerPermission(OwnerPermissions.TelemetryManage)]
+    [HttpPost("rebuild")]
+    [ProducesResponseType(typeof(StatisticsRebuildResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(503)]
+    public async Task<ActionResult<StatisticsRebuildResultDto>> Rebuild([FromBody] StatisticsRebuildRequestDto? request, CancellationToken ct)
+    {
+        if (!_options.Enabled || _rebuild == null)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { error = "StatisticsDisabled", message = "Statistics are disabled (Statistics:Enabled = false)." });
+        }
+        var projection = (request?.Projection ?? "all").Trim().ToLowerInvariant();
+        if (projection is not ("ledger" or "siege" or "all"))
+        {
+            return BadRequest(new { error = "InvalidProjection", message = "projection must be ledger, siege or all." });
+        }
+        var count = await _rebuild.RebuildAsync(projection, request?.UserId, ct);
+        return Ok(new StatisticsRebuildResultDto { Projection = projection, UserId = request?.UserId, Reprojected = count });
     }
 
     /// <summary>

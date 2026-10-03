@@ -226,6 +226,28 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ILeaderboardQueryService, knkwebapi_v2.Services.Leaderboards.LeaderboardQueryService>();
             services.AddHostedService<knkwebapi_v2.Services.Leaderboards.LeaderboardSnapshotService>();
 
+            // Diagnostic telemetry + GDPR deletion (KNG-34 link 6, IMPLEMENTATION_PLAN.md §4): bounded write
+            // queue drained by one background writer; owner-only reads; daily retention and deadline jobs.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.DiagnosticTelemetryOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.DiagnosticTelemetryOptions.SectionName));
+                services.Configure<knkwebapi_v2.Configuration.PrivacyOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.PrivacyOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.Telemetry.TelemetryMetrics>();
+            services.AddSingleton(sp => new knkwebapi_v2.Services.Telemetry.TelemetryWriteQueue(
+                sp.GetService<Microsoft.Extensions.Options.IOptions<knkwebapi_v2.Configuration.DiagnosticTelemetryOptions>>(),
+                sp.GetService<knkwebapi_v2.Services.Telemetry.TelemetryMetrics>()));
+            services.AddScoped<ITelemetryRepository, TelemetryRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Telemetry.ITelemetryIngestionService, knkwebapi_v2.Services.Telemetry.TelemetryIngestionService>();
+            services.AddScoped<knkwebapi_v2.Services.Telemetry.ITelemetryQueryService, knkwebapi_v2.Services.Telemetry.TelemetryQueryService>();
+            services.AddHostedService<knkwebapi_v2.Services.Telemetry.TelemetryWriterService>();
+            services.AddHostedService<knkwebapi_v2.Services.Telemetry.TelemetryRetentionService>();
+            services.AddScoped<IPrivacyRepository, PrivacyRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyDeletionService, knkwebapi_v2.Services.Privacy.PrivacyDeletionService>();
+            services.AddHostedService<knkwebapi_v2.Services.Privacy.PrivacyDeletionDueService>();
+
             // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
             // Temporary ranks expiring: back to Default + tell the plugin (RANK_DISPLAY.md).

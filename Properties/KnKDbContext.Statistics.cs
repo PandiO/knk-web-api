@@ -26,6 +26,7 @@ public partial class KnKDbContext
     {
         ConfigureStatistics(modelBuilder);
         ConfigureLeaderboards(modelBuilder);
+        ConfigureTelemetry(modelBuilder);
     }
 
     private static void ConfigureStatistics(ModelBuilder modelBuilder)
