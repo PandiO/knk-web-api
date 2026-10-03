@@ -13,6 +13,22 @@ namespace knkwebapi_v2.Tests.Services;
 public class MetadataServiceDefaultValueTests
 {
     [Fact]
+    public void PermissionGroup_IsPremiumTier_HasExplicitFalseDefault()
+    {
+        var service = new MetadataService(Mock.Of<IServiceScopeFactory>());
+        var getFieldMetadata = typeof(MetadataService).GetMethod(
+            "GetFieldMetadata",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        getFieldMetadata.Should().NotBeNull();
+        var fields = getFieldMetadata!.Invoke(service, new object[] { typeof(PermissionGroup) })
+            .Should().BeAssignableTo<List<FieldMetadataDto>>().Subject;
+
+        fields.Single(field => field.FieldName == nameof(PermissionGroup.IsPremiumTier))
+            .Should().Match<FieldMetadataDto>(field => field.HasDefaultValue && field.DefaultValue == "False");
+    }
+
+    [Fact]
     public void GateRegionData_HaveExplicitEmptyDefaults_WithoutMakingNameOptional()
     {
         var service = new MetadataService(Mock.Of<IServiceScopeFactory>());
