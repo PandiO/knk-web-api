@@ -54,7 +54,7 @@ public class RoadNodesController : RoadControllerBase
     public Task<IActionResult> Prune(int id) =>
         Run(async () => Ok(await _service.PruneNodeAsync(id)));
 
-    /// <summary>Deletes the Pruned tombstone {id}: the next build brings the arm back.</summary>
+    /// <summary>Deletes the Pruned or PrunedEdge tombstone {id}: the next build brings the arm or edge back.</summary>
     [HttpDelete("{id:int}/prune")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]

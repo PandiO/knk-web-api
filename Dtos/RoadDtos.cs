@@ -658,6 +658,24 @@ namespace knkwebapi_v2.Dtos
         public List<int> ChangedEdgeIds { get; set; } = new();
     }
 
+    /// <summary>POST api/road-edges/prune: detected edges to remove for good (one transaction).</summary>
+    public class RoadEdgePruneDto
+    {
+        [JsonPropertyName("edgeIds")]
+        public List<int> EdgeIds { get; set; } = new();
+    }
+
+    public class RoadEdgePruneResultDto
+    {
+        /// <summary>One PrunedEdge tombstone per pruned edge, in request order (unprune with DELETE api/road-nodes/{id}/prune).</summary>
+        [JsonPropertyName("tombstones")]
+        public List<RoadNodeDto> Tombstones { get; set; } = new();
+
+        /// <summary>Detected junctions and endpoints left without any edge, deleted with them.</summary>
+        [JsonPropertyName("deletedNodeIds")]
+        public List<int> DeletedNodeIds { get; set; } = new();
+    }
+
     /// <summary>POST api/road-edges: a recorded edge (DESIGN §5.10). Both ends snap to the nearest node
     /// within 3 blocks, else an Anchor is created there.</summary>
     public class RoadEdgeRecordDto

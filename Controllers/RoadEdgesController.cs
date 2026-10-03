@@ -45,6 +45,19 @@ public class RoadEdgesController : RoadControllerBase
     public Task<IActionResult> Update(int id, [FromBody] RoadEdgeUpdateDto dto) =>
         Run(async () => Ok(await _service.UpdateEdgeAsync(id, dto)));
 
+    /// <summary>
+    /// Removes detected edges for good: each leaves a PrunedEdge tombstone on its centreline that
+    /// every later build of its tile respects (unprune: DELETE api/road-nodes/{tombstoneId}/prune).
+    /// </summary>
+    [HttpPost("prune")]
+    [RequireServiceOrPermission(StaffPermissions.RoadManage)]
+    [ProducesResponseType(typeof(RoadEdgePruneResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public Task<IActionResult> Prune([FromBody] RoadEdgePruneDto dto) =>
+        Run(async () => Ok(await _service.PruneEdgesAsync(dto)));
+
     [HttpDelete("{id:int}")]
     [RequireServiceOrPermission(StaffPermissions.RoadManage)]
     [ProducesResponseType(204)]

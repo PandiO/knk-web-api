@@ -26,14 +26,17 @@ public enum RoadMaterialRole
 /// <summary>DESIGN §3.5. Boundary nodes sit on a tile border and are stitched to the neighbour
 /// tile's boundary nodes by the API (plan D7); Anchor nodes are admin-made split points. A Pruned
 /// node is a tombstone: an admin removed the dead end that ended there (it has no edges); the
-/// builder leaves that arm out of every later build until the tombstone is deleted (unprune).</summary>
+/// builder leaves that arm out of every later build until the tombstone is deleted (unprune). A
+/// PrunedEdge node is the tombstone of a pruned edge, on the middle of its centreline: the builder
+/// leaves out the chain passing nearest it (a junction left with two arms then dissolves).</summary>
 public enum RoadNodeKind
 {
     Junction,
     Endpoint,
     Boundary,
     Anchor,
-    Pruned
+    Pruned,
+    PrunedEdge
 }
 
 /// <summary>Manual nodes survive rebuilds untouched (DESIGN §3.5).</summary>

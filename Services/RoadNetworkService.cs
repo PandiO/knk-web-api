@@ -125,7 +125,7 @@ public class RoadNetworkService : IRoadNetworkService
         // (another builder version): the payload wins. The tombstone goes first (unique position).
         var payloadPositions = dto.Nodes.Select(n => (n.X, n.Y, n.Z)).ToHashSet();
         var replacedTombstones = existingNodes
-            .Where(n => n.Kind == RoadNodeKind.Pruned && payloadPositions.Contains((n.X, n.Y, n.Z))).ToList();
+            .Where(n => IsTombstone(n.Kind) && payloadPositions.Contains((n.X, n.Y, n.Z))).ToList();
         if (replacedTombstones.Count > 0)
         {
             _repo.RemoveRange(replacedTombstones);
@@ -137,7 +137,7 @@ public class RoadNetworkService : IRoadNetworkService
         var nodeByKey = new Dictionary<string, RoadNode>(StringComparer.Ordinal);
         var matchedNodeIds = new HashSet<int>();
         // Pruned tombstones are never matched: they only tell the builder what to leave out.
-        var byPosition = existingNodes.Where(n => n.Kind != RoadNodeKind.Pruned).ToDictionary(n => (n.X, n.Y, n.Z));
+        var byPosition = existingNodes.Where(n => !IsTombstone(n.Kind)).ToDictionary(n => (n.X, n.Y, n.Z));
         foreach (var node in dto.Nodes)
         {
             RoadNode? target = null;
@@ -381,7 +381,7 @@ public class RoadNetworkService : IRoadNetworkService
         tile.Dirty = false;
         tile.CellCount = dto.CellCount;
         tile.LevelCount = dto.LevelCount;
-        tile.NodeCount = tileNodes.Count(n => n.Kind != RoadNodeKind.Pruned);
+        tile.NodeCount = tileNodes.Count(n => !IsTombstone(n.Kind));
         tile.EdgeCount = tileEdges.Count;
         tile.WarningsJson = RoadJson.ListJson(dto.Warnings.Concat(labels.Conflicts));
         bumped.Remove(tile.Id);
@@ -470,7 +470,7 @@ public class RoadNetworkService : IRoadNetworkService
             {
                 if (!existingNodes.ContainsKey(existingId)) throw new ArgumentException($"Node '{node.Key}' references node {existingId}, which is not a node of this tile.");
                 if (!claimedIds.Add(existingId)) throw new ArgumentException($"Node {existingId} is referenced by two payload nodes.");
-                if (existingNodes[existingId].Kind == RoadNodeKind.Pruned) throw new ArgumentException($"Node '{node.Key}' references pruned node {existingId}.");
+                if (IsTombstone(existingNodes[existingId].Kind)) throw new ArgumentException($"Node '{node.Key}' references pruned node {existingId}.");
             }
             payloadNodes[node.Key] = node;
         }
@@ -778,8 +778,8 @@ public class RoadNetworkService : IRoadNetworkService
     {
         if (dto == null) throw new ArgumentNullException(nameof(dto));
         var node = await _repo.GetNodeAsync(id) ?? throw new KeyNotFoundException($"Road node {id} not found.");
-        if (node.Kind == RoadNodeKind.Pruned) throw new InvalidOperationException($"Node {id} is pruned; unprune it first.");
-        if (dto.Kind == RoadNodeKind.Pruned) throw new ArgumentException("Use prune to prune a node.");
+        if (IsTombstone(node.Kind)) throw new InvalidOperationException($"Node {id} is pruned; unprune it first.");
+        if (dto.Kind.HasValue && IsTombstone(dto.Kind.Value)) throw new ArgumentException("Use prune to prune a node or an edge.");
         var edited = false;
         if (dto.ClearName)
         {
@@ -854,7 +854,7 @@ public class RoadNetworkService : IRoadNetworkService
         var keep = await _repo.GetNodeAsync(dto.KeepNodeId) ?? throw new KeyNotFoundException($"Road node {dto.KeepNodeId} not found.");
         var merge = await _repo.GetNodeAsync(dto.MergeNodeId) ?? throw new KeyNotFoundException($"Road node {dto.MergeNodeId} not found.");
         if (keep.World != merge.World) throw new ArgumentException("Both nodes must be in the same world.");
-        if (keep.Kind == RoadNodeKind.Pruned || merge.Kind == RoadNodeKind.Pruned) throw new ArgumentException("A pruned node cannot be merged; unprune it first.");
+        if (IsTombstone(keep.Kind) || IsTombstone(merge.Kind)) throw new ArgumentException("A pruned node cannot be merged; unprune it first.");
 
         return await _repo.RunInTransactionAsync(async () =>
         {
@@ -927,13 +927,13 @@ public class RoadNetworkService : IRoadNetworkService
     public async Task<RoadNodeDto> PruneNodeAsync(int id)
     {
         var node = await _repo.GetNodeAsync(id) ?? throw new KeyNotFoundException($"Road node {id} not found.");
-        if (node.Kind == RoadNodeKind.Pruned)
+        if (IsTombstone(node.Kind))
         {
             return _mapper.Map<RoadNodeDto>(node);
         }
         if (node.Kind != RoadNodeKind.Endpoint)
         {
-            throw new ArgumentException($"Node {id} is a {node.Kind}; only an endpoint can be pruned. Prune the end of the arm you want gone - a junction left with two arms disappears by itself.");
+            throw new ArgumentException($"Node {id} is a {node.Kind}; only an endpoint can be pruned here. Prune the end of the arm you want gone, or prune the junction's edges (POST api/road-edges/prune) - a junction left with two arms disappears by itself.");
         }
 
         return await _repo.RunInTransactionAsync(async () =>
@@ -972,7 +972,7 @@ public class RoadNetworkService : IRoadNetworkService
         {
             return false;
         }
-        if (node.Kind != RoadNodeKind.Pruned) throw new ArgumentException($"Node {id} is not pruned.");
+        if (!IsTombstone(node.Kind)) throw new ArgumentException($"Node {id} is not pruned.");
         _repo.Remove(node);
         await BumpTileAsync(node.TileId);
         await _repo.SaveChangesAsync();
@@ -1050,7 +1050,7 @@ public class RoadNetworkService : IRoadNetworkService
         var radius = (int)Math.Ceiling(RecordedEdgeSnapDistance);
         var candidates = await _repo.GetNodesInBoxAsync(world, end[0] - radius, end[2] - radius, end[0] + radius, end[2] + radius);
         var nearest = candidates
-            .Where(n => n.Kind != RoadNodeKind.Pruned && (exclude == null || n.Id != exclude.Id))
+            .Where(n => !IsTombstone(n.Kind) && (exclude == null || n.Id != exclude.Id))
             .Select(n => (node: n, distance: RoadGeometry.Distance(end[0], end[1], end[2], n.X, n.Y, n.Z)))
             .Where(c => c.distance <= RecordedEdgeSnapDistance)
             .OrderBy(c => c.distance).ThenBy(c => c.node.Id)
@@ -1138,6 +1138,132 @@ public class RoadNetworkService : IRoadNetworkService
         await _repo.SaveChangesAsync();
         return true;
     }
+
+    /// <summary>
+    /// Smoke test 2026-10-03: deleting a detected edge does not stick - the next build traces it again.
+    /// Each edge is removed and a PrunedEdge tombstone (Manual, locked, no edges) is left on the middle
+    /// of its centreline, so every later build of its tile leaves out the chain passing nearest it.
+    /// A detected Junction or Endpoint left without any edge (unnamed) is deleted - the build would
+    /// not emit it either; a junction left with two arms stays until the next build joins them.
+    /// Recorded edges are the admin's own (delete them); stitch edges belong to two tiles (prune the
+    /// edge on either side). All edges are pruned in one transaction or none.
+    /// </summary>
+    public async Task<RoadEdgePruneResultDto> PruneEdgesAsync(RoadEdgePruneDto dto)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        var ids = (dto.EdgeIds ?? new List<int>()).Distinct().ToList();
+        if (ids.Count == 0) throw new ArgumentException("edgeIds must name at least one edge.");
+
+        return await _repo.RunInTransactionAsync(async () =>
+        {
+            var edges = new List<RoadEdge>();
+            foreach (var id in ids)
+            {
+                var edge = await _repo.GetEdgeAsync(id) ?? throw new KeyNotFoundException($"Road edge {id} not found.");
+                if (edge.Source == RoadEdgeSource.Recorded)
+                {
+                    throw new InvalidOperationException($"Edge {id} is recorded; delete it instead (a build never brings a recorded edge back).");
+                }
+                if (edge.Source == RoadEdgeSource.Stitch)
+                {
+                    throw new ArgumentException($"Edge {id} is a stitch between two tiles; prune the edge on either side of the border.");
+                }
+                if (edges.Count > 0 && edge.World != edges[0].World) throw new ArgumentException("All edges must be in one world.");
+                edges.Add(edge);
+            }
+            var world = edges[0].World;
+
+            var tombstones = new List<RoadNode>();
+            var taken = new HashSet<(int, int, int)>();
+            var ends = new HashSet<int>();
+            var bumped = new HashSet<int>();
+            foreach (var edge in edges)
+            {
+                var (x, y, z) = await FreeTombstonePositionAsync(world, RoadJson.Geometry(edge.GeometryJson), taken)
+                    ?? throw new InvalidOperationException($"Edge {edge.Id} has no free block on its centreline for the tombstone.");
+                var tombstone = new RoadNode
+                {
+                    World = world, X = x, Y = y, Z = z, TileId = edge.TileId,
+                    Kind = RoadNodeKind.PrunedEdge, Source = RoadNodeSource.Manual, Locked = true
+                };
+                _repo.Add(tombstone);
+                tombstones.Add(tombstone);
+                ends.Add(edge.FromNodeId);
+                ends.Add(edge.ToNodeId);
+                bumped.Add(edge.TileId);
+                _repo.Remove(edge);
+            }
+            await _repo.SaveChangesAsync();
+
+            var result = new RoadEdgePruneResultDto();
+            var remaining = await _repo.GetEdgesTouchingNodesAsync(ends);
+            foreach (var node in await _repo.GetNodesByIdsAsync(ends))
+            {
+                var orphan = !remaining.Any(e => e.FromNodeId == node.Id || e.ToNodeId == node.Id);
+                if (orphan && node.Source == RoadNodeSource.Detected && node.Name == null
+                    && node.Kind is RoadNodeKind.Junction or RoadNodeKind.Endpoint)
+                {
+                    _repo.Remove(node);
+                    bumped.Add(node.TileId);
+                    result.DeletedNodeIds.Add(node.Id);
+                }
+            }
+            foreach (var tile in await _repo.GetTilesByIdsAsync(bumped))
+            {
+                tile.Version++;
+            }
+            await _repo.SaveChangesAsync();
+            await RecomputeComponentsAsync(world);
+            await _repo.SaveChangesAsync();
+            result.Tombstones = _mapper.Map<List<RoadNodeDto>>(tombstones);
+            result.DeletedNodeIds.Sort();
+            return result;
+        });
+    }
+
+    /// <summary>
+    /// The block on the polyline nearest its middle (by length) that no node occupies: node positions
+    /// are unique per world, and the middle keeps the tombstone away from the junctions at the ends.
+    /// </summary>
+    private async Task<(int x, int y, int z)?> FreeTombstonePositionAsync(string world, int[][] geometry, HashSet<(int, int, int)> taken)
+    {
+        if (geometry.Length == 0) return null;
+        var samples = new List<(double along, (int, int, int) block)>();
+        var along = 0.0;
+        for (var k = 0; k < geometry.Length; k++)
+        {
+            var a = geometry[k];
+            if (k == 0)
+            {
+                samples.Add((0, (a[0], a[1], a[2])));
+                continue;
+            }
+            var p = geometry[k - 1];
+            var length = RoadGeometry.Distance(p, a);
+            var steps = Math.Max(1, (int)Math.Ceiling(length));
+            for (var s = 1; s <= steps; s++)
+            {
+                var t = (double)s / steps;
+                samples.Add((along + t * length, (
+                    (int)Math.Round(p[0] + t * (a[0] - p[0])),
+                    (int)Math.Round(p[1] + t * (a[1] - p[1])),
+                    (int)Math.Round(p[2] + t * (a[2] - p[2])))));
+            }
+            along += length;
+        }
+        var middle = along / 2;
+        foreach (var (_, block) in samples.OrderBy(s => Math.Abs(s.along - middle)))
+        {
+            if (taken.Contains(block)) continue;
+            var (x, y, z) = block;
+            if (await _repo.GetNodeAtAsync(world, x, y, z) != null) continue;
+            taken.Add(block);
+            return block;
+        }
+        return null;
+    }
+
+    private static bool IsTombstone(RoadNodeKind kind) => kind is RoadNodeKind.Pruned or RoadNodeKind.PrunedEdge;
 
     private async Task BumpTileAsync(int tileId)
     {

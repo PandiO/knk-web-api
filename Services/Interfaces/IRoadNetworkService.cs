@@ -51,6 +51,7 @@ public interface IRoadNetworkService
     Task<RoadEdgeDto> CreateRecordedEdgeAsync(RoadEdgeRecordDto dto);
     Task<RoadEdgeUpdateResultDto> UpdateEdgeAsync(int id, RoadEdgeUpdateDto dto);
     Task<bool> DeleteEdgeAsync(int id);
+    Task<RoadEdgePruneResultDto> PruneEdgesAsync(RoadEdgePruneDto dto);
 
     // Streets
     Task<StreetRoadDto?> GetStreetRoadAsync(int streetId);
