@@ -184,6 +184,8 @@ public class TelemetryPrivacyControllerTests : IDisposable
 
         var preview = await c.Execute(id, dryRun: true);
         Assert.Equal(PrivacyRequestStatus.Pending, ((PrivacyDeletionRequestDto)((OkObjectResult)preview.Result!).Value!).Status);
+        Assert.Equal(409, Status(await c.Execute(id))); // GracePeriod: the player can still cancel
+        _db.Clock = _db.Clock.AddDays(5);
         var executed = await c.Execute(id);
         Assert.Equal(PrivacyRequestStatus.Completed, ((PrivacyDeletionRequestDto)((OkObjectResult)executed.Result!).Value!).Status);
         Assert.Equal(409, Status(await c.Cancel(id, default)));

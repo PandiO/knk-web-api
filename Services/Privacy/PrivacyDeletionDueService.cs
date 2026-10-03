@@ -10,9 +10,10 @@ using Microsoft.Extensions.Options;
 namespace knkwebapi_v2.Services.Privacy
 {
     /// <summary>
-    /// Daily GDPR deadline guard (DESIGN.md §F.14, L1-18): executes requests still pending
-    /// Privacy:AutoExecuteBeforeDueDays (3) days before their due date, so the one-month deadline
-    /// (Art. 12(3)) cannot pass silently. Idle when Privacy:AutoExecuteEnabled is false.
+    /// Hourly GDPR deletion job (DESIGN.md §F.14, developer decisions 2026-10-03): expires
+    /// confirmation links that were not used in time and executes confirmed requests whose grace
+    /// period (Privacy:GraceDays) is over. It never acts on a player without such a request. With
+    /// Privacy:AutoExecuteEnabled false it only expires links; the owner executes by hand.
     /// </summary>
     public sealed class PrivacyDeletionDueService : BackgroundService
     {
@@ -32,12 +33,11 @@ namespace knkwebapi_v2.Services.Privacy
         {
             if (!_options.AutoExecuteEnabled)
             {
-                _logger.LogInformation("GDPR deletion auto-execution disabled (Privacy:AutoExecuteEnabled = false)");
-                return;
+                _logger.LogInformation("GDPR deletion auto-execution disabled (Privacy:AutoExecuteEnabled = false); only expiring confirmation links");
             }
             try
             {
-                using var timer = new PeriodicTimer(TimeSpan.FromHours(24));
+                using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
                 do
                 {
                     await RunOnceAsync(DateTime.UtcNow, stoppingToken);
@@ -46,7 +46,7 @@ namespace knkwebapi_v2.Services.Privacy
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("GDPR deletion due job stopping");
+                _logger.LogInformation("GDPR deletion job stopping");
             }
         }
 
@@ -56,8 +56,10 @@ namespace knkwebapi_v2.Services.Privacy
             {
                 using var scope = _serviceProvider.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IPrivacyDeletionService>();
-                var executed = await service.ExecuteDueAsync(now, ct);
-                if (executed > 0) _logger.LogWarning("GDPR deletion: auto-executed {Count} request(s) close to their due date", executed);
+                var expired = await service.ExpireConfirmationsAsync(now, ct);
+                if (expired > 0) _logger.LogInformation("GDPR deletion: {Count} unconfirmed request(s) expired", expired);
+                var executed = await service.ExecuteScheduledAsync(now, ct);
+                if (executed > 0) _logger.LogWarning("GDPR deletion: executed {Count} request(s) after their grace period", executed);
                 return executed;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -66,7 +68,7 @@ namespace knkwebapi_v2.Services.Privacy
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "GDPR deletion due job failed; retrying tomorrow");
+                _logger.LogError(ex, "GDPR deletion job failed; retrying in an hour");
                 return 0;
             }
         }

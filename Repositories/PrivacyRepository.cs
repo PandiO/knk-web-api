@@ -13,9 +13,9 @@ using Microsoft.EntityFrameworkCore;
 namespace knkwebapi_v2.Repositories
 {
     /// <summary>
-    /// GDPR deletion data access (KNG-34 link 6, DESIGN.md §F.14 + link 5's additions). The erasure
-    /// scope is listed once in <see cref="Scopes"/> so counting (dry run) and deleting can never
-    /// disagree. Ledger, Siege match and audit-log rows are never touched here.
+    /// GDPR deletion data access (KNG-34 link 6, DESIGN.md §F.14 + link 5's additions + developer
+    /// decisions 2026-10-03). The erasure scope is listed once in <see cref="Scopes"/> so counting
+    /// (dry run) and deleting can never disagree. Ledger and Siege match rows are never touched here.
     /// </summary>
     public class PrivacyRepository : IPrivacyRepository
     {
@@ -46,6 +46,16 @@ namespace knkwebapi_v2.Repositories
             yield return Scope("telemetry_enhanced_targets", ids => _context.TelemetryEnhancedTargets
                 .Where(r => r.UserId != null && ids.Contains(r.UserId.Value)));
             yield return Scope("user_domain_discoveries", ids => _context.UserDomainDiscoveries.Where(r => ids.Contains(r.UserId)));
+            // Developer decision 2026-10-03: "delete means everything" beyond statistics.
+            yield return Scope("private_message_logs", ids => _context.PrivateMessageLogEntries
+                .Where(r => (r.SenderUserId != null && ids.Contains(r.SenderUserId.Value))
+                            || (r.RecipientUserId != null && ids.Contains(r.RecipientUserId.Value))));
+            yield return Scope("link_codes", ids => _context.LinkCodes.Where(r => r.UserId != null && ids.Contains(r.UserId.Value)));
+            yield return Scope("permission_grants", ids => _context.PermissionGrants.Where(r => ids.Contains(r.HolderId)));
+            yield return Scope("user_permission_groups", ids => _context.UserPermissionGroups.Where(r => ids.Contains(r.UserId)));
+            // Rows about the player (target). Rows the player wrote as staff about others stay: they
+            // are those players' moderation history and name only the pseudonymized id.
+            yield return Scope("audit_log_entries", ids => _context.AuditLogEntries.Where(r => ids.Contains(r.TargetUserId)));
         }
 
         private (string, Func<IReadOnlyCollection<int>, CancellationToken, Task<int>>, Func<IReadOnlyCollection<int>, CancellationToken, Task<int>>)
@@ -76,15 +86,27 @@ namespace knkwebapi_v2.Repositories
         public Task<PrivacyDeletionRequest?> GetRequestAsync(int id, CancellationToken ct = default) =>
             _context.PrivacyDeletionRequests.FirstOrDefaultAsync(r => r.Id == id, ct);
 
-        public Task<PrivacyDeletionRequest?> GetPendingRequestOfUserAsync(int userId, CancellationToken ct = default) =>
-            _context.PrivacyDeletionRequests.AsNoTracking()
-                .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == PrivacyRequestStatus.Pending, ct);
+        public Task<PrivacyDeletionRequest?> GetOpenRequestOfUserAsync(int userId, CancellationToken ct = default) =>
+            _context.PrivacyDeletionRequests
+                .Where(r => r.UserId == userId
+                            && (r.Status == PrivacyRequestStatus.Pending || r.Status == PrivacyRequestStatus.AwaitingConfirmation))
+                .OrderByDescending(r => r.Id)
+                .FirstOrDefaultAsync(ct);
 
-        public Task<List<PrivacyDeletionRequest>> GetPendingDueAsync(DateTime dueBefore, CancellationToken ct = default) =>
+        public Task<PrivacyDeletionRequest?> GetRequestByTokenHashAsync(string tokenHash, CancellationToken ct = default) =>
+            _context.PrivacyDeletionRequests.FirstOrDefaultAsync(r => r.ConfirmationTokenHash == tokenHash, ct);
+
+        public Task<List<PrivacyDeletionRequest>> GetScheduledDueAsync(DateTime now, CancellationToken ct = default) =>
             _context.PrivacyDeletionRequests.AsNoTracking()
-                .Where(r => r.Status == PrivacyRequestStatus.Pending && r.DueAt <= dueBefore)
-                .OrderBy(r => r.DueAt)
+                .Where(r => r.Status == PrivacyRequestStatus.Pending && r.ScheduledAt != null && r.ScheduledAt <= now)
+                .OrderBy(r => r.ScheduledAt)
                 .ThenBy(r => r.Id)
+                .ToListAsync(ct);
+
+        public Task<List<PrivacyDeletionRequest>> GetExpiredConfirmationsAsync(DateTime now, CancellationToken ct = default) =>
+            _context.PrivacyDeletionRequests
+                .Where(r => r.Status == PrivacyRequestStatus.AwaitingConfirmation
+                            && (r.ConfirmationExpiresAt == null || r.ConfirmationExpiresAt <= now))
                 .ToListAsync(ct);
 
         public async Task AddRequestAsync(PrivacyDeletionRequest request, CancellationToken ct = default)
@@ -137,6 +159,8 @@ namespace knkwebapi_v2.Repositories
                 user.Uuid = null;
                 user.PasswordHash = null;
                 user.Gender = null;
+                user.ChatPrefix = null;
+                user.ChatSuffix = null;
                 user.IsOnline = false;
                 user.LastSeenAt = null;
                 user.IsActive = false;

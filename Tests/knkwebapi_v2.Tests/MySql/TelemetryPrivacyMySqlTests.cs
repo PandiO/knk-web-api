@@ -88,7 +88,11 @@ public class TelemetryPrivacyMySqlTests : IClassFixture<MySqlTestDatabase>
         int requestId;
         await using (var ctx = _db.NewContext())
         {
-            var request = new PrivacyDeletionRequest { UserId = target, RequestedAt = _now, DueAt = _now.AddDays(30), RequestedByUserId = other };
+            var request = new PrivacyDeletionRequest
+            {
+                UserId = target, Source = PrivacyRequestSource.Staff, RequestedAt = _now.AddDays(-6), DueAt = _now.AddDays(24),
+                RequestedByUserId = other, ConfirmedAt = _now.AddDays(-6), ScheduledAt = _now.AddDays(-1)
+            };
             ctx.PrivacyDeletionRequests.Add(request);
             await ctx.SaveChangesAsync();
             requestId = request.Id;
@@ -98,7 +102,7 @@ public class TelemetryPrivacyMySqlTests : IClassFixture<MySqlTestDatabase>
         {
             var service = new PrivacyDeletionService(new PrivacyRepository(ctx),
                 new CurrencyService(new CurrencyRepository(ctx), new UserRepository(ctx), NullLogger<CurrencyService>.Instance),
-                new Mock<IAuditLogService>().Object, new PrivacyOptions(), () => _now);
+                new Mock<IAuditLogService>().Object, new Mock<IPrivacyEmailService>().Object, new PrivacyOptions(), () => _now);
             var result = await service.ExecuteAsync(requestId, other, dryRun: false);
             Assert.Equal(PrivacyRequestStatus.Completed, result.Request!.Status);
             Assert.Equal((1, 1, 1), (result.Request.Result!.Deleted["player_stat_daily"], result.Request.Result.Deleted["player_pvp_kill_pairs_daily"],

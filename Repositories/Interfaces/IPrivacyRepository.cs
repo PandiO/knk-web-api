@@ -16,10 +16,17 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         Task<PrivacyDeletionRequest?> GetRequestAsync(int id, CancellationToken ct = default);
 
-        Task<PrivacyDeletionRequest?> GetPendingRequestOfUserAsync(int userId, CancellationToken ct = default);
+        /// <summary>The user's newest request that is awaiting confirmation or scheduled (tracked).</summary>
+        Task<PrivacyDeletionRequest?> GetOpenRequestOfUserAsync(int userId, CancellationToken ct = default);
 
-        /// <summary>Pending requests with DueAt at or before <paramref name="dueBefore"/>, oldest first.</summary>
-        Task<List<PrivacyDeletionRequest>> GetPendingDueAsync(DateTime dueBefore, CancellationToken ct = default);
+        /// <summary>The request whose confirmation token hashes to <paramref name="tokenHash"/> (tracked).</summary>
+        Task<PrivacyDeletionRequest?> GetRequestByTokenHashAsync(string tokenHash, CancellationToken ct = default);
+
+        /// <summary>Scheduled requests whose grace period ended at or before <paramref name="now"/>, oldest first.</summary>
+        Task<List<PrivacyDeletionRequest>> GetScheduledDueAsync(DateTime now, CancellationToken ct = default);
+
+        /// <summary>Unconfirmed requests whose link expired (tracked).</summary>
+        Task<List<PrivacyDeletionRequest>> GetExpiredConfirmationsAsync(DateTime now, CancellationToken ct = default);
 
         Task AddRequestAsync(PrivacyDeletionRequest request, CancellationToken ct = default);
 

@@ -246,6 +246,14 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddHostedService<knkwebapi_v2.Services.Telemetry.TelemetryRetentionService>();
             services.AddScoped<IPrivacyRepository, PrivacyRepository>();
             services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyDeletionService, knkwebapi_v2.Services.Privacy.PrivacyDeletionService>();
+            if (string.Equals(emailProvider, "Smtp", System.StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyEmailService, knkwebapi_v2.Services.Privacy.SmtpPrivacyEmailService>();
+            }
+            else
+            {
+                services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyEmailService, knkwebapi_v2.Services.Privacy.LogPrivacyEmailService>();
+            }
             services.AddHostedService<knkwebapi_v2.Services.Privacy.PrivacyDeletionDueService>();
 
             // World analytics (KNG-34 link 7, IMPLEMENTATION_PLAN.md §4): anonymous daily aggregates from the

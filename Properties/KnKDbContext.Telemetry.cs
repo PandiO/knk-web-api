@@ -83,11 +83,19 @@ public partial class KnKDbContext
             entity.Property(e => e.RequestedAt).HasColumnType("datetime(6)");
             entity.Property(e => e.DueAt).HasColumnType("datetime(6)");
             entity.Property(e => e.Status).HasConversion<byte>();
+            entity.Property(e => e.Source).HasConversion<byte>();
             entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.ConfirmationTokenHash).HasMaxLength(64);
+            entity.Property(e => e.ConfirmationExpiresAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ConfirmedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ScheduledAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.CancelledAt).HasColumnType("datetime(6)");
             entity.Property(e => e.ExecutedAt).HasColumnType("datetime(6)");
             entity.Property(e => e.ResultJson).HasColumnType("json");
 
             entity.HasIndex(e => new { e.Status, e.DueAt });
+            entity.HasIndex(e => new { e.Status, e.ScheduledAt });
+            entity.HasIndex(e => e.ConfirmationTokenHash);
             entity.HasIndex(e => e.UserId);
         });
     }

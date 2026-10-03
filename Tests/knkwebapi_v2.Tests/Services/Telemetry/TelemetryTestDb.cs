@@ -9,6 +9,7 @@ using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Services.Privacy;
 using knkwebapi_v2.Services.Telemetry;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -44,6 +45,12 @@ internal sealed class TelemetryTestDb : IDisposable
 
     public PrivacyOptions PrivacyOptions { get; } = new();
 
+    /// <summary>The deletion emails (confirmation link, scheduled notice).</summary>
+    public Mock<IPrivacyEmailService> Email { get; } = new();
+
+    /// <summary>Shared by every Privacy() service, like the app's singleton memory cache.</summary>
+    public IMemoryCache Cache { get; set; } = new MemoryCache(new MemoryCacheOptions());
+
     public DateTime Clock { get; set; } = Now;
 
     public KnKDbContext NewContext() =>
@@ -63,7 +70,8 @@ internal sealed class TelemetryTestDb : IDisposable
         new(new CurrencyRepository(Context), new UserRepository(Context), NullLogger<CurrencyService>.Instance);
 
     public PrivacyDeletionService Privacy() =>
-        new(new PrivacyRepository(Context), Currency(), Audit.Object, PrivacyOptions, () => Clock);
+        new(new PrivacyRepository(Context), Currency(), Audit.Object, Email.Object, PrivacyOptions, () => Clock,
+            "https://knk.example", Cache);
 
     /// <summary>A provider whose scopes resolve repositories/services on fresh contexts of this database.</summary>
     public ServiceProvider Provider(TelemetryWriteQueue? queue = null)
@@ -75,7 +83,7 @@ internal sealed class TelemetryTestDb : IDisposable
         services.AddScoped<IPrivacyDeletionService>(sp => new PrivacyDeletionService(sp.GetRequiredService<IPrivacyRepository>(),
             new CurrencyService(new CurrencyRepository(sp.GetRequiredService<KnKDbContext>()),
                 new UserRepository(sp.GetRequiredService<KnKDbContext>()), NullLogger<CurrencyService>.Instance),
-            Audit.Object, PrivacyOptions, () => Clock));
+            Audit.Object, Email.Object, PrivacyOptions, () => Clock, "https://knk.example", Cache));
         if (queue != null) services.AddSingleton(queue);
         return services.BuildServiceProvider();
     }

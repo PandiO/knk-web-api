@@ -6,14 +6,15 @@ using knkwebapi_v2.Enums;
 namespace knkwebapi_v2.Dtos;
 
 // GDPR deletion contracts (KNG-34 link 6, knk-workspace docs/specs/player-statistics/
-// IMPLEMENTATION_PLAN.md §3.3, DESIGN.md §F.14). Owner only.
+// IMPLEMENTATION_PLAN.md §3.3, DESIGN.md §F.14; request flow from the developer decisions of
+// 2026-10-03: player request + email confirmation, staff filing, grace period).
 
 public class PrivacyDeletionRequestCreateDto
 {
     [JsonPropertyName("userId")]
     public int UserId { get; set; }
 
-    /// <summary>Optional (≤ 500 characters), e.g. where the request came from. Not shown to anyone else.</summary>
+    /// <summary>Optional (≤ 500 characters), e.g. where the request came from. Not shown to the player.</summary>
     [JsonPropertyName("note")]
     public string? Note { get; set; }
 }
@@ -38,6 +39,13 @@ public class PrivacyDeletionResultDto
     public int PseudonymizedUsers { get; set; }
 }
 
+public class PrivacyDeletionConfirmDto
+{
+    /// <summary>The token from the emailed confirmation link.</summary>
+    [JsonPropertyName("token")]
+    public string? Token { get; set; }
+}
+
 public class PrivacyDeletionRequestDto
 {
     [JsonPropertyName("id")]
@@ -50,15 +58,16 @@ public class PrivacyDeletionRequestDto
     [JsonPropertyName("username")]
     public string? Username { get; set; }
 
+    /// <summary>Player, Staff or Owner.</summary>
+    [JsonPropertyName("source")]
+    public PrivacyRequestSource Source { get; set; }
+
     [JsonPropertyName("requestedAt")]
     public DateTime RequestedAt { get; set; }
 
+    /// <summary>Legal deadline: one month after confirmation.</summary>
     [JsonPropertyName("dueAt")]
     public DateTime DueAt { get; set; }
-
-    /// <summary>When the due-date job will execute a pending request (null when auto-execution is off).</summary>
-    [JsonPropertyName("autoExecuteAt")]
-    public DateTime? AutoExecuteAt { get; set; }
 
     [JsonPropertyName("status")]
     public PrivacyRequestStatus Status { get; set; }
@@ -66,13 +75,35 @@ public class PrivacyDeletionRequestDto
     [JsonPropertyName("requestedByUserId")]
     public int RequestedByUserId { get; set; }
 
+    /// <summary>Staff/owner note; never returned to the player.</summary>
     [JsonPropertyName("note")]
     public string? Note { get; set; }
+
+    /// <summary>Until when the emailed link works (AwaitingConfirmation only).</summary>
+    [JsonPropertyName("confirmationExpiresAt")]
+    public DateTime? ConfirmationExpiresAt { get; set; }
+
+    [JsonPropertyName("confirmedAt")]
+    public DateTime? ConfirmedAt { get; set; }
+
+    /// <summary>When the deletion runs (end of the grace period); cancellable until then.</summary>
+    [JsonPropertyName("scheduledAt")]
+    public DateTime? ScheduledAt { get; set; }
+
+    /// <summary>True when the scheduled job will run it at ScheduledAt (false: the owner executes by hand).</summary>
+    [JsonPropertyName("autoExecute")]
+    public bool AutoExecute { get; set; }
+
+    [JsonPropertyName("cancelledAt")]
+    public DateTime? CancelledAt { get; set; }
+
+    [JsonPropertyName("cancelledByUserId")]
+    public int? CancelledByUserId { get; set; }
 
     [JsonPropertyName("executedAt")]
     public DateTime? ExecutedAt { get; set; }
 
-    /// <summary>Null when executed by the due-date job.</summary>
+    /// <summary>Null when executed by the scheduled job.</summary>
     [JsonPropertyName("executedByUserId")]
     public int? ExecutedByUserId { get; set; }
 

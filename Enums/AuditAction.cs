@@ -56,13 +56,18 @@ public enum AuditAction
     /// whose events were read, or the reader when the search named no player.</summary>
     TelemetryViewed = 30,
 
-    /// <summary>The owner recorded a GDPR deletion request for the target player.</summary>
+    /// <summary>A GDPR deletion request was filed for the target player (by the player, staff or the
+    /// owner; Details.source).</summary>
     PrivacyDeletionRequested = 31,
 
-    /// <summary>A GDPR deletion request was executed (by the owner, or by the due-date job when the
+    /// <summary>A GDPR deletion request was executed (by the owner, or by the scheduled job when the
     /// actor is null). Details hold only counts.</summary>
     PrivacyDeletionExecuted = 32,
 
-    /// <summary>The owner cancelled a pending GDPR deletion request.</summary>
-    PrivacyDeletionCancelled = 33
+    /// <summary>An open GDPR deletion request was cancelled (by the player, staff or the owner).</summary>
+    PrivacyDeletionCancelled = 33,
+
+    /// <summary>The player confirmed their deletion request through the emailed link; it runs after
+    /// the grace period.</summary>
+    PrivacyDeletionConfirmed = 34
 }
