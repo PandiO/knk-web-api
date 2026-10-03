@@ -204,7 +204,8 @@ namespace knkwebapi_v2.Services
 
                 var endedAt = dto.EndedAt ?? DateTime.UtcNow;
 
-                // Participants: the reported ones are the members still in the match at the end.
+                // Participants: the reported ones are the members still in the match at the end, plus
+                // (KNG-34) members who left early, reported with their LeftAt for their stats only.
                 // A row the plugin didn't report (its "left" call was lost) is closed at the end time.
                 var byUser = match.Participants.GroupBy(p => p.UserId).ToDictionary(g => g.Key, g => g.First());
                 foreach (var r in reported)
@@ -221,6 +222,14 @@ namespace knkwebapi_v2.Services
                     row.Deaths = r.Deaths;
                     row.HighestKillStreak = r.HighestKillStreak;
                     row.Captures = r.Captures;
+                    // A reported leaver (KNG-34): the first left marker wins, as in ParticipantLeftAsync. It is
+                    // kept strictly before the end so the member is never counted as present at the end.
+                    if (r.LeftAt.HasValue && row.LeftAt == null)
+                    {
+                        var leftAt = r.LeftAt.Value.Kind == DateTimeKind.Local
+                            ? r.LeftAt.Value.ToUniversalTime() : DateTime.SpecifyKind(r.LeftAt.Value, DateTimeKind.Utc);
+                        row.LeftAt = leftAt < endedAt ? leftAt : endedAt.AddMilliseconds(-1);
+                    }
                 }
                 var reportedIds = reported.Select(r => r.UserId).ToHashSet();
                 foreach (var row in match.Participants.Where(p => !reportedIds.Contains(p.UserId) && p.LeftAt == null))
