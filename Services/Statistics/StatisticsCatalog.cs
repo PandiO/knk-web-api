@@ -90,6 +90,11 @@ namespace knkwebapi_v2.Services.Statistics
         public const string AfkTime = "afk_time";
         public const string Logins = "logins";
         public const string PvpKills = "pvp_kills";
+
+        /// <summary>Internal: PvP kills that count toward pvp_kills leaderboards — at most
+        /// Leaderboards:RepeatVictimDailyCap per victim per killer per local day (§F.11), maintained at
+        /// ingestion so every period (incl. lifetime, after kill pairs expire) reads it from daily/totals.</summary>
+        public const string PvpKillsRanked = "pvp_kills.ranked";
         public const string PveKills = "pve_kills";
         public const string Deaths = "deaths";
         public const string HighestKillstreak = "highest_killstreak";
@@ -202,6 +207,7 @@ namespace knkwebapi_v2.Services.Statistics
 
             // Combat (§F.7); the Siege context of kills/deaths/streak is projected from the match tables.
             Add(PvpKills, "pvp_kills", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.Plugin, StatisticPluginInput.PvpKill, MaxCount, GroupCombat, "Player kills", SiegeOwned);
+            Add(PvpKillsRanked, null, Sum, StatisticUnit.Count, true, Internal, StatisticSource.Plugin, StatisticPluginInput.None, MaxCount, GroupCombat, "Player kills (leaderboard-capped)");
             Add(PveKills, "pve_kills", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.Plugin, StatisticPluginInput.Counter, MaxCount, GroupCombat, "Creature kills");
             Add(Deaths, "deaths", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.Plugin, StatisticPluginInput.Counter, MaxCount, GroupCombat, "Deaths", SiegeOwned);
             Add("deaths_by_cause.player", null, Sum, StatisticUnit.Count, true, Internal, StatisticSource.Plugin, StatisticPluginInput.Counter, MaxCount, GroupCombat, "Deaths caused by players");

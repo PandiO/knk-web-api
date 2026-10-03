@@ -263,6 +263,16 @@ namespace knkwebapi_v2.Repositories
         public Task<User?> GetUserAsync(int userId, CancellationToken ct = default) =>
             _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
 
+        public Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct = default)
+        {
+            var users = _context.Users.AsNoTracking();
+            // MySQL compares usernames with the column's case-insensitive collation (and keeps the
+            // unique index usable); EF InMemory compares ordinally.
+            return IsRelational
+                ? users.FirstOrDefaultAsync(u => u.Username == username, ct)
+                : users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower(), ct);
+        }
+
         public Task<List<User>> GetUsersAsync(IReadOnlyCollection<int> userIds, CancellationToken ct = default)
         {
             var ids = userIds.Distinct().ToList();
@@ -311,6 +321,26 @@ namespace knkwebapi_v2.Repositories
         {
             var ids = userIds.Distinct().ToList();
             return _context.UserDomainDiscoveries.AsNoTracking().Where(d => ids.Contains(d.UserId)).ToListAsync(ct);
+        }
+
+        public async Task<Dictionary<KillPairKey, int>> GetKillPairCountsAsync(IReadOnlyCollection<KillPairKey> pairs,
+            CancellationToken ct = default)
+        {
+            var result = new Dictionary<KillPairKey, int>();
+            if (pairs.Count == 0) return result;
+            // Narrow by killers and days in SQL, match the exact keys in memory.
+            var killers = pairs.Select(p => p.KillerUserId).Distinct().ToList();
+            var days = pairs.Select(p => p.Day).Distinct().ToList();
+            var wanted = pairs.ToHashSet();
+            var rows = await _context.PlayerPvpKillPairDailies.AsNoTracking()
+                .Where(p => killers.Contains(p.KillerUserId) && days.Contains(p.Day))
+                .ToListAsync(ct);
+            foreach (var row in rows)
+            {
+                var key = new KillPairKey(row.KillerUserId, row.VictimUserId, row.Day, row.ContextKey);
+                if (wanted.Contains(key)) result[key] = row.Count;
+            }
+            return result;
         }
 
         // ------------------------------------------------------------------ visibility

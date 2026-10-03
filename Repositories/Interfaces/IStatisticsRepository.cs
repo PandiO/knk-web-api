@@ -63,6 +63,9 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         Task<User?> GetUserAsync(int userId, CancellationToken ct = default);
 
+        /// <summary>The user with this username, ignoring case.</summary>
+        Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct = default);
+
         Task<List<User>> GetUsersAsync(IReadOnlyCollection<int> userIds, CancellationToken ct = default);
 
         Task<List<StatisticValueRow>> GetTotalsAsync(IReadOnlyCollection<int> userIds, CancellationToken ct = default);
@@ -76,6 +79,9 @@ namespace knkwebapi_v2.Repositories.Interfaces
             CancellationToken ct = default);
 
         Task<List<UserDomainDiscovery>> GetDiscoveriesAsync(IReadOnlyCollection<int> userIds, CancellationToken ct = default);
+
+        /// <summary>Stored kill counts of the given pairs (missing pairs are absent).</summary>
+        Task<Dictionary<KillPairKey, int>> GetKillPairCountsAsync(IReadOnlyCollection<KillPairKey> pairs, CancellationToken ct = default);
 
         // ---- Visibility ----
 

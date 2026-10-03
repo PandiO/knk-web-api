@@ -81,6 +81,30 @@ namespace knkwebapi_v2.Services.Statistics
             }).ToList()
         };
 
+        // ------------------------------------------------------------------ public profile
+
+        public async Task<PublicPlayerProfileDto?> GetPublicProfileAsync(string username, CancellationToken ct = default)
+        {
+            var name = username?.Trim();
+            if (string.IsNullOrEmpty(name) || name.Length > 64) return null;
+            var user = await _repo.GetUserByUsernameAsync(name, ct);
+            if (user == null || !user.IsActive) return null;
+            var ids = await IdentityIdsAsync(user.Id, ct);
+            var profile = await BuildProfileAsync(user, ids, await _repo.GetTotalsAsync(ids, ct), ct);
+            return new PublicPlayerProfileDto
+            {
+                UserId = user.Id,
+                Username = user.Username,
+                TitleName = profile.TitleName,
+                Experience = profile.Experience,
+                Coins = profile.Coins,
+                Gems = profile.Gems,
+                FirstJoinedAt = profile.FirstJoinedAt,
+                ActivePlaytimeSeconds = profile.ActivePlaytimeSeconds,
+                AfkSeconds = profile.AfkSeconds
+            };
+        }
+
         // ------------------------------------------------------------------ player statistics
 
         public async Task<PlayerStatisticsDto?> GetAsync(int userId, StatisticsViewer viewer, string? period, DateOnly? date,

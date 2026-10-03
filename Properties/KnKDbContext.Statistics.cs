@@ -22,7 +22,11 @@ public partial class KnKDbContext
     public virtual DbSet<StatisticsProjectionCursor> StatisticsProjectionCursors { get; set; } = null!;
     public virtual DbSet<StatisticsProjectedSource> StatisticsProjectedSources { get; set; } = null!;
 
-    partial void OnModelCreatingPartial(ModelBuilder modelBuilder) => ConfigureStatistics(modelBuilder);
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
+    {
+        ConfigureStatistics(modelBuilder);
+        ConfigureLeaderboards(modelBuilder);
+    }
 
     private static void ConfigureStatistics(ModelBuilder modelBuilder)
     {

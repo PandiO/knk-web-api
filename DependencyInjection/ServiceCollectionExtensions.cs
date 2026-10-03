@@ -215,6 +215,17 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddHostedService<knkwebapi_v2.Services.Statistics.StatisticsProjectionService>();
             services.AddHostedService<knkwebapi_v2.Services.Statistics.StatisticsRetentionService>();
 
+            // Leaderboards (KNG-34 link 5): snapshots every Leaderboards:RefreshSeconds; reads from snapshots only.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.LeaderboardsOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.LeaderboardsOptions.SectionName));
+            }
+            services.AddScoped<ILeaderboardRepository, LeaderboardRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Leaderboards.LeaderboardSnapshotBuilder>();
+            services.AddScoped<ILeaderboardQueryService, knkwebapi_v2.Services.Leaderboards.LeaderboardQueryService>();
+            services.AddHostedService<knkwebapi_v2.Services.Leaderboards.LeaderboardSnapshotService>();
+
             // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
             // Temporary ranks expiring: back to Default + tell the plugin (RANK_DISPLAY.md).

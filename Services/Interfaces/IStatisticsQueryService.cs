@@ -16,6 +16,10 @@ namespace knkwebapi_v2.Services.Interfaces
     {
         StatisticsCatalogDto GetCatalog();
 
+        /// <summary>The always-public profile of an active player by username (case-insensitive);
+        /// null when unknown or inactive (IMPLEMENTATION_PLAN.md §3.2).</summary>
+        Task<PublicPlayerProfileDto?> GetPublicProfileAsync(string username, CancellationToken ct = default);
+
         Task<PlayerStatisticsDto?> GetAsync(int userId, StatisticsViewer viewer, string? period, DateOnly? date,
             CancellationToken ct = default);
 

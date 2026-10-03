@@ -75,6 +75,14 @@ internal sealed class StatisticsTestDb : IDisposable
         new(Repository(), Currency(), new TitleService(new TitleBracketRepository(Context)), new DiscoveryRepository(Context),
             Microsoft.Extensions.Options.Options.Create(Options), Time);
 
+    public LeaderboardRepository LeaderboardRepository() => new(Context);
+
+    public knkwebapi_v2.Services.Leaderboards.LeaderboardSnapshotBuilder LeaderboardBuilder(LeaderboardsOptions? options = null) =>
+        new(LeaderboardRepository(), Microsoft.Extensions.Options.Options.Create(options ?? new LeaderboardsOptions()),
+            Microsoft.Extensions.Options.Options.Create(Options), Time);
+
+    public knkwebapi_v2.Services.Leaderboards.LeaderboardQueryService LeaderboardQuery() => new(LeaderboardRepository(), Time);
+
     public List<PlayerStatDaily> Daily(int userId, string metric) =>
         Context.PlayerStatDailies.AsNoTracking().Where(d => d.UserId == userId && d.MetricKey == metric).OrderBy(d => d.Day).ThenBy(d => d.ContextKey).ToList();
 

@@ -27,22 +27,27 @@ namespace knkwebapi_v2.Services.Statistics
     /// <item>durations: split at local midnight into active_playtime / afk_time daily rows, added
     /// to the session's seconds; the session's heartbeat moves to the interval end.</item>
     /// <item>counters (sum) / records (max) → daily + totals.</item>
-    /// <item>pvpKills → <c>pvp_kills</c> for the killer + the kill-pair row.</item>
+    /// <item>pvpKills → <c>pvp_kills</c> for the killer + the kill-pair row, and the internal
+    /// <c>pvp_kills.ranked</c> for the kills within Leaderboards:RepeatVictimDailyCap of that pair's
+    /// day (stored pair rows of earlier batches included) — the leaderboard input (§F.11).</item>
     /// </list>
     /// </summary>
     public class StatisticsIngestionService : IStatisticsIngestionService
     {
         private readonly IStatisticsRepository _repo;
         private readonly StatisticsOptions _options;
+        private readonly LeaderboardsOptions _leaderboards;
         private readonly StatisticsMetrics? _metrics;
         private readonly ILogger<StatisticsIngestionService> _logger;
         private readonly TimeProvider _time;
 
         public StatisticsIngestionService(IStatisticsRepository repo, IOptions<StatisticsOptions>? options = null,
-            StatisticsMetrics? metrics = null, ILogger<StatisticsIngestionService>? logger = null, TimeProvider? time = null)
+            StatisticsMetrics? metrics = null, ILogger<StatisticsIngestionService>? logger = null, TimeProvider? time = null,
+            IOptions<LeaderboardsOptions>? leaderboards = null)
         {
             _repo = repo;
             _options = options?.Value ?? new StatisticsOptions();
+            _leaderboards = leaderboards?.Value ?? new LeaderboardsOptions();
             _metrics = metrics;
             _logger = logger ?? NullLogger<StatisticsIngestionService>.Instance;
             _time = time ?? TimeProvider.System;
@@ -83,6 +88,7 @@ namespace knkwebapi_v2.Services.Statistics
                 context.ApplyValues("counters", counters, StatisticPluginInput.Counter);
                 context.ApplyValues("records", records, StatisticPluginInput.Record);
                 context.ApplyPvpKills(pvpKills);
+                await context.ApplyRankedKillsAsync(ct);
 
                 outcome.Rejected = outcome.Rejected.OrderBy(r => SectionOrder(r.Section)).ThenBy(r => r.Index).ToList();
                 outcome.Accepted = entryCount - outcome.Rejected.Count;
@@ -159,6 +165,9 @@ namespace knkwebapi_v2.Services.Statistics
             }
 
             public StatisticsDeltaSet Deltas { get; } = new();
+
+            /// <summary>Latest kill time per accepted kill pair of this batch (ranked-kill timestamps).</summary>
+            private readonly Dictionary<KillPairKey, DateTime> _pairTimes = new();
 
             private IStatisticsRepository Repo => _owner._repo;
 
@@ -362,6 +371,28 @@ namespace knkwebapi_v2.Services.Statistics
                     var day = StatisticsPeriods.LocalDay(at, _zone);
                     Deltas.Add(entry.KillerUserId, day, metric.Key, context, StatisticAggregation.Sum, 1m, at);
                     Deltas.AddKillPair(entry.KillerUserId, entry.VictimUserId, day, context);
+                    var pair = new KillPairKey(entry.KillerUserId, entry.VictimUserId, day, context);
+                    _pairTimes[pair] = _pairTimes.TryGetValue(pair, out var latest) && latest > at ? latest : at;
+                }
+            }
+
+            /// <summary>
+            /// Adds pvp_kills.ranked for the kills of each (killer, victim, day, context) that still fit
+            /// under the repeat-victim cap, counting the pair's stored kills of earlier batches first.
+            /// </summary>
+            public async Task ApplyRankedKillsAsync(CancellationToken ct)
+            {
+                if (Deltas.KillPairs.Count == 0) return;
+                var cap = _owner._leaderboards.RepeatVictimDailyCap;
+                var stored = cap > 0
+                    ? await Repo.GetKillPairCountsAsync(Deltas.KillPairs.Keys.ToList(), ct)
+                    : new Dictionary<KillPairKey, int>();
+                foreach (var (pair, count) in Deltas.KillPairs)
+                {
+                    var ranked = cap > 0 ? Math.Min(count, Math.Max(0, cap - stored.GetValueOrDefault(pair))) : count;
+                    if (ranked <= 0) continue;
+                    Deltas.Add(pair.KillerUserId, pair.Day, StatisticsCatalog.PvpKillsRanked, pair.ContextKey,
+                        StatisticAggregation.Sum, ranked, _pairTimes[pair]);
                 }
             }
 
