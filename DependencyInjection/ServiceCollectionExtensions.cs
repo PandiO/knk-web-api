@@ -248,6 +248,18 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyDeletionService, knkwebapi_v2.Services.Privacy.PrivacyDeletionService>();
             services.AddHostedService<knkwebapi_v2.Services.Privacy.PrivacyDeletionDueService>();
 
+            // World analytics (KNG-34 link 7, IMPLEMENTATION_PLAN.md §4): anonymous daily aggregates from the
+            // plugin; owner-only reads; daily retention.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.WorldAnalyticsOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.WorldAnalyticsOptions.SectionName));
+            }
+            services.AddScoped<IWorldAnalyticsRepository, WorldAnalyticsRepository>();
+            services.AddScoped<knkwebapi_v2.Services.WorldAnalytics.IWorldAnalyticsIngestionService, knkwebapi_v2.Services.WorldAnalytics.WorldAnalyticsIngestionService>();
+            services.AddScoped<knkwebapi_v2.Services.WorldAnalytics.IWorldAnalyticsQueryService, knkwebapi_v2.Services.WorldAnalytics.WorldAnalyticsQueryService>();
+            services.AddHostedService<knkwebapi_v2.Services.WorldAnalytics.WorldAnalyticsRetentionService>();
+
             // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
             // Temporary ranks expiring: back to Default + tell the plugin (RANK_DISPLAY.md).
