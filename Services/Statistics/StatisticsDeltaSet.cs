@@ -81,5 +81,37 @@ namespace knkwebapi_v2.Services.Statistics
 
         /// <summary>Distinct user ids touched (for logging/metrics).</summary>
         public int UserCount => _daily.Keys.Select(k => k.UserId).Concat(_killPairs.Keys.Select(k => k.KillerUserId)).Distinct().Count();
+
+        /// <summary>Every user id a change refers to: daily/total rows and both sides of kill pairs.</summary>
+        public IReadOnlyCollection<int> ReferencedUserIds => _daily.Keys.Select(k => k.UserId)
+            .Concat(_killPairs.Keys.Select(k => k.KillerUserId))
+            .Concat(_killPairs.Keys.Select(k => k.VictimUserId))
+            .ToHashSet();
+
+        /// <summary>
+        /// Drops every change of <paramref name="userIds"/>, kill pairs on either side included
+        /// (GDPR-erased accounts never get statistics again, DESIGN.md §F.14). Returns the number of
+        /// daily rows and kill pairs dropped.
+        /// </summary>
+        public int RemoveUsers(IReadOnlySet<int> userIds)
+        {
+            if (userIds.Count == 0) return 0;
+            var removed = 0;
+            foreach (var key in _daily.Keys.Where(k => userIds.Contains(k.UserId)).ToList())
+            {
+                _daily.Remove(key);
+                removed++;
+            }
+            foreach (var key in _totals.Keys.Where(k => userIds.Contains(k.UserId)).ToList())
+            {
+                _totals.Remove(key);
+            }
+            foreach (var key in _killPairs.Keys.Where(k => userIds.Contains(k.KillerUserId) || userIds.Contains(k.VictimUserId)).ToList())
+            {
+                _killPairs.Remove(key);
+                removed++;
+            }
+            return removed;
+        }
     }
 }

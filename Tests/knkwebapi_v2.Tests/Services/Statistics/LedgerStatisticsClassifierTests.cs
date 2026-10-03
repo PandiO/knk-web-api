@@ -4,54 +4,81 @@ using Xunit;
 
 namespace knkwebapi_v2.Tests.Services.Statistics;
 
-/// <summary>DESIGN.md §F.5 economy buckets (L1-5/L1-6) and the D13 coverage guard.</summary>
+/// <summary>DESIGN.md §F.5 economy buckets: every gain is earned, every loss spent (D16, 2026-10-03).</summary>
 public class LedgerStatisticsClassifierTests
 {
-    /// <summary>
-    /// The D13 guard (IMPLEMENTATION_PLAN.md §8 link 2, criterion 10): adding a reason code to
-    /// CurrencyReasons without deciding its statistics bucket fails here. Decide earned / spent /
-    /// excluded in LedgerStatisticsClassifier (and DESIGN.md §F.5) for the new code.
-    /// </summary>
+    /// <summary>Every reason code counts — gameplay, transfers, staff, signup, merges, premium.</summary>
     [Fact]
-    public void EveryCurrencyReasonCode_IsClassifiedExplicitly()
+    public void EveryCurrencyReasonCode_CountsBySign()
     {
-        var unclassified = CurrencyReasons.All.Select(r => r.Code).Where(c => !LedgerStatisticsClassifier.IsClassified(c)).ToList();
-
-        Assert.True(unclassified.Count == 0, "Reason codes without a statistics bucket: " + string.Join(", ", unclassified));
+        foreach (var code in CurrencyReasons.All.Select(r => r.Code).Where(c => c != CurrencyReasons.Reversal))
+        {
+            Assert.Equal(LedgerBucket.Earned, LedgerStatisticsClassifier.Classify(code, 10));
+            Assert.Equal(LedgerBucket.Spent, LedgerStatisticsClassifier.Classify(code, -10));
+        }
     }
 
     [Theory]
-    [InlineData("SALARY", LedgerBucket.Earned)]
-    [InlineData("SIEGE_REWARD", LedgerBucket.Earned)]
-    [InlineData("TITLE_BONUS", LedgerBucket.Earned)]
-    [InlineData("DISCOVERY_REWARD", LedgerBucket.Earned)]
-    [InlineData("LOOTBOX_REWARD", LedgerBucket.Earned)]
-    [InlineData("EVENT_REWARD", LedgerBucket.Earned)]
-    [InlineData("KIT_CLAIM_COST", LedgerBucket.Spent)]
-    [InlineData("KIT_PURCHASE", LedgerBucket.Spent)]
-    [InlineData("LOOTBOX_PURCHASE", LedgerBucket.Spent)]
-    [InlineData("TELEPORT_FEE", LedgerBucket.Spent)]
-    [InlineData("TRANSFER_FEE", LedgerBucket.Spent)]
-    [InlineData("SIGNUP_GRANT", LedgerBucket.Excluded)]
-    [InlineData("PLAYER_TRANSFER", LedgerBucket.Excluded)]
-    [InlineData("ADMIN_GRANT", LedgerBucket.Excluded)]
-    [InlineData("ADMIN_TAKE", LedgerBucket.Excluded)]
-    [InlineData("ADMIN_SET", LedgerBucket.Excluded)]
-    [InlineData("MERGE_FORFEIT", LedgerBucket.Excluded)]
-    [InlineData("MERGE_CARRYOVER", LedgerBucket.Excluded)]
-    [InlineData("PREMIUM_TOPUP", LedgerBucket.Excluded)]
-    [InlineData("REVERSAL", LedgerBucket.Reversal)]
-    public void Classify_FollowsTheDesign(string code, LedgerBucket expected)
+    [InlineData("PLAYER_TRANSFER", 20, LedgerBucket.Earned)]   // received
+    [InlineData("PLAYER_TRANSFER", -20, LedgerBucket.Spent)]   // sent
+    [InlineData("ADMIN_GRANT", 5, LedgerBucket.Earned)]
+    [InlineData("ADMIN_TAKE", -5, LedgerBucket.Spent)]
+    [InlineData("ADMIN_SET", 7, LedgerBucket.Earned)]
+    [InlineData("ADMIN_SET", -7, LedgerBucket.Spent)]
+    [InlineData("SIGNUP_GRANT", 100, LedgerBucket.Earned)]
+    [InlineData("MERGE_FORFEIT", -50, LedgerBucket.Spent)]
+    [InlineData("MERGE_CARRYOVER", 50, LedgerBucket.Earned)]
+    [InlineData("PREMIUM_TOPUP", 30, LedgerBucket.Earned)]
+    [InlineData("SOMETHING_NEW", 1, LedgerBucket.Earned)]
+    [InlineData(null, -1, LedgerBucket.Spent)]
+    public void Classify_BySign(string? code, long amount, LedgerBucket expected)
     {
-        Assert.Equal(expected, LedgerStatisticsClassifier.Classify(code));
+        Assert.Equal(expected, LedgerStatisticsClassifier.Classify(code, amount));
+    }
+
+    /// <summary>A reversal lowers what it reverses: −amount undoes a gain, +amount undoes a loss.</summary>
+    [Theory]
+    [InlineData(-30, LedgerBucket.Earned)]
+    [InlineData(30, LedgerBucket.Spent)]
+    public void Reversal_LowersTheReversedBucket(long amount, LedgerBucket expected)
+    {
+        Assert.Equal(expected, LedgerStatisticsClassifier.Classify(CurrencyReasons.Reversal, amount));
+    }
+
+    /// <summary>A reversal of a reversal restores the original: its bucket follows the chain depth.</summary>
+    [Theory]
+    [InlineData(-30, 2, LedgerBucket.Spent)]  // re-applies a reversed loss → spent goes up again
+    [InlineData(30, 2, LedgerBucket.Earned)]  // re-applies a reversed gain → earned goes up again
+    [InlineData(-30, 3, LedgerBucket.Earned)]
+    public void ReversalChains_FollowTheOriginal(long amount, int depth, LedgerBucket expected)
+    {
+        Assert.Equal(expected, LedgerStatisticsClassifier.Classify(CurrencyReasons.Reversal, amount, depth));
+    }
+
+    [Fact]
+    public void Reversal_WithUnresolvedOrigin_IsExcluded()
+    {
+        Assert.Equal(LedgerBucket.Excluded, LedgerStatisticsClassifier.Classify(CurrencyReasons.Reversal, 30, null));
     }
 
     [Theory]
-    [InlineData("SOMETHING_NEW")]
-    [InlineData("salary")] // codes are exact
-    [InlineData(null)]
-    public void UnknownCodes_AreExcluded(string? code)
+    [InlineData("SALARY")]
+    [InlineData("REVERSAL")]
+    public void ZeroLegs_ChangeNothing(string code)
     {
-        Assert.Equal(LedgerBucket.Excluded, LedgerStatisticsClassifier.Classify(code));
+        Assert.Equal(LedgerBucket.Excluded, LedgerStatisticsClassifier.Classify(code, 0));
+    }
+
+    [Theory]
+    [InlineData(LedgerBucket.Earned, 20, 20)]   // gain → earned + 20
+    [InlineData(LedgerBucket.Earned, -20, -20)] // reversed gain → earned − 20
+    [InlineData(LedgerBucket.Spent, -20, 20)]   // loss → spent + 20
+    [InlineData(LedgerBucket.Spent, 20, -20)]   // reversed loss → spent − 20
+    public void MetricFor_Coins(LedgerBucket bucket, long amount, decimal expected)
+    {
+        var (metric, value) = LedgerStatisticsProjector.MetricFor(bucket, knkwebapi_v2.Enums.Currency.Coins, amount);
+
+        Assert.Equal(bucket == LedgerBucket.Earned ? StatisticsCatalog.CoinsEarned : StatisticsCatalog.CoinsSpent, metric);
+        Assert.Equal(expected, value);
     }
 }

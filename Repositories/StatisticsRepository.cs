@@ -56,6 +56,7 @@ namespace knkwebapi_v2.Repositories
 
         public async Task ApplyAsync(StatisticsDeltaSet deltas, DateTime now, CancellationToken ct = default)
         {
+            await DropErasedUsersAsync(deltas, ct);
             await _context.SaveChangesAsync(ct);
             if (deltas.IsEmpty) return;
 
@@ -80,6 +81,29 @@ namespace knkwebapi_v2.Repositories
             var pairs = deltas.KillPairs.OrderBy(p => p.Key.KillerUserId).ThenBy(p => p.Key.VictimUserId)
                 .ThenBy(p => p.Key.Day).ThenBy(p => p.Key.ContextKey, StringComparer.Ordinal).ToList();
             await UpsertKillPairsAsync(pairs, ct);
+        }
+
+        /// <summary>
+        /// GDPR-erased accounts never get statistics again (DESIGN.md §F.14): drops their changes
+        /// and any title-change rows a projector added for them, before anything is saved. This is
+        /// the one write path of plugin batches, the ledger and Siege projectors and rebuilds.
+        /// </summary>
+        private async Task DropErasedUsersAsync(StatisticsDeltaSet deltas, CancellationToken ct)
+        {
+            var addedTitleChanges = _context.ChangeTracker.Entries<PlayerTitleChange>()
+                .Where(e => e.State == EntityState.Added).ToList();
+            var ids = deltas.ReferencedUserIds.Concat(addedTitleChanges.Select(e => e.Entity.UserId)).Distinct().ToList();
+            if (ids.Count == 0) return;
+            var erased = (await _context.Users.AsNoTracking()
+                .Where(u => ids.Contains(u.Id) && u.DeletedReason == PrivacyErasure.Reason)
+                .Select(u => u.Id)
+                .ToListAsync(ct)).ToHashSet();
+            if (erased.Count == 0) return;
+            deltas.RemoveUsers(erased);
+            foreach (var entry in addedTitleChanges.Where(e => erased.Contains(e.Entity.UserId)))
+            {
+                entry.State = EntityState.Detached;
+            }
         }
 
         private void ApplyTracked(StatisticsDeltaSet deltas, DateTime now)

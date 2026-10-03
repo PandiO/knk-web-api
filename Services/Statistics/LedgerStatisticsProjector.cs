@@ -125,17 +125,12 @@ namespace knkwebapi_v2.Services.Statistics
         private async Task<List<PlayerTitleChange>> BuildAsync(List<LedgerLegRow> legs, StatisticsDeltaSet deltas, CancellationToken ct)
         {
             var zone = StatisticsPeriods.FindZone(_options.TimeZone);
-            var reversedReasons = await ResolveReversedReasonsAsync(legs, ct);
+            var reversalDepths = await ResolveReversalDepthsAsync(legs, ct);
 
             foreach (var leg in legs)
             {
-                var bucket = LedgerStatisticsClassifier.Classify(leg.ReasonCode);
-                if (bucket == LedgerBucket.Reversal)
-                {
-                    bucket = leg.ReversesTransactionId != null && reversedReasons.TryGetValue(leg.ReversesTransactionId.Value, out var origin)
-                        ? LedgerStatisticsClassifier.Classify(origin)
-                        : LedgerBucket.Excluded;
-                }
+                int? depth = leg.ReversesTransactionId != null && reversalDepths.TryGetValue(leg.ReversesTransactionId.Value, out var d) ? d : null;
+                var bucket = LedgerStatisticsClassifier.Classify(leg.ReasonCode, leg.Amount, depth);
                 var (metric, value) = MetricFor(bucket, leg.Currency, leg.Amount);
                 if (metric == null || value == 0) continue;
                 var at = Utc(leg.CreatedAt);
@@ -158,18 +153,19 @@ namespace knkwebapi_v2.Services.Statistics
                 _ => (null, 0m)
             };
 
-        /// <summary>For every reversal leg's reversed transaction, the first non-REVERSAL reason up the
-        /// chain (a reversal of a reversal takes the original's bucket again).</summary>
-        private async Task<Dictionary<long, string>> ResolveReversedReasonsAsync(List<LedgerLegRow> legs, CancellationToken ct)
+        /// <summary>For every reversal leg's reversed transaction, the reversal depth of a leg that
+        /// reverses it: 1 when it is an original, 2 when it is itself a reversal of an original, …
+        /// Unresolvable chains (unknown id, deeper than 8) are left out — those legs are excluded.</summary>
+        private async Task<Dictionary<long, int>> ResolveReversalDepthsAsync(List<LedgerLegRow> legs, CancellationToken ct)
         {
-            var resolved = new Dictionary<long, string>();
+            var resolved = new Dictionary<long, int>();
             var pending = legs.Where(l => l.ReasonCode == CurrencyReasons.Reversal && l.ReversesTransactionId != null)
                 .Select(l => l.ReversesTransactionId!.Value).Distinct().ToList();
             if (pending.Count == 0) return resolved;
 
             // Each start id walks up its chain (bounded); intermediate lookups are batched per level.
             var current = pending.ToDictionary(id => id, id => id);
-            for (var depth = 0; depth < 8 && current.Count > 0; depth++)
+            for (var depth = 1; depth <= 8 && current.Count > 0; depth++)
             {
                 var reasons = await _repo.GetTransactionReasonsAsync(current.Values.Distinct().ToList(), ct);
                 var next = new Dictionary<long, long>();
@@ -182,7 +178,7 @@ namespace knkwebapi_v2.Services.Statistics
                     }
                     else
                     {
-                        resolved[start] = info.ReasonCode;
+                        resolved[start] = depth;
                     }
                 }
                 current = next;

@@ -94,21 +94,22 @@ public class LedgerStatisticsProjectorTests : IDisposable
     }
 
     [Fact]
-    public async Task Buckets_FollowTheDesign()
+    public async Task Buckets_CountEveryGainAndLoss()
     {
         SeedEconomy();
 
         Assert.Equal(14, await DrainAsync()); // user legs only
 
-        Assert.Equal(100m, _db.Total(1, "coins_earned"));                  // salary; admin grant excluded
-        Assert.Equal(1m, _db.Total(1, "coins_spent"));                     // kit 30 − its reversal 30 + transfer fee 1; transfer excluded
+        // D16 (2026-10-03): every way of gaining/losing counts — transfers, staff, signup included.
+        Assert.Equal(1100m, _db.Total(1, "coins_earned"));                 // salary 100 + admin grant 1000
+        Assert.Equal(21m, _db.Total(1, "coins_spent"));                    // kit 30 + transfer 20 + fee 1 − kit reversal 30
         Assert.Equal(5m, _db.Total(1, "gems_earned"));
         Assert.Equal(2m, _db.Total(1, "gems_spent"));
-        Assert.Equal(120m, _db.Total(1, "xp_gained"));                     // discovery + siege; admin XP excluded (L1-6)
-        Assert.Null(_db.Total(2, "coins_earned"));                         // transfer received and signup grant are excluded
+        Assert.Equal(620m, _db.Total(1, "xp_gained"));                     // discovery 40 + siege 80 + admin 500; XP losses are no statistic
+        Assert.Equal(270m, _db.Total(2, "coins_earned"));                  // transfer received 20 + signup grant 250
 
         // Periods allocate by the transaction's day; the reversal lands on its own day.
-        Assert.Equal(new[] { (new DateOnly(2026, 10, 2), 31m), (new DateOnly(2026, 10, 3), -30m) },
+        Assert.Equal(new[] { (new DateOnly(2026, 10, 2), 51m), (new DateOnly(2026, 10, 3), -30m) },
             _db.Daily(1, "coins_spent").Select(d => (d.Day, d.Value)));
     }
 
@@ -145,8 +146,8 @@ public class LedgerStatisticsProjectorTests : IDisposable
             (3, "Peasant woman", "Serf", TitleChangeDirection.Demotion),
             (1, "Serf", "Yeoman", TitleChangeDirection.Promotion),
         }, changes.Select(c => (c.UserId, c.FromTitleName!, c.ToTitleName, c.Direction)));
-        Assert.Null(_db.Total(1, "xp_gained")); // a merge is not earned XP
-        Assert.Equal(150m, _db.Total(3, "xp_gained"));
+        Assert.Equal(600m, _db.Total(1, "xp_gained")); // D16: a merge carryover is a gain too
+        Assert.Equal(150m, _db.Total(3, "xp_gained")); // the forfeit is an XP loss: no statistic
     }
 
     [Fact]
@@ -156,12 +157,12 @@ public class LedgerStatisticsProjectorTests : IDisposable
         await DrainAsync();
 
         Assert.Equal(0, await DrainAsync());
-        Assert.Equal(100m, _db.Total(1, "coins_earned"));
+        Assert.Equal(1100m, _db.Total(1, "coins_earned"));
         Assert.Equal(3, _db.Context.PlayerTitleChanges.Count());
 
         Tx(CurrencyReasons.Salary, At(3, 11), null, (1, Currency.Coins, 50, 1079));
         Assert.Equal(1, await DrainAsync());
-        Assert.Equal(150m, _db.Total(1, "coins_earned"));
+        Assert.Equal(1150m, _db.Total(1, "coins_earned"));
         var lastUserLeg = _db.Context.CurrencyEntries.Where(e => e.AccountKind == CurrencyAccountKind.User).Max(e => e.Id);
         Assert.Equal(lastUserLeg, _db.Context.StatisticsProjectionCursors.AsNoTracking().Single().LastSourceId);
     }
@@ -230,7 +231,33 @@ public class LedgerStatisticsProjectorTests : IDisposable
         Assert.Equal(12, await _db.LedgerProjector().RebuildAsync(1));
 
         Assert.Equal(before, Snapshot());
-        Assert.Equal(7m, _db.Total(2, "coins_earned"));
+        Assert.Equal(277m, _db.Total(2, "coins_earned")); // transfer 20 + signup 250 + salary 7 (D16)
+    }
+
+    /// <summary>GDPR-erased accounts never get statistics again — not from new legs, not from a
+    /// rebuild of the kept ledger (developer decision 2026-10-03, DESIGN.md §F.14).</summary>
+    [Fact]
+    public async Task ErasedAccounts_GetNothing_FromProjectionOrRebuild()
+    {
+        SeedEconomy();
+        var user = _db.Context.Users.Single(u => u.Id == 1);
+        user.DeletedReason = PrivacyErasure.Reason;
+        user.IsActive = false;
+        _db.Context.SaveChanges();
+
+        await DrainAsync();
+        Assert.Null(_db.Total(1, "coins_earned"));
+        Assert.Empty(_db.Context.PlayerTitleChanges.AsNoTracking());
+        Assert.Equal(270m, _db.Total(2, "coins_earned")); // others are unaffected
+
+        await _db.LedgerProjector().RebuildAsync(null);
+        await DrainAsync();
+        await _db.LedgerProjector().RebuildAsync(1);
+
+        Assert.Null(_db.Total(1, "coins_earned"));
+        Assert.Null(_db.Total(1, "xp_gained"));
+        Assert.Empty(_db.Context.PlayerTitleChanges.AsNoTracking());
+        Assert.Equal(270m, _db.Total(2, "coins_earned"));
     }
 
     [Fact]
