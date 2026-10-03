@@ -333,7 +333,14 @@ namespace knkwebapi_v2.Repositories
 
         public async Task<StatisticsProjectionCursor> GetOrCreateCursorAsync(string name, CancellationToken ct = default)
         {
-            var cursor = await _context.StatisticsProjectionCursors.FirstOrDefaultAsync(c => c.Name == name, ct);
+            // On MySQL the row stays locked for the rest of the transaction, so two API instances (or a
+            // rebuild and the background run) never project from the same cursor position. A missing
+            // row is created; a concurrent creator loses on the primary key and its run rolls back.
+            var cursor = IsRelational
+                ? await _context.StatisticsProjectionCursors
+                    .FromSqlInterpolated($"SELECT * FROM `statistics_projection_cursors` WHERE `Name` = {name} FOR UPDATE")
+                    .FirstOrDefaultAsync(ct)
+                : await _context.StatisticsProjectionCursors.FirstOrDefaultAsync(c => c.Name == name, ct);
             if (cursor != null) return cursor;
             cursor = new StatisticsProjectionCursor { Name = name, LastSourceId = 0, UpdatedAt = DateTime.UtcNow };
             _context.StatisticsProjectionCursors.Add(cursor);

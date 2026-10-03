@@ -236,6 +236,40 @@ public class StatisticsUpsertMySqlTests : IClassFixture<MySqlTestDatabase>
     }
 
     [MySqlFact]
+    public async Task ConcurrentLedgerProjectors_NeverProjectALegTwice()
+    {
+        var user = (await UsersAsync(1))[0];
+        await using (var ctx = _db.NewContext())
+        {
+            var at = _time.UtcNow.AddMinutes(-10);
+            await CurrencyLedgerSeed.AddAsync(ctx, Enumerable.Range(0, 30)
+                .Select(_ => CurrencyLedgerSeed.Tx(CurrencyTransactionKind.Grant, CurrencyReasons.Salary, at, (user, Currency.Gems, 2)))
+                .ToArray());
+        }
+
+        await Task.WhenAll(Enumerable.Range(0, 4).Select(async _ =>
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                await using var ctx = _db.NewContext();
+                var projector = new LedgerStatisticsProjector(new StatisticsRepository(ctx), Options.Create(_options), null, null, _time);
+                int count;
+                try
+                {
+                    count = await projector.ProjectNextAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    count = 1; // lost the race to create the cursor row: retry, like the next background cycle
+                }
+                if (count == 0) break;
+            }
+        }));
+
+        Assert.Equal(60m, await TotalAsync(user, "gems_earned"));
+    }
+
+    [MySqlFact]
     public async Task ConcurrentVisibilityUpdates_WithTheSameExpectedValue_OneWins()
     {
         var user = (await UsersAsync(1))[0];

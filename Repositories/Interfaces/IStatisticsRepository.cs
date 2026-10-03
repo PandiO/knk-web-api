@@ -89,6 +89,8 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         // ---- Projection ----
 
+        /// <summary>The tracked cursor (created when missing); locked FOR UPDATE on MySQL until the
+        /// transaction ends.</summary>
         Task<StatisticsProjectionCursor> GetOrCreateCursorAsync(string name, CancellationToken ct = default);
 
         /// <summary>User legs with Id &gt; <paramref name="afterEntryId"/>, ascending, at most
