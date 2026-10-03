@@ -160,4 +160,68 @@ public class MenuTemplateStatisticsSeedTests
         Assert.Equal("menu-available", available.ConditionTypeId);
         Assert.Equal(new[] { "&dStatistics privacy" }, Expressions(tile, "Name"));
     }
+
+    // ---- link 5: read surfaces ----
+
+    [Fact]
+    public async Task Profile_HasTheStatisticsTileInHeaderSlot5BehindMenuAvailable()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var tile = ItemAt(seeded.Single(t => t.Key == MenuTemplateSeed.ProfileMenuKey), 5);
+
+        var open = Assert.Single(tile.Actions);
+        Assert.Equal(("menu.open", MenuTemplateSeed.StatisticsMainMenuKey), (open.ActionTypeId, Param(open, "key")));
+        Assert.Equal("menu-available", Assert.Single(tile.Conditions).ConditionTypeId);
+        Assert.Equal(new[] { "&eStatistics" }, Expressions(tile, "Name"));
+    }
+
+    [Fact]
+    public async Task StatisticsMain_ShowsTheGroupsFromTheStatsRoot_CyclesThePeriod_AndListsTheTitleHistory()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var menu = Assert.Single(seeded, t => t.Key == MenuTemplateSeed.StatisticsMainMenuKey);
+
+        Assert.Equal(new[] { "$stats.getTargetName$" }, Expressions(ItemAt(menu, 0), "SkullOwner"));
+        Assert.Equal(new[] { "$stats.getProfileLines$" }, Expressions(ItemAt(menu, 0), "Lore"));
+        var groups = new[] { "Activity", "Combat", "Minigames", "Exploration", "Progression" };
+        for (var i = 0; i < groups.Length; i++)
+        {
+            Assert.Equal(new[] { $"$stats.get{groups[i]}Lines$" }, Expressions(ItemAt(menu, 1 + i), "Lore"));
+        }
+        Assert.Equal("statistics.main.period", Assert.Single(ItemAt(menu, 6).Actions).ActionTypeId);
+        Assert.Equal(MenuTemplateSeed.LeaderboardsMenuKey, Param(Assert.Single(ItemAt(menu, 7).Actions), "key"));
+        Assert.Equal("menu.back", Assert.Single(ItemAt(menu, 8).Actions).ActionTypeId);
+
+        var grid = menu.Sections.Single(s => s.Name == "TitleHistory");
+        Assert.Equal("statistics.main.title-history", grid.ContentSourceId);
+        var row = Assert.Single(grid.Items, i => i.IsRowTemplate);
+        Assert.Empty(row.Actions); // read-only
+        Assert.Equal(new[] { "$row.getLoreLines$" }, Expressions(row, "Lore"));
+    }
+
+    [Fact]
+    public async Task Leaderboards_OpenTheClickedBoard_AndBoardEntriesOpenThatPlayersStatistics()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+
+        var list = Assert.Single(seeded, t => t.Key == MenuTemplateSeed.LeaderboardsMenuKey);
+        var boards = list.Sections.Single(s => s.Name == "Boards");
+        Assert.Equal("statistics.leaderboards.boards", boards.ContentSourceId);
+        var open = Assert.Single(Assert.Single(boards.Items, i => i.IsRowTemplate).Actions);
+        Assert.Equal((MenuTemplateSeed.LeaderboardMenuKey, "$row.getBoardKey$"), (Param(open, "key"), Param(open, "ctx.board")));
+
+        var board = Assert.Single(seeded, t => t.Key == MenuTemplateSeed.LeaderboardMenuKey);
+        Assert.Equal("statistics.leaderboard.period", Assert.Single(ItemAt(board, 4).Actions).ActionTypeId);
+        Assert.Equal(new[] { "$lb.getViewerLines$" }, Expressions(ItemAt(board, 6), "Lore"));
+        var ranking = board.Sections.Single(s => s.Name == "Ranking");
+        Assert.Equal(("statistics.leaderboard.entries", 18), (ranking.ContentSourceId, ranking.Width * ranking.Height));
+        var entry = Assert.Single(ranking.Items, i => i.IsRowTemplate);
+        var stats = Assert.Single(entry.Actions);
+        Assert.Equal((MenuTemplateSeed.StatisticsMainMenuKey, "$row.getUserId$", "$row.getUsername$"),
+            (Param(stats, "key"), Param(stats, "ctx.target"), Param(stats, "ctx.name")));
+        Assert.Equal(new[] { "$row.getDisplayMode$" }, Expressions(entry, "DisplayMode"));
+    }
 }
