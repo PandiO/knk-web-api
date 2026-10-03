@@ -339,6 +339,12 @@ public static partial class MenuTemplateSeed
                             Lore(1, "&7Earn experience to climb them"),
                             Lore(2, ""),
                             Lore(3, "&a✔ &7reached  &6» &7current  &8■ &7ahead")),
+                        // Player statistics (KNG-34): who may see the viewer's statistics.
+                        OpenTile(6, 5, StatisticsVisibilityMenuKey,
+                            Bind("Material", "SPYGLASS", VariableRefreshPolicy.Static),
+                            Bind("Name", "&dStatistics privacy", VariableRefreshPolicy.Static),
+                            Lore(0, "&7Choose who may see your statistics"),
+                            Lore(1, "&7(also &f/stats settings&7)")),
                         BackButton(8, 4),
                     },
                 },

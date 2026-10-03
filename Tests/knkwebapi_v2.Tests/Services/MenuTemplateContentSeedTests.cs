@@ -65,6 +65,7 @@ public class MenuTemplateContentSeedTests
         MenuTemplateSeed.UserManagerGroupsMenuKey,
         MenuTemplateSeed.DiscoveriesMenuKey,
         MenuTemplateSeed.TeleportMenuKey,
+        MenuTemplateSeed.StatisticsVisibilityMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
