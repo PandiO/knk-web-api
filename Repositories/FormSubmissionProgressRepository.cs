@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
 using Microsoft.EntityFrameworkCore;
@@ -226,6 +227,37 @@ namespace knkwebapi_v2.Repositories
                 .Select(p => p.Id)
                 .ToListAsync();
 
+            return await DeleteTreesAsync(expiredRootIds);
+        }
+
+        /// <summary>
+        /// Delete unfinished (InProgress/Paused/Abandoned) form submissions not touched since the specified date
+        /// (UpdatedAt, or CreatedAt for a draft that was never updated), together with their child submissions.
+        /// Returns the count of deleted records.
+        /// </summary>
+        public async Task<int> DeleteUnfinishedOlderThanAsync(System.DateTime beforeDate)
+        {
+            var unfinished = new[]
+            {
+                nameof(FormSubmissionStatus.InProgress),
+                nameof(FormSubmissionStatus.Paused),
+                nameof(FormSubmissionStatus.Abandoned)
+            };
+            var staleRootIds = await _context.FormSubmissionProgresses
+                .AsNoTracking()
+                .Where(p => unfinished.Contains(p.Status) && (p.UpdatedAt ?? p.CreatedAt) < beforeDate)
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            return await DeleteTreesAsync(staleRootIds);
+        }
+
+        /// <summary>
+        /// Deletes the given submissions and all their descendants, deepest first so parent/child hierarchies remain
+        /// valid even when ParentProgressId is configured with Restrict delete behavior.
+        /// </summary>
+        private async Task<int> DeleteTreesAsync(List<int> expiredRootIds)
+        {
             if (expiredRootIds.Count == 0)
             {
                 return 0;
@@ -253,12 +285,15 @@ namespace knkwebapi_v2.Repositories
                 }
             }
 
-            var descendantsByParent = await _context.FormSubmissionProgresses
+            // Grouped in memory: EF can't translate a GroupBy that isn't reduced to an aggregate.
+            var parentChildPairs = await _context.FormSubmissionProgresses
                 .AsNoTracking()
                 .Where(p => p.ParentProgressId.HasValue && staleBranchIds.Contains(p.ParentProgressId.Value))
                 .Select(p => new { ParentId = p.ParentProgressId!.Value, ChildId = p.Id })
+                .ToListAsync();
+            var descendantsByParent = parentChildPairs
                 .GroupBy(x => x.ParentId)
-                .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.ChildId).ToHashSet());
+                .ToDictionary(g => g.Key, g => g.Select(x => x.ChildId).ToHashSet());
 
             var deleteOrder = new List<int>();
             var remaining = new HashSet<int>(staleBranchIds);
