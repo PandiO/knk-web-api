@@ -177,6 +177,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IRegionService>(sp => 
                 new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl)
             );
+            services.AddScoped<IDomainRegionNameFinalizer, DomainRegionNameFinalizer>();
 
             // Currency ledger (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phases 1-2)
             services.AddScoped<ICurrencyRepository, CurrencyRepository>();

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using knkwebapi_v2.Dtos;
@@ -13,14 +12,19 @@ using Microsoft.EntityFrameworkCore;
 namespace knkwebapi_v2.Services
 {
     /// <summary>
-    /// Spawn, claim, give and deliver (docs/specs/lootboxes/DESIGN.md §3.1, §3.3; IMPLEMENTATION_PLAN.md Phase 2).
+    /// Spawn, give and deliver (docs/specs/lootboxes/DESIGN.md §3.1, §3.3; IMPLEMENTATION_PLAN.md Phase 2), plus the
+    /// shared claim helpers (daily cap, roll, mint, replay). A world box is no longer opened on the spot: a click picks
+    /// it up as a token item (<c>LootboxRuntimeService.Pickup.cs</c>) and the player opens it later through the token
+    /// redeem (<c>LootboxRuntimeService.Tokens.cs</c>), which is where a world box's claim is written now. The old
+    /// open-on-the-spot <c>POST api/LootboxSpawns/{id}/claim</c> was removed after smoke test round 2 (KNG-31);
+    /// claims it wrote (<c>LootboxSpawnId</c> set) stay in the drop log.
     /// <para>
-    /// A claim runs in one READ COMMITTED transaction: lock the claimer's user row (serializes one player's claims,
-    /// so two parallel clicks can't both slip under the daily cap), replay a stored claim for the same idempotency
-    /// key, check token and status, count today's claims, roll with the same input as the odds preview, flip the
-    /// spawn to Claimed (its <c>[ConcurrencyCheck]</c> Status makes a racing second claimer fail), then insert the
-    /// ItemInstance and the claim, and finally point the instance's OriginRef at the claim. The unique indexes on
-    /// LootboxClaim (spawn, instance, idempotency key) back this up on MySQL.
+    /// A claim (redeem) runs in one READ COMMITTED transaction: lock the opener's user row (serializes one player's
+    /// claims, so two parallel clicks can't both slip under the daily cap), replay a stored claim for the same
+    /// idempotency key, check the token's status, count today's claims, roll with the same input as the odds preview,
+    /// flip the token to Redeemed (its <c>[ConcurrencyCheck]</c> Status makes a racing second opener fail), then insert
+    /// the ItemInstance and the claim, and finally point the instance's OriginRef at the claim. The unique indexes on
+    /// LootboxClaim (spawn, token, instance, idempotency key) back this up on MySQL.
     /// </para>
     /// <para>
     /// Times come from the injected <see cref="TimeProvider"/> and are cut to whole seconds, because the columns are
@@ -348,126 +352,6 @@ namespace knkwebapi_v2.Services
         }
 
         // ===== Claims =====
-
-        public async Task<LootboxClaimResultDto> ClaimAsync(int spawnId, LootboxClaimRequestDto request)
-        {
-            var stopwatch = Stopwatch.StartNew();
-            try
-            {
-                return await ClaimCoreAsync(spawnId, request);
-            }
-            catch (LootboxConflictException ex)
-            {
-                LootboxMetrics.Conflict(ex.Code);
-                _logger.LogInformation("Lootbox claim of spawn {SpawnId} by user {UserId} refused: {Code}",
-                    spawnId, request?.UserId, ex.Code);
-                throw;
-            }
-            finally
-            {
-                LootboxMetrics.ClaimTook(stopwatch.Elapsed.TotalMilliseconds);
-            }
-        }
-
-        private sealed record ClaimOutcome(int ClaimId, bool Replay);
-
-        private async Task<LootboxClaimResultDto> ClaimCoreAsync(int spawnId, LootboxClaimRequestDto request)
-        {
-            if (request == null) throw new ArgumentNullException(nameof(request));
-            if (spawnId <= 0) throw new ArgumentException("Invalid spawn id.", nameof(spawnId));
-            if (request.UserId <= 0) throw new ArgumentException("userId is required.", nameof(request));
-            var key = IdempotencyKey(request.IdempotencyKey)
-                ?? throw new ArgumentException(
-                    $"idempotencyKey is required (at most {LootboxRuntimeServiceConstants.MaxIdempotencyKeyLength} characters).", nameof(request));
-
-            var now = Now();
-            await _repo.ExpireDueAsync(now);
-
-            // Fast path for a retry: no lock needed to hand back a stored result.
-            var stored = await _repo.GetClaimByIdempotencyKeyAsync(key);
-            if (stored != null) return await ReplayAsync(stored, request.UserId, spawnId, null);
-
-            var user = await _users.GetByIdAsync(request.UserId)
-                ?? throw new KeyNotFoundException($"User {request.UserId} not found.");
-            EnsureCanOpen(user);
-
-            ClaimOutcome outcome;
-            try
-            {
-                outcome = await _repo.InTransactionAsync(async () =>
-                {
-                    // Serializes this player's claims: the replay lookup and the daily count below see whatever a
-                    // parallel claim of theirs committed.
-                    await _users.LockUsersAsync(new[] { request.UserId });
-
-                    var again = await _repo.GetClaimByIdempotencyKeyAsync(key);
-                    if (again != null)
-                    {
-                        EnsureSameClaim(again, request.UserId, spawnId, null);
-                        return new ClaimOutcome(again.Id, true);
-                    }
-
-                    var spawn = await _repo.GetSpawnAsync(spawnId)
-                        ?? throw new KeyNotFoundException($"Lootbox spawn {spawnId} not found.");
-                    // The token first: without it a caller learns nothing about the box.
-                    if (spawn.Token != request.Token) throw Conflict("TokenMismatch", "The lootbox token doesn't match.");
-                    EnsureClaimable(spawn.Status, spawn.ExpiresAt, now);
-
-                    var config = await _repo.GetConfigurationAsync() ?? new LootboxConfiguration();
-                    if (!config.Enabled) throw Conflict("Disabled", "Lootboxes are disabled.");
-                    await EnforceDailyCapAsync(request.UserId, spawn.LootboxType, config, now);
-
-                    var roll = await RollAsync(spawn.LootboxTypeId, spawn.BoxGrade.Stars);
-
-                    // Flip the box first, on its own: a racing claimer's UPDATE … WHERE Status='Active' matches no
-                    // row and fails here, before anything else is written.
-                    spawn.Status = LootboxSpawnStatus.Claimed;
-                    spawn.ClaimedAt = now;
-                    spawn.ClaimedByUserId = request.UserId;
-                    await _repo.SaveChangesAsync();
-
-                    var claim = await MintAsync(roll, request.UserId, spawn.LootboxTypeId, spawn.BoxGradeId, spawn.Id, key, now);
-                    return new ClaimOutcome(claim.Id, false);
-                });
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                _repo.DiscardChanges();
-                var status = await _repo.GetSpawnStatusAsync(spawnId);
-                throw status switch
-                {
-                    LootboxSpawnStatus.Expired => Conflict("Expired", "This lootbox has expired."),
-                    LootboxSpawnStatus.Removed => Conflict("Removed", "This lootbox was removed."),
-                    _ => Conflict("AlreadyClaimed", "Someone else got there first."),
-                };
-            }
-            catch (DbUpdateException ex)
-            {
-                // A unique index caught what the checks above didn't (e.g. the same key in two parallel requests).
-                _repo.DiscardChanges();
-                var winner = await _repo.GetClaimByIdempotencyKeyAsync(key);
-                if (winner != null) return await ReplayAsync(winner, request.UserId, spawnId, null);
-                if (await _repo.SpawnHasClaimAsync(spawnId)) throw Conflict("AlreadyClaimed", "Someone else got there first.");
-                _logger.LogError(ex, "Lootbox claim of spawn {SpawnId} by user {UserId} failed to save", spawnId, request.UserId);
-                throw;
-            }
-
-            var result = await ResultAsync(outcome.ClaimId, outcome.Replay)
-                ?? throw new InvalidOperationException($"Lootbox claim {outcome.ClaimId} vanished.");
-            if (outcome.Replay)
-            {
-                _logger.LogInformation("Lootbox claim {ClaimId} replayed for user {UserId}", result.ClaimId, result.UserId);
-            }
-            else
-            {
-                LootboxMetrics.Claimed(TypeLabel(result), result.BoxStars, result.ItemGradeStars, result.IsSpecial);
-                _logger.LogInformation(
-                    "Lootbox claim {ClaimId}: user {UserId} opened spawn {SpawnId} (★{BoxStars}) and got blueprint {BlueprintId} ★{ItemStars} x{Quantity}, instance {InstanceId}, special {IsSpecial}",
-                    result.ClaimId, result.UserId, spawnId, result.BoxStars, result.ItemBlueprintId, result.ItemGradeStars,
-                    result.Quantity, result.ItemInstanceId, result.IsSpecial);
-            }
-            return result;
-        }
 
         public async Task<LootboxClaimResultDto> AdminGiveAsync(LootboxAdminGiveRequestDto request, int? actorUserId)
         {

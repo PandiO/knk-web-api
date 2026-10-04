@@ -6,6 +6,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
+using knkwebapi_v2.Services.Interfaces;
 
 namespace knkwebapi_v2.Services
 {
@@ -15,17 +16,23 @@ namespace knkwebapi_v2.Services
         private readonly ILocationRepository _locationRepo;
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
+        private readonly ITeleportDestinationService _teleportDestinations;
+        private readonly IDomainRegionNameFinalizer _regionNames;
 
         public TownService(
             ITownRepository repo,
             ILocationRepository locationRepo,
             ILocationService locationService,
-            IMapper mapper)
+            IMapper mapper,
+            ITeleportDestinationService teleportDestinations,
+            IDomainRegionNameFinalizer regionNames)
         {
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
             _mapper = mapper;
+            _teleportDestinations = teleportDestinations;
+            _regionNames = regionNames;
         }
 
         public async Task<IEnumerable<TownDto>> GetAllAsync()
@@ -46,14 +53,17 @@ namespace knkwebapi_v2.Services
             if (townDto == null) throw new ArgumentNullException(nameof(townDto));
             if (string.IsNullOrWhiteSpace(townDto.Name)) throw new ArgumentException("Town name is required.", nameof(townDto));
             if (string.IsNullOrWhiteSpace(townDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(townDto));
+            await _teleportDestinations.ValidateSettingsAsync(townDto);
 
             // Handle nested Location entity
             int? resolvedLocationId = await HandleLocationAsync(townDto);
 
             var town = _mapper.Map<Town>(townDto);
             town.LocationId = resolvedLocationId;
+            DomainTeleportSettings.Apply(town, townDto);
             town.CreatedAt = DateTime.UtcNow;
             await _repo.AddTownAsync(town);
+            await _regionNames.FinalizeAsync(town);
             return _mapper.Map<TownDto>(town);
         }
 
@@ -66,6 +76,7 @@ namespace knkwebapi_v2.Services
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Town with id {id} not found.");
+            await _teleportDestinations.ValidateSettingsAsync(townDto);
 
             // Handle nested Location entity
             int? resolvedLocationId = await HandleLocationAsync(townDto);
@@ -76,8 +87,10 @@ namespace knkwebapi_v2.Services
             existing.AllowExit = townDto.AllowExit ?? true;
             existing.WgRegionId = townDto.WgRegionId;
             existing.LocationId = resolvedLocationId;
+            DomainTeleportSettings.Apply(existing, townDto);
 
             await _repo.UpdateTownAsync(existing);
+            await _regionNames.FinalizeAsync(existing);
         }
 
         public async Task DeleteAsync(int id)

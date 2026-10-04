@@ -20,6 +20,14 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId);
 
         /// <summary>
+        /// Rename a region and, when <paramref name="domainType"/> is given, have the plugin also apply the managed-region
+        /// parent, priority and flags for a domain of that concrete type (Town, District, Structure, GateStructure) whose
+        /// parent's region is <paramref name="parentWgRegionId"/>. Without a type the plugin only renames; the plugin's
+        /// startup repair sets the region up later.
+        /// </summary>
+        Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId);
+
+        /// <summary>
         /// Check whether a location (x,z) lies inside the specified region.
         /// </summary>
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
@@ -181,7 +189,12 @@ namespace knkwebapi_v2.Services
             }
         }
 
-        public async Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId)
+        public Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId)
+        {
+            return RenameRegionAsync(oldRegionId, newRegionId, null, null);
+        }
+
+        public async Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId)
         {
             Console.WriteLine("[VALIDATION_TRACE_BACKEND]     RegionService.RenameRegionAsync started");
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       oldRegionId: {oldRegionId}");
@@ -207,6 +220,14 @@ namespace knkwebapi_v2.Services
                 using (var client = _httpClientFactory.CreateClient())
                 {
                     var url = $"{_minecraftPluginBaseUrl.TrimEnd('/')}/Regions/rename?oldRegionId={Uri.EscapeDataString(oldRegionId)}&newRegionId={Uri.EscapeDataString(newRegionId)}";
+                    if (!string.IsNullOrWhiteSpace(domainType))
+                    {
+                        url += $"&domainType={Uri.EscapeDataString(domainType)}";
+                        if (!string.IsNullOrWhiteSpace(parentWgRegionId))
+                        {
+                            url += $"&parentRegionId={Uri.EscapeDataString(parentWgRegionId)}";
+                        }
+                    }
                     Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       POST {url}");
                     var response = await client.PostAsync(url, new StringContent(""));
                     Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Response status: {(int)response.StatusCode} ({response.StatusCode})");

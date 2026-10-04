@@ -12,11 +12,11 @@ namespace knkwebapi_v2.Services
     /// <summary>
     /// Lootbox token items (docs/specs/lootboxes/IMPLEMENTATION_PLAN.md Phase 5): v1's "Sword Box" consumables, made
     /// unforgeable. The API issues each token with a random id the plugin stamps into the item's PDC; the item is
-    /// identified by that id only (never its name, v1's anvil-rename exploit). Opening it redeems the token through the
-    /// world-box claim path: the same roll, UTC daily cap, ItemInstance mint and drop log, in one transaction that
-    /// also flips the token to Redeemed.
+    /// identified by that id only (never its name, v1's anvil-rename exploit). Opening it redeems the token: the shared
+    /// roll, UTC daily cap, ItemInstance mint and drop log, in one transaction that also flips the token to Redeemed.
+    /// A picked-up world box (reason WorldPickup, <c>LootboxRuntimeService.Pickup.cs</c>) is opened the same way.
     /// <para>
-    /// A redeem locks the opener's user row (like a world claim), replays a stored claim for the same idempotency key
+    /// A redeem locks the opener's user row, replays a stored claim for the same idempotency key
     /// (a retry of the same click), then refuses anything but an Issued token. The flip to Redeemed is a conditional
     /// update on the <c>[ConcurrencyCheck]</c> Status, so two copies of a duplicated item opened at once (even by two
     /// players, on two servers) produce exactly one claim; the unique <c>lootbox_claims.LootboxTokenId</c> backs it up.
@@ -137,6 +137,8 @@ namespace knkwebapi_v2.Services
 
         // ===== Redeem =====
 
+        private sealed record ClaimOutcome(int ClaimId, bool Replay);
+
         public async Task<LootboxClaimResultDto> RedeemTokenAsync(Guid token, LootboxTokenRedeemRequestDto request)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -183,7 +185,7 @@ namespace knkwebapi_v2.Services
             {
                 outcome = await _repo.InTransactionAsync(async () =>
                 {
-                    // Serializes this player's claims and redeems (daily cap, replay lookup), as for world boxes.
+                    // Serializes this player's redeems and pickups (daily caps, replay lookup).
                     await _users.LockUsersAsync(new[] { request.UserId });
 
                     var again = await _repo.GetClaimByIdempotencyKeyAsync(key);

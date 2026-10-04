@@ -90,3 +90,21 @@ public class DomainMappingProfile : Profile
         return decisions;
     }
 }
+
+/// <summary>
+/// The Domain warp settings (teleport DESIGN.md §3.7.1) are never mapped from a Town/District/
+/// Structure DTO: services apply them through DomainTeleportSettings.Apply after validation, so a
+/// form without the teleport fields leaves them untouched.
+/// </summary>
+public static class DomainTeleportSettingsMapping
+{
+    public static IMappingExpression<TSource, TDomain> IgnoreTeleportSettings<TSource, TDomain>(
+        this IMappingExpression<TSource, TDomain> map) where TDomain : Domain =>
+        map.ForMember(dest => dest.TeleportEnabled, opt => opt.Ignore())
+            .ForMember(dest => dest.TeleportPriceGems, opt => opt.Ignore())
+            .ForMember(dest => dest.TeleportMinTitleBracketId, opt => opt.Ignore())
+            .ForMember(dest => dest.TeleportMinTitleBracket, opt => opt.Ignore())
+            .ForMember(dest => dest.TeleportMinPremiumGroupId, opt => opt.Ignore())
+            .ForMember(dest => dest.TeleportMinPremiumGroup, opt => opt.Ignore())
+            .ForMember(dest => dest.TeleportRequiresDiscovery, opt => opt.Ignore());
+}

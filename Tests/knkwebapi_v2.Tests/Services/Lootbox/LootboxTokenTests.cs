@@ -16,7 +16,8 @@ namespace knkwebapi_v2.Tests.Services.Lootbox;
 
 /// <summary>
 /// Lootboxes Phase 5 (docs/specs/lootboxes/IMPLEMENTATION_PLAN.md "Lootbox token items"): issuing token items,
-/// redeeming one through the claim path (single use, idempotent retry, a duplicated item refused, the UTC daily cap),
+/// redeeming one (single use, idempotent retry, a duplicated item refused, the UTC daily open cap, which a picked-up
+/// world box shares while its pickup is counted separately),
 /// delivery, revoke, the drop log and the grant hooks (premium tier, kit). EF InMemory with the real repositories and
 /// services, a scripted RNG and a pinned clock. The row-level race on MySQL is covered by
 /// <c>LootboxTokenMySqlTests</c> (opt-in, needs a server).
@@ -366,18 +367,28 @@ public class LootboxTokenTests
             (refused.Scope, refused.Limit).Should().Be(("Global", 2));
         }
 
-        // A world box counts against the same cap.
+        // A world box is picked up and opened like a token. Pickups have their own count (D21): the open cap doesn't
+        // stop the pickup, but opening the picked-up box is refused like any other token.
+        Guid picked;
         await using (var db = NewContext())
         {
             var spawn = new LootboxSpawn { LootboxTypeId = _food, BoxGradeId = _grade3, World = "world", SpawnedAt = Now, ExpiresAt = Now.AddMinutes(30) };
             db.LootboxSpawns.Add(spawn);
             await db.SaveChangesAsync();
-            await Runtime(db).Invoking(s => s.ClaimAsync(spawn.Id, new LootboxClaimRequestDto { Token = spawn.Token, UserId = _alice, IdempotencyKey = "w" }))
-                .Should().ThrowAsync<LootboxDailyLimitException>();
+            var pickup = await Runtime(db).PickupAsync(spawn.Id, new LootboxPickupRequestDto { Token = spawn.Token, UserId = _alice });
+            pickup.Replay.Should().BeFalse("two opens today, but no pickups yet");
+            picked = pickup.LootboxToken.Token;
+        }
+        await using (var db = NewContext())
+        {
+            var refused = (await Runtime(db).Invoking(s => s.RedeemTokenAsync(picked, Redeem(_alice)))
+                .Should().ThrowAsync<LootboxDailyLimitException>()).Which;
+            (refused.Code, refused.Scope, refused.Limit).Should().Be(("DailyLimit", "Global", 2));
         }
 
         _clock.Set(new DateTimeOffset(2026, 9, 27, 0, 0, 0, TimeSpan.Zero));
         (await RedeemAsync(tokens[2].Token, _alice)).Replay.Should().BeFalse("the kept token opens the next UTC day");
+        (await RedeemAsync(picked, _alice)).LootboxTypeId.Should().Be(_food, "so does the kept world box");
     }
 
     [Fact]

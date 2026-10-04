@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using knkwebapi_v2.Attributes;
 
 namespace knkwebapi_v2.Models;
@@ -25,7 +26,8 @@ public class PermissionGroup : PermissionHolder
     /// <see cref="knkwebapi_v2.Services.UserPermissionGroupService"/> which of a user's
     /// memberships to surface as their "premium tier" (the highest-Weight active one).
     /// </summary>
-    public bool IsPremiumTier { get; set; }
+    [DefaultValue(false)]
+    public bool IsPremiumTier { get; set; } = false;
 
     /// <summary>
     /// The rank-based multiplier SalaryService applies for a member holding this group

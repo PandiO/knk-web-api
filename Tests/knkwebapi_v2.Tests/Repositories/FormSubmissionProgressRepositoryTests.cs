@@ -82,6 +82,44 @@ namespace knkwebapi_v2.Tests.Repositories
             (await _context.FormSubmissionProgresses.CountAsync()).Should().Be(0);
         }
 
+        [Fact]
+        public async Task DeleteUnfinishedOlderThanAsync_DeletesOnlyStaleDraftsAndTheirChildren()
+        {
+            var user = new User { Username = "draft-user", Email = "draft@example.com", PasswordHash = "hash" };
+            var formConfig = new FormConfiguration { Name = "Draft Form", EntityTypeName = "TestEntity", IsDefault = true };
+            _context.Users.Add(user);
+            _context.FormConfigurations.Add(formConfig);
+            await _context.SaveChangesAsync();
+
+            var cutoff = DateTime.UtcNow.AddDays(-90);
+            FormSubmissionProgress Row(string status, DateTime createdAt, DateTime? updatedAt, int? parentId = null) => new()
+            {
+                UserId = user.Id,
+                FormConfigurationId = formConfig.Id,
+                Status = status,
+                CreatedAt = createdAt,
+                UpdatedAt = updatedAt,
+                CompletedAt = status == "Completed" ? createdAt : null,
+                ParentProgressId = parentId
+            };
+
+            var staleAbandoned = Row("Abandoned", cutoff.AddDays(-30), cutoff.AddDays(-1));
+            var stalePausedNeverUpdated = Row("Paused", cutoff.AddDays(-5), null);
+            var recentlyUpdated = Row("InProgress", cutoff.AddDays(-200), cutoff.AddDays(10));
+            var oldCompleted = Row("Completed", cutoff.AddDays(-100), cutoff.AddDays(-100));
+            _context.FormSubmissionProgresses.AddRange(staleAbandoned, stalePausedNeverUpdated, recentlyUpdated, oldCompleted);
+            await _context.SaveChangesAsync();
+            var childOfStale = Row("InProgress", cutoff.AddDays(5), cutoff.AddDays(5), staleAbandoned.Id);
+            _context.FormSubmissionProgresses.Add(childOfStale);
+            await _context.SaveChangesAsync();
+
+            var deletedCount = await _repository.DeleteUnfinishedOlderThanAsync(cutoff);
+
+            deletedCount.Should().Be(3);
+            (await _context.FormSubmissionProgresses.Select(p => p.Id).ToListAsync())
+                .Should().BeEquivalentTo(new[] { recentlyUpdated.Id, oldCompleted.Id });
+        }
+
         /// <summary>
         /// Seeds a user + "GateDoor"-typed FormConfiguration + one FormSubmissionProgress row
         /// whose CurrentStepDataJson/AllStepsDataJson carry the given raw JSON, so each property-

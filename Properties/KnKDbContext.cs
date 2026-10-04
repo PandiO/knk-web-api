@@ -144,6 +144,9 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<CurrencyPendingTransfer> CurrencyPendingTransfers { get; set; } = null!;
     public virtual DbSet<CurrencyAlert> CurrencyAlerts { get; set; } = null!;
 
+    // Teleport fees (docs/specs/teleport/DESIGN.md §3.7.3): keys voided by a refund that came first.
+    public virtual DbSet<TeleportFeeVoid> TeleportFeeVoids { get; set; } = null!;
+
     // Siege Phase 1 — banner + minimal clan (docs/specs/siege-minigame/DESIGN.md §3.1–3.2)
     public virtual DbSet<BannerDesign> BannerDesigns { get; set; } = null!;
     public virtual DbSet<BannerLayer> BannerLayers { get; set; } = null!;
@@ -174,7 +177,20 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<Domain>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
-            entity.ToTable("domains");
+            // Warp price (teleport DESIGN.md §3.7.1): never negative, never above the gem cap.
+            entity.ToTable("domains", t =>
+                t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range",
+                    $"`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= {knkwebapi_v2.Services.BalanceLimits.MaxGems}"));
+
+            // Deleting the title bracket or premium group just drops the requirement.
+            entity.HasOne(d => d.TeleportMinTitleBracket)
+                .WithMany()
+                .HasForeignKey(d => d.TeleportMinTitleBracketId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(d => d.TeleportMinPremiumGroup)
+                .WithMany()
+                .HasForeignKey(d => d.TeleportMinPremiumGroupId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id
@@ -2400,6 +2416,20 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.Property(e => e.TransferLockReason).HasMaxLength(200);
+        });
+
+        // Teleport fee keys voided by a refund that found nothing to refund (KNG-17): the key is
+        // the primary key, so a key is voided once whichever API instance handles the refund.
+        modelBuilder.Entity<TeleportFeeVoid>(entity =>
+        {
+            entity.HasKey(e => e.IdempotencyKey).HasName("PRIMARY");
+            entity.ToTable("teleport_fee_voids");
+
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(100).UseCollation("utf8mb4_bin");
+            entity.Property(e => e.Reason).HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+
+            entity.HasIndex(e => e.UserId);
         });
     }
 }

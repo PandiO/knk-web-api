@@ -3,24 +3,12 @@
 ## Global project context
 @../../docs/ai-agents/GLOBAL_AGENT_INSTRUCTIONS.md
 
-If the import above didn't load (e.g. this repo isn't checked out inside a
-`knk-workspace` checkout at `Repository/knk-web-api` on this machine — that's
-the current layout, but it may differ on other machines), here are the
-essentials it contains:
-
-- Knights and Kings V3 = `knk-web-app` (React/TS) + `knk-web-api`
-  (ASP.NET Core) + `knk-plugin` (Spigot/Paper), one shared MySQL DB. Most
-  features span all three repos.
-- Current priority: reach MVP, siege minigame is the headline feature.
-- The developer works on this evenings/weekends around a full-time job —
-  don't require synchronous mid-week decisions; leave sessions in a clean,
-  resumable state with clear handoff notes.
-- Multiple sessions often run in parallel across repos on the same feature.
-  Check and update `knk-workspace/docs/ACTIVE_SESSIONS.md` before and after
-  working, and scope your claim by feature, not just by repo.
-- Docs live in `knk-workspace` under `vision/ architecture/ guides/
-  ai-agents/ specs/ backlog/ reports/ archive/` — don't scatter new docs
-  elsewhere.
+Read `AGENTS.md` and the current `knk-workspace/docs/ACTIVE_SESSIONS.md`
+before editing. The import above is Claude Code syntax for the nested
+`knk-workspace/Repository/knk-web-api` layout. If it does not resolve, locate
+the shared file in the workspace or open it from knk-workspace's current
+default branch. Do not rely on a dated handoff without checking the current
+branches, issue, plan and tracker.
 
 ## Repo-specific conventions (knk-web-api)
 
@@ -35,10 +23,10 @@ assuming SQL Server is in play anywhere.
 **Common commands:**
 - Restore: `dotnet restore`
 - Run: `dotnet run` (single Web SDK project at the repo root,
-  `knkwebapi_v2.csproj`; the test project under `tests/` is excluded from
+  `knkwebapi_v2.csproj`; the test project under `Tests/` is excluded from
   the main build via `DefaultItemExcludes`)
 - Build: `dotnet build`
-- Test: `dotnet test tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj`
+- Test: `dotnet test Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj`
 - Add migration: `dotnet ef migrations add <Name>`
 - Apply migrations: `dotnet ef database update`
 - Local dev helper script: `./run-with-swagger.sh`
@@ -66,7 +54,8 @@ assuming SQL Server is in play anywhere.
 - Observability: OpenTelemetry is wired in (see `OBSERVABILITY.md`),
   Prometheus metrics exposed at `/metrics`
 
-**Talks to:** `knk-web-app` (browser clients, bearer token in the
-`Authorization` header) and `knk-plugin` (direct REST calls from its
-`knk-api-client` module, also bearer-token authenticated via
-`BearerAuthProvider`) — no webhook/push model from the API side was found.
+**Talks to:** `knk-web-app` (browser clients with JWT bearer tokens) and
+`knk-plugin` (REST through `knk-api-client`; protected service routes use
+`X-API-Key` against `Security:PluginApiKey`). The plugin polls
+`PlayerNotificationsController` for queued player notifications. Check
+attributes per endpoint rather than assuming one authentication mode.

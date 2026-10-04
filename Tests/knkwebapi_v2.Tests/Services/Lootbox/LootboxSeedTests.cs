@@ -11,7 +11,7 @@ namespace knkwebapi_v2.Tests.Services.Lootbox;
 /// <summary>
 /// Lootboxes Phase 1 (docs/specs/lootboxes/IMPLEMENTATION_PLAN.md "LootboxSeedTests", DESIGN.md §3.5): one disabled type
 /// per category, the specials (v1 one-offs minus the Donator pickaxe, plus the new Flaming Samurai), the enchant rolls
-/// and the singleton settings; create-only and idempotent.
+/// and the singleton settings; create-only apart from exact legacy-data normalization, and idempotent.
 /// </summary>
 public class LootboxSeedTests
 {
@@ -96,7 +96,7 @@ public class LootboxSeedTests
 
         (samurai.DefaultDisplayName, samurai.IconMaterial!.NamespaceKey, samurai.Category!.Name, samurai.Grade!.Stars, samurai.DefaultQuantity, samurai.MaxStackSize)
             .Should().Be(("&cFlaming Samurai", "minecraft:netherite_sword", "Weapons", 5, 1, 1));
-        samurai.DefaultDisplayDescription.Should().Be("&7Forged in the last fire of a fallen dojo.\n&7Its edge never cools.");
+        samurai.DefaultDisplayDescription.Should().Be("Forged in the last fire of a fallen dojo.\nIts edge never cools.");
         samurai.Description.Should().Contain("Not a v1 port");
         samurai.DefaultEnchantments.Select(e => (e.EnchantmentDefinition.Key, e.Level)).Should().BeEquivalentTo(new[]
         {
@@ -171,6 +171,38 @@ public class LootboxSeedTests
 
         await using var after = NewContext();
         (await SnapshotAsync(after)).Should().BeEquivalentTo(before);
+    }
+
+    [Fact]
+    public async Task LegacyFlamingSamuraiDescription_IsNormalized_ButAdminTextIsPreserved()
+    {
+        await SeedAllAsync();
+        await using (var db = NewContext())
+        {
+            var samurai = await db.ItemBlueprints.SingleAsync(b => b.Name == LootboxSeed.FlamingSamuraiName);
+            samurai.DefaultDisplayDescription = "&7Forged in the last fire of a fallen dojo.\n&7Its edge never cools.";
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db, enchantmentCatalog: EnchantmentCatalog);
+        await using (var read = NewContext())
+        {
+            (await read.ItemBlueprints.SingleAsync(b => b.Name == LootboxSeed.FlamingSamuraiName))
+                .DefaultDisplayDescription.Should().Be("Forged in the last fire of a fallen dojo.\nIts edge never cools.");
+        }
+
+        const string adminDescription = "&5A custom event reward.";
+        await using (var db = NewContext())
+        {
+            var samurai = await db.ItemBlueprints.SingleAsync(b => b.Name == LootboxSeed.FlamingSamuraiName);
+            samurai.DefaultDisplayDescription = adminDescription;
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db, enchantmentCatalog: EnchantmentCatalog);
+        await using var finalRead = NewContext();
+        (await finalRead.ItemBlueprints.SingleAsync(b => b.Name == LootboxSeed.FlamingSamuraiName))
+            .DefaultDisplayDescription.Should().Be(adminDescription);
     }
 
     [Fact]

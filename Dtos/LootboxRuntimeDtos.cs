@@ -272,19 +272,6 @@ namespace knkwebapi_v2.Dtos
 
     // ===== Claims =====
 
-    public class LootboxClaimRequestDto
-    {
-        [JsonPropertyName("token")]
-        public Guid Token { get; set; }
-
-        [JsonPropertyName("userId")]
-        public int UserId { get; set; }
-
-        // "{token}:{userId}" by convention; the same key replays the stored result instead of rolling again.
-        [JsonPropertyName("idempotencyKey")]
-        public string IdempotencyKey { get; set; } = string.Empty;
-    }
-
     /// <summary>POST api/LootboxClaims/admin-give (<c>/knk lootbox give</c>): roll and mint without a world box. Not
     /// counted against the daily cap. The staff member comes from X-Acting-User-Id.</summary>
     public class LootboxAdminGiveRequestDto

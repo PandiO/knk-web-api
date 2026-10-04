@@ -13,14 +13,14 @@ namespace knkwebapi_v2.Services
     {
         private readonly IDomainRepository _repo;
         private readonly IMapper _mapper;
-        private readonly IRegionService _regionService;
+        private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly ILogger<DomainService> _logger;
 
-        public DomainService(IDomainRepository repo, IMapper mapper, IRegionService regionService, ILogger<DomainService> logger)
+        public DomainService(IDomainRepository repo, IMapper mapper, IDomainRegionNameFinalizer regionNames, ILogger<DomainService> logger)
         {
             _repo = repo;
             _mapper = mapper;
-            _regionService = regionService;
+            _regionNames = regionNames;
             _logger = logger;
         }
 
@@ -42,11 +42,8 @@ namespace knkwebapi_v2.Services
 
             await _repo.AddDomainAsync(domain);
             
-            // After successful creation, finalize the region name if it has a temporary ID
-            if (!string.IsNullOrWhiteSpace(domain.WgRegionId) && domain.WgRegionId.StartsWith("tempregion_worldtask_"))
-            {
-                await FinalizeRegionNameAsync(domain);
-            }
+            // A region drawn through a world task gets its final name (domain_<id>) now that the Domain exists
+            await _regionNames.FinalizeAsync(domain);
             
             return domain;
         }
@@ -71,11 +68,8 @@ namespace knkwebapi_v2.Services
 
             await _repo.UpdateDomainAsync(existing);
             
-            // After successful update, finalize the region name if it has a temporary ID
-            if (!string.IsNullOrWhiteSpace(domain.WgRegionId) && domain.WgRegionId.StartsWith("tempregion_worldtask_"))
-            {
-                await FinalizeRegionNameAsync(existing);
-            }
+            // A region drawn through a world task gets its final name (domain_<id>) now that the Domain exists
+            await _regionNames.FinalizeAsync(existing);
         }
 
         public async Task DeleteAsync(int id)
@@ -174,43 +168,6 @@ namespace knkwebapi_v2.Services
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Finalize the region name from temporary format to the actual formatted name.
-        /// Format for domain instance entities: "domain_{entity-id}"
-        /// </summary>
-        private async Task FinalizeRegionNameAsync(Domain domain)
-        {
-            try
-            {
-                string finalRegionName = $"domain_{domain.Id}";
-                
-                // Only attempt rename if the current name is temporary
-                if (domain.WgRegionId.StartsWith("tempregion_worldtask_"))
-                {
-                    _logger.LogInformation($"Finalizing region name for Domain {domain.Id}: {domain.WgRegionId} -> {finalRegionName}");
-                    
-                    bool renameSuccess = await _regionService.RenameRegionAsync(domain.WgRegionId, finalRegionName);
-                    
-                    if (renameSuccess)
-                    {
-                        // Update the domain with the new region name
-                        domain.WgRegionId = finalRegionName;
-                        await _repo.UpdateDomainAsync(domain);
-                        _logger.LogInformation($"Successfully finalized region name for Domain {domain.Id}: {finalRegionName}");
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"Failed to finalize region name for Domain {domain.Id}: rename operation failed");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error finalizing region name for Domain {domain.Id}: {ex.Message}");
-                // Don't throw - allow the entity creation to succeed even if region renaming fails
-            }
         }
     }
 }

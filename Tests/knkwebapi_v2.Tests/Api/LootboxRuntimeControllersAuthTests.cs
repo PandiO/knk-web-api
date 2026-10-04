@@ -18,8 +18,8 @@ using Xunit;
 namespace knkwebapi_v2.Tests.Api;
 
 /// <summary>
-/// Lootboxes Phase 2: every runtime endpoint carries a KNG-22 gate. Game-server-only routes (spawn, claim, deliver,
-/// pending, admin spawn/give, runtime config) are <see cref="RequirePluginServiceAttribute"/>, so a browser without the
+/// Lootboxes Phase 2: every runtime endpoint carries a KNG-22 gate. Game-server-only routes (spawn, pickup, redeem,
+/// deliver, pending, admin spawn/give, runtime config) are <see cref="RequirePluginServiceAttribute"/>, so a browser without the
 /// key gets 401; the active list and despawn also let the web app's lootbox admins in; the drop log is web-admin only.
 /// Also pins the 409/429 bodies the plugin parses.
 /// </summary>
@@ -31,7 +31,6 @@ public class LootboxRuntimeControllersAuthTests
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.GetRuntimeConfig), "plugin" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.Spawn), "plugin" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.AdminSpawn), "plugin" },
-        new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.Claim), "plugin" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.Pickup), "plugin" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.GetActive), "service-or-node" },
         new object?[] { typeof(LootboxSpawnsController), nameof(LootboxSpawnsController.Despawn), "service-or-node" },
@@ -111,6 +110,22 @@ public class LootboxRuntimeControllersAuthTests
         Prop(conflict.Value, "code").Should().Be("AlreadyRedeemed");
     }
 
+    [Fact]
+    public async Task Redeem_MapsTheDailyOpenLimit()
+    {
+        var service = new Mock<ILootboxRuntimeService>();
+        var token = Guid.NewGuid();
+        var request = new LootboxTokenRedeemRequestDto { UserId = 1, IdempotencyKey = "k" };
+        var resetsAt = new DateTime(2026, 9, 27, 0, 0, 0, DateTimeKind.Utc);
+        service.Setup(s => s.RedeemTokenAsync(token, request)).ThrowsAsync(new LootboxDailyLimitException("Global", 10, resetsAt));
+        var controller = new LootboxTokensController(service.Object) { ControllerContext = new ControllerContext { HttpContext = Http("secret") } };
+
+        var limited = (await controller.Redeem(token, request)).Should().BeOfType<ObjectResult>().Subject;
+        limited.StatusCode.Should().Be(429);
+        (Prop(limited.Value, "code"), Prop(limited.Value, "scope"), Prop(limited.Value, "limit"), Prop(limited.Value, "resetsAt"))
+            .Should().Be(("DailyLimit", "Global", 10, resetsAt));
+    }
+
     private static HttpContext Http(string? sentKey)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -131,11 +146,11 @@ public class LootboxRuntimeControllersAuthTests
     [InlineData(null, 401)]
     [InlineData("wrong", 401)]
     [InlineData("secret", null)]
-    public void Claim_WithoutTheKey_Is401(string? key, int? status)
+    public void Pickup_WithoutTheKey_Is401(string? key, int? status)
     {
         var context = new AuthorizationFilterContext(new ActionContext(Http(key), new RouteData(), new ActionDescriptor()), new List<IFilterMetadata>());
 
-        typeof(LootboxSpawnsController).GetMethod(nameof(LootboxSpawnsController.Claim))!
+        typeof(LootboxSpawnsController).GetMethod(nameof(LootboxSpawnsController.Pickup))!
             .GetCustomAttribute<RequirePluginServiceAttribute>()!.OnAuthorization(context);
 
         (context.Result as ObjectResult)?.StatusCode.Should().Be(status);
@@ -146,27 +161,28 @@ public class LootboxRuntimeControllersAuthTests
         new(service.Object) { ControllerContext = new ControllerContext { HttpContext = Http("secret") } };
 
     [Fact]
-    public async Task Claim_MapsConflictsAndTheDailyLimit()
+    public async Task Pickup_MapsConflictsAndTheDailyPickupLimit()
     {
         var service = new Mock<ILootboxRuntimeService>();
-        var request = new LootboxClaimRequestDto { UserId = 1, IdempotencyKey = "k" };
-        service.Setup(s => s.ClaimAsync(1, request)).ThrowsAsync(new LootboxConflictException("AlreadyClaimed", "taken"));
+        var request = new LootboxPickupRequestDto { UserId = 1, Token = Guid.NewGuid() };
+        service.Setup(s => s.PickupAsync(1, request)).ThrowsAsync(new LootboxConflictException("AlreadyClaimed", "taken"));
         var resetsAt = new DateTime(2026, 9, 27, 0, 0, 0, DateTimeKind.Utc);
-        service.Setup(s => s.ClaimAsync(2, request)).ThrowsAsync(new LootboxDailyLimitException("Global", 10, resetsAt));
-        service.Setup(s => s.ClaimAsync(3, request)).ThrowsAsync(new KeyNotFoundException("no spawn"));
-        service.Setup(s => s.ClaimAsync(4, request)).ReturnsAsync(new LootboxClaimResultDto { ClaimId = 9 });
+        service.Setup(s => s.PickupAsync(2, request))
+            .ThrowsAsync(new LootboxDailyLimitException("Type", 3, resetsAt, LootboxDailyLimitException.PickupCode));
+        service.Setup(s => s.PickupAsync(3, request)).ThrowsAsync(new KeyNotFoundException("no spawn"));
+        service.Setup(s => s.PickupAsync(4, request)).ReturnsAsync(new LootboxPickupResultDto { SpawnId = 4 });
         var controller = Spawns(service);
 
-        var conflict = (await controller.Claim(1, request)).Should().BeOfType<ConflictObjectResult>().Subject;
+        var conflict = (await controller.Pickup(1, request)).Should().BeOfType<ConflictObjectResult>().Subject;
         Prop(conflict.Value, "code").Should().Be("AlreadyClaimed");
 
-        var limited = (await controller.Claim(2, request)).Should().BeOfType<ObjectResult>().Subject;
+        var limited = (await controller.Pickup(2, request)).Should().BeOfType<ObjectResult>().Subject;
         limited.StatusCode.Should().Be(429);
         (Prop(limited.Value, "code"), Prop(limited.Value, "scope"), Prop(limited.Value, "limit"), Prop(limited.Value, "resetsAt"))
-            .Should().Be(("DailyLimit", "Global", 10, resetsAt));
+            .Should().Be(("DailyPickupLimit", "Type", 3, resetsAt));
 
-        (await controller.Claim(3, request)).Should().BeOfType<NotFoundObjectResult>();
-        (await controller.Claim(4, request)).Should().BeOfType<OkObjectResult>();
+        (await controller.Pickup(3, request)).Should().BeOfType<NotFoundObjectResult>();
+        (await controller.Pickup(4, request)).Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]
