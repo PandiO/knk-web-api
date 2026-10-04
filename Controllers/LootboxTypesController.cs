@@ -118,6 +118,25 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
+        /// The odds of every type in one call (KNG-45): one entry per type and requested <c>boxStars</c> (repeat the
+        /// parameter for several; none = each type's highest), with the same numbers as <c>{id}/odds</c>. All types
+        /// unless <c>enabledOnly=true</c>.
+        /// </summary>
+        [HttpGet("odds")]
+        [RequirePermission(StaffPermissions.ManageLootboxes)]
+        public async Task<IActionResult> GetAllOdds([FromQuery] int[]? boxStars, [FromQuery] bool enabledOnly = false)
+        {
+            try
+            {
+                return Ok(await _service.GetOddsForTypesAsync(boxStars, enabledOnly));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
         /// Odds of one box grade (default: the type's highest): box-grade distribution, specials, per-grade and per-item
         /// percentages and each enchant roll's hit chance and capped level range - the same rules the claim rolls with.
         /// </summary>

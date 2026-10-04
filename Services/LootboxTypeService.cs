@@ -206,12 +206,16 @@ namespace knkwebapi_v2.Services
 
         private async Task<LootboxRollInput> BuildRollInputAsync(LootboxType type)
         {
-            var categories = await _repo.GetCategoriesAsync();
+            return await BuildRollInputAsync(type, await _repo.GetCategoriesAsync(), await _repo.GetGradesAsync());
+        }
+
+        // categories/grades are the same for every type, so the batch odds read them once.
+        private async Task<LootboxRollInput> BuildRollInputAsync(LootboxType type, List<Category> categories, List<Grade> grades)
+        {
             var scope = LootboxRollInputBuilder.CategoryScope(type.CategoryId, type.IncludeSubcategories, categories);
             var includes = type.PoolEntries.Where(p => p.Mode == LootboxPoolMode.Include).Select(p => p.ItemBlueprintId).ToList();
             var blueprints = await _repo.GetPoolBlueprintsAsync(scope, includes);
             var specials = await _repo.GetApplicableSpecialsAsync(type.Id);
-            var grades = await _repo.GetGradesAsync();
             return LootboxRollInputBuilder.Build(type, categories, grades, blueprints, specials);
         }
 
@@ -221,10 +225,40 @@ namespace knkwebapi_v2.Services
             if (type == null) return null;
 
             var stars = boxStars ?? type.MaxBoxStars;
-            if (stars < 1 || stars > LootboxRollEngine.MaxBoxStars)
-                throw new ArgumentException($"boxStars must be 1-{LootboxRollEngine.MaxBoxStars}.", nameof(boxStars));
+            ValidateBoxStars(stars);
 
-            var input = await BuildRollInputAsync(type);
+            return BuildOdds(type, await BuildRollInputAsync(type), stars);
+        }
+
+        public async Task<IReadOnlyList<LootboxOddsDto>> GetOddsForTypesAsync(IReadOnlyCollection<int>? boxStars, bool enabledOnly)
+        {
+            var requested = boxStars?.Distinct().Order().ToList();
+            requested?.ForEach(ValidateBoxStars);
+
+            var types = (await _repo.GetAllAsync()).Where(t => !enabledOnly || t.Enabled).ToList();
+            if (types.Count == 0) return new List<LootboxOddsDto>();
+
+            var categories = await _repo.GetCategoriesAsync();
+            var grades = await _repo.GetGradesAsync();
+            var result = new List<LootboxOddsDto>();
+            foreach (var type in types)
+            {
+                var input = await BuildRollInputAsync(type, categories, grades);
+                // One roll input per type serves every requested grade; without boxStars each type's own highest.
+                foreach (var stars in requested is { Count: > 0 } ? requested : new List<int> { type.MaxBoxStars })
+                    result.Add(BuildOdds(type, input, stars));
+            }
+            return result;
+        }
+
+        private static void ValidateBoxStars(int stars)
+        {
+            if (stars < 1 || stars > LootboxRollEngine.MaxBoxStars)
+                throw new ArgumentException($"boxStars must be 1-{LootboxRollEngine.MaxBoxStars}.", "boxStars");
+        }
+
+        private static LootboxOddsDto BuildOdds(LootboxType type, LootboxRollInput input, int stars)
+        {
             var odds = LootboxRollEngine.ComputeOdds(input, stars);
             var weightOverrides = type.GradeWeights.ToDictionary(w => w.GradeId, w => w.Weight);
             var boxGrades = LootboxRollEngine.BoxGradeDistribution(input.Grades, type.MinBoxStars, type.MaxBoxStars, weightOverrides);

@@ -77,6 +77,30 @@ public class LootboxControllersAuthTests
     }
 
     [Fact]
+    public async Task AllOdds_PassesTheFiltersOn_AndMapsBadStars()
+    {
+        var service = new Mock<ILootboxTypeService>();
+        service.Setup(s => s.GetOddsForTypesAsync(It.Is<IReadOnlyCollection<int>?>(c => c != null && c.SequenceEqual(new[] { 5, 2 })), true))
+            .ReturnsAsync(new List<LootboxOddsDto> { new() { LootboxTypeId = 1, BoxStars = 5 } });
+        service.Setup(s => s.GetOddsForTypesAsync(It.Is<IReadOnlyCollection<int>?>(c => c != null && c.Contains(11)), false))
+            .ThrowsAsync(new ArgumentException("boxStars must be 1-10."));
+        var controller = new LootboxTypesController(service.Object);
+
+        var ok = (await controller.GetAllOdds(new[] { 5, 2 }, true)).Should().BeOfType<OkObjectResult>().Subject;
+        ((IReadOnlyList<LootboxOddsDto>)ok.Value!).Should().ContainSingle();
+        (await controller.GetAllOdds(new[] { 11 }, false)).Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public void AllOdds_IsStaffOnly_NotOpenToThePluginKey()
+    {
+        var action = typeof(LootboxTypesController).GetMethod(nameof(LootboxTypesController.GetAllOdds))!;
+
+        RequiresManageLootboxes(action).Should().BeTrue();
+        action.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Create_ConflictCarriesItsCode()
     {
         var service = new Mock<ILootboxTypeService>();
