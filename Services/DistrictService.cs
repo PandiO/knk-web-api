@@ -20,7 +20,7 @@ namespace knkwebapi_v2.Services
         private readonly ILocationRepository _locationRepo;
         private readonly IStreetRepository _streetRepo;
         private readonly IMapper _mapper;
-        private readonly IRegionService _regionService;
+        private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly ILogger<DistrictService> _logger;
         private readonly ITeleportDestinationService _teleportDestinations;
 
@@ -30,7 +30,7 @@ namespace knkwebapi_v2.Services
             ILocationRepository locationRepo,
             IStreetRepository streetRepo,
             IMapper mapper,
-            IRegionService regionService,
+            IDomainRegionNameFinalizer regionNames,
             ILogger<DistrictService> logger,
             ITeleportDestinationService teleportDestinations)
         {
@@ -39,7 +39,7 @@ namespace knkwebapi_v2.Services
             _locationRepo = locationRepo;
             _streetRepo = streetRepo;
             _mapper = mapper;
-            _regionService = regionService;
+            _regionNames = regionNames;
             _logger = logger;
             _teleportDestinations = teleportDestinations;
         }
@@ -173,11 +173,8 @@ namespace knkwebapi_v2.Services
 
             await _repo.AddDistrictAsync(district);
             
-            // After successful creation, finalize the region name if it has a temporary ID
-            if (!string.IsNullOrWhiteSpace(district.WgRegionId) && district.WgRegionId.StartsWith("tempregion_worldtask_"))
-            {
-                await FinalizeRegionNameAsync(district);
-            }
+            // A region drawn through a world task gets its final name (domain_<id>) now that the District exists
+            await _regionNames.FinalizeAsync(district);
             
             return _mapper.Map<DistrictDto>(district);
         }
@@ -267,11 +264,8 @@ namespace knkwebapi_v2.Services
 
             await _repo.UpdateDistrictAsync(existing);
             
-            // After successful update, finalize the region name if it has a temporary ID
-            if (!string.IsNullOrWhiteSpace(districtDto.WgRegionId) && districtDto.WgRegionId.StartsWith("tempregion_worldtask_"))
-            {
-                await FinalizeRegionNameAsync(existing);
-            }
+            // A region drawn through a world task gets its final name (domain_<id>) now that the District exists
+            await _regionNames.FinalizeAsync(existing);
         }
 
         public async Task DeleteAsync(int id)
@@ -292,45 +286,6 @@ namespace knkwebapi_v2.Services
             var resultDto = _mapper.Map<PagedResultDto<DistrictListDto>>(result);
 
             return resultDto;
-        }
-
-        /// <summary>
-        /// Finalize the region name from temporary format to the actual formatted name.
-        /// Format for domain instance entities: "domain_{entity-id}"
-        /// </summary>
-        private async Task FinalizeRegionNameAsync(District district)
-        {
-            try
-            {
-                string finalRegionName = $"domain_{district.Id}";
-                
-                // Only attempt rename if the current name is temporary
-                if (district.WgRegionId.StartsWith("tempregion_worldtask_"))
-                {
-                    _logger.LogInformation($"Finalizing region name for District {district.Id}: {district.WgRegionId} -> {finalRegionName}");
-                    
-                    // The plugin also sets the region up as a District: parent = its Town's region, priority, flags.
-                    var town = district.TownId > 0 ? await _townRepo.GetByIdAsync(district.TownId) : null;
-                    bool renameSuccess = await _regionService.RenameRegionAsync(district.WgRegionId, finalRegionName, "District", town?.WgRegionId);
-                    
-                    if (renameSuccess)
-                    {
-                        // Update the district with the new region name
-                        district.WgRegionId = finalRegionName;
-                        await _repo.UpdateDistrictAsync(district);
-                        _logger.LogInformation($"Successfully finalized region name for District {district.Id}: {finalRegionName}");
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"Failed to finalize region name for District {district.Id}: rename operation failed");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error finalizing region name for District {district.Id}: {ex.Message}");
-                // Don't throw - allow the entity creation to succeed even if region renaming fails
-            }
         }
     }
 }

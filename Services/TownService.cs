@@ -17,19 +17,22 @@ namespace knkwebapi_v2.Services
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
         private readonly ITeleportDestinationService _teleportDestinations;
+        private readonly IDomainRegionNameFinalizer _regionNames;
 
         public TownService(
             ITownRepository repo,
             ILocationRepository locationRepo,
             ILocationService locationService,
             IMapper mapper,
-            ITeleportDestinationService teleportDestinations)
+            ITeleportDestinationService teleportDestinations,
+            IDomainRegionNameFinalizer regionNames)
         {
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
             _mapper = mapper;
             _teleportDestinations = teleportDestinations;
+            _regionNames = regionNames;
         }
 
         public async Task<IEnumerable<TownDto>> GetAllAsync()
@@ -60,6 +63,7 @@ namespace knkwebapi_v2.Services
             DomainTeleportSettings.Apply(town, townDto);
             town.CreatedAt = DateTime.UtcNow;
             await _repo.AddTownAsync(town);
+            await _regionNames.FinalizeAsync(town);
             return _mapper.Map<TownDto>(town);
         }
 
@@ -86,6 +90,7 @@ namespace knkwebapi_v2.Services
             DomainTeleportSettings.Apply(existing, townDto);
 
             await _repo.UpdateTownAsync(existing);
+            await _regionNames.FinalizeAsync(existing);
         }
 
         public async Task DeleteAsync(int id)

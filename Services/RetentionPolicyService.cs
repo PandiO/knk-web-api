@@ -34,6 +34,9 @@ namespace knkwebapi_v2.Services
         private readonly int _retentionDays;
         private readonly TimeSpan _runInterval;
 
+        /// <summary>Unfinished form submissions (drafts) are kept this long after their last update (KNG-43).</summary>
+        public const int UnfinishedFormSubmissionRetentionDays = 90;
+
         public RetentionPolicyService(
             IServiceProvider serviceProvider,
             ILogger<RetentionPolicyService> logger,
@@ -79,6 +82,7 @@ namespace knkwebapi_v2.Services
             // the form-submission delete) never skips or poisons the others - the private message
             // cleanup in particular is a privacy promise (30 days), not housekeeping.
             await RunInScopeAsync(RunFormSubmissionCleanupAsync);
+            await RunInScopeAsync(RunUnfinishedFormSubmissionCleanupAsync);
             await RunInScopeAsync(RunAuditLogCleanupAsync);
             await RunInScopeAsync(RunPrivateMessageLogCleanupAsync);
         }
@@ -116,6 +120,34 @@ namespace knkwebapi_v2.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error running retention policy cleanup");
+            }
+        }
+
+        /// <summary>
+        /// Second, longer pass for drafts that were never finished (InProgress/Paused/Abandoned): deleted once they have
+        /// not been touched for <see cref="UnfinishedFormSubmissionRetentionDays"/> days. Own try/catch so it can't affect
+        /// the completed-submission, audit-log or private-message cleanups.
+        /// </summary>
+        private async Task RunUnfinishedFormSubmissionCleanupAsync(IServiceProvider scopedProvider)
+        {
+            try
+            {
+                var cutoffDate = DateTime.UtcNow.AddDays(-UnfinishedFormSubmissionRetentionDays);
+
+                _logger.LogInformation(
+                    "Running retention policy cleanup. Deleting unfinished FormSubmissionProgress records not updated since {CutoffDate}",
+                    cutoffDate);
+
+                var repository = scopedProvider.GetRequiredService<IFormSubmissionProgressRepository>();
+                int deletedCount = await repository.DeleteUnfinishedOlderThanAsync(cutoffDate);
+
+                _logger.LogInformation(
+                    "Retention policy cleanup completed. Deleted {Count} unfinished form submissions",
+                    deletedCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error running unfinished form submission retention cleanup");
             }
         }
 
