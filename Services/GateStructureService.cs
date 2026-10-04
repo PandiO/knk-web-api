@@ -17,17 +17,20 @@ namespace knkwebapi_v2.Services
         private readonly ILocationRepository _locationRepo;
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
+        private readonly IDomainRegionNameFinalizer _regionNames;
 
         public GateStructureService(
             IGateStructureRepository repo,
             ILocationRepository locationRepo,
             ILocationService locationService,
-            IMapper mapper)
+            IMapper mapper,
+            IDomainRegionNameFinalizer regionNames)
         {
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
             _mapper = mapper;
+            _regionNames = regionNames;
         }
 
         public async Task<IEnumerable<GateStructureDto>> GetAllAsync()
@@ -73,6 +76,7 @@ namespace knkwebapi_v2.Services
             var gateStructure = _mapper.Map<GateStructure>(gateStructureDto);
             await ApplyLocationReferencesAsync(gateStructure, gateStructureDto, isCreate: true);
             await _repo.AddGateStructureAsync(gateStructure);
+            await _regionNames.FinalizeAsync(gateStructure);
             return _mapper.Map<GateStructureDto>(gateStructure);
         }
 
@@ -92,6 +96,7 @@ namespace knkwebapi_v2.Services
             _mapper.Map(gateStructureDto, existing);
             await ApplyLocationReferencesAsync(existing, gateStructureDto);
             await _repo.UpdateGateStructureAsync(existing);
+            await _regionNames.FinalizeAsync(existing);
         }
 
         public async Task DeleteAsync(int id)

@@ -71,6 +71,10 @@ namespace knkwebapi_v2.Attributes
         /// <summary>Gate administration (plugin.yml knk.gate.admin): the structure-level gate overrides.</summary>
         public const string GateAdmin = "knk.gate.admin";
 
+        /// <summary>Managed WorldGuard regions (plugin.yml knk.admin.regions, /knk regions): finalizing
+        /// temporary region names (KNG-43). Also matched by knk.admin.* and *.</summary>
+        public const string ManageRegions = "knk.admin.regions";
+
         /// <summary>Server-wide admin settings with no narrower node (audit-log retention).</summary>
         public const string ServerConfig = "knk.admin.config";
 

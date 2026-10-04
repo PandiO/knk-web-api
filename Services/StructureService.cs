@@ -18,6 +18,7 @@ namespace knkwebapi_v2.Services
         private readonly ILocationRepository _locationRepo;
         private readonly IMapper _mapper;
         private readonly ITeleportDestinationService _teleportDestinations;
+        private readonly IDomainRegionNameFinalizer _regionNames;
 
         public StructureService(
             IStructureRepository repo,
@@ -25,7 +26,8 @@ namespace knkwebapi_v2.Services
             IDistrictRepository districtRepo,
             ILocationRepository locationRepo,
             IMapper mapper,
-            ITeleportDestinationService teleportDestinations)
+            ITeleportDestinationService teleportDestinations,
+            IDomainRegionNameFinalizer regionNames)
         {
             _repo = repo;
             _streetRepo = streetRepo;
@@ -33,6 +35,7 @@ namespace knkwebapi_v2.Services
             _locationRepo = locationRepo;
             _mapper = mapper;
             _teleportDestinations = teleportDestinations;
+            _regionNames = regionNames;
         }
 
         public async Task<IEnumerable<StructureDto>> GetAllAsync()
@@ -79,6 +82,7 @@ namespace knkwebapi_v2.Services
             structure.CreatedAt = DateTime.UtcNow;
             DomainTeleportSettings.Apply(structure, structureDto);
             await _repo.AddStructureAsync(structure);
+            await _regionNames.FinalizeAsync(structure);
             return _mapper.Map<StructureDto>(structure);
         }
 
@@ -130,6 +134,7 @@ namespace knkwebapi_v2.Services
             DomainTeleportSettings.Apply(existing, structureDto);
 
             await _repo.UpdateStructureAsync(existing);
+            await _regionNames.FinalizeAsync(existing);
         }
 
         public async Task DeleteAsync(int id)
