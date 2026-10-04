@@ -32,4 +32,9 @@ public class RoadNode
 
     /// <summary>Set when an admin edits the node; rebuilds keep it in place.</summary>
     public bool Locked { get; set; }
+
+    /// <summary>Radius (1-32) of the designed plaza this node is the centre of, or null (DESIGN §5.6
+    /// step 4, rev. 5). Only on Junction and Anchor nodes; the builder makes the whole footprint one
+    /// junction on this node.</summary>
+    public int? PlazaRadius { get; set; }
 }

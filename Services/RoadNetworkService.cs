@@ -774,12 +774,26 @@ public class RoadNetworkService : IRoadNetworkService
 
     // ---------------------------------------------------------------- Nodes
 
+    /// <summary>Largest designed plaza radius (DESIGN §5.6 step 4).</summary>
+    public const int MaxPlazaRadius = 32;
+
     public async Task<RoadNodeDto> UpdateNodeAsync(int id, RoadNodeUpdateDto dto)
     {
         if (dto == null) throw new ArgumentNullException(nameof(dto));
         var node = await _repo.GetNodeAsync(id) ?? throw new KeyNotFoundException($"Road node {id} not found.");
         if (IsTombstone(node.Kind)) throw new InvalidOperationException($"Node {id} is pruned; unprune it first.");
         if (dto.Kind.HasValue && IsTombstone(dto.Kind.Value)) throw new ArgumentException("Use prune to prune a node or an edge.");
+        var moving = dto.X.HasValue || dto.Y.HasValue || dto.Z.HasValue;
+        if (moving && !(dto.X.HasValue && dto.Y.HasValue && dto.Z.HasValue)) throw new ArgumentException("Moving a node needs x, y and z.");
+        if (dto.ClearPlaza && dto.PlazaRadius.HasValue) throw new ArgumentException("clearPlaza and plazaRadius are exclusive.");
+        if (dto.PlazaRadius is < 1 or > MaxPlazaRadius) throw new ArgumentException($"plazaRadius must be 1-{MaxPlazaRadius}.");
+        return moving
+            ? await _repo.RunInTransactionAsync(() => ApplyNodeUpdateAsync(node, dto, moving))
+            : await ApplyNodeUpdateAsync(node, dto, moving);
+    }
+
+    private async Task<RoadNodeDto> ApplyNodeUpdateAsync(RoadNode node, RoadNodeUpdateDto dto, bool moving)
+    {
         var edited = false;
         if (dto.ClearName)
         {
@@ -804,11 +818,61 @@ public class RoadNetworkService : IRoadNetworkService
             node.Kind = kind;
             edited = true;
         }
+        if (dto.ClearPlaza)
+        {
+            node.PlazaRadius = null;
+            edited = true;
+        }
+        else if (dto.PlazaRadius.HasValue)
+        {
+            node.PlazaRadius = dto.PlazaRadius;
+            edited = true;
+        }
+        if (node.PlazaRadius.HasValue && node.Kind is not (RoadNodeKind.Junction or RoadNodeKind.Anchor))
+        {
+            throw new ArgumentException("Only a Junction or an Anchor can be a plaza centre.");
+        }
+        var bumped = new HashSet<int> { node.TileId };
+        if (moving)
+        {
+            await MoveNodeAsync(node, dto.X!.Value, dto.Y!.Value, dto.Z!.Value, bumped);
+            edited = true;
+        }
         // An admin edit locks the node so rebuilds keep it (DESIGN §3.5), unless told otherwise.
         node.Locked = dto.Locked ?? (edited || node.Locked);
-        await BumpTileAsync(node.TileId);
+        foreach (var tile in await _repo.GetTilesByIdsAsync(bumped))
+        {
+            tile.Version++;
+        }
         await _repo.SaveChangesAsync();
         return _mapper.Map<RoadNodeDto>(node);
+    }
+
+    /// <summary>Move a node within its tile onto a free position; the ends of its edges follow
+    /// (rev. 5, DESIGN §3.5).</summary>
+    private async Task MoveNodeAsync(RoadNode node, int x, int y, int z, HashSet<int> bumped)
+    {
+        if (x == node.X && y == node.Y && z == node.Z) return;
+        var tile = await _repo.GetTileByIdAsync(node.TileId) ?? throw new KeyNotFoundException($"Tile {node.TileId} not found.");
+        if (!BoundsOf(tile.TileX, tile.TileZ).Contains(x, z)) throw new ArgumentException("A node can only move within its own tile.");
+        if (await _repo.GetNodeAtAsync(node.World, x, y, z) is RoadNode occupied)
+        {
+            throw new InvalidOperationException($"Node {occupied.Id} already sits at ({x}, {y}, {z}).");
+        }
+        node.X = x;
+        node.Y = y;
+        node.Z = z;
+        foreach (var edge in await _repo.GetEdgesTouchingNodesAsync(new[] { node.Id }))
+        {
+            var geometry = RoadJson.Geometry(edge.GeometryJson);
+            if (geometry.Length == 0) continue;
+            if (edge.FromNodeId == node.Id) geometry[0] = new[] { x, y, z };
+            if (edge.ToNodeId == node.Id) geometry[geometry.Length - 1] = new[] { x, y, z };
+            edge.GeometryJson = RoadJson.GeometryJson(geometry);
+            (edge.MinX, edge.MinY, edge.MinZ, edge.MaxX, edge.MaxY, edge.MaxZ) = RoadGeometry.BoundingBox(geometry);
+            edge.Length = RoadGeometry.PolylineLength(geometry);
+            bumped.Add(edge.TileId);
+        }
     }
 
     public async Task<RoadNodeDto> CreateAnchorAsync(RoadNodeAnchorDto dto)
@@ -1200,7 +1264,7 @@ public class RoadNetworkService : IRoadNetworkService
             foreach (var node in await _repo.GetNodesByIdsAsync(ends))
             {
                 var orphan = !remaining.Any(e => e.FromNodeId == node.Id || e.ToNodeId == node.Id);
-                if (orphan && node.Source == RoadNodeSource.Detected && node.Name == null
+                if (orphan && node.Source == RoadNodeSource.Detected && node.Name == null && node.PlazaRadius == null
                     && node.Kind is RoadNodeKind.Junction or RoadNodeKind.Endpoint)
                 {
                     _repo.Remove(node);

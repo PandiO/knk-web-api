@@ -264,6 +264,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("locked")]
         public bool Locked { get; set; }
+
+        /// <summary>Designed plaza radius when the node is a plaza centre (DESIGN §5.6 step 4).</summary>
+        [JsonPropertyName("plazaRadius")]
+        public int? PlazaRadius { get; set; }
     }
 
     public class RoadEdgeDto
@@ -585,6 +589,26 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("locked")]
         public bool? Locked { get; set; }
+
+        /// <summary>Move the node (rev. 5): all three or none; within its own tile, onto a free
+        /// position. The ends of its edges follow.</summary>
+        [JsonPropertyName("x")]
+        public int? X { get; set; }
+
+        [JsonPropertyName("y")]
+        public int? Y { get; set; }
+
+        [JsonPropertyName("z")]
+        public int? Z { get; set; }
+
+        /// <summary>Make the node the centre of a designed plaza of this radius (1-32); Junction
+        /// and Anchor nodes only (DESIGN §5.6 step 4).</summary>
+        [JsonPropertyName("plazaRadius")]
+        public int? PlazaRadius { get; set; }
+
+        /// <summary>True clears the plaza (null radius leaves it).</summary>
+        [JsonPropertyName("clearPlaza")]
+        public bool ClearPlaza { get; set; }
     }
 
     /// <summary>POST api/road-nodes/anchor: a manual split point (DESIGN §5.6).</summary>
