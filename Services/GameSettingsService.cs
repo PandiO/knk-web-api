@@ -81,6 +81,7 @@ public class GameSettingsService : IGameSettingsService
             .ToList();
 
         var worldSettings = GameSettingsJson.DeserializeList<WorldGameSettingsDto>(existing.WorldSettingsJson);
+        var worldSettingsBefore = existing.WorldSettingsJson;
         foreach (var runtimeWorld in cleanedRuntimeWorlds)
         {
             if (worldSettings.All(ws => !ws.WorldName.Equals(runtimeWorld.WorldName, StringComparison.OrdinalIgnoreCase)))
@@ -108,7 +109,12 @@ public class GameSettingsService : IGameSettingsService
         existing.RuntimeWorldsJson = GameSettingsJson.Serialize(cleanedRuntimeWorlds);
         existing.RuntimeWorldsLastUpdatedAt = DateTime.UtcNow;
         existing.WorldSettingsJson = GameSettingsJson.Serialize(worldSettings.Select(NormalizeWorldSettings).ToList());
-        existing.UpdatedAt = DateTime.UtcNow;
+        // The plugin reports every 30 s; only a newly seen world (a new per-world entry) changes the
+        // settings themselves, so only that moves UpdatedAt (KNG-52).
+        if (!string.Equals(worldSettingsBefore, existing.WorldSettingsJson, StringComparison.Ordinal))
+        {
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
 
         var saved = await _repository.UpsertAsync(existing);
         return _mapper.Map<GameSettingsReadDto>(saved);

@@ -1,11 +1,18 @@
 using System;
 using System.Threading.Tasks;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace knkwebapi_v2.Controllers;
 
+/// <summary>
+/// Global game settings singleton (docs/specs/game-settings/DESIGN.md): edited on the web app's
+/// Game Settings page, read and applied by knk-plugin, which also reports its loaded worlds through
+/// runtime-worlds. GET is open like the other configuration singletons; both writes need the plugin
+/// key or a web user with the server-config node (KNG-52).
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class GameSettingsController : ControllerBase
@@ -25,6 +32,7 @@ public class GameSettingsController : ControllerBase
         return Ok(settings);
     }
 
+    [RequireServiceOrPermission(StaffPermissions.ServerConfig)]
     [HttpPut]
     [ProducesResponseType(typeof(GameSettingsReadDto), 200)]
     [ProducesResponseType(400)]
@@ -41,6 +49,7 @@ public class GameSettingsController : ControllerBase
         }
     }
 
+    [RequireServiceOrPermission(StaffPermissions.ServerConfig)]
     [HttpPut("runtime-worlds")]
     [ProducesResponseType(typeof(GameSettingsReadDto), 200)]
     [ProducesResponseType(400)]
