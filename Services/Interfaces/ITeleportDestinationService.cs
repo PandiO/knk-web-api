@@ -30,6 +30,9 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <summary>Charges a /tpa or /tpahere coin fee once per idempotency key.</summary>
         Task<TeleportChargeResultDto> ChargeRequestFeeAsync(TeleportRequestFeeDto request);
 
+        /// <summary>Charges the flat coin fee of a player's own /back once per idempotency key (KNG-42).</summary>
+        Task<TeleportChargeResultDto> ChargeBackFeeAsync(TeleportBackFeeDto request);
+
         /// <summary>
         /// Gives back what the TELEPORT_FEE charge made under this key took (a ledger reversal).
         /// Repeating it is harmless. When nothing was charged under the key, the key is voided for

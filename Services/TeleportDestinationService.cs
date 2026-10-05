@@ -35,6 +35,10 @@ namespace knkwebapi_v2.Services
         public const string Component = "TeleportDestinationService";
         public const string WarpSourceType = "Domain";
         public const string RequestSourceType = "TeleportRequest";
+        public const string BackSourceType = "TeleportBack";
+
+        /// <summary>The kinds of place a /back returns to (plugin BackKind config keys, KNG-42).</summary>
+        public static readonly IReadOnlySet<string> BackKinds = new HashSet<string> { "death", "warps", "teleport", "spawn" };
 
         /// <summary>Highest coin fee a teleport request may carry (the coin balance cap).</summary>
         public const int MaxRequestFeeCoins = BalanceLimits.MaxCoins;
@@ -168,30 +172,55 @@ namespace knkwebapi_v2.Services
             return result;
         }
 
-        public async Task<TeleportChargeResultDto> ChargeRequestFeeAsync(TeleportRequestFeeDto request)
+        public Task<TeleportChargeResultDto> ChargeRequestFeeAsync(TeleportRequestFeeDto request)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
-            RequireKey(request.IdempotencyKey);
-            if (request.AmountCoins < 1 || request.AmountCoins > MaxRequestFeeCoins)
+            return ChargeFlatCoinsAsync(request.UserId, request.AmountCoins, request.IdempotencyKey,
+                RequestSourceType, request.OtherUserId?.ToString(), "Teleport request",
+                new { otherUserId = request.OtherUserId });
+        }
+
+        public Task<TeleportChargeResultDto> ChargeBackFeeAsync(TeleportBackFeeDto request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            var kind = request.BackKind?.Trim().ToLowerInvariant();
+            if (kind != null && !BackKinds.Contains(kind))
+            {
+                throw new ArgumentException($"backKind must be one of {string.Join(", ", BackKinds)}.");
+            }
+            return ChargeFlatCoinsAsync(request.UserId, request.AmountCoins, request.IdempotencyKey,
+                BackSourceType, kind, "Teleport back (/back)", new { backKind = kind });
+        }
+
+        /// <summary>
+        /// A flat coin fee (a /tpa's, a /back's) charged once per idempotency key under the player's
+        /// row lock; a retry with the same key replays the first charge, a refunded or voided key is
+        /// refused.
+        /// </summary>
+        private async Task<TeleportChargeResultDto> ChargeFlatCoinsAsync(int userId, int amountCoins, string key,
+            string sourceType, string? sourceRef, string reason, object metadata)
+        {
+            RequireKey(key);
+            if (amountCoins < 1 || amountCoins > MaxRequestFeeCoins)
             {
                 throw new ArgumentException($"amountCoins must be between 1 and {MaxRequestFeeCoins}.");
             }
-            if (request.UserId <= 0) throw new KeyNotFoundException($"User {request.UserId} not found.");
+            if (userId <= 0) throw new KeyNotFoundException($"User {userId} not found.");
 
             TeleportChargeResultDto? result = null;
-            await _users.RunWithUsersLockedAsync(new[] { request.UserId }, async () =>
+            await _users.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
-                await RequireNotVoidAsync(request.IdempotencyKey);
-                var user = await _users.GetByIdAsync(request.UserId) ?? throw new KeyNotFoundException($"User {request.UserId} not found.");
+                await RequireNotVoidAsync(key);
+                var user = await _users.GetByIdAsync(userId) ?? throw new KeyNotFoundException($"User {userId} not found.");
 
-                var existing = await _ledger.FindByIdempotencyAsync(CurrencyIdempotencyScopes.Plugin, request.IdempotencyKey);
+                var existing = await _ledger.FindByIdempotencyAsync(CurrencyIdempotencyScopes.Plugin, key);
                 if (existing != null)
                 {
-                    await RequireSameChargeAsync(existing, user.Id, RequestSourceType, request.OtherUserId?.ToString());
+                    await RequireSameChargeAsync(existing, user.Id, sourceType, sourceRef);
                     var leg = UserLeg(existing, user.Id)!;
-                    if (leg.Currency != Currency.Coins || -leg.Amount != request.AmountCoins)
+                    if (leg.Currency != Currency.Coins || -leg.Amount != amountCoins)
                     {
-                        throw KeyReuse(request.IdempotencyKey);
+                        throw KeyReuse(key);
                     }
                     result = new TeleportChargeResultDto
                     {
@@ -204,9 +233,8 @@ namespace knkwebapi_v2.Services
                     return;
                 }
 
-                var posting = await SpendAsync(user.Id, Currency.Coins, request.AmountCoins, request.IdempotencyKey,
-                    RequestSourceType, request.OtherUserId?.ToString(), "Teleport request",
-                    new { otherUserId = request.OtherUserId });
+                var posting = await SpendAsync(user.Id, Currency.Coins, amountCoins, key, sourceType, sourceRef,
+                    reason, metadata);
                 result = ToChargeResult(posting, user.Id, Currency.Coins, null);
             });
             return result!;

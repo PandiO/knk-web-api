@@ -185,10 +185,30 @@ namespace knkwebapi_v2.Dtos
         public int? OtherUserId { get; set; }
     }
 
+    /// <summary>
+    /// POST /api/teleport-destinations/back-fee - the flat coin fee of a player's own /back (the
+    /// plugin's teleport.back.price-coins), charged when the teleport commits (Linear KNG-42).
+    /// </summary>
+    public class TeleportBackFeeDto
+    {
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("amountCoins")]
+        public int AmountCoins { get; set; }
+
+        [JsonPropertyName("idempotencyKey")]
+        public string IdempotencyKey { get; set; } = null!;
+
+        /// <summary>What the player goes back to (death, warps, teleport, spawn), for the ledger's source reference.</summary>
+        [JsonPropertyName("backKind")]
+        public string? BackKind { get; set; }
+    }
+
     /// <summary>A charged (or free) teleport. For a warp it carries the authoritative destination.</summary>
     public class TeleportChargeResultDto
     {
-        /// <summary>"Gems" for warps, "Coins" for requests.</summary>
+        /// <summary>"Gems" for warps, "Coins" for requests and /back.</summary>
         [JsonPropertyName("currency")]
         public string Currency { get; set; } = null!;
 

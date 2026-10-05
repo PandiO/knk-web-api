@@ -89,6 +89,23 @@ public class TeleportDestinationsController : ControllerBase
         Run(request?.UserId, () => _service.ChargeRequestFeeAsync(request!));
 
     /// <summary>
+    /// Charges the flat coin fee of a player's own /back (the plugin's teleport.back.price-coins) when
+    /// the teleport commits (KNG-42). Idempotent per idempotencyKey.
+    /// </summary>
+    /// <response code="200">Charged</response>
+    /// <response code="400">Bad key, amount or backKind</response>
+    /// <response code="404">User not found</response>
+    /// <response code="409">InsufficientCoins, Refunded or IdempotencyKeyReuse</response>
+    [RequirePluginService]
+    [HttpPost("back-fee")]
+    [ProducesResponseType(typeof(TeleportChargeResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public Task<IActionResult> BackFee([FromBody] TeleportBackFeeDto request) =>
+        Run(request?.UserId, () => _service.ChargeBackFeeAsync(request!));
+
+    /// <summary>
     /// Refunds the charge made under idempotencyKey (a ledger reversal) because the teleport didn't
     /// happen. Safe to repeat. With no charge under the key, nothing is refunded and the key is
     /// voided so a late charge with it is refused.

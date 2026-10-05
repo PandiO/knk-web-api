@@ -689,6 +689,62 @@ public class TeleportDestinationServiceTests
         Assert.Equal("IdempotencyKeyReuse", refused.Code);
     }
 
+    // ===== /back fees (KNG-42) =====
+
+    private async Task<TeleportChargeResultDto> BackFeeAsync(int userId, int amount, string key, string? kind = "warps")
+    {
+        await using var ctx = NewContext();
+        return await Service(ctx).ChargeBackFeeAsync(new TeleportBackFeeDto
+        {
+            UserId = userId, AmountCoins = amount, IdempotencyKey = key, BackKind = kind
+        });
+    }
+
+    [Fact]
+    public async Task BackFee_ChargesCoinsOnce_TaggedWithItsKind_AndRefunds()
+    {
+        var user = await UserAsync(coins: 1000);
+
+        var fee = await BackFeeAsync(user, 250, "back:1", "Warps");
+        var replay = await BackFeeAsync(user, 250, "back:1", "warps");
+
+        Assert.Equal("Coins", fee.Currency);
+        Assert.Equal(250, fee.Charged);
+        Assert.Equal(750, fee.NewBalance);
+        Assert.True(replay.Replayed);
+        var tx = Assert.Single(await LedgerAsync());
+        Assert.Equal(CurrencyReasons.TeleportFee, tx.ReasonCode);
+        Assert.Equal(TeleportDestinationService.BackSourceType, tx.SourceType);
+        Assert.Equal("warps", tx.SourceRef);
+
+        await RefundAsync(user, "back:1");
+        Assert.Equal(1000, (await ReloadAsync(user)).Coins);
+    }
+
+    [Fact]
+    public async Task BackFee_InsufficientCoins_BadKind_And_AmountBounds()
+    {
+        var user = await UserAsync(coins: 10);
+
+        var refused = await Assert.ThrowsAsync<TeleportDestinationException>(() => BackFeeAsync(user, 11, "back:a"));
+        Assert.Equal("InsufficientCoins", refused.Code);
+        await Assert.ThrowsAsync<ArgumentException>(() => BackFeeAsync(user, 5, "back:b", "flying"));
+        await Assert.ThrowsAsync<ArgumentException>(() => BackFeeAsync(user, 0, "back:c"));
+        Assert.Equal(10, (await ReloadAsync(user)).Coins);
+    }
+
+    [Fact]
+    public async Task RequestFeeKey_CantBeReplayedAsABackFee()
+    {
+        var user = await UserAsync(coins: 1000);
+        await FeeAsync(user, 100, "shared:2");
+
+        var refused = await Assert.ThrowsAsync<TeleportDestinationException>(() => BackFeeAsync(user, 100, "shared:2"));
+
+        Assert.Equal("IdempotencyKeyReuse", refused.Code);
+        Assert.Equal(900, (await ReloadAsync(user)).Coins);
+    }
+
     // ===== Authoring validation and apply =====
 
     [Fact]
