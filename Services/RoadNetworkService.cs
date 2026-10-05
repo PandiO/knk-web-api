@@ -533,7 +533,8 @@ public class RoadNetworkService : IRoadNetworkService
         tile.LevelCount = dto.LevelCount;
         tile.NodeCount = tileNodes.Count(n => !IsTombstone(n.Kind));
         tile.EdgeCount = tileEdges.Count;
-        tile.WarningsJson = RoadJson.ListJson(dto.Warnings.Concat(labels.Conflicts));
+        // Distinct: a review step of a curated tile re-uploads stored warnings, which hold the old conflicts.
+        tile.WarningsJson = RoadJson.ListJson(dto.Warnings.Concat(labels.Conflicts).Distinct());
         bumped.Remove(tile.Id);
         foreach (var other in await _repo.GetTilesByIdsAsync(bumped))
         {

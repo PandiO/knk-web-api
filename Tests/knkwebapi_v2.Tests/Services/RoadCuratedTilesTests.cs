@@ -134,6 +134,17 @@ public class RoadCuratedTilesTests : IDisposable
             _service.SetTileStateAsync(World, 0, 0, new RoadTileStateDto { State = (RoadTileState)7 }));
     }
 
+    [Fact]
+    public async Task Upsert_StoresEachWarningOnce()
+    {
+        var build = Build();
+        build.Warnings = new List<string> { "Cell cap hit at (1, 64, 2)", "Cell cap hit at (1, 64, 2)" };
+
+        var result = await _service.UpsertTileGraphAsync(World, 0, 0, build);
+
+        Assert.Equal(new[] { "Cell cap hit at (1, 64, 2)" }, result.Tile.Warnings);
+    }
+
     // ------------------------------------------------------- Confirmed edges (D4)
 
     [Fact]
