@@ -44,6 +44,8 @@ public class GameSettingsRepository : IGameSettingsRepository
         existing.WorldSettingsJson = settings.WorldSettingsJson;
         existing.RuntimeWorldsJson = settings.RuntimeWorldsJson;
         existing.RuntimeWorldsLastUpdatedAt = settings.RuntimeWorldsLastUpdatedAt;
+        existing.Motd = settings.Motd;
+        existing.GroupOverridesJson = settings.GroupOverridesJson;
         // The service decides: a runtime-world report alone must not look like an admin edit.
         existing.UpdatedAt = settings.UpdatedAt;
 

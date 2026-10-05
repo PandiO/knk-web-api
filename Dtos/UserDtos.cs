@@ -54,6 +54,16 @@ namespace knkwebapi_v2.Dtos
     /// Full user DTO for API responses.
     /// CRITICAL: Never includes PasswordHash.
     /// </summary>
+    /// <summary>A PermissionGroup by id and name (KNG-52: UserDto.PermissionGroups).</summary>
+    public class PermissionGroupRefDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+    }
+
     public class UserDto
     {
         [JsonPropertyName("id")]
@@ -131,6 +141,15 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("nameColor")]
         public string? NameColor { get; set; }
+
+        /// <summary>
+        /// The user's effective PermissionGroups - unexpired memberships plus the groups they inherit
+        /// from - in Game Settings precedence order (PermissionGroupPrecedence: deeper in the
+        /// hierarchy first, then higher Weight). The plugin picks a player's group overrides and the
+        /// {group} placeholder from it (KNG-52).
+        /// </summary>
+        [JsonPropertyName("permissionGroups")]
+        public List<PermissionGroupRefDto> PermissionGroups { get; set; } = new();
 
         /// <summary>
         /// Salary formula's personal override (IMPLEMENTATION_PLAN.md §6). Admin-editable via the
@@ -256,6 +275,15 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("nameColor")]
         public string? NameColor { get; set; }
+
+        /// <summary>
+        /// The user's effective PermissionGroups - unexpired memberships plus the groups they inherit
+        /// from - in Game Settings precedence order (PermissionGroupPrecedence: deeper in the
+        /// hierarchy first, then higher Weight). The plugin picks a player's group overrides and the
+        /// {group} placeholder from it (KNG-52).
+        /// </summary>
+        [JsonPropertyName("permissionGroups")]
+        public List<PermissionGroupRefDto> PermissionGroups { get; set; } = new();
 
         /// <summary>Admin-freeze state (PUT /api/users/{id}/freeze|unfreeze) — read here so the
         /// plugin can restore/enforce it on the player's next join without a separate call.</summary>

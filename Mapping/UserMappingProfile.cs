@@ -37,6 +37,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ChatPrimaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
+                .ForMember(dest => dest.PermissionGroups, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
                 .ForMember(dest => dest.PersonalGemBonusMultiplier, src => src.MapFrom(src => (decimal?)src.PersonalGemBonusMultiplier))
                 .ForMember(dest => dest.PersonalExpBonusMultiplier, src => src.MapFrom(src => (decimal?)src.PersonalExpBonusMultiplier))
@@ -106,6 +107,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ChatPrimaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
+                .ForMember(dest => dest.PermissionGroups, opt => opt.Ignore())
                 .ForMember(dest => dest.Gender, src => src.MapFrom(src => src.Gender));
 
             // Note: PersonalSalaryMultiplier/LastSalaryPayoutAt are deliberately not added to

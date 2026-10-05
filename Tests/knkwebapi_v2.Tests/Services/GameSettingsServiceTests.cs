@@ -6,6 +6,7 @@ using knkwebapi_v2.Controllers;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Mapping;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services;
 using Xunit;
@@ -20,8 +21,16 @@ namespace knkwebapi_v2.Tests.Services;
 public class GameSettingsServiceTests
 {
     private readonly Mock<IGameSettingsRepository> _repo = new();
+    private readonly Mock<IPermissionGroupRepository> _groupRepo = new();
     private readonly GameSettingsService _service;
     private GameSettings? _stored;
+
+    // Default <- Noble (child, weight 10); Staff stands alone with weight 100; Admin is a child of Staff.
+    private static readonly PermissionGroup Default = new() { Id = 1, Name = "Default", Weight = 0 };
+    private static readonly PermissionGroup Noble = new() { Id = 2, Name = "Noble", Weight = 10, ParentGroupId = 1 };
+    private static readonly PermissionGroup Staff = new() { Id = 3, Name = "Staff", Weight = 100 };
+    private static readonly PermissionGroup Admin = new() { Id = 4, Name = "Admin", Weight = 5, ParentGroupId = 3 };
+    private List<PermissionGroup> _groups = new() { Default, Noble, Staff, Admin };
 
     public GameSettingsServiceTests()
     {
@@ -29,8 +38,22 @@ public class GameSettingsServiceTests
         _repo.Setup(r => r.UpsertAsync(It.IsAny<GameSettings>()))
             .ReturnsAsync((GameSettings s) => _stored = s);
         var mapper = new MapperConfiguration(cfg => cfg.AddProfile<GameSettingsMappingProfile>()).CreateMapper();
-        _service = new GameSettingsService(_repo.Object, mapper);
+        _groupRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(() => _groups);
+        _service = new GameSettingsService(_repo.Object, mapper, _groupRepo.Object);
     }
+
+    private static GameSettingsUpdateDto Update(List<PermissionGroupGameSettingsDto>? overrides = null, string? motd = null) => new()
+    {
+        JoinSpawnMode = "WorldSpawn",
+        GroupOverrides = overrides,
+        Motd = motd,
+    };
+
+    private static PermissionGroupGameSettingsDto Join(int groupId, string text) => new()
+    {
+        PermissionGroupId = groupId,
+        JoinAnnouncement = text,
+    };
 
     private static GameSettingsRuntimeWorldsUpdateDto Report(params string[] worlds) => new()
     {
@@ -110,5 +133,111 @@ public class GameSettingsServiceTests
     {
         Assert.Empty(typeof(GameSettingsController).GetMethod(nameof(GameSettingsController.Get))!
             .GetCustomAttributes<RequireServiceOrPermissionAttribute>());
+    }
+
+    // ===== KNG-52 round 2: group overrides, MOTD, respawn modes =====
+
+    [Fact]
+    public async Task GroupOverrides_AreReturnedInPrecedenceOrder_HierarchyFirstThenWeight()
+    {
+        var dto = await _service.UpdateAsync(Update(new()
+        {
+            Join(1, "&7{player} joined"),
+            Join(3, "&c[Staff] {player}"),
+            Join(2, "&6Noble {player}"),
+            Join(4, "&4Admin {player}"),
+        }));
+
+        // depth 1: Noble (w10), Admin (w5); depth 0: Staff (w100), Default (w0)
+        Assert.Equal(new[] { "Noble", "Admin", "Staff", "Default" }, dto.GroupOverrides.Select(o => o.GroupName));
+        Assert.Equal(new[] { 1, 2, 3, 4 }, dto.GroupOverrides.Select(o => o.Precedence));
+        Assert.Equal("&6Noble {player}", dto.GroupOverrides[0].JoinAnnouncement);
+    }
+
+    [Fact]
+    public async Task GroupOverrides_UnknownOrDuplicateGroupsAreRejected()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(Update(new() { Join(99, "x") })));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(Update(new() { Join(1, "a"), Join(1, "b") })));
+    }
+
+    [Fact]
+    public async Task GroupOverrides_WithoutAnyOverrideAreDropped_ButABlankJoinMessageIsKept()
+    {
+        var dto = await _service.UpdateAsync(Update(new()
+        {
+            new PermissionGroupGameSettingsDto { PermissionGroupId = 1 },
+            Join(2, ""),
+        }));
+
+        var only = Assert.Single(dto.GroupOverrides);
+        Assert.Equal(2, only.PermissionGroupId);
+        Assert.Equal("", only.JoinAnnouncement);
+    }
+
+    [Fact]
+    public async Task GroupOverrides_OfADeletedGroupDisappearOnRead()
+    {
+        await _service.UpdateAsync(Update(new() { Join(1, "a"), Join(3, "b") }));
+        _groups = new() { Default, Noble };
+
+        var dto = await _service.GetAsync();
+
+        Assert.Equal(new[] { 1 }, dto.GroupOverrides.Select(o => o.PermissionGroupId));
+    }
+
+    [Fact]
+    public async Task AnUpdateWithoutGroupOverridesOrMotd_KeepsThem()
+    {
+        await _service.UpdateAsync(Update(new() { Join(1, "a") }, "&6Knights and Kings"));
+
+        var dto = await _service.UpdateAsync(Update());
+
+        Assert.Single(dto.GroupOverrides);
+        Assert.Equal("&6Knights and Kings", dto.Motd);
+    }
+
+    [Fact]
+    public async Task Motd_IsNormalized_BlankClearsIt_AndThreeLinesAreRejected()
+    {
+        var dto = await _service.UpdateAsync(Update(motd: "&6Knights\r\n&eand Kings   "));
+        Assert.Equal("&6Knights\n&eand Kings", dto.Motd);
+
+        dto = await _service.UpdateAsync(Update(motd: "   "));
+        Assert.Null(dto.Motd);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(Update(motd: "a\nb\nc")));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(Update(motd: new string('x', 600))));
+    }
+
+    [Fact]
+    public async Task RespawnModes_JoinSpawnIsAccepted_UnknownIsRejected()
+    {
+        var update = Update(new()
+        {
+            new PermissionGroupGameSettingsDto { PermissionGroupId = 2, RespawnPolicy = new RespawnPolicyDto { Mode = "JoinSpawn" } },
+        });
+        update.WorldSettings = new() { new WorldGameSettingsDto { WorldName = "world", RespawnPolicy = new RespawnPolicyDto { Mode = "joinspawn" } } };
+        var dto = await _service.UpdateAsync(update);
+        Assert.Equal("JoinSpawn", dto.GroupOverrides[0].RespawnPolicy!.Mode);
+
+        update.WorldSettings[0].RespawnPolicy.Mode = "Bed";
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(update));
+    }
+
+    [Fact]
+    public void Precedence_DepthFollowsParents_AndSurvivesCycles()
+    {
+        var byId = _groups.ToDictionary(g => g.Id);
+        Assert.Equal(0, PermissionGroupPrecedence.Depth(Default, byId));
+        Assert.Equal(1, PermissionGroupPrecedence.Depth(Noble, byId));
+
+        var a = new PermissionGroup { Id = 10, Name = "A", ParentGroupId = 11 };
+        var b = new PermissionGroup { Id = 11, Name = "B", ParentGroupId = 10 };
+        var cyclic = new Dictionary<int, PermissionGroup> { [10] = a, [11] = b };
+        Assert.Equal(1, PermissionGroupPrecedence.Depth(a, cyclic));
+
+        // A parent outside the given set ends the chain.
+        Assert.Equal(0, PermissionGroupPrecedence.Depth(Noble, new Dictionary<int, PermissionGroup> { [2] = Noble }));
     }
 }

@@ -36,6 +36,14 @@ public class GameSettingsReadDto
     [JsonPropertyName("runtimeWorldsLastUpdatedAt")]
     public DateTime? RuntimeWorldsLastUpdatedAt { get; set; }
 
+    /// <summary>Server-list MOTD; null = the server's own.</summary>
+    [JsonPropertyName("motd")]
+    public string? Motd { get; set; }
+
+    /// <summary>Per-group overrides, in precedence order (the first that applies to a player wins).</summary>
+    [JsonPropertyName("groupOverrides")]
+    public List<PermissionGroupGameSettingsDto> GroupOverrides { get; set; } = new();
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
@@ -65,6 +73,47 @@ public class GameSettingsUpdateDto
 
     [JsonPropertyName("worldSettings")]
     public List<WorldGameSettingsDto> WorldSettings { get; set; } = new();
+
+    /// <summary>Null = keep the current MOTD; blank = clear it (use server.properties).</summary>
+    [JsonPropertyName("motd")]
+    public string? Motd { get; set; }
+
+    /// <summary>Null = keep the current overrides; a list (also empty) replaces them.</summary>
+    [JsonPropertyName("groupOverrides")]
+    public List<PermissionGroupGameSettingsDto>? GroupOverrides { get; set; }
+}
+
+/// <summary>
+/// One PermissionGroup's overrides of the global Game Settings (KNG-52). Every field is optional:
+/// null means "use the next group, else the global/world setting".
+/// </summary>
+public class PermissionGroupGameSettingsDto
+{
+    [JsonPropertyName("permissionGroupId")]
+    public int PermissionGroupId { get; set; }
+
+    /// <summary>Read-only: the group's name, filled in on read.</summary>
+    [JsonPropertyName("groupName")]
+    public string? GroupName { get; set; }
+
+    /// <summary>
+    /// Read-only, filled in on read: 1 = considered first. Deeper in the parent hierarchy first,
+    /// then higher Weight, then lower id.
+    /// </summary>
+    [JsonPropertyName("precedence")]
+    public int Precedence { get; set; }
+
+    /// <summary>Join broadcast for this group's members; {player}, {group}. Blank = no broadcast.</summary>
+    [JsonPropertyName("joinAnnouncement")]
+    public string? JoinAnnouncement { get; set; }
+
+    /// <summary>Where this group's members join (and /spawn).</summary>
+    [JsonPropertyName("joinSpawnReference")]
+    public LocationReferenceDto? JoinSpawnReference { get; set; }
+
+    /// <summary>Respawn policy for this group's members, in every world.</summary>
+    [JsonPropertyName("respawnPolicy")]
+    public RespawnPolicyDto? RespawnPolicy { get; set; }
 }
 
 public class GameSettingsRuntimeWorldsUpdateDto
@@ -151,7 +200,8 @@ public class WorldWeatherSettingsDto
 public class RespawnPolicyDto
 {
     /// <summary>
-    /// Supported values: WorldSpawn, ConfiguredReference, NearestTown.
+    /// Supported values: WorldSpawn, ConfiguredReference, NearestTown, JoinSpawn (respawn where the
+    /// player would join - "synced" with the join spawn, KNG-52).
     /// </summary>
     [JsonPropertyName("mode")]
     public string Mode { get; set; } = "WorldSpawn";
