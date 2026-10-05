@@ -214,6 +214,14 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("dirty")]
         public bool Dirty { get; set; }
 
+        /// <summary>Detected: the next build is uploaded directly; Curated: a build makes a proposal
+        /// (plan §5.7, D1).</summary>
+        [JsonPropertyName("state")]
+        public RoadTileState State { get; set; }
+
+        [JsonPropertyName("curatedAt")]
+        public DateTime? CuratedAt { get; set; }
+
         [JsonPropertyName("cellCount")]
         public int CellCount { get; set; }
 
@@ -345,6 +353,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("status")]
         public RoadEdgeStatus Status { get; set; }
+
+        /// <summary>An admin kept this edge when a proposal wanted to remove it (plan §5.7, D4).</summary>
+        [JsonPropertyName("confirmed")]
+        public bool Confirmed { get; set; }
     }
 
     /// <summary>GET api/road-tiles/{world}/{tileX}/{tileZ}/graph: the tile's own nodes and the edges it
@@ -670,6 +682,139 @@ namespace knkwebapi_v2.Dtos
         /// <summary>Replaces the flag set: subset of "Oneway", "NoGps", "Closed"; [] clears them.</summary>
         [JsonPropertyName("flags")]
         public List<string>? Flags { get; set; }
+
+        /// <summary>True keeps a detected edge that a proposal wanted to remove (plan §5.7, D4) and
+        /// locks both its nodes; false takes that back. Only for Detected edges.</summary>
+        [JsonPropertyName("confirmed")]
+        public bool? Confirmed { get; set; }
+    }
+
+    /// <summary>PUT api/road-tiles/{world}/{tileX}/{tileZ}/state (plan §5.7, D1).</summary>
+    public class RoadTileStateDto
+    {
+        [JsonPropertyName("state")]
+        public RoadTileState State { get; set; }
+    }
+
+    /// <summary>
+    /// PUT api/road-tiles/{world}/{tileX}/{tileZ}/proposal (plan §5.7, D5): the plugin's proposal for
+    /// a Curated tile. <c>items</c> and <c>rejected</c> are JSON arrays in the plugin's item format;
+    /// the counts are what listings show.
+    /// </summary>
+    public class RoadTileProposalUpsertDto
+    {
+        [JsonPropertyName("baseVersion")]
+        public int BaseVersion { get; set; }
+
+        [JsonPropertyName("builderVersion")]
+        public int BuilderVersion { get; set; }
+
+        [JsonPropertyName("createdBy")]
+        public string? CreatedBy { get; set; }
+
+        [JsonPropertyName("cellCount")]
+        public int CellCount { get; set; }
+
+        [JsonPropertyName("levelCount")]
+        public int LevelCount { get; set; }
+
+        [JsonPropertyName("warnings")]
+        public List<string>? Warnings { get; set; }
+
+        [JsonPropertyName("items")]
+        public JsonElement Items { get; set; }
+
+        [JsonPropertyName("rejected")]
+        public JsonElement Rejected { get; set; }
+
+        [JsonPropertyName("addedCount")]
+        public int AddedCount { get; set; }
+
+        [JsonPropertyName("removedCount")]
+        public int RemovedCount { get; set; }
+
+        [JsonPropertyName("changedCount")]
+        public int ChangedCount { get; set; }
+
+        [JsonPropertyName("movedCount")]
+        public int MovedCount { get; set; }
+    }
+
+    /// <summary>A tile's proposal without its items (GET api/road-tiles/proposals?world=).</summary>
+    public class RoadTileProposalSummaryDto
+    {
+        [JsonPropertyName("tileId")]
+        public int TileId { get; set; }
+
+        [JsonPropertyName("world")]
+        public string World { get; set; } = null!;
+
+        [JsonPropertyName("tileX")]
+        public int TileX { get; set; }
+
+        [JsonPropertyName("tileZ")]
+        public int TileZ { get; set; }
+
+        [JsonPropertyName("baseVersion")]
+        public int BaseVersion { get; set; }
+
+        /// <summary>The tile's current Version: a different one means the graph changed since.</summary>
+        [JsonPropertyName("tileVersion")]
+        public int TileVersion { get; set; }
+
+        [JsonPropertyName("builderVersion")]
+        public int BuilderVersion { get; set; }
+
+        [JsonPropertyName("createdBy")]
+        public string? CreatedBy { get; set; }
+
+        [JsonPropertyName("createdAt")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonPropertyName("updatedAt")]
+        public DateTime UpdatedAt { get; set; }
+
+        [JsonPropertyName("addedCount")]
+        public int AddedCount { get; set; }
+
+        [JsonPropertyName("removedCount")]
+        public int RemovedCount { get; set; }
+
+        [JsonPropertyName("changedCount")]
+        public int ChangedCount { get; set; }
+
+        [JsonPropertyName("movedCount")]
+        public int MovedCount { get; set; }
+
+        [JsonPropertyName("rejectedCount")]
+        public int RejectedCount { get; set; }
+    }
+
+    /// <summary>GET api/road-tiles/{world}/{tileX}/{tileZ}/proposal: the summary plus the items and the
+    /// rejected list.</summary>
+    public class RoadTileProposalDto : RoadTileProposalSummaryDto
+    {
+        [JsonPropertyName("cellCount")]
+        public int CellCount { get; set; }
+
+        [JsonPropertyName("levelCount")]
+        public int LevelCount { get; set; }
+
+        [JsonPropertyName("warnings")]
+        public List<string> Warnings { get; set; } = new();
+
+        [JsonPropertyName("items")]
+        public JsonElement Items { get; set; } = EmptyArray();
+
+        [JsonPropertyName("rejected")]
+        public JsonElement Rejected { get; set; } = EmptyArray();
+
+        /// <summary>A fresh "[]" (a default JsonElement cannot be serialized).</summary>
+        public static JsonElement EmptyArray()
+        {
+            using var document = JsonDocument.Parse("[]");
+            return document.RootElement.Clone();
+        }
     }
 
     public class RoadEdgeUpdateResultDto

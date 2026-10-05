@@ -41,6 +41,15 @@ public class RoadNetworkRepository : IRoadNetworkRepository
     public Task<List<RoadTile>> ListTilesAsync(string world) =>
         _context.RoadTiles.Where(t => t.World == world).OrderBy(t => t.TileX).ThenBy(t => t.TileZ).ToListAsync();
 
+    public Task<RoadTileProposal?> GetProposalAsync(int tileId) =>
+        _context.RoadTileProposals.FirstOrDefaultAsync(p => p.TileId == tileId);
+
+    public Task<List<RoadTileProposal>> ListProposalsAsync(string world) =>
+        _context.RoadTileProposals.Include(p => p.Tile)
+            .Where(p => p.Tile.World == world)
+            .OrderBy(p => p.Tile.TileX).ThenBy(p => p.Tile.TileZ)
+            .ToListAsync();
+
     public async Task<RoadTile> AddTileAsync(RoadTile tile)
     {
         _context.RoadTiles.Add(tile);

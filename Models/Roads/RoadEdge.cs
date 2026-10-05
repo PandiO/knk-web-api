@@ -68,5 +68,10 @@ public class RoadEdge
     public string RegionIdsJson { get; set; } = "[]";
 
     public RoadEdgeSource Source { get; set; } = RoadEdgeSource.Detected;
+
+    /// <summary>An admin rejected a proposal to remove this detected edge (plan §5.7, D4): a later
+    /// proposal never removes it, and an upsert keeps it while both its nodes stay. Its end nodes
+    /// are locked when it is confirmed.</summary>
+    public bool Confirmed { get; set; }
     public RoadEdgeStatus Status { get; set; } = RoadEdgeStatus.Ok;
 }

@@ -119,6 +119,32 @@ public class RoadControllersTests
         Assert.DoesNotContain("TileX", json);
     }
 
+    [Fact]
+    public async Task GetProposal_UnknownIs404()
+    {
+        _service.Setup(s => s.GetProposalAsync("world", 2, -2)).ReturnsAsync((RoadTileProposalDto?)null);
+
+        Assert.IsType<NotFoundObjectResult>(await Tiles().GetProposal("world", 2, -2));
+    }
+
+    [Fact]
+    public void CuratedTileDtos_SerializeStateConfirmedAndTheProposalNames()
+    {
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = null, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
+        var tile = JsonSerializer.Serialize(new RoadTileDto { World = "world", State = RoadTileState.Curated }, options);
+        var edge = JsonSerializer.Serialize(new RoadEdgeDto { World = "world", Confirmed = true }, options);
+        using var items = JsonDocument.Parse("[{\"n\":1}]");
+        var proposal = JsonSerializer.Serialize(new RoadTileProposalDto { World = "world", Items = items.RootElement.Clone(), AddedCount = 1 }, options);
+
+        Assert.Contains("\"state\":\"Curated\"", tile);
+        Assert.Contains("\"curatedAt\"", tile);
+        Assert.Contains("\"confirmed\":true", edge);
+        foreach (var name in new[] { "\"items\":[{\"n\":1}]", "\"rejected\"", "\"baseVersion\"", "\"tileVersion\"", "\"addedCount\":1", "\"movedCount\"", "\"rejectedCount\"" })
+        {
+            Assert.Contains(name, proposal);
+        }
+    }
+
     // ------------------------------------------------------------- Gates
 
     [Theory]
@@ -141,6 +167,9 @@ public class RoadControllersTests
     [InlineData(typeof(RoadEdgesController), nameof(RoadEdgesController.CreateRecorded))]
     [InlineData(typeof(RoadEdgesController), nameof(RoadEdgesController.Update))]
     [InlineData(typeof(RoadEdgesController), nameof(RoadEdgesController.Delete))]
+    [InlineData(typeof(RoadTilesController), nameof(RoadTilesController.PutState))]
+    [InlineData(typeof(RoadTilesController), nameof(RoadTilesController.PutProposal))]
+    [InlineData(typeof(RoadTilesController), nameof(RoadTilesController.DeleteProposal))]
     public async Task StaffRoutes_NeedThePluginKeyOrTheRoadNode(Type controller, string action)
     {
         var granted = new Mock<IPermissionResolutionService>();
@@ -163,6 +192,8 @@ public class RoadControllersTests
     [Theory]
     [InlineData(typeof(RoadTilesController), nameof(RoadTilesController.List))]
     [InlineData(typeof(RoadTilesController), nameof(RoadTilesController.GetGraph))]
+    [InlineData(typeof(RoadTilesController), nameof(RoadTilesController.GetProposal))]
+    [InlineData(typeof(RoadTilesController), nameof(RoadTilesController.ListProposals))]
     [InlineData(typeof(RoadNetworkController), nameof(RoadNetworkController.GetMeta))]
     [InlineData(typeof(RoadNetworkController), nameof(RoadNetworkController.GetSeedLocations))]
     [InlineData(typeof(RoadProfilesController), nameof(RoadProfilesController.List))]

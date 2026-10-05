@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -80,6 +81,144 @@ public class RoadNetworkService : IRoadNetworkService
             await _repo.SaveChangesAsync();
         }
         return _mapper.Map<RoadTileDto>(tile);
+    }
+
+    /// <summary>Plan §5.7, D1: Curated (a build makes a proposal) or Detected (the next build is
+    /// uploaded directly, and that upload curates the tile again). Not a graph change: the Version stays.</summary>
+    public async Task<RoadTileDto> SetTileStateAsync(string world, int tileX, int tileZ, RoadTileStateDto dto)
+    {
+        RequireWorld(world);
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        if (!Enum.IsDefined(dto.State)) throw new ArgumentException("Unknown tile state.");
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ)
+                   ?? throw new KeyNotFoundException($"Tile ({tileX}, {tileZ}) of world '{world}' not found.");
+        tile.State = dto.State;
+        if (dto.State == RoadTileState.Curated)
+        {
+            tile.CuratedAt ??= DateTime.UtcNow;
+        }
+        await _repo.SaveChangesAsync();
+        return _mapper.Map<RoadTileDto>(tile);
+    }
+
+    // ------------------------------------------------------------ Proposals
+
+    public async Task<RoadTileProposalDto?> GetProposalAsync(string world, int tileX, int tileZ)
+    {
+        RequireWorld(world);
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ);
+        if (tile == null) return null;
+        var proposal = await _repo.GetProposalAsync(tile.Id);
+        return proposal == null ? null : ProposalDto(proposal, tile);
+    }
+
+    public async Task<List<RoadTileProposalSummaryDto>> ListProposalsAsync(string world)
+    {
+        RequireWorld(world);
+        var proposals = await _repo.ListProposalsAsync(world);
+        return proposals.Select(p => FillSummary(new RoadTileProposalSummaryDto(), p, p.Tile)).ToList();
+    }
+
+    /// <summary>Replaces the tile's proposal (pending items and rejected list). The tile must have been
+    /// built: a proposal is a difference against its stored graph.</summary>
+    public async Task<RoadTileProposalDto> SaveProposalAsync(string world, int tileX, int tileZ, RoadTileProposalUpsertDto dto)
+    {
+        RequireWorld(world);
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        var items = JsonArray(dto.Items, "items");
+        var rejected = JsonArray(dto.Rejected, "rejected");
+        if (dto.AddedCount < 0 || dto.RemovedCount < 0 || dto.ChangedCount < 0 || dto.MovedCount < 0)
+        {
+            throw new ArgumentException("Counts must be >= 0.");
+        }
+        if (dto.BuilderVersion < 0) throw new ArgumentException("builderVersion must be >= 0.");
+        if (dto.CellCount < 0 || dto.LevelCount < 0) throw new ArgumentException("cellCount and levelCount must be >= 0.");
+        var createdBy = string.IsNullOrWhiteSpace(dto.CreatedBy) ? null : dto.CreatedBy.Trim();
+        if (createdBy is { Length: > 64 }) throw new ArgumentException("createdBy is at most 64 characters.");
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ)
+                   ?? throw new KeyNotFoundException($"Tile ({tileX}, {tileZ}) of world '{world}' not found.");
+        if (tile.BuiltAt == null) throw new InvalidOperationException($"Tile ({tileX}, {tileZ}) has not been built; build it first.");
+
+        var now = DateTime.UtcNow;
+        var proposal = await _repo.GetProposalAsync(tile.Id);
+        if (proposal == null)
+        {
+            proposal = new RoadTileProposal { TileId = tile.Id, CreatedAt = now };
+            _repo.Add(proposal);
+        }
+        else if (proposal.ItemsJson == "[]" && items.GetArrayLength() > 0)
+        {
+            proposal.CreatedAt = now; // a new proposal on a row that only held the rejected list
+        }
+        proposal.BaseVersion = dto.BaseVersion;
+        proposal.BuilderVersion = dto.BuilderVersion;
+        proposal.CreatedBy = createdBy;
+        proposal.CellCount = dto.CellCount;
+        proposal.LevelCount = dto.LevelCount;
+        proposal.WarningsJson = RoadJson.ListJson(dto.Warnings);
+        proposal.UpdatedAt = now;
+        proposal.ItemsJson = items.GetRawText();
+        proposal.RejectedJson = rejected.GetRawText();
+        proposal.AddedCount = dto.AddedCount;
+        proposal.RemovedCount = dto.RemovedCount;
+        proposal.ChangedCount = dto.ChangedCount;
+        proposal.MovedCount = dto.MovedCount;
+        proposal.RejectedCount = rejected.GetArrayLength();
+        await _repo.SaveChangesAsync();
+        return ProposalDto(proposal, tile);
+    }
+
+    /// <summary>Deletes the tile's proposal row: the pending items and the rejected list.</summary>
+    public async Task<bool> DeleteProposalAsync(string world, int tileX, int tileZ)
+    {
+        RequireWorld(world);
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ);
+        var proposal = tile == null ? null : await _repo.GetProposalAsync(tile.Id);
+        if (proposal == null) return false;
+        _repo.Remove(proposal);
+        await _repo.SaveChangesAsync();
+        return true;
+    }
+
+    private static JsonElement JsonArray(JsonElement element, string name)
+    {
+        if (element.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return RoadTileProposalDto.EmptyArray();
+        }
+        if (element.ValueKind != JsonValueKind.Array) throw new ArgumentException($"{name} must be a JSON array.");
+        return element;
+    }
+
+    private static RoadTileProposalDto ProposalDto(RoadTileProposal proposal, RoadTile tile)
+    {
+        var dto = FillSummary(new RoadTileProposalDto(), proposal, tile);
+        dto.CellCount = proposal.CellCount;
+        dto.LevelCount = proposal.LevelCount;
+        dto.Warnings = RoadJson.StringList(proposal.WarningsJson);
+        dto.Items = RoadJson.Element(proposal.ItemsJson) ?? RoadTileProposalDto.EmptyArray();
+        dto.Rejected = RoadJson.Element(proposal.RejectedJson) ?? RoadTileProposalDto.EmptyArray();
+        return dto;
+    }
+
+    private static T FillSummary<T>(T dto, RoadTileProposal proposal, RoadTile tile) where T : RoadTileProposalSummaryDto
+    {
+        dto.TileId = tile.Id;
+        dto.World = tile.World;
+        dto.TileX = tile.TileX;
+        dto.TileZ = tile.TileZ;
+        dto.BaseVersion = proposal.BaseVersion;
+        dto.TileVersion = tile.Version;
+        dto.BuilderVersion = proposal.BuilderVersion;
+        dto.CreatedBy = proposal.CreatedBy;
+        dto.CreatedAt = proposal.CreatedAt;
+        dto.UpdatedAt = proposal.UpdatedAt;
+        dto.AddedCount = proposal.AddedCount;
+        dto.RemovedCount = proposal.RemovedCount;
+        dto.ChangedCount = proposal.ChangedCount;
+        dto.MovedCount = proposal.MovedCount;
+        dto.RejectedCount = proposal.RejectedCount;
+        return dto;
     }
 
     public Task<RoadTileUpsertResultDto> UpsertTileGraphAsync(string world, int tileX, int tileZ, RoadTileGraphUpsertDto dto)
@@ -289,7 +428,8 @@ public class RoadNetworkService : IRoadNetworkService
             pairIndex[pair] = target;
         }
 
-        foreach (var edge in ownedDetected.Values.Where(e => !matchedEdgeIds.Contains(e.Id)))
+        // A Confirmed edge stays although the build lost it (plan §5.7, D4); its nodes are locked.
+        foreach (var edge in ownedDetected.Values.Where(e => !matchedEdgeIds.Contains(e.Id) && !e.Confirmed))
         {
             _repo.Remove(edge);
             result.EdgesDeleted++;
@@ -379,6 +519,16 @@ public class RoadNetworkService : IRoadNetworkService
         tile.BuiltAt = now;
         tile.BuilderVersion = dto.BuilderVersion;
         tile.Dirty = false;
+        // Every upload curates the tile (plan §5.7, D1): later builds only make proposals. The pending
+        // proposal was computed against the old graph, so its items go; the rejected list stays.
+        tile.State = RoadTileState.Curated;
+        tile.CuratedAt ??= now;
+        if (await _repo.GetProposalAsync(tile.Id) is RoadTileProposal pending && pending.ItemsJson != "[]")
+        {
+            pending.ItemsJson = "[]";
+            pending.AddedCount = pending.RemovedCount = pending.ChangedCount = pending.MovedCount = 0;
+            pending.UpdatedAt = now;
+        }
         tile.CellCount = dto.CellCount;
         tile.LevelCount = dto.LevelCount;
         tile.NodeCount = tileNodes.Count(n => !IsTombstone(n.Kind));
@@ -1143,6 +1293,10 @@ public class RoadNetworkService : IRoadNetworkService
         if (dto.ProfileId is int profileId && await _repo.GetProfileAsync(profileId) == null) throw new ArgumentException($"Profile {profileId} does not exist.");
         if (dto.CostMultiplier is double cost && cost <= 0) throw new ArgumentException("costMultiplier must be > 0.");
         var flags = dto.Flags == null ? (RoadEdgeFlags?)null : RoadJson.ParseFlags(dto.Flags);
+        if (dto.Confirmed.HasValue && edge.Source != RoadEdgeSource.Detected)
+        {
+            throw new ArgumentException($"Edge {id} is {edge.Source}; only a detected edge can be confirmed.");
+        }
 
         return await _repo.RunInTransactionAsync(async () =>
         {
@@ -1177,6 +1331,20 @@ public class RoadNetworkService : IRoadNetworkService
             else if (dto.ProfileId is int profile) edge.ProfileId = profile;
             if (dto.CostMultiplier is double multiplier) edge.CostMultiplier = multiplier;
             if (flags is RoadEdgeFlags set) edge.Flags = set;
+            if (dto.Confirmed is bool confirmed)
+            {
+                edge.Confirmed = confirmed;
+                if (confirmed)
+                {
+                    // Plan §5.7, D4: the builder and the upsert keep locked nodes, so the edge keeps its ends.
+                    foreach (var end in await _repo.GetNodesByIdsAsync(new[] { edge.FromNodeId, edge.ToNodeId }))
+                    {
+                        if (end.Locked) continue;
+                        end.Locked = true;
+                        bumped.Add(end.TileId);
+                    }
+                }
+            }
 
             foreach (var tile in await _repo.GetTilesByIdsAsync(bumped))
             {

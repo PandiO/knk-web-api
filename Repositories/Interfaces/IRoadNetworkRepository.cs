@@ -24,6 +24,10 @@ public interface IRoadNetworkRepository
     Task<RoadTile> AddTileAsync(RoadTile tile);
     /// <summary>SELECT ... FOR UPDATE on the tile row inside the current transaction; no-op off MySQL.</summary>
     Task LockTileAsync(int tileId);
+    /// <summary>The tile's proposal row (plan §5.7, D5), or null.</summary>
+    Task<RoadTileProposal?> GetProposalAsync(int tileId);
+    /// <summary>Every proposal row of the world with its tile, ordered by tile.</summary>
+    Task<List<RoadTileProposal>> ListProposalsAsync(string world);
 
     // Nodes
     Task<RoadNode?> GetNodeAsync(int id);

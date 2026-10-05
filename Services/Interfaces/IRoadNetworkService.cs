@@ -18,6 +18,13 @@ public interface IRoadNetworkService
     Task<RoadTileGraphDto?> GetTileGraphAsync(string world, int tileX, int tileZ);
     Task<RoadTileUpsertResultDto> UpsertTileGraphAsync(string world, int tileX, int tileZ, RoadTileGraphUpsertDto dto);
     Task<RoadTileDto> MarkTileDirtyAsync(string world, int tileX, int tileZ);
+    Task<RoadTileDto> SetTileStateAsync(string world, int tileX, int tileZ, RoadTileStateDto dto);
+
+    // Proposals (plan §5.7, D5)
+    Task<RoadTileProposalDto?> GetProposalAsync(string world, int tileX, int tileZ);
+    Task<List<RoadTileProposalSummaryDto>> ListProposalsAsync(string world);
+    Task<RoadTileProposalDto> SaveProposalAsync(string world, int tileX, int tileZ, RoadTileProposalUpsertDto dto);
+    Task<bool> DeleteProposalAsync(string world, int tileX, int tileZ);
 
     // Network
     Task<RoadNetworkMetaDto> GetMetaAsync(string world);

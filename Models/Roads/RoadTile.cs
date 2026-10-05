@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using knkwebapi_v2.Enums;
 
 namespace knkwebapi_v2.Models;
 
@@ -28,6 +29,13 @@ public class RoadTile
 
     /// <summary>A builder change forces rebuilds.</summary>
     public int BuilderVersion { get; set; }
+
+    /// <summary>Detected: the next build is uploaded directly. Curated: a build only makes a proposal
+    /// (plan §5.7, D1). Every upsert sets Curated.</summary>
+    public RoadTileState State { get; set; } = RoadTileState.Detected;
+
+    /// <summary>When the tile first became Curated; kept when an admin sets it back to Detected.</summary>
+    public DateTime? CuratedAt { get; set; }
 
     /// <summary>Set when road blocks changed in the tile (DESIGN §5.9); cleared by the next upsert.</summary>
     public bool Dirty { get; set; }

@@ -126,6 +126,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<RoadSeed> RoadSeeds { get; set; } = null!;
     public virtual DbSet<RoadNode> RoadNodes { get; set; } = null!;
     public virtual DbSet<RoadEdge> RoadEdges { get; set; } = null!;
+    public virtual DbSet<RoadTileProposal> RoadTileProposals { get; set; } = null!;
 
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
     public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
@@ -2159,8 +2160,31 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.World).IsRequired().HasMaxLength(64);
             entity.Property(e => e.BuiltAt).HasColumnType("datetime");
             entity.Property(e => e.WarningsJson).HasColumnType("longtext");
+            entity.Property(e => e.State).IsRequired().HasConversion<string>().HasMaxLength(20)
+                .HasDefaultValue(knkwebapi_v2.Enums.RoadTileState.Detected);
+            entity.Property(e => e.CuratedAt).HasColumnType("datetime");
 
             entity.HasIndex(e => new { e.World, e.TileX, e.TileZ }).IsUnique();
+        });
+
+        modelBuilder.Entity<RoadTileProposal>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("road_tile_proposals");
+
+            entity.Property(e => e.CreatedBy).HasMaxLength(64);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+            entity.Property(e => e.ItemsJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.RejectedJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.WarningsJson).IsRequired().HasColumnType("longtext");
+
+            entity.HasOne(e => e.Tile)
+                .WithMany()
+                .HasForeignKey(e => e.TileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.TileId).IsUnique();
         });
 
         modelBuilder.Entity<RoadSeed>(entity =>

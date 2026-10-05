@@ -71,6 +71,16 @@ public enum RoadStreetSource
     None
 }
 
+/// <summary>Rev. 6 Part B (IMPLEMENTATION_PLAN.md §5.7, decision D1). A Detected tile is rebuilt
+/// directly: the plugin uploads its build. Every upload leaves the tile Curated, and a rebuild of a
+/// Curated tile only makes a proposal the admin reviews. An admin sets a tile back to Detected for one
+/// direct rebuild (the upload curates it again).</summary>
+public enum RoadTileState
+{
+    Detected,
+    Curated
+}
+
 /// <summary>DESIGN §3.4.</summary>
 public enum RoadSeedSource
 {
