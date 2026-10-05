@@ -660,21 +660,40 @@ public class TeleportDestinationServiceTests
 
         var refused = await Assert.ThrowsAsync<TeleportDestinationException>(() => FeeAsync(user, 11, "tpa:a"));
         Assert.Equal("InsufficientCoins", refused.Code);
-        await Assert.ThrowsAsync<ArgumentException>(() => FeeAsync(user, 0, "tpa:b"));
         await Assert.ThrowsAsync<ArgumentException>(() => FeeAsync(user, -5, "tpa:c"));
+        await Assert.ThrowsAsync<ArgumentException>(() => FeeAsync(user, TeleportDestinationService.MaxRequestFeeCoins + 1, "tpa:d"));
         Assert.Equal(10, (await ReloadAsync(user)).Coins);
     }
 
     [Fact]
-    public async Task RequestFee_SameKeyDifferentAmount_IsKeyReuse()
+    public async Task RequestFee_ZeroDefault_IsFree_WithoutALedgerPosting()
     {
+        // KNG-41: amountCoins is the default (teleport.request.price-coins); 0 = free unless a group prices it.
+        var user = await UserAsync(coins: 10);
+
+        var fee = await FeeAsync(user, 0, "tpa:free");
+
+        Assert.Equal("Coins", fee.Currency);
+        Assert.Equal(0, fee.Charged);
+        Assert.Equal(10, fee.NewBalance);
+        Assert.Empty(fee.Payments);
+        Assert.Empty(await LedgerAsync());
+    }
+
+    [Fact]
+    public async Task RequestFee_SameKeyDifferentAmount_ReplaysTheFirstCharge()
+    {
+        // A key is charged at most once: a retry gets the first answer even if the price changed
+        // in between (KNG-41: a group's price may be edited between two attempts).
         var user = await UserAsync(coins: 1000);
         await FeeAsync(user, 100, "tpa:k");
 
-        var refused = await Assert.ThrowsAsync<TeleportDestinationException>(() => FeeAsync(user, 200, "tpa:k"));
+        var replay = await FeeAsync(user, 200, "tpa:k");
 
-        Assert.Equal("IdempotencyKeyReuse", refused.Code);
+        Assert.True(replay.Replayed);
+        Assert.Equal(100, replay.Charged);
         Assert.Equal(900, (await ReloadAsync(user)).Coins);
+        Assert.Single(await LedgerAsync());
     }
 
     [Fact]

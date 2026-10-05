@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using System.Collections.Generic;
+using knkwebapi_v2.Enums;
 
 namespace knkwebapi_v2.Dtos
 {
@@ -107,8 +109,18 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("location")]
         public TeleportLocationDto Location { get; set; } = null!;
 
+        /// <summary>What the warp costs this player in gems: the domain's TeleportPriceGems, or the
+        /// player's permission-group price for warps (KNG-41) - a multiple of it, or a fixed price.</summary>
         [JsonPropertyName("priceGems")]
         public int PriceGems { get; set; }
+
+        /// <summary>Coins the warp costs this player (only a group's fixed price has coins, KNG-41).</summary>
+        [JsonPropertyName("priceCoins")]
+        public int PriceCoins { get; set; }
+
+        /// <summary>XP the warp costs this player (only a group's fixed price has XP, KNG-41).</summary>
+        [JsonPropertyName("priceExperience")]
+        public int PriceExperience { get; set; }
 
         /// <summary>The required title in the player's gender, when there is one.</summary>
         [JsonPropertyName("minTitleName")]
@@ -166,8 +178,10 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
-    /// POST /api/teleport-destinations/request-fee - a paid /tpa or /tpahere (teleport.request.price-coins
-    /// in the plugin's config), charged to the requester when the teleport commits (DESIGN §3.5).
+    /// POST /api/teleport-destinations/request-fee - the fee of an accepted /tpa or /tpahere, charged to
+    /// the requester when the teleport commits (DESIGN §3.5). The requester's permission groups price it
+    /// (KNG-41); amountCoins is the default when none does (the plugin's teleport.request.price-coins,
+    /// 0 = free) and what a Multiplier price multiplies.
     /// </summary>
     public class TeleportRequestFeeDto
     {
@@ -205,20 +219,54 @@ namespace knkwebapi_v2.Dtos
         public string? BackKind { get; set; }
     }
 
-    /// <summary>A charged (or free) teleport. For a warp it carries the authoritative destination.</summary>
-    public class TeleportChargeResultDto
+    /// <summary>
+    /// POST /api/teleport-destinations/spawn-fee - a /spawn, priced only by the player's permission
+    /// groups (KNG-41; free when none does), charged when the teleport commits.
+    /// </summary>
+    public class TeleportSpawnFeeDto
     {
-        /// <summary>"Gems" for warps, "Coins" for requests and /back.</summary>
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("idempotencyKey")]
+        public string IdempotencyKey { get; set; } = null!;
+    }
+
+    /// <summary>One currency a teleport charge took (or a refund gave back).</summary>
+    public class TeleportPaymentDto
+    {
+        /// <summary>"Coins", "Gems" or "Experience".</summary>
         [JsonPropertyName("currency")]
         public string Currency { get; set; } = null!;
 
-        /// <summary>What this charge took; 0 for a free warp or with bypassCost.</summary>
+        [JsonPropertyName("amount")]
+        public long Amount { get; set; }
+
+        /// <summary>The player's balance of that currency afterwards.</summary>
+        [JsonPropertyName("newBalance")]
+        public long NewBalance { get; set; }
+    }
+
+    /// <summary>A charged (or free) teleport. For a warp it carries the authoritative destination.</summary>
+    public class TeleportChargeResultDto
+    {
+        /// <summary>The first currency of <see cref="Payments"/> ("Gems" for a default-priced warp, "Coins"
+        /// for a default-priced request and /back); the price's currency when nothing was charged.</summary>
+        [JsonPropertyName("currency")]
+        public string Currency { get; set; } = null!;
+
+        /// <summary>What this charge took in <see cref="Currency"/>; 0 when free or with bypassCost.</summary>
         [JsonPropertyName("charged")]
         public long Charged { get; set; }
 
         /// <summary>The player's balance of that currency after the charge.</summary>
         [JsonPropertyName("newBalance")]
         public long NewBalance { get; set; }
+
+        /// <summary>Every currency taken, in coins, gems, XP order (KNG-41: a group's fixed price can
+        /// combine them, all in one ledger transaction); empty when nothing was charged.</summary>
+        [JsonPropertyName("payments")]
+        public List<TeleportPaymentDto> Payments { get; set; } = new();
 
         /// <summary>True when this key had already been charged: nothing new was taken.</summary>
         [JsonPropertyName("replayed")]
@@ -266,5 +314,60 @@ namespace knkwebapi_v2.Dtos
         /// <summary>True when the charge had already been refunded (by an earlier call or by staff).</summary>
         [JsonPropertyName("replayed")]
         public bool Replayed { get; set; }
+
+        /// <summary>Every currency given back (currency/amount/newBalance above are the first).</summary>
+        [JsonPropertyName("payments")]
+        public List<TeleportPaymentDto> Payments { get; set; } = new();
+    }
+
+    /// <summary>
+    /// GET /api/teleport-destinations/policy?userId= - a player's teleport fees and cooldowns from
+    /// their permission groups (KNG-41). The plugin uses the cooldowns, and the prices to know
+    /// whether a /tpa or /spawn needs a charge; the charge routes price it again themselves.
+    /// </summary>
+    public class TeleportPolicyDto
+    {
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("request")]
+        public TeleportKindPolicyDto Request { get; set; } = new();
+
+        [JsonPropertyName("warp")]
+        public TeleportKindPolicyDto Warp { get; set; } = new();
+
+        [JsonPropertyName("spawn")]
+        public TeleportKindPolicyDto Spawn { get; set; } = new();
+    }
+
+    /// <summary>One kind of teleport for one player; all null/None = the default applies.</summary>
+    public class TeleportKindPolicyDto
+    {
+        /// <summary>None (the default price), Fixed or Multiplier.</summary>
+        [JsonPropertyName("priceMode")]
+        public TeleportPriceMode PriceMode { get; set; } = TeleportPriceMode.None;
+
+        [JsonPropertyName("priceMultiplier")]
+        public decimal? PriceMultiplier { get; set; }
+
+        [JsonPropertyName("priceCoins")]
+        public int? PriceCoins { get; set; }
+
+        [JsonPropertyName("priceGems")]
+        public int? PriceGems { get; set; }
+
+        [JsonPropertyName("priceExperience")]
+        public int? PriceExperience { get; set; }
+
+        /// <summary>The group the price comes from.</summary>
+        [JsonPropertyName("priceGroupName")]
+        public string? PriceGroupName { get; set; }
+
+        /// <summary>Replaces the plugin's teleport.cooldown-seconds for this kind; null = not set.</summary>
+        [JsonPropertyName("cooldownSeconds")]
+        public int? CooldownSeconds { get; set; }
+
+        [JsonPropertyName("cooldownGroupName")]
+        public string? CooldownGroupName { get; set; }
     }
 }
