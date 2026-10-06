@@ -82,7 +82,7 @@ public class PermissionGrantServiceTests
     [Fact]
     public async Task UpsertByNodeAsync_NoExistingGrant_CreatesOneAndRecordsGrantAdded()
     {
-        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant>());
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(1, "knk.mode.staff")).ReturnsAsync(new List<PermissionGrant>());
         _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
 
         var result = await _service.UpsertByNodeAsync(1, "knk.mode.staff", true, null, actorUserId: 4);
@@ -96,7 +96,7 @@ public class PermissionGrantServiceTests
     public async Task UpsertByNodeAsync_ExistingGrantForNode_UpdatesItAndRecordsGrantUpdated()
     {
         var existing = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.mode.staff", Value = true, ExpiresAt = null };
-        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant> { existing });
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(1, "knk.mode.staff")).ReturnsAsync(new List<PermissionGrant> { existing });
         _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
         var newExpiry = DateTime.UtcNow.AddHours(2);
 
@@ -104,6 +104,61 @@ public class PermissionGrantServiceTests
 
         _mockRepo.Verify(r => r.UpdateAsync(It.Is<PermissionGrant>(g => g.Id == 5 && g.ExpiresAt == newExpiry)), Times.Once);
         _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantUpdated, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpsertByNodeAsync_GrantThenDeny_FlipsTheSameRowInsteadOfAddingOne()
+    {
+        // KNG-59: denying a node the player was granted updates that row's value and expiry.
+        var existing = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = true, ExpiresAt = null };
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(1, "knk.gate.open")).ReturnsAsync(new List<PermissionGrant> { existing });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+        var newExpiry = DateTime.UtcNow.AddDays(1);
+
+        var result = await _service.UpsertByNodeAsync(1, "knk.gate.open", false, newExpiry, actorUserId: 4);
+
+        Assert.Equal(5, result.Id);
+        Assert.False(result.Value);
+        _mockRepo.Verify(r => r.UpdateAsync(It.Is<PermissionGrant>(g => g.Id == 5 && !g.Value && g.ExpiresAt == newExpiry)), Times.Once);
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
+        _mockRepo.Verify(r => r.DeleteAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpsertByNodeAsync_OnlyAnExpiredRow_RevivesItInsteadOfAddingOne()
+    {
+        var expired = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = false, ExpiresAt = DateTime.UtcNow.AddDays(-1) };
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(1, "knk.gate.open")).ReturnsAsync(new List<PermissionGrant> { expired });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        await _service.UpsertByNodeAsync(1, "knk.gate.open", true, null, actorUserId: 4);
+
+        _mockRepo.Verify(r => r.UpdateAsync(It.Is<PermissionGrant>(g => g.Id == 5 && g.Value && g.ExpiresAt == null)), Times.Once);
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantUpdated, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpsertByNodeAsync_ExistingDuplicates_KeepsTheActiveRowAndDeletesTheRest()
+    {
+        // Rows left by the old create-only quick action: an expired grant, an active grant and an
+        // active deny for one node. The first active row is kept and updated; the others go, and
+        // only the active one that goes is audited as a removal.
+        var expired = new PermissionGrant { Id = 4, HolderId = 1, Node = "knk.gate.open", Value = true, ExpiresAt = DateTime.UtcNow.AddDays(-1) };
+        var grant = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = true, ExpiresAt = null };
+        var deny = new PermissionGrant { Id = 6, HolderId = 1, Node = "knk.gate.open", Value = false, ExpiresAt = null };
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(1, "knk.gate.open")).ReturnsAsync(new List<PermissionGrant> { expired, grant, deny });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        await _service.UpsertByNodeAsync(1, "knk.gate.open", false, null, actorUserId: 4);
+
+        _mockRepo.Verify(r => r.UpdateAsync(It.Is<PermissionGrant>(g => g.Id == 5 && !g.Value)), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(4), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(6), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(5), Times.Never);
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantRemoved, It.IsAny<string?>()), Times.Once);
         _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantUpdated, It.IsAny<string?>()), Times.Once);
     }
 
@@ -118,6 +173,25 @@ public class PermissionGrantServiceTests
 
         _mockRepo.Verify(r => r.DeleteAsync(5), Times.Once);
         _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantRemoved, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevokeByNodeAsync_GrantAndDenyOnSameNode_DeletesBothAndLeavesOtherNodes()
+    {
+        // KNG-59: POST {id}/grants creates rather than upserts, so a player can carry a grant and
+        // a deny for the same node; removing the node must clear both or it stays in effect.
+        var grant = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = true };
+        var deny = new PermissionGrant { Id = 6, HolderId = 1, Node = "knk.gate.open", Value = false };
+        var other = new PermissionGrant { Id = 7, HolderId = 1, Node = "knk.gate.close", Value = true };
+        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant> { grant, deny, other });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        await _service.RevokeByNodeAsync(1, "knk.gate.open", actorUserId: 4);
+
+        _mockRepo.Verify(r => r.DeleteAsync(5), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(6), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(7), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantRemoved, It.IsAny<string?>()), Times.Exactly(2));
     }
 
     [Fact]

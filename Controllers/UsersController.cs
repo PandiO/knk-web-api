@@ -121,11 +121,13 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Quick action: grant or explicitly deny a permission node directly on the player. Same
-        /// underlying write PermissionGrantsController's generic POST uses, tailored input (a
-        /// node-name field rather than the generic form's raw HolderId/Id fields) per DESIGN.md §3.
+        /// Quick action: grant or explicitly deny a permission node directly on the player, with
+        /// tailored input (a node-name field rather than the generic form's raw HolderId/Id
+        /// fields) per DESIGN.md §3. Upserts by node (KNG-59): a node the player already has a
+        /// direct grant or deny for gets the new value and expiry instead of a second row - the
+        /// same write PermissionGrantsController's PUT by-node uses.
         /// </summary>
-        /// <response code="200">Returns the created grant</response>
+        /// <response code="200">Returns the created or updated grant</response>
         /// <response code="400">Validation failed</response>
         /// <response code="404">User not found</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
@@ -135,14 +137,42 @@ namespace knkwebapi_v2.Controllers
             if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
             try
             {
-                var result = await _grantService.CreateAsync(new PermissionGrantDto
-                {
-                    HolderId = id,
-                    Node = request.Node,
-                    Value = request.Value,
-                    ExpiresAt = request.ExpiresAt
-                }, GetActorUserId());
+                var result = await _grantService.UpsertByNodeAsync(id, request.Node, request.Value, request.ExpiresAt, GetActorUserId());
                 return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Quick action (KNG-59): remove a grant or deny node set directly on the player - the
+        /// counterpart of POST {id}/grants. Same underlying write PermissionGrantsController's
+        /// DELETE by-node uses, gated like the other profile-page quick actions. Group-inherited
+        /// nodes are untouched; those are removed on the group or by removing the membership.
+        /// </summary>
+        /// <param name="id">User ID</param>
+        /// <param name="node">The exact node of the player's active direct grant, e.g. "knk.gate.open".</param>
+        /// <response code="204">Removed successfully</response>
+        /// <response code="400">Node query parameter missing</response>
+        /// <response code="404">The player has no active direct grant for that node</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
+        [HttpDelete("{id:int}/grants")]
+        public async Task<IActionResult> RevokeNode(int id, [FromQuery] string? node)
+        {
+            if (string.IsNullOrWhiteSpace(node))
+            {
+                return BadRequest(new { error = "InvalidRequest", message = "node query parameter is required" });
+            }
+            try
+            {
+                await _grantService.RevokeByNodeAsync(id, node, GetActorUserId());
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = "NotFound", message = ex.Message });
             }
             catch (ArgumentException ex)
             {

@@ -16,7 +16,8 @@ namespace knkwebapi_v2.Services
         /// node" rather than a specific grant row id.</summary>
         Task<PermissionGrantDto> UpsertByNodeAsync(int holderId, string node, bool value, DateTime? expiresAt, int? actorUserId = null);
 
-        /// <summary>Revoke the one active grant for (holderId, node). Throws KeyNotFoundException
+        /// <summary>Revoke every active grant for (holderId, node) - normally one, but the generic
+        /// create can leave a grant and a deny on the same node. Throws KeyNotFoundException
         /// if the holder has no active grant for that node.</summary>
         Task RevokeByNodeAsync(int holderId, string node, int? actorUserId = null);
     }

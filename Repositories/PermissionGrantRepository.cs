@@ -89,6 +89,13 @@ namespace knkwebapi_v2.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<PermissionGrant>> GetGrantsForHolderNodeAsync(int holderId, string node)
+        {
+            return await _context.PermissionGrants
+                .Where(g => g.HolderId == holderId && g.Node == node)
+                .ToListAsync();
+        }
+
         public async Task<bool> HolderExistsAsync(int holderId)
         {
             return await _context.PermissionHolders.AnyAsync(h => h.Id == holderId);
