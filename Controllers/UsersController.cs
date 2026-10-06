@@ -121,11 +121,13 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Quick action: grant or explicitly deny a permission node directly on the player. Same
-        /// underlying write PermissionGrantsController's generic POST uses, tailored input (a
-        /// node-name field rather than the generic form's raw HolderId/Id fields) per DESIGN.md §3.
+        /// Quick action: grant or explicitly deny a permission node directly on the player, with
+        /// tailored input (a node-name field rather than the generic form's raw HolderId/Id
+        /// fields) per DESIGN.md §3. Upserts by node (KNG-59): a node the player already has a
+        /// direct grant or deny for gets the new value and expiry instead of a second row - the
+        /// same write PermissionGrantsController's PUT by-node uses.
         /// </summary>
-        /// <response code="200">Returns the created grant</response>
+        /// <response code="200">Returns the created or updated grant</response>
         /// <response code="400">Validation failed</response>
         /// <response code="404">User not found</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
@@ -135,13 +137,7 @@ namespace knkwebapi_v2.Controllers
             if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
             try
             {
-                var result = await _grantService.CreateAsync(new PermissionGrantDto
-                {
-                    HolderId = id,
-                    Node = request.Node,
-                    Value = request.Value,
-                    ExpiresAt = request.ExpiresAt
-                }, GetActorUserId());
+                var result = await _grantService.UpsertByNodeAsync(id, request.Node, request.Value, request.ExpiresAt, GetActorUserId());
                 return Ok(result);
             }
             catch (ArgumentException ex)

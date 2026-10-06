@@ -144,8 +144,29 @@ namespace knkwebapi_v2.Services
             if (!await _repo.HolderExistsAsync(holderId))
                 throw new ArgumentException($"PermissionHolder with id {holderId} not found.", nameof(holderId));
 
-            var existing = (await _repo.GetActiveGrantsForHolderAsync(holderId, DateTime.UtcNow))
-                .FirstOrDefault(g => g.Node == node);
+            // One row per (holder, node), expired rows included (KNG-59): update the active row
+            // if there is one (else revive an expired one) and delete any other rows for the node,
+            // so a re-grant or a grant-to-deny flip never leaves a duplicate behind.
+            var now = DateTime.UtcNow;
+            var rows = await _repo.GetGrantsForHolderNodeAsync(holderId, node);
+            var existing = rows.FirstOrDefault(g => g.ExpiresAt == null || g.ExpiresAt > now) ?? rows.FirstOrDefault();
+            var isUserHolder = await IsUserHolderAsync(holderId);
+
+            foreach (var duplicate in rows.Where(g => g != existing))
+            {
+                await _repo.DeleteAsync(duplicate.Id);
+
+                // An expired duplicate was already out of effect; only an active one is a removal.
+                if (isUserHolder && (duplicate.ExpiresAt == null || duplicate.ExpiresAt > now))
+                {
+                    await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
+                    {
+                        grantId = duplicate.Id,
+                        node,
+                        value = duplicate.Value
+                    }));
+                }
+            }
 
             if (existing != null)
             {
@@ -155,7 +176,7 @@ namespace knkwebapi_v2.Services
                 existing.ExpiresAt = expiresAt;
                 await _repo.UpdateAsync(existing);
 
-                if (await IsUserHolderAsync(holderId))
+                if (isUserHolder)
                 {
                     await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantUpdated, JsonSerializer.Serialize(new
                     {
@@ -171,7 +192,7 @@ namespace knkwebapi_v2.Services
             var grant = new PermissionGrant { HolderId = holderId, Node = node, Value = value, ExpiresAt = expiresAt };
             await _repo.AddAsync(grant);
 
-            if (await IsUserHolderAsync(holderId))
+            if (isUserHolder)
             {
                 await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantAdded, JsonSerializer.Serialize(new
                 {

@@ -502,6 +502,26 @@ public class UsersControllerTests
 
     #endregion
 
+    #region GrantNode Tests (KNG-59)
+
+    [Fact]
+    public async Task GrantNode_UpsertsByNodeRatherThanCreatingASecondRow()
+    {
+        var expiresAt = DateTime.UtcNow.AddDays(1);
+        var updated = new PermissionGrantDto { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = false, ExpiresAt = expiresAt };
+        _mockGrantService
+            .Setup(s => s.UpsertByNodeAsync(1, "knk.gate.open", false, expiresAt, It.IsAny<int?>()))
+            .ReturnsAsync(updated);
+
+        var result = await _controller.GrantNode(1, new GrantNodeRequestDto { Node = "knk.gate.open", Value = false, ExpiresAt = expiresAt });
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(updated, ok.Value);
+        _mockGrantService.Verify(s => s.CreateAsync(It.IsAny<PermissionGrantDto>(), It.IsAny<int?>()), Times.Never);
+    }
+
+    #endregion
+
     #region RevokeNode Tests (KNG-59)
 
     [Fact]

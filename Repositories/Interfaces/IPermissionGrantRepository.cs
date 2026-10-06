@@ -15,6 +15,10 @@ namespace knkwebapi_v2.Repositories
         /// PermissionResolutionService for the user's own direct-grant level.</summary>
         Task<List<PermissionGrant>> GetActiveGrantsForHolderAsync(int holderId, DateTime asOf);
 
+        /// <summary>Every grant (expired ones included) the given holder owns for this exact
+        /// node. Used by UpsertByNodeAsync to keep one row per (holder, node) (KNG-59).</summary>
+        Task<List<PermissionGrant>> GetGrantsForHolderNodeAsync(int holderId, string node);
+
         Task<bool> HolderExistsAsync(int holderId);
     }
 }
