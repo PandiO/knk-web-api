@@ -34,6 +34,7 @@ namespace knkwebapi_v2.Services
             if (dto.SalaryMultiplier < 0) throw new ArgumentException("SalaryMultiplier cannot be negative.", nameof(dto));
             if (dto.GemBonusMultiplier < 0) throw new ArgumentException("GemBonusMultiplier cannot be negative.", nameof(dto));
             if (dto.ExpBonusMultiplier < 0) throw new ArgumentException("ExpBonusMultiplier cannot be negative.", nameof(dto));
+            PermissionGroupTeleportSettings.Validate(dto);
         }
 
         public async Task<PermissionGroupDto> CreateAsync(PermissionGroupDto dto)
@@ -51,6 +52,7 @@ namespace knkwebapi_v2.Services
             }
 
             var group = _mapper.Map<PermissionGroup>(dto);
+            PermissionGroupTeleportSettings.Apply(group, dto);
             await _repo.AddAsync(group);
             return _mapper.Map<PermissionGroupDto>(group);
         }
@@ -93,6 +95,8 @@ namespace knkwebapi_v2.Services
             existing.ChatSecondaryColor = dto.ChatSecondaryColor;
             existing.NameColor = dto.NameColor;
             existing.ParentGroupId = dto.ParentGroupId;
+            // Omitted price mode = keep that kind's teleport settings (KNG-41), as above.
+            PermissionGroupTeleportSettings.Apply(existing, dto);
 
             await _repo.UpdateAsync(existing);
         }

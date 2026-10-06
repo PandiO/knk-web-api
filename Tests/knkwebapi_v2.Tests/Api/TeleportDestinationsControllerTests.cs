@@ -66,6 +66,7 @@ public class TeleportDestinationsControllerTests
         new object[] { nameof(TeleportDestinationsController.List) },
         new object[] { nameof(TeleportDestinationsController.Charge) },
         new object[] { nameof(TeleportDestinationsController.RequestFee) },
+        new object[] { nameof(TeleportDestinationsController.BackFee) },
         new object[] { nameof(TeleportDestinationsController.Refund) }
     };
 
@@ -131,6 +132,15 @@ public class TeleportDestinationsControllerTests
 
         Assert.Equal(100, Assert.IsType<TeleportChargeResultDto>(Assert.IsType<OkObjectResult>(await Controller().RequestFee(fee)).Value).Charged);
         Assert.True(Assert.IsType<TeleportRefundResultDto>(Assert.IsType<OkObjectResult>(await Controller().Refund(refund)).Value).Refunded);
+    }
+
+    [Fact]
+    public async Task BackFee_ReturnsTheServiceResult()
+    {
+        var fee = new TeleportBackFeeDto { UserId = 7, AmountCoins = 250, IdempotencyKey = "back:1", BackKind = "warps" };
+        _service.Setup(s => s.ChargeBackFeeAsync(fee)).ReturnsAsync(new TeleportChargeResultDto { Currency = "Coins", Charged = 250 });
+
+        Assert.Equal(250, Assert.IsType<TeleportChargeResultDto>(Assert.IsType<OkObjectResult>(await Controller().BackFee(fee)).Value).Charged);
     }
 
     [Fact]

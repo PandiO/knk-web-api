@@ -242,6 +242,10 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.ChatSecondaryColor).HasMaxLength(32);
             entity.Property(e => e.NameColor).HasMaxLength(32);
 
+            // Teleport fees and cooldowns per group (KNG-41).
+            entity.Property(e => e.TeleportRequestPriceMultiplier).HasPrecision(9, 3);
+            entity.Property(e => e.TeleportWarpPriceMultiplier).HasPrecision(9, 3);
+
             // Single-parent inheritance chain (DESIGN.md §2.1) — restrict, not cascade: deleting
             // a parent group with live children should fail loudly, not silently orphan them.
             entity.HasOne(g => g.ParentGroup)
