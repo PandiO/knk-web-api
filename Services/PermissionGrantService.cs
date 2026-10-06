@@ -190,22 +190,29 @@ namespace knkwebapi_v2.Services
             if (holderId <= 0) throw new ArgumentException("Invalid holder id.", nameof(holderId));
             if (string.IsNullOrWhiteSpace(node)) throw new ArgumentException("Permission node is required.", nameof(node));
 
+            // Every active grant for the node, not just the first: the generic POST (and the
+            // profile page's grant quick action) can leave a grant and a deny on the same node,
+            // and removing only one would leave the node in effect (KNG-59).
             var existing = (await _repo.GetActiveGrantsForHolderAsync(holderId, DateTime.UtcNow))
-                .FirstOrDefault(g => g.Node == node);
-            if (existing == null)
+                .Where(g => g.Node == node)
+                .ToList();
+            if (existing.Count == 0)
                 throw new KeyNotFoundException($"Holder {holderId} has no active grant for node '{node}'.");
 
-            var value = existing.Value;
-            await _repo.DeleteAsync(existing.Id);
-
-            if (await IsUserHolderAsync(holderId))
+            var isUserHolder = await IsUserHolderAsync(holderId);
+            foreach (var grant in existing)
             {
-                await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
+                await _repo.DeleteAsync(grant.Id);
+
+                if (isUserHolder)
                 {
-                    grantId = existing.Id,
-                    node,
-                    value
-                }));
+                    await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
+                    {
+                        grantId = grant.Id,
+                        node,
+                        value = grant.Value
+                    }));
+                }
             }
         }
     }

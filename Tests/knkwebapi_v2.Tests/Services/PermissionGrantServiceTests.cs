@@ -121,6 +121,25 @@ public class PermissionGrantServiceTests
     }
 
     [Fact]
+    public async Task RevokeByNodeAsync_GrantAndDenyOnSameNode_DeletesBothAndLeavesOtherNodes()
+    {
+        // KNG-59: POST {id}/grants creates rather than upserts, so a player can carry a grant and
+        // a deny for the same node; removing the node must clear both or it stays in effect.
+        var grant = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = true };
+        var deny = new PermissionGrant { Id = 6, HolderId = 1, Node = "knk.gate.open", Value = false };
+        var other = new PermissionGrant { Id = 7, HolderId = 1, Node = "knk.gate.close", Value = true };
+        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant> { grant, deny, other });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        await _service.RevokeByNodeAsync(1, "knk.gate.open", actorUserId: 4);
+
+        _mockRepo.Verify(r => r.DeleteAsync(5), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(6), Times.Once);
+        _mockRepo.Verify(r => r.DeleteAsync(7), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantRemoved, It.IsAny<string?>()), Times.Exactly(2));
+    }
+
+    [Fact]
     public async Task RevokeByNodeAsync_NoExistingGrant_ThrowsKeyNotFoundException()
     {
         _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(1, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant>());

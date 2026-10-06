@@ -151,6 +151,40 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
+        /// Quick action (KNG-59): remove a grant or deny node set directly on the player - the
+        /// counterpart of POST {id}/grants. Same underlying write PermissionGrantsController's
+        /// DELETE by-node uses, gated like the other profile-page quick actions. Group-inherited
+        /// nodes are untouched; those are removed on the group or by removing the membership.
+        /// </summary>
+        /// <param name="id">User ID</param>
+        /// <param name="node">The exact node of the player's active direct grant, e.g. "knk.gate.open".</param>
+        /// <response code="204">Removed successfully</response>
+        /// <response code="400">Node query parameter missing</response>
+        /// <response code="404">The player has no active direct grant for that node</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
+        [HttpDelete("{id:int}/grants")]
+        public async Task<IActionResult> RevokeNode(int id, [FromQuery] string? node)
+        {
+            if (string.IsNullOrWhiteSpace(node))
+            {
+                return BadRequest(new { error = "InvalidRequest", message = "node query parameter is required" });
+            }
+            try
+            {
+                await _grantService.RevokeByNodeAsync(id, node, GetActorUserId());
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = "NotFound", message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = "ValidationFailed", message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Quick action: toggle owner/staff-mode remotely — writes the same field the in-game
         /// /staffmode //ownermode commands do (DESIGN.md §3), as an alternative surface to
         /// PUT {id}/active-mode for the profile page's quick-action UI.
