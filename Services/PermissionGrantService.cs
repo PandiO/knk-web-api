@@ -45,28 +45,14 @@ namespace knkwebapi_v2.Services
             return _mapper.Map<PermissionGrantDto>(grant);
         }
 
+        /// <summary>
+        /// Upserts by (holder, node) rather than always inserting (KNG-59): a holder has at most one
+        /// row per node, so creating a node the holder already has updates that row instead.
+        /// </summary>
         public async Task<PermissionGrantDto> CreateAsync(PermissionGrantDto dto, int? actorUserId = null)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            if (string.IsNullOrWhiteSpace(dto.Node)) throw new ArgumentException("Permission node is required.", nameof(dto));
-            if (dto.HolderId <= 0 || !await _repo.HolderExistsAsync(dto.HolderId))
-                throw new ArgumentException($"PermissionHolder with id {dto.HolderId} not found.", nameof(dto));
-
-            var grant = _mapper.Map<PermissionGrant>(dto);
-            await _repo.AddAsync(grant);
-
-            if (await IsUserHolderAsync(dto.HolderId))
-            {
-                await _auditLogService.RecordAsync(actorUserId, dto.HolderId, AuditAction.GrantAdded, JsonSerializer.Serialize(new
-                {
-                    grantId = grant.Id,
-                    node = dto.Node,
-                    value = dto.Value,
-                    expiresAt = dto.ExpiresAt
-                }));
-            }
-
-            return _mapper.Map<PermissionGrantDto>(grant);
+            return await UpsertByNodeAsync(dto.HolderId, dto.Node, dto.Value, dto.ExpiresAt, actorUserId);
         }
 
         public async Task UpdateAsync(int id, PermissionGrantDto dto, int? actorUserId = null)
@@ -82,6 +68,17 @@ namespace knkwebapi_v2.Services
             {
                 if (dto.HolderId <= 0 || !await _repo.HolderExistsAsync(dto.HolderId))
                     throw new ArgumentException($"PermissionHolder with id {dto.HolderId} not found.", nameof(dto));
+            }
+
+            // One row per (holder, node) (KNG-59): moving this row onto a node the holder already
+            // has would duplicate it - edit or remove that row instead.
+            if (dto.HolderId != existing.HolderId || dto.Node != existing.Node)
+            {
+                var taken = (await _repo.GetGrantsForHolderNodeAsync(dto.HolderId, dto.Node))
+                    .FirstOrDefault(g => g.Id != id);
+                if (taken != null)
+                    throw new PermissionGrantConflictException(taken.Id,
+                        $"Holder {dto.HolderId} already has a grant for node '{dto.Node}' (grant {taken.Id}).");
             }
 
             var previousNode = existing.Node;

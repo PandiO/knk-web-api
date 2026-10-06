@@ -6,7 +6,11 @@ namespace knkwebapi_v2.Services
     {
         Task<IEnumerable<PermissionGrantDto>> GetAllAsync();
         Task<PermissionGrantDto?> GetByIdAsync(int id);
+        /// <summary>Upserts by (holder, node) - see UpsertByNodeAsync (KNG-59).</summary>
         Task<PermissionGrantDto> CreateAsync(PermissionGrantDto dto, int? actorUserId = null);
+
+        /// <summary>Throws PermissionGrantConflictException when the row would move onto a node its
+        /// (new) holder already has a grant for.</summary>
         Task UpdateAsync(int id, PermissionGrantDto dto, int? actorUserId = null);
         Task DeleteAsync(int id, int? actorUserId = null);
         Task<PagedResultDto<PermissionGrantListDto>> SearchAsync(PagedQueryDto query);

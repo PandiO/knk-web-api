@@ -32,6 +32,7 @@ public class PermissionGrantServiceTests
         _mockMapper.Setup(m => m.Map<PermissionGrantDto>(It.IsAny<PermissionGrant>()))
             .Returns((PermissionGrant g) => new PermissionGrantDto { Id = g.Id, HolderId = g.HolderId, Node = g.Node, Value = g.Value, ExpiresAt = g.ExpiresAt });
         _mockRepo.Setup(r => r.HolderExistsAsync(It.IsAny<int>())).ReturnsAsync(true);
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(It.IsAny<int>(), It.IsAny<string>())).ReturnsAsync(new List<PermissionGrant>());
     }
 
     [Fact]
@@ -160,6 +161,72 @@ public class PermissionGrantServiceTests
         _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
         _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantRemoved, It.IsAny<string?>()), Times.Once);
         _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantUpdated, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_NodeTheHolderAlreadyHas_UpdatesThatRowInsteadOfAddingOne()
+    {
+        // KNG-59: the generic create upserts by (holder, node) like every other grant write.
+        var existing = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = true, ExpiresAt = null };
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(1, "knk.gate.open")).ReturnsAsync(new List<PermissionGrant> { existing });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        var result = await _service.CreateAsync(new PermissionGrantDto { HolderId = 1, Node = "knk.gate.open", Value = false }, actorUserId: 4);
+
+        Assert.Equal(5, result.Id);
+        _mockRepo.Verify(r => r.UpdateAsync(It.Is<PermissionGrant>(g => g.Id == 5 && !g.Value)), Times.Once);
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordAsync(4, 1, AuditAction.GrantUpdated, It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_MissingNodeOrHolder_ThrowsArgumentException()
+    {
+        _mockRepo.Setup(r => r.HolderExistsAsync(99)).ReturnsAsync(false);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(new PermissionGrantDto { HolderId = 1, Node = " " }));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(new PermissionGrantDto { HolderId = 99, Node = "knk.fly" }));
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_OntoANodeTheHolderAlreadyHas_ThrowsConflictAndLeavesBothRows()
+    {
+        var moving = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.fly", Value = true };
+        var taken = new PermissionGrant { Id = 6, HolderId = 1, Node = "knk.gate.open", Value = false };
+        _mockRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(moving);
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(1, "knk.gate.open")).ReturnsAsync(new List<PermissionGrant> { taken });
+
+        var ex = await Assert.ThrowsAsync<PermissionGrantConflictException>(() =>
+            _service.UpdateAsync(5, new PermissionGrantDto { HolderId = 1, Node = "knk.gate.open", Value = true }));
+
+        Assert.Equal(6, ex.ExistingGrantId);
+        Assert.Equal("knk.fly", moving.Node);
+        _mockRepo.Verify(r => r.UpdateAsync(It.IsAny<PermissionGrant>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_OntoAnotherHolderThatHasTheNode_ThrowsConflict()
+    {
+        var moving = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.fly", Value = true };
+        _mockRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(moving);
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(2, "knk.fly"))
+            .ReturnsAsync(new List<PermissionGrant> { new() { Id = 9, HolderId = 2, Node = "knk.fly", Value = true } });
+
+        await Assert.ThrowsAsync<PermissionGrantConflictException>(() =>
+            _service.UpdateAsync(5, new PermissionGrantDto { HolderId = 2, Node = "knk.fly", Value = true }));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SameNodeNewValue_UpdatesWithoutAConflictCheck()
+    {
+        var row = new PermissionGrant { Id = 5, HolderId = 1, Node = "knk.fly", Value = true };
+        _mockRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(row);
+
+        await _service.UpdateAsync(5, new PermissionGrantDto { HolderId = 1, Node = "knk.fly", Value = false });
+
+        _mockRepo.Verify(r => r.UpdateAsync(It.Is<PermissionGrant>(g => g.Id == 5 && !g.Value)), Times.Once);
+        _mockRepo.Verify(r => r.GetGrantsForHolderNodeAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
