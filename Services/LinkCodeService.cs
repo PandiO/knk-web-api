@@ -137,8 +137,12 @@ namespace knkwebapi_v2.Services
                 return (false, linkCode, error);
             }
 
-            // Mark as used
-            await _linkCodeRepository.UpdateLinkCodeStatusAsync(linkCode.Id, LinkCodeStatus.Used);
+            // Mark as used with a conditional write: when two requests present the same code at
+            // once, only the one whose write flips Active -> Used gets to continue.
+            if (!await _linkCodeRepository.TryMarkUsedAsync(linkCode.Id))
+            {
+                return (false, linkCode, "This link code has already been used.");
+            }
             linkCode.Status = LinkCodeStatus.Used;
             linkCode.UsedAt = DateTime.UtcNow;
 
