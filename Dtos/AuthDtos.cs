@@ -4,12 +4,23 @@ using System.Text.Json.Serialization;
 namespace knkwebapi_v2.Dtos
 {
     /// <summary>
+    /// A refresh token just issued (closed-alpha hardening WP4). Never serialized: AuthController
+    /// puts it in the HttpOnly cookie and the JSON "refreshToken" field stays null.
+    /// </summary>
+    public sealed record IssuedRefreshToken(string Token, DateTime ExpiresAt, bool RememberMe);
+
+    /// <summary>
     /// DTO for login request.
     /// </summary>
     public class AuthLoginRequestDto
     {
+        /// <summary>Email or Minecraft name (closed-alpha WP5, D3). Takes precedence over email.</summary>
+        [JsonPropertyName("login")]
+        public string? Login { get; set; }
+
+        /// <summary>Kept for older clients; used when login is empty.</summary>
         [JsonPropertyName("email")]
-        public string Email { get; set; } = null!;
+        public string? Email { get; set; }
 
         [JsonPropertyName("password")]
         public string Password { get; set; } = null!;
@@ -28,6 +39,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("accessToken")]
         public string AccessToken { get; set; } = null!;
 
+        /// <summary>Always null in responses since closed-alpha WP4: the refresh token travels only
+        /// in the HttpOnly cookie. Kept so existing clients see the same shape.</summary>
         [JsonPropertyName("refreshToken")]
         public string? RefreshToken { get; set; }
 
@@ -36,6 +49,43 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("user")]
         public UserDto User { get; set; } = null!;
+
+        /// <summary>The refresh token for the cookie; not part of the JSON.</summary>
+        [JsonIgnore]
+        public IssuedRefreshToken? Session { get; set; }
+    }
+
+    /// <summary>
+    /// POST api/Auth/register (closed-alpha WP5, D1): the code from /account link plus the email
+    /// and password for the web login. The username is the verified Minecraft name.
+    /// </summary>
+    public class AuthRegisterRequestDto
+    {
+        [JsonPropertyName("linkCode")]
+        public string? LinkCode { get; set; }
+
+        [JsonPropertyName("email")]
+        public string? Email { get; set; }
+
+        [JsonPropertyName("password")]
+        public string? Password { get; set; }
+
+        [JsonPropertyName("passwordConfirmation")]
+        public string? PasswordConfirmation { get; set; }
+    }
+
+    /// <summary>The result of AuthService.RegisterAsync: a login response, or an error code.</summary>
+    public sealed class AuthRegisterOutcome
+    {
+        public const string RegistrationNeedsCode = "RegistrationNeedsCode";
+
+        public bool Ok { get; private init; }
+        public AuthLoginResponseDto? Result { get; private init; }
+        public string? Error { get; private init; }
+        public string? Message { get; private init; }
+
+        public static AuthRegisterOutcome Success(AuthLoginResponseDto result) => new() { Ok = true, Result = result };
+        public static AuthRegisterOutcome Fail(string error, string message) => new() { Error = error, Message = message };
     }
 
     /// <summary>
@@ -57,11 +107,17 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("accessToken")]
         public string AccessToken { get; set; } = null!;
 
+        /// <summary>Always null in responses since closed-alpha WP4: the refresh token travels only
+        /// in the HttpOnly cookie. Kept so existing clients see the same shape.</summary>
         [JsonPropertyName("refreshToken")]
         public string? RefreshToken { get; set; }
 
         [JsonPropertyName("expiresIn")]
         public int ExpiresIn { get; set; }
+
+        /// <summary>The rotated refresh token for the cookie; not part of the JSON.</summary>
+        [JsonIgnore]
+        public IssuedRefreshToken? Session { get; set; }
     }
 
     /// <summary>
@@ -120,6 +176,20 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("message")]
         public string Message { get; set; } = null!;
+
+        /// <summary>
+        /// A password or email change ends every session (closed-alpha WP4); this fresh access
+        /// token (with a new refresh cookie) keeps the tab that made the change logged in. Null
+        /// when nothing session-relevant changed.
+        /// </summary>
+        [JsonPropertyName("accessToken")]
+        public string? AccessToken { get; set; }
+
+        [JsonPropertyName("expiresIn")]
+        public int? ExpiresIn { get; set; }
+
+        [JsonIgnore]
+        public IssuedRefreshToken? Session { get; set; }
     }
 
     /// <summary>

@@ -94,6 +94,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageKits)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<KitDto>>> Search([FromBody] PagedQueryDto query)
         {

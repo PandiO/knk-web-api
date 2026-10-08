@@ -34,6 +34,15 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IPasswordService, PasswordService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
+            // Closed-alpha WP4: per-user session state (TokenVersion, active) cached for the
+            // per-request token check; one instance so a revocation invalidates it for everyone.
+            services.AddSingleton<IUserSessionStateCache, UserSessionStateCache>();
+            // Closed-alpha WP6: per-account login lockout and the background account-mail queue.
+            services.AddSingleton<ILoginAttemptLimiter, LoginAttemptLimiter>();
+            services.AddSingleton<IAccountMailQueue, AccountMailQueue>();
+            services.AddHostedService<AccountMailSender>();
+            // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
+            services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
 
             var emailSection = configuration?.GetSection("Email");
             if (emailSection != null)
@@ -171,8 +180,10 @@ namespace knkwebapi_v2.DependencyInjection
 
             // Region management service - requires configuration from appsettings
             string? minecraftPluginBaseUrl = configuration?.GetSection("MinecraftPlugin:BaseUrl").Value ?? "http://localhost:8081";
-            services.AddScoped<IRegionService>(sp => 
-                new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl)
+            // Closed-alpha WP7.5: calls to the plugin's region HTTP server carry the shared key.
+            services.AddScoped<IRegionService>(sp =>
+                new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl,
+                    configuration?[knkwebapi_v2.Attributes.PluginServiceAuth.ApiKeyConfigKey])
             );
             services.AddScoped<IDomainRegionNameFinalizer, DomainRegionNameFinalizer>();
 

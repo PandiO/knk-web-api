@@ -85,6 +85,19 @@ namespace knkwebapi_v2.Services
             await RunInScopeAsync(RunUnfinishedFormSubmissionCleanupAsync);
             await RunInScopeAsync(RunAuditLogCleanupAsync);
             await RunInScopeAsync(RunPrivateMessageLogCleanupAsync);
+            await RunInScopeAsync(RunRefreshTokenCleanupAsync);
+        }
+
+        /// <summary>Refresh tokens are kept this long after they expire or are revoked (closed-alpha WP4),
+        /// so a reuse attempt shortly after still finds the revoked row.</summary>
+        public const int RefreshTokenRetentionDays = 7;
+
+        private async Task RunRefreshTokenCleanupAsync(IServiceProvider scopedProvider)
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-RefreshTokenRetentionDays);
+            var repository = scopedProvider.GetRequiredService<IRefreshTokenRepository>();
+            var deleted = await repository.DeleteExpiredOrRevokedBeforeAsync(cutoff);
+            _logger.LogInformation("Refresh token cleanup completed. Deleted {Count} tokens expired or revoked before {CutoffDate}", deleted, cutoff);
         }
 
         private async Task RunInScopeAsync(Func<IServiceProvider, Task> cleanup)

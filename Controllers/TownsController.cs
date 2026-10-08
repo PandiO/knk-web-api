@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using knkwebapi_v2.Attributes;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -10,12 +12,17 @@ namespace KnKWebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
     public class TownsController : ControllerBase
     {
         private readonly ITownService _service;
 
-        public TownsController(ITownService service)
+        private readonly ILogger<TownsController> _logger;
+
+        public TownsController(ITownService service, ILogger<TownsController>? logger = null)
         {
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<TownsController>.Instance;
             _service = service;
         }
 
@@ -87,7 +94,8 @@ namespace KnKWebAPI.Controllers
             catch (DbUpdateException ex)
             {
                 // Still referenced (e.g. by a siege scenario, whose FKs restrict deletes): 409, not 500.
-                return Conflict(new { code = "DbConstraint", message = ex.InnerException?.Message ?? ex.Message });
+                _logger.LogError(ex, "Deleting town {Id} hit a database constraint", id);
+                return Conflict(new { code = "DbConstraint", message = "This town is still in use and can't be deleted." });
             }
         }
 

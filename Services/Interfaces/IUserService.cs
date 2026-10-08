@@ -182,5 +182,18 @@ namespace knkwebapi_v2.Services
         /// <param name="linkCode">Link code from Minecraft</param>
         /// <returns>Updated user with linked UUID</returns>
         Task<UserDto> LinkMinecraftAccountAsync(int userId, string linkCode);
+
+        /// <summary>
+        /// Closed-alpha hardening WP5.3: when a web-only account (no Minecraft UUID) holds
+        /// <paramref name="username"/>, renames it to unclaimed-&lt;id&gt; and audits it, so the real
+        /// player's Minecraft account can take the name. Returns the renamed account's id, or null
+        /// when nothing was released.
+        /// </summary>
+        Task<int?> ReleaseUsernameFromWebOnlyAccountAsync(string username, int? actorUserId = null);
+
+        /// <summary>Runs <paramref name="work"/> in one database transaction and commits only when
+        /// <paramref name="shouldCommit"/> accepts its result; otherwise (or on an exception) every
+        /// write in it is rolled back. Joins an already open transaction.</summary>
+        Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, Func<T, bool> shouldCommit);
     }
 }

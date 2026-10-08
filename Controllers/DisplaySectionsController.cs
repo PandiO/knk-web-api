@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
@@ -7,6 +8,8 @@ namespace knkwebapi_v2.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
     public class DisplaySectionsController : ControllerBase
     {
         private readonly IDisplaySectionService _service;

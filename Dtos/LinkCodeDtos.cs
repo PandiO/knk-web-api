@@ -29,24 +29,26 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
-    /// DTO for validating a link code.
-    /// Returns validation status and associated user information if valid.
+    /// The result of checking a link code (closed-alpha hardening WP5.4): only isValid and the
+    /// Minecraft name (or an error); userId only for the game server (knk-plugin's ValidateLinkCodeResponseDto
+    /// reads it). Email is gone; nulls are left out of the JSON.
     /// </summary>
     public class ValidateLinkCodeResponseDto
     {
         [JsonPropertyName("isValid")]
         public bool IsValid { get; set; }
 
-        [JsonPropertyName("userId")]
-        public int? UserId { get; set; }
-
         [JsonPropertyName("username")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Username { get; set; }
 
-        [JsonPropertyName("email")]
-        public string? Email { get; set; }
+        [JsonPropertyName("userId")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? UserId { get; set; }
 
+        /// <summary>Why the code isn't valid; only on isValid=false.</summary>
         [JsonPropertyName("error")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Error { get; set; }
     }
 
@@ -56,10 +58,14 @@ namespace knkwebapi_v2.Dtos
     public class DuplicateCheckDto
     {
         [JsonPropertyName("uuid")]
-        public string Uuid { get; set; } = null!;
+        public string? Uuid { get; set; }
 
         [JsonPropertyName("username")]
-        public string Username { get; set; } = null!;
+        public string? Username { get; set; }
+
+        /// <summary>Availability check by email (closed-alpha WP6.4).</summary>
+        [JsonPropertyName("email")]
+        public string? Email { get; set; }
     }
 
     /// <summary>
@@ -92,25 +98,6 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("secondaryUserId")]
         public int SecondaryUserId { get; set; }  // Account to delete (soft-delete)
-    }
-
-    /// <summary>
-    /// DTO for linking an account using a link code.
-    /// Used in web app signup when user has existing Minecraft account.
-    /// </summary>
-    public class LinkAccountDto
-    {
-        [JsonPropertyName("linkCode")]
-        public string LinkCode { get; set; } = null!;
-
-        [JsonPropertyName("email")]
-        public string Email { get; set; } = null!;
-
-        [JsonPropertyName("password")]
-        public string Password { get; set; } = null!;
-
-        [JsonPropertyName("passwordConfirmation")]
-        public string PasswordConfirmation { get; set; } = null!;
     }
 
     /// <summary>

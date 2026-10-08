@@ -3440,6 +3440,67 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("private_message_log_entries", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.RefreshToken", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("FamilyId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("char(32)")
+                        .IsFixedLength();
+
+                    b.Property<bool>("RememberMe")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ReplacedByHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("FamilyId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "RevokedAt");
+
+                    b.ToTable("refresh_tokens", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SalaryConfiguration", b =>
                 {
                     b.Property<string>("Id")
@@ -4768,6 +4829,11 @@ namespace knkwebapi_v2.Migrations
                     b.Property<decimal>("PersonalSalaryMultiplier")
                         .HasColumnType("decimal(65,30)");
 
+                    b.Property<int>("TokenVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("TransferLockReason")
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
@@ -5968,6 +6034,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Holder");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.RefreshToken", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeLobbyScenario", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.SiegeLobby", "SiegeLobby")
@@ -6675,6 +6752,8 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("LinkCodes");
 
                     b.Navigation("PermissionGroupMemberships");
+
+                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>

@@ -26,7 +26,16 @@ public class UsersControllerTests
     private readonly Mock<IUserProfileSummaryService> _mockProfileSummaryService;
     private readonly Mock<IUserPermissionGroupService> _mockMembershipService;
     private readonly Mock<IPermissionGrantService> _mockGrantService;
+    private readonly Mock<IPermissionEscalationGuard> _mockEscalationGuard = new();
     private readonly UsersController _controller;
+
+    /// <summary>Calls the quick actions as a logged-in staff member the escalation guard (closed-alpha WP3) lets through.</summary>
+    private void AsStaffAllowedByGuard()
+    {
+        _mockEscalationGuard.Setup(g => g.CanGrantNodeAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>())).ReturnsAsync(EscalationCheck.Ok);
+        _mockEscalationGuard.Setup(g => g.CanAssignGroupAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(EscalationCheck.Ok);
+        _controller.ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.WebUser(99) };
+    }
 
     public UsersControllerTests()
     {
@@ -37,7 +46,7 @@ public class UsersControllerTests
         _mockProfileSummaryService = new Mock<IUserProfileSummaryService>();
         _mockMembershipService = new Mock<IUserPermissionGroupService>();
         _mockGrantService = new Mock<IPermissionGrantService>();
-        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object, _mockProfileSummaryService.Object, _mockMembershipService.Object, _mockGrantService.Object);
+        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object, _mockProfileSummaryService.Object, _mockMembershipService.Object, _mockGrantService.Object, _mockEscalationGuard.Object);
     }
 
     #region Create Tests
@@ -294,6 +303,8 @@ public class UsersControllerTests
     [Fact]
     public async Task CheckDuplicate_WithNoDuplicate_Returns200False()
     {
+        // The by-UUID duplicate check is game server / staff only (closed-alpha WP6.4).
+        _controller.ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.Plugin() };
         // Arrange
         var checkDto = new DuplicateCheckDto
         {
@@ -316,6 +327,8 @@ public class UsersControllerTests
     [Fact]
     public async Task CheckDuplicate_WithDuplicate_Returns200WithDetails()
     {
+        // The by-UUID duplicate check is game server / staff only (closed-alpha WP6.4).
+        _controller.ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.Plugin() };
         // Arrange
         var checkDto = new DuplicateCheckDto
         {
@@ -388,125 +401,15 @@ public class UsersControllerTests
 
     #endregion
 
-    #region LinkAccount Tests
+    // LinkAccount tests removed with POST link-account (closed-alpha WP2): replaced by POST api/Auth/register.
 
-    [Fact]
-    public async Task LinkAccount_WithValidCode_Returns200LinkedUser()
-    {
-        // Arrange
-        var linkAccountDto = new LinkAccountDto
-        {
-            LinkCode = "ABC12XYZ",
-            Email = "player@example.com",
-            Password = "SecurePass123!",
-            PasswordConfirmation = "SecurePass123!"
-        };
-
-        var linkedUser = new UserDto
-        {
-            Id = 1,
-            Username = "player",
-            Email = "player@example.com"
-        };
-
-        _mockUserService
-            .Setup(s => s.ValidateLinkCodeAsync("ABC12XYZ"))
-            .ReturnsAsync((true, linkedUser));
-
-        _mockUserService
-            .Setup(s => s.ValidatePasswordAsync("SecurePass123!"))
-            .ReturnsAsync((true, null));
-
-        _mockUserService
-            .Setup(s => s.CheckEmailTakenAsync("player@example.com", 1))
-            .ReturnsAsync((false, null));
-
-        _mockUserService
-            .Setup(s => s.UpdateEmailAsync(1, "player@example.com", null))
-            .Returns(Task.CompletedTask);
-
-        _mockUserService
-            .Setup(s => s.ChangePasswordAsync(1, "", "SecurePass123!", "SecurePass123!"))
-            .Returns(Task.CompletedTask);
-
-        _mockUserService
-            .Setup(s => s.ConsumeLinkCodeAsync("ABC12XYZ"))
-            .ReturnsAsync((true, linkedUser));
-
-        _mockUserService
-            .Setup(s => s.GetByIdAsync(1))
-            .ReturnsAsync(linkedUser);
-
-        // Act
-        var result = await _controller.LinkAccount(linkAccountDto);
-
-        // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(200, okResult.StatusCode);
-    }
-
-    [Fact]
-    public async Task LinkAccount_WithInvalidCode_Returns400BadRequest()
-    {
-        // Arrange
-        var linkAccountDto = new LinkAccountDto
-        {
-            LinkCode = "INVALID99",
-            Email = "player@example.com",
-            Password = "SecurePass123!",
-            PasswordConfirmation = "SecurePass123!"
-        };
-
-        _mockUserService
-            .Setup(s => s.ValidateLinkCodeAsync("INVALID99"))
-            .ReturnsAsync((false, null));
-
-        // Act
-        var result = await _controller.LinkAccount(linkAccountDto);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Equal(400, badRequestResult.StatusCode);
-    }
-
-    [Fact]
-    public async Task LinkAccount_WithPasswordMismatch_Returns400BadRequest()
-    {
-        // Arrange
-        var linkAccountDto = new LinkAccountDto
-        {
-            LinkCode = "ABC12XYZ",
-            Email = "player@example.com",
-            Password = "SecurePass123!",
-            PasswordConfirmation = "DifferentPass123!"
-        };
-
-        var linkedUser = new UserDto
-        {
-            Id = 1,
-            Username = "player",
-            Email = "player@example.com"
-        };
-
-        _mockUserService
-            .Setup(s => s.ValidateLinkCodeAsync("ABC12XYZ"))
-            .ReturnsAsync((true, linkedUser));
-
-        // Act
-        var result = await _controller.LinkAccount(linkAccountDto);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Equal(400, badRequestResult.StatusCode);
-    }
-
-    #endregion
 
     #region GrantNode Tests (KNG-59)
 
     [Fact]
     public async Task GrantNode_UpsertsByNodeRatherThanCreatingASecondRow()
     {
+        AsStaffAllowedByGuard();
         var expiresAt = DateTime.UtcNow.AddDays(1);
         var updated = new PermissionGrantDto { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = false, ExpiresAt = expiresAt };
         _mockGrantService
@@ -527,6 +430,7 @@ public class UsersControllerTests
     [Fact]
     public async Task RevokeNode_ExistingDirectGrant_Returns204()
     {
+        AsStaffAllowedByGuard();
         var result = await _controller.RevokeNode(1, "knk.gate.open");
 
         Assert.IsType<NoContentResult>(result);
@@ -547,6 +451,7 @@ public class UsersControllerTests
     [Fact]
     public async Task RevokeNode_NoActiveDirectGrant_Returns404()
     {
+        AsStaffAllowedByGuard();
         _mockGrantService
             .Setup(s => s.RevokeByNodeAsync(1, "knk.gate.open", It.IsAny<int?>()))
             .ThrowsAsync(new KeyNotFoundException("Holder 1 has no active grant for node 'knk.gate.open'."));
@@ -909,16 +814,24 @@ public class UsersControllerTests
     }
 
     [Fact]
-    public async Task Create_WithUuid_FromTheGameServer_LinksThePreRegisteredAccount()
+    public async Task Create_WithUuid_FromTheGameServer_ReleasesAPreRegisteredName_InsteadOfLinkingIt()
     {
+        // Closed-alpha WP5.3: a web-only account holding the name is renamed, never attached.
         SetRequest(apiKey: "secret", configuredKey: "secret");
         _mockUserService.Setup(s => s.GetByUsernameAsync("joiner")).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Email = "j@example.com" });
-        _mockUserService.Setup(s => s.GetByIdAsync(12)).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
+        _mockUserService.Setup(s => s.ReleaseUsernameFromWebOnlyAccountAsync("joiner", It.IsAny<int?>())).ReturnsAsync(12);
+        _mockUserService.Setup(s => s.RunInTransactionAsync(It.IsAny<Func<Task<IActionResult>>>(), It.IsAny<Func<IActionResult, bool>>()))
+            .Returns((Func<Task<IActionResult>> work, Func<IActionResult, bool> _) => work());
+        _mockUserService.Setup(s => s.ValidateUserCreationAsync(It.IsAny<UserCreateDto>(), It.IsAny<int?>())).ReturnsAsync((true, null));
+        _mockUserService.Setup(s => s.CreateAsync(It.IsAny<UserCreateDto>()))
+            .ReturnsAsync(new UserDto { Id = 40, Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
 
         var result = await _controller.Create(new UserCreateDto { Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
 
         Assert.IsType<CreatedAtRouteResult>(result);
-        _mockUserService.Verify(s => s.UpdateAsync(12, It.Is<UserDto>(u => u.Uuid == "11111111-2222-3333-4444-555555555555"), It.IsAny<int?>()), Times.Once);
+        _mockUserService.Verify(s => s.ReleaseUsernameFromWebOnlyAccountAsync("joiner", It.IsAny<int?>()), Times.Once);
+        _mockUserService.Verify(s => s.UpdateAsync(It.IsAny<int>(), It.IsAny<UserDto>(), It.IsAny<int?>()), Times.Never);
+        _mockUserService.Verify(s => s.CreateAsync(It.IsAny<UserCreateDto>()), Times.Once);
     }
 
     [Fact]

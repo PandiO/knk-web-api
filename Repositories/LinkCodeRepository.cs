@@ -62,6 +62,32 @@ namespace knkwebapi_v2.Repositories
             }
         }
 
+        public async Task<bool> TryMarkUsedAsync(int id)
+        {
+            var now = DateTime.UtcNow;
+            if (_context.Database.IsRelational())
+            {
+                // UPDATE ... WHERE Id = @id AND Status = Active: the database decides who wins.
+                var affected = await _context.LinkCodes
+                    .Where(lc => lc.Id == id && lc.Status == LinkCodeStatus.Active)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(lc => lc.Status, LinkCodeStatus.Used)
+                        .SetProperty(lc => lc.UsedAt, now));
+                return affected == 1;
+            }
+
+            // EF InMemory (tests) has no ExecuteUpdate; it is single-threaded there anyway.
+            var linkCode = await GetByIdAsync(id);
+            if (linkCode == null || linkCode.Status != LinkCodeStatus.Active)
+            {
+                return false;
+            }
+            linkCode.Status = LinkCodeStatus.Used;
+            linkCode.UsedAt = now;
+            await UpdateAsync(linkCode);
+            return true;
+        }
+
         public async Task DeleteAsync(int id)
         {
             var linkCode = await GetByIdAsync(id);

@@ -19,6 +19,16 @@ namespace knkwebapi_v2.Repositories
         /// </summary>
         Task UpdateUserAsync(User user);
 
+        /// <summary>Stops tracking a user loaded through this context. Users and permission groups
+        /// share the permission_holders key space (table-per-type), so a user still tracked in the
+        /// same request can break a later PermissionGroup query.</summary>
+        void Detach(User user);
+
+        /// <summary>Runs <paramref name="work"/> in a transaction that commits only when
+        /// <paramref name="shouldCommit"/> accepts the result (relational providers; joins an open
+        /// transaction, and runs without one on EF InMemory).</summary>
+        Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, Func<T, bool> shouldCommit);
+
         /// <summary>
         /// Saves a user including LastSalaryPayoutAt (SalaryService). Only call it inside
         /// <see cref="RunWithUsersLockedAsync"/>, on a user loaded inside that same call. Doesn't
@@ -94,6 +104,13 @@ namespace knkwebapi_v2.Repositories
         /// Update only the password hash for a user.
         /// </summary>
         Task UpdatePasswordHashAsync(int id, string passwordHash);
+
+        /// <summary>Bumps users.TokenVersion (closed-alpha WP4) and returns the new value; 0 when
+        /// the user doesn't exist.</summary>
+        Task<int> IncrementTokenVersionAsync(int id);
+
+        /// <summary>Case-insensitive username lookup for login by Minecraft name (closed-alpha WP5).</summary>
+        Task<User?> GetByUsernameIgnoreCaseAsync(string username);
 
         /// <summary>
         /// Update only the email for a user.

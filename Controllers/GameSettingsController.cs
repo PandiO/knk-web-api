@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using System;
 using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
@@ -25,6 +26,7 @@ public class GameSettingsController : ControllerBase
         return Ok(settings);
     }
 
+    [RequireServiceOrPermission(StaffPermissions.ServerConfig)]
     [HttpPut]
     [ProducesResponseType(typeof(GameSettingsReadDto), 200)]
     [ProducesResponseType(400)]
@@ -41,6 +43,7 @@ public class GameSettingsController : ControllerBase
         }
     }
 
+    [RequireServiceOrPermission(StaffPermissions.ServerConfig)]
     [HttpPut("runtime-worlds")]
     [ProducesResponseType(typeof(GameSettingsReadDto), 200)]
     [ProducesResponseType(400)]

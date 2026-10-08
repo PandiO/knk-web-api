@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
@@ -25,6 +26,7 @@ namespace knkwebapi_v2.Controllers
         private readonly IUserProfileSummaryService _profileSummaryService;
         private readonly IUserPermissionGroupService _membershipService;
         private readonly IPermissionGrantService _grantService;
+        private readonly IPermissionEscalationGuard _escalationGuard;
 
         public UsersController(
             IUserService service,
@@ -33,8 +35,10 @@ namespace knkwebapi_v2.Controllers
             ISalaryService salaryService,
             IUserProfileSummaryService profileSummaryService,
             IUserPermissionGroupService membershipService,
-            IPermissionGrantService grantService)
+            IPermissionGrantService grantService,
+            IPermissionEscalationGuard escalationGuard)
         {
+            _escalationGuard = escalationGuard;
             _service = service;
             _mapper = mapper;
             _permissionResolutionService = permissionResolutionService;
@@ -78,10 +82,14 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Validation failed</response>
         /// <response code="404">User or PermissionGroup not found</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
+        [RequirePermission(StaffPermissions.UserGroups)]
         [HttpPost("{id:int}/groups")]
         public async Task<IActionResult> AssignGroup(int id, [FromBody] AssignGroupRequestDto request)
         {
             if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanAssignGroupAsync(actor, id, request.PermissionGroupId));
+            if (refused != null) return refused;
             try
             {
                 var result = await _membershipService.UpsertAsync(new UpsertUserPermissionGroupDto
@@ -106,9 +114,13 @@ namespace knkwebapi_v2.Controllers
         /// <response code="204">Removed successfully</response>
         /// <response code="404">User is not a member of that group</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
+        [RequirePermission(StaffPermissions.UserGroups)]
         [HttpDelete("{id:int}/groups/{groupId:int}")]
         public async Task<IActionResult> RemoveGroup(int id, int groupId)
         {
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanAssignGroupAsync(actor, id, groupId));
+            if (refused != null) return refused;
             try
             {
                 await _membershipService.DeleteAsync(id, groupId, GetActorUserId());
@@ -131,10 +143,14 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Validation failed</response>
         /// <response code="404">User not found</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
+        [RequirePermission(StaffPermissions.UserPermissions)]
         [HttpPost("{id:int}/grants")]
         public async Task<IActionResult> GrantNode(int id, [FromBody] GrantNodeRequestDto request)
         {
             if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanGrantNodeAsync(actor, id, request.Node));
+            if (refused != null) return refused;
             try
             {
                 var result = await _grantService.UpsertByNodeAsync(id, request.Node, request.Value, request.ExpiresAt, GetActorUserId());
@@ -158,6 +174,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Node query parameter missing</response>
         /// <response code="404">The player has no active direct grant for that node</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
+        [RequirePermission(StaffPermissions.UserPermissions)]
         [HttpDelete("{id:int}/grants")]
         public async Task<IActionResult> RevokeNode(int id, [FromQuery] string? node)
         {
@@ -165,6 +182,9 @@ namespace knkwebapi_v2.Controllers
             {
                 return BadRequest(new { error = "InvalidRequest", message = "node query parameter is required" });
             }
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanGrantNodeAsync(actor, id, node));
+            if (refused != null) return refused;
             try
             {
                 await _grantService.RevokeByNodeAsync(id, node, GetActorUserId());
@@ -217,6 +237,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Returns the resolution result (granted/denied/undeclared)</response>
         /// <response code="400">Node query parameter missing</response>
         /// <response code="404">User not found</response>
+        [RequireServiceSelfOrPermission(StaffPermissions.ManageUsers, "id")]
         [HttpGet("{id:int}/permissions/check")]
         public async Task<IActionResult> CheckPermission(int id, [FromQuery] string? node)
         {
@@ -243,6 +264,7 @@ namespace knkwebapi_v2.Controllers
         /// <param name="id">User ID</param>
         /// <response code="200">Returns the full resolved permission set</response>
         /// <response code="404">User not found</response>
+        [RequireServiceSelfOrPermission(StaffPermissions.ManageUsers, "id")]
         [HttpGet("{id:int}/permissions/effective")]
         public async Task<IActionResult> GetEffectivePermissions(int id)
         {
@@ -260,6 +282,7 @@ namespace knkwebapi_v2.Controllers
         /// </summary>
         /// <returns>List of all users with full details</returns>
         /// <response code="200">Returns list of users</response>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -274,6 +297,7 @@ namespace knkwebapi_v2.Controllers
         /// <returns>User with full details</returns>
         /// <response code="200">Returns the user</response>
         /// <response code="404">User not found</response>
+        [RequireServiceSelfOrPermission(StaffPermissions.ManageUsers, "id")]
         [HttpGet("{id:int}", Name = nameof(GetUserById))]
         public async Task<IActionResult> GetUserById(int id)
         {
@@ -285,6 +309,8 @@ namespace knkwebapi_v2.Controllers
         /// <summary>
         /// Get user summary by UUID (Minecraft plugin uses this)
         /// </summary>
+        /// <remarks>Any logged-in user or the game server (default rule). UserSummaryDto carries
+        /// no email: it is the public view of a player (closed-alpha hardening WP2).</remarks>
         /// <param name="uuid">Minecraft player UUID</param>
         /// <returns>User summary with coins, gems, and experience points</returns>
         /// <response code="200">Returns the user summary</response>
@@ -324,6 +350,7 @@ namespace knkwebapi_v2.Controllers
         /// <summary>
         /// Get user summary by username
         /// </summary>
+        /// <remarks>Any logged-in user or the game server; no email (see GetUserSummaryByUuid).</remarks>
         /// <param name="username">Username</param>
         /// <returns>User summary with coins, gems, and experience points</returns>
         /// <response code="200">Returns the user summary</response>
@@ -375,6 +402,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="201">User created successfully</response>
         /// <response code="400">Validation failed</response>
         /// <response code="409">Duplicate username, email, or UUID</response>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] UserCreateDto user)
         {
@@ -390,31 +418,29 @@ namespace knkwebapi_v2.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = "Only the game server can create or link an account by Minecraft UUID." });
             }
 
+            // Closed-alpha WP5.3: a web-only account (no UUID) can no longer be attached to the
+            // Minecraft player who joins with its name - that let anyone pre-register a player's
+            // name and take over their account. The game server's create releases the name instead
+            // (the web-only account becomes unclaimed-<id>, audited) and the Minecraft account is
+            // created normally. Release and create run in one transaction that only commits when
+            // the account was created: a later 400/409 or failure leaves the old account untouched.
+            if (!string.IsNullOrEmpty(user.Uuid) && !string.IsNullOrEmpty(user.Username))
+            {
+                return await _service.RunInTransactionAsync(async () =>
+                {
+                    await _service.ReleaseUsernameFromWebOnlyAccountAsync(user.Username, GetActorUserId());
+                    return await CreateCoreAsync(user);
+                }, result => result is CreatedAtRouteResult);
+            }
+
+            return await CreateCoreAsync(user);
+        }
+
+        private async Task<IActionResult> CreateCoreAsync(UserCreateDto user)
+        {
             try
             {
-                // Web app first linking (BEFORE validation): If providing UUID + username, check for existing pre-registered account
-                // A pre-registered account has the same username but uuid = null (awaiting Minecraft join)
                 UserDto? created = null;
-                if (!string.IsNullOrEmpty(user.Uuid) && !string.IsNullOrEmpty(user.Username))
-                {
-                    var existingByUsername = await _service.GetByUsernameAsync(user.Username);
-                    if (existingByUsername != null && string.IsNullOrEmpty(existingByUsername.Uuid))
-                    {
-                        // Found pre-registered account: link by setting UUID
-                        var updatedDto = new UserDto
-                        {
-                            Id = existingByUsername.Id,
-                            Username = existingByUsername.Username,
-                            Email = existingByUsername.Email,
-                            Uuid = user.Uuid,  // Set UUID from Minecraft join
-                            Coins = existingByUsername.Coins,
-                            Gems = existingByUsername.Gems,
-                            ExperiencePoints = existingByUsername.ExperiencePoints
-                        };
-                        await _service.UpdateAsync(existingByUsername.Id, updatedDto);
-                        created = await _service.GetByIdAsync(existingByUsername.Id);
-                    }
-                }
 
                 // If not linked to existing pre-registered account, proceed with normal validation and creation
                 if (created == null)
@@ -962,6 +988,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Link code generated successfully</response>
         /// <response code="401">User not authenticated (web app) or missing userId (plugin)</response>
         /// <response code="404">User not found</response>
+        [RequireServiceOrLoggedIn]
         [HttpPost("generate-link-code")]
         public async Task<IActionResult> GenerateLinkCode([FromBody] GenerateLinkCodeRequestDto? request = null)
         {
@@ -1007,17 +1034,21 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Validate a link code and return associated user information
+        /// Check a link code and return the Minecraft name it belongs to
         /// </summary>
         /// <remarks>
-        /// Consumes the link code (marks it as used) and returns user details if valid.
+        /// Closed-alpha hardening WP5.4: anonymous (the register page shows "This code belongs to
+        /// &lt;name&gt;"), rate-limited, and returns only { isValid, username } (plus error when invalid) - no email, and the
+        /// user id only to the game server. It never consumes the code (POST api/Auth/register does).
         /// Link codes expire after 20 minutes.
         /// </remarks>
         /// <param name="code">8-character link code</param>
         /// <returns>Validation result with user information if valid</returns>
         /// <response code="200">Validation result (check IsValid field)</response>
         /// <response code="400">Invalid request</response>
+        [AllowAnonymous]
         [HttpPost("validate-link-code/{code}")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
         public async Task<IActionResult> ValidateLinkCode(string code)
         {
             try
@@ -1026,19 +1057,15 @@ namespace knkwebapi_v2.Controllers
                 
                 if (!isValid || user == null)
                 {
-                    return Ok(new ValidateLinkCodeResponseDto
-                    {
-                        IsValid = false,
-                        Error = "Invalid or expired link code"
-                    });
+                    return Ok(new ValidateLinkCodeResponseDto { IsValid = false, Error = "Invalid or expired link code" });
                 }
 
                 return Ok(new ValidateLinkCodeResponseDto
                 {
                     IsValid = true,
-                    UserId = user.Id,
                     Username = user.Username,
-                    Email = user.Email
+                    // knk-plugin's /account link <code> reads the id; nobody else gets it.
+                    UserId = HttpContext?.GetKnkCaller().IsPluginService == true ? user.Id : null
                 });
             }
             catch (ArgumentException ex)
@@ -1134,40 +1161,78 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Check for duplicate accounts based on UUID and username
+        /// Is an email or username free? (register and account pages)
         /// </summary>
         /// <remarks>
-        /// Used by Minecraft server to detect when a player has multiple accounts.
-        /// Returns both the primary (UUID-based) and conflicting (username-based) accounts.
+        /// Closed-alpha hardening WP6.4: anonymous and rate-limited; anonymous and player callers
+        /// get only { available }, staff (knk.admin.user.manage) and the game server also get
+        /// conflictingUserId.
         /// </remarks>
-        /// <param name="request">Duplicate check request with UUID and username</param>
-        /// <returns>Duplicate check result</returns>
-        /// <response code="200">Check completed (check HasDuplicate field)</response>
-        /// <response code="400">Invalid request</response>
+        [AllowAnonymous]
         [HttpGet("check-duplicate")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
         public async Task<IActionResult> CheckDuplicateAvailability([FromQuery] string? email, [FromQuery] string? username, [FromQuery] int? excludeUserId)
         {
             if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(username))
             {
                 return BadRequest(new { error = "InvalidRequest", message = "Email or username is required" });
             }
-
-            if (!string.IsNullOrWhiteSpace(email))
-            {
-                var (isTaken, conflictingUserId) = await _service.CheckEmailTakenAsync(email, excludeUserId);
-                return Ok(new { available = !isTaken, conflictingUserId });
-            }
-
-            var (usernameTaken, usernameConflictId) = await _service.CheckUsernameTakenAsync(username!, excludeUserId);
-            return Ok(new { available = !usernameTaken, conflictingUserId = usernameConflictId });
+            return await AvailabilityAsync(email, username, excludeUserId);
         }
 
-        [HttpPost("check-duplicate")]
-        public async Task<IActionResult> CheckDuplicate([FromBody] DuplicateCheckDto request)
+        private async Task<IActionResult> AvailabilityAsync(string? email, string? username, int? excludeUserId)
         {
+            var (isTaken, conflictingUserId) = !string.IsNullOrWhiteSpace(email)
+                ? await _service.CheckEmailTakenAsync(email, excludeUserId)
+                : await _service.CheckUsernameTakenAsync(username!, excludeUserId);
+
+            return await IsStaffOrPluginAsync()
+                ? Ok(new { available = !isTaken, conflictingUserId })
+                : Ok(new { available = !isTaken });
+        }
+
+        /// <summary>The game server, or a logged-in user with knk.admin.user.manage.</summary>
+        private async Task<bool> IsStaffOrPluginAsync()
+        {
+            var caller = HttpContext?.GetKnkCaller();
+            if (caller == null) return false;
+            if (caller.IsPluginService) return true;
+            if (caller.WebUserId == null) return false;
+            var check = await _permissionResolutionService.CheckAsync(caller.WebUserId.Value, StaffPermissions.ManageUsers);
+            return check?.Allowed == true;
+        }
+
+        /// <summary>
+        /// Two uses (closed-alpha hardening WP6.4):
+        /// <list type="bullet">
+        /// <item>{ email } or { username } (no uuid): the same availability check as the GET, with the
+        /// value in the body instead of the URL - preferred by the web app.</item>
+        /// <item>{ uuid, username } (or an empty body, as knk-plugin sends it): the duplicate-account
+        /// check on join, which returns both accounts' summaries - game server and staff only.</item>
+        /// </list>
+        /// </summary>
+        [AllowAnonymous]
+        [HttpPost("check-duplicate")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
+        public async Task<IActionResult> CheckDuplicate([FromBody] DuplicateCheckDto? request)
+        {
+            if (request != null && string.IsNullOrWhiteSpace(request.Uuid)
+                && (!string.IsNullOrWhiteSpace(request.Email) || !string.IsNullOrWhiteSpace(request.Username)))
+            {
+                return await AvailabilityAsync(request.Email, request.Username, null);
+            }
+
+            if (!await IsStaffOrPluginAsync())
+            {
+                return HttpContext?.GetKnkCaller().IsWebUser == true
+                    ? StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = "Only the game server or staff can check accounts by UUID." })
+                    : Unauthorized(new { error = "Unauthorized", message = "Only the game server or staff can check accounts by UUID." });
+            }
+
             try
             {
-                var (hasDuplicate, secondaryUserId) = await _service.CheckForDuplicateAsync(request.Uuid, request.Username);
+                var uuid = request?.Uuid ?? string.Empty;
+                var (hasDuplicate, secondaryUserId) = await _service.CheckForDuplicateAsync(uuid, request?.Username ?? string.Empty);
 
                 if (!hasDuplicate)
                 {
@@ -1179,7 +1244,7 @@ namespace knkwebapi_v2.Controllers
                 }
 
                 // Get both users
-                var primaryUser = await _service.GetByUuidAsync(request.Uuid);
+                var primaryUser = await _service.GetByUuidAsync(uuid);
                 var secondaryUser = secondaryUserId.HasValue ? await _service.GetByIdAsync(secondaryUserId.Value) : null;
 
                 return Ok(new DuplicateCheckResponseDto
@@ -1270,85 +1335,6 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
-        /// <summary>
-        /// Link an existing Minecraft account with email and password from web app
-        /// </summary>
-        /// <remarks>
-        /// Used when a player creates account in Minecraft first, then wants to add web access.
-        /// Requires a valid link code generated from Minecraft.
-        /// Sets initial password (no current password needed for first-time setup).
-        /// </remarks>
-        /// <param name="request">Link account request with code, email, and password</param>
-        /// <returns>Linked user account</returns>
-        /// <response code="200">Account linked successfully</response>
-        /// <response code="400">Invalid link code, weak password, or validation failed</response>
-        /// <response code="409">Email already in use</response>
-        [HttpPost("link-account")]
-        public async Task<IActionResult> LinkAccount([FromBody] LinkAccountDto request)
-        {
-            try
-            {
-                // Step 1: Validate link code WITHOUT consuming it (validate first)
-                var (isLinkCodeValid, linkCodeUser) = await _service.ValidateLinkCodeAsync(request.LinkCode);
-                
-                if (!isLinkCodeValid || linkCodeUser == null)
-                {
-                    return BadRequest(new { error = "InvalidLinkCode", message = "Invalid or expired link code" });
-                }
-
-                // Step 2: Validate password
-                var (passwordValid, passwordError) = await _service.ValidatePasswordAsync(request.Password);
-                if (!passwordValid)
-                {
-                    return BadRequest(new { error = "InvalidPassword", message = passwordError });
-                }
-
-                // Step 3: Check password confirmation
-                if (request.Password != request.PasswordConfirmation)
-                {
-                    return BadRequest(new { error = "PasswordMismatch", message = "Password and confirmation do not match" });
-                }
-
-                // Step 4: Check if email is already taken
-                var (emailTaken, conflictingUserId) = await _service.CheckEmailTakenAsync(request.Email, linkCodeUser.Id);
-                if (emailTaken)
-                {
-                    return Conflict(new { error = "DuplicateEmail", message = "Email is already in use by another account" });
-                }
-
-                // Step 5: All validations passed - NOW consume the link code
-                var (isConsumed, consumedUser) = await _service.ConsumeLinkCodeAsync(request.LinkCode);
-                if (!isConsumed || consumedUser == null)
-                {
-                    return BadRequest(new { error = "InvalidLinkCode", message = "Link code could not be consumed" });
-                }
-
-                // Step 6: Update user with email
-                await _service.UpdateEmailAsync(linkCodeUser.Id, request.Email, null);
-                
-                // Step 7: Set initial password (no current password needed since we're setting it for the first time)
-                // Use empty string as currentPassword since ChangePasswordAsync allows null PasswordHash
-                await _service.ChangePasswordAsync(linkCodeUser.Id, "", request.Password, request.PasswordConfirmation);
-                
-                // Step 8: Get updated user
-                var updatedUser = await _service.GetByIdAsync(linkCodeUser.Id);
-                
-                return Ok(new 
-                {
-                    user = updatedUser,
-                    message = "Account successfully linked with email and password"
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = "InvalidArgument", message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { error = "OperationFailed", message = ex.Message });
-            }
-        }
-
         [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
@@ -1372,6 +1358,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<UserListDto>>> SearchUsers([FromBody] PagedQueryDto query)
         {
@@ -1400,6 +1387,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="404">User not found</response>
         [Authorize]
         [HttpPost("link-minecraft-account")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
         public async Task<IActionResult> LinkMinecraftAccount([FromBody] LinkMinecraftAccountDto request)
         {
             try

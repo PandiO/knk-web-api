@@ -56,12 +56,27 @@ namespace knkwebapi_v2.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<RegionService> _logger;
         private readonly string _minecraftPluginBaseUrl;
+        private readonly string? _pluginApiKey;
 
-        public RegionService(IHttpClientFactory httpClientFactory, ILogger<RegionService> logger, string minecraftPluginBaseUrl)
+        /// <param name="pluginApiKey">Security:PluginApiKey, sent as X-API-Key: knk-plugin's region HTTP
+        /// server requires it once its api.auth.api-key is set (closed-alpha hardening WP7.5/WP10.1).</param>
+        public RegionService(IHttpClientFactory httpClientFactory, ILogger<RegionService> logger, string minecraftPluginBaseUrl, string? pluginApiKey = null)
         {
             _httpClientFactory = httpClientFactory;
             _logger = logger;
             _minecraftPluginBaseUrl = minecraftPluginBaseUrl;
+            _pluginApiKey = pluginApiKey;
+        }
+
+        private HttpClient CreatePluginClient()
+        {
+            var client = _httpClientFactory.CreateClient();
+            if (!string.IsNullOrEmpty(_pluginApiKey))
+            {
+                client.DefaultRequestHeaders.Remove(knkwebapi_v2.Attributes.PluginServiceAuth.ApiKeyHeader);
+                client.DefaultRequestHeaders.Add(knkwebapi_v2.Attributes.PluginServiceAuth.ApiKeyHeader, _pluginApiKey);
+            }
+            return client;
         }
 
         public async Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false)
@@ -78,7 +93,7 @@ namespace knkwebapi_v2.Services
 
             try
             {
-                using var client = _httpClientFactory.CreateClient();
+                using var client = CreatePluginClient();
                 var xInvariant = x.ToString(CultureInfo.InvariantCulture);
                 var zInvariant = z.ToString(CultureInfo.InvariantCulture);
                 var url = $"{_minecraftPluginBaseUrl.TrimEnd('/')}/api/regions/{Uri.EscapeDataString(regionId)}/contains-location?x={xInvariant}&z={zInvariant}&allowBoundary={allowBoundary.ToString().ToLowerInvariant()}";
@@ -142,7 +157,7 @@ namespace knkwebapi_v2.Services
 
             try
             {
-                using var client = _httpClientFactory.CreateClient();
+                using var client = CreatePluginClient();
                 var url = $"{_minecraftPluginBaseUrl.TrimEnd('/')}/api/regions/{Uri.EscapeDataString(parentRegionId)}/contains-region/{Uri.EscapeDataString(childRegionId)}?requireFullContainment={requireFullContainment.ToString().ToLowerInvariant()}";
                 Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       GET {url}");
                 var response = await client.GetAsync(url);
@@ -217,7 +232,7 @@ namespace knkwebapi_v2.Services
             try
             {
                 // Call the Minecraft plugin API to rename the region
-                using (var client = _httpClientFactory.CreateClient())
+                using (var client = CreatePluginClient())
                 {
                     var url = $"{_minecraftPluginBaseUrl.TrimEnd('/')}/Regions/rename?oldRegionId={Uri.EscapeDataString(oldRegionId)}&newRegionId={Uri.EscapeDataString(newRegionId)}";
                     if (!string.IsNullOrWhiteSpace(domainType))

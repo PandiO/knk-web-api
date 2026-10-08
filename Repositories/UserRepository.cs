@@ -39,6 +39,34 @@ namespace knkwebapi_v2.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, Func<T, bool> shouldCommit)
+        {
+            if (!_context.Database.IsRelational() || _context.Database.CurrentTransaction != null)
+            {
+                return await work();
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+            var result = await work();
+            if (shouldCommit(result))
+            {
+                await transaction.CommitAsync();
+            }
+            else
+            {
+                await transaction.RollbackAsync();
+                // Entities saved inside the rolled-back transaction are still tracked with their new
+                // values; forget them so the rest of the request reads the database again.
+                _context.ChangeTracker.Clear();
+            }
+            return result;
+        }
+
+                public void Detach(User user)
+        {
+            _context.Entry(user).State = EntityState.Detached;
+        }
+
         public async Task UpdateUserAsync(User user)
         {
             // A user loaded through this context is already tracked, so SaveChanges writes only
@@ -328,6 +356,26 @@ namespace knkwebapi_v2.Repositories
                 user.LastPasswordChangeAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
+        }
+
+        public async Task<int> IncrementTokenVersionAsync(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return 0;
+            }
+            user.TokenVersion++;
+            await _context.SaveChangesAsync();
+            return user.TokenVersion;
+        }
+
+        public async Task<User?> GetByUsernameIgnoreCaseAsync(string username)
+        {
+            // The exact match uses the unique index (and MySQL's case-insensitive collation);
+            // the lower-cased fallback covers a case-sensitive collation.
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username)
+                ?? await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
         }
 
         public async Task UpdateEmailAsync(int id, string email)

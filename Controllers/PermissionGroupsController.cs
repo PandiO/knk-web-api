@@ -14,12 +14,33 @@ namespace KnKWebAPI.Controllers
     public class PermissionGroupsController : ControllerBase
     {
         private readonly IPermissionGroupService _service;
+        private readonly IPermissionEscalationGuard _escalationGuard;
 
-        public PermissionGroupsController(IPermissionGroupService service)
+        public PermissionGroupsController(IPermissionGroupService service, IPermissionEscalationGuard escalationGuard)
         {
             _service = service;
+            _escalationGuard = escalationGuard;
         }
 
+        // Closed-alpha WP3: a group inherits every node of its parent chain, so a web user may only
+        // pick a parent whose nodes they all hold - and may only drop or replace the current parent
+        // when they hold its nodes too: detaching a group from an owner/admin parent strips those
+        // inherited nodes from every member, which is as strong as revoking them directly.
+        private async Task<IActionResult?> RefuseIfParentEscalatesAsync(int? newParentId, int? currentParentId)
+        {
+            if (newParentId == currentParentId) return null;
+            if (currentParentId.HasValue)
+            {
+                var refusedRemoval = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                    actor => _escalationGuard.CanInheritFromGroupAsync(actor, currentParentId.Value));
+                if (refusedRemoval != null) return refusedRemoval;
+            }
+            if (!newParentId.HasValue) return null;
+            return await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanInheritFromGroupAsync(actor, newParentId.Value));
+        }
+
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -27,6 +48,7 @@ namespace KnKWebAPI.Controllers
             return Ok(items);
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet("{id:int}", Name = "GetPermissionGroupById")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -42,6 +64,8 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> Create([FromBody] PermissionGroupDto dto)
         {
             if (dto == null) return BadRequest();
+            var refused = await RefuseIfParentEscalatesAsync(dto.ParentGroupId, null);
+            if (refused != null) return refused;
             try
             {
                 var created = await _service.CreateAsync(dto);
@@ -58,6 +82,9 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] PermissionGroupDto dto)
         {
             if (dto == null) return BadRequest();
+            var current = await _service.GetByIdAsync(id);
+            var refused = await RefuseIfParentEscalatesAsync(dto.ParentGroupId, current?.ParentGroupId);
+            if (refused != null) return refused;
             try
             {
                 await _service.UpdateAsync(id, dto);
@@ -100,6 +127,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<PermissionGroupListDto>>> Search([FromBody] PagedQueryDto query)
         {
@@ -111,6 +139,7 @@ namespace KnKWebAPI.Controllers
         /// "Premium expiring soon" moderation view (docs/specs/user-management/IMPLEMENTATION_PLAN.md
         /// Phase 3) — memberships in this group expiring within the next withinDays days.
         /// </summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet("{id:int}/expiring-memberships")]
         public async Task<ActionResult<IEnumerable<ExpiringMembershipDto>>> GetExpiringMemberships(int id, [FromQuery] int withinDays = 7)
         {

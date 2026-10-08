@@ -78,6 +78,15 @@ namespace knkwebapi_v2.Attributes
         /// <summary>Server-wide admin settings with no narrower node (audit-log retention).</summary>
         public const string ServerConfig = "knk.admin.config";
 
+        /// <summary>Content definitions with no narrower node: items, forms and displays, menus and
+        /// reference data (closed-alpha hardening D7). Matched by knk.admin.* and *.</summary>
+        public const string ManageContent = "knk.admin.content";
+
+        /// <summary>The world model with no narrower node: domains, towns, districts, structures,
+        /// streets, locations, gates, world tasks and workflows (closed-alpha hardening D7).
+        /// Matched by knk.admin.* and *.</summary>
+        public const string ManageWorld = "knk.admin.world";
+
         /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
         /// owner group; every read is audited.</summary>
         public const string ReadPrivateMessages = "knk.pmlog.read";
@@ -90,7 +99,7 @@ namespace knkwebapi_v2.Attributes
     /// endpoints both call, use RequireServiceOrPermission instead.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
-    public class RequirePermissionAttribute : TypeFilterAttribute
+    public class RequirePermissionAttribute : TypeFilterAttribute, IKnkAccessRule
     {
         public RequirePermissionAttribute(string node) : base(typeof(RequirePermissionFilter))
         {

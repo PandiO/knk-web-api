@@ -16,13 +16,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddRazorPages();
 
-builder.Services.AddControllers()
+// Closed-alpha WP1 (D6): default-deny. Every action needs the plugin key or a logged-in user
+// unless it has [AllowAnonymous]; every write also needs an explicit access rule.
+builder.Services.AddControllers(options => options.Filters.Add<knkwebapi_v2.Attributes.DefaultCallerRequiredFilter>())
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
@@ -35,7 +36,8 @@ builder.Services.AddControllers()
         options.SuppressModelStateInvalidFilter = true;
     });
 
-// Bind Kestrel to URLs from config or default to LAN-accessible HTTP
+// Bind Kestrel to URLs from config, or to loopback only (closed-alpha WP7.6): reaching the API
+// from the network is an explicit choice (Urls / ASPNETCORE_URLS, e.g. http://0.0.0.0:5000 in a container).
 var urlConfig = builder.Configuration["ASPNETCORE_URLS"] ?? builder.Configuration["Urls"];
 if (!string.IsNullOrWhiteSpace(urlConfig))
 {
@@ -43,8 +45,12 @@ if (!string.IsNullOrWhiteSpace(urlConfig))
 }
 else
 {
-    builder.WebHost.UseUrls("http://0.0.0.0:5000");
+    builder.WebHost.UseUrls("http://127.0.0.1:5000");
 }
+
+// Closed-alpha WP7.1 (D9): no secrets in git. Outside Development a missing or committed JWT
+// secret or a missing connection string stops the API here.
+var startupWarnings = knkwebapi_v2.Configuration.StartupSecurity.ApplySecretChecks(builder);
 
 string? connectionString = builder.Configuration.GetConnectionString("MySqlDbConnection");
 builder.Services.AddDbContext<KnKDbContext>(options =>
@@ -79,6 +85,23 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.FromSeconds(60)
+    };
+    // Closed-alpha WP4: a refresh JWT from before the change is not a bearer token, and every
+    // access token must carry the user's current TokenVersion ("tv") and an active user.
+    // IUserSessionStateCache keeps this to one DB read per user per 60 s.
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var sessions = context.HttpContext.RequestServices.GetRequiredService<knkwebapi_v2.Services.IUserSessionStateCache>();
+            var problem = context.Principal == null
+                ? "no principal"
+                : await knkwebapi_v2.Services.AccessTokenSessionCheck.FindProblemAsync(context.Principal, sessions, context.HttpContext.RequestAborted);
+            if (problem != null)
+            {
+                context.Fail($"Access token refused: {problem}.");
+            }
+        }
     };
 });
 
@@ -128,37 +151,47 @@ if (telemetryOptions.Enabled)
         });
 }
 
+// Closed-alpha WP6.3: per-IP limits on the auth and lookup endpoints ([EnableRateLimiting]).
+knkwebapi_v2.Configuration.RateLimitingSetup.AddKnkRateLimiting(builder.Services, builder.Configuration);
+
+// Closed-alpha WP7.2: CORS origins from Cors:AllowedOrigins (the localhost dev list lives in
+// appsettings.Development.json). A same-origin deploy (web app and /api on one host) needs none.
+var allowedOrigins = knkwebapi_v2.Configuration.StartupSecurity.AllowedOrigins(builder.Configuration);
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(
         policy =>
         {
+            if (allowedOrigins.Length == 0)
+            {
+                policy.SetIsOriginAllowed(_ => false);
+                return;
+            }
             policy
-                .WithOrigins(
-                    "http://localhost:3000",    // Frontend dev server (HTTP)
-                    "https://localhost:3000",   // Frontend dev server (HTTPS)
-                    "http://localhost:5294",    // API HTTP (before HTTPS redirect)
-                    "https://localhost:7104"    // API HTTPS (after redirect)
-                )
+                .WithOrigins(allowedOrigins)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials(); // Enable credentials (cookies, authorization headers)
+                .AllowCredentials() // cookies (the refresh cookie) and the Authorization header
+                .WithExposedHeaders("Retry-After"); // the web app reads it on a 429
         });
 });
 
-// Placeholder admin authorization policy.
-// TODO: Bind this to your real authentication/authorization setup.
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("RequireAdmin", policy =>
-    {
-        // Placeholder: allow all in Development, require role claim otherwise.
-        policy.RequireAssertion(ctx =>
-            ctx.User?.IsInRole("Admin") == true || ctx.User?.Claims.Any(c => c.Type == "role" && c.Value == "Admin") == true);
-    });
-});
+// Closed-alpha WP7.3: behind a reverse proxy / Cloudflare Tunnel the client IP and scheme come
+// from forwarded headers (needed for the per-IP rate limits and Secure cookies).
+var forwardedHeadersEnabled = knkwebapi_v2.Configuration.StartupSecurity.ConfigureForwardedHeaders(builder.Services, builder.Configuration);
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+foreach (var warning in startupWarnings)
+{
+    app.Logger.LogWarning("{Warning}", warning);
+}
+if (app.Environment.IsDevelopment())
+{
+    app.Logger.LogInformation("Dev secrets live in user-secrets, e.g. dotnet user-secrets set \"ConnectionStrings:MySqlDbConnection\" \"…\" (see CLAUDE.md).");
+}
 
 // KNG-22: the plugin authenticates with this shared key (X-API-Key). Without it every
 // plugin-only and currency/admin write refuses the game server, unless a developer opted out.
@@ -172,15 +205,38 @@ if (string.IsNullOrEmpty(app.Configuration[knkwebapi_v2.Attributes.PluginService
 }
 
 // Configure the HTTP request pipeline.
+if (forwardedHeadersEnabled)
+{
+    // First, so everything after sees the real client IP and scheme.
+    app.UseForwardedHeaders();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    // Closed-alpha WP7.4: outside Development an unhandled exception is a ProblemDetails body with
+    // no exception text (the middleware logs the exception).
+    app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+            title = "An unexpected error occurred.",
+            status = StatusCodes.Status500InternalServerError,
+            traceId = System.Diagnostics.Activity.Current?.Id ?? context.TraceIdentifier
+        }, (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json");
+    }));
+}
 
 app.UseCors();
 app.MapRazorPages();
 app.UseRouting();
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

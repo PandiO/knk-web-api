@@ -20,6 +20,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<Domain> Domains { get; set; } = null!;
     public virtual DbSet<User> Users { get; set; } = null!;
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
     public virtual DbSet<Category> Categories { get; set; } = null!;
     public DbSet<FormConfiguration> FormConfigurations { get; set; }
     public DbSet<FormStep> FormSteps { get; set; }
@@ -531,6 +532,29 @@ public partial class KnKDbContext : DbContext
             .HasForeignKey(g => g.CurrentSiegeId)
             .OnDelete(DeleteBehavior.SetNull);
         // ==== end Siege Phase 2 ================================================================
+
+        // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
+        // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("refresh_tokens");
+
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64).IsFixedLength();
+            entity.Property(e => e.FamilyId).IsRequired().HasMaxLength(32).IsFixedLength();
+            entity.Property(e => e.ReplacedByHash).HasMaxLength(64).IsFixedLength();
+            entity.Property(e => e.CreatedByIp).HasMaxLength(64);
+            entity.Property(e => e.UserAgent).HasMaxLength(256);
+
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.RevokedAt });
+            entity.HasIndex(e => e.FamilyId);
+
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<LinkCode>(entity =>
         {
@@ -2279,6 +2303,7 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.Property(e => e.TransferLockReason).HasMaxLength(200);
+            entity.Property(e => e.TokenVersion).HasDefaultValue(0);
         });
 
         // Teleport fee keys voided by a refund that found nothing to refund (KNG-17): the key is

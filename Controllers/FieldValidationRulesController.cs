@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using knkwebapi_v2.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +13,8 @@ namespace KnKWebAPI.Controllers
 {
     [ApiController]
     [Route("api/field-validation-rules")]
+    // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
     public class FieldValidationRulesController : ControllerBase
     {
         private readonly IValidationService _validationService;
@@ -19,13 +23,17 @@ namespace KnKWebAPI.Controllers
         private readonly IDependencyResolutionService _dependencyService;
         private readonly IPathResolutionService _pathService;
 
+        private readonly ILogger<FieldValidationRulesController> _logger;
+
         public FieldValidationRulesController(
             IValidationService validationService,
             IFieldValidationRuleService ruleService,
             IPlaceholderResolutionService placeholderService,
             IDependencyResolutionService dependencyService,
-            IPathResolutionService pathService)
+            IPathResolutionService pathService,
+            ILogger<FieldValidationRulesController>? logger = null)
         {
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<FieldValidationRulesController>.Instance;
             _validationService = validationService;
             _ruleService = ruleService;
             _placeholderService = placeholderService;
@@ -114,7 +122,8 @@ namespace KnKWebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Validation execution failed", error = ex.Message });
+                _logger.LogError(ex, "Validation execution failed");
+                return StatusCode(500, new { message = "Validation execution failed", error = "An unexpected error occurred." });
             }
         }
 
@@ -156,7 +165,8 @@ namespace KnKWebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Placeholder resolution failed", error = ex.Message });
+                _logger.LogError(ex, "Placeholder resolution failed");
+                return StatusCode(500, new { message = "Placeholder resolution failed", error = "An unexpected error occurred." });
             }
         }
 
@@ -196,7 +206,8 @@ namespace KnKWebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Validation execution failed", error = ex.Message });
+                _logger.LogError(ex, "Validation execution failed");
+                return StatusCode(500, new { message = "Validation execution failed", error = "An unexpected error occurred." });
             }
         }
 
@@ -238,7 +249,8 @@ namespace KnKWebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Placeholder extraction failed", error = ex.Message });
+                _logger.LogError(ex, "Placeholder extraction failed");
+                return StatusCode(500, new { message = "Placeholder extraction failed", error = "An unexpected error occurred." });
             }
         }
 
@@ -271,7 +283,8 @@ namespace KnKWebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Draft validation failed", error = ex.Message });
+                _logger.LogError(ex, "Draft validation failed");
+                return StatusCode(500, new { message = "Draft validation failed", error = "An unexpected error occurred." });
             }
         }
 

@@ -346,8 +346,8 @@ public class LinkCodeServiceTests
             .ReturnsAsync(linkCode);
 
         _mockLinkCodeRepository
-            .Setup(r => r.UpdateLinkCodeStatusAsync(1, LinkCodeStatus.Used))
-            .Returns(Task.CompletedTask);
+            .Setup(r => r.TryMarkUsedAsync(1))
+            .ReturnsAsync(true);
 
         _mockMapper
             .Setup(m => m.Map<UserDto>(user))
@@ -360,7 +360,31 @@ public class LinkCodeServiceTests
         Assert.True(result.Success);
         Assert.NotNull(result.LinkCode);
         Assert.Null(result.Error);
-        _mockLinkCodeRepository.Verify(r => r.UpdateLinkCodeStatusAsync(1, LinkCodeStatus.Used), Times.Once);
+        _mockLinkCodeRepository.Verify(r => r.TryMarkUsedAsync(1), Times.Once);
+    }
+
+    [Fact]
+    public async Task ConsumeLinkCodeAsync_WhenAnotherRequestUsedItFirst_Fails()
+    {
+        // Two registrations race with one code: the conditional write lets only one through.
+        const string code = "RACE0001";
+        var linkCode = new LinkCode
+        {
+            Id = 7,
+            UserId = 3,
+            Code = code,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(20),
+            Status = LinkCodeStatus.Active,
+            User = new User { Id = 3, Username = "player" }
+        };
+        _mockLinkCodeRepository.Setup(r => r.GetLinkCodeByCodeAsync(code)).ReturnsAsync(linkCode);
+        _mockLinkCodeRepository.Setup(r => r.TryMarkUsedAsync(7)).ReturnsAsync(false);
+
+        var result = await _linkCodeService.ConsumeLinkCodeAsync(code);
+
+        Assert.False(result.Success);
+        Assert.NotNull(result.Error);
     }
 
     [Fact]
