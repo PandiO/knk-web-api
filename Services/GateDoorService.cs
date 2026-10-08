@@ -64,6 +64,7 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Invalid gateStructureId.", nameof(gateStructureId));
             if (string.IsNullOrWhiteSpace(gateDoorDto.Name))
                 throw new ArgumentException("GateDoor name is required.", nameof(gateDoorDto));
+            GateNameRules.EnsureNotReserved(gateDoorDto.Name, "gate door", "/gatedoor", nameof(gateDoorDto));
 
             var parentStructure = await _structureRepo.GetByIdAsync(gateStructureId);
             if (parentStructure == null)
@@ -90,6 +91,7 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Invalid id.", nameof(id));
             if (string.IsNullOrWhiteSpace(gateDoorDto.Name))
                 throw new ArgumentException("GateDoor name is required.", nameof(gateDoorDto));
+            GateNameRules.EnsureNotReserved(gateDoorDto.Name, "gate door", "/gatedoor", nameof(gateDoorDto));
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null)
