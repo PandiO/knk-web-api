@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using knkwebapi_v2.Attributes;
 using System;
 using System.Collections.Generic;
@@ -16,8 +17,11 @@ namespace KnKWebAPI.Controllers
     {
         private readonly IFormSubmissionProgressService _service;
 
-        public FormSubmissionProgressController(IFormSubmissionProgressService service)
+        private readonly ILogger<FormSubmissionProgressController> _logger;
+
+        public FormSubmissionProgressController(IFormSubmissionProgressService service, ILogger<FormSubmissionProgressController>? logger = null)
         {
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<FormSubmissionProgressController>.Instance;
             _service = service;
         }
 
@@ -85,7 +89,8 @@ namespace KnKWebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                _logger.LogError(ex, "Saving form submission progress failed");
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
 

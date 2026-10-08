@@ -180,8 +180,10 @@ namespace knkwebapi_v2.DependencyInjection
 
             // Region management service - requires configuration from appsettings
             string? minecraftPluginBaseUrl = configuration?.GetSection("MinecraftPlugin:BaseUrl").Value ?? "http://localhost:8081";
-            services.AddScoped<IRegionService>(sp => 
-                new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl)
+            // Closed-alpha WP7.5: calls to the plugin's region HTTP server carry the shared key.
+            services.AddScoped<IRegionService>(sp =>
+                new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl,
+                    configuration?[knkwebapi_v2.Attributes.PluginServiceAuth.ApiKeyConfigKey])
             );
             services.AddScoped<IDomainRegionNameFinalizer, DomainRegionNameFinalizer>();
 

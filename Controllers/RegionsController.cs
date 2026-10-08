@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -13,8 +14,11 @@ namespace KnKWebAPI.Controllers
         private readonly IRegionService _regionService;
         private readonly IDomainRegionNameFinalizer _regionNames;
 
-        public RegionsController(IRegionService regionService, IDomainRegionNameFinalizer regionNames)
+        private readonly ILogger<RegionsController> _logger;
+
+        public RegionsController(IRegionService regionService, IDomainRegionNameFinalizer regionNames, ILogger<RegionsController>? logger = null)
         {
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<RegionsController>.Instance;
             _regionService = regionService;
             _regionNames = regionNames;
         }
@@ -61,7 +65,8 @@ namespace KnKWebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Error renaming region: {ex.Message}");
+                _logger.LogError(ex, "Renaming region {OldRegionId} to {NewRegionId} failed", oldRegionId, newRegionId);
+                return StatusCode(500, "Error renaming region.");
             }
         }
     }

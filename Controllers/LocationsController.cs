@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using knkwebapi_v2.Attributes;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -16,8 +17,11 @@ public class LocationsController : ControllerBase
 {
     private readonly ILocationService _service;
 
-    public LocationsController(ILocationService service)
-    {
+        private readonly ILogger<LocationsController> _logger;
+
+    public LocationsController(ILocationService service, ILogger<LocationsController>? logger = null)
+        {
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<LocationsController>.Instance;
         _service = service;
     }
 
@@ -89,7 +93,8 @@ public class LocationsController : ControllerBase
         catch (DbUpdateException ex)
         {
             // Still referenced (e.g. by a siege scenario, whose FKs restrict deletes): 409, not 500.
-            return Conflict(new { code = "DbConstraint", message = ex.InnerException?.Message ?? ex.Message });
+            _logger.LogError(ex, "Deleting location {Id} hit a database constraint", id);
+            return Conflict(new { code = "DbConstraint", message = "This location is still in use and can't be deleted." });
         }
     }
 
