@@ -57,6 +57,9 @@ namespace knkwebapi_v2.Services
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Domain with id {id} not found.");
+            // KNG-78: this path can also rename a GateStructure; 'here' is reserved for gates only.
+            if (existing is GateStructure)
+                GateNameRules.EnsureNotReserved(domain.Name, "gate structure", "/gate", nameof(domain));
 
             string oldRegionId = existing.WgRegionId;
             
