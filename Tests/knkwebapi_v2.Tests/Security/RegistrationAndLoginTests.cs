@@ -147,7 +147,7 @@ public class RegistrationAndLoginTests : IDisposable
     public async Task Login_ByEmailOrMinecraftName(string login)
     {
         await _h.AddUserAsync();
-        var (ok, result, error) = await _h.CreateAuthService().LoginAsync(login, AuthTestHarness.Password, false);
+        var (ok, result, error, _) = await _h.CreateAuthService().LoginAsync(login, AuthTestHarness.Password, false);
         Assert.True(ok, error);
         Assert.Equal("Steve", result!.User.Username);
     }
@@ -156,7 +156,7 @@ public class RegistrationAndLoginTests : IDisposable
     public async Task Login_ForAMinecraftOnlyAccount_FailsWithTheGenericMessage()
     {
         await _h.AddUserAsync(email: null, password: null);
-        var (ok, _, error) = await _h.CreateAuthService().LoginAsync("Steve", "anything-long", false);
+        var (ok, _, error, _) = await _h.CreateAuthService().LoginAsync("Steve", "anything-long", false);
         Assert.False(ok);
         Assert.Equal("Invalid credentials.", error);
     }

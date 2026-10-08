@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Net;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using knkwebapi_v2.Configuration;
@@ -51,6 +53,7 @@ namespace knkwebapi_v2.Controllers
         private string? UserAgent => HttpContext?.Request.Headers.UserAgent.ToString();
 
         [HttpPost("login")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] AuthLoginRequestDto request)
         {
@@ -60,11 +63,16 @@ namespace knkwebapi_v2.Controllers
             }
 
             var login = string.IsNullOrWhiteSpace(request.Login) ? request.Email : request.Login;
-            var (ok, result, error) = await _authService.LoginAsync(login ?? string.Empty, request.Password, request.RememberMe, ClientIp, UserAgent);
+            var (ok, result, error, lockedFor) = await _authService.LoginAsync(login ?? string.Empty, request.Password, request.RememberMe, ClientIp, UserAgent);
+            if (lockedFor.HasValue)
+            {
+                // Closed-alpha WP6.2: the message is shown to players verbatim.
+                Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(lockedFor.Value.TotalSeconds)).ToString();
+                return StatusCode(StatusCodes.Status429TooManyRequests, new { error = "TooManyAttempts", message = error });
+            }
             if (!ok || result == null)
             {
-                _logger.LogWarning("Login failed for {Login}: {Reason}", login, error ?? "Invalid credentials");
-                return Unauthorized(new { error = "InvalidCredentials", message = error ?? "Invalid credentials." });
+                return Unauthorized(new { error = "InvalidCredentials", message = error ?? AuthService.InvalidCredentials });
             }
 
             SetRefreshTokenCookie(result.Session);
@@ -81,6 +89,7 @@ namespace knkwebapi_v2.Controllers
         /// DuplicateEmail, 403 RegistrationNeedsCode without a code.
         /// </summary>
         [HttpPost("register")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] AuthRegisterRequestDto request)
         {
@@ -103,6 +112,7 @@ namespace knkwebapi_v2.Controllers
         }
 
         [HttpPost("refresh")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
         [AllowAnonymous]
         public async Task<IActionResult> Refresh([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AuthRefreshRequestDto? request)
         {
@@ -215,6 +225,7 @@ namespace knkwebapi_v2.Controllers
         }
 
         [HttpPost("validate-token")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
         [AllowAnonymous]
         public async Task<IActionResult> ValidateToken([FromBody] AuthValidateTokenRequestDto request)
         {
@@ -238,6 +249,7 @@ namespace knkwebapi_v2.Controllers
         }
 
         [HttpPost("forgot-password")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] AuthForgotPasswordRequestDto request)
         {
@@ -246,16 +258,20 @@ namespace knkwebapi_v2.Controllers
             var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
             var userAgent = HttpContext.Request.Headers.UserAgent.ToString();
 
+            // Closed-alpha WP6.7: the debug token only for a developer on this machine.
+            var remote = HttpContext.Connection.RemoteIpAddress;
+            var allowDebug = _environment.IsDevelopment() && remote != null && IPAddress.IsLoopback(remote);
             var response = await _authService.RequestPasswordResetAsync(
                 email,
                 clientIp,
                 userAgent,
-                _environment.IsDevelopment());
+                allowDebug);
 
             return Ok(response);
         }
 
         [HttpPost("reset-password")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
         [AllowAnonymous]
         public async Task<IActionResult> ResetPassword([FromBody] AuthResetPasswordRequestDto request)
         {

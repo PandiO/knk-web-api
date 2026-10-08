@@ -303,6 +303,8 @@ public class UsersControllerTests
     [Fact]
     public async Task CheckDuplicate_WithNoDuplicate_Returns200False()
     {
+        // The by-UUID duplicate check is game server / staff only (closed-alpha WP6.4).
+        _controller.ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.Plugin() };
         // Arrange
         var checkDto = new DuplicateCheckDto
         {
@@ -325,6 +327,8 @@ public class UsersControllerTests
     [Fact]
     public async Task CheckDuplicate_WithDuplicate_Returns200WithDetails()
     {
+        // The by-UUID duplicate check is game server / staff only (closed-alpha WP6.4).
+        _controller.ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.Plugin() };
         // Arrange
         var checkDto = new DuplicateCheckDto
         {

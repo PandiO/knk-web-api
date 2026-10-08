@@ -20,7 +20,7 @@ public class AuthSessionTests : IDisposable
 
     private async Task<AuthLoginResponseDto> LoginAsync(bool rememberMe = false)
     {
-        var (ok, result, error) = await _h.CreateAuthService().LoginAsync("steve@example.com", AuthTestHarness.Password, rememberMe);
+        var (ok, result, error, _) = await _h.CreateAuthService().LoginAsync("steve@example.com", AuthTestHarness.Password, rememberMe);
         Assert.True(ok, error);
         return result!;
     }
@@ -81,7 +81,7 @@ public class AuthSessionTests : IDisposable
         using var h = new AuthTestHarness(s => s.Jwt.RefreshReuseGraceSeconds = 30);
         await h.AddUserAsync();
         var auth = h.CreateAuthService();
-        var (_, login, _) = await auth.LoginAsync("steve@example.com", AuthTestHarness.Password, false);
+        var (_, login, _, _) = await auth.LoginAsync("steve@example.com", AuthTestHarness.Password, false);
         var first = login!.Session!.Token;
 
         var (_, rotated, _) = await auth.RefreshAsync(first);
@@ -101,7 +101,7 @@ public class AuthSessionTests : IDisposable
         using var h = new AuthTestHarness(s => s.Jwt.RefreshReuseGraceSeconds = 30);
         await h.AddUserAsync();
         var auth = h.CreateAuthService();
-        var (_, login, _) = await auth.LoginAsync("steve@example.com", AuthTestHarness.Password, false);
+        var (_, login, _, _) = await auth.LoginAsync("steve@example.com", AuthTestHarness.Password, false);
         var first = login!.Session!.Token;
         var (_, rotated, _) = await auth.RefreshAsync(first);
         await auth.LogoutAsync(rotated!.Session!.Token);

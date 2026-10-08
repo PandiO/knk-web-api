@@ -37,6 +37,10 @@ namespace knkwebapi_v2.DependencyInjection
             // Closed-alpha WP4: per-user session state (TokenVersion, active) cached for the
             // per-request token check; one instance so a revocation invalidates it for everyone.
             services.AddSingleton<IUserSessionStateCache, UserSessionStateCache>();
+            // Closed-alpha WP6: per-account login lockout and the background account-mail queue.
+            services.AddSingleton<ILoginAttemptLimiter, LoginAttemptLimiter>();
+            services.AddSingleton<IAccountMailQueue, AccountMailQueue>();
+            services.AddHostedService<AccountMailSender>();
             // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
             services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
 

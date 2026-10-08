@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
@@ -1037,6 +1038,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Invalid request</response>
         [AllowAnonymous]
         [HttpPost("validate-link-code/{code}")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
         public async Task<IActionResult> ValidateLinkCode(string code)
         {
             try
@@ -1149,42 +1151,78 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Check for duplicate accounts based on UUID and username
+        /// Is an email or username free? (register and account pages)
         /// </summary>
         /// <remarks>
-        /// Used by Minecraft server to detect when a player has multiple accounts.
-        /// Returns both the primary (UUID-based) and conflicting (username-based) accounts.
+        /// Closed-alpha hardening WP6.4: anonymous and rate-limited; anonymous and player callers
+        /// get only { available }, staff (knk.admin.user.manage) and the game server also get
+        /// conflictingUserId.
         /// </remarks>
-        /// <param name="request">Duplicate check request with UUID and username</param>
-        /// <returns>Duplicate check result</returns>
-        /// <response code="200">Check completed (check HasDuplicate field)</response>
-        /// <response code="400">Invalid request</response>
         [AllowAnonymous]
         [HttpGet("check-duplicate")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
         public async Task<IActionResult> CheckDuplicateAvailability([FromQuery] string? email, [FromQuery] string? username, [FromQuery] int? excludeUserId)
         {
             if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(username))
             {
                 return BadRequest(new { error = "InvalidRequest", message = "Email or username is required" });
             }
-
-            if (!string.IsNullOrWhiteSpace(email))
-            {
-                var (isTaken, conflictingUserId) = await _service.CheckEmailTakenAsync(email, excludeUserId);
-                return Ok(new { available = !isTaken, conflictingUserId });
-            }
-
-            var (usernameTaken, usernameConflictId) = await _service.CheckUsernameTakenAsync(username!, excludeUserId);
-            return Ok(new { available = !usernameTaken, conflictingUserId = usernameConflictId });
+            return await AvailabilityAsync(email, username, excludeUserId);
         }
 
+        private async Task<IActionResult> AvailabilityAsync(string? email, string? username, int? excludeUserId)
+        {
+            var (isTaken, conflictingUserId) = !string.IsNullOrWhiteSpace(email)
+                ? await _service.CheckEmailTakenAsync(email, excludeUserId)
+                : await _service.CheckUsernameTakenAsync(username!, excludeUserId);
+
+            return await IsStaffOrPluginAsync()
+                ? Ok(new { available = !isTaken, conflictingUserId })
+                : Ok(new { available = !isTaken });
+        }
+
+        /// <summary>The game server, or a logged-in user with knk.admin.user.manage.</summary>
+        private async Task<bool> IsStaffOrPluginAsync()
+        {
+            var caller = HttpContext?.GetKnkCaller();
+            if (caller == null) return false;
+            if (caller.IsPluginService) return true;
+            if (caller.WebUserId == null) return false;
+            var check = await _permissionResolutionService.CheckAsync(caller.WebUserId.Value, StaffPermissions.ManageUsers);
+            return check?.Allowed == true;
+        }
+
+        /// <summary>
+        /// Two uses (closed-alpha hardening WP6.4):
+        /// <list type="bullet">
+        /// <item>{ email } or { username } (no uuid): the same availability check as the GET, with the
+        /// value in the body instead of the URL - preferred by the web app.</item>
+        /// <item>{ uuid, username } (or an empty body, as knk-plugin sends it): the duplicate-account
+        /// check on join, which returns both accounts' summaries - game server and staff only.</item>
+        /// </list>
+        /// </summary>
         [AllowAnonymous]
         [HttpPost("check-duplicate")]
-        public async Task<IActionResult> CheckDuplicate([FromBody] DuplicateCheckDto request)
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
+        public async Task<IActionResult> CheckDuplicate([FromBody] DuplicateCheckDto? request)
         {
+            if (request != null && string.IsNullOrWhiteSpace(request.Uuid)
+                && (!string.IsNullOrWhiteSpace(request.Email) || !string.IsNullOrWhiteSpace(request.Username)))
+            {
+                return await AvailabilityAsync(request.Email, request.Username, null);
+            }
+
+            if (!await IsStaffOrPluginAsync())
+            {
+                return HttpContext?.GetKnkCaller().IsWebUser == true
+                    ? StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = "Only the game server or staff can check accounts by UUID." })
+                    : Unauthorized(new { error = "Unauthorized", message = "Only the game server or staff can check accounts by UUID." });
+            }
+
             try
             {
-                var (hasDuplicate, secondaryUserId) = await _service.CheckForDuplicateAsync(request.Uuid, request.Username);
+                var uuid = request?.Uuid ?? string.Empty;
+                var (hasDuplicate, secondaryUserId) = await _service.CheckForDuplicateAsync(uuid, request?.Username ?? string.Empty);
 
                 if (!hasDuplicate)
                 {
@@ -1196,7 +1234,7 @@ namespace knkwebapi_v2.Controllers
                 }
 
                 // Get both users
-                var primaryUser = await _service.GetByUuidAsync(request.Uuid);
+                var primaryUser = await _service.GetByUuidAsync(uuid);
                 var secondaryUser = secondaryUserId.HasValue ? await _service.GetByIdAsync(secondaryUserId.Value) : null;
 
                 return Ok(new DuplicateCheckResponseDto
@@ -1339,6 +1377,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="404">User not found</response>
         [Authorize]
         [HttpPost("link-minecraft-account")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
         public async Task<IActionResult> LinkMinecraftAccount([FromBody] LinkMinecraftAccountDto request)
         {
             try

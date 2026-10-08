@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
 
@@ -14,8 +15,9 @@ namespace knkwebapi_v2.Services
         /// <param name="login">Email address or Minecraft username (case-insensitive)</param>
         /// <param name="password">Plain text password</param>
         /// <param name="rememberMe">Extended session flag</param>
-        /// <returns>Tuple with success flag, response DTO, and optional error message</returns>
-        Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string login, string password, bool rememberMe, string? clientIp = null, string? userAgent = null);
+        /// <returns>Success flag, response, error message, and how long the account stays locked
+        /// when the lockout (closed-alpha WP6.2) refused the attempt.</returns>
+        Task<(bool Ok, AuthLoginResponseDto? Result, string? Error, TimeSpan? LockedFor)> LoginAsync(string login, string password, bool rememberMe, string? clientIp = null, string? userAgent = null);
 
         /// <summary>
         /// Refresh an access token using a refresh token, rotating the refresh token.
@@ -66,7 +68,7 @@ namespace knkwebapi_v2.Services
         /// <param name="email">Account email</param>
         /// <param name="clientIp">Caller IP for abuse controls</param>
         /// <param name="userAgent">Caller user-agent for audit logging</param>
-        /// <param name="allowDebugPayload">Allow development-only debug payload</param>
+        /// <param name="allowDebugPayload">Development and a loopback caller (closed-alpha WP6.7): only then may the debug token be returned</param>
         Task<AuthForgotPasswordResponseDto> RequestPasswordResetAsync(string email, string? clientIp, string? userAgent, bool allowDebugPayload);
 
         /// <summary>

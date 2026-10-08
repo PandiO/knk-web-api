@@ -58,10 +58,14 @@ namespace knkwebapi_v2.Dtos
     public class DuplicateCheckDto
     {
         [JsonPropertyName("uuid")]
-        public string Uuid { get; set; } = null!;
+        public string? Uuid { get; set; }
 
         [JsonPropertyName("username")]
-        public string Username { get; set; } = null!;
+        public string? Username { get; set; }
+
+        /// <summary>Availability check by email (closed-alpha WP6.4).</summary>
+        [JsonPropertyName("email")]
+        public string? Email { get; set; }
     }
 
     /// <summary>

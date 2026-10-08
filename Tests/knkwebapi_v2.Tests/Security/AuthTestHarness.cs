@@ -37,11 +37,17 @@ internal sealed class AuthTestHarness : IDisposable
     public UserSessionStateCache SessionState { get; }
     public SessionRevocationService Revocation { get; }
     public Mock<IPasswordResetDeliveryService> Delivery { get; } = new();
+    public List<AccountMail> Mail { get; } = new();
+    public Mock<IAccountMailQueue> MailQueue { get; } = new();
+    public LoginAttemptLimiter Limiter { get; }
     public Mock<IMapper> Mapper { get; } = new();
 
     public AuthTestHarness(Action<SecuritySettings>? configure = null)
     {
+        Settings.BcryptRounds = 4;
         configure?.Invoke(Settings);
+        MailQueue.Setup(q => q.Enqueue(It.IsAny<AccountMail>())).Callback((AccountMail m) => Mail.Add(m)).Returns(true);
+        Limiter = new LoginAttemptLimiter(new MemoryCache(new MemoryCacheOptions()), Options.Create(Settings));
         Configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Security:Jwt:Secret"] = JwtSecret,
@@ -72,13 +78,14 @@ internal sealed class AuthTestHarness : IDisposable
         Passwords,
         Mapper.Object,
         new LinkCodeRepository(Db),
-        Delivery.Object,
+        MailQueue.Object,
         new MemoryCache(new MemoryCacheOptions()),
         Options.Create(Settings),
         NullLogger<AuthService>.Instance,
         RefreshTokens,
         Revocation,
-        new LinkCodeService(new LinkCodeRepository(Db), Users, Mapper.Object, Options.Create(Settings)));
+        new LinkCodeService(new LinkCodeRepository(Db), Users, Mapper.Object, Options.Create(Settings)),
+        Limiter);
 
     /// <summary>An active /account link code for <paramref name="userId"/> (8 chars, 20 min).</summary>
     public async Task<string> AddLinkCodeAsync(int? userId, string code = "ABCD2345", DateTime? expiresAt = null)

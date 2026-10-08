@@ -146,6 +146,9 @@ if (telemetryOptions.Enabled)
         });
 }
 
+// Closed-alpha WP6.3: per-IP limits on the auth and lookup endpoints ([EnableRateLimiting]).
+knkwebapi_v2.Configuration.RateLimitingSetup.AddKnkRateLimiting(builder.Services, builder.Configuration);
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(
@@ -189,6 +192,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.MapRazorPages();
 app.UseRouting();
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
