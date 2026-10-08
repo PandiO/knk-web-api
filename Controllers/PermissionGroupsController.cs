@@ -23,10 +23,19 @@ namespace KnKWebAPI.Controllers
         }
 
         // Closed-alpha WP3: a group inherits every node of its parent chain, so a web user may only
-        // pick a parent whose nodes they all hold.
+        // pick a parent whose nodes they all hold - and may only drop or replace the current parent
+        // when they hold its nodes too: detaching a group from an owner/admin parent strips those
+        // inherited nodes from every member, which is as strong as revoking them directly.
         private async Task<IActionResult?> RefuseIfParentEscalatesAsync(int? newParentId, int? currentParentId)
         {
-            if (!newParentId.HasValue || newParentId == currentParentId) return null;
+            if (newParentId == currentParentId) return null;
+            if (currentParentId.HasValue)
+            {
+                var refusedRemoval = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                    actor => _escalationGuard.CanInheritFromGroupAsync(actor, currentParentId.Value));
+                if (refusedRemoval != null) return refusedRemoval;
+            }
+            if (!newParentId.HasValue) return null;
             return await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
                 actor => _escalationGuard.CanInheritFromGroupAsync(actor, newParentId.Value));
         }
