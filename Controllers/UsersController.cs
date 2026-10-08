@@ -217,6 +217,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Returns the resolution result (granted/denied/undeclared)</response>
         /// <response code="400">Node query parameter missing</response>
         /// <response code="404">User not found</response>
+        [RequireServiceSelfOrPermission(StaffPermissions.ManageUsers, "id")]
         [HttpGet("{id:int}/permissions/check")]
         public async Task<IActionResult> CheckPermission(int id, [FromQuery] string? node)
         {
@@ -243,6 +244,7 @@ namespace knkwebapi_v2.Controllers
         /// <param name="id">User ID</param>
         /// <response code="200">Returns the full resolved permission set</response>
         /// <response code="404">User not found</response>
+        [RequireServiceSelfOrPermission(StaffPermissions.ManageUsers, "id")]
         [HttpGet("{id:int}/permissions/effective")]
         public async Task<IActionResult> GetEffectivePermissions(int id)
         {
@@ -260,6 +262,7 @@ namespace knkwebapi_v2.Controllers
         /// </summary>
         /// <returns>List of all users with full details</returns>
         /// <response code="200">Returns list of users</response>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -274,6 +277,7 @@ namespace knkwebapi_v2.Controllers
         /// <returns>User with full details</returns>
         /// <response code="200">Returns the user</response>
         /// <response code="404">User not found</response>
+        [RequireServiceSelfOrPermission(StaffPermissions.ManageUsers, "id")]
         [HttpGet("{id:int}", Name = nameof(GetUserById))]
         public async Task<IActionResult> GetUserById(int id)
         {
@@ -285,6 +289,8 @@ namespace knkwebapi_v2.Controllers
         /// <summary>
         /// Get user summary by UUID (Minecraft plugin uses this)
         /// </summary>
+        /// <remarks>Any logged-in user or the game server (default rule). UserSummaryDto carries
+        /// no email: it is the public view of a player (closed-alpha hardening WP2).</remarks>
         /// <param name="uuid">Minecraft player UUID</param>
         /// <returns>User summary with coins, gems, and experience points</returns>
         /// <response code="200">Returns the user summary</response>
@@ -324,6 +330,7 @@ namespace knkwebapi_v2.Controllers
         /// <summary>
         /// Get user summary by username
         /// </summary>
+        /// <remarks>Any logged-in user or the game server; no email (see GetUserSummaryByUuid).</remarks>
         /// <param name="username">Username</param>
         /// <returns>User summary with coins, gems, and experience points</returns>
         /// <response code="200">Returns the user summary</response>
