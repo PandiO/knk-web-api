@@ -16,6 +16,8 @@ namespace knkwebapi_v2.Services
         public const string NotDiscovered = "NotDiscovered";
         public const string InsufficientGems = "InsufficientGems";
         public const string InsufficientCoins = "InsufficientCoins";
+        /// <summary>Not enough XP for a group's XP price (KNG-41).</summary>
+        public const string InsufficientExperience = "InsufficientExperience";
 
         /// <summary>The key's charge was refunded, or the key was voided by a refund that came first.</summary>
         public const string Refunded = "Refunded";

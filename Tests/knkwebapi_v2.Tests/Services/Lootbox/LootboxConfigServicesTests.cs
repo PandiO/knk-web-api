@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AutoMapper;
 using FluentAssertions;
 using knkwebapi_v2.Dtos;
@@ -116,6 +117,67 @@ public class LootboxConfigServicesTests
             .Should().Equal(engine.Items.Select(i => (i.Item.BlueprintId, Math.Round(i.Probability * 100, 6))));
         dto.Specials.Should().BeEmpty("the seeded specials need a ★5 box");
         dto.NormalRollPercent.Should().Be(100);
+    }
+
+    // ===== Batch odds (KNG-45) =====
+
+    [Fact]
+    public async Task OddsForTypes_AreTheSameNumbersAsTheSingleTypeEndpoint_ForEveryTypeAndGrade()
+    {
+        await SeedAllAsync();
+
+        await using var db = NewContext();
+        var service = TypeService(db);
+        var batch = await service.GetOddsForTypesAsync(new[] { 5, 2, 5 }, enabledOnly: false);
+
+        var types = (await service.GetAllAsync()).ToList();
+        types.Should().NotBeEmpty();
+        batch.Should().HaveCount(types.Count * 2, "one entry per type and distinct grade");
+        batch.Select(o => o.LootboxTypeName).Should().BeInAscendingOrder();
+        foreach (var type in types)
+        {
+            foreach (var stars in new[] { 2, 5 })
+            {
+                var single = await service.GetOddsAsync(type.Id, stars);
+                var fromBatch = batch.Single(o => o.LootboxTypeId == type.Id && o.BoxStars == stars);
+                JsonSerializer.Serialize(fromBatch).Should().Be(JsonSerializer.Serialize(single), $"{type.Name} ★{stars}");
+            }
+        }
+    }
+
+    [Fact]
+    public async Task OddsForTypes_WithoutBoxStars_UsesEachTypesHighest_AndEnabledOnlyDropsDisabledTypes()
+    {
+        await SeedAllAsync();
+        var weapons = await TypeIdAsync("Weapons");
+
+        await using (var write = NewContext())
+        {
+            // The seed leaves types disabled for the admin to switch on: enable all but Weapons.
+            foreach (var type in await write.LootboxTypes.ToListAsync()) type.Enabled = type.Id != weapons;
+            await write.SaveChangesAsync();
+        }
+
+        await using var db = NewContext();
+        var service = TypeService(db);
+        var all = await service.GetOddsForTypesAsync(null, enabledOnly: false);
+        var enabled = await service.GetOddsForTypesAsync(null, enabledOnly: true);
+
+        all.Select(o => o.LootboxTypeId).Should().Contain(weapons);
+        enabled.Select(o => o.LootboxTypeId).Should().NotContain(weapons);
+        enabled.Count.Should().Be(all.Count - 1);
+        all.Single(o => o.LootboxTypeId == weapons).BoxStars.Should().Be(5, "the type's MaxBoxStars");
+    }
+
+    [Fact]
+    public async Task OddsForTypes_RefuseStarsOutsideTheGradeScale()
+    {
+        await SeedAllAsync();
+        await using var db = NewContext();
+        var service = TypeService(db);
+
+        await service.Invoking(s => s.GetOddsForTypesAsync(new[] { 3, 11 }, false)).Should().ThrowAsync<ArgumentException>();
+        await service.Invoking(s => s.GetOddsForTypesAsync(new[] { 0 }, false)).Should().ThrowAsync<ArgumentException>();
     }
 
     [Fact]

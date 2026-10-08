@@ -115,6 +115,26 @@ namespace knkwebapi_v2.Dtos
         public Collection<DomainRegionDecisionDto> ChildDomainDecisions { get; set; } = new Collection<DomainRegionDecisionDto>();
     }
 
+    /// <summary>
+    /// One domain's entry/exit rule, keyed by its WorldGuard region (KNG-56). The game server writes
+    /// these onto the regions as flags WorldGuard saves, so the rules hold while this API is down.
+    /// </summary>
+    public class DomainAccessRuleDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = null!;
+        [JsonPropertyName("wgRegionId")]
+        public string WgRegionId { get; set; } = null!;
+        [JsonPropertyName("allowEntry")]
+        public bool AllowEntry { get; set; }
+        [JsonPropertyName("allowExit")]
+        public bool AllowExit { get; set; }
+        [JsonPropertyName("domainType")]
+        public string DomainType { get; set; } = null!;
+    }
+
     public class DomainRegionQueryDto
     {
         public IEnumerable<String>? WgRegionIds { get; set; }

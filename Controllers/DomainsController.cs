@@ -99,6 +99,16 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Every domain's AllowEntry/AllowExit by WorldGuard region, for the game server's flag sync
+        /// (KNG-56). Read-only, small (one row per domain region).
+        /// </summary>
+        [HttpGet("access-rules")]
+        public async Task<ActionResult<IReadOnlyList<DomainAccessRuleDto>>> GetAccessRules()
+        {
+            return Ok(await _service.GetAccessRulesAsync());
+        }
+
         [HttpGet("by-region/{regionName}")]
         public async Task<ActionResult<DomainRegionDecisionDto>> GetByRegionName(string regionName)
         {

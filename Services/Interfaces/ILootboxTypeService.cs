@@ -25,6 +25,14 @@ namespace knkwebapi_v2.Services.Interfaces
         /// </summary>
         Task<LootboxOddsDto?> GetOddsAsync(int id, int? boxStars);
 
+        /// <summary>
+        /// The same odds as <see cref="GetOddsAsync"/> for every type (only the enabled ones with
+        /// <paramref name="enabledOnly"/>), for each of <paramref name="boxStars"/> (none: each type's MaxBoxStars), as
+        /// one list ordered by type name then stars. One call instead of one per type and grade (KNG-45).
+        /// <see cref="ArgumentException"/> when a value is outside the grade scale (1-<see cref="LootboxRollEngine.MaxBoxStars"/>).
+        /// </summary>
+        Task<IReadOnlyList<LootboxOddsDto>> GetOddsForTypesAsync(IReadOnlyCollection<int>? boxStars, bool enabledOnly);
+
         /// <summary>The engine input for one type (grades, pool, enchant rolls, applicable specials); null when the
         /// type doesn't exist.</summary>
         Task<LootboxRollInput?> BuildRollInputAsync(int typeId);

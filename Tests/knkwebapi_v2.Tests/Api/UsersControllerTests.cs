@@ -502,6 +502,62 @@ public class UsersControllerTests
 
     #endregion
 
+    #region GrantNode Tests (KNG-59)
+
+    [Fact]
+    public async Task GrantNode_UpsertsByNodeRatherThanCreatingASecondRow()
+    {
+        var expiresAt = DateTime.UtcNow.AddDays(1);
+        var updated = new PermissionGrantDto { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = false, ExpiresAt = expiresAt };
+        _mockGrantService
+            .Setup(s => s.UpsertByNodeAsync(1, "knk.gate.open", false, expiresAt, It.IsAny<int?>()))
+            .ReturnsAsync(updated);
+
+        var result = await _controller.GrantNode(1, new GrantNodeRequestDto { Node = "knk.gate.open", Value = false, ExpiresAt = expiresAt });
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(updated, ok.Value);
+        _mockGrantService.Verify(s => s.CreateAsync(It.IsAny<PermissionGrantDto>(), It.IsAny<int?>()), Times.Never);
+    }
+
+    #endregion
+
+    #region RevokeNode Tests (KNG-59)
+
+    [Fact]
+    public async Task RevokeNode_ExistingDirectGrant_Returns204()
+    {
+        var result = await _controller.RevokeNode(1, "knk.gate.open");
+
+        Assert.IsType<NoContentResult>(result);
+        _mockGrantService.Verify(s => s.RevokeByNodeAsync(1, "knk.gate.open", It.IsAny<int?>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("  ")]
+    public async Task RevokeNode_MissingNode_Returns400(string? node)
+    {
+        var result = await _controller.RevokeNode(1, node);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        _mockGrantService.Verify(s => s.RevokeByNodeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RevokeNode_NoActiveDirectGrant_Returns404()
+    {
+        _mockGrantService
+            .Setup(s => s.RevokeByNodeAsync(1, "knk.gate.open", It.IsAny<int?>()))
+            .ThrowsAsync(new KeyNotFoundException("Holder 1 has no active grant for node 'knk.gate.open'."));
+
+        var result = await _controller.RevokeNode(1, "knk.gate.open");
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    #endregion
+
     #region GetProfileSummary Tests
 
     [Fact]

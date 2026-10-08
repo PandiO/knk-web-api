@@ -251,6 +251,10 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.ChatSecondaryColor).HasMaxLength(32);
             entity.Property(e => e.NameColor).HasMaxLength(32);
 
+            // Teleport fees and cooldowns per group (KNG-41).
+            entity.Property(e => e.TeleportRequestPriceMultiplier).HasPrecision(9, 3);
+            entity.Property(e => e.TeleportWarpPriceMultiplier).HasPrecision(9, 3);
+
             // Single-parent inheritance chain (DESIGN.md §2.1) — restrict, not cascade: deleting
             // a parent group with live children should fail loudly, not silently orphan them.
             entity.HasOne(g => g.ParentGroup)
@@ -272,8 +276,13 @@ public partial class KnKDbContext : DbContext
                 .HasForeignKey(e => e.HolderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Resolution always looks up "this holder's grants" first — index the lookup path.
-            entity.HasIndex(e => new { e.HolderId, e.Node });
+            // Resolution always looks up "this holder's grants" first — index the lookup path. Unique
+            // since KNG-59: one row per (holder, node); writes upsert by node. Named apart from the
+            // old non-unique IX_ index so the migration can add this one before dropping that one
+            // (MySQL won't drop the only index backing the HolderId foreign key).
+            entity.HasIndex(e => new { e.HolderId, e.Node })
+                .IsUnique()
+                .HasDatabaseName("UX_permission_grants_HolderId_Node");
         });
 
         modelBuilder.Entity<UserPermissionGroup>(entity =>
