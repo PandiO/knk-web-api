@@ -26,7 +26,16 @@ public class UsersControllerTests
     private readonly Mock<IUserProfileSummaryService> _mockProfileSummaryService;
     private readonly Mock<IUserPermissionGroupService> _mockMembershipService;
     private readonly Mock<IPermissionGrantService> _mockGrantService;
+    private readonly Mock<IPermissionEscalationGuard> _mockEscalationGuard = new();
     private readonly UsersController _controller;
+
+    /// <summary>Calls the quick actions as a logged-in staff member the escalation guard (closed-alpha WP3) lets through.</summary>
+    private void AsStaffAllowedByGuard()
+    {
+        _mockEscalationGuard.Setup(g => g.CanGrantNodeAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>())).ReturnsAsync(EscalationCheck.Ok);
+        _mockEscalationGuard.Setup(g => g.CanAssignGroupAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(EscalationCheck.Ok);
+        _controller.ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.WebUser(99) };
+    }
 
     public UsersControllerTests()
     {
@@ -37,7 +46,7 @@ public class UsersControllerTests
         _mockProfileSummaryService = new Mock<IUserProfileSummaryService>();
         _mockMembershipService = new Mock<IUserPermissionGroupService>();
         _mockGrantService = new Mock<IPermissionGrantService>();
-        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object, _mockProfileSummaryService.Object, _mockMembershipService.Object, _mockGrantService.Object);
+        _controller = new UsersController(_mockUserService.Object, _mockMapper.Object, _mockPermissionResolutionService.Object, _mockSalaryService.Object, _mockProfileSummaryService.Object, _mockMembershipService.Object, _mockGrantService.Object, _mockEscalationGuard.Object);
     }
 
     #region Create Tests
@@ -396,6 +405,7 @@ public class UsersControllerTests
     [Fact]
     public async Task GrantNode_UpsertsByNodeRatherThanCreatingASecondRow()
     {
+        AsStaffAllowedByGuard();
         var expiresAt = DateTime.UtcNow.AddDays(1);
         var updated = new PermissionGrantDto { Id = 5, HolderId = 1, Node = "knk.gate.open", Value = false, ExpiresAt = expiresAt };
         _mockGrantService
@@ -416,6 +426,7 @@ public class UsersControllerTests
     [Fact]
     public async Task RevokeNode_ExistingDirectGrant_Returns204()
     {
+        AsStaffAllowedByGuard();
         var result = await _controller.RevokeNode(1, "knk.gate.open");
 
         Assert.IsType<NoContentResult>(result);
@@ -436,6 +447,7 @@ public class UsersControllerTests
     [Fact]
     public async Task RevokeNode_NoActiveDirectGrant_Returns404()
     {
+        AsStaffAllowedByGuard();
         _mockGrantService
             .Setup(s => s.RevokeByNodeAsync(1, "knk.gate.open", It.IsAny<int?>()))
             .ThrowsAsync(new KeyNotFoundException("Holder 1 has no active grant for node 'knk.gate.open'."));

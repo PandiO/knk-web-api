@@ -14,10 +14,21 @@ namespace KnKWebAPI.Controllers
     public class PermissionGroupsController : ControllerBase
     {
         private readonly IPermissionGroupService _service;
+        private readonly IPermissionEscalationGuard _escalationGuard;
 
-        public PermissionGroupsController(IPermissionGroupService service)
+        public PermissionGroupsController(IPermissionGroupService service, IPermissionEscalationGuard escalationGuard)
         {
             _service = service;
+            _escalationGuard = escalationGuard;
+        }
+
+        // Closed-alpha WP3: a group inherits every node of its parent chain, so a web user may only
+        // pick a parent whose nodes they all hold.
+        private async Task<IActionResult?> RefuseIfParentEscalatesAsync(int? newParentId, int? currentParentId)
+        {
+            if (!newParentId.HasValue || newParentId == currentParentId) return null;
+            return await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanInheritFromGroupAsync(actor, newParentId.Value));
         }
 
         [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
@@ -44,6 +55,8 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> Create([FromBody] PermissionGroupDto dto)
         {
             if (dto == null) return BadRequest();
+            var refused = await RefuseIfParentEscalatesAsync(dto.ParentGroupId, null);
+            if (refused != null) return refused;
             try
             {
                 var created = await _service.CreateAsync(dto);
@@ -60,6 +73,9 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] PermissionGroupDto dto)
         {
             if (dto == null) return BadRequest();
+            var current = await _service.GetByIdAsync(id);
+            var refused = await RefuseIfParentEscalatesAsync(dto.ParentGroupId, current?.ParentGroupId);
+            if (refused != null) return refused;
             try
             {
                 await _service.UpdateAsync(id, dto);

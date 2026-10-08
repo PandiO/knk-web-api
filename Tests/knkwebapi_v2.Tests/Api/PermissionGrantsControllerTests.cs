@@ -17,9 +17,10 @@ public class PermissionGrantsControllerTests
 
     public PermissionGrantsControllerTests()
     {
-        _controller = new PermissionGrantsController(_mockService.Object)
+        // As the plugin (key): the escalation guard (closed-alpha WP3) only checks web users.
+        _controller = new PermissionGrantsController(_mockService.Object, new Mock<IPermissionEscalationGuard>().Object)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.Plugin() }
         };
     }
 

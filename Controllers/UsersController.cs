@@ -25,6 +25,7 @@ namespace knkwebapi_v2.Controllers
         private readonly IUserProfileSummaryService _profileSummaryService;
         private readonly IUserPermissionGroupService _membershipService;
         private readonly IPermissionGrantService _grantService;
+        private readonly IPermissionEscalationGuard _escalationGuard;
 
         public UsersController(
             IUserService service,
@@ -33,8 +34,10 @@ namespace knkwebapi_v2.Controllers
             ISalaryService salaryService,
             IUserProfileSummaryService profileSummaryService,
             IUserPermissionGroupService membershipService,
-            IPermissionGrantService grantService)
+            IPermissionGrantService grantService,
+            IPermissionEscalationGuard escalationGuard)
         {
+            _escalationGuard = escalationGuard;
             _service = service;
             _mapper = mapper;
             _permissionResolutionService = permissionResolutionService;
@@ -78,10 +81,14 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Validation failed</response>
         /// <response code="404">User or PermissionGroup not found</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
+        [RequirePermission(StaffPermissions.UserGroups)]
         [HttpPost("{id:int}/groups")]
         public async Task<IActionResult> AssignGroup(int id, [FromBody] AssignGroupRequestDto request)
         {
             if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanAssignGroupAsync(actor, id, request.PermissionGroupId));
+            if (refused != null) return refused;
             try
             {
                 var result = await _membershipService.UpsertAsync(new UpsertUserPermissionGroupDto
@@ -106,9 +113,13 @@ namespace knkwebapi_v2.Controllers
         /// <response code="204">Removed successfully</response>
         /// <response code="404">User is not a member of that group</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
+        [RequirePermission(StaffPermissions.UserGroups)]
         [HttpDelete("{id:int}/groups/{groupId:int}")]
         public async Task<IActionResult> RemoveGroup(int id, int groupId)
         {
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanAssignGroupAsync(actor, id, groupId));
+            if (refused != null) return refused;
             try
             {
                 await _membershipService.DeleteAsync(id, groupId, GetActorUserId());
@@ -131,10 +142,14 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Validation failed</response>
         /// <response code="404">User not found</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
+        [RequirePermission(StaffPermissions.UserPermissions)]
         [HttpPost("{id:int}/grants")]
         public async Task<IActionResult> GrantNode(int id, [FromBody] GrantNodeRequestDto request)
         {
             if (request == null) return BadRequest(new { error = "InvalidRequest", message = "Request body is required" });
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanGrantNodeAsync(actor, id, request.Node));
+            if (refused != null) return refused;
             try
             {
                 var result = await _grantService.UpsertByNodeAsync(id, request.Node, request.Value, request.ExpiresAt, GetActorUserId());
@@ -158,6 +173,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Node query parameter missing</response>
         /// <response code="404">The player has no active direct grant for that node</response>
         [RequirePermission(StaffPermissions.ManageUsers)]
+        [RequirePermission(StaffPermissions.UserPermissions)]
         [HttpDelete("{id:int}/grants")]
         public async Task<IActionResult> RevokeNode(int id, [FromQuery] string? node)
         {
@@ -165,6 +181,9 @@ namespace knkwebapi_v2.Controllers
             {
                 return BadRequest(new { error = "InvalidRequest", message = "node query parameter is required" });
             }
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanGrantNodeAsync(actor, id, node));
+            if (refused != null) return refused;
             try
             {
                 await _grantService.RevokeByNodeAsync(id, node, GetActorUserId());

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Extensions;
+using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Attributes;
 
@@ -18,10 +19,12 @@ namespace KnKWebAPI.Controllers
     public class UserPermissionGroupsController : ControllerBase
     {
         private readonly IUserPermissionGroupService _service;
+        private readonly IPermissionEscalationGuard _escalationGuard;
 
-        public UserPermissionGroupsController(IUserPermissionGroupService service)
+        public UserPermissionGroupsController(IUserPermissionGroupService service, IPermissionEscalationGuard escalationGuard)
         {
             _service = service;
+            _escalationGuard = escalationGuard;
         }
 
         /// <summary>List memberships by user or by group (exactly one of the two).</summary>
@@ -49,6 +52,10 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> Upsert([FromBody] UpsertUserPermissionGroupDto dto)
         {
             if (dto == null) return BadRequest();
+            // Closed-alpha WP3: only groups whose every node the web user holds, never their own.
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanAssignGroupAsync(actor, dto.UserId, dto.PermissionGroupId));
+            if (refused != null) return refused;
             try
             {
                 return Ok(await _service.UpsertAsync(dto, HttpContext.GetKnkCaller().ActorUserId));
@@ -67,6 +74,9 @@ namespace KnKWebAPI.Controllers
         [HttpDelete("{userId:int}/{permissionGroupId:int}")]
         public async Task<IActionResult> Delete(int userId, int permissionGroupId)
         {
+            var refused = await EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanAssignGroupAsync(actor, userId, permissionGroupId));
+            if (refused != null) return refused;
             try
             {
                 await _service.DeleteAsync(userId, permissionGroupId, HttpContext.GetKnkCaller().ActorUserId);

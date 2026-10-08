@@ -34,6 +34,8 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IPasswordService, PasswordService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
+            // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
+            services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
 
             var emailSection = configuration?.GetSection("Email");
             if (emailSection != null)
