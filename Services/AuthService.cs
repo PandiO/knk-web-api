@@ -29,6 +29,7 @@ namespace knkwebapi_v2.Services
         private readonly ILogger<AuthService> _logger;
         private readonly IRefreshTokenRepository _refreshTokens;
         private readonly ISessionRevocationService _sessionRevocation;
+        private readonly ILinkCodeService _linkCodeService;
 
         public AuthService(
             IUserRepository userRepository,
@@ -41,8 +42,10 @@ namespace knkwebapi_v2.Services
             IOptions<SecuritySettings> securitySettings,
             ILogger<AuthService> logger,
             IRefreshTokenRepository refreshTokens,
-            ISessionRevocationService sessionRevocation)
+            ISessionRevocationService sessionRevocation,
+            ILinkCodeService linkCodeService)
         {
+            _linkCodeService = linkCodeService;
             _refreshTokens = refreshTokens;
             _sessionRevocation = sessionRevocation;
             _userRepository = userRepository;
@@ -57,15 +60,16 @@ namespace knkwebapi_v2.Services
         }
 
         /// <inheritdoc/>
-        public async Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string email, string password, bool rememberMe, string? clientIp = null, string? userAgent = null)
+        public async Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string login, string password, bool rememberMe, string? clientIp = null, string? userAgent = null)
         {
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
             {
-                return (false, null, "Email and password are required.");
+                return (false, null, "Email or Minecraft name and password are required.");
             }
 
-            var normalizedEmail = email.Trim().ToLowerInvariant();
-            var user = await _userRepository.GetByEmailAsync(normalizedEmail);
+            // Closed-alpha WP5 (D3): log in with the email or the Minecraft name, case-insensitive.
+            var normalizedEmail = login.Trim().ToLowerInvariant();
+            var user = await FindByLoginAsync(login);
 
             if (user == null || string.IsNullOrWhiteSpace(user.PasswordHash))
             {
@@ -121,13 +125,24 @@ namespace knkwebapi_v2.Services
             if (stored.RevokedAt.HasValue)
             {
                 // Two tabs refreshing with the same cookie at once: the loser presents a token rotated
-                // a moment ago. Refuse it, but don't end the session the winner just extended.
+                // a moment ago. While its replacement is still live, give it a sibling in the same
+                // family instead of treating it as theft.
                 var grace = TimeSpan.FromSeconds(Math.Max(0, _securitySettings.Jwt.RefreshReuseGraceSeconds));
                 if (stored.ReplacedByHash != null && now - stored.RevokedAt.Value <= grace)
                 {
-                    _logger.LogInformation("Refresh refused for user {UserId}: token rotated {Seconds:0.0}s ago (concurrent refresh)",
-                        stored.UserId, (now - stored.RevokedAt.Value).TotalSeconds);
-                    return (false, null, invalid);
+                    // Follow the rotation chain (three tabs at once rotate it more than once).
+                    var replacement = await _refreshTokens.GetByHashAsync(stored.ReplacedByHash);
+                    for (var hop = 0; hop < 5 && replacement?.RevokedAt != null && replacement.ReplacedByHash != null
+                         && now - replacement.RevokedAt.Value <= grace; hop++)
+                    {
+                        replacement = await _refreshTokens.GetByHashAsync(replacement.ReplacedByHash);
+                    }
+                    if (replacement != null && replacement.RevokedAt == null && replacement.ExpiresAt > now)
+                    {
+                        _logger.LogInformation("Refresh for user {UserId} with a token rotated {Seconds:0.0}s ago (concurrent refresh): issued a sibling token",
+                            stored.UserId, (now - stored.RevokedAt.Value).TotalSeconds);
+                        return await IssueRotatedAsync(stored, replacement, now, clientIp, userAgent, markSpent: false);
+                    }
                 }
 
                 // Reuse of a rotated or revoked token: someone else may hold this family. End it.
@@ -143,21 +158,34 @@ namespace knkwebapi_v2.Services
                 return (false, null, invalid);
             }
 
-            var user = await _userRepository.GetByIdAsync(stored.UserId);
+            return await IssueRotatedAsync(stored, stored, now, clientIp, userAgent, markSpent: true);
+        }
+
+        /// <summary>
+        /// Issues the next refresh token of <paramref name="presented"/>'s family (and an access
+        /// token). With <paramref name="markSpent"/> the presented token is revoked and linked to its
+        /// successor (normal rotation); without it (the concurrent-refresh grace) nothing is revoked.
+        /// </summary>
+        private async Task<(bool Ok, AuthRefreshResponseDto? Result, string? Error)> IssueRotatedAsync(
+            RefreshToken presented, RefreshToken lifetimeSource, DateTime now, string? clientIp, string? userAgent, bool markSpent)
+        {
+            var user = await _userRepository.GetByIdAsync(presented.UserId);
             if (user == null || !user.IsActive || user.DeletedAt.HasValue)
             {
-                await _refreshTokens.RevokeFamilyAsync(stored.FamilyId, now);
-                _logger.LogWarning("Refresh failed for user {UserId}: not found or inactive", stored.UserId);
-                return (false, null, invalid);
+                await _refreshTokens.RevokeFamilyAsync(presented.FamilyId, now);
+                _logger.LogWarning("Refresh failed for user {UserId}: not found or inactive", presented.UserId);
+                return (false, null, "Invalid or expired refresh token.");
             }
 
-            // Rotate: this token is spent, its successor joins the same family.
-            var next = NewRefreshToken(user.Id, stored.FamilyId, stored.RememberMe, clientIp, userAgent, out var raw);
-            stored.RevokedAt = now;
-            stored.ReplacedByHash = next.TokenHash;
+            var next = NewRefreshToken(user.Id, presented.FamilyId, lifetimeSource.RememberMe, clientIp, userAgent, out var raw);
+            if (markSpent)
+            {
+                presented.RevokedAt = now;
+                presented.ReplacedByHash = next.TokenHash;
+            }
             await _refreshTokens.AddAsync(next);
 
-            var accessToken = await _tokenService.GenerateAccessTokenAsync(user, stored.FamilyId);
+            var accessToken = await _tokenService.GenerateAccessTokenAsync(user, presented.FamilyId);
             var response = new AuthRefreshResponseDto
             {
                 AccessToken = accessToken,
@@ -193,6 +221,101 @@ namespace knkwebapi_v2.Services
         /// <inheritdoc/>
         public Task RevokeAllSessionsAsync(int userId, string reason) =>
             _sessionRevocation.RevokeAllSessionsAsync(userId, reason);
+
+        /// <inheritdoc/>
+        public async Task<AuthRegisterOutcome> RegisterAsync(AuthRegisterRequestDto request, string? clientIp = null, string? userAgent = null)
+        {
+            if (request == null)
+            {
+                return AuthRegisterOutcome.Fail("InvalidRequest", "Registration payload is required.");
+            }
+
+            // D1/D2: a code from the game server (/account link) is the only way in during the alpha.
+            if (string.IsNullOrWhiteSpace(request.LinkCode))
+            {
+                return _securitySettings.Registration.AllowWebFirst
+                    ? AuthRegisterOutcome.Fail("WebFirstUnavailable", "Web-only sign-up isn't available yet. Join the server and run /account link to get your registration code.")
+                    : AuthRegisterOutcome.Fail(AuthRegisterOutcome.RegistrationNeedsCode, "Join the server and run /account link to get your registration code.");
+            }
+
+            var (codeValid, linkCode, _) = await _linkCodeService.ValidateLinkCodeAsync(request.LinkCode);
+            if (!codeValid || linkCode?.UserId == null)
+            {
+                return AuthRegisterOutcome.Fail("InvalidLinkCode", "This code is invalid or has expired. Run /account link in game for a new one.");
+            }
+
+            var user = await _userRepository.GetByIdAsync(linkCode.UserId.Value);
+            if (user == null || string.IsNullOrWhiteSpace(user.Uuid) || !user.IsActive || user.DeletedAt.HasValue)
+            {
+                // Codes from the web (generate-link-code for a web-only account) don't name a Minecraft account.
+                return AuthRegisterOutcome.Fail("InvalidLinkCode", "This code doesn't belong to a Minecraft account. Run /account link in game for a new one.");
+            }
+
+            if (!string.IsNullOrEmpty(user.PasswordHash))
+            {
+                return AuthRegisterOutcome.Fail("AlreadyRegistered", "This Minecraft account already has a web login. Log in or reset your password.");
+            }
+
+            var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+            if (!IsValidEmail(email))
+            {
+                return AuthRegisterOutcome.Fail("InvalidEmail", "Enter a valid email address.");
+            }
+            if (await _userRepository.IsEmailTakenAsync(email, user.Id))
+            {
+                return AuthRegisterOutcome.Fail("DuplicateEmail", "This email is already in use by another account.");
+            }
+
+            if (request.Password != request.PasswordConfirmation)
+            {
+                return AuthRegisterOutcome.Fail("PasswordMismatch", "Password and confirmation do not match.");
+            }
+            var (passwordValid, passwordError) = await _passwordService.ValidatePasswordAsync(request.Password ?? string.Empty);
+            if (!passwordValid)
+            {
+                return AuthRegisterOutcome.Fail("InvalidPassword", passwordError ?? "Password does not meet the requirements.");
+            }
+
+            var (consumed, _, _) = await _linkCodeService.ConsumeLinkCodeAsync(request.LinkCode);
+            if (!consumed)
+            {
+                return AuthRegisterOutcome.Fail("InvalidLinkCode", "This code is invalid or has expired. Run /account link in game for a new one.");
+            }
+
+            // AccountCreatedVia stays as it was (MinecraftServer): the account came from the game.
+            user.Email = email;
+            user.EmailVerified = false;
+            user.PasswordHash = await _passwordService.HashPasswordAsync(request.Password!);
+            user.LastPasswordChangeAt = DateTime.UtcNow;
+            await _userRepository.UpdateUserAsync(user);
+
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
+            _logger.LogInformation("Web login registered for Minecraft account {UserId} ({Username})", user.Id, user.Username);
+            return AuthRegisterOutcome.Success(new AuthLoginResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = null,
+                ExpiresIn = expiresIn,
+                User = _mapper.Map<UserDto>(user),
+                Session = session
+            });
+        }
+
+        private static bool IsValidEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email) || email.Length > 256)
+            {
+                return false;
+            }
+            try
+            {
+                return new System.Net.Mail.MailAddress(email).Address == email;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
 
         /// <inheritdoc/>
         public async Task<UserDto?> GetCurrentUserAsync(int userId)
@@ -446,6 +569,15 @@ namespace knkwebapi_v2.Services
 
             var remaining = expiresAt.Value - DateTime.UtcNow;
             return remaining <= TimeSpan.Zero ? 0 : (int)Math.Round(remaining.TotalSeconds);
+        }
+
+        /// <summary>An identifier with "@" is an email, anything else a username (case-insensitive).</summary>
+        private Task<User?> FindByLoginAsync(string login)
+        {
+            var trimmed = login.Trim();
+            return trimmed.Contains('@')
+                ? _userRepository.GetByEmailAsync(trimmed.ToLowerInvariant())
+                : _userRepository.GetByUsernameIgnoreCaseAsync(trimmed);
         }
 
         /// <summary>A new login session: a refresh token (new family unless given) and an access token

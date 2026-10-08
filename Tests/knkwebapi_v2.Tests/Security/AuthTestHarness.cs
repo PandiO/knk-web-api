@@ -77,7 +77,23 @@ internal sealed class AuthTestHarness : IDisposable
         Options.Create(Settings),
         NullLogger<AuthService>.Instance,
         RefreshTokens,
-        Revocation);
+        Revocation,
+        new LinkCodeService(new LinkCodeRepository(Db), Users, Mapper.Object, Options.Create(Settings)));
+
+    /// <summary>An active /account link code for <paramref name="userId"/> (8 chars, 20 min).</summary>
+    public async Task<string> AddLinkCodeAsync(int? userId, string code = "ABCD2345", DateTime? expiresAt = null)
+    {
+        Db.LinkCodes.Add(new LinkCode
+        {
+            UserId = userId,
+            Code = code,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = expiresAt ?? DateTime.UtcNow.AddMinutes(20),
+            Status = LinkCodeStatus.Active
+        });
+        await Db.SaveChangesAsync();
+        return code;
+    }
 
     public async Task<User> AddUserAsync(string username = "Steve", string? email = "steve@example.com", string? password = Password,
         string? uuid = "00000000-0000-0000-0000-000000000001", bool isActive = true)

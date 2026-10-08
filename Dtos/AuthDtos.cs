@@ -14,8 +14,13 @@ namespace knkwebapi_v2.Dtos
     /// </summary>
     public class AuthLoginRequestDto
     {
+        /// <summary>Email or Minecraft name (closed-alpha WP5, D3). Takes precedence over email.</summary>
+        [JsonPropertyName("login")]
+        public string? Login { get; set; }
+
+        /// <summary>Kept for older clients; used when login is empty.</summary>
         [JsonPropertyName("email")]
-        public string Email { get; set; } = null!;
+        public string? Email { get; set; }
 
         [JsonPropertyName("password")]
         public string Password { get; set; } = null!;
@@ -48,6 +53,39 @@ namespace knkwebapi_v2.Dtos
         /// <summary>The refresh token for the cookie; not part of the JSON.</summary>
         [JsonIgnore]
         public IssuedRefreshToken? Session { get; set; }
+    }
+
+    /// <summary>
+    /// POST api/Auth/register (closed-alpha WP5, D1): the code from /account link plus the email
+    /// and password for the web login. The username is the verified Minecraft name.
+    /// </summary>
+    public class AuthRegisterRequestDto
+    {
+        [JsonPropertyName("linkCode")]
+        public string? LinkCode { get; set; }
+
+        [JsonPropertyName("email")]
+        public string? Email { get; set; }
+
+        [JsonPropertyName("password")]
+        public string? Password { get; set; }
+
+        [JsonPropertyName("passwordConfirmation")]
+        public string? PasswordConfirmation { get; set; }
+    }
+
+    /// <summary>The result of AuthService.RegisterAsync: a login response, or an error code.</summary>
+    public sealed class AuthRegisterOutcome
+    {
+        public const string RegistrationNeedsCode = "RegistrationNeedsCode";
+
+        public bool Ok { get; private init; }
+        public AuthLoginResponseDto? Result { get; private init; }
+        public string? Error { get; private init; }
+        public string? Message { get; private init; }
+
+        public static AuthRegisterOutcome Success(AuthLoginResponseDto result) => new() { Ok = true, Result = result };
+        public static AuthRegisterOutcome Fail(string error, string message) => new() { Error = error, Message = message };
     }
 
     /// <summary>

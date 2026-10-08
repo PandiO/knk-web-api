@@ -85,10 +85,28 @@ public class AuthSessionTests : IDisposable
         var first = login!.Session!.Token;
 
         var (_, rotated, _) = await auth.RefreshAsync(first);
-        var (loserOk, _, _) = await auth.RefreshAsync(first); // the other tab, a moment later
-        Assert.False(loserOk);
+        var (loserOk, loser, _) = await auth.RefreshAsync(first); // the other tab, a moment later
+        Assert.True(loserOk);                                      // gets a sibling in the same family
+        Assert.Null(await h.BearerProblemAsync(loser!.AccessToken));
         var (winnerOk, _, _) = await auth.RefreshAsync(rotated!.Session!.Token);
         Assert.True(winnerOk);
+        var (siblingOk, _, _) = await auth.RefreshAsync(loser.Session!.Token);
+        Assert.True(siblingOk);
+        Assert.Single((await h.Db.RefreshTokens.Select(t => t.FamilyId).Distinct().ToListAsync()));
+    }
+
+    [Fact]
+    public async Task GraceWindow_DoesNotRevive_ALoggedOutSession()
+    {
+        using var h = new AuthTestHarness(s => s.Jwt.RefreshReuseGraceSeconds = 30);
+        await h.AddUserAsync();
+        var auth = h.CreateAuthService();
+        var (_, login, _) = await auth.LoginAsync("steve@example.com", AuthTestHarness.Password, false);
+        var first = login!.Session!.Token;
+        var (_, rotated, _) = await auth.RefreshAsync(first);
+        await auth.LogoutAsync(rotated!.Session!.Token);
+
+        Assert.False((await auth.RefreshAsync(first)).Ok);
     }
 
     [Fact]

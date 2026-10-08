@@ -27,6 +27,7 @@ public class EndpointAccessRulesTests
     private static readonly HashSet<string> AnonymousAllowList = new()
     {
         "AuthController.Login",
+        "AuthController.Register",
         "AuthController.Refresh",
         "AuthController.Logout",
         "AuthController.ForgotPassword",

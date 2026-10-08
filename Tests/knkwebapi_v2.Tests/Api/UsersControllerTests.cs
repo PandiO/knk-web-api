@@ -810,16 +810,22 @@ public class UsersControllerTests
     }
 
     [Fact]
-    public async Task Create_WithUuid_FromTheGameServer_LinksThePreRegisteredAccount()
+    public async Task Create_WithUuid_FromTheGameServer_ReleasesAPreRegisteredName_InsteadOfLinkingIt()
     {
+        // Closed-alpha WP5.3: a web-only account holding the name is renamed, never attached.
         SetRequest(apiKey: "secret", configuredKey: "secret");
         _mockUserService.Setup(s => s.GetByUsernameAsync("joiner")).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Email = "j@example.com" });
-        _mockUserService.Setup(s => s.GetByIdAsync(12)).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
+        _mockUserService.Setup(s => s.ReleaseUsernameFromWebOnlyAccountAsync("joiner", It.IsAny<int?>())).ReturnsAsync(12);
+        _mockUserService.Setup(s => s.ValidateUserCreationAsync(It.IsAny<UserCreateDto>(), It.IsAny<int?>())).ReturnsAsync((true, null));
+        _mockUserService.Setup(s => s.CreateAsync(It.IsAny<UserCreateDto>()))
+            .ReturnsAsync(new UserDto { Id = 40, Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
 
         var result = await _controller.Create(new UserCreateDto { Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });
 
         Assert.IsType<CreatedAtRouteResult>(result);
-        _mockUserService.Verify(s => s.UpdateAsync(12, It.Is<UserDto>(u => u.Uuid == "11111111-2222-3333-4444-555555555555"), It.IsAny<int?>()), Times.Once);
+        _mockUserService.Verify(s => s.ReleaseUsernameFromWebOnlyAccountAsync("joiner", It.IsAny<int?>()), Times.Once);
+        _mockUserService.Verify(s => s.UpdateAsync(It.IsAny<int>(), It.IsAny<UserDto>(), It.IsAny<int?>()), Times.Never);
+        _mockUserService.Verify(s => s.CreateAsync(It.IsAny<UserCreateDto>()), Times.Once);
     }
 
     [Fact]

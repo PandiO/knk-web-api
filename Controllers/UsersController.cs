@@ -419,28 +419,16 @@ namespace knkwebapi_v2.Controllers
 
             try
             {
-                // Web app first linking (BEFORE validation): If providing UUID + username, check for existing pre-registered account
-                // A pre-registered account has the same username but uuid = null (awaiting Minecraft join)
                 UserDto? created = null;
+
+                // Closed-alpha WP5.3: a web-only account (no UUID) can no longer be attached to the
+                // Minecraft player who joins with its name - that let anyone pre-register a
+                // player's name and take over their account. The game server's create releases
+                // the name instead (the web-only account becomes unclaimed-<id>, audited) and the
+                // Minecraft account is created normally.
                 if (!string.IsNullOrEmpty(user.Uuid) && !string.IsNullOrEmpty(user.Username))
                 {
-                    var existingByUsername = await _service.GetByUsernameAsync(user.Username);
-                    if (existingByUsername != null && string.IsNullOrEmpty(existingByUsername.Uuid))
-                    {
-                        // Found pre-registered account: link by setting UUID
-                        var updatedDto = new UserDto
-                        {
-                            Id = existingByUsername.Id,
-                            Username = existingByUsername.Username,
-                            Email = existingByUsername.Email,
-                            Uuid = user.Uuid,  // Set UUID from Minecraft join
-                            Coins = existingByUsername.Coins,
-                            Gems = existingByUsername.Gems,
-                            ExperiencePoints = existingByUsername.ExperiencePoints
-                        };
-                        await _service.UpdateAsync(existingByUsername.Id, updatedDto);
-                        created = await _service.GetByIdAsync(existingByUsername.Id);
-                    }
+                    await _service.ReleaseUsernameFromWebOnlyAccountAsync(user.Username, GetActorUserId());
                 }
 
                 // If not linked to existing pre-registered account, proceed with normal validation and creation
@@ -1035,10 +1023,12 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Validate a link code and return associated user information
+        /// Check a link code and return the Minecraft name it belongs to
         /// </summary>
         /// <remarks>
-        /// Consumes the link code (marks it as used) and returns user details if valid.
+        /// Closed-alpha hardening WP5.4: anonymous (the register page shows "This code belongs to
+        /// &lt;name&gt;"), rate-limited, and returns only { isValid, username } (plus error when invalid) - no email, and the
+        /// user id only to the game server. It never consumes the code (POST api/Auth/register does).
         /// Link codes expire after 20 minutes.
         /// </remarks>
         /// <param name="code">8-character link code</param>
@@ -1055,19 +1045,15 @@ namespace knkwebapi_v2.Controllers
                 
                 if (!isValid || user == null)
                 {
-                    return Ok(new ValidateLinkCodeResponseDto
-                    {
-                        IsValid = false,
-                        Error = "Invalid or expired link code"
-                    });
+                    return Ok(new ValidateLinkCodeResponseDto { IsValid = false, Error = "Invalid or expired link code" });
                 }
 
                 return Ok(new ValidateLinkCodeResponseDto
                 {
                     IsValid = true,
-                    UserId = user.Id,
                     Username = user.Username,
-                    Email = user.Email
+                    // knk-plugin's /account link <code> reads the id; nobody else gets it.
+                    UserId = HttpContext?.GetKnkCaller().IsPluginService == true ? user.Id : null
                 });
             }
             catch (ArgumentException ex)

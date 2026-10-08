@@ -11,11 +11,11 @@ namespace knkwebapi_v2.Services
         /// <summary>
         /// Authenticate a user with email and password, issuing access and refresh tokens.
         /// </summary>
-        /// <param name="email">Email address (case-insensitive)</param>
+        /// <param name="login">Email address or Minecraft username (case-insensitive)</param>
         /// <param name="password">Plain text password</param>
         /// <param name="rememberMe">Extended session flag</param>
         /// <returns>Tuple with success flag, response DTO, and optional error message</returns>
-        Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string email, string password, bool rememberMe, string? clientIp = null, string? userAgent = null);
+        Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string login, string password, bool rememberMe, string? clientIp = null, string? userAgent = null);
 
         /// <summary>
         /// Refresh an access token using a refresh token, rotating the refresh token.
@@ -36,6 +36,12 @@ namespace knkwebapi_v2.Services
         /// refresh tokens and drops the cached session state.
         /// </summary>
         Task RevokeAllSessionsAsync(int userId, string reason);
+
+        /// <summary>
+        /// Registers a web login for a Minecraft account with a code from /account link
+        /// (closed-alpha WP5, D1): sets email and password and logs the player in.
+        /// </summary>
+        Task<AuthRegisterOutcome> RegisterAsync(AuthRegisterRequestDto request, string? clientIp = null, string? userAgent = null);
 
         /// <summary>
         /// Get the current authenticated user by ID.

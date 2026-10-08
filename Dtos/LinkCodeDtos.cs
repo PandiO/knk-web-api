@@ -29,24 +29,26 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
-    /// DTO for validating a link code.
-    /// Returns validation status and associated user information if valid.
+    /// The result of checking a link code (closed-alpha hardening WP5.4): only isValid and the
+    /// Minecraft name (or an error); userId only for the game server (knk-plugin's ValidateLinkCodeResponseDto
+    /// reads it). Email is gone; nulls are left out of the JSON.
     /// </summary>
     public class ValidateLinkCodeResponseDto
     {
         [JsonPropertyName("isValid")]
         public bool IsValid { get; set; }
 
-        [JsonPropertyName("userId")]
-        public int? UserId { get; set; }
-
         [JsonPropertyName("username")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Username { get; set; }
 
-        [JsonPropertyName("email")]
-        public string? Email { get; set; }
+        [JsonPropertyName("userId")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? UserId { get; set; }
 
+        /// <summary>Why the code isn't valid; only on isValid=false.</summary>
         [JsonPropertyName("error")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Error { get; set; }
     }
 

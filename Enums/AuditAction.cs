@@ -47,5 +47,12 @@ public enum AuditAction
     CurrencyPolicyChanged = 19,
     CurrencyTransactionReversed = 20,
     CurrencyTransferLocked = 21,
-    CurrencyTransferUnlocked = 22
+    CurrencyTransferUnlocked = 22,
+
+    /// <summary>
+    /// Closed-alpha hardening WP5.3: the game server created the Minecraft account for a name a
+    /// web-only account held, so that account was renamed to unclaimed-&lt;id&gt; (target = the
+    /// renamed web-only account). Values 30-31 are allocated to the alpha hardening.
+    /// </summary>
+    UsernameReleased = 30
 }

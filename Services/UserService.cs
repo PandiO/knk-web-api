@@ -1207,6 +1207,34 @@ namespace knkwebapi_v2.Services
             return await MapToUserDtoAsync(updatedUser!);
         }
 
+        /// <inheritdoc/>
+        public async Task<int?> ReleaseUsernameFromWebOnlyAccountAsync(string username, int? actorUserId = null)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return null;
+            }
+
+            var holder = await _repo.GetByUsernameAsync(username);
+            if (holder == null || !string.IsNullOrEmpty(holder.Uuid))
+            {
+                return null;
+            }
+
+            var oldUsername = holder.Username;
+            holder.Username = $"unclaimed-{holder.Id}";
+            await _repo.UpdateUserAsync(holder);
+            await _auditLogService.RecordAsync(actorUserId, holder.Id, AuditAction.UsernameReleased, JsonSerializer.Serialize(new
+            {
+                oldUsername,
+                newUsername = holder.Username,
+                reason = "The Minecraft player with this name joined; web-only accounts can't hold a Minecraft name."
+            }));
+            _logger.LogWarning("Released username {Username} from web-only account {UserId} (now {NewUsername})",
+                oldUsername, holder.Id, holder.Username);
+            return holder.Id;
+        }
+
         private static bool IsValidEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email))

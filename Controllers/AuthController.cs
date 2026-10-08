@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using knkwebapi_v2.Configuration;
@@ -58,23 +59,52 @@ namespace knkwebapi_v2.Controllers
                 return BadRequest(new { error = "InvalidRequest", message = "Login payload is required." });
             }
 
-            var (ok, result, error) = await _authService.LoginAsync(request.Email, request.Password, request.RememberMe, ClientIp, UserAgent);
+            var login = string.IsNullOrWhiteSpace(request.Login) ? request.Email : request.Login;
+            var (ok, result, error) = await _authService.LoginAsync(login ?? string.Empty, request.Password, request.RememberMe, ClientIp, UserAgent);
             if (!ok || result == null)
             {
-                _logger.LogWarning("Login failed for {Email}: {Reason}", request.Email, error ?? "Invalid credentials");
+                _logger.LogWarning("Login failed for {Login}: {Reason}", login, error ?? "Invalid credentials");
                 return Unauthorized(new { error = "InvalidCredentials", message = error ?? "Invalid credentials." });
             }
 
             SetRefreshTokenCookie(result.Session);
             result.RefreshToken = null;
-            _logger.LogInformation("Login succeeded for {Email}", request.Email);
+            _logger.LogInformation("Login succeeded for user {UserId}", result.User?.Id);
 
             return Ok(result);
         }
 
+        /// <summary>
+        /// Web registration for a Minecraft account (closed-alpha WP5, D1): the player runs
+        /// /account link in game, enters the code here with an email and password, and is logged
+        /// in (no "remember me"). 400 for a bad code, email or password, 409 AlreadyRegistered or
+        /// DuplicateEmail, 403 RegistrationNeedsCode without a code.
+        /// </summary>
+        [HttpPost("register")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Register([FromBody] AuthRegisterRequestDto request)
+        {
+            var outcome = await _authService.RegisterAsync(request, ClientIp, UserAgent);
+            if (!outcome.Ok || outcome.Result == null)
+            {
+                _logger.LogInformation("Registration refused: {Error}", outcome.Error);
+                var body = new { error = outcome.Error, message = outcome.Message };
+                return outcome.Error switch
+                {
+                    "AlreadyRegistered" or "DuplicateEmail" => Conflict(body),
+                    AuthRegisterOutcome.RegistrationNeedsCode => StatusCode(StatusCodes.Status403Forbidden, body),
+                    _ => BadRequest(body)
+                };
+            }
+
+            SetRefreshTokenCookie(outcome.Result.Session);
+            outcome.Result.RefreshToken = null;
+            return Ok(outcome.Result);
+        }
+
         [HttpPost("refresh")]
         [AllowAnonymous]
-        public async Task<IActionResult> Refresh([FromBody] AuthRefreshRequestDto? request)
+        public async Task<IActionResult> Refresh([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AuthRefreshRequestDto? request)
         {
             // The cookie carries the token; a token in the body only counts in Development
             // (closed-alpha WP4), so a token leaked into page script can't be replayed here.
@@ -106,7 +136,7 @@ namespace knkwebapi_v2.Controllers
 
         [HttpPost("logout")]
         [AllowAnonymous]
-        public async Task<IActionResult> Logout([FromBody] AuthRefreshRequestDto? request)
+        public async Task<IActionResult> Logout([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AuthRefreshRequestDto? request)
         {
             // Revoking needs no secrecy, so a body token is accepted here (it can only end a session).
             var refreshToken = ReadRefreshTokenCookie();
