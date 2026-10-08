@@ -24,6 +24,11 @@ namespace knkwebapi_v2.Repositories
         /// same request can break a later PermissionGroup query.</summary>
         void Detach(User user);
 
+        /// <summary>Runs <paramref name="work"/> in a transaction that commits only when
+        /// <paramref name="shouldCommit"/> accepts the result (relational providers; joins an open
+        /// transaction, and runs without one on EF InMemory).</summary>
+        Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, Func<T, bool> shouldCommit);
+
         /// <summary>
         /// Saves a user including LastSalaryPayoutAt (SalaryService). Only call it inside
         /// <see cref="RunWithUsersLockedAsync"/>, on a user loaded inside that same call. Doesn't

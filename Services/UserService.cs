@@ -1208,6 +1208,10 @@ namespace knkwebapi_v2.Services
         }
 
         /// <inheritdoc/>
+        public Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, Func<T, bool> shouldCommit)
+            => _repo.RunInTransactionAsync(work, shouldCommit);
+
+        /// <inheritdoc/>
         public async Task<int?> ReleaseUsernameFromWebOnlyAccountAsync(string username, int? actorUserId = null)
         {
             if (string.IsNullOrWhiteSpace(username))

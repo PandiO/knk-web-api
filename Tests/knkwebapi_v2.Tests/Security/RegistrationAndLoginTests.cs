@@ -169,6 +169,8 @@ public class RegistrationAndLoginTests : IDisposable
         var users = new Mock<IUserService>();
         var order = new List<string>();
         users.Setup(u => u.ReleaseUsernameFromWebOnlyAccountAsync("Steve", null)).Callback(() => order.Add("release")).ReturnsAsync(12);
+        users.Setup(s => s.RunInTransactionAsync(It.IsAny<Func<Task<IActionResult>>>(), It.IsAny<Func<IActionResult, bool>>()))
+            .Returns((Func<Task<IActionResult>> work, Func<IActionResult, bool> _) => work());
         users.Setup(u => u.ValidateUserCreationAsync(It.IsAny<UserCreateDto>(), It.IsAny<int?>())).ReturnsAsync((true, null));
         users.Setup(u => u.CheckUsernameTakenAsync("Steve", null)).ReturnsAsync((false, null));
         users.Setup(u => u.CheckUuidTakenAsync(It.IsAny<string>(), null)).ReturnsAsync((false, null));
@@ -186,6 +188,38 @@ public class RegistrationAndLoginTests : IDisposable
         Assert.IsType<CreatedAtRouteResult>(result);
         Assert.Equal(new[] { "release", "create" }, order);
         users.Verify(u => u.UpdateAsync(It.IsAny<int>(), It.IsAny<UserDto>(), It.IsAny<int?>()), Times.Never); // no linking by UUID
+    }
+
+    [Fact]
+    public async Task PluginCreate_WithASquattedUsername_DoesNotCommitTheReleaseWhenCreateFails()
+    {
+        // Release + create run in one transaction committed only for a 201: a later 409 (here a
+        // duplicate UUID) must leave the web-only account's name alone.
+        var users = new Mock<IUserService>();
+        bool? committed = null;
+        users.Setup(u => u.RunInTransactionAsync(It.IsAny<Func<Task<IActionResult>>>(), It.IsAny<Func<IActionResult, bool>>()))
+            .Returns(async (Func<Task<IActionResult>> work, Func<IActionResult, bool> shouldCommit) =>
+            {
+                var r = await work();
+                committed = shouldCommit(r);
+                return r;
+            });
+        users.Setup(u => u.ReleaseUsernameFromWebOnlyAccountAsync("Steve", null)).ReturnsAsync(12);
+        users.Setup(u => u.ValidateUserCreationAsync(It.IsAny<UserCreateDto>(), It.IsAny<int?>())).ReturnsAsync((true, null));
+        users.Setup(u => u.CheckUsernameTakenAsync("Steve", null)).ReturnsAsync((false, null));
+        users.Setup(u => u.CheckUuidTakenAsync(It.IsAny<string>(), null)).ReturnsAsync((true, 99));
+        var controller = new UsersController(users.Object, new Mock<IMapper>().Object, new Mock<IPermissionResolutionService>().Object,
+            new Mock<ISalaryService>().Object, new Mock<IUserProfileSummaryService>().Object,
+            new Mock<IUserPermissionGroupService>().Object, new Mock<IPermissionGrantService>().Object, new Mock<IPermissionEscalationGuard>().Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.Plugin() }
+        };
+
+        var result = await controller.Create(new UserCreateDto { Username = "Steve", Uuid = "uuid-1" });
+
+        Assert.IsType<ConflictObjectResult>(result);
+        Assert.False(committed);
+        users.Verify(u => u.CreateAsync(It.IsAny<UserCreateDto>()), Times.Never);
     }
 
     [Fact]

@@ -820,6 +820,8 @@ public class UsersControllerTests
         SetRequest(apiKey: "secret", configuredKey: "secret");
         _mockUserService.Setup(s => s.GetByUsernameAsync("joiner")).ReturnsAsync(new UserDto { Id = 12, Username = "joiner", Email = "j@example.com" });
         _mockUserService.Setup(s => s.ReleaseUsernameFromWebOnlyAccountAsync("joiner", It.IsAny<int?>())).ReturnsAsync(12);
+        _mockUserService.Setup(s => s.RunInTransactionAsync(It.IsAny<Func<Task<IActionResult>>>(), It.IsAny<Func<IActionResult, bool>>()))
+            .Returns((Func<Task<IActionResult>> work, Func<IActionResult, bool> _) => work());
         _mockUserService.Setup(s => s.ValidateUserCreationAsync(It.IsAny<UserCreateDto>(), It.IsAny<int?>())).ReturnsAsync((true, null));
         _mockUserService.Setup(s => s.CreateAsync(It.IsAny<UserCreateDto>()))
             .ReturnsAsync(new UserDto { Id = 40, Username = "joiner", Uuid = "11111111-2222-3333-4444-555555555555" });

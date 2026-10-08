@@ -190,5 +190,10 @@ namespace knkwebapi_v2.Services
         /// when nothing was released.
         /// </summary>
         Task<int?> ReleaseUsernameFromWebOnlyAccountAsync(string username, int? actorUserId = null);
+
+        /// <summary>Runs <paramref name="work"/> in one database transaction and commits only when
+        /// <paramref name="shouldCommit"/> accepts its result; otherwise (or on an exception) every
+        /// write in it is rolled back. Joins an already open transaction.</summary>
+        Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, Func<T, bool> shouldCommit);
     }
 }

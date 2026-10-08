@@ -39,7 +39,30 @@ namespace knkwebapi_v2.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public void Detach(User user)
+        public async Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, Func<T, bool> shouldCommit)
+        {
+            if (!_context.Database.IsRelational() || _context.Database.CurrentTransaction != null)
+            {
+                return await work();
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+            var result = await work();
+            if (shouldCommit(result))
+            {
+                await transaction.CommitAsync();
+            }
+            else
+            {
+                await transaction.RollbackAsync();
+                // Entities saved inside the rolled-back transaction are still tracked with their new
+                // values; forget them so the rest of the request reads the database again.
+                _context.ChangeTracker.Clear();
+            }
+            return result;
+        }
+
+                public void Detach(User user)
         {
             _context.Entry(user).State = EntityState.Detached;
         }

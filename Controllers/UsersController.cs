@@ -418,19 +418,29 @@ namespace knkwebapi_v2.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = "Only the game server can create or link an account by Minecraft UUID." });
             }
 
+            // Closed-alpha WP5.3: a web-only account (no UUID) can no longer be attached to the
+            // Minecraft player who joins with its name - that let anyone pre-register a player's
+            // name and take over their account. The game server's create releases the name instead
+            // (the web-only account becomes unclaimed-<id>, audited) and the Minecraft account is
+            // created normally. Release and create run in one transaction that only commits when
+            // the account was created: a later 400/409 or failure leaves the old account untouched.
+            if (!string.IsNullOrEmpty(user.Uuid) && !string.IsNullOrEmpty(user.Username))
+            {
+                return await _service.RunInTransactionAsync(async () =>
+                {
+                    await _service.ReleaseUsernameFromWebOnlyAccountAsync(user.Username, GetActorUserId());
+                    return await CreateCoreAsync(user);
+                }, result => result is CreatedAtRouteResult);
+            }
+
+            return await CreateCoreAsync(user);
+        }
+
+        private async Task<IActionResult> CreateCoreAsync(UserCreateDto user)
+        {
             try
             {
                 UserDto? created = null;
-
-                // Closed-alpha WP5.3: a web-only account (no UUID) can no longer be attached to the
-                // Minecraft player who joins with its name - that let anyone pre-register a
-                // player's name and take over their account. The game server's create releases
-                // the name instead (the web-only account becomes unclaimed-<id>, audited) and the
-                // Minecraft account is created normally.
-                if (!string.IsNullOrEmpty(user.Uuid) && !string.IsNullOrEmpty(user.Username))
-                {
-                    await _service.ReleaseUsernameFromWebOnlyAccountAsync(user.Username, GetActorUserId());
-                }
 
                 // If not linked to existing pre-registered account, proceed with normal validation and creation
                 if (created == null)
