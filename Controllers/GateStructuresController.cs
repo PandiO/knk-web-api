@@ -95,6 +95,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] GateStructureDto gateStructureDto)
         {
@@ -115,6 +116,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] GateStructureDto gateStructureDto)
         {
@@ -139,6 +141,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -165,6 +168,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<GateStructureListDto>>> SearchGateStructures([FromBody] PagedQueryDto query)
         {

@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,8 @@ namespace KnKWebAPI.Controllers
     // door directly by its own id, mirroring GateStructuresController's shape.
     [ApiController]
     [Route("api")]
+    // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
     public class GateDoorsController : ControllerBase
     {
         private readonly IGateDoorService _service;

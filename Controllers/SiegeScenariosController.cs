@@ -94,6 +94,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<SiegeScenarioListDto>>> Search([FromBody] PagedQueryDto query)
         {

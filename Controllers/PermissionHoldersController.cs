@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,7 @@ namespace KnKWebAPI.Controllers;
 /// <summary>Read-only lookup used by FormWizard relationship fields targeting PermissionHolder.</summary>
 [ApiController]
 [Route("api/[controller]")]
+[RequireServiceOrPermission(StaffPermissions.ManageUsers)]
 public class PermissionHoldersController : ControllerBase
 {
     private readonly IPermissionHolderService _service;
@@ -23,6 +25,7 @@ public class PermissionHoldersController : ControllerBase
         return holder == null ? NotFound() : Ok(holder);
     }
 
+    [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
     [HttpPost("search")]
     public async Task<ActionResult<PagedResultDto<PermissionHolderListDto>>> Search([FromBody] PagedQueryDto query)
     {

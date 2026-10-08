@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,8 @@ namespace KnKWebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
     public class DistrictsController : ControllerBase
     {
         private readonly IDistrictService _service;

@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Threading.Tasks;
@@ -9,6 +10,8 @@ namespace knkwebapi_v2.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+// Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
+[RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
 public class LocationsController : ControllerBase
 {
     private readonly ILocationService _service;

@@ -21,6 +21,7 @@ namespace KnKWebAPI.Controllers
             _service = service;
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -28,6 +29,7 @@ namespace KnKWebAPI.Controllers
             return Ok(items);
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet("{id:int}", Name = "GetPermissionGrantById")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -99,6 +101,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<PermissionGrantListDto>>> Search([FromBody] PagedQueryDto query)
         {

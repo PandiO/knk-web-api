@@ -16,13 +16,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddRazorPages();
 
-builder.Services.AddControllers()
+// Closed-alpha WP1 (D6): default-deny. Every action needs the plugin key or a logged-in user
+// unless it has [AllowAnonymous]; every write also needs an explicit access rule.
+builder.Services.AddControllers(options => options.Filters.Add<knkwebapi_v2.Attributes.DefaultCallerRequiredFilter>())
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
@@ -146,17 +147,7 @@ builder.Services.AddCors(options =>
         });
 });
 
-// Placeholder admin authorization policy.
-// TODO: Bind this to your real authentication/authorization setup.
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("RequireAdmin", policy =>
-    {
-        // Placeholder: allow all in Development, require role claim otherwise.
-        policy.RequireAssertion(ctx =>
-            ctx.User?.IsInRole("Admin") == true || ctx.User?.Claims.Any(c => c.Type == "role" && c.Value == "Admin") == true);
-    });
-});
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 

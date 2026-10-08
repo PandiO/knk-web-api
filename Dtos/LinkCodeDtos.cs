@@ -95,25 +95,6 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
-    /// DTO for linking an account using a link code.
-    /// Used in web app signup when user has existing Minecraft account.
-    /// </summary>
-    public class LinkAccountDto
-    {
-        [JsonPropertyName("linkCode")]
-        public string LinkCode { get; set; } = null!;
-
-        [JsonPropertyName("email")]
-        public string Email { get; set; } = null!;
-
-        [JsonPropertyName("password")]
-        public string Password { get; set; } = null!;
-
-        [JsonPropertyName("passwordConfirmation")]
-        public string PasswordConfirmation { get; set; } = null!;
-    }
-
-    /// <summary>
     /// DTO for generating a link code.
     /// Supports both web app (via JWT, no body) and Minecraft plugin (via userId in body, no auth).
     /// </summary>

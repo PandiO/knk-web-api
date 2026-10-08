@@ -41,6 +41,7 @@ namespace KnKWebAPI.Controllers
         /// <param name="domainType">Optional concrete domain type (Town, District, Structure, GateStructure): the plugin then also applies the managed-region parent, priority and flags</param>
         /// <param name="parentRegionId">Optional WorldGuard region ID of the domain's parent (District's Town, Structure's District)</param>
         /// <returns>true if successful, false otherwise</returns>
+        [RequireServiceOrPermission(StaffPermissions.ManageRegions)]
         [HttpPost("rename")]
         public async Task<ActionResult<bool>> RenameRegion([FromQuery] string oldRegionId, [FromQuery] string newRegionId, [FromQuery] string? domainType = null, [FromQuery] string? parentRegionId = null)
         {

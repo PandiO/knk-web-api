@@ -375,6 +375,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="201">User created successfully</response>
         /// <response code="400">Validation failed</response>
         /// <response code="409">Duplicate username, email, or UUID</response>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] UserCreateDto user)
         {
@@ -962,6 +963,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Link code generated successfully</response>
         /// <response code="401">User not authenticated (web app) or missing userId (plugin)</response>
         /// <response code="404">User not found</response>
+        [RequireServiceOrLoggedIn]
         [HttpPost("generate-link-code")]
         public async Task<IActionResult> GenerateLinkCode([FromBody] GenerateLinkCodeRequestDto? request = null)
         {
@@ -1017,6 +1019,7 @@ namespace knkwebapi_v2.Controllers
         /// <returns>Validation result with user information if valid</returns>
         /// <response code="200">Validation result (check IsValid field)</response>
         /// <response code="400">Invalid request</response>
+        [AllowAnonymous]
         [HttpPost("validate-link-code/{code}")]
         public async Task<IActionResult> ValidateLinkCode(string code)
         {
@@ -1144,6 +1147,7 @@ namespace knkwebapi_v2.Controllers
         /// <returns>Duplicate check result</returns>
         /// <response code="200">Check completed (check HasDuplicate field)</response>
         /// <response code="400">Invalid request</response>
+        [AllowAnonymous]
         [HttpGet("check-duplicate")]
         public async Task<IActionResult> CheckDuplicateAvailability([FromQuery] string? email, [FromQuery] string? username, [FromQuery] int? excludeUserId)
         {
@@ -1162,6 +1166,7 @@ namespace knkwebapi_v2.Controllers
             return Ok(new { available = !usernameTaken, conflictingUserId = usernameConflictId });
         }
 
+        [AllowAnonymous]
         [HttpPost("check-duplicate")]
         public async Task<IActionResult> CheckDuplicate([FromBody] DuplicateCheckDto request)
         {
@@ -1270,85 +1275,6 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
-        /// <summary>
-        /// Link an existing Minecraft account with email and password from web app
-        /// </summary>
-        /// <remarks>
-        /// Used when a player creates account in Minecraft first, then wants to add web access.
-        /// Requires a valid link code generated from Minecraft.
-        /// Sets initial password (no current password needed for first-time setup).
-        /// </remarks>
-        /// <param name="request">Link account request with code, email, and password</param>
-        /// <returns>Linked user account</returns>
-        /// <response code="200">Account linked successfully</response>
-        /// <response code="400">Invalid link code, weak password, or validation failed</response>
-        /// <response code="409">Email already in use</response>
-        [HttpPost("link-account")]
-        public async Task<IActionResult> LinkAccount([FromBody] LinkAccountDto request)
-        {
-            try
-            {
-                // Step 1: Validate link code WITHOUT consuming it (validate first)
-                var (isLinkCodeValid, linkCodeUser) = await _service.ValidateLinkCodeAsync(request.LinkCode);
-                
-                if (!isLinkCodeValid || linkCodeUser == null)
-                {
-                    return BadRequest(new { error = "InvalidLinkCode", message = "Invalid or expired link code" });
-                }
-
-                // Step 2: Validate password
-                var (passwordValid, passwordError) = await _service.ValidatePasswordAsync(request.Password);
-                if (!passwordValid)
-                {
-                    return BadRequest(new { error = "InvalidPassword", message = passwordError });
-                }
-
-                // Step 3: Check password confirmation
-                if (request.Password != request.PasswordConfirmation)
-                {
-                    return BadRequest(new { error = "PasswordMismatch", message = "Password and confirmation do not match" });
-                }
-
-                // Step 4: Check if email is already taken
-                var (emailTaken, conflictingUserId) = await _service.CheckEmailTakenAsync(request.Email, linkCodeUser.Id);
-                if (emailTaken)
-                {
-                    return Conflict(new { error = "DuplicateEmail", message = "Email is already in use by another account" });
-                }
-
-                // Step 5: All validations passed - NOW consume the link code
-                var (isConsumed, consumedUser) = await _service.ConsumeLinkCodeAsync(request.LinkCode);
-                if (!isConsumed || consumedUser == null)
-                {
-                    return BadRequest(new { error = "InvalidLinkCode", message = "Link code could not be consumed" });
-                }
-
-                // Step 6: Update user with email
-                await _service.UpdateEmailAsync(linkCodeUser.Id, request.Email, null);
-                
-                // Step 7: Set initial password (no current password needed since we're setting it for the first time)
-                // Use empty string as currentPassword since ChangePasswordAsync allows null PasswordHash
-                await _service.ChangePasswordAsync(linkCodeUser.Id, "", request.Password, request.PasswordConfirmation);
-                
-                // Step 8: Get updated user
-                var updatedUser = await _service.GetByIdAsync(linkCodeUser.Id);
-                
-                return Ok(new 
-                {
-                    user = updatedUser,
-                    message = "Account successfully linked with email and password"
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = "InvalidArgument", message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { error = "OperationFailed", message = ex.Message });
-            }
-        }
-
         [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
@@ -1372,6 +1298,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<UserListDto>>> SearchUsers([FromBody] PagedQueryDto query)
         {

@@ -20,6 +20,7 @@ namespace KnKWebAPI.Controllers
             _service = service;
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -27,6 +28,7 @@ namespace KnKWebAPI.Controllers
             return Ok(items);
         }
 
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet("{id:int}", Name = "GetPermissionGroupById")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -100,6 +102,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<PermissionGroupListDto>>> Search([FromBody] PagedQueryDto query)
         {
@@ -111,6 +114,7 @@ namespace KnKWebAPI.Controllers
         /// "Premium expiring soon" moderation view (docs/specs/user-management/IMPLEMENTATION_PLAN.md
         /// Phase 3) — memberships in this group expiring within the next withinDays days.
         /// </summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet("{id:int}/expiring-memberships")]
         public async Task<ActionResult<IEnumerable<ExpiringMembershipDto>>> GetExpiringMemberships(int id, [FromQuery] int withinDays = 7)
         {

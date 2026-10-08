@@ -25,6 +25,7 @@ namespace KnKWebAPI.Controllers
         }
 
         /// <summary>List memberships by user or by group (exactly one of the two).</summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet]
         public async Task<IActionResult> Get([FromQuery] int? userId, [FromQuery] int? permissionGroupId)
         {
@@ -78,6 +79,7 @@ namespace KnKWebAPI.Controllers
         }
 
         /// <summary>The user's current premium tier, or 204 if they hold none.</summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet("premium-tier/{userId:int}")]
         public async Task<IActionResult> GetPremiumTier(int userId)
         {

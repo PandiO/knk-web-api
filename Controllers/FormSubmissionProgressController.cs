@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -9,6 +10,8 @@ namespace KnKWebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // Closed-alpha WP1.3: staff drafts - reads and writes need knk.admin.content (web only; the plugin doesn't use this).
+    [RequirePermission(StaffPermissions.ManageContent)]
     public class FormSubmissionProgressController : ControllerBase
     {
         private readonly IFormSubmissionProgressService _service;

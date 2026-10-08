@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
@@ -37,6 +38,7 @@ namespace KnKWebAPI.Controllers
             return bracket == null ? NotFound() : Ok(ToDto(bracket));
         }
 
+        [RequireServiceOrPermission(StaffPermissions.CurrencyPolicy)]
         [HttpPost("search")]
         public async Task<IActionResult> Search([FromBody] PagedQueryDto? query)
         {
