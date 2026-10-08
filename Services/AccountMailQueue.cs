@@ -27,9 +27,14 @@ namespace knkwebapi_v2.Services
 
     public class AccountMailQueue : IAccountMailQueue
     {
-        private readonly Channel<AccountMail> _channel = Channel.CreateBounded<AccountMail>(new BoundedChannelOptions(500)
+        public const int Capacity = 500;
+
+        // FullMode.Wait: TryWrite then answers false when the queue is full (it never blocks), so a
+        // dropped mail is reported and logged. DropWrite would make TryWrite report success while
+        // discarding the mail.
+        private readonly Channel<AccountMail> _channel = Channel.CreateBounded<AccountMail>(new BoundedChannelOptions(Capacity)
         {
-            FullMode = BoundedChannelFullMode.DropWrite,
+            FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true
         });
         private readonly ILogger<AccountMailQueue> _logger;
