@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
@@ -96,6 +97,28 @@ namespace knkwebapi_v2.Services
             var query = _mapper.Map<PagedQuery>(queryDto);
             var result = await _repo.SearchAsync(query);
             return _mapper.Map<PagedResultDto<DomainListDto>>(result);
+        }
+
+        /// <summary>
+        /// AllowEntry/AllowExit of every domain that has a WorldGuard region, for the game server's
+        /// flag sync (KNG-56). Domains without a region can't be entered or left in game and are skipped.
+        /// </summary>
+        public async Task<IReadOnlyList<DomainAccessRuleDto>> GetAccessRulesAsync()
+        {
+            var domains = await _repo.GetAllAsync();
+            return domains
+                .Where(d => !string.IsNullOrWhiteSpace(d.WgRegionId))
+                .OrderBy(d => d.Id)
+                .Select(d => new DomainAccessRuleDto
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    WgRegionId = d.WgRegionId,
+                    AllowEntry = d.AllowEntry,
+                    AllowExit = d.AllowExit,
+                    DomainType = d.GetType().Name
+                })
+                .ToList();
         }
 
         /// <summary>
