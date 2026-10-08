@@ -15,20 +15,27 @@ namespace knkwebapi_v2.Services
         /// <param name="password">Plain text password</param>
         /// <param name="rememberMe">Extended session flag</param>
         /// <returns>Tuple with success flag, response DTO, and optional error message</returns>
-        Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string email, string password, bool rememberMe);
+        Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string email, string password, bool rememberMe, string? clientIp = null, string? userAgent = null);
 
         /// <summary>
         /// Refresh an access token using a refresh token, rotating the refresh token.
         /// </summary>
-        /// <param name="refreshToken">Refresh token (JWT)</param>
-        /// <returns>Tuple with success flag, response DTO, and optional error message</returns>
-        Task<(bool Ok, AuthRefreshResponseDto? Result, string? Error)> RefreshAsync(string refreshToken);
+        /// <param name="refreshToken">The opaque refresh token from the cookie</param>
+        /// <returns>Tuple with success flag, response DTO, and optional error message. Reusing a
+        /// rotated token revokes its whole family (closed-alpha WP4).</returns>
+        Task<(bool Ok, AuthRefreshResponseDto? Result, string? Error)> RefreshAsync(string refreshToken, string? clientIp = null, string? userAgent = null);
 
         /// <summary>
-        /// Logout the current session by revoking refresh token (stateless placeholder).
+        /// Logout the current session: revokes the presented refresh token's family.
         /// </summary>
         /// <param name="refreshToken">Refresh token to revoke (optional if stateless)</param>
         Task LogoutAsync(string? refreshToken);
+
+        /// <summary>
+        /// Ends every session of a user (closed-alpha WP4, D5): bumps TokenVersion, revokes all
+        /// refresh tokens and drops the cached session state.
+        /// </summary>
+        Task RevokeAllSessionsAsync(int userId, string reason);
 
         /// <summary>
         /// Get the current authenticated user by ID.
@@ -43,7 +50,8 @@ namespace knkwebapi_v2.Services
         /// <param name="userId">Authenticated user ID</param>
         /// <param name="request">Update request DTO</param>
         /// <returns>Tuple with success flag, updated user DTO, and optional error message</returns>
-        Task<(bool Ok, UserDto? Result, string? Error)> UpdateUserAsync(int userId, AuthUpdateRequestDto request);
+        /// <remarks>A password or email change revokes every session and returns a fresh one for this tab.</remarks>
+        Task<(bool Ok, AuthUpdateResponseDto? Result, string? Error)> UpdateUserAsync(int userId, AuthUpdateRequestDto request, string? currentRefreshToken = null, string? clientIp = null, string? userAgent = null);
 
         /// <summary>
         /// Initiate password reset flow for an email address.

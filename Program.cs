@@ -81,6 +81,23 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.FromSeconds(60)
     };
+    // Closed-alpha WP4: a refresh JWT from before the change is not a bearer token, and every
+    // access token must carry the user's current TokenVersion ("tv") and an active user.
+    // IUserSessionStateCache keeps this to one DB read per user per 60 s.
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var sessions = context.HttpContext.RequestServices.GetRequiredService<knkwebapi_v2.Services.IUserSessionStateCache>();
+            var problem = context.Principal == null
+                ? "no principal"
+                : await knkwebapi_v2.Services.AccessTokenSessionCheck.FindProblemAsync(context.Principal, sessions, context.HttpContext.RequestAborted);
+            if (problem != null)
+            {
+                context.Fail($"Access token refused: {problem}.");
+            }
+        }
+    };
 });
 
 // Health checks: add liveness/readiness

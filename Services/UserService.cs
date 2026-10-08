@@ -29,6 +29,7 @@ namespace knkwebapi_v2.Services
         private readonly ICurrencyService _currency;
         private readonly ITitleProgressionService _titleProgression;
         private readonly IPlayerNotificationQueue? _notificationQueue;
+        private readonly ISessionRevocationService? _sessions;
 
         public UserService(
             IUserRepository repo,
@@ -42,9 +43,11 @@ namespace knkwebapi_v2.Services
             ILogger<UserService> logger,
             ICurrencyService currency,
             ITitleProgressionService titleProgression,
-            IPlayerNotificationQueue? notificationQueue = null)
+            IPlayerNotificationQueue? notificationQueue = null,
+            ISessionRevocationService? sessions = null)
         {
             _notificationQueue = notificationQueue;
+            _sessions = sessions;
             _currency = currency;
             _titleProgression = titleProgression;
             _repo = repo;
@@ -247,6 +250,8 @@ namespace knkwebapi_v2.Services
 
             var originalUuid = existing.Uuid;
             var originalCreatedAt = existing.CreatedAt;
+            var originalEmail = existing.Email;
+            var wasActive = existing.IsActive;
 
             // Apply all editable UserDto fields onto the tracked entity. The mapping profile
             // (UserMappingProfile: UserDto -> User) ignores fields that must never be set from
@@ -270,7 +275,20 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.UpdateUserAsync(existing);
+
+            // Closed-alpha WP4: a staff email change or deactivation ends the player's sessions.
+            if (!string.Equals(originalEmail, existing.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                await RevokeSessionsAsync(id, "email changed by staff");
+            }
+            else if (wasActive && !existing.IsActive)
+            {
+                await RevokeSessionsAsync(id, "account deactivated");
+            }
         }
+
+        private Task RevokeSessionsAsync(int userId, string reason) =>
+            _sessions?.RevokeAllSessionsAsync(userId, reason) ?? Task.CompletedTask;
 
         /// <summary>Upper bound for a personal multiplier (KNG-22): keeps a typo or a hostile
         /// edit from turning one salary payout into billions of coins.</summary>
@@ -484,6 +502,7 @@ namespace knkwebapi_v2.Services
                     $"User {id} has a currency balance or ledger history, so it can't be deleted; merge the account instead.");
             }
 
+            await RevokeSessionsAsync(id, "account deleted");
             await _repo.DeleteUserAsync(id);
         }
 
@@ -699,6 +718,7 @@ namespace knkwebapi_v2.Services
             // Hash and update password
             var newHash = await _passwordService.HashPasswordAsync(newPassword);
             await _repo.UpdatePasswordHashAsync(userId, newHash);
+            await RevokeSessionsAsync(userId, "password changed");
         }
 
         /// <inheritdoc/>
@@ -754,6 +774,7 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.UpdateEmailAsync(userId, newEmail);
+            await RevokeSessionsAsync(userId, "email changed");
         }
 
         // ===== NEW METHODS: BALANCES (COINS, GEMS, XP) =====
@@ -1102,6 +1123,8 @@ namespace knkwebapi_v2.Services
                 }
                 await _repo.MergeUsersAsync(primaryUserId, secondaryUserId);
             });
+            // The merged-away account is soft-deleted: its sessions end.
+            await RevokeSessionsAsync(secondaryUserId, "merged into user " + primaryUserId);
 
             // Only after the commit, as for a staff XP change.
             if (titleChange != null)

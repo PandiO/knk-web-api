@@ -83,7 +83,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.DeletedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedReason, opt => opt.Ignore())
                 .ForMember(dest => dest.ArchiveUntil, opt => opt.Ignore())
-                .ForMember(dest => dest.LinkCodes, opt => opt.Ignore());
+                .ForMember(dest => dest.LinkCodes, opt => opt.Ignore())
+                // Session state (closed-alpha WP4) is service-managed only.
+                .ForMember(dest => dest.TokenVersion, opt => opt.Ignore())
+                .ForMember(dest => dest.RefreshTokens, opt => opt.Ignore());
 
             // ===== User → UserSummaryDto =====
             CreateMap<User, UserSummaryDto>()
@@ -153,7 +156,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.DeletedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedReason, opt => opt.Ignore())
                 .ForMember(dest => dest.ArchiveUntil, opt => opt.Ignore())
-                .ForMember(dest => dest.LinkCodes, opt => opt.Ignore());
+                .ForMember(dest => dest.LinkCodes, opt => opt.Ignore())
+                // Session state (closed-alpha WP4) is service-managed only.
+                .ForMember(dest => dest.TokenVersion, opt => opt.Ignore())
+                .ForMember(dest => dest.RefreshTokens, opt => opt.Ignore());
 
             // ===== LinkCode → LinkCodeResponseDto =====
             CreateMap<LinkCode, LinkCodeResponseDto>()

@@ -330,6 +330,26 @@ namespace knkwebapi_v2.Repositories
             }
         }
 
+        public async Task<int> IncrementTokenVersionAsync(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return 0;
+            }
+            user.TokenVersion++;
+            await _context.SaveChangesAsync();
+            return user.TokenVersion;
+        }
+
+        public async Task<User?> GetByUsernameIgnoreCaseAsync(string username)
+        {
+            // The exact match uses the unique index (and MySQL's case-insensitive collation);
+            // the lower-cased fallback covers a case-sensitive collation.
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username)
+                ?? await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+        }
+
         public async Task UpdateEmailAsync(int id, string email)
         {
             var user = await _context.Users.FindAsync(id);

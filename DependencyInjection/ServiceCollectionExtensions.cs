@@ -34,6 +34,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IPasswordService, PasswordService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
+            // Closed-alpha WP4: per-user session state (TokenVersion, active) cached for the
+            // per-request token check; one instance so a revocation invalidates it for everyone.
+            services.AddSingleton<IUserSessionStateCache, UserSessionStateCache>();
             // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
             services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
 

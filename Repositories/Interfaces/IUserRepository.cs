@@ -95,6 +95,13 @@ namespace knkwebapi_v2.Repositories
         /// </summary>
         Task UpdatePasswordHashAsync(int id, string passwordHash);
 
+        /// <summary>Bumps users.TokenVersion (closed-alpha WP4) and returns the new value; 0 when
+        /// the user doesn't exist.</summary>
+        Task<int> IncrementTokenVersionAsync(int id);
+
+        /// <summary>Case-insensitive username lookup for login by Minecraft name (closed-alpha WP5).</summary>
+        Task<User?> GetByUsernameIgnoreCaseAsync(string username);
+
         /// <summary>
         /// Update only the email for a user.
         /// </summary>

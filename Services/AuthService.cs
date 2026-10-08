@@ -27,6 +27,8 @@ namespace knkwebapi_v2.Services
         private readonly IMemoryCache _memoryCache;
         private readonly SecuritySettings _securitySettings;
         private readonly ILogger<AuthService> _logger;
+        private readonly IRefreshTokenRepository _refreshTokens;
+        private readonly ISessionRevocationService _sessionRevocation;
 
         public AuthService(
             IUserRepository userRepository,
@@ -37,8 +39,12 @@ namespace knkwebapi_v2.Services
             IPasswordResetDeliveryService passwordResetDeliveryService,
             IMemoryCache memoryCache,
             IOptions<SecuritySettings> securitySettings,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IRefreshTokenRepository refreshTokens,
+            ISessionRevocationService sessionRevocation)
         {
+            _refreshTokens = refreshTokens;
+            _sessionRevocation = sessionRevocation;
             _userRepository = userRepository;
             _tokenService = tokenService;
             _passwordService = passwordService;
@@ -51,7 +57,7 @@ namespace knkwebapi_v2.Services
         }
 
         /// <inheritdoc/>
-        public async Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string email, string password, bool rememberMe)
+        public async Task<(bool Ok, AuthLoginResponseDto? Result, string? Error)> LoginAsync(string email, string password, bool rememberMe, string? clientIp = null, string? userAgent = null)
         {
             if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
@@ -80,16 +86,15 @@ namespace knkwebapi_v2.Services
                 return (false, null, "Invalid credentials.");
             }
 
-            var accessToken = await _tokenService.GenerateAccessTokenAsync(user, rememberMe);
-            var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user, rememberMe);
-            var expiresIn = await CalculateExpiresInSecondsAsync(accessToken);
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, rememberMe, null, clientIp, userAgent);
 
             var response = new AuthLoginResponseDto
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken,
+                RefreshToken = null,
                 ExpiresIn = expiresIn,
-                User = _mapper.Map<UserDto>(user)
+                User = _mapper.Map<UserDto>(user),
+                Session = session
             };
 
             _logger.LogInformation("Login succeeded for user {UserId} ({Email})", user.Id, normalizedEmail);
@@ -97,46 +102,68 @@ namespace knkwebapi_v2.Services
         }
 
         /// <inheritdoc/>
-        public async Task<(bool Ok, AuthRefreshResponseDto? Result, string? Error)> RefreshAsync(string refreshToken)
+        public async Task<(bool Ok, AuthRefreshResponseDto? Result, string? Error)> RefreshAsync(string refreshToken, string? clientIp = null, string? userAgent = null)
         {
+            const string invalid = "Invalid or expired refresh token.";
             if (string.IsNullOrWhiteSpace(refreshToken))
             {
                 return (false, null, "Refresh token is required.");
             }
 
-            var principal = await _tokenService.ValidateRefreshTokenAsync(refreshToken);
-            if (principal == null)
+            var now = DateTime.UtcNow;
+            var stored = await _refreshTokens.GetByHashAsync(_tokenService.HashRefreshToken(refreshToken.Trim()));
+            if (stored == null)
             {
-                _logger.LogWarning("Refresh failed: token invalid or expired");
-                return (false, null, "Invalid or expired refresh token.");
+                _logger.LogWarning("Refresh failed: unknown refresh token");
+                return (false, null, invalid);
             }
 
-            var userId = await _tokenService.ExtractUserIdFromPrincipalAsync(principal);
-            if (!userId.HasValue)
+            if (stored.RevokedAt.HasValue)
             {
-                _logger.LogWarning("Refresh failed: missing user id in token");
-                return (false, null, "Invalid refresh token payload.");
+                // Two tabs refreshing with the same cookie at once: the loser presents a token rotated
+                // a moment ago. Refuse it, but don't end the session the winner just extended.
+                var grace = TimeSpan.FromSeconds(Math.Max(0, _securitySettings.Jwt.RefreshReuseGraceSeconds));
+                if (stored.ReplacedByHash != null && now - stored.RevokedAt.Value <= grace)
+                {
+                    _logger.LogInformation("Refresh refused for user {UserId}: token rotated {Seconds:0.0}s ago (concurrent refresh)",
+                        stored.UserId, (now - stored.RevokedAt.Value).TotalSeconds);
+                    return (false, null, invalid);
+                }
+
+                // Reuse of a rotated or revoked token: someone else may hold this family. End it.
+                var revoked = await _refreshTokens.RevokeFamilyAsync(stored.FamilyId, now);
+                _logger.LogWarning("Refresh token reuse detected for user {UserId}: revoked session family ({Count} tokens)",
+                    stored.UserId, revoked);
+                return (false, null, invalid);
             }
 
-            var user = await _userRepository.GetByIdAsync(userId.Value);
+            if (stored.ExpiresAt <= now)
+            {
+                _logger.LogInformation("Refresh failed for user {UserId}: refresh token expired", stored.UserId);
+                return (false, null, invalid);
+            }
+
+            var user = await _userRepository.GetByIdAsync(stored.UserId);
             if (user == null || !user.IsActive || user.DeletedAt.HasValue)
             {
-                _logger.LogWarning("Refresh failed for user {UserId}: not found or inactive", userId);
-                return (false, null, "User not found or inactive.");
+                await _refreshTokens.RevokeFamilyAsync(stored.FamilyId, now);
+                _logger.LogWarning("Refresh failed for user {UserId}: not found or inactive", stored.UserId);
+                return (false, null, invalid);
             }
 
-            var rememberMe = await IsLongLivedRefreshTokenAsync(refreshToken);
+            // Rotate: this token is spent, its successor joins the same family.
+            var next = NewRefreshToken(user.Id, stored.FamilyId, stored.RememberMe, clientIp, userAgent, out var raw);
+            stored.RevokedAt = now;
+            stored.ReplacedByHash = next.TokenHash;
+            await _refreshTokens.AddAsync(next);
 
-            // TODO: Persist and revoke refresh tokens when refresh token repository is available.
-            var newAccessToken = await _tokenService.GenerateAccessTokenAsync(user, rememberMe);
-            var newRefreshToken = await _tokenService.GenerateRefreshTokenAsync(user, rememberMe);
-            var expiresIn = await CalculateExpiresInSecondsAsync(newAccessToken);
-
+            var accessToken = await _tokenService.GenerateAccessTokenAsync(user, stored.FamilyId);
             var response = new AuthRefreshResponseDto
             {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken,
-                ExpiresIn = expiresIn
+                AccessToken = accessToken,
+                RefreshToken = null,
+                ExpiresIn = await CalculateExpiresInSecondsAsync(accessToken),
+                Session = new IssuedRefreshToken(raw, next.ExpiresAt, next.RememberMe)
             };
 
             _logger.LogInformation("Refresh succeeded for user {UserId}", user.Id);
@@ -144,12 +171,28 @@ namespace knkwebapi_v2.Services
         }
 
         /// <inheritdoc/>
-        public Task LogoutAsync(string? refreshToken)
+        public async Task LogoutAsync(string? refreshToken)
         {
-            // TODO: Add refresh token persistence + revoke when repository is implemented.
-            _logger.LogInformation("Logout requested (token provided: {HasToken})", !string.IsNullOrWhiteSpace(refreshToken));
-            return Task.CompletedTask;
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                _logger.LogInformation("Logout without a refresh token");
+                return;
+            }
+
+            var stored = await _refreshTokens.GetByHashAsync(_tokenService.HashRefreshToken(refreshToken.Trim()));
+            if (stored == null)
+            {
+                _logger.LogInformation("Logout with an unknown refresh token");
+                return;
+            }
+
+            var revoked = await _refreshTokens.RevokeFamilyAsync(stored.FamilyId, DateTime.UtcNow);
+            _logger.LogInformation("Logout for user {UserId}: revoked session family ({Count} tokens)", stored.UserId, revoked);
         }
+
+        /// <inheritdoc/>
+        public Task RevokeAllSessionsAsync(int userId, string reason) =>
+            _sessionRevocation.RevokeAllSessionsAsync(userId, reason);
 
         /// <inheritdoc/>
         public async Task<UserDto?> GetCurrentUserAsync(int userId)
@@ -169,7 +212,7 @@ namespace knkwebapi_v2.Services
         }
 
         /// <inheritdoc/>
-        public async Task<(bool Ok, UserDto? Result, string? Error)> UpdateUserAsync(int userId, AuthUpdateRequestDto request)
+        public async Task<(bool Ok, AuthUpdateResponseDto? Result, string? Error)> UpdateUserAsync(int userId, AuthUpdateRequestDto request, string? currentRefreshToken = null, string? clientIp = null, string? userAgent = null)
         {
             if (userId <= 0)
             {
@@ -254,8 +297,23 @@ namespace knkwebapi_v2.Services
             // Save changes
             await _userRepository.UpdateUserAsync(user);
 
-            var updatedUserDto = _mapper.Map<UserDto>(user);
-            return (true, updatedUserDto, null);
+            // A password or email change ends every session (closed-alpha WP4); this tab gets a
+            // fresh one so it stays logged in, keeping its "remember me" choice.
+            var current = string.IsNullOrWhiteSpace(currentRefreshToken)
+                ? null
+                : await _refreshTokens.GetByHashAsync(_tokenService.HashRefreshToken(currentRefreshToken.Trim()));
+            var rememberMe = current != null && current.UserId == user.Id && current.RememberMe;
+            await RevokeAllSessionsAsync(user.Id, hasPasswordUpdate ? "password changed" : "email changed");
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, rememberMe, null, clientIp, userAgent);
+
+            return (true, new AuthUpdateResponseDto
+            {
+                User = _mapper.Map<UserDto>(user),
+                Message = "Account updated successfully.",
+                AccessToken = accessToken,
+                ExpiresIn = expiresIn,
+                Session = session
+            }, null);
         }
 
         /// <inheritdoc/>
@@ -372,6 +430,7 @@ namespace knkwebapi_v2.Services
 
             await _linkCodeRepository.UpdateLinkCodeStatusAsync(resetToken.Id, LinkCodeStatus.Used);
             await _linkCodeRepository.InvalidateActivePasswordResetTokensAsync(resetToken.User.Id, resetToken.Id);
+            await RevokeAllSessionsAsync(resetToken.User.Id, "password reset");
 
             _logger.LogInformation("Password reset completed for user {UserId}", resetToken.User.Id);
             return (true, null);
@@ -389,17 +448,42 @@ namespace knkwebapi_v2.Services
             return remaining <= TimeSpan.Zero ? 0 : (int)Math.Round(remaining.TotalSeconds);
         }
 
-        private async Task<bool> IsLongLivedRefreshTokenAsync(string refreshToken)
+        /// <summary>A new login session: a refresh token (new family unless given) and an access token
+        /// carrying the family as "sid".</summary>
+        private async Task<(string AccessToken, int ExpiresIn, IssuedRefreshToken Session)> IssueSessionAsync(
+            User user, bool rememberMe, string? familyId, string? clientIp, string? userAgent)
         {
-            var expiresAt = await _tokenService.ExtractExpirationAsync(refreshToken);
-            if (!expiresAt.HasValue)
-            {
-                return false;
-            }
+            var family = familyId ?? Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
+            var token = NewRefreshToken(user.Id, family, rememberMe, clientIp, userAgent, out var raw);
+            await _refreshTokens.AddAsync(token);
 
-            var remaining = expiresAt.Value - DateTime.UtcNow;
-            return remaining > TimeSpan.FromDays(10);
+            var accessToken = await _tokenService.GenerateAccessTokenAsync(user, family);
+            var expiresIn = await CalculateExpiresInSecondsAsync(accessToken);
+            return (accessToken, expiresIn, new IssuedRefreshToken(raw, token.ExpiresAt, rememberMe));
         }
+
+        private RefreshToken NewRefreshToken(int userId, string familyId, bool rememberMe, string? clientIp, string? userAgent, out string raw)
+        {
+            raw = _tokenService.GenerateRefreshToken();
+            var now = DateTime.UtcNow;
+            var jwt = _securitySettings.Jwt;
+            return new RefreshToken
+            {
+                UserId = userId,
+                TokenHash = _tokenService.HashRefreshToken(raw),
+                FamilyId = familyId,
+                CreatedAt = now,
+                ExpiresAt = rememberMe
+                    ? now.AddDays(Math.Max(1, jwt.RefreshTokenDays))
+                    : now.AddHours(Math.Max(1, jwt.SessionRefreshHours)),
+                RememberMe = rememberMe,
+                CreatedByIp = Truncate(clientIp, 64),
+                UserAgent = Truncate(userAgent, 256)
+            };
+        }
+
+        private static string? Truncate(string? value, int max) =>
+            string.IsNullOrEmpty(value) ? null : value.Length <= max ? value : value[..max];
 
         private bool IsForgotPasswordThrottled(string normalizedEmail, string? clientIp)
         {
