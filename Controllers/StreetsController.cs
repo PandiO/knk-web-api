@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Dtos;
 
 namespace KnKWebAPI.Controllers
@@ -12,10 +13,12 @@ namespace KnKWebAPI.Controllers
     public class StreetsController : ControllerBase
     {
         private readonly IStreetService _service;
+        private readonly IRoadNetworkService _roads;
 
-        public StreetsController(IStreetService service)
+        public StreetsController(IStreetService service, IRoadNetworkService roads)
         {
             _service = service;
+            _roads = roads;
         }
 
         [HttpGet]
@@ -31,6 +34,17 @@ namespace KnKWebAPI.Controllers
             var item = await _service.GetByIdAsync(id);
             if (item == null) return NotFound();
             return Ok(item);
+        }
+
+        /// <summary>The street's road: its labelled edges and their nodes (docs/specs/navigation/DESIGN.md §3.7).</summary>
+        [HttpGet("{id:int}/road")]
+        [ProducesResponseType(typeof(StreetRoadDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetStreetRoad(int id)
+        {
+            var road = await _roads.GetStreetRoadAsync(id);
+            if (road == null) return NotFound();
+            return Ok(road);
         }
 
         [HttpPost]

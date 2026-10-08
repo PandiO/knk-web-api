@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260927190750_AddRoadNetwork")]
+    partial class AddRoadNetwork
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1064,21 +1067,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<bool>("TeleportEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<int?>("TeleportMinPremiumGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportMinTitleBracketId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeleportPriceGems")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("TeleportRequiresDiscovery")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<string>("WgRegionId")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -1089,14 +1077,7 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("LocationId")
                         .IsUnique();
 
-                    b.HasIndex("TeleportMinPremiumGroupId");
-
-                    b.HasIndex("TeleportMinTitleBracketId");
-
-                    b.ToTable("domains", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
-                        });
+                    b.ToTable("domains", (string)null);
 
                     b.UseTptMappingStrategy();
                 });
@@ -3353,9 +3334,7 @@ namespace knkwebapi_v2.Migrations
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
-                    b.HasIndex("HolderId", "Node")
-                        .IsUnique()
-                        .HasDatabaseName("UX_permission_grants_HolderId_Node");
+                    b.HasIndex("HolderId", "Node");
 
                     b.ToTable("permission_grants", (string)null);
                 });
@@ -3450,9 +3429,6 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<double>("AvgWidth")
                         .HasColumnType("double");
-
-                    b.Property<bool>("Confirmed")
-                        .HasColumnType("tinyint(1)");
 
                     b.Property<double>("CostMultiplier")
                         .HasColumnType("double");
@@ -3573,9 +3549,6 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Name")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
-
-                    b.Property<int?>("PlazaRadius")
-                        .HasColumnType("int");
 
                     b.Property<string>("Source")
                         .IsRequired()
@@ -3783,9 +3756,6 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("CellCount")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("CuratedAt")
-                        .HasColumnType("datetime");
-
                     b.Property<bool>("Dirty")
                         .HasColumnType("tinyint(1)");
 
@@ -3797,13 +3767,6 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<int>("NodeCount")
                         .HasColumnType("int");
-
-                    b.Property<string>("State")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)")
-                        .HasDefaultValue("Detected");
 
                     b.Property<int>("TileX")
                         .HasColumnType("int");
@@ -3829,75 +3792,6 @@ namespace knkwebapi_v2.Migrations
                         .IsUnique();
 
                     b.ToTable("road_tiles", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.RoadTileProposal", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AddedCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("BaseVersion")
-                        .HasColumnType("int");
-
-                    b.Property<int>("BuilderVersion")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CellCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ChangedCount")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<string>("ItemsJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("LevelCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MovedCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RejectedCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RejectedJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("RemovedCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TileId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("WarningsJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("TileId")
-                        .IsUnique();
-
-                    b.ToTable("road_tile_proposals", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SalaryConfiguration", b =>
@@ -4637,31 +4531,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("tags", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.TeleportFeeVoid", b =>
-                {
-                    b.Property<string>("IdempotencyKey")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .UseCollation("utf8mb4_bin");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("IdempotencyKey")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("teleport_fee_voids", (string)null);
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.TitleBracket", b =>
                 {
                     b.Property<int>("Id")
@@ -4999,10 +4868,7 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("TownId");
 
-                    b.ToTable("districts", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
-                        });
+                    b.ToTable("districts", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Structure", b =>
@@ -5022,20 +4888,14 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("StreetId");
 
-                    b.ToTable("structures", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
-                        });
+                    b.ToTable("structures", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Town", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
 
-                    b.ToTable("towns", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
-                        });
+                    b.ToTable("towns", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
@@ -5072,59 +4932,6 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<decimal>("SalaryMultiplier")
                         .HasColumnType("decimal(65,30)");
-
-                    b.Property<int?>("TeleportRequestCooldownSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportRequestPriceCoins")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportRequestPriceExperience")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportRequestPriceGems")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeleportRequestPriceMode")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("TeleportRequestPriceMultiplier")
-                        .HasPrecision(9, 3)
-                        .HasColumnType("decimal(9,3)");
-
-                    b.Property<int?>("TeleportSpawnCooldownSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportSpawnPriceCoins")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportSpawnPriceExperience")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportSpawnPriceGems")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeleportSpawnPriceMode")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportWarpCooldownSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportWarpPriceCoins")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportWarpPriceExperience")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportWarpPriceGems")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeleportWarpPriceMode")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("TeleportWarpPriceMultiplier")
-                        .HasPrecision(9, 3)
-                        .HasColumnType("decimal(9,3)");
 
                     b.Property<int>("Weight")
                         .HasColumnType("int");
@@ -5336,10 +5143,7 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("IconMaterialRefId");
 
-                    b.ToTable("gate_structures", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
-                        });
+                    b.ToTable("gate_structures", (string)null);
                 });
 
             modelBuilder.Entity("DistrictStreet", b =>
@@ -5587,21 +5391,7 @@ namespace knkwebapi_v2.Migrations
                         .HasForeignKey("knkwebapi_v2.Models.Domain", "LocationId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "TeleportMinPremiumGroup")
-                        .WithMany()
-                        .HasForeignKey("TeleportMinPremiumGroupId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("knkwebapi_v2.Models.TitleBracket", "TeleportMinTitleBracket")
-                        .WithMany()
-                        .HasForeignKey("TeleportMinTitleBracketId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Location");
-
-                    b.Navigation("TeleportMinPremiumGroup");
-
-                    b.Navigation("TeleportMinTitleBracket");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.DomainDiscoveryOverride", b =>
@@ -6505,17 +6295,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Profile");
 
                     b.Navigation("StartedBy");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.RoadTileProposal", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.RoadTile", "Tile")
-                        .WithMany()
-                        .HasForeignKey("TileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Tile");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeLobbyScenario", b =>

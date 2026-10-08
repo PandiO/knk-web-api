@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005084003_AddRoadCuratedTiles")]
+    partial class AddRoadCuratedTiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3353,9 +3356,7 @@ namespace knkwebapi_v2.Migrations
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
-                    b.HasIndex("HolderId", "Node")
-                        .IsUnique()
-                        .HasDatabaseName("UX_permission_grants_HolderId_Node");
+                    b.HasIndex("HolderId", "Node");
 
                     b.ToTable("permission_grants", (string)null);
                 });
@@ -5072,59 +5073,6 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<decimal>("SalaryMultiplier")
                         .HasColumnType("decimal(65,30)");
-
-                    b.Property<int?>("TeleportRequestCooldownSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportRequestPriceCoins")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportRequestPriceExperience")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportRequestPriceGems")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeleportRequestPriceMode")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("TeleportRequestPriceMultiplier")
-                        .HasPrecision(9, 3)
-                        .HasColumnType("decimal(9,3)");
-
-                    b.Property<int?>("TeleportSpawnCooldownSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportSpawnPriceCoins")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportSpawnPriceExperience")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportSpawnPriceGems")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeleportSpawnPriceMode")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportWarpCooldownSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportWarpPriceCoins")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportWarpPriceExperience")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TeleportWarpPriceGems")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeleportWarpPriceMode")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("TeleportWarpPriceMultiplier")
-                        .HasPrecision(9, 3)
-                        .HasColumnType("decimal(9,3)");
 
                     b.Property<int>("Weight")
                         .HasColumnType("int");

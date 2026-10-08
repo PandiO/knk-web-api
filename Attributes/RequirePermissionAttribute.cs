@@ -81,6 +81,11 @@ namespace knkwebapi_v2.Attributes
         /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
         /// owner group; every read is audited.</summary>
         public const string ReadPrivateMessages = "knk.pmlog.read";
+
+        /// <summary>Road network administration: profiles, seeds, node/edge review and street
+        /// labels (docs/specs/navigation/DESIGN.md §7, plan D1). The same node as the in-game
+        /// /knk road subcommand; also matched by knk.admin.* and *.</summary>
+        public const string RoadManage = "knk.admin.road";
     }
 
     /// <summary>
