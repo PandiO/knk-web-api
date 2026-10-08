@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace knkwebapi_v2.Dtos
 {
-    public class TownDto : IDomainTeleportSettingsDto
+    public class TownDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
     {
         [JsonPropertyName("id")]
         public int? Id { get; set; }
@@ -48,6 +48,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("teleportRequiresDiscovery")]
         public bool? TeleportRequiresDiscovery { get; set; }
+
+        // /navigate default (KNG-73): null on create/update = not on this form; "" or "TypeDefault"
+        // = follow the domain type; "Spawn" / "Region" = this domain's own default.
+        [JsonPropertyName("navigationDefaultOverride")]
+        public string? NavigationDefaultOverride { get; set; }
 
         [JsonPropertyName("streetIds")]
         public List<int>? StreetIds { get; set; } = new();

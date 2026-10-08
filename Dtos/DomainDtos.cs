@@ -91,6 +91,10 @@ namespace knkwebapi_v2.Dtos
         // (docs/specs/items/IMPLEMENTATION_PLAN.md §3.2/open question 4).
         [JsonPropertyName("domainType")]
         public string DomainType { get; set; } = null!;
+        // Where /navigate <domain> leads without spawn/region (KNG-73): "Spawn" or "Region" - the
+        // domain's own override, else its type's default. The game server's catalogue reads it here.
+        [JsonPropertyName("navigationDefault")]
+        public string NavigationDefault { get; set; } = "Spawn";
     }
 
     public class DomainRegionDecisionDto

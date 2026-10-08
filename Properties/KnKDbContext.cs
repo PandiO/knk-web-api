@@ -118,6 +118,8 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<UserDomainDiscovery> UserDomainDiscoveries { get; set; } = null!;
     public virtual DbSet<DiscoveryRewardRule> DiscoveryRewardRules { get; set; } = null!;
     public virtual DbSet<DomainDiscoveryOverride> DomainDiscoveryOverrides { get; set; } = null!;
+    // Navigation default per domain type (KNG-73, docs/specs/navigation/DESIGN.md §6.1)
+    public virtual DbSet<DomainNavigationDefault> DomainNavigationDefaults { get; set; } = null!;
 
     // Road navigation Phase 1 (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
     public virtual DbSet<RoadProfile> RoadProfiles { get; set; } = null!;
@@ -192,6 +194,9 @@ public partial class KnKDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(d => d.TeleportMinPremiumGroupId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // /navigate default (KNG-73): null follows the type's DomainNavigationDefault.
+            entity.Property(d => d.NavigationDefaultOverride).HasConversion<string>().HasMaxLength(16);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id
@@ -2116,6 +2121,17 @@ public partial class KnKDbContext : DbContext
                 .WithOne()
                 .HasForeignKey<DomainDiscoveryOverride>(e => e.DomainId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // /navigate default per domain type (KNG-73); a domain's NavigationDefaultOverride wins.
+        modelBuilder.Entity<DomainNavigationDefault>(entity =>
+        {
+            entity.HasKey(e => e.DomainType).HasName("PRIMARY");
+            entity.ToTable("domain_navigation_defaults");
+
+            entity.Property(e => e.DomainType).HasMaxLength(32);
+            entity.Property(e => e.DefaultMode).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 
         // Road navigation (docs/specs/navigation/DESIGN.md §3, IMPLEMENTATION_PLAN.md Phase 1.2).

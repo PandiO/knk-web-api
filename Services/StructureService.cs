@@ -81,6 +81,7 @@ namespace knkwebapi_v2.Services
             var structure = _mapper.Map<Structure>(structureDto);
             structure.CreatedAt = DateTime.UtcNow;
             DomainTeleportSettings.Apply(structure, structureDto);
+            DomainNavigationDefaults.Apply(structure, structureDto);
             await _repo.AddStructureAsync(structure);
             await _regionNames.FinalizeAsync(structure);
             return _mapper.Map<StructureDto>(structure);
@@ -132,6 +133,7 @@ namespace knkwebapi_v2.Services
             existing.DistrictId = structureDto.DistrictId;
             existing.HouseNumber = structureDto.HouseNumber;
             DomainTeleportSettings.Apply(existing, structureDto);
+            DomainNavigationDefaults.Apply(existing, structureDto);
 
             await _repo.UpdateStructureAsync(existing);
             await _regionNames.FinalizeAsync(existing);

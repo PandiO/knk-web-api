@@ -10,7 +10,7 @@ namespace knkwebapi_v2.Dtos
     // multi-door support - see docs/features/gate-structure-animation/
     // GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md. Structure-level cascading overrides (decision
     // 5.0-B) live here as nullable fields alongside the embedded GateDoors list.
-    public class GateStructureDto
+    public class GateStructureDto : IDomainNavigationDefaultDto
     {
         [JsonPropertyName("id")]
         [JsonConverter(typeof(NullableIntConverter))]
@@ -42,6 +42,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("location")]
         public LocationDto? Location { get; set; }
+
+        // /navigate default (KNG-73): null on create/update = not on this form; "" or "TypeDefault"
+        // = follow the domain type; "Spawn" / "Region" = this gate's own default.
+        [JsonPropertyName("navigationDefaultOverride")]
+        public string? NavigationDefaultOverride { get; set; }
 
         [JsonPropertyName("streetId")]
         public int StreetId { get; set; }

@@ -1,5 +1,6 @@
 using System;
 using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Enums;
 
 namespace knkwebapi_v2.Models;
 
@@ -53,4 +54,10 @@ public class Domain
 
     /// <summary>Only players who discovered this domain (UserDomainDiscovery) may warp here.</summary>
     public bool TeleportRequiresDiscovery { get; set; }
+
+    // ===== Navigation default (KNG-73, docs/specs/navigation/DESIGN.md §6.1) =====
+
+    /// <summary>Where <c>/navigate &lt;domain&gt;</c> leads without <c>spawn</c>/<c>region</c>: null follows the
+    /// type's <see cref="DomainNavigationDefault"/>, a value overrides it for this domain.</summary>
+    public NavigationDestinationMode? NavigationDefaultOverride { get; set; }
 }

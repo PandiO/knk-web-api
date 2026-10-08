@@ -1,3 +1,4 @@
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 
 namespace knkwebapi_v2.Repositories
@@ -11,5 +12,7 @@ namespace knkwebapi_v2.Repositories
         Task UpdateDomainAsync(Domain domain);
         Task DeleteDomainAsync(int id);
         Task<PagedResult<Domain>> SearchAsync(PagedQuery query);
+        /// <summary>The /navigate default of each domain type that has a row (KNG-73), by type name.</summary>
+        Task<IReadOnlyDictionary<string, NavigationDestinationMode>> GetNavigationDefaultsAsync();
     }
 }

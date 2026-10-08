@@ -96,7 +96,22 @@ namespace knkwebapi_v2.Services
 
             var query = _mapper.Map<PagedQuery>(queryDto);
             var result = await _repo.SearchAsync(query);
-            return _mapper.Map<PagedResultDto<DomainListDto>>(result);
+            var dto = _mapper.Map<PagedResultDto<DomainListDto>>(result);
+
+            // KNG-73: the effective /navigate default, so the game server's catalogue needs no extra call.
+            if (result?.Items != null)
+            {
+                var typeDefaults = await _repo.GetNavigationDefaultsAsync();
+                var byId = result.Items.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
+                foreach (var item in dto.Items)
+                {
+                    if (item.Id is int id && byId.TryGetValue(id, out var domain))
+                    {
+                        item.NavigationDefault = DomainNavigationDefaults.Effective(domain, typeDefaults).ToString();
+                    }
+                }
+            }
+            return dto;
         }
 
         /// <summary>
