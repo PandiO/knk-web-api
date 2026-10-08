@@ -1224,6 +1224,10 @@ namespace knkwebapi_v2.Services
             var oldUsername = holder.Username;
             holder.Username = $"unclaimed-{holder.Id}";
             await _repo.UpdateUserAsync(holder);
+            // The caller creates the Minecraft account next in the same request, and creating it
+            // loads the Default PermissionGroup; a still-tracked User in the shared
+            // permission_holders key space made that query throw InvalidCastException.
+            _repo.Detach(holder);
             await _auditLogService.RecordAsync(actorUserId, holder.Id, AuditAction.UsernameReleased, JsonSerializer.Serialize(new
             {
                 oldUsername,

@@ -39,6 +39,11 @@ namespace knkwebapi_v2.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public void Detach(User user)
+        {
+            _context.Entry(user).State = EntityState.Detached;
+        }
+
         public async Task UpdateUserAsync(User user)
         {
             // A user loaded through this context is already tracked, so SaveChanges writes only

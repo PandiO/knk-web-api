@@ -19,6 +19,11 @@ namespace knkwebapi_v2.Repositories
         /// </summary>
         Task UpdateUserAsync(User user);
 
+        /// <summary>Stops tracking a user loaded through this context. Users and permission groups
+        /// share the permission_holders key space (table-per-type), so a user still tracked in the
+        /// same request can break a later PermissionGroup query.</summary>
+        void Detach(User user);
+
         /// <summary>
         /// Saves a user including LastSalaryPayoutAt (SalaryService). Only call it inside
         /// <see cref="RunWithUsersLockedAsync"/>, on a user loaded inside that same call. Doesn't
