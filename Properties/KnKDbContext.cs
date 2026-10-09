@@ -1797,6 +1797,12 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.RuntimeWorldsJson)
                 .HasColumnType("longtext");
 
+            entity.Property(e => e.Motd)
+                .HasColumnType("longtext");
+
+            entity.Property(e => e.GroupOverridesJson)
+                .HasColumnType("longtext");
+
             entity.Property(e => e.RuntimeWorldsLastUpdatedAt)
                 .HasColumnType("datetime");
 

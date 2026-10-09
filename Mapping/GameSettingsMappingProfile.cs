@@ -17,6 +17,8 @@ public class GameSettingsMappingProfile : Profile
             .ForMember(dest => dest.WorldSettings,
                 opt => opt.MapFrom(src => GameSettingsJson.DeserializeList<WorldGameSettingsDto>(src.WorldSettingsJson)))
             .ForMember(dest => dest.RuntimeWorlds,
-                opt => opt.MapFrom(src => GameSettingsJson.DeserializeList<MinecraftWorldRuntimeDto>(src.RuntimeWorldsJson)));
+                opt => opt.MapFrom(src => GameSettingsJson.DeserializeList<MinecraftWorldRuntimeDto>(src.RuntimeWorldsJson)))
+            .ForMember(dest => dest.GroupOverrides,
+                opt => opt.MapFrom(src => GameSettingsJson.DeserializeList<PermissionGroupGameSettingsDto>(src.GroupOverridesJson)));
     }
 }

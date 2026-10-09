@@ -17,8 +17,8 @@ public interface ILocationReferenceSource
 }
 
 /// <summary>
-/// Game settings (KNG-52): the join spawn, the default respawn policy and every per-world spawn and
-/// respawn are LocationReferenceDto JSON. A reference with sourceType "Location" names its Location in
+/// Game settings (KNG-52): the join spawn, the default respawn policy, every per-world spawn and
+/// respawn and every permission group's spawn and respawn override are LocationReferenceDto JSON. A reference with sourceType "Location" names its Location in
 /// sourceId; any reference may also carry a snapshot with a locationId.
 /// </summary>
 public sealed class GameSettingsLocationReferenceSource : ILocationReferenceSource
@@ -34,13 +34,14 @@ public sealed class GameSettingsLocationReferenceSource : ILocationReferenceSour
     {
         var found = new Dictionary<int, string>();
         var rows = await _context.GameSettings.AsNoTracking()
-            .Select(g => new { g.JoinSpawnReferenceJson, g.DefaultRespawnPolicyJson, g.WorldSettingsJson })
+            .Select(g => new { g.JoinSpawnReferenceJson, g.DefaultRespawnPolicyJson, g.WorldSettingsJson, g.GroupOverridesJson })
             .ToListAsync(ct);
         foreach (var row in rows)
         {
             LocationJson.CollectReferences(row.JoinSpawnReferenceJson, "Game settings: join spawn", found);
             LocationJson.CollectReferences(row.DefaultRespawnPolicyJson, "Game settings: default respawn", found);
             LocationJson.CollectReferences(row.WorldSettingsJson, "Game settings: per-world spawn/respawn", found);
+            LocationJson.CollectReferences(row.GroupOverridesJson, "Game settings: group spawn/respawn", found);
         }
         return found;
     }
