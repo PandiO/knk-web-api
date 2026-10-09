@@ -173,7 +173,9 @@ namespace knkwebapi_v2.Services
 
             var townDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "Town");
             var districtDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "District");
-            var structureDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "Structure");
+            // A GateStructure is a Structure (gates, Keep Gate): left out, the game server never saw its entry rule
+            // (live test 2026-10-09: the navigator walked players into the Keep Gate the border then refused).
+            var structureDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "Structure" || d.DomainType == "GateStructure");
             int hierarchyIndex = 0;
             if (queryDto.TopDownHierarchy == true)
             {
