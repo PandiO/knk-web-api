@@ -197,6 +197,8 @@ public partial class KnKDbContext : DbContext
 
             // /navigate default (KNG-73): null follows the type's DomainNavigationDefault.
             entity.Property(d => d.NavigationDefaultOverride).HasConversion<string>().HasMaxLength(16);
+            // Rev. 7 Part C (KNG-92): null follows the type's DomainNavigationDefault.RoadAccess.
+            entity.Property(d => d.RoadAccessOverride).HasConversion<string>().HasMaxLength(16);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id
@@ -2131,6 +2133,7 @@ public partial class KnKDbContext : DbContext
 
             entity.Property(e => e.DomainType).HasMaxLength(32);
             entity.Property(e => e.DefaultMode).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.RoadAccess).HasConversion<string>().HasMaxLength(16);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 

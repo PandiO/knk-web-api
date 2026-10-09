@@ -60,4 +60,9 @@ public class Domain
     /// <summary>Where <c>/navigate &lt;domain&gt;</c> leads without <c>spawn</c>/<c>region</c>: null follows the
     /// type's <see cref="DomainNavigationDefault"/>, a value overrides it for this domain.</summary>
     public NavigationDestinationMode? NavigationDefaultOverride { get; set; }
+
+    /// <summary>Whether this domain's entry/exit rule keeps the road router off the roads in its region (rev. 7
+    /// Part C, KNG-92, docs/specs/navigation/REV7_PROPOSAL.md §4): null follows the type's
+    /// <see cref="DomainNavigationDefault.RoadAccess"/>, a value overrides it for this domain.</summary>
+    public RoadAccessRule? RoadAccessOverride { get; set; }
 }

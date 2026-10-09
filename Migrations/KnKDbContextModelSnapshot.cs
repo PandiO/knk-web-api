@@ -1068,6 +1068,10 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("varchar(16)");
 
+                    b.Property<string>("RoadAccessOverride")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
                     b.Property<bool>("TeleportEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -1154,6 +1158,11 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("varchar(32)");
 
                     b.Property<string>("DefaultMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("RoadAccess")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("varchar(16)");

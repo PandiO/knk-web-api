@@ -226,4 +226,173 @@ public class DomainNavigationDefaultsTests
         Assert.Equal(NavigationDestinationMode.Region, gate.NavigationDefaultOverride);
         Assert.Null(town.NavigationDefaultOverride);
     }
+
+    // ==================== road access (rev. 7 Part C, KNG-92) ====================
+
+    [Fact]
+    public void NullLeavesTheRoadAccessOverrideAsItIs()
+    {
+        var town = new Town { RoadAccessOverride = RoadAccessRule.Ignored };
+
+        DomainNavigationDefaults.Apply(town, new TownDto { RoadAccessOverride = null, NavigationDefaultOverride = "Region" });
+
+        Assert.Equal(RoadAccessRule.Ignored, town.RoadAccessOverride);
+        Assert.Equal(NavigationDestinationMode.Region, town.NavigationDefaultOverride);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("TypeDefault")]
+    public void EmptyOrTypeDefaultClearsTheRoadAccessOverride(string value)
+    {
+        var district = new District { RoadAccessOverride = RoadAccessRule.Ignored };
+
+        DomainNavigationDefaults.Apply(district, new DistrictDto { RoadAccessOverride = value });
+
+        Assert.Null(district.RoadAccessOverride);
+    }
+
+    [Theory]
+    [InlineData("Ignored", RoadAccessRule.Ignored)]
+    [InlineData(" applies ", RoadAccessRule.Applies)]
+    public void ANamedRuleSetsTheRoadAccessOverride(string value, RoadAccessRule expected)
+    {
+        var gate = new GateStructure();
+
+        DomainNavigationDefaults.Apply(gate, new GateStructureDto { RoadAccessOverride = value });
+
+        Assert.Equal(expected, gate.RoadAccessOverride);
+    }
+
+    [Fact]
+    public void AnUnknownRoadAccessIsRefusedAndNothingIsWritten()
+    {
+        var structure = new Structure();
+
+        Assert.Throws<ArgumentException>(() => DomainNavigationDefaults.Apply(structure,
+            new StructureDto { NavigationDefaultOverride = "Region", RoadAccessOverride = "Sometimes" }));
+
+        Assert.Null(structure.NavigationDefaultOverride);
+        Assert.Null(structure.RoadAccessOverride);
+    }
+
+    [Fact]
+    public void TheDomainsRoadAccessOverrideWinsOverItsType()
+    {
+        var defaults = new Dictionary<string, RoadAccessRule> { ["Structure"] = RoadAccessRule.Ignored };
+
+        Assert.Equal(RoadAccessRule.Applies,
+            DomainNavigationDefaults.EffectiveRoadAccess(new Structure { RoadAccessOverride = RoadAccessRule.Applies }, defaults));
+        Assert.Equal(RoadAccessRule.Ignored, DomainNavigationDefaults.EffectiveRoadAccess(new Structure(), defaults));
+        Assert.Equal(RoadAccessRule.Applies, DomainNavigationDefaults.EffectiveRoadAccess(new GateStructure(), defaults));
+    }
+
+    [Fact]
+    public void ATypeWithoutARowKeepsItsEntryRuleOnTheRoads()
+    {
+        Assert.Equal(RoadAccessRule.Applies, DomainNavigationDefaults.EffectiveRoadAccess(new Town(), null));
+        Assert.Equal(RoadAccessRule.Applies,
+            DomainNavigationDefaults.EffectiveRoadAccess(new District(), new Dictionary<string, RoadAccessRule>()));
+    }
+
+    [Fact]
+    public async Task SearchCarriesEachDomainsEffectiveRoadAccess()
+    {
+        var repo = new Mock<IDomainRepository>();
+        repo.Setup(r => r.SearchAsync(It.IsAny<PagedQuery>())).ReturnsAsync(new PagedResult<Domain>
+        {
+            Items = new List<Domain>
+            {
+                new Structure { Id = 1, Name = "Keep", WgRegionId = "s1" },
+                new Structure { Id = 2, Name = "Mansion", WgRegionId = "s2", RoadAccessOverride = RoadAccessRule.Applies },
+                new Town { Id = 3, Name = "Oakhaven", WgRegionId = "t3" },
+                new District { Id = 4, Name = "Old Quarter", WgRegionId = "d4", RoadAccessOverride = RoadAccessRule.Ignored },
+            },
+            TotalCount = 4,
+            PageNumber = 1,
+            PageSize = 50
+        });
+        repo.Setup(r => r.GetNavigationDefaultsAsync()).ReturnsAsync(new Dictionary<string, NavigationDestinationMode>());
+        repo.Setup(r => r.GetRoadAccessDefaultsAsync()).ReturnsAsync(
+            new Dictionary<string, RoadAccessRule>(StringComparer.OrdinalIgnoreCase) { ["Structure"] = RoadAccessRule.Ignored });
+        var service = new DomainService(repo.Object, Mapper(), new Mock<IDomainRegionNameFinalizer>().Object,
+            NullLogger<DomainService>.Instance);
+
+        var result = await service.SearchAsync(new PagedQueryDto { PageNumber = 1, PageSize = 50 });
+
+        Assert.Equal(new[] { "Ignored", "Applies", "Applies", "Ignored" }, result.Items.Select(i => i.RoadAccess));
+    }
+
+    [Fact]
+    public async Task EveryTypeIsListedWithItsRoadAccessAndOverrideCount()
+    {
+        await using (var db = NewContext())
+        {
+            db.DomainNavigationDefaults.Add(new DomainNavigationDefault { DomainType = "Structure", RoadAccess = RoadAccessRule.Ignored });
+            db.Structures.Add(new Structure { Name = "Keep", Description = "", WgRegionId = "s1", RoadAccessOverride = RoadAccessRule.Applies });
+            db.Structures.Add(new Structure { Name = "Tower", Description = "", WgRegionId = "s2", NavigationDefaultOverride = NavigationDestinationMode.Region });
+            await db.SaveChangesAsync();
+        }
+
+        await using var read = NewContext();
+        var list = await new DomainNavigationSettingsService(read).GetTypeDefaultsAsync();
+
+        Assert.Equal(new[] { "Applies", "Applies", "Ignored", "Applies" }, list.Select(d => d.RoadAccess));
+        Assert.Equal(new[] { 0, 0, 1, 0 }, list.Select(d => d.RoadAccessOverrideCount));
+        Assert.Equal(new[] { 0, 0, 1, 0 }, list.Select(d => d.OverrideCount));
+        Assert.Null(list[0].UpdatedAt);
+    }
+
+    [Fact]
+    public async Task UpdatingOnlyTheRoadAccessKeepsTheDefaultMode()
+    {
+        await using (var db = NewContext())
+        {
+            db.DomainNavigationDefaults.Add(new DomainNavigationDefault { DomainType = "Town", DefaultMode = NavigationDestinationMode.Region });
+            await db.SaveChangesAsync();
+            var updated = await new DomainNavigationSettingsService(db)
+                .UpdateTypeDefaultAsync("town", new UpdateDomainNavigationDefaultDto { RoadAccess = "ignored" });
+            Assert.Equal(("Town", "Region", "Ignored"), (updated.DomainType, updated.DefaultMode, updated.RoadAccess));
+        }
+
+        await using var read = NewContext();
+        var repo = new DomainRepository(read);
+        Assert.Equal(RoadAccessRule.Ignored, (await repo.GetRoadAccessDefaultsAsync())["Town"]);
+        Assert.Equal(NavigationDestinationMode.Region, (await repo.GetNavigationDefaultsAsync())["Town"]);
+    }
+
+    [Fact]
+    public async Task UpdatingOnlyTheModeKeepsTheRoadAccess()
+    {
+        await using var db = NewContext();
+        db.DomainNavigationDefaults.Add(new DomainNavigationDefault { DomainType = "District", RoadAccess = RoadAccessRule.Ignored });
+        await db.SaveChangesAsync();
+
+        var updated = await new DomainNavigationSettingsService(db)
+            .UpdateTypeDefaultAsync("District", new UpdateDomainNavigationDefaultDto { DefaultMode = "Region" });
+
+        Assert.Equal(("Region", "Ignored"), (updated.DefaultMode, updated.RoadAccess));
+    }
+
+    [Fact]
+    public async Task AnUnknownRoadAccessForATypeIsRefused()
+    {
+        await using var db = NewContext();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => new DomainNavigationSettingsService(db)
+            .UpdateTypeDefaultAsync("Town", new UpdateDomainNavigationDefaultDto { RoadAccess = "Sometimes" }));
+    }
+
+    [Fact]
+    public void TheDomainFormReadsTheRoadAccessOverrideAndAutoMapperNeverWritesIt()
+    {
+        var mapper = Mapper();
+
+        Assert.Equal("Ignored", mapper.Map<TownDto>(new Town { RoadAccessOverride = RoadAccessRule.Ignored }).RoadAccessOverride);
+        Assert.Null(mapper.Map<GateStructureDto>(new GateStructure()).RoadAccessOverride);
+
+        var gate = new GateStructure { Name = "North Gate", RoadAccessOverride = RoadAccessRule.Ignored };
+        mapper.Map(new GateStructureDto { Name = "North Gate", WgRegionId = "g", RoadAccessOverride = "" }, gate);
+        Assert.Equal(RoadAccessRule.Ignored, gate.RoadAccessOverride);
+    }
 }

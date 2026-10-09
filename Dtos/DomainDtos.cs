@@ -95,6 +95,10 @@ namespace knkwebapi_v2.Dtos
         // domain's own override, else its type's default. The game server's catalogue reads it here.
         [JsonPropertyName("navigationDefault")]
         public string NavigationDefault { get; set; } = "Spawn";
+        // Whether the domain's entry/exit rule keeps the game server's road router off its roads (rev. 7
+        // Part C, KNG-92): "Applies" or "Ignored" - the domain's own override, else its type's default.
+        [JsonPropertyName("roadAccess")]
+        public string RoadAccess { get; set; } = "Applies";
     }
 
     public class DomainRegionDecisionDto

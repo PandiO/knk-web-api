@@ -102,12 +102,15 @@ namespace knkwebapi_v2.Services
             if (result?.Items != null)
             {
                 var typeDefaults = await _repo.GetNavigationDefaultsAsync();
+                var roadAccessDefaults = await _repo.GetRoadAccessDefaultsAsync();
                 var byId = result.Items.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
                 foreach (var item in dto.Items)
                 {
                     if (item.Id is int id && byId.TryGetValue(id, out var domain))
                     {
                         item.NavigationDefault = DomainNavigationDefaults.Effective(domain, typeDefaults).ToString();
+                        // Rev. 7 Part C (KNG-92): whether the game server's road router heeds its entry rule.
+                        item.RoadAccess = DomainNavigationDefaults.EffectiveRoadAccess(domain, roadAccessDefaults).ToString();
                     }
                 }
             }

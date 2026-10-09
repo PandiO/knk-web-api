@@ -33,13 +33,8 @@ namespace knkwebapi_v2.Services
             var counts = await OverrideCountsAsync();
             return DomainNavigationDefault.DomainTypes
                 .Select(type => rows.TryGetValue(type, out var row)
-                    ? ToDto(row, counts.GetValueOrDefault(type))
-                    : new DomainNavigationDefaultDto
-                    {
-                        DomainType = type,
-                        DefaultMode = DomainNavigationDefault.Fallback.ToString(),
-                        OverrideCount = counts.GetValueOrDefault(type)
-                    })
+                    ? ToDto(row, counts, stored: true)
+                    : ToDto(new DomainNavigationDefault { DomainType = type }, counts, stored: false))
                 .ToList();
         }
 
@@ -48,8 +43,14 @@ namespace knkwebapi_v2.Services
             if (dto == null) throw new ArgumentException("A request body is required.", nameof(dto));
             var type = DomainNavigationDefaults.CanonicalType(domainType)
                 ?? throw new KeyNotFoundException($"'{domainType}' is not a navigable domain type.");
-            var mode = DomainNavigationDefaults.ParseMode(dto.DefaultMode)
-                ?? throw new ArgumentException("defaultMode must be Spawn or Region.", nameof(dto));
+            if (dto.DefaultMode == null && dto.RoadAccess == null)
+                throw new ArgumentException("Give defaultMode, roadAccess or both.", nameof(dto));
+            NavigationDestinationMode? mode = dto.DefaultMode == null ? null
+                : DomainNavigationDefaults.ParseMode(dto.DefaultMode)
+                    ?? throw new ArgumentException("defaultMode must be Spawn or Region.", nameof(dto));
+            RoadAccessRule? roadAccess = dto.RoadAccess == null ? null
+                : DomainNavigationDefaults.ParseRoadAccess(dto.RoadAccess)
+                    ?? throw new ArgumentException("roadAccess must be Applies or Ignored.", nameof(dto));
 
             var row = await _db.DomainNavigationDefaults.FirstOrDefaultAsync(r => r.DomainType == type);
             if (row == null)
@@ -57,31 +58,38 @@ namespace knkwebapi_v2.Services
                 row = new DomainNavigationDefault { DomainType = type };
                 _db.DomainNavigationDefaults.Add(row);
             }
-            row.DefaultMode = mode;
+            if (mode.HasValue) row.DefaultMode = mode.Value;
+            if (roadAccess.HasValue) row.RoadAccess = roadAccess.Value;
             row.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            var counts = await OverrideCountsAsync();
-            return ToDto(row, counts.GetValueOrDefault(type));
+            return ToDto(row, await OverrideCountsAsync(), stored: true);
         }
+
+        private sealed record OverrideCounts(Dictionary<string, int> Mode, Dictionary<string, int> RoadAccess);
 
         /// <summary>Domains with an override, per concrete type (Domain is TPT: each row materializes as its subtype).</summary>
-        private async Task<Dictionary<string, int>> OverrideCountsAsync()
+        private async Task<OverrideCounts> OverrideCountsAsync()
         {
             var overridden = await _db.Domains.AsNoTracking()
-                .Where(d => d.NavigationDefaultOverride != null)
+                .Where(d => d.NavigationDefaultOverride != null || d.RoadAccessOverride != null)
                 .ToListAsync();
-            return overridden
+            Dictionary<string, int> CountBy(Func<Domain, bool> has) => overridden
+                .Where(has)
                 .GroupBy(d => d.GetType().Name, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+            return new OverrideCounts(CountBy(d => d.NavigationDefaultOverride != null), CountBy(d => d.RoadAccessOverride != null));
         }
 
-        private static DomainNavigationDefaultDto ToDto(DomainNavigationDefault row, int overrideCount) => new()
+        /// <summary>A type without a row (<paramref name="stored"/> false) shows the fallbacks and no update time.</summary>
+        private static DomainNavigationDefaultDto ToDto(DomainNavigationDefault row, OverrideCounts counts, bool stored) => new()
         {
             DomainType = row.DomainType,
             DefaultMode = row.DefaultMode.ToString(),
-            OverrideCount = overrideCount,
-            UpdatedAt = row.UpdatedAt
+            OverrideCount = counts.Mode.GetValueOrDefault(row.DomainType),
+            RoadAccess = row.RoadAccess.ToString(),
+            RoadAccessOverrideCount = counts.RoadAccess.GetValueOrDefault(row.DomainType),
+            UpdatedAt = stored ? row.UpdatedAt : null
         };
     }
 
@@ -96,19 +104,28 @@ namespace knkwebapi_v2.Services
         /// <summary>The value that clears an override (besides an empty string).</summary>
         public const string TypeDefault = "TypeDefault";
 
-        /// <summary>Applies the DTO's override: null leaves it, "" / "TypeDefault" clears it, "Spawn" / "Region" set it.</summary>
+        /// <summary>
+        /// Applies the DTO's overrides - the /navigate default and (rev. 7 Part C) the road access: null leaves
+        /// one as it is, "" / "TypeDefault" clears it, a named value sets it. Both are checked before either is written.
+        /// </summary>
         public static void Apply(Domain target, IDomainNavigationDefaultDto? dto)
         {
-            if (target == null || dto?.NavigationDefaultOverride == null) return;
-            var value = dto.NavigationDefaultOverride.Trim();
-            if (value.Length == 0 || value.Equals(TypeDefault, StringComparison.OrdinalIgnoreCase))
-            {
-                target.NavigationDefaultOverride = null;
-                return;
-            }
-            target.NavigationDefaultOverride = ParseMode(value)
-                ?? throw new ArgumentException(
-                    $"navigationDefaultOverride must be Spawn, Region or empty (the type's default), not '{dto.NavigationDefaultOverride}'.");
+            if (target == null || dto == null) return;
+            var mode = Resolve(dto.NavigationDefaultOverride, ParseMode, target.NavigationDefaultOverride,
+                $"navigationDefaultOverride must be Spawn, Region or empty (the type's default), not '{dto.NavigationDefaultOverride}'.");
+            var roadAccess = Resolve(dto.RoadAccessOverride, ParseRoadAccess, target.RoadAccessOverride,
+                $"roadAccessOverride must be Applies, Ignored or empty (the type's default), not '{dto.RoadAccessOverride}'.");
+            target.NavigationDefaultOverride = mode;
+            target.RoadAccessOverride = roadAccess;
+        }
+
+        /// <summary>The override after a form value: null keeps <paramref name="current"/>, "" / "TypeDefault" clears it.</summary>
+        private static T? Resolve<T>(string? value, Func<string?, T?> parse, T? current, string error) where T : struct
+        {
+            if (value == null) return current;
+            var trimmed = value.Trim();
+            if (trimmed.Length == 0 || trimmed.Equals(TypeDefault, StringComparison.OrdinalIgnoreCase)) return null;
+            return parse(trimmed) ?? throw new ArgumentException(error);
         }
 
         /// <summary>"Spawn" / "Region" in any case; null for anything else.</summary>
@@ -118,6 +135,17 @@ namespace knkwebapi_v2.Services
             foreach (var mode in Enum.GetValues<NavigationDestinationMode>())
             {
                 if (mode.ToString().Equals(value.Trim(), StringComparison.OrdinalIgnoreCase)) return mode;
+            }
+            return null;
+        }
+
+        /// <summary>"Applies" / "Ignored" in any case; null for anything else.</summary>
+        public static RoadAccessRule? ParseRoadAccess(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            foreach (var rule in Enum.GetValues<RoadAccessRule>())
+            {
+                if (rule.ToString().Equals(value.Trim(), StringComparison.OrdinalIgnoreCase)) return rule;
             }
             return null;
         }
@@ -133,6 +161,15 @@ namespace knkwebapi_v2.Services
             return typeDefaults != null && typeDefaults.TryGetValue(domain.GetType().Name, out var mode)
                 ? mode
                 : DomainNavigationDefault.Fallback;
+        }
+
+        /// <summary>The domain's own road-access override, else its type's, else Applies (rev. 7 Part C).</summary>
+        public static RoadAccessRule EffectiveRoadAccess(Domain domain, IReadOnlyDictionary<string, RoadAccessRule>? typeDefaults)
+        {
+            if (domain.RoadAccessOverride.HasValue) return domain.RoadAccessOverride.Value;
+            return typeDefaults != null && typeDefaults.TryGetValue(domain.GetType().Name, out var rule)
+                ? rule
+                : DomainNavigationDefault.RoadAccessFallback;
         }
     }
 }
