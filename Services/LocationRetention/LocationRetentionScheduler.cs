@@ -35,6 +35,7 @@ public class LocationRetentionScheduler : BackgroundService
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(Math.Max(0, _options.StartupDelaySeconds)), stoppingToken);
+            await LogScheduleAsync(stoppingToken);
             using var timer = new PeriodicTimer(TimeSpan.FromMinutes(Math.Max(1, _options.CheckIntervalMinutes)));
             do
             {
@@ -48,6 +49,34 @@ public class LocationRetentionScheduler : BackgroundService
         }
     }
 
+    /// <summary>
+    /// One line at startup saying the scheduler is alive and when it runs next (smoke test 2026-10-09:
+    /// after a restart with nothing due, nothing showed that it was running at all).
+    /// </summary>
+    private async Task LogScheduleAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var status = await scope.ServiceProvider.GetRequiredService<ILocationRetentionService>().GetStatusAsync(ct);
+            var settings = status.Settings;
+            if (!settings.ScheduleEnabled)
+            {
+                _logger.LogInformation("Location retention scheduler started; the scheduled run is switched off (Run check now still works)");
+                return;
+            }
+            _logger.LogInformation(
+                "Location retention scheduler started: {Frequency} {Day} at {Time} ({Zone}), next run {Next:u}, last run {Last}; checking every {Interval} min",
+                settings.Frequency, settings.Frequency == "Weekly" ? settings.RunDayOfWeek : "", settings.RunAtTime, settings.TimeZone,
+                status.NextScheduledRunAt, status.LastRun == null ? "none" : $"#{status.LastRun.Id} {status.LastRun.StartedAt:u} ({status.LastRun.Trigger})",
+                Math.Max(1, _options.CheckIntervalMinutes));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Location retention scheduler started, but its schedule could not be read");
+        }
+    }
+
     /// <summary>One schedule check at <paramref name="nowUtc"/>. Public so tests can drive it without timers.</summary>
     public async Task TickAsync(DateTime nowUtc, CancellationToken ct = default)
     {
@@ -57,6 +86,7 @@ public class LocationRetentionScheduler : BackgroundService
             var retention = scope.ServiceProvider.GetRequiredService<ILocationRetentionService>();
             var slot = await retention.DueScheduledSlotAsync(nowUtc, ct);
             if (slot == null) return;
+            _logger.LogInformation("Location retention: running the scheduled check for slot {Slot:u}", slot);
             await retention.RunCheckAsync("scheduled", null, slot, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
