@@ -98,8 +98,8 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// The user's effective groups (unexpired memberships plus inherited parents) in Game
-        /// Settings precedence order (KNG-52). The repository returns the whole parent chain, so
-        /// the depth can be computed from the returned groups alone.
+        /// Settings precedence order (KNG-52), which is the teleport fee order (KNG-41). The
+        /// repository returns the whole parent chain, so the parents are found among the returned groups.
         /// </summary>
         private async Task<List<PermissionGroupRefDto>> GetPermissionGroupsInPrecedenceAsync(int userId)
         {

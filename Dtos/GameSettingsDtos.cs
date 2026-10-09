@@ -97,15 +97,19 @@ public class PermissionGroupGameSettingsDto
     public string? GroupName { get; set; }
 
     /// <summary>
-    /// Read-only, filled in on read: 1 = considered first. Deeper in the parent hierarchy first,
-    /// then higher Weight, then lower id.
+    /// Read-only, filled in on read: 1 = considered first. The order teleport fees use (KNG-41):
+    /// higher Weight first, each group followed by its parent chain.
     /// </summary>
     [JsonPropertyName("precedence")]
     public int Precedence { get; set; }
 
-    /// <summary>Join broadcast for this group's members; {player}, {group}. Blank = no broadcast.</summary>
+    /// <summary>Join broadcast for this group's members; {player}, {group}, {title}. Blank = no broadcast.</summary>
     [JsonPropertyName("joinAnnouncement")]
     public string? JoinAnnouncement { get; set; }
+
+    /// <summary>Quit broadcast for this group's members; same placeholders. Blank = no broadcast.</summary>
+    [JsonPropertyName("leaveAnnouncement")]
+    public string? LeaveAnnouncement { get; set; }
 
     /// <summary>Where this group's members join (and /spawn).</summary>
     [JsonPropertyName("joinSpawnReference")]

@@ -6,35 +6,36 @@ namespace knkwebapi_v2.Services;
 
 /// <summary>
 /// Which of a player's PermissionGroups wins when several carry a Game Settings override
-/// (KNG-52, docs/specs/game-settings/DESIGN.md §3.8, developer decision 2026-10-05: "hierarchy
-/// first, weight second"): the group deeper in the parent hierarchy first - so a child beats the
-/// group it inherits from - then the higher Weight, then the lower id.
+/// (KNG-52, docs/specs/game-settings/DESIGN.md §3.8). Since 2026-10-09 (developer decision on
+/// D13) this is the order teleport fees and cooldowns use (KNG-41, <see cref="TeleportGroupPolicy.Chain"/>)
+/// and permission grants resolve in: the groups from the highest Weight down (ties by lower id),
+/// each followed by its parent chain before the next group; a group reached twice keeps its first
+/// position. It works on ParentGroupId through a lookup, so the groups need no ParentGroup loaded.
 /// </summary>
 public static class PermissionGroupPrecedence
 {
-    /// <summary>How many parents a group has, following ParentGroupId through <paramref name="byId"/>;
-    /// a missing parent ends the chain, a cycle is cut where it repeats.</summary>
-    public static int Depth(PermissionGroup group, IReadOnlyDictionary<int, PermissionGroup> byId)
-    {
-        var seen = new HashSet<int> { group.Id };
-        var depth = 0;
-        var parentId = group.ParentGroupId;
-        while (parentId.HasValue && byId.TryGetValue(parentId.Value, out var parent) && seen.Add(parent.Id))
-        {
-            depth++;
-            parentId = parent.ParentGroupId;
-        }
-        return depth;
-    }
-
-    /// <summary><paramref name="groups"/> in precedence order (first wins).</summary>
+    /// <summary><paramref name="groups"/> and their parents in precedence order (first wins). Parents
+    /// are looked up in <paramref name="byId"/>; a missing parent ends a chain, a cycle is cut where it repeats.</summary>
     public static List<PermissionGroup> Order(IEnumerable<PermissionGroup> groups, IReadOnlyDictionary<int, PermissionGroup> byId)
     {
-        return groups
-            .GroupBy(g => g.Id).Select(g => g.First())
-            .OrderByDescending(g => Depth(g, byId))
-            .ThenByDescending(g => g.Weight)
-            .ThenBy(g => g.Id)
-            .ToList();
+        var order = new List<PermissionGroup>();
+        var seen = new HashSet<int>();
+        foreach (var group in groups.GroupBy(g => g.Id).Select(g => g.First())
+                     .OrderByDescending(g => g.Weight).ThenBy(g => g.Id))
+        {
+            var current = group;
+            var walked = new HashSet<int>();
+            while (current != null && walked.Add(current.Id))
+            {
+                if (seen.Add(current.Id))
+                {
+                    order.Add(current);
+                }
+                current = current.ParentGroupId.HasValue && byId.TryGetValue(current.ParentGroupId.Value, out var parent)
+                    ? parent
+                    : null;
+            }
+        }
+        return order;
     }
 }

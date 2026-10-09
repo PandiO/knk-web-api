@@ -188,7 +188,7 @@ public class GameSettingsService : IGameSettingsService
             {
                 throw new ArgumentException($"groupOverrides: permission group {o.PermissionGroupId} is listed twice");
             }
-            if (o.JoinAnnouncement == null && o.JoinSpawnReference == null && o.RespawnPolicy == null)
+            if (o.JoinAnnouncement == null && o.LeaveAnnouncement == null && o.JoinSpawnReference == null && o.RespawnPolicy == null)
             {
                 continue;
             }
@@ -196,6 +196,7 @@ public class GameSettingsService : IGameSettingsService
             {
                 PermissionGroupId = o.PermissionGroupId,
                 JoinAnnouncement = o.JoinAnnouncement?.Trim(),
+                LeaveAnnouncement = o.LeaveAnnouncement?.Trim(),
                 JoinSpawnReference = o.JoinSpawnReference,
                 RespawnPolicy = o.RespawnPolicy,
             });
