@@ -155,6 +155,33 @@ public class GameSettingsServiceTests
     }
 
     [Fact]
+    public async Task GroupOverrides_JoinAtLastLocation_ReplacesTheChosenSpot_AndFalseIsNotAnOverride()
+    {
+        var spot = new LocationReferenceDto { SourceType = "Location", SourceId = 12, DisplayLabel = "Lounge" };
+        var dto = await _service.UpdateAsync(Update(new()
+        {
+            new PermissionGroupGameSettingsDto { PermissionGroupId = 2, JoinAtLastLocation = true, JoinSpawnReference = spot },
+            new PermissionGroupGameSettingsDto { PermissionGroupId = 3, JoinAtLastLocation = false },
+        }));
+
+        var only = Assert.Single(dto.GroupOverrides);
+        Assert.Equal(2, only.PermissionGroupId);
+        Assert.True(only.JoinAtLastLocation);
+        Assert.Null(only.JoinSpawnReference);
+    }
+
+    [Fact]
+    public async Task ServerDefault_IsAValidRespawnMode()
+    {
+        var update = Update(new()
+        {
+            new PermissionGroupGameSettingsDto { PermissionGroupId = 2, RespawnPolicy = new RespawnPolicyDto { Mode = "ServerDefault" } },
+        });
+        var dto = await _service.UpdateAsync(update);
+        Assert.Equal("ServerDefault", dto.GroupOverrides[0].RespawnPolicy!.Mode);
+    }
+
+    [Fact]
     public async Task GroupOverrides_KeepALeaveMessage()
     {
         var dto = await _service.UpdateAsync(Update(new()

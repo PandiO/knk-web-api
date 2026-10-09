@@ -14,7 +14,7 @@ namespace knkwebapi_v2.Services;
 public class GameSettingsService : IGameSettingsService
 {
     /// <summary>Respawn policy modes the plugin understands (DESIGN §3.3).</summary>
-    public static readonly string[] RespawnModes = { "WorldSpawn", "ConfiguredReference", "NearestTown", "JoinSpawn" };
+    public static readonly string[] RespawnModes = { "WorldSpawn", "ConfiguredReference", "NearestTown", "JoinSpawn", "ServerDefault" };
 
     /// <summary>A server-list MOTD has two lines.</summary>
     public const int MaxMotdLines = 2;
@@ -188,7 +188,9 @@ public class GameSettingsService : IGameSettingsService
             {
                 throw new ArgumentException($"groupOverrides: permission group {o.PermissionGroupId} is listed twice");
             }
-            if (o.JoinAnnouncement == null && o.LeaveAnnouncement == null && o.JoinSpawnReference == null && o.RespawnPolicy == null)
+            var atLastLocation = o.JoinAtLastLocation == true;
+            if (o.JoinAnnouncement == null && o.LeaveAnnouncement == null && o.JoinSpawnReference == null
+                && !atLastLocation && o.RespawnPolicy == null)
             {
                 continue;
             }
@@ -197,7 +199,9 @@ public class GameSettingsService : IGameSettingsService
                 PermissionGroupId = o.PermissionGroupId,
                 JoinAnnouncement = o.JoinAnnouncement?.Trim(),
                 LeaveAnnouncement = o.LeaveAnnouncement?.Trim(),
-                JoinSpawnReference = o.JoinSpawnReference,
+                // "Where they logged out" replaces a chosen spot; false is stored as "not set".
+                JoinSpawnReference = atLastLocation ? null : o.JoinSpawnReference,
+                JoinAtLastLocation = atLastLocation ? true : null,
                 RespawnPolicy = o.RespawnPolicy,
             });
         }

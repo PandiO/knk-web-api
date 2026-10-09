@@ -115,6 +115,13 @@ public class PermissionGroupGameSettingsDto
     [JsonPropertyName("joinSpawnReference")]
     public LocationReferenceDto? JoinSpawnReference { get; set; }
 
+    /// <summary>
+    /// True: this group's members join where they logged out (no join teleport, like owners); /spawn
+    /// still takes them to the server spawn. Replaces <see cref="JoinSpawnReference"/> (round 4).
+    /// </summary>
+    [JsonPropertyName("joinAtLastLocation")]
+    public bool? JoinAtLastLocation { get; set; }
+
     /// <summary>Respawn policy for this group's members, in every world.</summary>
     [JsonPropertyName("respawnPolicy")]
     public RespawnPolicyDto? RespawnPolicy { get; set; }
@@ -204,8 +211,9 @@ public class WorldWeatherSettingsDto
 public class RespawnPolicyDto
 {
     /// <summary>
-    /// Supported values: WorldSpawn, ConfiguredReference, NearestTown, JoinSpawn (respawn where the
-    /// player would join - "synced" with the join spawn, KNG-52).
+    /// Supported values: WorldSpawn (forced, beds ignored), ConfiguredReference, NearestTown, JoinSpawn
+    /// (respawn where the player would join - "synced" with the join spawn, KNG-52), ServerDefault (not
+    /// redirected: bed or respawn anchor, else the world spawn - what staff and owners get; round 4).
     /// </summary>
     [JsonPropertyName("mode")]
     public string Mode { get; set; } = "WorldSpawn";
