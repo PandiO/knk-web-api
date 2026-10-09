@@ -102,6 +102,27 @@ public class LocationRetentionServiceTests
     }
 
     [Fact]
+    public async Task Run_SkipsLocationsNamedInGroupOverrides()
+    {
+        var groupSpawn = await AddLocationAsync();
+        var groupRespawn = await AddLocationAsync();
+        var free = await AddLocationAsync();
+        await using (var context = NewContext())
+        {
+            context.GameSettings.Add(new GameSettings
+            {
+                GroupOverridesJson = $"[{{\"permissionGroupId\":2,\"joinSpawnReference\":{{\"sourceType\":\"Location\",\"sourceId\":{groupSpawn}}}}},"
+                    + $"{{\"permissionGroupId\":3,\"respawnPolicy\":{{\"mode\":\"ConfiguredReference\",\"locationReference\":{{\"sourceType\":\"Location\",\"sourceId\":{groupRespawn}}}}}}}]"
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await RunAsync();
+
+        Assert.Equal(new[] { free }, (await ItemsAsync()).Select(i => i.LocationId));
+    }
+
+    [Fact]
     public async Task Run_SkipsLocationsAnUnfinishedFormDraftPointsAt()
     {
         var inDraft = await AddLocationAsync();
