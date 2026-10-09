@@ -138,7 +138,7 @@ public class GameSettingsServiceTests
     // ===== KNG-52 round 2: group overrides, MOTD, respawn modes =====
 
     [Fact]
-    public async Task GroupOverrides_AreReturnedInPrecedenceOrder_HierarchyFirstThenWeight()
+    public async Task GroupOverrides_AreReturnedInPrecedenceOrder_WeightFirstEachFollowedByItsParents()
     {
         var dto = await _service.UpdateAsync(Update(new()
         {
@@ -148,10 +148,23 @@ public class GameSettingsServiceTests
             Join(4, "&4Admin {player}"),
         }));
 
-        // depth 1: Noble (w10), Admin (w5); depth 0: Staff (w100), Default (w0)
-        Assert.Equal(new[] { "Noble", "Admin", "Staff", "Default" }, dto.GroupOverrides.Select(o => o.GroupName));
+        // Staff (w100); Noble (w10) followed by its parent Default; Admin (w5) last - its parent Staff is already placed.
+        Assert.Equal(new[] { "Staff", "Noble", "Default", "Admin" }, dto.GroupOverrides.Select(o => o.GroupName));
         Assert.Equal(new[] { 1, 2, 3, 4 }, dto.GroupOverrides.Select(o => o.Precedence));
-        Assert.Equal("&6Noble {player}", dto.GroupOverrides[0].JoinAnnouncement);
+        Assert.Equal("&c[Staff] {player}", dto.GroupOverrides[0].JoinAnnouncement);
+    }
+
+    [Fact]
+    public async Task GroupOverrides_KeepALeaveMessage()
+    {
+        var dto = await _service.UpdateAsync(Update(new()
+        {
+            new PermissionGroupGameSettingsDto { PermissionGroupId = 2, LeaveAnnouncement = " &6{group} {title} {player} left " },
+            new PermissionGroupGameSettingsDto { PermissionGroupId = 3, LeaveAnnouncement = "" },
+        }));
+
+        Assert.Equal("&6{group} {title} {player} left", dto.GroupOverrides.Single(o => o.PermissionGroupId == 2).LeaveAnnouncement);
+        Assert.Equal("", dto.GroupOverrides.Single(o => o.PermissionGroupId == 3).LeaveAnnouncement);
     }
 
     [Fact]
@@ -226,18 +239,32 @@ public class GameSettingsServiceTests
     }
 
     [Fact]
-    public void Precedence_DepthFollowsParents_AndSurvivesCycles()
+    public void Precedence_IsTheTeleportFeeOrder()
     {
-        var byId = _groups.ToDictionary(g => g.Id);
-        Assert.Equal(0, PermissionGroupPrecedence.Depth(Default, byId));
-        Assert.Equal(1, PermissionGroupPrecedence.Depth(Noble, byId));
+        // The same groups with ParentGroup loaded, as TeleportGroupPolicy.Chain (KNG-41) expects them.
+        var def = new PermissionGroup { Id = 1, Name = "Default", Weight = 0 };
+        var noble = new PermissionGroup { Id = 2, Name = "Noble", Weight = 10, ParentGroupId = 1, ParentGroup = def };
+        var staff = new PermissionGroup { Id = 3, Name = "Staff", Weight = 100 };
+        var admin = new PermissionGroup { Id = 4, Name = "Admin", Weight = 5, ParentGroupId = 3, ParentGroup = staff };
+        var royal = new PermissionGroup { Id = 5, Name = "Royal", Weight = 10, ParentGroupId = 2, ParentGroup = noble };
+        var all = new List<PermissionGroup> { def, noble, staff, admin, royal };
 
-        var a = new PermissionGroup { Id = 10, Name = "A", ParentGroupId = 11 };
+        var precedence = PermissionGroupPrecedence.Order(all, all.ToDictionary(g => g.Id)).Select(g => g.Id);
+        var teleport = TeleportGroupPolicy.Chain(all).Select(g => g.Id);
+
+        Assert.Equal(teleport, precedence);
+        Assert.Equal(new[] { 3, 2, 1, 5, 4 }, precedence);
+    }
+
+    [Fact]
+    public void Precedence_SurvivesCyclesAndMissingParents()
+    {
+        var a = new PermissionGroup { Id = 10, Name = "A", Weight = 1, ParentGroupId = 11 };
         var b = new PermissionGroup { Id = 11, Name = "B", ParentGroupId = 10 };
         var cyclic = new Dictionary<int, PermissionGroup> { [10] = a, [11] = b };
-        Assert.Equal(1, PermissionGroupPrecedence.Depth(a, cyclic));
+        Assert.Equal(new[] { 10, 11 }, PermissionGroupPrecedence.Order(cyclic.Values, cyclic).Select(g => g.Id));
 
         // A parent outside the given set ends the chain.
-        Assert.Equal(0, PermissionGroupPrecedence.Depth(Noble, new Dictionary<int, PermissionGroup> { [2] = Noble }));
+        Assert.Equal(new[] { 2 }, PermissionGroupPrecedence.Order(new[] { Noble }, new Dictionary<int, PermissionGroup> { [2] = Noble }).Select(g => g.Id));
     }
 }
