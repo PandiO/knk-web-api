@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261009084031_AddLocationRetention")]
+    partial class AddLocationRetention
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1064,14 +1067,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("NavigationDefaultOverride")
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<string>("RoadAccessOverride")
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
                     b.Property<bool>("TeleportEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -1149,31 +1144,6 @@ namespace knkwebapi_v2.Migrations
                         .HasName("PRIMARY");
 
                     b.ToTable("domain_discovery_overrides", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.DomainNavigationDefault", b =>
-                {
-                    b.Property<string>("DomainType")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<string>("DefaultMode")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<string>("RoadAccess")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.HasKey("DomainType")
-                        .HasName("PRIMARY");
-
-                    b.ToTable("domain_navigation_defaults", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>

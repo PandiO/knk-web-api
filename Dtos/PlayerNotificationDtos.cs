@@ -49,6 +49,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("discoveryReset")]
         public DiscoveryResetNotificationDto? DiscoveryReset { get; set; }
 
+        [JsonPropertyName("locationOrphanDigest")]
+        public LocationOrphanDigestNotificationDto? LocationOrphanDigest { get; set; }
+
         [JsonPropertyName("createdAt")]
         public DateTime CreatedAt { get; set; }
     }
@@ -102,6 +105,29 @@ namespace knkwebapi_v2.Dtos
         /// Harmless for an offline player: the known set is loaded fresh on join anyway.
         /// </summary>
         public const string DiscoveryReset = "DiscoveryReset";
+
+        /// <summary>
+        /// The digest of a Location orphan check that found new orphans (KNG-80), for every online
+        /// staff member holding knk.admin.location.orphans.notify - not addressed to one player
+        /// (UserId 0). One per run, never one per Location. Payload in LocationOrphanDigest. The
+        /// items themselves stay in the web panel and /knk location orphans until decided.
+        /// </summary>
+        public const string LocationOrphanDigest = "LocationOrphanDigest";
+    }
+
+    /// <summary>Payload of a LocationOrphanDigest notification.</summary>
+    public class LocationOrphanDigestNotificationDto
+    {
+        [JsonPropertyName("runId")]
+        public int RunId { get; set; }
+
+        /// <summary>Orphans this run flagged for the first time (or again after a Keep expired).</summary>
+        [JsonPropertyName("newCount")]
+        public int NewCount { get; set; }
+
+        /// <summary>All orphans waiting for a decision.</summary>
+        [JsonPropertyName("openCount")]
+        public int OpenCount { get; set; }
     }
 
     /// <summary>Payload of a DiscoveryReset player notification.</summary>
