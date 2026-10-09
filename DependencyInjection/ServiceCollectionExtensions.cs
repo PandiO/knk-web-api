@@ -118,6 +118,7 @@ namespace knkwebapi_v2.DependencyInjection
             // Road navigation (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
             services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();
             services.AddScoped<IRoadNetworkService, RoadNetworkService>();
+            services.AddScoped<IDomainNavigationSettingsService, DomainNavigationSettingsService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();

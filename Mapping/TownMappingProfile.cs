@@ -48,7 +48,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Location, src => src.Ignore())
                 .ForMember(dest => dest.Streets, src => src.Ignore())
                 .ForMember(dest => dest.Districts, src => src.Ignore())
-                .IgnoreTeleportSettings();
+                .IgnoreTeleportSettings()
+                .IgnoreNavigationDefault();
 
             CreateMap<Town, TownListDto>()
                 .ForMember(dest => dest.id, src => src.MapFrom(src => src.Id))

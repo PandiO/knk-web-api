@@ -13,7 +13,10 @@ public class DomainMappingProfile : Profile
         CreateMap<DomainDto, Domain>();
 
         CreateMap<Domain, DomainListDto>()
-            .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name));
+            .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name))
+            // Needs the type defaults: DomainService.SearchAsync fills it (KNG-73).
+            .ForMember(dest => dest.NavigationDefault, opt => opt.Ignore())
+            .ForMember(dest => dest.RoadAccess, opt => opt.Ignore());
 
         CreateMap<Domain, DomainRegionDecisionDto>()
             .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name))
@@ -107,4 +110,17 @@ public static class DomainTeleportSettingsMapping
             .ForMember(dest => dest.TeleportMinPremiumGroupId, opt => opt.Ignore())
             .ForMember(dest => dest.TeleportMinPremiumGroup, opt => opt.Ignore())
             .ForMember(dest => dest.TeleportRequiresDiscovery, opt => opt.Ignore());
+}
+
+/// <summary>
+/// The /navigate override (KNG-73) is never mapped from a Town/District/Structure/GateStructure DTO:
+/// services apply it through DomainNavigationDefaults.Apply, so a form or a game-server update
+/// without the field leaves it untouched (the DTO's string is null then).
+/// </summary>
+public static class DomainNavigationDefaultMapping
+{
+    public static IMappingExpression<TSource, TDomain> IgnoreNavigationDefault<TSource, TDomain>(
+        this IMappingExpression<TSource, TDomain> map) where TDomain : Domain =>
+        map.ForMember(dest => dest.NavigationDefaultOverride, opt => opt.Ignore())
+            .ForMember(dest => dest.RoadAccessOverride, opt => opt.Ignore());
 }

@@ -157,6 +157,7 @@ namespace knkwebapi_v2.Services
             var district = _mapper.Map<District>(districtDto);
             district.CreatedAt = DateTime.UtcNow;
             DomainTeleportSettings.Apply(district, districtDto);
+            DomainNavigationDefaults.Apply(district, districtDto);
 
             // Handle Street relationships
             if (districtDto.StreetIds != null && districtDto.StreetIds.Any())
@@ -246,6 +247,7 @@ namespace knkwebapi_v2.Services
             existing.LocationId = districtDto.LocationId;
             existing.TownId = districtDto.TownId;
             DomainTeleportSettings.Apply(existing, districtDto);
+            DomainNavigationDefaults.Apply(existing, districtDto);
 
             // Handle Street relationships
             if (districtDto.StreetIds != null)
