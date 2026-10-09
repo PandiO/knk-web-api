@@ -43,6 +43,9 @@ public partial class KnKDbContext : DbContext
     public DbSet<GameSettings> GameSettings { get; set; }
     
     public virtual DbSet<Location> Locations { get; set; } = null!;
+    public virtual DbSet<LocationOrphan> LocationOrphans { get; set; } = null!;
+    public virtual DbSet<LocationRetentionRun> LocationRetentionRuns { get; set; } = null!;
+    public virtual DbSet<LocationRetentionSettings> LocationRetentionSettings { get; set; } = null!;
     public virtual DbSet<Street> Streets { get; set; } = null!;
     public virtual DbSet<Town> Towns { get; set; } = null!;
     public virtual DbSet<District> Districts { get; set; } = null!;
@@ -663,6 +666,47 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("locations");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+        });
+
+        // Location retention (KNG-80): review items, run log and the singleton settings row.
+        modelBuilder.Entity<LocationOrphan>(entity =>
+        {
+            entity.ToTable("location_orphans");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasConversion<byte>();
+            entity.Property(e => e.Name).HasMaxLength(255);
+            entity.Property(e => e.World).HasMaxLength(255);
+            entity.Property(e => e.DecisionNote).HasMaxLength(500);
+            entity.Property(e => e.ResolvedReason).HasMaxLength(500);
+            entity.Property(e => e.FlaggedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.LastSeenAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.LocationCreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.DecidedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.Status, e.FlaggedAt });
+            entity.HasIndex(e => new { e.LocationId, e.Status });
+        });
+        modelBuilder.Entity<LocationRetentionRun>(entity =>
+        {
+            entity.ToTable("location_retention_runs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Trigger).HasMaxLength(16);
+            entity.Property(e => e.Error).HasMaxLength(1000);
+            entity.Property(e => e.ScheduledSlotUtc).HasColumnType("datetime(6)");
+            entity.Property(e => e.StartedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.FinishedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.DigestQueuedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.StartedAt);
+            entity.HasIndex(e => new { e.Trigger, e.ScheduledSlotUtc });
+        });
+        modelBuilder.Entity<LocationRetentionSettings>(entity =>
+        {
+            entity.ToTable("location_retention_settings");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(16);
+            entity.Property(e => e.Frequency).HasConversion<byte>();
+            entity.Property(e => e.RunDayOfWeek).HasConversion<byte>();
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
         });
 
         // Kits (docs/specs/kits/IMPLEMENTATION_PLAN.md §1) — Kit is fundamentally an item-catalog
