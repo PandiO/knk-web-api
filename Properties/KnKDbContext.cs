@@ -43,6 +43,9 @@ public partial class KnKDbContext : DbContext
     public DbSet<GameSettings> GameSettings { get; set; }
     
     public virtual DbSet<Location> Locations { get; set; } = null!;
+    public virtual DbSet<LocationOrphan> LocationOrphans { get; set; } = null!;
+    public virtual DbSet<LocationRetentionRun> LocationRetentionRuns { get; set; } = null!;
+    public virtual DbSet<LocationRetentionSettings> LocationRetentionSettings { get; set; } = null!;
     public virtual DbSet<Street> Streets { get; set; } = null!;
     public virtual DbSet<Town> Towns { get; set; } = null!;
     public virtual DbSet<District> Districts { get; set; } = null!;
@@ -118,6 +121,17 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<UserDomainDiscovery> UserDomainDiscoveries { get; set; } = null!;
     public virtual DbSet<DiscoveryRewardRule> DiscoveryRewardRules { get; set; } = null!;
     public virtual DbSet<DomainDiscoveryOverride> DomainDiscoveryOverrides { get; set; } = null!;
+    // Navigation default per domain type (KNG-73, docs/specs/navigation/DESIGN.md §6.1)
+    public virtual DbSet<DomainNavigationDefault> DomainNavigationDefaults { get; set; } = null!;
+
+    // Road navigation Phase 1 (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
+    public virtual DbSet<RoadProfile> RoadProfiles { get; set; } = null!;
+    public virtual DbSet<RoadSurvey> RoadSurveys { get; set; } = null!;
+    public virtual DbSet<RoadTile> RoadTiles { get; set; } = null!;
+    public virtual DbSet<RoadSeed> RoadSeeds { get; set; } = null!;
+    public virtual DbSet<RoadNode> RoadNodes { get; set; } = null!;
+    public virtual DbSet<RoadEdge> RoadEdges { get; set; } = null!;
+    public virtual DbSet<RoadTileProposal> RoadTileProposals { get; set; } = null!;
 
     // User management — audit log retention policy (docs/specs/user-management/DESIGN.md §7 item 3)
     public DbSet<AuditLogRetentionConfiguration> AuditLogRetentionConfigurations { get; set; } = null!;
@@ -183,6 +197,11 @@ public partial class KnKDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(d => d.TeleportMinPremiumGroupId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // /navigate default (KNG-73): null follows the type's DomainNavigationDefault.
+            entity.Property(d => d.NavigationDefaultOverride).HasConversion<string>().HasMaxLength(16);
+            // Rev. 7 Part C (KNG-92): null follows the type's DomainNavigationDefault.RoadAccess.
+            entity.Property(d => d.RoadAccessOverride).HasConversion<string>().HasMaxLength(16);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id
@@ -242,6 +261,10 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.ChatSecondaryColor).HasMaxLength(32);
             entity.Property(e => e.NameColor).HasMaxLength(32);
 
+            // Teleport fees and cooldowns per group (KNG-41).
+            entity.Property(e => e.TeleportRequestPriceMultiplier).HasPrecision(9, 3);
+            entity.Property(e => e.TeleportWarpPriceMultiplier).HasPrecision(9, 3);
+
             // Single-parent inheritance chain (DESIGN.md §2.1) — restrict, not cascade: deleting
             // a parent group with live children should fail loudly, not silently orphan them.
             entity.HasOne(g => g.ParentGroup)
@@ -263,8 +286,13 @@ public partial class KnKDbContext : DbContext
                 .HasForeignKey(e => e.HolderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Resolution always looks up "this holder's grants" first — index the lookup path.
-            entity.HasIndex(e => new { e.HolderId, e.Node });
+            // Resolution always looks up "this holder's grants" first — index the lookup path. Unique
+            // since KNG-59: one row per (holder, node); writes upsert by node. Named apart from the
+            // old non-unique IX_ index so the migration can add this one before dropping that one
+            // (MySQL won't drop the only index backing the HolderId foreign key).
+            entity.HasIndex(e => new { e.HolderId, e.Node })
+                .IsUnique()
+                .HasDatabaseName("UX_permission_grants_HolderId_Node");
         });
 
         modelBuilder.Entity<UserPermissionGroup>(entity =>
@@ -645,6 +673,47 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("locations");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+        });
+
+        // Location retention (KNG-80): review items, run log and the singleton settings row.
+        modelBuilder.Entity<LocationOrphan>(entity =>
+        {
+            entity.ToTable("location_orphans");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasConversion<byte>();
+            entity.Property(e => e.Name).HasMaxLength(255);
+            entity.Property(e => e.World).HasMaxLength(255);
+            entity.Property(e => e.DecisionNote).HasMaxLength(500);
+            entity.Property(e => e.ResolvedReason).HasMaxLength(500);
+            entity.Property(e => e.FlaggedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.LastSeenAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.LocationCreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.DecidedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.Status, e.FlaggedAt });
+            entity.HasIndex(e => new { e.LocationId, e.Status });
+        });
+        modelBuilder.Entity<LocationRetentionRun>(entity =>
+        {
+            entity.ToTable("location_retention_runs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Trigger).HasMaxLength(16);
+            entity.Property(e => e.Error).HasMaxLength(1000);
+            entity.Property(e => e.ScheduledSlotUtc).HasColumnType("datetime(6)");
+            entity.Property(e => e.StartedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.FinishedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.DigestQueuedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.StartedAt);
+            entity.HasIndex(e => new { e.Trigger, e.ScheduledSlotUtc });
+        });
+        modelBuilder.Entity<LocationRetentionSettings>(entity =>
+        {
+            entity.ToTable("location_retention_settings");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(16);
+            entity.Property(e => e.Frequency).HasConversion<byte>();
+            entity.Property(e => e.RunDayOfWeek).HasConversion<byte>();
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
         });
 
         // Kits (docs/specs/kits/IMPLEMENTATION_PLAN.md §1) — Kit is fundamentally an item-catalog
@@ -2104,6 +2173,179 @@ public partial class KnKDbContext : DbContext
                 .WithOne()
                 .HasForeignKey<DomainDiscoveryOverride>(e => e.DomainId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // /navigate default per domain type (KNG-73); a domain's NavigationDefaultOverride wins.
+        modelBuilder.Entity<DomainNavigationDefault>(entity =>
+        {
+            entity.HasKey(e => e.DomainType).HasName("PRIMARY");
+            entity.ToTable("domain_navigation_defaults");
+
+            entity.Property(e => e.DomainType).HasMaxLength(32);
+            entity.Property(e => e.DefaultMode).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.RoadAccess).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+        });
+
+        // Road navigation (docs/specs/navigation/DESIGN.md §3, IMPLEMENTATION_PLAN.md Phase 1.2).
+        // Enums are strings; JSON columns are longtext; every indexed string has a max length
+        // (Pomelo maps an unbounded string to longtext, which MySQL can't index).
+        modelBuilder.Entity<RoadProfile>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("road_profiles");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.RoadClass).IsRequired().HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.MaterialsJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.ScopeTownIdsJson).HasColumnType("longtext");
+            entity.Property(e => e.StatsJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<RoadSurvey>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("road_surveys");
+
+            entity.Property(e => e.World).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.StartedAt).HasColumnType("datetime");
+            entity.Property(e => e.EndedAt).HasColumnType("datetime");
+            entity.Property(e => e.BreadcrumbJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.StatsJson).IsRequired().HasColumnType("longtext");
+
+            entity.HasOne(e => e.Profile)
+                .WithMany()
+                .HasForeignKey(e => e.ProfileId)
+                .OnDelete(DeleteBehavior.SetNull);
+            // Users are soft-deleted, so Restrict like UserDomainDiscovery.
+            entity.HasOne(e => e.StartedBy)
+                .WithMany()
+                .HasForeignKey(e => e.StartedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.World, e.StartedAt });
+        });
+
+        modelBuilder.Entity<RoadTile>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("road_tiles");
+
+            entity.Property(e => e.World).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.BuiltAt).HasColumnType("datetime");
+            entity.Property(e => e.WarningsJson).HasColumnType("longtext");
+            entity.Property(e => e.State).IsRequired().HasConversion<string>().HasMaxLength(20)
+                .HasDefaultValue(knkwebapi_v2.Enums.RoadTileState.Detected);
+            entity.Property(e => e.CuratedAt).HasColumnType("datetime");
+
+            entity.HasIndex(e => new { e.World, e.TileX, e.TileZ }).IsUnique();
+        });
+
+        modelBuilder.Entity<RoadTileProposal>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("road_tile_proposals");
+
+            entity.Property(e => e.CreatedBy).HasMaxLength(64);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+            entity.Property(e => e.ItemsJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.RejectedJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.WarningsJson).IsRequired().HasColumnType("longtext");
+
+            entity.HasOne(e => e.Tile)
+                .WithMany()
+                .HasForeignKey(e => e.TileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.TileId).IsUnique();
+        });
+
+        modelBuilder.Entity<RoadSeed>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("road_seeds");
+
+            entity.Property(e => e.World).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Source).IsRequired().HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Note).HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+
+            entity.HasOne(e => e.Survey)
+                .WithMany()
+                .HasForeignKey(e => e.SurveyId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.World);
+        });
+
+        modelBuilder.Entity<RoadNode>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("road_nodes");
+
+            entity.Property(e => e.World).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Kind).IsRequired().HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Source).IsRequired().HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Name).HasMaxLength(100);
+
+            entity.HasOne(e => e.Tile)
+                .WithMany(t => t.Nodes)
+                .HasForeignKey(e => e.TileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.World, e.X, e.Y, e.Z }).IsUnique();
+            entity.HasIndex(e => e.TileId);
+            entity.HasIndex(e => new { e.World, e.ComponentId });
+        });
+
+        modelBuilder.Entity<RoadEdge>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("road_edges");
+
+            entity.Property(e => e.World).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.GeometryJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.StreetSource).IsRequired().HasConversion<string>().HasMaxLength(20);
+            // Flags is a [Flags] set - stored as its int value (Enums/RoadEnums.cs).
+            entity.Property(e => e.GateDoorIdsJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.DomainIdsJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.RegionIdsJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.Source).IsRequired().HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
+
+            // Two cascade paths into road_nodes are fine on MySQL (the "multiple cascade paths"
+            // error is SQL Server's). The service still deletes edges explicitly before nodes so
+            // the EF InMemory provider used by the tests behaves like MySQL.
+            entity.HasOne(e => e.FromNode)
+                .WithMany()
+                .HasForeignKey(e => e.FromNodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ToNode)
+                .WithMany()
+                .HasForeignKey(e => e.ToNodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tile)
+                .WithMany(t => t.Edges)
+                .HasForeignKey(e => e.TileId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Street)
+                .WithMany()
+                .HasForeignKey(e => e.StreetId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Profile)
+                .WithMany()
+                .HasForeignKey(e => e.ProfileId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => new { e.FromNodeId, e.ToNodeId }).IsUnique();
+            entity.HasIndex(e => e.TileId);
+            entity.HasIndex(e => new { e.World, e.MinX, e.MinZ });
+            entity.HasIndex(e => e.StreetId);
         });
 
         // UserIgnore — a player's ignore list (docs/specs/private-messages/DESIGN.md §3.1).

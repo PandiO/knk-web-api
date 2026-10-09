@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Enums;
 
 namespace knkwebapi_v2.Models;
 
@@ -71,6 +72,56 @@ public class PermissionGroup : PermissionHolder
     /// ignores bold/italic etc. here.
     /// </summary>
     public string? NameColor { get; set; }
+
+    // ===== Teleport fees and cooldowns (Linear KNG-41) =====
+    // One block per kind of teleport: Request (/tpa and /tpahere, paid by the requester), Warp
+    // (/warp and the teleport menu) and Spawn (/spawn). A player's value is taken from the first
+    // group that sets it, in permission-resolution order: their groups from the highest Weight
+    // down, each followed by its parent chain (TeleportGroupPolicy). Price and cooldown are
+    // resolved separately. Nothing set anywhere = today's default (the plugin's
+    // teleport.request.price-coins, the domain's gem price, a free /spawn,
+    // teleport.cooldown-seconds). The *PriceMode field also gates an update: a DTO that omits it
+    // leaves that kind's fields untouched (a form without them can't wipe them).
+
+    /// <summary>How this group prices /tpa and /tpahere; None = no price set here.</summary>
+    [DefaultValue(TeleportPriceMode.None)]
+    public TeleportPriceMode TeleportRequestPriceMode { get; set; } = TeleportPriceMode.None;
+    /// <summary>Multiplier mode: factor on the plugin's teleport.request.price-coins.</summary>
+    public decimal? TeleportRequestPriceMultiplier { get; set; }
+    /// <summary>Fixed mode: coins (null = 0).</summary>
+    public int? TeleportRequestPriceCoins { get; set; }
+    /// <summary>Fixed mode: gems (null = 0).</summary>
+    public int? TeleportRequestPriceGems { get; set; }
+    /// <summary>Fixed mode: experience points (null = 0); may demote the player's title.</summary>
+    public int? TeleportRequestPriceExperience { get; set; }
+    /// <summary>Replaces teleport.cooldown-seconds after a /tpa or /tpahere for the player who moved; null = not set here.</summary>
+    public int? TeleportRequestCooldownSeconds { get; set; }
+
+    /// <summary>How this group prices /warp; None = no price set here.</summary>
+    [DefaultValue(TeleportPriceMode.None)]
+    public TeleportPriceMode TeleportWarpPriceMode { get; set; } = TeleportPriceMode.None;
+    /// <summary>Multiplier mode: factor on the destination's TeleportPriceGems.</summary>
+    public decimal? TeleportWarpPriceMultiplier { get; set; }
+    /// <summary>Fixed mode: coins (null = 0), replacing the destination's gem price.</summary>
+    public int? TeleportWarpPriceCoins { get; set; }
+    /// <summary>Fixed mode: gems (null = 0), replacing the destination's gem price.</summary>
+    public int? TeleportWarpPriceGems { get; set; }
+    /// <summary>Fixed mode: experience points (null = 0); may demote the player's title.</summary>
+    public int? TeleportWarpPriceExperience { get; set; }
+    /// <summary>Replaces teleport.cooldown-seconds after a /warp; null = not set here.</summary>
+    public int? TeleportWarpCooldownSeconds { get; set; }
+
+    /// <summary>How this group prices /spawn (Fixed only - /spawn has no default price); None = free unless another group sets one.</summary>
+    [DefaultValue(TeleportPriceMode.None)]
+    public TeleportPriceMode TeleportSpawnPriceMode { get; set; } = TeleportPriceMode.None;
+    /// <summary>Fixed mode: coins (null = 0).</summary>
+    public int? TeleportSpawnPriceCoins { get; set; }
+    /// <summary>Fixed mode: gems (null = 0).</summary>
+    public int? TeleportSpawnPriceGems { get; set; }
+    /// <summary>Fixed mode: experience points (null = 0); may demote the player's title.</summary>
+    public int? TeleportSpawnPriceExperience { get; set; }
+    /// <summary>Replaces teleport.cooldown-seconds after a /spawn; null = not set here.</summary>
+    public int? TeleportSpawnCooldownSeconds { get; set; }
 
     [NavigationPair(nameof(ParentGroup))]
     [RelatedEntityField(typeof(PermissionGroup))]

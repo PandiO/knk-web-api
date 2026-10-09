@@ -81,6 +81,29 @@ namespace knkwebapi_v2.Attributes
         /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
         /// owner group; every read is audited.</summary>
         public const string ReadPrivateMessages = "knk.pmlog.read";
+
+        /// <summary>Road network administration: profiles, seeds, node/edge review and street
+        /// labels (docs/specs/navigation/DESIGN.md §7, plan D1). The same node as the in-game
+        /// /knk road subcommand; also matched by knk.admin.* and *.</summary>
+        public const string RoadManage = "knk.admin.road";
+
+        // Location retention (KNG-80). Laid out like the currency umbrella: one knk.admin.location
+        // tree (the existing knk.admin.location node keeps /knk location here), every node a child
+        // of knk.admin so knk.admin.* and * match too. Delete is its own, higher-privilege node.
+        /// <summary>See the orphaned-Location list, its runs and settings (web panel, /knk location orphans).</summary>
+        public const string LocationOrphansView = "knk.admin.location.orphans";
+        /// <summary>Get the in-game digest when a run finds new orphans.</summary>
+        public const string LocationOrphansNotify = "knk.admin.location.orphans.notify";
+        /// <summary>Mark an orphan Kept.</summary>
+        public const string LocationOrphansKeep = "knk.admin.location.orphans.keep";
+        /// <summary>Delete an orphaned Location.</summary>
+        public const string LocationOrphansDelete = "knk.admin.location.orphans.delete";
+        /// <summary>"Run check now".</summary>
+        public const string LocationOrphansRun = "knk.admin.location.orphans.run";
+        /// <summary>Change the schedule, grace period and Keep recheck period.</summary>
+        public const string LocationRetentionSettings = "knk.admin.location.retention";
+        /// <summary>Teleport to a Location in game (/knk location tp) and see the teleport commands in the web panel.</summary>
+        public const string LocationTeleport = "knk.admin.location.tp";
     }
 
     /// <summary>

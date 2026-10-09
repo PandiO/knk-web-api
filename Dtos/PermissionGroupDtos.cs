@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using knkwebapi_v2.Enums;
 
 namespace knkwebapi_v2.Dtos
 {
@@ -44,6 +45,51 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("nameColor")]
         public string? NameColor { get; set; }
+
+        /// <summary>
+        /// Teleport fees and cooldowns (KNG-41) — see PermissionGroup. Each kind's PriceMode is that
+        /// kind's switch on update: omitted (null) keeps its stored fields, sent sets all of them
+        /// (nulls meaning "not set here"). Always set when read.
+        /// </summary>
+        // /tpa and /tpahere
+        [JsonPropertyName("teleportRequestPriceMode")]
+        public TeleportPriceMode? TeleportRequestPriceMode { get; set; }
+        [JsonPropertyName("teleportRequestPriceMultiplier")]
+        public decimal? TeleportRequestPriceMultiplier { get; set; }
+        [JsonPropertyName("teleportRequestPriceCoins")]
+        public int? TeleportRequestPriceCoins { get; set; }
+        [JsonPropertyName("teleportRequestPriceGems")]
+        public int? TeleportRequestPriceGems { get; set; }
+        [JsonPropertyName("teleportRequestPriceExperience")]
+        public int? TeleportRequestPriceExperience { get; set; }
+        [JsonPropertyName("teleportRequestCooldownSeconds")]
+        public int? TeleportRequestCooldownSeconds { get; set; }
+
+        // /warp
+        [JsonPropertyName("teleportWarpPriceMode")]
+        public TeleportPriceMode? TeleportWarpPriceMode { get; set; }
+        [JsonPropertyName("teleportWarpPriceMultiplier")]
+        public decimal? TeleportWarpPriceMultiplier { get; set; }
+        [JsonPropertyName("teleportWarpPriceCoins")]
+        public int? TeleportWarpPriceCoins { get; set; }
+        [JsonPropertyName("teleportWarpPriceGems")]
+        public int? TeleportWarpPriceGems { get; set; }
+        [JsonPropertyName("teleportWarpPriceExperience")]
+        public int? TeleportWarpPriceExperience { get; set; }
+        [JsonPropertyName("teleportWarpCooldownSeconds")]
+        public int? TeleportWarpCooldownSeconds { get; set; }
+
+        // /spawn (Fixed only)
+        [JsonPropertyName("teleportSpawnPriceMode")]
+        public TeleportPriceMode? TeleportSpawnPriceMode { get; set; }
+        [JsonPropertyName("teleportSpawnPriceCoins")]
+        public int? TeleportSpawnPriceCoins { get; set; }
+        [JsonPropertyName("teleportSpawnPriceGems")]
+        public int? TeleportSpawnPriceGems { get; set; }
+        [JsonPropertyName("teleportSpawnPriceExperience")]
+        public int? TeleportSpawnPriceExperience { get; set; }
+        [JsonPropertyName("teleportSpawnCooldownSeconds")]
+        public int? TeleportSpawnCooldownSeconds { get; set; }
 
         [JsonPropertyName("parentGroupId")]
         public int? ParentGroupId { get; set; }

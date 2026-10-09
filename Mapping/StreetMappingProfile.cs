@@ -12,7 +12,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Id, src => src.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Name, src => src.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Districts, src => src.MapFrom(src => src.Districts))
-                .ForMember(dest => dest.Structures, src => src.MapFrom(src => src.Structures));
+                .ForMember(dest => dest.Structures, src => src.MapFrom(src => src.Structures))
+                .ForMember(dest => dest.EdgeCount, src => src.Ignore())
+                .ForMember(dest => dest.TotalLength, src => src.Ignore());
 
             CreateMap<StreetDto, Street>()
                 .ForMember(dest => dest.Id, src => src.MapFrom(src => src.Id ?? 0))

@@ -46,6 +46,7 @@ namespace KnKWebAPI.Controllers
             if (dto == null) return BadRequest();
             try
             {
+                // Upserts by (holder, node) since KNG-59, so this may return an existing row updated.
                 var created = await _service.CreateAsync(dto, HttpContext.GetKnkCaller().ActorUserId);
                 return CreatedAtRoute("GetPermissionGrantById", new { id = created.Id }, created);
             }
@@ -68,6 +69,10 @@ namespace KnKWebAPI.Controllers
             catch (KeyNotFoundException)
             {
                 return NotFound();
+            }
+            catch (PermissionGrantConflictException ex)
+            {
+                return Conflict(new { code = "NodeTaken", message = ex.Message, existingGrantId = ex.ExistingGrantId });
             }
             catch (ArgumentException ex)
             {

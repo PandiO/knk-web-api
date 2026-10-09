@@ -25,7 +25,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ParentGroup, src => src.MapFrom(src => src.ParentGroup))
                 .ForMember(dest => dest.ChildGroups, src => src.MapFrom(s => s.ChildGroups));
 
-            CreateMap<PermissionGroupDto, PermissionGroup>()
+            var toEntity = CreateMap<PermissionGroupDto, PermissionGroup>();
+            toEntity
                 .ForMember(dest => dest.Id, src => src.MapFrom(src => src.Id ?? 0))
                 .ForMember(dest => dest.Name, src => src.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Weight, src => src.MapFrom(src => src.Weight))
@@ -43,6 +44,11 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ChildGroups, src => src.Ignore())
                 .ForMember(dest => dest.UserMemberships, src => src.Ignore())
                 .ForMember(dest => dest.Grants, src => src.Ignore());
+            // Teleport fees/cooldowns (KNG-41) are applied by PermissionGroupService, gated per kind.
+            foreach (var property in Services.PermissionGroupTeleportSettings.EntityProperties)
+            {
+                toEntity.ForMember(property, opt => opt.Ignore());
+            }
 
             CreateMap<PermissionGroup, RelatedPermissionGroupDto>()
                 .ForMember(dest => dest.Id, src => src.MapFrom(src => src.Id))

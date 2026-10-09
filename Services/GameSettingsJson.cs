@@ -1,41 +1,15 @@
 using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using knkwebapi_v2.Json;
 
 namespace knkwebapi_v2.Services;
 
+/// <summary>GameSettings' JSON columns; the options now live in <see cref="JsonColumn"/>
+/// (road navigation plan R29) so every JSON column in the schema is read and written the same way.</summary>
 internal static class GameSettingsJson
 {
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        PropertyNamingPolicy = null,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
+    public static string Serialize<T>(T? value) => JsonColumn.Serialize(value);
 
-    public static string Serialize<T>(T? value)
-    {
-        return JsonSerializer.Serialize(value, Options);
-    }
+    public static T? Deserialize<T>(string? json) => JsonColumn.Deserialize<T>(json);
 
-    public static T? Deserialize<T>(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return default;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<T>(json, Options);
-        }
-        catch
-        {
-            return default;
-        }
-    }
-
-    public static List<T> DeserializeList<T>(string? json)
-    {
-        return Deserialize<List<T>>(json) ?? new List<T>();
-    }
+    public static List<T> DeserializeList<T>(string? json) => JsonColumn.DeserializeList<T>(json);
 }

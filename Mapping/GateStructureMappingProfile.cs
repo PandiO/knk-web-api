@@ -134,7 +134,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.District, opt => opt.Ignore())
                 .ForMember(dest => dest.Location, opt => opt.Ignore())
                 .ForMember(dest => dest.GuardSpawnLocations, opt => opt.Ignore())
-                .ForMember(dest => dest.IconMaterial, opt => opt.Ignore());
+                .ForMember(dest => dest.IconMaterial, opt => opt.Ignore())
+                .IgnoreNavigationDefault();
 
             // GateStructure -> GateStructureListDto (for search results)
             CreateMap<GateStructure, GateStructureListDto>()
