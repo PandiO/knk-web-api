@@ -1064,6 +1064,14 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("NavigationDefaultOverride")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("RoadAccessOverride")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
                     b.Property<bool>("TeleportEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -1168,6 +1176,31 @@ namespace knkwebapi_v2.Migrations
                         .HasDatabaseName("IX_domain_interactions_daily_domain_day");
 
                     b.ToTable("domain_interactions_daily", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.DomainNavigationDefault", b =>
+                {
+                    b.Property<string>("DomainType")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("DefaultMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("RoadAccess")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.HasKey("DomainType")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("domain_navigation_defaults", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
@@ -1598,6 +1631,10 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("DefaultRespawnPolicyJson")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("GroupOverridesJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<string>("JoinAnnouncement")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -1612,6 +1649,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<string>("LeaveAnnouncement")
                         .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Motd")
                         .HasColumnType("longtext");
 
                     b.Property<string>("RuntimeWorldsJson")
@@ -2485,6 +2525,9 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Name")
                         .HasColumnType("longtext");
 
@@ -2510,6 +2553,187 @@ namespace knkwebapi_v2.Migrations
                         .HasName("PRIMARY");
 
                     b.ToTable("locations", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LocationOrphan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("DecidedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime>("FlaggedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("FlaggedByRunId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("LastSeenRunId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LocationCreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("LocationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<float>("Pitch")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("PreviousItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ResolvedReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int?>("SupersededByItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("World")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<double>("X")
+                        .HasColumnType("double");
+
+                    b.Property<double>("Y")
+                        .HasColumnType("double");
+
+                    b.Property<float>("Yaw")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Z")
+                        .HasColumnType("double");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocationId", "Status");
+
+                    b.HasIndex("Status", "FlaggedAt");
+
+                    b.ToTable("location_orphans", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LocationRetentionRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AlreadyKnown")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CandidatesScanned")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DigestQueuedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("NewOrphans")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrphansFound")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Reflagged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ResolvedCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ScheduledSlotUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("TriggeredByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.HasIndex("Trigger", "ScheduledSlotUtc");
+
+                    b.ToTable("location_retention_runs", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LocationRetentionSettings", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<byte>("Frequency")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("GracePeriodDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("KeptRecheckMonths")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RunAtMinuteOfDay")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("RunDayOfWeek")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<bool>("ScheduleEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("location_retention_settings", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LootboxClaim", b =>
@@ -3470,7 +3694,9 @@ namespace knkwebapi_v2.Migrations
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
-                    b.HasIndex("HolderId", "Node");
+                    b.HasIndex("HolderId", "Node")
+                        .IsUnique()
+                        .HasDatabaseName("UX_permission_grants_HolderId_Node");
 
                     b.ToTable("permission_grants", (string)null);
                 });
@@ -3898,6 +4124,466 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("SenderUserId", "SentAt");
 
                     b.ToTable("private_message_log_entries", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadEdge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("AvgWidth")
+                        .HasColumnType("double");
+
+                    b.Property<bool>("Confirmed")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<double>("CostMultiplier")
+                        .HasColumnType("double");
+
+                    b.Property<string>("DomainIdsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Flags")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FromNodeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GateDoorIdsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("GeometryJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<double>("Length")
+                        .HasColumnType("double");
+
+                    b.Property<int>("MaxX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxY")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxZ")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinY")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinZ")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RegionIdsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("StreetId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StreetSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("TileId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToNodeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("World")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ProfileId");
+
+                    b.HasIndex("StreetId");
+
+                    b.HasIndex("TileId");
+
+                    b.HasIndex("ToNodeId");
+
+                    b.HasIndex("FromNodeId", "ToNodeId")
+                        .IsUnique();
+
+                    b.HasIndex("World", "MinX", "MinZ");
+
+                    b.ToTable("road_edges", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadNode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ComponentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<bool>("Locked")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int?>("PlazaRadius")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("TileId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("World")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("X")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Y")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Z")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("TileId");
+
+                    b.HasIndex("World", "ComponentId");
+
+                    b.HasIndex("World", "X", "Y", "Z")
+                        .IsUnique();
+
+                    b.ToTable("road_nodes", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("CostMultiplier")
+                        .HasColumnType("double");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("MaterialsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("RoadClass")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("SampleCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ScopeTownIdsJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("StatsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("WidthMax")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WidthMin")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("road_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadSeed", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("SurveyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("World")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("X")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Y")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Z")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SurveyId");
+
+                    b.HasIndex("World");
+
+                    b.ToTable("road_seeds", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadSurvey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BreadcrumbJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int?>("ProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SampleCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int?>("StartedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StatsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("World")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ProfileId");
+
+                    b.HasIndex("StartedByUserId");
+
+                    b.HasIndex("World", "StartedAt");
+
+                    b.ToTable("road_surveys", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadTile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BuilderVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("BuiltAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("CellCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CuratedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<bool>("Dirty")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("EdgeCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LevelCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NodeCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("Detected");
+
+                    b.Property<int>("TileX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TileZ")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WarningsJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("World")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("World", "TileX", "TileZ")
+                        .IsUnique();
+
+                    b.ToTable("road_tiles", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadTileProposal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AddedCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BaseVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BuilderVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CellCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ChangedCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("ItemsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("LevelCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MovedCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RejectedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RejectedJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("RemovedCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TileId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("WarningsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("TileId")
+                        .IsUnique();
+
+                    b.ToTable("road_tile_proposals", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SalaryConfiguration", b =>
@@ -5347,6 +6033,59 @@ namespace knkwebapi_v2.Migrations
                     b.Property<decimal>("SalaryMultiplier")
                         .HasColumnType("decimal(65,30)");
 
+                    b.Property<int?>("TeleportRequestCooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportRequestPriceCoins")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportRequestPriceExperience")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportRequestPriceGems")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeleportRequestPriceMode")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TeleportRequestPriceMultiplier")
+                        .HasPrecision(9, 3)
+                        .HasColumnType("decimal(9,3)");
+
+                    b.Property<int?>("TeleportSpawnCooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportSpawnPriceCoins")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportSpawnPriceExperience")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportSpawnPriceGems")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeleportSpawnPriceMode")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportWarpCooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportWarpPriceCoins")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportWarpPriceExperience")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportWarpPriceGems")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeleportWarpPriceMode")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TeleportWarpPriceMultiplier")
+                        .HasPrecision(9, 3)
+                        .HasColumnType("decimal(9,3)");
+
                     b.Property<int>("Weight")
                         .HasColumnType("int");
 
@@ -6660,6 +7399,96 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Holder");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadEdge", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.RoadNode", "FromNode")
+                        .WithMany()
+                        .HasForeignKey("FromNodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.RoadProfile", "Profile")
+                        .WithMany()
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.Street", "Street")
+                        .WithMany()
+                        .HasForeignKey("StreetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.RoadTile", "Tile")
+                        .WithMany("Edges")
+                        .HasForeignKey("TileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.RoadNode", "ToNode")
+                        .WithMany()
+                        .HasForeignKey("ToNodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FromNode");
+
+                    b.Navigation("Profile");
+
+                    b.Navigation("Street");
+
+                    b.Navigation("Tile");
+
+                    b.Navigation("ToNode");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadNode", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.RoadTile", "Tile")
+                        .WithMany("Nodes")
+                        .HasForeignKey("TileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tile");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadSeed", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.RoadSurvey", "Survey")
+                        .WithMany()
+                        .HasForeignKey("SurveyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Survey");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadSurvey", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.RoadProfile", "Profile")
+                        .WithMany()
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "StartedBy")
+                        .WithMany()
+                        .HasForeignKey("StartedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Profile");
+
+                    b.Navigation("StartedBy");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadTileProposal", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.RoadTile", "Tile")
+                        .WithMany()
+                        .HasForeignKey("TileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tile");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeLobbyScenario", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.SiegeLobby", "SiegeLobby")
@@ -7306,6 +8135,13 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionHolder", b =>
                 {
                     b.Navigation("Grants");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.RoadTile", b =>
+                {
+                    b.Navigation("Edges");
+
+                    b.Navigation("Nodes");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeLobby", b =>

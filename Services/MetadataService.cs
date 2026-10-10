@@ -575,6 +575,14 @@ namespace knkwebapi_v2.Services
                                 }
                             }
                         }
+                        else if (Nullable.GetUnderlyingType(property.PropertyType) != null)
+                        {
+                            // A nullable value type (int?, bool?, an enum?) without an initializer defaults to null,
+                            // which is no default. Activator.CreateInstance(typeof(T?)) also returns null, so the
+                            // branch below would report the placeholder "default" - copied into a form field's
+                            // DefaultValue and then submitted in place of an empty value (KNG-119).
+                            return (false, null);
+                        }
                         else if (property.PropertyType.IsValueType && property.PropertyType != typeof(void))
                         {
                             // Value types have implicit defaults (bool: false, int: 0, etc.)

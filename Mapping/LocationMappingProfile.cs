@@ -17,6 +17,8 @@ public class LocationMappingProfile : Profile
             .ForMember(dest => dest.Z, src => src.MapFrom(src => src.Z))
             .ForMember(dest => dest.Yaw, src => src.MapFrom(src => src.Yaw))
             .ForMember(dest => dest.Pitch, src => src.MapFrom(src => src.Pitch))
-            .ForMember(dest => dest.World, src => src.MapFrom(src => src.World));
+            .ForMember(dest => dest.World, src => src.MapFrom(src => src.World))
+            // Set once on creation (Location's initializer); an update must never move it (KNG-80).
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
     }
 }

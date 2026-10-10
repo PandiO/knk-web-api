@@ -9,7 +9,9 @@ namespace knkwebapi_v2.Models;
 /// An additive, create-only seed of the lootbox configuration (knk-workspace docs/specs/lootboxes/DESIGN.md §3.5,
 /// IMPLEMENTATION_PLAN.md Phase 1). Runs after <see cref="EnchantBookSeed"/>, so the categories, grades, the v1
 /// one-offs and the enchantment definitions it builds on already exist. Same convention as
-/// <see cref="ItemBlueprintV1Seed"/>: rows are looked up by natural key and reused, never updated.
+/// <see cref="ItemBlueprintV1Seed"/>: rows are looked up by natural key and reused. The one exception is a narrowly
+/// scoped normalization of the original Flaming Samurai description, which removes its legacy inline gray codes so it
+/// inherits the same lore color as every ordinary ItemBlueprint description. Admin-edited descriptions are untouched.
 /// <list type="bullet">
 /// <item>one <b>disabled</b> <see cref="LootboxType"/> per top-level or leaf <see cref="Category"/> (D9), and for the
 /// Weapons/Armor/Tools types this run creates, their enchant rolls (§3.5);</item>
@@ -36,6 +38,8 @@ public static class LootboxSeed
     public const int FlamingSamuraiChancePerMillion = 500; // 0.05%, = ★10's DropChance
 
     private const string FlamingSamuraiIconKey = "minecraft:netherite_sword";
+    private const string FlamingSamuraiDescription = "Forged in the last fire of a fallen dojo.\nIts edge never cools.";
+    private const string LegacyFlamingSamuraiDescription = "&7Forged in the last fire of a fallen dojo.\n&7Its edge never cools.";
     private const string WeaponsCategory = "Weapons";
     private const int SpecialMinBoxStars = 5;
 
@@ -100,6 +104,7 @@ public static class LootboxSeed
         CancellationToken cancellationToken = default)
     {
         var created = new Dictionary<string, int>();
+        var normalized = 0;
         void Count(string what) => created[what] = created.GetValueOrDefault(what) + 1;
 
         // --- Tag ---
@@ -218,7 +223,15 @@ public static class LootboxSeed
             .GroupBy(b => b.Name!.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.OrderBy(b => b.Id).First(), StringComparer.OrdinalIgnoreCase);
         var weapons = categories.Where(c => c.Name == WeaponsCategory).OrderBy(c => c.Id).FirstOrDefault();
-        if (!blueprints.ContainsKey(FlamingSamuraiName))
+        if (blueprints.TryGetValue(FlamingSamuraiName, out var existingSamurai))
+        {
+            if (string.Equals(existingSamurai.DefaultDisplayDescription, LegacyFlamingSamuraiDescription, StringComparison.Ordinal))
+            {
+                existingSamurai.DefaultDisplayDescription = FlamingSamuraiDescription;
+                normalized++;
+            }
+        }
+        else
         {
             if (weapons == null)
             {
@@ -230,7 +243,7 @@ public static class LootboxSeed
                 {
                     Name = FlamingSamuraiName,
                     DefaultDisplayName = "&cFlaming Samurai",
-                    DefaultDisplayDescription = "&7Forged in the last fire of a fallen dojo.\n&7Its edge never cools.",
+                    DefaultDisplayDescription = FlamingSamuraiDescription,
                     Description = "New v3 lootbox special (2026-09-26). Not a v1 port.",
                     IconMaterial = await MaterialAsync(context, materialCatalog, FlamingSamuraiIconKey, Count, cancellationToken),
                     Category = weapons,
@@ -334,14 +347,15 @@ public static class LootboxSeed
             }
         }
 
-        if (created.Values.Any(v => v > 0))
+        if (created.Values.Any(v => v > 0) || normalized > 0)
         {
             await context.SaveChangesAsync(cancellationToken);
         }
 
         logger?.LogInformation(
-            "LootboxSeed complete. Created: {Created}",
-            created.Count == 0 ? "nothing" : string.Join(", ", created.Where(kv => kv.Value > 0).Select(kv => $"{kv.Value} {kv.Key}")));
+            "LootboxSeed complete. Created: {Created}. Normalized: {Normalized}",
+            created.Count == 0 ? "nothing" : string.Join(", ", created.Where(kv => kv.Value > 0).Select(kv => $"{kv.Value} {kv.Key}")),
+            normalized);
     }
 
     private static void AddEnchantRolls(LootboxType type, string categoryName, Dictionary<string, EnchantmentDefinition> definitions)

@@ -20,8 +20,13 @@ namespace knkwebapi_v2.Services
     /// Access rule, first failure wins: not a destination (disabled, no Location, AllowEntry off)
     /// → never listed; title (ExperiencePoints ≥ the bracket's MinExperience); premium tier (the
     /// player's highest active premium group's Weight ≥ the required group's); discovery (a
-    /// UserDomainDiscovery row, only when TeleportRequiresDiscovery); price (Gems ≥
-    /// TeleportPriceGems).
+    /// UserDomainDiscovery row, only when TeleportRequiresDiscovery); price (the player can pay it).
+    /// </para>
+    /// <para>
+    /// Prices (Linear KNG-41): the player's permission groups can price /tpa, /warp and /spawn
+    /// (TeleportGroupPolicy) - a multiple of the default price or a fixed price in coins, gems
+    /// and/or XP. No group price = the default: the request's coin fee from the plugin's config,
+    /// the domain's TeleportPriceGems, a free /spawn. A /back's flat fee (KNG-42) isn't group-priced.
     /// </para>
     /// <para>
     /// Charges run under the player's row lock (IUserRepository.RunWithUsersLockedAsync, which the
@@ -35,6 +40,11 @@ namespace knkwebapi_v2.Services
         public const string Component = "TeleportDestinationService";
         public const string WarpSourceType = "Domain";
         public const string RequestSourceType = "TeleportRequest";
+        public const string BackSourceType = "TeleportBack";
+        public const string SpawnSourceType = "TeleportSpawn";
+
+        /// <summary>The kinds of place a /back returns to (plugin BackKind config keys, KNG-42).</summary>
+        public static readonly IReadOnlySet<string> BackKinds = new HashSet<string> { "death", "warps", "teleport", "spawn" };
 
         /// <summary>Highest coin fee a teleport request may carry (the coin balance cap).</summary>
         public const int MaxRequestFeeCoins = BalanceLimits.MaxCoins;
@@ -42,6 +52,11 @@ namespace knkwebapi_v2.Services
         private static readonly Regex KeyPattern = new("^[A-Za-z0-9:_.\\-]{1,100}$", RegexOptions.Compiled);
 
         private static readonly string[] TypeOrder = { "Town", "District", "Structure", "GateStructure" };
+
+        private const string WarpPurpose = "to teleport to this location";
+        private const string RequestPurpose = "to send this teleport request";
+        private const string BackPurpose = "to teleport back";
+        private const string SpawnPurpose = "to teleport to spawn";
 
         private readonly ITeleportDestinationRepository _repo;
         private readonly IUserRepository _users;
@@ -52,7 +67,12 @@ namespace knkwebapi_v2.Services
         private readonly ICurrencyService _currency;
         private readonly ICurrencyRepository _ledger;
         private readonly ILogger<TeleportDestinationService> _logger;
+        private readonly ITitleProgressionService? _titleProgression;
+        private readonly IPlayerNotificationQueue? _notifications;
 
+        /// <param name="titleProgression">Runs title progression when a group's XP price (or its
+        /// refund) changes a player's XP (KNG-41); without it (some tests) titles aren't updated.</param>
+        /// <param name="notifications">Tells the player in game about such a title change; optional.</param>
         public TeleportDestinationService(
             ITeleportDestinationRepository repo,
             IUserRepository users,
@@ -62,7 +82,9 @@ namespace knkwebapi_v2.Services
             IPermissionGroupRepository permissionGroups,
             ICurrencyService currency,
             ICurrencyRepository ledger,
-            ILogger<TeleportDestinationService> logger)
+            ILogger<TeleportDestinationService> logger,
+            ITitleProgressionService? titleProgression = null,
+            IPlayerNotificationQueue? notifications = null)
         {
             _repo = repo;
             _users = users;
@@ -73,6 +95,8 @@ namespace knkwebapi_v2.Services
             _currency = currency;
             _ledger = ledger;
             _logger = logger;
+            _titleProgression = titleProgression;
+            _notifications = notifications;
         }
 
         // ===== Reads =====
@@ -90,6 +114,19 @@ namespace knkwebapi_v2.Services
                 .ToList();
         }
 
+        public async Task<TeleportPolicyDto> GetPolicyAsync(int userId)
+        {
+            var user = await _users.GetByIdAsync(userId) ?? throw new KeyNotFoundException($"User {userId} not found.");
+            var chain = await LoadGroupChainAsync(user.Id);
+            return new TeleportPolicyDto
+            {
+                UserId = user.Id,
+                Request = TeleportGroupPolicy.ToDto(TeleportGroupPolicy.Resolve(chain, TeleportFeeKind.Request)),
+                Warp = TeleportGroupPolicy.ToDto(TeleportGroupPolicy.Resolve(chain, TeleportFeeKind.Warp)),
+                Spawn = TeleportGroupPolicy.ToDto(TeleportGroupPolicy.Resolve(chain, TeleportFeeKind.Spawn))
+            };
+        }
+
         // ===== Charges =====
 
         public async Task<TeleportChargeResultDto> ChargeAsync(int domainId, TeleportChargeRequestDto request)
@@ -99,6 +136,7 @@ namespace knkwebapi_v2.Services
             if (request.UserId <= 0) throw new KeyNotFoundException($"User {request.UserId} not found.");
 
             TeleportChargeResultDto? result = null;
+            Dictionary<int, TitleChangeResultDto> titleChanges = new();
             await _users.RunWithUsersLockedAsync(new[] { request.UserId }, async () =>
             {
                 await RequireNotVoidAsync(request.IdempotencyKey);
@@ -116,15 +154,7 @@ namespace knkwebapi_v2.Services
                 if (existing != null)
                 {
                     await RequireSameChargeAsync(existing, user.Id, WarpSourceType, domainId.ToString());
-                    result = new TeleportChargeResultDto
-                    {
-                        Currency = Currency.Gems.ToString(),
-                        Charged = -UserLeg(existing, user.Id)!.Amount,
-                        NewBalance = user.Gems,
-                        Replayed = true,
-                        TransactionPublicId = existing.PublicId,
-                        Destination = Unlocked(ToDestination(domain, user.Gender))
-                    };
+                    result = Replay(existing, user, Unlocked(ToDestination(domain, user.Gender)));
                     return;
                 }
 
@@ -141,74 +171,129 @@ namespace knkwebapi_v2.Services
                     throw new TeleportDestinationException(evaluated.LockCode!, evaluated.LockReason!);
                 }
 
-                var price = request.BypassCost ? 0 : domain.TeleportPriceGems;
-                if (price <= 0)
+                var price = request.BypassCost ? Array.Empty<TeleportPriceLeg>() : WarpPrice(domain, access.Warp);
+                if (price.Count == 0)
                 {
-                    result = new TeleportChargeResultDto
-                    {
-                        Currency = Currency.Gems.ToString(),
-                        Charged = 0,
-                        NewBalance = user.Gems,
-                        Destination = Unlocked(evaluated)
-                    };
+                    result = Free(user, Currency.Gems, Unlocked(evaluated));
                     return;
                 }
 
-                var posting = await SpendAsync(user.Id, Currency.Gems, price, request.IdempotencyKey,
-                    WarpSourceType, domain.Id.ToString(), $"Teleport to {domain.Name}",
-                    new { domainId = domain.Id, domainName = domain.Name, bypassRequirements = request.BypassRequirements });
-                result = ToChargeResult(posting, user.Id, Currency.Gems, Unlocked(evaluated));
+                var posting = await SpendAsync(user, price, request.IdempotencyKey, WarpSourceType, domain.Id.ToString(),
+                    $"Teleport to {domain.Name}", WarpPurpose,
+                    new
+                    {
+                        domainId = domain.Id,
+                        domainName = domain.Name,
+                        bypassRequirements = request.BypassRequirements,
+                        priceGroup = access.Warp.PriceGroup?.Name,
+                        priceMode = access.Warp.Price?.Mode.ToString()
+                    }, titleChanges);
+                result = ToChargeResult(posting, user.Id, Unlocked(evaluated));
             });
 
-            if (result!.Charged > 0 && !result.Replayed)
+            await NotifyTitleChangesAsync(titleChanges);
+            if (result!.Payments.Count > 0 && !result.Replayed)
             {
-                _logger.LogInformation("Warp charge: user {UserId} paid {Gems} gems for domain {DomainId} (key {Key})",
-                    request.UserId, result.Charged, domainId, request.IdempotencyKey);
+                _logger.LogInformation("Warp charge: user {UserId} paid {Price} for domain {DomainId} (key {Key})",
+                    request.UserId, Describe(result.Payments), domainId, request.IdempotencyKey);
             }
             return result;
         }
 
-        public async Task<TeleportChargeResultDto> ChargeRequestFeeAsync(TeleportRequestFeeDto request)
+        public Task<TeleportChargeResultDto> ChargeRequestFeeAsync(TeleportRequestFeeDto request)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
-            RequireKey(request.IdempotencyKey);
+            if (request.AmountCoins < 0 || request.AmountCoins > MaxRequestFeeCoins)
+            {
+                throw new ArgumentException($"amountCoins must be between 0 and {MaxRequestFeeCoins}.");
+            }
+            return ChargeFeeAsync(request.UserId, request.IdempotencyKey, Currency.Coins, RequestSourceType,
+                request.OtherUserId?.ToString(), "Teleport request", RequestPurpose,
+                async user =>
+                {
+                    var policy = TeleportGroupPolicy.Resolve(await LoadGroupChainAsync(user.Id), TeleportFeeKind.Request);
+                    var price = policy.PriceFor(new[] { new TeleportPriceLeg(Currency.Coins, request.AmountCoins) });
+                    return (price, new
+                    {
+                        otherUserId = request.OtherUserId,
+                        defaultCoins = request.AmountCoins,
+                        priceGroup = policy.PriceGroup?.Name,
+                        priceMode = policy.Price?.Mode.ToString()
+                    });
+                });
+        }
+
+        public Task<TeleportChargeResultDto> ChargeSpawnFeeAsync(TeleportSpawnFeeDto request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            return ChargeFeeAsync(request.UserId, request.IdempotencyKey, Currency.Coins, SpawnSourceType, null,
+                "Teleport to spawn", SpawnPurpose,
+                async user =>
+                {
+                    var policy = TeleportGroupPolicy.Resolve(await LoadGroupChainAsync(user.Id), TeleportFeeKind.Spawn);
+                    return (policy.PriceFor(Array.Empty<TeleportPriceLeg>()), new
+                    {
+                        priceGroup = policy.PriceGroup?.Name
+                    });
+                });
+        }
+
+        public Task<TeleportChargeResultDto> ChargeBackFeeAsync(TeleportBackFeeDto request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            var kind = request.BackKind?.Trim().ToLowerInvariant();
+            if (kind != null && !BackKinds.Contains(kind))
+            {
+                throw new ArgumentException($"backKind must be one of {string.Join(", ", BackKinds)}.");
+            }
             if (request.AmountCoins < 1 || request.AmountCoins > MaxRequestFeeCoins)
             {
                 throw new ArgumentException($"amountCoins must be between 1 and {MaxRequestFeeCoins}.");
             }
-            if (request.UserId <= 0) throw new KeyNotFoundException($"User {request.UserId} not found.");
+            IReadOnlyList<TeleportPriceLeg> price = new[] { new TeleportPriceLeg(Currency.Coins, request.AmountCoins) };
+            return ChargeFeeAsync(request.UserId, request.IdempotencyKey, Currency.Coins, BackSourceType, kind,
+                "Teleport back (/back)", BackPurpose,
+                _ => Task.FromResult<(IReadOnlyList<TeleportPriceLeg>, object)>((price, new { backKind = kind })));
+        }
+
+        /// <summary>
+        /// A teleport fee that isn't a warp (a /tpa's, a /spawn's, a /back's), charged once per
+        /// idempotency key under the player's row lock: a retry with the same key replays the first
+        /// charge (whatever the price is now), a refunded or voided key is refused. A free price
+        /// posts nothing.
+        /// </summary>
+        private async Task<TeleportChargeResultDto> ChargeFeeAsync(int userId, string key, Currency freeCurrency,
+            string sourceType, string? sourceRef, string reason, string purpose,
+            Func<User, Task<(IReadOnlyList<TeleportPriceLeg> Price, object Metadata)>> priceOf)
+        {
+            RequireKey(key);
+            if (userId <= 0) throw new KeyNotFoundException($"User {userId} not found.");
 
             TeleportChargeResultDto? result = null;
-            await _users.RunWithUsersLockedAsync(new[] { request.UserId }, async () =>
+            Dictionary<int, TitleChangeResultDto> titleChanges = new();
+            await _users.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
-                await RequireNotVoidAsync(request.IdempotencyKey);
-                var user = await _users.GetByIdAsync(request.UserId) ?? throw new KeyNotFoundException($"User {request.UserId} not found.");
+                await RequireNotVoidAsync(key);
+                var user = await _users.GetByIdAsync(userId) ?? throw new KeyNotFoundException($"User {userId} not found.");
 
-                var existing = await _ledger.FindByIdempotencyAsync(CurrencyIdempotencyScopes.Plugin, request.IdempotencyKey);
+                var existing = await _ledger.FindByIdempotencyAsync(CurrencyIdempotencyScopes.Plugin, key);
                 if (existing != null)
                 {
-                    await RequireSameChargeAsync(existing, user.Id, RequestSourceType, request.OtherUserId?.ToString());
-                    var leg = UserLeg(existing, user.Id)!;
-                    if (leg.Currency != Currency.Coins || -leg.Amount != request.AmountCoins)
-                    {
-                        throw KeyReuse(request.IdempotencyKey);
-                    }
-                    result = new TeleportChargeResultDto
-                    {
-                        Currency = Currency.Coins.ToString(),
-                        Charged = -leg.Amount,
-                        NewBalance = user.Coins,
-                        Replayed = true,
-                        TransactionPublicId = existing.PublicId
-                    };
+                    await RequireSameChargeAsync(existing, user.Id, sourceType, sourceRef);
+                    result = Replay(existing, user, null);
                     return;
                 }
 
-                var posting = await SpendAsync(user.Id, Currency.Coins, request.AmountCoins, request.IdempotencyKey,
-                    RequestSourceType, request.OtherUserId?.ToString(), "Teleport request",
-                    new { otherUserId = request.OtherUserId });
-                result = ToChargeResult(posting, user.Id, Currency.Coins, null);
+                var (price, metadata) = await priceOf(user);
+                if (price.Count == 0)
+                {
+                    result = Free(user, freeCurrency, null);
+                    return;
+                }
+                var posting = await SpendAsync(user, price, key, sourceType, sourceRef, reason, purpose, metadata, titleChanges);
+                result = ToChargeResult(posting, user.Id, null);
             });
+            await NotifyTitleChangesAsync(titleChanges);
             return result!;
         }
 
@@ -220,6 +305,7 @@ namespace knkwebapi_v2.Services
             if (request.Reason?.Length > 200) throw new ArgumentException("reason may be at most 200 characters.");
 
             TeleportRefundResultDto? result = null;
+            Dictionary<int, TitleChangeResultDto> titleChanges = new();
             await _users.RunWithUsersLockedAsync(new[] { request.UserId }, async () =>
             {
                 var user = await _users.GetByIdAsync(request.UserId) ?? throw new KeyNotFoundException($"User {request.UserId} not found.");
@@ -242,8 +328,8 @@ namespace knkwebapi_v2.Services
                     return;
                 }
 
-                var leg = UserLeg(charge, user.Id);
-                if (charge.ReasonCode != CurrencyReasons.TeleportFee || leg == null)
+                var legs = UserLegs(charge, user.Id);
+                if (charge.ReasonCode != CurrencyReasons.TeleportFee || legs.Count == 0)
                 {
                     throw KeyReuse(request.IdempotencyKey);
                 }
@@ -251,7 +337,7 @@ namespace knkwebapi_v2.Services
                 var prior = await _ledger.FindReversalOfAsync(charge.Id);
                 if (prior != null)
                 {
-                    result = Refunded(leg, user, replayed: true);
+                    result = Refunded(legs, user, replayed: true);
                     return;
                 }
 
@@ -260,13 +346,18 @@ namespace knkwebapi_v2.Services
                     var ctx = CurrencyContext.ForSystem(Component, CurrencyReasons.Reversal, $"reverse:{charge.Id}",
                         string.IsNullOrWhiteSpace(request.Reason) ? "Teleport refund: the teleport didn't happen" : $"Teleport refund: {request.Reason.Trim()}");
                     var posting = await _currency.ReverseAsync(charge.Id, new ReversalOptions(), ctx);
-                    result = Refunded(leg, user, replayed: posting.Replayed, posting.Balances.TryGetValue(user.Id, out var b) ? b : null);
-                    _logger.LogInformation("Teleport refund: {Amount} {Currency} back to user {UserId} (key {Key}, charge {PublicId})",
-                        -leg.Amount, leg.Currency, user.Id, request.IdempotencyKey, charge.PublicId);
+                    if (!posting.Replayed)
+                    {
+                        // Giving XP back can promote the player again (bonuses are paid once per bracket, ever).
+                        await ApplyTitleProgressionAsync(posting, titleChanges);
+                    }
+                    result = Refunded(legs, user, replayed: posting.Replayed, posting.Balances.TryGetValue(user.Id, out var b) ? b : null);
+                    _logger.LogInformation("Teleport refund: {Price} back to user {UserId} (key {Key}, charge {PublicId})",
+                        Describe(result.Payments), user.Id, request.IdempotencyKey, charge.PublicId);
                 }
                 catch (CurrencyException ex) when (ex.Code == CurrencyErrorCode.AlreadyReversed)
                 {
-                    result = Refunded(leg, user, replayed: true);
+                    result = Refunded(legs, user, replayed: true);
                 }
                 catch (CurrencyException ex)
                 {
@@ -274,6 +365,7 @@ namespace knkwebapi_v2.Services
                     throw new TeleportDestinationException(TeleportDestinationException.LedgerRefused, ex.Message);
                 }
             });
+            await NotifyTitleChangesAsync(titleChanges);
             return result!;
         }
 
@@ -309,7 +401,7 @@ namespace knkwebapi_v2.Services
 
         // ===== Evaluation =====
 
-        private sealed record Access(int? PremiumWeight, HashSet<int> Discovered);
+        private sealed record Access(int? PremiumWeight, HashSet<int> Discovered, TeleportKindPolicy Warp);
 
         public static bool IsDestination(Domain domain) =>
             domain.TeleportEnabled && domain.AllowEntry && domain.LocationId != null && domain.Location != null;
@@ -325,8 +417,22 @@ namespace knkwebapi_v2.Services
             var discovered = needDiscovery.Count == 0
                 ? new HashSet<int>()
                 : await _discoveries.GetDiscoveredDomainIdsAsync(user.Id, needDiscovery);
-            return new Access(premiumWeight, discovered);
+            var warp = domains.Count == 0
+                ? TeleportKindPolicy.None(TeleportFeeKind.Warp)
+                : TeleportGroupPolicy.Resolve(await LoadGroupChainAsync(user.Id), TeleportFeeKind.Warp);
+            return new Access(premiumWeight, discovered, warp);
         }
+
+        /// <summary>The player's groups in the order their teleport settings are checked (KNG-41).</summary>
+        private async Task<List<PermissionGroup>> LoadGroupChainAsync(int userId)
+        {
+            var groups = await _permissionGroups.GetActiveGroupsForUserAsync(userId, DateTime.UtcNow);
+            return TeleportGroupPolicy.Chain(groups ?? new List<PermissionGroup>());
+        }
+
+        /// <summary>A warp's price for this player: the domain's gems as the player's warp policy prices them.</summary>
+        private static IReadOnlyList<TeleportPriceLeg> WarpPrice(Domain domain, TeleportKindPolicy policy) =>
+            policy.PriceFor(new[] { new TeleportPriceLeg(Currency.Gems, domain.TeleportPriceGems) });
 
         private static TeleportDestinationDto Evaluate(Domain domain, User user, Access access)
         {
@@ -351,12 +457,17 @@ namespace knkwebapi_v2.Services
                 reason = $"Discover {domain.Name} first";
             }
 
+            var price = WarpPrice(domain, access.Warp);
+            dto.PriceGems = (int)AmountOf(price, Currency.Gems);
+            dto.PriceCoins = (int)AmountOf(price, Currency.Coins);
+            dto.PriceExperience = (int)Math.Min(int.MaxValue, AmountOf(price, Currency.Experience));
+            var shortOf = ShortOf(user, price);
             dto.RequirementsMet = code == null;
-            dto.CanAfford = user.Gems >= domain.TeleportPriceGems;
-            if (code == null && !dto.CanAfford)
+            dto.CanAfford = shortOf == null;
+            if (code == null && shortOf != null)
             {
-                code = TeleportDestinationException.InsufficientGems;
-                reason = "You don't have enough gems to teleport to this location!";
+                code = InsufficientCode(shortOf.Value);
+                reason = InsufficientMessage(shortOf.Value, WarpPurpose);
             }
             dto.Available = code == null;
             dto.LockCode = code;
@@ -410,11 +521,58 @@ namespace knkwebapi_v2.Services
             return index < 0 ? TypeOrder.Length : index;
         }
 
+        // ===== Prices =====
+
+        private static long AmountOf(IReadOnlyList<TeleportPriceLeg> price, Currency currency) =>
+            price.Where(l => l.Currency == currency).Sum(l => l.Amount);
+
+        private static long BalanceOf(User user, Currency currency) => currency switch
+        {
+            Currency.Coins => user.Coins,
+            Currency.Gems => user.Gems,
+            _ => user.ExperiencePoints
+        };
+
+        /// <summary>The first currency of <paramref name="price"/> the player can't pay; null when they can pay it all.</summary>
+        private static Currency? ShortOf(User user, IReadOnlyList<TeleportPriceLeg> price) =>
+            price.Where(l => BalanceOf(user, l.Currency) < l.Amount).Select(l => (Currency?)l.Currency).FirstOrDefault();
+
+        private static string InsufficientCode(Currency currency) => currency switch
+        {
+            Currency.Coins => TeleportDestinationException.InsufficientCoins,
+            Currency.Gems => TeleportDestinationException.InsufficientGems,
+            _ => TeleportDestinationException.InsufficientExperience
+        };
+
+        private static string InsufficientMessage(Currency currency, string purpose) =>
+            $"You don't have enough {Word(currency)} {purpose}!";
+
+        private static string Word(Currency currency) => currency switch
+        {
+            Currency.Coins => "coins",
+            Currency.Gems => "gems",
+            _ => "XP"
+        };
+
+        private static string Describe(IEnumerable<TeleportPaymentDto> payments) =>
+            string.Join(" + ", payments.Select(p => $"{p.Amount} {p.Currency}"));
+
         // ===== Ledger helpers =====
 
-        private async Task<PostingResult> SpendAsync(int userId, Currency currency, long amount, string key,
-            string sourceType, string? sourceRef, string reason, object metadata)
+        /// <summary>
+        /// Takes <paramref name="price"/> from the player in one TELEPORT_FEE posting (all
+        /// currencies or none), checked against their balances first so the refusal names the
+        /// currency they're short of. An XP price runs title progression (it may demote, KNG-41);
+        /// the changes are collected for <see cref="NotifyTitleChangesAsync"/> after the commit.
+        /// </summary>
+        private async Task<PostingResult> SpendAsync(User user, IReadOnlyList<TeleportPriceLeg> price, string key,
+            string sourceType, string? sourceRef, string reason, string purpose, object metadata,
+            Dictionary<int, TitleChangeResultDto> titleChanges)
         {
+            if (ShortOf(user, price) is { } shortOf)
+            {
+                throw new TeleportDestinationException(InsufficientCode(shortOf), InsufficientMessage(shortOf, purpose));
+            }
             var ctx = new CurrencyContext
             {
                 IdempotencyKey = key,
@@ -423,7 +581,7 @@ namespace knkwebapi_v2.Services
                 Reason = reason.Length > 500 ? reason[..500] : reason,
                 // The player pays for their own teleport; the plugin relays it.
                 Initiator = CurrencyInitiator.Player,
-                InitiatorUserId = userId,
+                InitiatorUserId = user.Id,
                 InitiatorComponent = Component,
                 SourceType = sourceType,
                 SourceRef = sourceRef,
@@ -431,13 +589,19 @@ namespace knkwebapi_v2.Services
             };
             try
             {
-                return await _currency.SpendAsync(userId, currency, amount, ctx);
+                var posting = price.Count == 1
+                    ? await _currency.SpendAsync(user.Id, price[0].Currency, price[0].Amount, ctx)
+                    : await _currency.PostAsync(price.Select(l => new CurrencyLeg(user.Id, l.Currency, -l.Amount)).ToList(), ctx);
+                if (!posting.Replayed)
+                {
+                    await ApplyTitleProgressionAsync(posting, titleChanges);
+                }
+                return posting;
             }
             catch (CurrencyException ex) when (ex.Code == CurrencyErrorCode.InsufficientFunds)
             {
-                throw currency == Currency.Gems
-                    ? new TeleportDestinationException(TeleportDestinationException.InsufficientGems, "You don't have enough gems to teleport to this location!")
-                    : new TeleportDestinationException(TeleportDestinationException.InsufficientCoins, "You don't have enough coins to send this teleport request!");
+                var currency = price.Count == 1 ? price[0].Currency : ShortOf(user, price) ?? price[0].Currency;
+                throw new TeleportDestinationException(InsufficientCode(currency), InsufficientMessage(currency, purpose));
             }
             catch (CurrencyException ex) when (ex.Code == CurrencyErrorCode.IdempotencyKeyReuse)
             {
@@ -449,12 +613,37 @@ namespace knkwebapi_v2.Services
             }
         }
 
+        /// <summary>Title progression for a posting that changed XP (same transaction, KNG-41).</summary>
+        private async Task ApplyTitleProgressionAsync(PostingResult posting, Dictionary<int, TitleChangeResultDto> titleChanges)
+        {
+            if (_titleProgression == null || posting.Entries.All(e => e.Currency != nameof(Currency.Experience)))
+            {
+                return;
+            }
+            foreach (var (userId, change) in await _titleProgression.ApplyForPostingAsync(posting, null))
+            {
+                titleChanges[userId] = change;
+            }
+        }
+
+        /// <summary>Queues the in-game title change messages, after the posting committed.</summary>
+        private async Task NotifyTitleChangesAsync(Dictionary<int, TitleChangeResultDto> titleChanges)
+        {
+            if (_notifications == null || titleChanges.Count == 0) return;
+            var identities = await _ledger.GetIdentitiesAsync(titleChanges.Keys);
+            foreach (var (userId, change) in titleChanges)
+            {
+                var who = identities.GetValueOrDefault(userId);
+                _notifications.Enqueue(userId, who.Uuid, who.Username ?? "", PlayerNotificationTypes.TitleChanged, change);
+            }
+        }
+
         /// <summary>A replayed key must name the same kind of charge for the same player and
         /// target, and must not have been refunded.</summary>
         private async Task RequireSameChargeAsync(CurrencyTransaction existing, int userId, string sourceType, string? sourceRef)
         {
             if (existing.ReasonCode != CurrencyReasons.TeleportFee
-                || UserLeg(existing, userId) == null
+                || UserLegs(existing, userId).Count == 0
                 || existing.SourceType != sourceType
                 || !string.Equals(existing.SourceRef, sourceRef, StringComparison.Ordinal))
             {
@@ -467,33 +656,84 @@ namespace knkwebapi_v2.Services
             }
         }
 
-        private static CurrencyEntry? UserLeg(CurrencyTransaction tx, int userId) =>
-            tx.Entries.FirstOrDefault(e => e.AccountKind == CurrencyAccountKind.User && e.UserId == userId);
+        /// <summary>The player's legs of a charge, in coins, gems, XP order.</summary>
+        private static List<CurrencyEntry> UserLegs(CurrencyTransaction tx, int userId) =>
+            tx.Entries.Where(e => e.AccountKind == CurrencyAccountKind.User && e.UserId == userId)
+                .OrderBy(e => e.Currency).ToList();
 
-        private static TeleportChargeResultDto ToChargeResult(PostingResult posting, int userId, Currency currency, TeleportDestinationDto? destination)
+        private static TeleportChargeResultDto Free(User user, Currency currency, TeleportDestinationDto? destination) => new()
         {
-            var entry = posting.Entries.First(e => e.UserId == userId);
-            return new TeleportChargeResultDto
+            Currency = currency.ToString(),
+            Charged = 0,
+            NewBalance = BalanceOf(user, currency),
+            Destination = destination
+        };
+
+        private static TeleportChargeResultDto Replay(CurrencyTransaction existing, User user, TeleportDestinationDto? destination)
+        {
+            var payments = UserLegs(existing, user.Id).Select(e => new TeleportPaymentDto
             {
-                Currency = currency.ToString(),
-                Charged = -entry.Amount,
-                NewBalance = entry.BalanceAfter,
+                Currency = e.Currency.ToString(),
+                Amount = -e.Amount,
+                NewBalance = BalanceOf(user, e.Currency)
+            }).ToList();
+            return WithPayments(new TeleportChargeResultDto
+            {
+                Replayed = true,
+                TransactionPublicId = existing.PublicId,
+                Destination = destination
+            }, payments);
+        }
+
+        private static TeleportChargeResultDto ToChargeResult(PostingResult posting, int userId, TeleportDestinationDto? destination)
+        {
+            var payments = posting.Entries.Where(e => e.UserId == userId)
+                .OrderBy(e => Enum.Parse<Currency>(e.Currency))
+                .Select(e => new TeleportPaymentDto { Currency = e.Currency, Amount = -e.Amount, NewBalance = e.BalanceAfter })
+                .ToList();
+            return WithPayments(new TeleportChargeResultDto
+            {
                 Replayed = posting.Replayed,
                 TransactionPublicId = posting.PublicId,
                 Destination = destination
-            };
+            }, payments);
         }
 
-        private static TeleportRefundResultDto Refunded(CurrencyEntry leg, User user, bool replayed, BalancesDto? balances = null) => new()
+        /// <summary>Sets the payments and the single-currency fields (the first payment) older plugins read.</summary>
+        private static TeleportChargeResultDto WithPayments(TeleportChargeResultDto result, List<TeleportPaymentDto> payments)
         {
-            Refunded = true,
-            Currency = leg.Currency.ToString(),
-            Amount = -leg.Amount,
-            NewBalance = balances != null
-                ? (leg.Currency == Currency.Gems ? balances.Gems : balances.Coins)
-                : (leg.Currency == Currency.Gems ? user.Gems : user.Coins),
-            Replayed = replayed
-        };
+            result.Payments = payments;
+            result.Currency = payments[0].Currency;
+            result.Charged = payments[0].Amount;
+            result.NewBalance = payments[0].NewBalance;
+            return result;
+        }
+
+        private static TeleportRefundResultDto Refunded(List<CurrencyEntry> legs, User user, bool replayed, BalancesDto? balances = null)
+        {
+            var payments = legs.Select(leg => new TeleportPaymentDto
+            {
+                Currency = leg.Currency.ToString(),
+                Amount = -leg.Amount,
+                NewBalance = balances != null
+                    ? leg.Currency switch
+                    {
+                        Currency.Coins => balances.Coins,
+                        Currency.Gems => balances.Gems,
+                        _ => balances.ExperiencePoints
+                    }
+                    : BalanceOf(user, leg.Currency)
+            }).ToList();
+            return new TeleportRefundResultDto
+            {
+                Refunded = true,
+                Currency = payments[0].Currency,
+                Amount = payments[0].Amount,
+                NewBalance = payments[0].NewBalance,
+                Replayed = replayed,
+                Payments = payments
+            };
+        }
 
         private async Task RequireNotVoidAsync(string key)
         {

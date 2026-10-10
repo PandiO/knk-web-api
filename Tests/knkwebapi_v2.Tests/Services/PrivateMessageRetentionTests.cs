@@ -101,6 +101,25 @@ public class PrivateMessageRetentionTests
         await service.StopAsync(CancellationToken.None);
     }
 
+    [Fact]
+    public async Task UnfinishedFormSubmissions_AreDeletedAfter90Days_EvenWhenTheCompletedCleanupFails()
+    {
+        var cutoffs = new List<DateTime>();
+        _forms.Setup(r => r.DeleteCompletedOlderThanAsync(It.IsAny<DateTime>())).ThrowsAsync(new InvalidOperationException("boom"));
+        _forms.Setup(r => r.DeleteUnfinishedOlderThanAsync(It.IsAny<DateTime>()))
+            .Callback<DateTime>(cutoff => { lock (cutoffs) cutoffs.Add(cutoff); })
+            .ReturnsAsync(2);
+        var service = NewService(TimeSpan.FromHours(24));
+        var before = DateTime.UtcNow;
+
+        await service.StartAsync(CancellationToken.None);
+        await WaitForRunsAsync(1);
+        await service.StopAsync(CancellationToken.None);
+
+        var cutoff = Assert.Single(cutoffs);
+        Assert.InRange(cutoff, before.AddDays(-90).AddSeconds(-1), DateTime.UtcNow.AddDays(-90).AddSeconds(1));
+    }
+
     // ===== The setting =====
 
     private static (AuditLogRetentionConfigurationService service, Func<AuditLogRetentionConfiguration?> stored) ConfigService(

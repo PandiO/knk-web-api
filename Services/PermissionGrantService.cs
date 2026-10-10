@@ -45,28 +45,14 @@ namespace knkwebapi_v2.Services
             return _mapper.Map<PermissionGrantDto>(grant);
         }
 
+        /// <summary>
+        /// Upserts by (holder, node) rather than always inserting (KNG-59): a holder has at most one
+        /// row per node, so creating a node the holder already has updates that row instead.
+        /// </summary>
         public async Task<PermissionGrantDto> CreateAsync(PermissionGrantDto dto, int? actorUserId = null)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            if (string.IsNullOrWhiteSpace(dto.Node)) throw new ArgumentException("Permission node is required.", nameof(dto));
-            if (dto.HolderId <= 0 || !await _repo.HolderExistsAsync(dto.HolderId))
-                throw new ArgumentException($"PermissionHolder with id {dto.HolderId} not found.", nameof(dto));
-
-            var grant = _mapper.Map<PermissionGrant>(dto);
-            await _repo.AddAsync(grant);
-
-            if (await IsUserHolderAsync(dto.HolderId))
-            {
-                await _auditLogService.RecordAsync(actorUserId, dto.HolderId, AuditAction.GrantAdded, JsonSerializer.Serialize(new
-                {
-                    grantId = grant.Id,
-                    node = dto.Node,
-                    value = dto.Value,
-                    expiresAt = dto.ExpiresAt
-                }));
-            }
-
-            return _mapper.Map<PermissionGrantDto>(grant);
+            return await UpsertByNodeAsync(dto.HolderId, dto.Node, dto.Value, dto.ExpiresAt, actorUserId);
         }
 
         public async Task UpdateAsync(int id, PermissionGrantDto dto, int? actorUserId = null)
@@ -82,6 +68,17 @@ namespace knkwebapi_v2.Services
             {
                 if (dto.HolderId <= 0 || !await _repo.HolderExistsAsync(dto.HolderId))
                     throw new ArgumentException($"PermissionHolder with id {dto.HolderId} not found.", nameof(dto));
+            }
+
+            // One row per (holder, node) (KNG-59): moving this row onto a node the holder already
+            // has would duplicate it - edit or remove that row instead.
+            if (dto.HolderId != existing.HolderId || dto.Node != existing.Node)
+            {
+                var taken = (await _repo.GetGrantsForHolderNodeAsync(dto.HolderId, dto.Node))
+                    .FirstOrDefault(g => g.Id != id);
+                if (taken != null)
+                    throw new PermissionGrantConflictException(taken.Id,
+                        $"Holder {dto.HolderId} already has a grant for node '{dto.Node}' (grant {taken.Id}).");
             }
 
             var previousNode = existing.Node;
@@ -144,8 +141,29 @@ namespace knkwebapi_v2.Services
             if (!await _repo.HolderExistsAsync(holderId))
                 throw new ArgumentException($"PermissionHolder with id {holderId} not found.", nameof(holderId));
 
-            var existing = (await _repo.GetActiveGrantsForHolderAsync(holderId, DateTime.UtcNow))
-                .FirstOrDefault(g => g.Node == node);
+            // One row per (holder, node), expired rows included (KNG-59): update the active row
+            // if there is one (else revive an expired one) and delete any other rows for the node,
+            // so a re-grant or a grant-to-deny flip never leaves a duplicate behind.
+            var now = DateTime.UtcNow;
+            var rows = await _repo.GetGrantsForHolderNodeAsync(holderId, node);
+            var existing = rows.FirstOrDefault(g => g.ExpiresAt == null || g.ExpiresAt > now) ?? rows.FirstOrDefault();
+            var isUserHolder = await IsUserHolderAsync(holderId);
+
+            foreach (var duplicate in rows.Where(g => g != existing))
+            {
+                await _repo.DeleteAsync(duplicate.Id);
+
+                // An expired duplicate was already out of effect; only an active one is a removal.
+                if (isUserHolder && (duplicate.ExpiresAt == null || duplicate.ExpiresAt > now))
+                {
+                    await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
+                    {
+                        grantId = duplicate.Id,
+                        node,
+                        value = duplicate.Value
+                    }));
+                }
+            }
 
             if (existing != null)
             {
@@ -155,7 +173,7 @@ namespace knkwebapi_v2.Services
                 existing.ExpiresAt = expiresAt;
                 await _repo.UpdateAsync(existing);
 
-                if (await IsUserHolderAsync(holderId))
+                if (isUserHolder)
                 {
                     await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantUpdated, JsonSerializer.Serialize(new
                     {
@@ -171,7 +189,7 @@ namespace knkwebapi_v2.Services
             var grant = new PermissionGrant { HolderId = holderId, Node = node, Value = value, ExpiresAt = expiresAt };
             await _repo.AddAsync(grant);
 
-            if (await IsUserHolderAsync(holderId))
+            if (isUserHolder)
             {
                 await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantAdded, JsonSerializer.Serialize(new
                 {
@@ -190,22 +208,29 @@ namespace knkwebapi_v2.Services
             if (holderId <= 0) throw new ArgumentException("Invalid holder id.", nameof(holderId));
             if (string.IsNullOrWhiteSpace(node)) throw new ArgumentException("Permission node is required.", nameof(node));
 
+            // Every active grant for the node, not just the first: the generic POST (and the
+            // profile page's grant quick action) can leave a grant and a deny on the same node,
+            // and removing only one would leave the node in effect (KNG-59).
             var existing = (await _repo.GetActiveGrantsForHolderAsync(holderId, DateTime.UtcNow))
-                .FirstOrDefault(g => g.Node == node);
-            if (existing == null)
+                .Where(g => g.Node == node)
+                .ToList();
+            if (existing.Count == 0)
                 throw new KeyNotFoundException($"Holder {holderId} has no active grant for node '{node}'.");
 
-            var value = existing.Value;
-            await _repo.DeleteAsync(existing.Id);
-
-            if (await IsUserHolderAsync(holderId))
+            var isUserHolder = await IsUserHolderAsync(holderId);
+            foreach (var grant in existing)
             {
-                await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
+                await _repo.DeleteAsync(grant.Id);
+
+                if (isUserHolder)
                 {
-                    grantId = existing.Id,
-                    node,
-                    value
-                }));
+                    await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
+                    {
+                        grantId = grant.Id,
+                        node,
+                        value = grant.Value
+                    }));
+                }
             }
         }
     }

@@ -15,5 +15,6 @@ namespace knkwebapi_v2.Repositories
         Task DeleteAsync(int id);
         Task<IEnumerable<FormSubmissionProgress>> GetCompletedOlderThanAsync(System.DateTime beforeDate);
         Task<int> DeleteCompletedOlderThanAsync(System.DateTime beforeDate);
+        Task<int> DeleteUnfinishedOlderThanAsync(System.DateTime beforeDate);
     }
 }

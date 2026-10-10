@@ -17,17 +17,20 @@ namespace knkwebapi_v2.Services
         private readonly ILocationRepository _locationRepo;
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
+        private readonly IDomainRegionNameFinalizer _regionNames;
 
         public GateStructureService(
             IGateStructureRepository repo,
             ILocationRepository locationRepo,
             ILocationService locationService,
-            IMapper mapper)
+            IMapper mapper,
+            IDomainRegionNameFinalizer regionNames)
         {
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
             _mapper = mapper;
+            _regionNames = regionNames;
         }
 
         public async Task<IEnumerable<GateStructureDto>> GetAllAsync()
@@ -65,14 +68,17 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentNullException(nameof(gateStructureDto));
             if (string.IsNullOrWhiteSpace(gateStructureDto.Name))
                 throw new ArgumentException("GateStructure name is required.", nameof(gateStructureDto));
+            GateNameRules.EnsureNotReserved(gateStructureDto.Name, "gate structure", "/gate", nameof(gateStructureDto));
             if (gateStructureDto.StreetId <= 0)
                 throw new ArgumentException("Valid StreetId is required.", nameof(gateStructureDto));
             if (gateStructureDto.DistrictId <= 0)
                 throw new ArgumentException("Valid DistrictId is required.", nameof(gateStructureDto));
 
             var gateStructure = _mapper.Map<GateStructure>(gateStructureDto);
+            DomainNavigationDefaults.Apply(gateStructure, gateStructureDto);
             await ApplyLocationReferencesAsync(gateStructure, gateStructureDto, isCreate: true);
             await _repo.AddGateStructureAsync(gateStructure);
+            await _regionNames.FinalizeAsync(gateStructure);
             return _mapper.Map<GateStructureDto>(gateStructure);
         }
 
@@ -84,14 +90,17 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Invalid id.", nameof(id));
             if (string.IsNullOrWhiteSpace(gateStructureDto.Name))
                 throw new ArgumentException("GateStructure name is required.", nameof(gateStructureDto));
+            GateNameRules.EnsureNotReserved(gateStructureDto.Name, "gate structure", "/gate", nameof(gateStructureDto));
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null)
                 throw new KeyNotFoundException($"GateStructure with id {id} not found.");
 
             _mapper.Map(gateStructureDto, existing);
+            DomainNavigationDefaults.Apply(existing, gateStructureDto);
             await ApplyLocationReferencesAsync(existing, gateStructureDto);
             await _repo.UpdateGateStructureAsync(existing);
+            await _regionNames.FinalizeAsync(existing);
         }
 
         public async Task DeleteAsync(int id)

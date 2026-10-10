@@ -40,13 +40,25 @@ public class TeleportChargeMySqlTests : IClassFixture<MySqlTestDatabase>
             new CurrencyRepository(ctx), NullLogger<TeleportDestinationService>.Instance);
     }
 
-    private async Task<int> UserAsync(int gems)
+    private async Task<int> UserAsync(int gems, int coins = 0)
     {
-        await using var ctx = _db.NewContext();
-        var user = new User { Username = "u" + Guid.NewGuid().ToString("N")[..12], Gems = gems };
-        ctx.Users.Add(user);
-        await ctx.SaveChangesAsync();
-        return user.Id;
+        int id;
+        await using (var ctx = _db.NewContext())
+        {
+            // Balances are ledger-only (EF ignores them on insert): grant the starting balance.
+            var user = new User { Username = "u" + Guid.NewGuid().ToString("N")[..12] };
+            ctx.Users.Add(user);
+            await ctx.SaveChangesAsync();
+            id = user.Id;
+        }
+        foreach (var (currency, amount) in new[] { (Enums.Currency.Gems, gems), (Enums.Currency.Coins, coins) })
+        {
+            if (amount <= 0) continue;
+            await using var ctx = _db.NewContext();
+            await new CurrencyService(new CurrencyRepository(ctx), new UserRepository(ctx), NullLogger<CurrencyService>.Instance)
+                .GrantAsync(id, currency, amount, CurrencyContext.ForSystem("MySqlTest", CurrencyReasons.EventReward, "event:" + Guid.NewGuid().ToString("N")));
+        }
+        return id;
     }
 
     private async Task<int> TownAsync(int price)
@@ -114,6 +126,42 @@ public class TeleportChargeMySqlTests : IClassFixture<MySqlTestDatabase>
         Assert.Single(outcomes.Select(o => o.Result!.TransactionPublicId).Distinct());
         Assert.Equal(90, await GemsAsync(user));
         Assert.Equal(1, await TeleportFeesAsync(user));
+    }
+
+    /// <summary>KNG-41: a group's fixed price in coins and gems is one posting - all or nothing - under the row lock.</summary>
+    [MySqlFact]
+    public async Task GroupComboPrice_ParallelWarps_TakeBothCurrenciesTogether_NeverOverdraw()
+    {
+        var user = await UserAsync(gems: 3, coins: 1000);
+        var town = await TownAsync(price: 10);
+        await using (var ctx = _db.NewContext())
+        {
+            var group = new PermissionGroup
+            {
+                Name = "g" + Guid.NewGuid().ToString("N")[..10], Weight = 15,
+                TeleportWarpPriceMode = Enums.TeleportPriceMode.Fixed, TeleportWarpPriceCoins = 100, TeleportWarpPriceGems = 1
+            };
+            ctx.PermissionGroups.Add(group);
+            await ctx.SaveChangesAsync();
+            ctx.UserPermissionGroups.Add(new UserPermissionGroup { UserId = user, PermissionGroupId = group.Id });
+            await ctx.SaveChangesAsync();
+        }
+        var sameKey = "warp:" + Guid.NewGuid().ToString("N");
+
+        var replays = await InParallelAsync(6, (s, _) => s.ChargeAsync(town, Charge(user, sameKey)));
+        var own = await InParallelAsync(10, (s, i) => s.ChargeAsync(town, Charge(user, $"warp:{Guid.NewGuid():N}")));
+
+        Assert.All(replays, o => Assert.Null(o.Error));
+        Assert.Single(replays, o => !o.Result!.Replayed);
+        // 3 gems: the same-key charge plus two more; the rest are short of gems and take no coins.
+        Assert.Equal(2, own.Count(o => o.Error == null));
+        Assert.All(own.Where(o => o.Error != null), o =>
+            Assert.Equal(TeleportDestinationException.InsufficientGems, Assert.IsType<TeleportDestinationException>(o.Error).Code));
+        Assert.Equal(0, await GemsAsync(user));
+        await using var check = _db.NewContext();
+        Assert.Equal(700, (await check.Users.AsNoTracking().SingleAsync(u => u.Id == user)).Coins);
+        Assert.Equal(3, await check.CurrencyTransactions.CountAsync(t => t.ReasonCode == CurrencyReasons.TeleportFee
+            && t.Entries.Any(e => e.UserId == user)));
     }
 
     [MySqlFact]

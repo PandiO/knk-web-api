@@ -1,0 +1,1537 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using AutoMapper;
+using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Enums;
+using knkwebapi_v2.Json;
+using knkwebapi_v2.Models;
+using knkwebapi_v2.Repositories.Interfaces;
+using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.Roads;
+
+namespace knkwebapi_v2.Services;
+
+/// <summary>
+/// Road navigation (docs/specs/navigation/DESIGN.md §3, §5.6-5.11; IMPLEMENTATION_PLAN.md Phase
+/// 1.4). The tile upsert is the heart of it: one transaction that matches the builder's nodes and
+/// edges to the stored ones by id, keeps everything admins made, stitches the tile to its
+/// neighbours (plan D7), labels streets from the Structures along the roads (plan D6) and
+/// recomputes the world's components.
+/// </summary>
+public class RoadNetworkService : IRoadNetworkService
+{
+    /// <summary>A geometry end may sit this far from its node (DESIGN §3.8).</summary>
+    public const double GeometryEndTolerance = 1.5;
+    /// <summary>A recorded edge's end snaps to a node within this distance, else an Anchor is made (DESIGN §5.10).</summary>
+    public const double RecordedEdgeSnapDistance = 3.0;
+    public const int MaxWorldLength = 64;
+
+    private static readonly Regex MaterialKey = new("^[A-Z0-9_]+$", RegexOptions.Compiled);
+
+    private readonly IRoadNetworkRepository _repo;
+    private readonly IMapper _mapper;
+
+    public RoadNetworkService(IRoadNetworkRepository repo, IMapper mapper)
+    {
+        _repo = repo;
+        _mapper = mapper;
+    }
+
+    // ---------------------------------------------------------------- Tiles
+
+    public async Task<List<RoadTileDto>> ListTilesAsync(string world)
+    {
+        RequireWorld(world);
+        return _mapper.Map<List<RoadTileDto>>(await _repo.ListTilesAsync(world));
+    }
+
+    public async Task<RoadTileGraphDto?> GetTileGraphAsync(string world, int tileX, int tileZ)
+    {
+        RequireWorld(world);
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ);
+        if (tile == null)
+        {
+            return null;
+        }
+        return new RoadTileGraphDto
+        {
+            Tile = _mapper.Map<RoadTileDto>(tile),
+            Nodes = _mapper.Map<List<RoadNodeDto>>(await _repo.GetTileNodesAsync(tile.Id)),
+            Edges = _mapper.Map<List<RoadEdgeDto>>(await _repo.GetTileEdgesAsync(tile.Id))
+        };
+    }
+
+    public async Task<RoadTileDto> MarkTileDirtyAsync(string world, int tileX, int tileZ)
+    {
+        RequireWorld(world);
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ)
+                   ?? await _repo.AddTileAsync(new RoadTile { World = world, TileX = tileX, TileZ = tileZ });
+        if (!tile.Dirty)
+        {
+            tile.Dirty = true;
+            tile.Version++;
+            foreach (var edge in await _repo.GetTileEdgesAsync(tile.Id))
+            {
+                edge.Status = RoadEdgeStatus.Stale;
+            }
+            await _repo.SaveChangesAsync();
+        }
+        return _mapper.Map<RoadTileDto>(tile);
+    }
+
+    /// <summary>Plan §5.7, D1: Curated (a build makes a proposal) or Detected (the next build is
+    /// uploaded directly, and that upload curates the tile again). Not a graph change: the Version stays.</summary>
+    public async Task<RoadTileDto> SetTileStateAsync(string world, int tileX, int tileZ, RoadTileStateDto dto)
+    {
+        RequireWorld(world);
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        if (!Enum.IsDefined(dto.State)) throw new ArgumentException("Unknown tile state.");
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ)
+                   ?? throw new KeyNotFoundException($"Tile ({tileX}, {tileZ}) of world '{world}' not found.");
+        tile.State = dto.State;
+        if (dto.State == RoadTileState.Curated)
+        {
+            tile.CuratedAt ??= DateTime.UtcNow;
+        }
+        await _repo.SaveChangesAsync();
+        return _mapper.Map<RoadTileDto>(tile);
+    }
+
+    // ------------------------------------------------------------ Proposals
+
+    public async Task<RoadTileProposalDto?> GetProposalAsync(string world, int tileX, int tileZ)
+    {
+        RequireWorld(world);
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ);
+        if (tile == null) return null;
+        var proposal = await _repo.GetProposalAsync(tile.Id);
+        return proposal == null ? null : ProposalDto(proposal, tile);
+    }
+
+    public async Task<List<RoadTileProposalSummaryDto>> ListProposalsAsync(string world)
+    {
+        RequireWorld(world);
+        var proposals = await _repo.ListProposalsAsync(world);
+        return proposals.Select(p => FillSummary(new RoadTileProposalSummaryDto(), p, p.Tile)).ToList();
+    }
+
+    /// <summary>Replaces the tile's proposal (pending items and rejected list). The tile must have been
+    /// built: a proposal is a difference against its stored graph.</summary>
+    public async Task<RoadTileProposalDto> SaveProposalAsync(string world, int tileX, int tileZ, RoadTileProposalUpsertDto dto)
+    {
+        RequireWorld(world);
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        var items = JsonArray(dto.Items, "items");
+        var rejected = JsonArray(dto.Rejected, "rejected");
+        if (dto.AddedCount < 0 || dto.RemovedCount < 0 || dto.ChangedCount < 0 || dto.MovedCount < 0)
+        {
+            throw new ArgumentException("Counts must be >= 0.");
+        }
+        if (dto.BuilderVersion < 0) throw new ArgumentException("builderVersion must be >= 0.");
+        if (dto.CellCount < 0 || dto.LevelCount < 0) throw new ArgumentException("cellCount and levelCount must be >= 0.");
+        var createdBy = string.IsNullOrWhiteSpace(dto.CreatedBy) ? null : dto.CreatedBy.Trim();
+        if (createdBy is { Length: > 64 }) throw new ArgumentException("createdBy is at most 64 characters.");
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ)
+                   ?? throw new KeyNotFoundException($"Tile ({tileX}, {tileZ}) of world '{world}' not found.");
+        if (tile.BuiltAt == null) throw new InvalidOperationException($"Tile ({tileX}, {tileZ}) has not been built; build it first.");
+
+        var now = DateTime.UtcNow;
+        var proposal = await _repo.GetProposalAsync(tile.Id);
+        if (proposal == null)
+        {
+            proposal = new RoadTileProposal { TileId = tile.Id, CreatedAt = now };
+            _repo.Add(proposal);
+        }
+        else if (proposal.ItemsJson == "[]" && items.GetArrayLength() > 0)
+        {
+            proposal.CreatedAt = now; // a new proposal on a row that only held the rejected list
+        }
+        proposal.BaseVersion = dto.BaseVersion;
+        proposal.BuilderVersion = dto.BuilderVersion;
+        proposal.CreatedBy = createdBy;
+        proposal.CellCount = dto.CellCount;
+        proposal.LevelCount = dto.LevelCount;
+        proposal.WarningsJson = RoadJson.ListJson(dto.Warnings);
+        proposal.UpdatedAt = now;
+        proposal.ItemsJson = items.GetRawText();
+        proposal.RejectedJson = rejected.GetRawText();
+        proposal.AddedCount = dto.AddedCount;
+        proposal.RemovedCount = dto.RemovedCount;
+        proposal.ChangedCount = dto.ChangedCount;
+        proposal.MovedCount = dto.MovedCount;
+        proposal.RejectedCount = rejected.GetArrayLength();
+        await _repo.SaveChangesAsync();
+        return ProposalDto(proposal, tile);
+    }
+
+    /// <summary>Deletes the tile's proposal row: the pending items and the rejected list.</summary>
+    public async Task<bool> DeleteProposalAsync(string world, int tileX, int tileZ)
+    {
+        RequireWorld(world);
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ);
+        var proposal = tile == null ? null : await _repo.GetProposalAsync(tile.Id);
+        if (proposal == null) return false;
+        _repo.Remove(proposal);
+        await _repo.SaveChangesAsync();
+        return true;
+    }
+
+    private static JsonElement JsonArray(JsonElement element, string name)
+    {
+        if (element.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return RoadTileProposalDto.EmptyArray();
+        }
+        if (element.ValueKind != JsonValueKind.Array) throw new ArgumentException($"{name} must be a JSON array.");
+        return element;
+    }
+
+    private static RoadTileProposalDto ProposalDto(RoadTileProposal proposal, RoadTile tile)
+    {
+        var dto = FillSummary(new RoadTileProposalDto(), proposal, tile);
+        dto.CellCount = proposal.CellCount;
+        dto.LevelCount = proposal.LevelCount;
+        dto.Warnings = RoadJson.StringList(proposal.WarningsJson);
+        dto.Items = RoadJson.Element(proposal.ItemsJson) ?? RoadTileProposalDto.EmptyArray();
+        dto.Rejected = RoadJson.Element(proposal.RejectedJson) ?? RoadTileProposalDto.EmptyArray();
+        return dto;
+    }
+
+    private static T FillSummary<T>(T dto, RoadTileProposal proposal, RoadTile tile) where T : RoadTileProposalSummaryDto
+    {
+        dto.TileId = tile.Id;
+        dto.World = tile.World;
+        dto.TileX = tile.TileX;
+        dto.TileZ = tile.TileZ;
+        dto.BaseVersion = proposal.BaseVersion;
+        dto.TileVersion = tile.Version;
+        dto.BuilderVersion = proposal.BuilderVersion;
+        dto.CreatedBy = proposal.CreatedBy;
+        dto.CreatedAt = proposal.CreatedAt;
+        dto.UpdatedAt = proposal.UpdatedAt;
+        dto.AddedCount = proposal.AddedCount;
+        dto.RemovedCount = proposal.RemovedCount;
+        dto.ChangedCount = proposal.ChangedCount;
+        dto.MovedCount = proposal.MovedCount;
+        dto.RejectedCount = proposal.RejectedCount;
+        return dto;
+    }
+
+    public Task<RoadTileUpsertResultDto> UpsertTileGraphAsync(string world, int tileX, int tileZ, RoadTileGraphUpsertDto dto)
+    {
+        RequireWorld(world);
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        return _repo.RunInTransactionAsync(() => UpsertTileGraphCoreAsync(world, tileX, tileZ, dto));
+    }
+
+    private sealed record TileBounds(int MinX, int MinZ, int MaxX, int MaxZ)
+    {
+        public bool Contains(int x, int z) => x >= MinX && x <= MaxX && z >= MinZ && z <= MaxZ;
+        public bool OnBorder(int x, int z) => Contains(x, z) && (x == MinX || x == MaxX || z == MinZ || z == MaxZ);
+    }
+
+    private static TileBounds BoundsOf(int tileX, int tileZ) =>
+        new(tileX * RoadTile.Size, tileZ * RoadTile.Size, tileX * RoadTile.Size + RoadTile.Size - 1, tileZ * RoadTile.Size + RoadTile.Size - 1);
+
+    private async Task<RoadTileUpsertResultDto> UpsertTileGraphCoreAsync(string world, int tileX, int tileZ, RoadTileGraphUpsertDto dto)
+    {
+        var now = DateTime.UtcNow;
+        var bounds = BoundsOf(tileX, tileZ);
+        var tile = await _repo.GetTileAsync(world, tileX, tileZ)
+                   ?? await _repo.AddTileAsync(new RoadTile { World = world, TileX = tileX, TileZ = tileZ });
+        await _repo.LockTileAsync(tile.Id);
+        var result = new RoadTileUpsertResultDto();
+        var bumped = new HashSet<int>();
+
+        // 1. What the tile holds now.
+        var existingNodes = await _repo.GetTileNodesAsync(tile.Id);
+        var existingNodesById = existingNodes.ToDictionary(n => n.Id);
+        var ownedEdges = await _repo.GetTileEdgesAsync(tile.Id);
+        var touchingEdges = await _repo.GetEdgesTouchingNodesAsync(existingNodesById.Keys);
+        var edgesById = ownedEdges.Concat(touchingEdges).GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.First());
+
+        // Nodes of other tiles referenced as "id:<n>".
+        var foreignNodes = await LoadForeignNodesAsync(dto, world, existingNodesById);
+
+        // 2. Validate before touching anything.
+        await ValidatePayloadAsync(dto, bounds, existingNodesById, foreignNodes);
+
+        // A payload node on a Pruned tombstone's block means the builder did not leave that arm out
+        // (another builder version): the payload wins. The tombstone goes first (unique position).
+        var payloadPositions = dto.Nodes.Select(n => (n.X, n.Y, n.Z)).ToHashSet();
+        var replacedTombstones = existingNodes
+            .Where(n => IsTombstone(n.Kind) && payloadPositions.Contains((n.X, n.Y, n.Z))).ToList();
+        if (replacedTombstones.Count > 0)
+        {
+            _repo.RemoveRange(replacedTombstones);
+            await _repo.SaveChangesAsync();
+            existingNodes = existingNodes.Except(replacedTombstones).ToList();
+        }
+
+        // 3. Nodes: match by existingId, else by exact position; insert the rest.
+        var nodeByKey = new Dictionary<string, RoadNode>(StringComparer.Ordinal);
+        var matchedNodeIds = new HashSet<int>();
+        // Pruned tombstones are never matched: they only tell the builder what to leave out.
+        var byPosition = existingNodes.Where(n => !IsTombstone(n.Kind)).ToDictionary(n => (n.X, n.Y, n.Z));
+        foreach (var node in dto.Nodes)
+        {
+            RoadNode? target = null;
+            if (node.ExistingId is int existingId)
+            {
+                target = existingNodesById[existingId];
+            }
+            else if (byPosition.TryGetValue((node.X, node.Y, node.Z), out var samePlace) && !matchedNodeIds.Contains(samePlace.Id))
+            {
+                target = samePlace;
+            }
+
+            if (target == null)
+            {
+                target = new RoadNode
+                {
+                    World = world, X = node.X, Y = node.Y, Z = node.Z, TileId = tile.Id,
+                    Kind = node.Kind, Source = RoadNodeSource.Detected
+                };
+                _repo.Add(target);
+                result.NodesCreated++;
+            }
+            else
+            {
+                if (!matchedNodeIds.Add(target.Id))
+                {
+                    throw new ArgumentException($"Node {target.Id} is matched by two payload nodes.");
+                }
+                if (!target.Locked)
+                {
+                    target.X = node.X; target.Y = node.Y; target.Z = node.Z;
+                }
+                if (target.Source == RoadNodeSource.Detected)
+                {
+                    target.Kind = node.Kind;
+                }
+                result.NodesUpdated++;
+            }
+            nodeByKey[node.Key] = target;
+        }
+
+        // Unmatched nodes: delete Detected ones unless an admin made, locked or recorded through them.
+        var keptUnmatched = new List<RoadNode>();
+        var deletedNodes = new List<RoadNode>();
+        foreach (var node in existingNodes.Where(n => !matchedNodeIds.Contains(n.Id)))
+        {
+            var recordedThrough = touchingEdges.Any(e => e.Source == RoadEdgeSource.Recorded && (e.FromNodeId == node.Id || e.ToNodeId == node.Id));
+            if (node.Source == RoadNodeSource.Manual || node.Locked || recordedThrough)
+            {
+                keptUnmatched.Add(node);
+            }
+            else
+            {
+                deletedNodes.Add(node);
+            }
+        }
+
+        var finalPositions = new HashSet<(int, int, int)>();
+        foreach (var node in nodeByKey.Values.Concat(keptUnmatched))
+        {
+            if (!finalPositions.Add((node.X, node.Y, node.Z)))
+            {
+                throw new ArgumentException($"Two nodes of the tile would share position ({node.X}, {node.Y}, {node.Z}).");
+            }
+        }
+
+        // Delete the edges of deleted nodes explicitly (the InMemory provider only cascades to
+        // tracked entities), remembering the tiles whose stitch edges go with them.
+        var deletedNodeIds = deletedNodes.Select(n => n.Id).ToHashSet();
+        var removedEdgeIds = new HashSet<int>();
+        foreach (var edge in edgesById.Values.Where(e => deletedNodeIds.Contains(e.FromNodeId) || deletedNodeIds.Contains(e.ToNodeId)))
+        {
+            if (edge.TileId != tile.Id) bumped.Add(edge.TileId);
+            _repo.Remove(edge);
+            removedEdgeIds.Add(edge.Id);
+            result.EdgesDeleted++;
+        }
+        result.DeletedNodes = _mapper.Map<List<RoadNodeDto>>(deletedNodes);
+        result.NodesDeleted = deletedNodes.Count;
+        _repo.RemoveRange(deletedNodes);
+        await _repo.SaveChangesAsync(); // new nodes get their ids here
+
+        // 4. Edges: match by existingId, else by node pair; insert the rest; delete unmatched detected ones.
+        var pairIndex = new Dictionary<(int, int), RoadEdge>();
+        foreach (var edge in edgesById.Values.Where(e => !removedEdgeIds.Contains(e.Id)))
+        {
+            pairIndex[(edge.FromNodeId, edge.ToNodeId)] = edge;
+        }
+        var ownedDetected = ownedEdges.Where(e => e.Source == RoadEdgeSource.Detected && !removedEdgeIds.Contains(e.Id)).ToDictionary(e => e.Id);
+        var matchedEdgeIds = new HashSet<int>();
+        var newEdges = new List<RoadEdge>();
+
+        foreach (var edge in dto.Edges)
+        {
+            var from = ResolveNode(edge.FromKey, nodeByKey, foreignNodes);
+            var to = ResolveNode(edge.ToKey, nodeByKey, foreignNodes);
+            if (from.Id == to.Id)
+            {
+                throw new ArgumentException($"Edge {edge.FromKey}-{edge.ToKey} is a self-loop.");
+            }
+            var geometry = edge.Geometry;
+            if (from.Id > to.Id)
+            {
+                (from, to) = (to, from);
+                geometry = RoadGeometry.Reversed(geometry);
+            }
+            var pair = (from.Id, to.Id);
+
+            RoadEdge? target = null;
+            if (edge.ExistingId is int existingEdgeId)
+            {
+                if (!ownedDetected.TryGetValue(existingEdgeId, out target))
+                {
+                    throw new ArgumentException($"Edge {existingEdgeId} is not a detected edge of this tile.");
+                }
+            }
+            else if (pairIndex.TryGetValue(pair, out var samePair))
+            {
+                if (samePair.TileId == tile.Id && samePair.Source == RoadEdgeSource.Detected && !matchedEdgeIds.Contains(samePair.Id))
+                {
+                    target = samePair;
+                }
+                else
+                {
+                    throw new ArgumentException($"Nodes {from.Id} and {to.Id} are already joined by {samePair.Source} edge {samePair.Id}.");
+                }
+            }
+            if (target != null && pairIndex.TryGetValue(pair, out var occupant) && occupant.Id != target.Id)
+            {
+                throw new ArgumentException($"Nodes {from.Id} and {to.Id} are already joined by {occupant.Source} edge {occupant.Id}.");
+            }
+            if (target != null && !matchedEdgeIds.Add(target.Id))
+            {
+                throw new ArgumentException($"Edge {target.Id} is matched by two payload edges.");
+            }
+
+            if (target == null)
+            {
+                target = new RoadEdge { World = world, TileId = tile.Id, Source = RoadEdgeSource.Detected };
+                newEdges.Add(target);
+                result.EdgesCreated++;
+            }
+            else
+            {
+                pairIndex.Remove((target.FromNodeId, target.ToNodeId));
+                result.EdgesUpdated++;
+            }
+            ApplyDetectedGeometry(target, from, to, geometry, edge);
+            pairIndex[pair] = target;
+        }
+
+        // A Confirmed edge stays although the build lost it (plan §5.7, D4); its nodes are locked.
+        foreach (var edge in ownedDetected.Values.Where(e => !matchedEdgeIds.Contains(e.Id) && !e.Confirmed))
+        {
+            _repo.Remove(edge);
+            result.EdgesDeleted++;
+        }
+        _repo.AddRange(newEdges);
+        await _repo.SaveChangesAsync();
+
+        // 5. Stitch edges (plan D7): every stitch touching this tile's boundary nodes is replaced,
+        // owned by this tile; other tiles that lost one get a new Version.
+        var tileNodes = nodeByKey.Values.Concat(keptUnmatched).GroupBy(n => n.Id).Select(g => g.First()).ToList();
+        var boundaryNodes = tileNodes.Where(n => n.Kind == RoadNodeKind.Boundary).ToList();
+        var oldStitches = (await _repo.GetEdgesTouchingNodesAsync(boundaryNodes.Select(n => n.Id)))
+            .Concat(await _repo.GetTileEdgesAsync(tile.Id))
+            .Where(e => e.Source == RoadEdgeSource.Stitch)
+            .GroupBy(e => e.Id).Select(g => g.First()).ToList();
+        foreach (var stitch in oldStitches)
+        {
+            if (stitch.TileId != tile.Id) bumped.Add(stitch.TileId);
+            _repo.Remove(stitch);
+        }
+        await _repo.SaveChangesAsync();
+
+        var remainingPairs = (await _repo.GetEdgesTouchingNodesAsync(boundaryNodes.Select(n => n.Id)))
+            .Select(e => (e.FromNodeId, e.ToNodeId)).ToHashSet();
+        var neighbourNodes = (await _repo.GetNodesInBoxAsync(world, bounds.MinX - 1, bounds.MinZ - 1, bounds.MaxX + 1, bounds.MaxZ + 1))
+            .Where(n => n.TileId != tile.Id && n.Kind == RoadNodeKind.Boundary).ToList();
+        var stitches = new List<RoadEdge>();
+        foreach (var mine in boundaryNodes)
+        {
+            foreach (var theirs in neighbourNodes)
+            {
+                if (Math.Abs(mine.X - theirs.X) > 1 || Math.Abs(mine.Z - theirs.Z) > 1 || Math.Abs(mine.Y - theirs.Y) > 1)
+                {
+                    continue;
+                }
+                var (a, b) = mine.Id < theirs.Id ? (mine, theirs) : (theirs, mine);
+                if (!remainingPairs.Add((a.Id, b.Id)))
+                {
+                    continue;
+                }
+                var geometry = new[] { new[] { a.X, a.Y, a.Z }, new[] { b.X, b.Y, b.Z } };
+                stitches.Add(new RoadEdge
+                {
+                    World = world, TileId = tile.Id, Source = RoadEdgeSource.Stitch,
+                    FromNodeId = a.Id, ToNodeId = b.Id,
+                    GeometryJson = RoadJson.GeometryJson(geometry),
+                    Length = RoadGeometry.Distance(geometry[0], geometry[1]),
+                    MinX = Math.Min(a.X, b.X), MinY = Math.Min(a.Y, b.Y), MinZ = Math.Min(a.Z, b.Z),
+                    MaxX = Math.Max(a.X, b.X), MaxY = Math.Max(a.Y, b.Y), MaxZ = Math.Max(a.Z, b.Z),
+                    AvgWidth = 1.0
+                });
+            }
+        }
+        _repo.AddRange(stitches);
+        result.StitchEdges = stitches.Count;
+        await _repo.SaveChangesAsync();
+
+        // 6. Street labels (plan D6) for the tile's edges, with the neighbouring ring for continuation.
+        var tileEdges = await _repo.GetTileEdgesAsync(tile.Id);
+        var ringEdges = (await _repo.GetEdgesInBoxAsync(world, bounds.MinX - RoadTile.Size, bounds.MinZ - RoadTile.Size, bounds.MaxX + RoadTile.Size, bounds.MaxZ + RoadTile.Size))
+            .Where(e => e.TileId != tile.Id).ToList();
+        var structures = await _repo.GetStructuresWithLocationInBoxAsync(world,
+            bounds.MinX - (int)RoadStreetLabeler.VoteRadius, bounds.MinZ - (int)RoadStreetLabeler.VoteRadius,
+            bounds.MaxX + (int)RoadStreetLabeler.VoteRadius, bounds.MaxZ + (int)RoadStreetLabeler.VoteRadius);
+        var classes = await _repo.GetProfileClassesAsync();
+        var labels = RoadStreetLabeler.Label(
+            tileEdges.Concat(ringEdges).Select(e => ToLabelerEdge(e, classes)).ToList(),
+            structures,
+            tileEdges.Select(e => e.Id).ToHashSet());
+        foreach (var edge in tileEdges)
+        {
+            edge.Status = RoadEdgeStatus.Ok;
+            if (edge.StreetSource == RoadStreetSource.Manual)
+            {
+                result.LabelledEdges++;
+                continue;
+            }
+            var street = labels.Labels.GetValueOrDefault(edge.Id);
+            edge.StreetId = street;
+            edge.StreetSource = street == null ? RoadStreetSource.None : RoadStreetSource.Inferred;
+            if (street == null) result.UnlabelledEdges++; else result.LabelledEdges++;
+        }
+        result.Conflicts = labels.Conflicts;
+
+        // 7. The tile itself, and the neighbours that lost a stitch edge.
+        tile.Version++;
+        tile.BuiltAt = now;
+        tile.BuilderVersion = dto.BuilderVersion;
+        tile.Dirty = false;
+        // Every upload curates the tile (plan §5.7, D1): later builds only make proposals. The pending
+        // proposal was computed against the old graph, so its items go; the rejected list stays.
+        tile.State = RoadTileState.Curated;
+        tile.CuratedAt ??= now;
+        if (await _repo.GetProposalAsync(tile.Id) is RoadTileProposal pending && pending.ItemsJson != "[]")
+        {
+            pending.ItemsJson = "[]";
+            pending.AddedCount = pending.RemovedCount = pending.ChangedCount = pending.MovedCount = 0;
+            pending.UpdatedAt = now;
+        }
+        tile.CellCount = dto.CellCount;
+        tile.LevelCount = dto.LevelCount;
+        tile.NodeCount = tileNodes.Count(n => !IsTombstone(n.Kind));
+        tile.EdgeCount = tileEdges.Count;
+        // Distinct: a review step of a curated tile re-uploads stored warnings, which hold the old conflicts.
+        tile.WarningsJson = RoadJson.ListJson(dto.Warnings.Concat(labels.Conflicts).Distinct());
+        bumped.Remove(tile.Id);
+        foreach (var other in await _repo.GetTilesByIdsAsync(bumped))
+        {
+            other.Version++;
+            result.BumpedTileIds.Add(other.Id);
+        }
+        await _repo.SaveChangesAsync();
+
+        // 8. Components for the whole world.
+        await RecomputeComponentsAsync(world);
+        await _repo.SaveChangesAsync();
+
+        result.Tile = _mapper.Map<RoadTileDto>(tile);
+        return result;
+    }
+
+    private async Task<Dictionary<int, RoadNode>> LoadForeignNodesAsync(RoadTileGraphUpsertDto dto, string world, Dictionary<int, RoadNode> ownNodes)
+    {
+        var ids = new HashSet<int>();
+        foreach (var key in dto.Edges.SelectMany(e => new[] { e.FromKey, e.ToKey }))
+        {
+            if (TryParseIdKey(key, out var id))
+            {
+                ids.Add(id);
+            }
+        }
+        var foreign = new Dictionary<int, RoadNode>();
+        foreach (var id in ids)
+        {
+            if (ownNodes.TryGetValue(id, out var own))
+            {
+                foreign[id] = own;
+            }
+        }
+        foreach (var node in await _repo.GetNodesByIdsAsync(ids.Where(id => !foreign.ContainsKey(id))))
+        {
+            if (node.World != world)
+            {
+                throw new ArgumentException($"Node {node.Id} is in world '{node.World}', not '{world}'.");
+            }
+            foreign[node.Id] = node;
+        }
+        foreach (var id in ids)
+        {
+            if (!foreign.ContainsKey(id))
+            {
+                throw new ArgumentException($"Node id:{id} does not exist.");
+            }
+        }
+        return foreign;
+    }
+
+    private static bool TryParseIdKey(string? key, out int id)
+    {
+        id = 0;
+        return key != null && key.StartsWith("id:", StringComparison.Ordinal) && int.TryParse(key.AsSpan(3), out id);
+    }
+
+    private async Task ValidatePayloadAsync(RoadTileGraphUpsertDto dto, TileBounds bounds, Dictionary<int, RoadNode> existingNodes, Dictionary<int, RoadNode> foreignNodes)
+    {
+        if (dto.BuilderVersion < 0) throw new ArgumentException("builderVersion must be >= 0.");
+        if (dto.CellCount < 0 || dto.LevelCount < 0) throw new ArgumentException("cellCount and levelCount must be >= 0.");
+
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        var positions = new HashSet<(int, int, int)>();
+        var claimedIds = new HashSet<int>();
+        var payloadNodes = new Dictionary<string, RoadTileGraphNodeDto>(StringComparer.Ordinal);
+        foreach (var node in dto.Nodes)
+        {
+            if (string.IsNullOrWhiteSpace(node.Key)) throw new ArgumentException("Every node needs a key.");
+            if (TryParseIdKey(node.Key, out _)) throw new ArgumentException($"Node key '{node.Key}' uses the reserved id: prefix.");
+            if (!keys.Add(node.Key)) throw new ArgumentException($"Node key '{node.Key}' is used twice.");
+            if (!Enum.IsDefined(node.Kind)) throw new ArgumentException($"Node '{node.Key}' has an unknown kind.");
+            if (!bounds.Contains(node.X, node.Z))
+            {
+                throw new ArgumentException($"Node '{node.Key}' at ({node.X}, {node.Z}) is outside the tile (x {bounds.MinX}..{bounds.MaxX}, z {bounds.MinZ}..{bounds.MaxZ}).");
+            }
+            if (node.Kind == RoadNodeKind.Boundary && !bounds.OnBorder(node.X, node.Z))
+            {
+                throw new ArgumentException($"Boundary node '{node.Key}' at ({node.X}, {node.Z}) is not on the tile border.");
+            }
+            if (!positions.Add((node.X, node.Y, node.Z))) throw new ArgumentException($"Two payload nodes share position ({node.X}, {node.Y}, {node.Z}).");
+            if (node.ExistingId is int existingId)
+            {
+                if (!existingNodes.ContainsKey(existingId)) throw new ArgumentException($"Node '{node.Key}' references node {existingId}, which is not a node of this tile.");
+                if (!claimedIds.Add(existingId)) throw new ArgumentException($"Node {existingId} is referenced by two payload nodes.");
+                if (IsTombstone(existingNodes[existingId].Kind)) throw new ArgumentException($"Node '{node.Key}' references pruned node {existingId}.");
+            }
+            payloadNodes[node.Key] = node;
+        }
+
+        var pairs = new HashSet<(string, string)>();
+        var claimedEdgeIds = new HashSet<int>();
+        foreach (var edge in dto.Edges)
+        {
+            if (string.IsNullOrWhiteSpace(edge.FromKey) || string.IsNullOrWhiteSpace(edge.ToKey)) throw new ArgumentException("Every edge needs fromKey and toKey.");
+            if (edge.FromKey == edge.ToKey) throw new ArgumentException($"Edge {edge.FromKey}-{edge.ToKey} is a self-loop.");
+            var from = EndPosition(edge.FromKey, payloadNodes, foreignNodes);
+            var to = EndPosition(edge.ToKey, payloadNodes, foreignNodes);
+            var pair = string.CompareOrdinal(edge.FromKey, edge.ToKey) < 0 ? (edge.FromKey, edge.ToKey) : (edge.ToKey, edge.FromKey);
+            if (!pairs.Add(pair)) throw new ArgumentException($"Edge {edge.FromKey}-{edge.ToKey} appears twice.");
+            if (edge.ExistingId is int existingEdgeId && !claimedEdgeIds.Add(existingEdgeId)) throw new ArgumentException($"Edge {existingEdgeId} is referenced by two payload edges.");
+
+            ValidateGeometry(edge.Geometry, edge.Length, from, to, $"Edge {edge.FromKey}-{edge.ToKey}");
+            if (edge.AvgWidth < 0) throw new ArgumentException($"Edge {edge.FromKey}-{edge.ToKey}: avgWidth must be >= 0.");
+            if (edge.ProfileId is int profileId && await _repo.GetProfileAsync(profileId) == null)
+            {
+                throw new ArgumentException($"Edge {edge.FromKey}-{edge.ToKey}: profile {profileId} does not exist.");
+            }
+        }
+    }
+
+    private static int[] EndPosition(string key, Dictionary<string, RoadTileGraphNodeDto> payloadNodes, Dictionary<int, RoadNode> foreignNodes)
+    {
+        if (payloadNodes.TryGetValue(key, out var node))
+        {
+            return new[] { node.X, node.Y, node.Z };
+        }
+        if (TryParseIdKey(key, out var id) && foreignNodes.TryGetValue(id, out var existing))
+        {
+            return new[] { existing.X, existing.Y, existing.Z };
+        }
+        throw new ArgumentException($"Edge references unknown node key '{key}'.");
+    }
+
+    private static void ValidateGeometry(int[][] geometry, double length, int[] from, int[] to, string what)
+    {
+        if (!RoadGeometry.IsWellFormed(geometry) || geometry.Length < 2)
+        {
+            throw new ArgumentException($"{what}: geometry needs at least two [x, y, z] points.");
+        }
+        if (RoadGeometry.Distance(geometry[0], from) > GeometryEndTolerance || RoadGeometry.Distance(geometry[^1], to) > GeometryEndTolerance)
+        {
+            throw new ArgumentException($"{what}: geometry must start and end within {GeometryEndTolerance} blocks of its nodes.");
+        }
+        var straight = RoadGeometry.Distance(from, to);
+        if (length <= 0 || length + 1e-6 < straight)
+        {
+            throw new ArgumentException($"{what}: length {length:0.##} must be at least the straight-line distance {straight:0.##}.");
+        }
+    }
+
+    private static RoadNode ResolveNode(string key, Dictionary<string, RoadNode> nodeByKey, Dictionary<int, RoadNode> foreignNodes)
+    {
+        if (nodeByKey.TryGetValue(key, out var node)) return node;
+        if (TryParseIdKey(key, out var id) && foreignNodes.TryGetValue(id, out var existing)) return existing;
+        throw new ArgumentException($"Edge references unknown node key '{key}'.");
+    }
+
+    private static void ApplyDetectedGeometry(RoadEdge target, RoadNode from, RoadNode to, int[][] geometry, RoadTileGraphEdgeDto dto)
+    {
+        target.FromNodeId = from.Id;
+        target.ToNodeId = to.Id;
+        target.GeometryJson = RoadJson.GeometryJson(geometry);
+        target.Length = dto.Length;
+        target.AvgWidth = dto.AvgWidth;
+        var box = RoadGeometry.BoundingBox(geometry);
+        (target.MinX, target.MinY, target.MinZ, target.MaxX, target.MaxY, target.MaxZ) = box;
+        target.ProfileId = dto.ProfileId;
+        target.GateDoorIdsJson = RoadJson.ListJson(dto.GateDoorIds);
+        target.DomainIdsJson = RoadJson.ListJson(dto.DomainIds);
+        target.RegionIdsJson = RoadJson.ListJson(dto.RegionIds);
+        target.Status = RoadEdgeStatus.Ok;
+        // StreetId/StreetSource (when Manual), Flags and CostMultiplier are kept as they are.
+    }
+
+    private static RoadStreetLabeler.Edge ToLabelerEdge(RoadEdge edge, Dictionary<int, RoadClass> classes) => new()
+    {
+        Id = edge.Id,
+        FromNodeId = edge.FromNodeId,
+        ToNodeId = edge.ToNodeId,
+        Geometry = RoadJson.Geometry(edge.GeometryJson),
+        RoadClass = edge.ProfileId is int profileId && classes.TryGetValue(profileId, out var roadClass) ? roadClass : null,
+        StreetId = edge.StreetId,
+        StreetSource = edge.StreetSource
+    };
+
+    private async Task RecomputeComponentsAsync(string world)
+    {
+        var nodes = await _repo.GetWorldNodesAsync(world);
+        var edges = await _repo.GetWorldEdgesAsync(world);
+        var components = RoadComponents.Compute(nodes.Select(n => n.Id), edges.Select(e => (e.FromNodeId, e.ToNodeId)));
+        foreach (var node in nodes)
+        {
+            var component = components[node.Id];
+            if (node.ComponentId != component)
+            {
+                node.ComponentId = component;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------- Network
+
+    public async Task<RoadNetworkMetaDto> GetMetaAsync(string world)
+    {
+        RequireWorld(world);
+        var streetNames = await _repo.GetStreetNamesAsync(await _repo.GetLabelledStreetIdsAsync(world));
+        var nodes = await _repo.GetWorldNodesAsync(world);
+        return new RoadNetworkMetaDto
+        {
+            Profiles = _mapper.Map<List<RoadProfileDto>>(await _repo.ListProfilesAsync()),
+            Streets = streetNames.OrderBy(s => s.Key).Select(s => new RoadStreetRefDto { Id = s.Key, Name = s.Value }).ToList(),
+            Components = nodes.GroupBy(n => n.ComponentId).OrderBy(g => g.Key)
+                .Select(g => new RoadComponentDto { Id = g.Key, NodeCount = g.Count() }).ToList()
+        };
+    }
+
+    public Task<List<RoadSeedLocationDto>> GetSeedLocationsAsync(string world, int minX, int minZ, int maxX, int maxZ)
+    {
+        RequireWorld(world);
+        if (minX > maxX || minZ > maxZ) throw new ArgumentException("min must not exceed max.");
+        return _repo.GetDomainLocationsInBoxAsync(world, minX, minZ, maxX, maxZ);
+    }
+
+    // ------------------------------------------------------------- Profiles
+
+    public async Task<List<RoadProfileDto>> ListProfilesAsync() =>
+        _mapper.Map<List<RoadProfileDto>>(await _repo.ListProfilesAsync());
+
+    public async Task<RoadProfileDto?> GetProfileAsync(int id)
+    {
+        var profile = await _repo.GetProfileAsync(id);
+        return profile == null ? null : _mapper.Map<RoadProfileDto>(profile);
+    }
+
+    public async Task<RoadProfileDto> CreateProfileAsync(RoadProfileUpsertDto dto)
+    {
+        await ValidateProfileAsync(dto, null);
+        var profile = new RoadProfile { StatsJson = RoadJson.ElementJson(dto.Stats) };
+        ApplyProfile(profile, dto);
+        _repo.Add(profile);
+        await _repo.SaveChangesAsync();
+        return _mapper.Map<RoadProfileDto>(profile);
+    }
+
+    public async Task<RoadProfileDto> UpdateProfileAsync(int id, RoadProfileUpsertDto dto)
+    {
+        var profile = await _repo.GetProfileAsync(id) ?? throw new KeyNotFoundException($"Road profile {id} not found.");
+        await ValidateProfileAsync(dto, id);
+        ApplyProfile(profile, dto);
+        if (dto.Stats != null)
+        {
+            profile.StatsJson = RoadJson.ElementJson(dto.Stats);
+        }
+        await _repo.SaveChangesAsync();
+        return _mapper.Map<RoadProfileDto>(profile);
+    }
+
+    public async Task<bool> DeleteProfileAsync(int id)
+    {
+        var profile = await _repo.GetProfileAsync(id);
+        if (profile == null)
+        {
+            return false;
+        }
+        // SetNull explicitly, so the in-memory provider matches MySQL's FK behaviour.
+        foreach (var edge in await _repo.GetEdgesByProfileAsync(id))
+        {
+            edge.ProfileId = null;
+        }
+        foreach (var survey in await _repo.GetSurveysByProfileAsync(id))
+        {
+            survey.ProfileId = null;
+        }
+        _repo.Remove(profile);
+        await _repo.SaveChangesAsync();
+        return true;
+    }
+
+    private async Task ValidateProfileAsync(RoadProfileUpsertDto dto, int? currentId)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Profile name is required.");
+        if (dto.Name.Trim().Length > 100) throw new ArgumentException("Profile name is at most 100 characters.");
+        var existing = await _repo.GetProfileByNameAsync(dto.Name.Trim());
+        if (existing != null && existing.Id != currentId) throw new ArgumentException($"A road profile named '{dto.Name.Trim()}' already exists.");
+        if (!Enum.IsDefined(dto.RoadClass)) throw new ArgumentException("Unknown road class.");
+        if (dto.CostMultiplier <= 0) throw new ArgumentException("costMultiplier must be > 0.");
+        if (dto.WidthMin < 1 || dto.WidthMax < dto.WidthMin) throw new ArgumentException("widthMin must be >= 1 and <= widthMax.");
+        if (dto.SampleCount < 0) throw new ArgumentException("sampleCount must be >= 0.");
+
+        var materials = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var material in dto.Materials ?? new List<RoadMaterialDto>())
+        {
+            if (material == null || string.IsNullOrWhiteSpace(material.Material) || !MaterialKey.IsMatch(material.Material))
+            {
+                throw new ArgumentException($"Material key '{material?.Material}' must match ^[A-Z0-9_]+$ (a Bukkit Material name).");
+            }
+            if (!Enum.IsDefined(material.Role)) throw new ArgumentException($"Material {material.Material} has an unknown role.");
+            if (!materials.Add(material.Material)) throw new ArgumentException($"Material {material.Material} is listed twice.");
+            if (material.CentreShare < 0 || material.EdgeShare < 0 || material.Samples < 0) throw new ArgumentException($"Material {material.Material}: shares and samples must be >= 0.");
+        }
+
+        if (dto.ScopeTownIds != null && dto.ScopeTownIds.Count > 0)
+        {
+            var towns = (await _repo.GetExistingTownIdsAsync(dto.ScopeTownIds)).ToHashSet();
+            var missing = dto.ScopeTownIds.Where(id => !towns.Contains(id)).Distinct().ToList();
+            if (missing.Count > 0) throw new ArgumentException($"scopeTownIds must be Towns; unknown: {string.Join(", ", missing)}.");
+        }
+    }
+
+    private static void ApplyProfile(RoadProfile profile, RoadProfileUpsertDto dto)
+    {
+        profile.Name = dto.Name.Trim();
+        profile.RoadClass = dto.RoadClass;
+        profile.CostMultiplier = dto.CostMultiplier;
+        profile.MaterialsJson = JsonColumn.Serialize(dto.Materials ?? new List<RoadMaterialDto>());
+        profile.WidthMin = dto.WidthMin;
+        profile.WidthMax = dto.WidthMax;
+        profile.SampleCount = dto.SampleCount;
+        profile.Enabled = dto.Enabled;
+        profile.ScopeTownIdsJson = dto.ScopeTownIds == null ? null : RoadJson.ListJson(dto.ScopeTownIds.Distinct());
+        profile.UpdatedAt = DateTime.UtcNow;
+    }
+
+    // -------------------------------------------------------------- Surveys
+
+    public async Task<RoadSurveyDto> CreateSurveyAsync(RoadSurveyCreateDto dto, int? startedByUserId)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        RequireWorld(dto.World);
+        if (dto.StartedAt == default) throw new ArgumentException("startedAt is required.");
+        if (dto.EndedAt is DateTime ended && ended < dto.StartedAt) throw new ArgumentException("endedAt must not be before startedAt.");
+        if (dto.SampleCount < 0) throw new ArgumentException("sampleCount must be >= 0.");
+        if (dto.ProfileId is int profileId && await _repo.GetProfileAsync(profileId) == null)
+        {
+            throw new ArgumentException($"Profile {profileId} does not exist.");
+        }
+        var survey = new RoadSurvey
+        {
+            World = dto.World,
+            ProfileId = dto.ProfileId,
+            StartedByUserId = startedByUserId,
+            StartedAt = dto.StartedAt,
+            EndedAt = dto.EndedAt,
+            SampleCount = dto.SampleCount,
+            BreadcrumbJson = JsonColumn.Serialize(dto.Breadcrumb ?? new List<RoadBreadcrumbPointDto>()),
+            StatsJson = RoadJson.ElementJson(dto.Stats)
+        };
+        _repo.Add(survey);
+        await _repo.SaveChangesAsync();
+        return _mapper.Map<RoadSurveyDto>(survey);
+    }
+
+    public async Task<List<RoadSurveyDto>> ListSurveysAsync(string world)
+    {
+        RequireWorld(world);
+        return _mapper.Map<List<RoadSurveyDto>>(await _repo.ListSurveysAsync(world));
+    }
+
+    // ---------------------------------------------------------------- Seeds
+
+    public async Task<List<RoadSeedDto>> ListSeedsAsync(string world)
+    {
+        RequireWorld(world);
+        return _mapper.Map<List<RoadSeedDto>>(await _repo.ListSeedsAsync(world));
+    }
+
+    public async Task<RoadSeedDto> CreateSeedAsync(RoadSeedCreateDto dto)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        RequireWorld(dto.World);
+        if (!Enum.IsDefined(dto.Source)) throw new ArgumentException("Unknown seed source.");
+        if (dto.Note != null && dto.Note.Length > 200) throw new ArgumentException("note is at most 200 characters.");
+        if (dto.SurveyId is int surveyId && !await _repo.SurveyExistsAsync(surveyId)) throw new ArgumentException($"Survey {surveyId} does not exist.");
+        var seed = new RoadSeed
+        {
+            World = dto.World, X = dto.X, Y = dto.Y, Z = dto.Z,
+            Source = dto.Source, SurveyId = dto.SurveyId, Note = dto.Note
+        };
+        _repo.Add(seed);
+        await _repo.SaveChangesAsync();
+        return _mapper.Map<RoadSeedDto>(seed);
+    }
+
+    public async Task<bool> DeleteSeedAsync(int id)
+    {
+        var seed = await _repo.GetSeedAsync(id);
+        if (seed == null)
+        {
+            return false;
+        }
+        _repo.Remove(seed);
+        await _repo.SaveChangesAsync();
+        return true;
+    }
+
+    // ---------------------------------------------------------------- Nodes
+
+    /// <summary>Largest designed plaza radius (DESIGN §5.6 step 4).</summary>
+    public const int MaxPlazaRadius = 32;
+
+    public async Task<RoadNodeDto> UpdateNodeAsync(int id, RoadNodeUpdateDto dto)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        var node = await _repo.GetNodeAsync(id) ?? throw new KeyNotFoundException($"Road node {id} not found.");
+        if (IsTombstone(node.Kind)) throw new InvalidOperationException($"Node {id} is pruned; unprune it first.");
+        if (dto.Kind.HasValue && IsTombstone(dto.Kind.Value)) throw new ArgumentException("Use prune to prune a node or an edge.");
+        var moving = dto.X.HasValue || dto.Y.HasValue || dto.Z.HasValue;
+        if (moving && !(dto.X.HasValue && dto.Y.HasValue && dto.Z.HasValue)) throw new ArgumentException("Moving a node needs x, y and z.");
+        if (dto.ClearPlaza && dto.PlazaRadius.HasValue) throw new ArgumentException("clearPlaza and plazaRadius are exclusive.");
+        if (dto.PlazaRadius is < 1 or > MaxPlazaRadius) throw new ArgumentException($"plazaRadius must be 1-{MaxPlazaRadius}.");
+        return moving
+            ? await _repo.RunInTransactionAsync(() => ApplyNodeUpdateAsync(node, dto, moving))
+            : await ApplyNodeUpdateAsync(node, dto, moving);
+    }
+
+    private async Task<RoadNodeDto> ApplyNodeUpdateAsync(RoadNode node, RoadNodeUpdateDto dto, bool moving)
+    {
+        var edited = false;
+        if (dto.ClearName)
+        {
+            node.Name = null;
+            edited = true;
+        }
+        else if (dto.Name != null)
+        {
+            var name = dto.Name.Trim();
+            if (name.Length > 100) throw new ArgumentException("name is at most 100 characters.");
+            node.Name = name.Length == 0 ? null : name;
+            edited = true;
+        }
+        if (dto.Kind is RoadNodeKind kind)
+        {
+            if (!Enum.IsDefined(kind)) throw new ArgumentException("Unknown node kind.");
+            if (kind == RoadNodeKind.Boundary)
+            {
+                var tile = await _repo.GetTileByIdAsync(node.TileId) ?? throw new KeyNotFoundException($"Tile {node.TileId} not found.");
+                if (!BoundsOf(tile.TileX, tile.TileZ).OnBorder(node.X, node.Z)) throw new ArgumentException("Only a node on the tile border can be a Boundary node.");
+            }
+            node.Kind = kind;
+            edited = true;
+        }
+        if (dto.ClearPlaza)
+        {
+            node.PlazaRadius = null;
+            edited = true;
+        }
+        else if (dto.PlazaRadius.HasValue)
+        {
+            node.PlazaRadius = dto.PlazaRadius;
+            edited = true;
+        }
+        if (node.PlazaRadius.HasValue && node.Kind is not (RoadNodeKind.Junction or RoadNodeKind.Anchor))
+        {
+            throw new ArgumentException("Only a Junction or an Anchor can be a plaza centre.");
+        }
+        var bumped = new HashSet<int> { node.TileId };
+        if (moving)
+        {
+            await MoveNodeAsync(node, dto.X!.Value, dto.Y!.Value, dto.Z!.Value, bumped);
+            edited = true;
+        }
+        // An admin edit locks the node so rebuilds keep it (DESIGN §3.5), unless told otherwise.
+        node.Locked = dto.Locked ?? (edited || node.Locked);
+        foreach (var tile in await _repo.GetTilesByIdsAsync(bumped))
+        {
+            tile.Version++;
+        }
+        await _repo.SaveChangesAsync();
+        return _mapper.Map<RoadNodeDto>(node);
+    }
+
+    /// <summary>Move a node within its tile onto a free position; the ends of its edges follow
+    /// (rev. 5, DESIGN §3.5).</summary>
+    private async Task MoveNodeAsync(RoadNode node, int x, int y, int z, HashSet<int> bumped)
+    {
+        if (x == node.X && y == node.Y && z == node.Z) return;
+        var tile = await _repo.GetTileByIdAsync(node.TileId) ?? throw new KeyNotFoundException($"Tile {node.TileId} not found.");
+        if (!BoundsOf(tile.TileX, tile.TileZ).Contains(x, z)) throw new ArgumentException("A node can only move within its own tile.");
+        if (await _repo.GetNodeAtAsync(node.World, x, y, z) is RoadNode occupied)
+        {
+            throw new InvalidOperationException($"Node {occupied.Id} already sits at ({x}, {y}, {z}).");
+        }
+        node.X = x;
+        node.Y = y;
+        node.Z = z;
+        foreach (var edge in await _repo.GetEdgesTouchingNodesAsync(new[] { node.Id }))
+        {
+            var geometry = RoadJson.Geometry(edge.GeometryJson);
+            if (geometry.Length == 0) continue;
+            if (edge.FromNodeId == node.Id) geometry[0] = new[] { x, y, z };
+            if (edge.ToNodeId == node.Id) geometry[geometry.Length - 1] = new[] { x, y, z };
+            edge.GeometryJson = RoadJson.GeometryJson(geometry);
+            (edge.MinX, edge.MinY, edge.MinZ, edge.MaxX, edge.MaxY, edge.MaxZ) = RoadGeometry.BoundingBox(geometry);
+            edge.Length = RoadGeometry.PolylineLength(geometry);
+            bumped.Add(edge.TileId);
+        }
+    }
+
+    public async Task<RoadNodeDto> CreateAnchorAsync(RoadNodeAnchorDto dto)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        RequireWorld(dto.World);
+        if (dto.Name != null && dto.Name.Trim().Length > 100) throw new ArgumentException("name is at most 100 characters.");
+        if (await _repo.GetNodeAtAsync(dto.World, dto.X, dto.Y, dto.Z) is RoadNode occupied)
+        {
+            throw new InvalidOperationException($"Node {occupied.Id} already sits at ({dto.X}, {dto.Y}, {dto.Z}).");
+        }
+        var node = await NewManualAnchorAsync(dto.World, dto.X, dto.Y, dto.Z, string.IsNullOrWhiteSpace(dto.Name) ? null : dto.Name.Trim());
+        _repo.Add(node);
+        await _repo.SaveChangesAsync();
+        node.ComponentId = node.Id; // isolated until an edge joins it
+        await _repo.SaveChangesAsync();
+        return _mapper.Map<RoadNodeDto>(node);
+    }
+
+    private async Task<RoadNode> NewManualAnchorAsync(string world, int x, int y, int z, string? name)
+    {
+        var tile = await GetOrCreateTileAtAsync(world, x, z);
+        tile.Version++;
+        return new RoadNode
+        {
+            World = world, X = x, Y = y, Z = z, TileId = tile.Id,
+            Kind = RoadNodeKind.Anchor, Source = RoadNodeSource.Manual, Locked = true, Name = name
+        };
+    }
+
+    private async Task<RoadTile> GetOrCreateTileAtAsync(string world, int x, int z)
+    {
+        var tileX = RoadTile.TileCoordinate(x);
+        var tileZ = RoadTile.TileCoordinate(z);
+        return await _repo.GetTileAsync(world, tileX, tileZ)
+               ?? await _repo.AddTileAsync(new RoadTile { World = world, TileX = tileX, TileZ = tileZ });
+    }
+
+    public async Task<RoadNodeDto> MergeNodesAsync(RoadNodeMergeDto dto)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        if (dto.KeepNodeId == dto.MergeNodeId) throw new ArgumentException("keepNodeId and mergeNodeId must differ.");
+        var keep = await _repo.GetNodeAsync(dto.KeepNodeId) ?? throw new KeyNotFoundException($"Road node {dto.KeepNodeId} not found.");
+        var merge = await _repo.GetNodeAsync(dto.MergeNodeId) ?? throw new KeyNotFoundException($"Road node {dto.MergeNodeId} not found.");
+        if (keep.World != merge.World) throw new ArgumentException("Both nodes must be in the same world.");
+        if (IsTombstone(keep.Kind) || IsTombstone(merge.Kind)) throw new ArgumentException("A pruned node cannot be merged; unprune it first.");
+
+        return await _repo.RunInTransactionAsync(async () =>
+        {
+            var touching = await _repo.GetEdgesTouchingNodesAsync(new[] { keep.Id, merge.Id });
+            var pairs = touching.Where(e => e.FromNodeId != merge.Id && e.ToNodeId != merge.Id)
+                .Select(e => (e.FromNodeId, e.ToNodeId)).ToHashSet();
+            var bumped = new HashSet<int> { keep.TileId, merge.TileId };
+
+            foreach (var edge in touching.Where(e => e.FromNodeId == merge.Id || e.ToNodeId == merge.Id))
+            {
+                bumped.Add(edge.TileId);
+                var from = edge.FromNodeId == merge.Id ? keep.Id : edge.FromNodeId;
+                var to = edge.ToNodeId == merge.Id ? keep.Id : edge.ToNodeId;
+                if (from == to)
+                {
+                    _repo.Remove(edge); // self-loop
+                    continue;
+                }
+                var geometry = RoadJson.Geometry(edge.GeometryJson);
+                if (from > to)
+                {
+                    (from, to) = (to, from);
+                    geometry = RoadGeometry.Reversed(geometry);
+                }
+                if (!pairs.Add((from, to)))
+                {
+                    _repo.Remove(edge); // duplicate of an edge the kept node already has
+                    continue;
+                }
+                edge.FromNodeId = from;
+                edge.ToNodeId = to;
+                // Re-anchor the geometry end that pointed at the merged node (exactly one end is
+                // the kept node now: a loop would have been removed above).
+                if (geometry.Length > 0)
+                {
+                    geometry[from == keep.Id ? 0 : geometry.Length - 1] = new[] { keep.X, keep.Y, keep.Z };
+                }
+                edge.GeometryJson = RoadJson.GeometryJson(geometry);
+                (edge.MinX, edge.MinY, edge.MinZ, edge.MaxX, edge.MaxY, edge.MaxZ) = RoadGeometry.BoundingBox(geometry);
+            }
+            await _repo.SaveChangesAsync();
+            _repo.Remove(merge);
+            keep.Locked = true;
+            foreach (var tile in await _repo.GetTilesByIdsAsync(bumped))
+            {
+                tile.Version++;
+            }
+            await _repo.SaveChangesAsync();
+            await RecomputeComponentsAsync(keep.World);
+            await _repo.SaveChangesAsync();
+            return _mapper.Map<RoadNodeDto>(keep);
+        });
+    }
+
+    // ---------------------------------------------------------------- Edges
+
+    public async Task<PagedResultDto<RoadEdgeDto>> SearchEdgesAsync(PagedQueryDto queryDto)
+    {
+        if (queryDto == null) throw new ArgumentNullException(nameof(queryDto));
+        var result = await _repo.SearchEdgesAsync(_mapper.Map<PagedQuery>(queryDto));
+        return new PagedResultDto<RoadEdgeDto>
+        {
+            Items = _mapper.Map<List<RoadEdgeDto>>(result.Items),
+            TotalCount = result.TotalCount,
+            PageNumber = result.PageNumber,
+            PageSize = result.PageSize
+        };
+    }
+
+    public async Task<RoadNodeDto> PruneNodeAsync(int id)
+    {
+        var node = await _repo.GetNodeAsync(id) ?? throw new KeyNotFoundException($"Road node {id} not found.");
+        if (IsTombstone(node.Kind))
+        {
+            return _mapper.Map<RoadNodeDto>(node);
+        }
+        if (node.Kind != RoadNodeKind.Endpoint)
+        {
+            throw new ArgumentException($"Node {id} is a {node.Kind}; only an endpoint can be pruned here. Prune the end of the arm you want gone, or prune the junction's edges (POST api/road-edges/prune) - a junction left with two arms disappears by itself.");
+        }
+
+        return await _repo.RunInTransactionAsync(async () =>
+        {
+            var touching = await _repo.GetEdgesTouchingNodesAsync(new[] { node.Id });
+            var recorded = touching.FirstOrDefault(e => e.Source == RoadEdgeSource.Recorded);
+            if (recorded != null)
+            {
+                throw new InvalidOperationException($"Recorded edge {recorded.Id} ends at node {id}; delete it first.");
+            }
+            var bumped = new HashSet<int> { node.TileId };
+            foreach (var edge in touching)
+            {
+                bumped.Add(edge.TileId);
+                _repo.Remove(edge);
+            }
+            // The tombstone: no edges, locked so the upsert keeps it, never matched or routed.
+            node.Kind = RoadNodeKind.Pruned;
+            node.Locked = true;
+            node.Name = null;
+            foreach (var tile in await _repo.GetTilesByIdsAsync(bumped))
+            {
+                tile.Version++;
+            }
+            await _repo.SaveChangesAsync();
+            await RecomputeComponentsAsync(node.World);
+            await _repo.SaveChangesAsync();
+            return _mapper.Map<RoadNodeDto>(node);
+        });
+    }
+
+    public async Task<bool> UnpruneNodeAsync(int id)
+    {
+        var node = await _repo.GetNodeAsync(id);
+        if (node == null)
+        {
+            return false;
+        }
+        if (!IsTombstone(node.Kind)) throw new ArgumentException($"Node {id} is not pruned.");
+        _repo.Remove(node);
+        await BumpTileAsync(node.TileId);
+        await _repo.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<RoadEdgeDto> CreateRecordedEdgeAsync(RoadEdgeRecordDto dto)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        RequireWorld(dto.World);
+        if (!RoadGeometry.IsWellFormed(dto.Geometry) || dto.Geometry.Length < 2)
+        {
+            throw new ArgumentException("geometry needs at least two [x, y, z] points.");
+        }
+        if (dto.AvgWidth < 0) throw new ArgumentException("avgWidth must be >= 0.");
+        if (dto.ProfileId is int profileId && await _repo.GetProfileAsync(profileId) == null) throw new ArgumentException($"Profile {profileId} does not exist.");
+        if (dto.StreetId is int streetId && !await _repo.StreetExistsAsync(streetId)) throw new ArgumentException($"Street {streetId} does not exist.");
+        var polyline = RoadGeometry.PolylineLength(dto.Geometry);
+        var length = dto.Length ?? polyline;
+        var straight = RoadGeometry.Distance(dto.Geometry[0], dto.Geometry[^1]);
+        if (length <= 0 || length + 1e-6 < straight) throw new ArgumentException($"length {length:0.##} must be at least the straight-line distance {straight:0.##}.");
+
+        return await _repo.RunInTransactionAsync(async () =>
+        {
+            var from = await SnapOrAnchorAsync(dto.World, dto.Geometry[0]);
+            var to = await SnapOrAnchorAsync(dto.World, dto.Geometry[^1], from);
+            await _repo.SaveChangesAsync();
+            if (from.Id == to.Id) throw new ArgumentException("Both ends snap to the same node.");
+
+            var geometry = dto.Geometry;
+            if (from.Id > to.Id)
+            {
+                (from, to) = (to, from);
+                geometry = RoadGeometry.Reversed(geometry);
+            }
+            if ((await _repo.GetEdgesTouchingNodesAsync(new[] { from.Id })).Any(e => e.FromNodeId == from.Id && e.ToNodeId == to.Id))
+            {
+                throw new InvalidOperationException($"Nodes {from.Id} and {to.Id} are already joined by an edge.");
+            }
+
+            var tile = await GetOrCreateTileAtAsync(dto.World, dto.Geometry[0][0], dto.Geometry[0][2]);
+            tile.Version++;
+            // A detected node the recording snapped to is admin cleanup now: lock it, so the builder
+            // keeps it and merges its rebuilt duplicates into it (smoke test fix plan 5.5 item 6).
+            foreach (var end in new[] { from, to }.Where(n => !n.Locked))
+            {
+                end.Locked = true;
+                if (end.TileId != tile.Id) await BumpTileAsync(end.TileId);
+            }
+            var box = RoadGeometry.BoundingBox(geometry);
+            var edge = new RoadEdge
+            {
+                World = dto.World, TileId = tile.Id, Source = RoadEdgeSource.Recorded,
+                FromNodeId = from.Id, ToNodeId = to.Id,
+                GeometryJson = RoadJson.GeometryJson(geometry),
+                Length = length, AvgWidth = dto.AvgWidth,
+                MinX = box.minX, MinY = box.minY, MinZ = box.minZ, MaxX = box.maxX, MaxY = box.maxY, MaxZ = box.maxZ,
+                ProfileId = dto.ProfileId,
+                StreetId = dto.StreetId,
+                StreetSource = dto.StreetId == null ? RoadStreetSource.None : RoadStreetSource.Manual,
+                GateDoorIdsJson = RoadJson.ListJson(dto.GateDoorIds),
+                DomainIdsJson = RoadJson.ListJson(dto.DomainIds),
+                RegionIdsJson = RoadJson.ListJson(dto.RegionIds)
+            };
+            _repo.Add(edge);
+            await _repo.SaveChangesAsync();
+            await RecomputeComponentsAsync(dto.World);
+            await _repo.SaveChangesAsync();
+            return _mapper.Map<RoadEdgeDto>(edge);
+        });
+    }
+
+    private async Task<RoadNode> SnapOrAnchorAsync(string world, int[] end, RoadNode? exclude = null)
+    {
+        var radius = (int)Math.Ceiling(RecordedEdgeSnapDistance);
+        var candidates = await _repo.GetNodesInBoxAsync(world, end[0] - radius, end[2] - radius, end[0] + radius, end[2] + radius);
+        var nearest = candidates
+            .Where(n => !IsTombstone(n.Kind) && (exclude == null || n.Id != exclude.Id))
+            .Select(n => (node: n, distance: RoadGeometry.Distance(end[0], end[1], end[2], n.X, n.Y, n.Z)))
+            .Where(c => c.distance <= RecordedEdgeSnapDistance)
+            .OrderBy(c => c.distance).ThenBy(c => c.node.Id)
+            .Select(c => c.node)
+            .FirstOrDefault();
+        if (nearest != null)
+        {
+            return nearest;
+        }
+        if (exclude != null && exclude.X == end[0] && exclude.Y == end[1] && exclude.Z == end[2])
+        {
+            return exclude;
+        }
+        var anchor = await NewManualAnchorAsync(world, end[0], end[1], end[2], null);
+        _repo.Add(anchor);
+        return anchor;
+    }
+
+    public async Task<RoadEdgeUpdateResultDto> UpdateEdgeAsync(int id, RoadEdgeUpdateDto dto)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        var edge = await _repo.GetEdgeAsync(id) ?? throw new KeyNotFoundException($"Road edge {id} not found.");
+        if (dto.StreetId != null && dto.ClearStreet) throw new ArgumentException("streetId and clearStreet exclude each other.");
+        if (dto.ProfileId != null && dto.ClearProfile) throw new ArgumentException("profileId and clearProfile exclude each other.");
+        if (dto.StreetId is int streetId && !await _repo.StreetExistsAsync(streetId)) throw new ArgumentException($"Street {streetId} does not exist.");
+        if (dto.ProfileId is int profileId && await _repo.GetProfileAsync(profileId) == null) throw new ArgumentException($"Profile {profileId} does not exist.");
+        if (dto.CostMultiplier is double cost && cost <= 0) throw new ArgumentException("costMultiplier must be > 0.");
+        var flags = dto.Flags == null ? (RoadEdgeFlags?)null : RoadJson.ParseFlags(dto.Flags);
+        if (dto.Confirmed.HasValue && edge.Source != RoadEdgeSource.Detected)
+        {
+            throw new ArgumentException($"Edge {id} is {edge.Source}; only a detected edge can be confirmed.");
+        }
+
+        return await _repo.RunInTransactionAsync(async () =>
+        {
+            var changed = new List<int> { edge.Id };
+            var bumped = new HashSet<int> { edge.TileId };
+
+            if (dto.ClearStreet)
+            {
+                edge.StreetId = null;
+                edge.StreetSource = RoadStreetSource.None;
+            }
+            else if (dto.StreetId is int street)
+            {
+                edge.StreetId = street;
+                edge.StreetSource = RoadStreetSource.Manual;
+                if (dto.Propagate)
+                {
+                    var classes = await _repo.GetProfileClassesAsync();
+                    var worldEdges = await _repo.GetWorldEdgesAsync(edge.World);
+                    var byId = worldEdges.ToDictionary(e => e.Id);
+                    foreach (var otherId in RoadStreetLabeler.Propagate(worldEdges.Select(e => ToLabelerEdge(e, classes)).ToList(), edge.Id, street))
+                    {
+                        var other = byId[otherId];
+                        other.StreetId = street;
+                        other.StreetSource = RoadStreetSource.Manual;
+                        bumped.Add(other.TileId);
+                        changed.Add(other.Id);
+                    }
+                }
+            }
+            if (dto.ClearProfile) edge.ProfileId = null;
+            else if (dto.ProfileId is int profile) edge.ProfileId = profile;
+            if (dto.CostMultiplier is double multiplier) edge.CostMultiplier = multiplier;
+            if (flags is RoadEdgeFlags set) edge.Flags = set;
+            if (dto.Confirmed is bool confirmed)
+            {
+                edge.Confirmed = confirmed;
+                if (confirmed)
+                {
+                    // Plan §5.7, D4: the builder and the upsert keep locked nodes, so the edge keeps its ends.
+                    foreach (var end in await _repo.GetNodesByIdsAsync(new[] { edge.FromNodeId, edge.ToNodeId }))
+                    {
+                        if (end.Locked) continue;
+                        end.Locked = true;
+                        bumped.Add(end.TileId);
+                    }
+                }
+            }
+
+            foreach (var tile in await _repo.GetTilesByIdsAsync(bumped))
+            {
+                tile.Version++;
+            }
+            await _repo.SaveChangesAsync();
+            return new RoadEdgeUpdateResultDto { Edge = _mapper.Map<RoadEdgeDto>(edge), ChangedEdgeIds = changed };
+        });
+    }
+
+    public async Task<bool> DeleteEdgeAsync(int id)
+    {
+        var edge = await _repo.GetEdgeAsync(id);
+        if (edge == null)
+        {
+            return false;
+        }
+        var world = edge.World;
+        await BumpTileAsync(edge.TileId);
+        _repo.Remove(edge);
+        await _repo.SaveChangesAsync();
+        await RecomputeComponentsAsync(world);
+        await _repo.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Smoke test 2026-10-03: deleting a detected edge does not stick - the next build traces it again.
+    /// Each edge is removed and a PrunedEdge tombstone (Manual, locked, no edges) is left on the middle
+    /// of its centreline, so every later build of its tile leaves out the chain passing nearest it.
+    /// A detected Junction or Endpoint left without any edge (unnamed) is deleted - the build would
+    /// not emit it either; a junction left with two arms stays until the next build joins them.
+    /// Recorded edges are the admin's own (delete them); stitch edges belong to two tiles (prune the
+    /// edge on either side). All edges are pruned in one transaction or none.
+    /// </summary>
+    public async Task<RoadEdgePruneResultDto> PruneEdgesAsync(RoadEdgePruneDto dto)
+    {
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        var ids = (dto.EdgeIds ?? new List<int>()).Distinct().ToList();
+        if (ids.Count == 0) throw new ArgumentException("edgeIds must name at least one edge.");
+
+        return await _repo.RunInTransactionAsync(async () =>
+        {
+            var edges = new List<RoadEdge>();
+            foreach (var id in ids)
+            {
+                var edge = await _repo.GetEdgeAsync(id) ?? throw new KeyNotFoundException($"Road edge {id} not found.");
+                if (edge.Source == RoadEdgeSource.Recorded)
+                {
+                    throw new InvalidOperationException($"Edge {id} is recorded; delete it instead (a build never brings a recorded edge back).");
+                }
+                if (edge.Source == RoadEdgeSource.Stitch)
+                {
+                    throw new ArgumentException($"Edge {id} is a stitch between two tiles; prune the edge on either side of the border.");
+                }
+                if (edges.Count > 0 && edge.World != edges[0].World) throw new ArgumentException("All edges must be in one world.");
+                edges.Add(edge);
+            }
+            var world = edges[0].World;
+
+            var tombstones = new List<RoadNode>();
+            var taken = new HashSet<(int, int, int)>();
+            var ends = new HashSet<int>();
+            var bumped = new HashSet<int>();
+            foreach (var edge in edges)
+            {
+                var (x, y, z) = await FreeTombstonePositionAsync(world, RoadJson.Geometry(edge.GeometryJson), taken)
+                    ?? throw new InvalidOperationException($"Edge {edge.Id} has no free block on its centreline for the tombstone.");
+                var tombstone = new RoadNode
+                {
+                    World = world, X = x, Y = y, Z = z, TileId = edge.TileId,
+                    Kind = RoadNodeKind.PrunedEdge, Source = RoadNodeSource.Manual, Locked = true
+                };
+                _repo.Add(tombstone);
+                tombstones.Add(tombstone);
+                ends.Add(edge.FromNodeId);
+                ends.Add(edge.ToNodeId);
+                bumped.Add(edge.TileId);
+                _repo.Remove(edge);
+            }
+            await _repo.SaveChangesAsync();
+
+            var result = new RoadEdgePruneResultDto();
+            var remaining = await _repo.GetEdgesTouchingNodesAsync(ends);
+            foreach (var node in await _repo.GetNodesByIdsAsync(ends))
+            {
+                var orphan = !remaining.Any(e => e.FromNodeId == node.Id || e.ToNodeId == node.Id);
+                if (orphan && node.Source == RoadNodeSource.Detected && node.Name == null && node.PlazaRadius == null
+                    && node.Kind is RoadNodeKind.Junction or RoadNodeKind.Endpoint)
+                {
+                    _repo.Remove(node);
+                    bumped.Add(node.TileId);
+                    result.DeletedNodeIds.Add(node.Id);
+                }
+            }
+            foreach (var tile in await _repo.GetTilesByIdsAsync(bumped))
+            {
+                tile.Version++;
+            }
+            await _repo.SaveChangesAsync();
+            await RecomputeComponentsAsync(world);
+            await _repo.SaveChangesAsync();
+            result.Tombstones = _mapper.Map<List<RoadNodeDto>>(tombstones);
+            result.DeletedNodeIds.Sort();
+            return result;
+        });
+    }
+
+    /// <summary>
+    /// The block on the polyline nearest its middle (by length) that no node occupies: node positions
+    /// are unique per world, and the middle keeps the tombstone away from the junctions at the ends.
+    /// </summary>
+    private async Task<(int x, int y, int z)?> FreeTombstonePositionAsync(string world, int[][] geometry, HashSet<(int, int, int)> taken)
+    {
+        if (geometry.Length == 0) return null;
+        var samples = new List<(double along, (int, int, int) block)>();
+        var along = 0.0;
+        for (var k = 0; k < geometry.Length; k++)
+        {
+            var a = geometry[k];
+            if (k == 0)
+            {
+                samples.Add((0, (a[0], a[1], a[2])));
+                continue;
+            }
+            var p = geometry[k - 1];
+            var length = RoadGeometry.Distance(p, a);
+            var steps = Math.Max(1, (int)Math.Ceiling(length));
+            for (var s = 1; s <= steps; s++)
+            {
+                var t = (double)s / steps;
+                samples.Add((along + t * length, (
+                    (int)Math.Round(p[0] + t * (a[0] - p[0])),
+                    (int)Math.Round(p[1] + t * (a[1] - p[1])),
+                    (int)Math.Round(p[2] + t * (a[2] - p[2])))));
+            }
+            along += length;
+        }
+        var middle = along / 2;
+        foreach (var (_, block) in samples.OrderBy(s => Math.Abs(s.along - middle)))
+        {
+            if (taken.Contains(block)) continue;
+            var (x, y, z) = block;
+            if (await _repo.GetNodeAtAsync(world, x, y, z) != null) continue;
+            taken.Add(block);
+            return block;
+        }
+        return null;
+    }
+
+    private static bool IsTombstone(RoadNodeKind kind) => kind is RoadNodeKind.Pruned or RoadNodeKind.PrunedEdge;
+
+    private async Task BumpTileAsync(int tileId)
+    {
+        var tile = await _repo.GetTileByIdAsync(tileId);
+        if (tile != null)
+        {
+            tile.Version++;
+        }
+    }
+
+    // -------------------------------------------------------------- Streets
+
+    public async Task<StreetRoadDto?> GetStreetRoadAsync(int streetId)
+    {
+        var names = await _repo.GetStreetNamesAsync(new[] { streetId });
+        if (!names.TryGetValue(streetId, out var name))
+        {
+            return null;
+        }
+        var edges = await _repo.GetEdgesByStreetAsync(streetId);
+        var nodes = await _repo.GetNodesByIdsAsync(edges.SelectMany(e => new[] { e.FromNodeId, e.ToNodeId }));
+        return new StreetRoadDto
+        {
+            StreetId = streetId,
+            Name = name,
+            EdgeCount = edges.Count,
+            TotalLength = edges.Sum(e => e.Length),
+            Edges = _mapper.Map<List<RoadEdgeDto>>(edges),
+            Nodes = _mapper.Map<List<RoadNodeDto>>(nodes.OrderBy(n => n.Id))
+        };
+    }
+
+    private static void RequireWorld(string? world)
+    {
+        if (string.IsNullOrWhiteSpace(world)) throw new ArgumentException("world is required.");
+        if (world.Length > MaxWorldLength) throw new ArgumentException($"world is at most {MaxWorldLength} characters.");
+    }
+}

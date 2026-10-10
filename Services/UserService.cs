@@ -91,8 +91,24 @@ namespace knkwebapi_v2.Services
                 dto.ChatPrimaryColor = tier?.ChatPrimaryColor ?? defaultGroup?.ChatPrimaryColor;
                 dto.ChatSecondaryColor = tier?.ChatSecondaryColor ?? defaultGroup?.ChatSecondaryColor;
                 dto.NameColor = tier?.NameColor ?? defaultGroup?.NameColor;
+                dto.PermissionGroups = await GetPermissionGroupsInPrecedenceAsync(user.Id);
             }
             return dto;
+        }
+
+        /// <summary>
+        /// The user's effective groups (unexpired memberships plus inherited parents) in Game
+        /// Settings precedence order (KNG-52), which is the teleport fee order (KNG-41). The
+        /// repository returns the whole parent chain, so the parents are found among the returned groups.
+        /// </summary>
+        private async Task<List<PermissionGroupRefDto>> GetPermissionGroupsInPrecedenceAsync(int userId)
+        {
+            var groups = await _permissionGroupRepo.GetActiveGroupsForUserAsync(userId, DateTime.UtcNow)
+                ?? new List<PermissionGroup>();
+            var byId = groups.GroupBy(g => g.Id).ToDictionary(g => g.Key, g => g.First());
+            return PermissionGroupPrecedence.Order(byId.Values, byId)
+                .Select(g => new PermissionGroupRefDto { Id = g.Id, Name = g.Name })
+                .ToList();
         }
 
         private PermissionGroup? _defaultGroup;
