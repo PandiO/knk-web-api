@@ -29,6 +29,7 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<List<LeaderboardInputRow>> GetDailyAggregatesAsync(IReadOnlyCollection<string> sumMetricKeys,
             IReadOnlyCollection<string> maxMetricKeys, DateOnly from, DateOnly toExclusive, CancellationToken ct = default);
 
+        /// <summary>Every discovery of a domain whose discovery type is enabled (DiscoveryEnabledDomains).</summary>
         Task<List<(int UserId, int DomainId, DateTime DiscoveredAt)>> GetDiscoveriesAsync(CancellationToken ct = default);
 
         /// <summary>Account merges (secondary → primary) from the MERGE_FORFEIT ledger rows.</summary>

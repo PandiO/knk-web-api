@@ -66,10 +66,13 @@ namespace knkwebapi_v2.Repositories
 
         public async Task<List<(int UserId, int DomainId, DateTime DiscoveredAt)>> GetDiscoveriesAsync(CancellationToken ct = default)
         {
+            // Only domains whose discovery type is enabled count, like the player's /discoveries total.
+            var enabled = (await DiscoveryEnabledDomains.LoadAsync(new DiscoveryRepository(_context))).Keys.ToHashSet();
             var rows = await _context.UserDomainDiscoveries.AsNoTracking()
                 .Select(d => new { d.UserId, d.DomainId, d.DiscoveredAt })
                 .ToListAsync(ct);
-            return rows.Select(r => (r.UserId, r.DomainId, DateTime.SpecifyKind(r.DiscoveredAt, DateTimeKind.Utc))).ToList();
+            return rows.Where(r => enabled.Contains(r.DomainId))
+                .Select(r => (r.UserId, r.DomainId, DateTime.SpecifyKind(r.DiscoveredAt, DateTimeKind.Utc))).ToList();
         }
 
         public async Task<List<(int SecondaryId, int PrimaryId)>> GetMergeLinksAsync(CancellationToken ct = default)

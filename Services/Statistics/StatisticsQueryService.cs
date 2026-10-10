@@ -270,10 +270,11 @@ namespace knkwebapi_v2.Services.Statistics
                 var to = StatisticsPeriods.StartOfDayUtc(range.Value.End, Zone);
                 discovered = discovered.Where(d => d.DiscoveredAt >= from && d.DiscoveredAt < to).ToList();
             }
-            var types = (await _discoveries.GetDomainNodesAsync(discovered.Select(d => d.DomainId).ToList()))
-                .ToDictionary(n => n.Id, n => n.DomainType);
-            int Count(params string[] domainTypes) =>
-                discovered.Count(d => types.TryGetValue(d.DomainId, out var type) && domainTypes.Contains(type));
+            // Only domains whose discovery type is enabled count, like the player's /discoveries total
+            // (DiscoveryService summary), so Total is the sum of the per-type counts.
+            var enabled = await DiscoveryEnabledDomains.LoadAsync(_discoveries);
+            discovered = discovered.Where(d => enabled.ContainsKey(d.DomainId)).ToList();
+            int Count(params string[] domainTypes) => discovered.Count(d => domainTypes.Contains(enabled[d.DomainId].DomainType));
             return new PlayerStatisticsDiscoveriesDto
             {
                 Total = discovered.Count,
@@ -391,7 +392,7 @@ namespace knkwebapi_v2.Services.Statistics
             var (pageNumber, size) = Paging(page, pageSize);
             var ids = await IdentityIdsAsync(userId, ct);
             var discovered = FirstPerDomain(await _repo.GetDiscoveriesAsync(ids, ct));
-            var nodes = (await _discoveries.GetDomainNodesAsync(discovered.Select(d => d.DomainId).ToList())).ToDictionary(n => n.Id);
+            var nodes = await DiscoveryEnabledDomains.LoadAsync(_discoveries); // enabled types only, like the counts
             var listed = discovered.Where(d => nodes.ContainsKey(d.DomainId))
                 .OrderByDescending(d => d.DiscoveredAt).ThenByDescending(d => d.DomainId)
                 .ToList();

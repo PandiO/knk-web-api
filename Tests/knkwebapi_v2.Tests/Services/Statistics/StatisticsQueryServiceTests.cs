@@ -85,7 +85,13 @@ public class StatisticsQueryServiceTests : IDisposable
         ctx.UserDomainDiscoveries.AddRange(
             new UserDomainDiscovery { UserId = 1, DomainId = 1, DiscoveredAt = new DateTime(2026, 10, 3, 10, 0, 0, DateTimeKind.Utc) },
             new UserDomainDiscovery { UserId = 3, DomainId = 1, DiscoveredAt = new DateTime(2026, 9, 10, 10, 0, 0, DateTimeKind.Utc) },
-            new UserDomainDiscovery { UserId = 3, DomainId = 2, DiscoveredAt = new DateTime(2026, 9, 11, 10, 0, 0, DateTimeKind.Utc) });
+            new UserDomainDiscovery { UserId = 3, DomainId = 2, DiscoveredAt = new DateTime(2026, 9, 11, 10, 0, 0, DateTimeKind.Utc) },
+            // A Structure discovery: the type is switched off, so it counts nowhere (like the player's /discoveries total).
+            new UserDomainDiscovery { UserId = 1, DomainId = 3, DiscoveredAt = new DateTime(2026, 10, 2, 10, 0, 0, DateTimeKind.Utc) });
+        ctx.DiscoveryRewardRules.AddRange(
+            new DiscoveryRewardRule { DomainType = DiscoveryRewardRule.Town, IsEnabled = true },
+            new DiscoveryRewardRule { DomainType = DiscoveryRewardRule.District, IsEnabled = true },
+            new DiscoveryRewardRule { DomainType = DiscoveryRewardRule.Structure, IsEnabled = false });
         ctx.PlayerStatProfiles.Add(new PlayerStatProfile { UserId = 1, FirstSessionAt = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc) });
         ctx.PlayerTitleChanges.Add(new PlayerTitleChange
         {
@@ -196,7 +202,7 @@ public class StatisticsQueryServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Discoveries_CountEachDomainOnceAcrossMergedIdentities()
+    public async Task Discoveries_CountEachEnabledDomainOnceAcrossMergedIdentities()
     {
         var lifetime = await _db.Query().GetAsync(1, Self, null, null);
 
