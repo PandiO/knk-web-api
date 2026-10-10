@@ -342,15 +342,17 @@ public static partial class MenuTemplateSeed
             Lore(0, linesExpression, VariableRefreshPolicy.OnDirty));
 
     /// <summary>
-    /// Header: the five group selectors (the selected one HIGHLIGHTed), the three group actions
-    /// ("Set all listed to Nobody/Friends/Everyone" - previewed, then confirmed) and Back. Row 1: what
-    /// the selected group shows now. Rows 2-4: one row per setting of the group plus one per context
-    /// with an override or with data; a click cycles Nobody → Friends → Everyone. Row 5: pager and the
-    /// Confirm (with the preview) / Cancel pair shown while a group action waits.
+    /// Header: the five group selectors (the selected one HIGHLIGHTed, named "▶ Combat ◀", the others
+    /// grey) and Back. Row 1: the selected group's name and counts. Rows 2-4: one row per setting of
+    /// the group plus one per context override (new per-game values are set on the website); a click
+    /// cycles Nobody → Friends → Everyone. Row 5: pager, the three group actions ("Set all listed to
+    /// Nobody/Friends/Everyone" - previewed, then confirmed) and the Confirm (with the preview) /
+    /// Cancel pair shown while a group action waits. Smoke-test finding 9 (2026-10-10): the open group
+    /// is named, not only highlighted, and the header holds only the groups.
     /// </summary>
     private static MenuTemplate StatisticsVisibilityTemplate()
     {
-        var confirm = DemoItem(48, 148,
+        var confirm = DemoItem(50, 150,
             Bind("Material", "LIME_CONCRETE", VariableRefreshPolicy.Static),
             Bind("Name", "&aConfirm", VariableRefreshPolicy.Static),
             Lore(0, "$statsvis.getPreviewLines$", VariableRefreshPolicy.OnDirty));
@@ -399,19 +401,15 @@ public static partial class MenuTemplateSeed
                     Overflow = MenuOverflowMode.Hide,
                     Items =
                     {
-                        StatisticsGroupSelector(0, 0, "activity", "&fActivity", "CLOCK", "$statsvis.getActivityMode$", "&7Logins"),
-                        StatisticsGroupSelector(1, 1, "combat", "&fCombat", "IRON_SWORD", "$statsvis.getCombatMode$",
+                        StatisticsGroupSelector(0, 0, "activity", "Activity", "CLOCK", "&7Logins"),
+                        StatisticsGroupSelector(1, 1, "combat", "Combat", "IRON_SWORD",
                             "&7Kills, deaths, damage, arrows, headshots, killstreak"),
-                        StatisticsGroupSelector(2, 2, "minigames", "&fMinigames", "WHITE_BANNER", "$statsvis.getMinigamesMode$",
+                        StatisticsGroupSelector(2, 2, "minigames", "Minigames", "WHITE_BANNER",
                             "&7Wins, losses, draws, objectives, gate damage"),
-                        StatisticsGroupSelector(3, 3, "exploration", "&fExploration", "COMPASS", "$statsvis.getExplorationMode$",
+                        StatisticsGroupSelector(3, 3, "exploration", "Exploration", "COMPASS",
                             "&7Distance, highest fall, discoveries"),
-                        StatisticsGroupSelector(4, 4, "progression", "&fProgression", "EXPERIENCE_BOTTLE", "$statsvis.getProgressionMode$",
+                        StatisticsGroupSelector(4, 4, "progression", "Progression", "EXPERIENCE_BOTTLE",
                             "&7Title history, coins and gems"),
-                        StatisticsGroupAction(5, 5, "Nobody", "&cSet all listed to Nobody", "RED_DYE"),
-                        StatisticsGroupAction(6, 6, "Friends", "&bSet all listed to Friends", "LIGHT_BLUE_DYE",
-                            "&8Friends-only shows nothing until the friends system exists"),
-                        StatisticsGroupAction(7, 7, "Everyone", "&aSet all listed to Everyone", "LIME_DYE"),
                         BackButton(8, 8),
                     },
                 },
@@ -428,7 +426,7 @@ public static partial class MenuTemplateSeed
                     {
                         DemoItem(13, 9,
                             Bind("Material", "SPYGLASS", VariableRefreshPolicy.Static),
-                            Bind("Name", "&eWho may see your statistics", VariableRefreshPolicy.Static),
+                            Bind("Name", "$statsvis.getInfoTitle$", VariableRefreshPolicy.OnDirty),
                             Lore(0, "$statsvis.getGroupSummaryLines$", VariableRefreshPolicy.OnDirty),
                             Lore(1, ""),
                             Lore(2, "&7Click a setting to change it."),
@@ -453,8 +451,12 @@ public static partial class MenuTemplateSeed
                     {
                         row,
                         PagerButton(45, "&aPrevious page", "menu.page.prev"),
+                        StatisticsGroupAction(46, 146, "Nobody", "&cSet all listed to Nobody", "RED_DYE"),
+                        StatisticsGroupAction(47, 147, "Friends", "&bSet all listed to Friends", "LIGHT_BLUE_DYE",
+                            "&8Friends-only shows nothing until the friends system exists"),
+                        StatisticsGroupAction(48, 148, "Everyone", "&aSet all listed to Everyone", "LIME_DYE"),
                         confirm,
-                        CancelButton(50, StatisticsPendingCondition),
+                        CancelButton(51, StatisticsPendingCondition),
                         PagerButton(53, "&aNext page", "menu.page.next"),
                     },
                 },
@@ -462,15 +464,19 @@ public static partial class MenuTemplateSeed
         };
     }
 
-    private static MenuItemTemplate StatisticsGroupSelector(int slot, int sortOrder, string group, string name, string material,
-        string displayModeExpression, string description)
+    /// <summary>
+    /// A group selector: <c>$statsvis.get{Label}Mode$</c> (HIGHLIGHT when shown), <c>…Name$</c>
+    /// ("▶ Combat ◀" when shown, grey otherwise) and <c>…Hint$</c> ("Shown below" / "Click: show").
+    /// </summary>
+    private static MenuItemTemplate StatisticsGroupSelector(int slot, int sortOrder, string group, string label, string material,
+        string description)
     {
         var item = DemoItem(slot, sortOrder,
             Bind("Material", material, VariableRefreshPolicy.Static),
-            Bind("DisplayMode", displayModeExpression, VariableRefreshPolicy.OnDirty),
-            Bind("Name", name, VariableRefreshPolicy.Static),
+            Bind("DisplayMode", "$statsvis.get" + label + "Mode$", VariableRefreshPolicy.OnDirty),
+            Bind("Name", "$statsvis.get" + label + "Name$", VariableRefreshPolicy.OnDirty),
             Lore(0, description),
-            Lore(1, "&eClick: &7show these settings"));
+            Lore(1, "$statsvis.get" + label + "Hint$", VariableRefreshPolicy.OnDirty));
         item.Actions.Add(new ActionBinding
         {
             ActionTypeId = "statistics.visibility.select-group",

@@ -70,33 +70,29 @@ public class MenuTemplateStatisticsSeedTests
     }
 
     [Fact]
-    public async Task Header_HasTheFiveGroupSelectorsTheThreeGroupActionsAndBack()
+    public async Task Header_HasTheFiveNamedGroupSelectorsAndBack()
     {
         var (context, seeded) = await SeedTwiceAsync();
         await using var _ = context;
         var menu = seeded.Single(t => t.Key == MenuTemplateSeed.StatisticsVisibilityMenuKey);
 
         var groups = new[] { "activity", "combat", "minigames", "exploration", "progression" };
-        var modes = new[] { "Activity", "Combat", "Minigames", "Exploration", "Progression" };
+        var labels = new[] { "Activity", "Combat", "Minigames", "Exploration", "Progression" };
         for (var slot = 0; slot < 5; slot++)
         {
             var selector = ItemAt(menu, slot);
             var action = Assert.Single(selector.Actions);
             Assert.Equal("statistics.visibility.select-group", action.ActionTypeId);
             Assert.Equal(groups[slot], Param(action, "group"));
-            Assert.Equal(new[] { $"$statsvis.get{modes[slot]}Mode$" }, Expressions(selector, "DisplayMode"));
+            Assert.Equal(new[] { $"$statsvis.get{labels[slot]}Mode$" }, Expressions(selector, "DisplayMode"));
+            Assert.Equal(new[] { $"$statsvis.get{labels[slot]}Name$" }, Expressions(selector, "Name"));
+            Assert.Contains($"$statsvis.get{labels[slot]}Hint$", Expressions(selector, "Lore"));
         }
-
-        var values = new[] { "Nobody", "Friends", "Everyone" };
-        for (var i = 0; i < 3; i++)
-        {
-            var action = Assert.Single(ItemAt(menu, 5 + i).Actions);
-            Assert.Equal("statistics.visibility.group", action.ActionTypeId);
-            Assert.Equal(values[i], Param(action, "value"));
-        }
-        Assert.Contains("&8Friends-only shows nothing until the friends system exists", Expressions(ItemAt(menu, 6), "Lore"));
+        // Smoke-test finding 9: the header holds only the groups and Back.
+        Assert.DoesNotContain(menu.Sections.Single(s => s.Name == "Header").Items, i => i.SlotOverride is 5 or 6 or 7);
 
         Assert.Equal("menu.back", Assert.Single(ItemAt(menu, 8).Actions).ActionTypeId);
+        Assert.Equal(new[] { "$statsvis.getInfoTitle$" }, Expressions(ItemAt(menu, 13), "Name"));
         Assert.Equal(new[] { "$statsvis.getGroupSummaryLines$", "", "&7Click a setting to change it.",
             "&7Active/AFK time, XP and your title", "&7are always public." }, Expressions(ItemAt(menu, 13), "Lore"));
     }
@@ -124,7 +120,7 @@ public class MenuTemplateStatisticsSeedTests
     }
 
     [Fact]
-    public async Task Controls_PageAndConfirmOrCancelAPendingGroupAction()
+    public async Task Controls_PageGroupActionsAndConfirmOrCancelAPendingGroupAction()
     {
         var (context, seeded) = await SeedTwiceAsync();
         await using var _ = context;
@@ -132,16 +128,25 @@ public class MenuTemplateStatisticsSeedTests
         var grid = menu.Sections.Single(s => s.Name == "Settings");
 
         var pinned = grid.Items.Where(i => !i.IsRowTemplate).OrderBy(i => i.SlotOverride).Select(i => i.SlotOverride!.Value);
-        Assert.Equal(new[] { 45, 48, 50, 53 }, pinned);
+        Assert.Equal(new[] { 45, 46, 47, 48, 50, 51, 53 }, pinned);
         Assert.Equal("menu.page.prev", Assert.Single(ItemAt(menu, 45).Actions).ActionTypeId);
         Assert.Equal("menu.page.next", Assert.Single(ItemAt(menu, 53).Actions).ActionTypeId);
 
-        var confirm = ItemAt(menu, 48);
+        var values = new[] { "Nobody", "Friends", "Everyone" };
+        for (var i = 0; i < 3; i++)
+        {
+            var action = Assert.Single(ItemAt(menu, 46 + i).Actions);
+            Assert.Equal("statistics.visibility.group", action.ActionTypeId);
+            Assert.Equal(values[i], Param(action, "value"));
+        }
+        Assert.Contains("&8Friends-only shows nothing until the friends system exists", Expressions(ItemAt(menu, 47), "Lore"));
+
+        var confirm = ItemAt(menu, 50);
         Assert.Equal("menu.confirm.accept", Assert.Single(confirm.Actions).ActionTypeId);
         Assert.Equal("statistics.visibility.pending", Assert.Single(confirm.Conditions).ConditionTypeId);
         Assert.Equal(new[] { "$statsvis.getPreviewLines$" }, Expressions(confirm, "Lore"));
 
-        var cancel = ItemAt(menu, 50);
+        var cancel = ItemAt(menu, 51);
         Assert.Equal("menu.confirm.cancel", Assert.Single(cancel.Actions).ActionTypeId);
         Assert.Equal("statistics.visibility.pending", Assert.Single(cancel.Conditions).ConditionTypeId);
     }
