@@ -57,6 +57,13 @@ namespace knkwebapi_v2.Attributes
         public const string CurrencyReverse = "knk.admin.currency.reverse";
         /// <summary>Lock or unlock a player's transfers.</summary>
         public const string CurrencyLock = "knk.admin.currency.lock";
+
+        /// <summary>
+        /// File (and cancel) a GDPR data-deletion request on a player's behalf, without the player's
+        /// email confirmation (developer decision 2026-10-03). The deletion still waits for the grace
+        /// period; carrying it out early stays owner-only (knk.owner.privacy.manage).
+        /// </summary>
+        public const string RequestDataDeletion = "knk.admin.privacy.request";
         /// <summary>Exempt from the per-staff daily grant cap (CurrencyPolicy.AdminDailyGrantCapPerActor).</summary>
         public const string CurrencyUnlimited = "knk.admin.currency.unlimited";
         /// <summary>See and acknowledge currency anomaly alerts, run the reconciliation, get the
@@ -81,6 +88,11 @@ namespace knkwebapi_v2.Attributes
         /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
         /// owner group; every read is audited.</summary>
         public const string ReadPrivateMessages = "knk.pmlog.read";
+
+        /// <summary>See every non-internal statistic of any player regardless of their visibility
+        /// settings, and read their settings (moderation view; KNG-34 DESIGN.md §F.4, L1-20). Not
+        /// diagnostics — those are owner-only (OwnerPermissions). Also matched by knk.admin.* and *.</summary>
+        public const string ViewStatistics = "knk.admin.statistics.view";
 
         /// <summary>Road network administration: profiles, seeds, node/edge review and street
         /// labels (docs/specs/navigation/DESIGN.md §7, plan D1). The same node as the in-game

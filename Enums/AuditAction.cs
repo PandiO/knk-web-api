@@ -47,5 +47,27 @@ public enum AuditAction
     CurrencyPolicyChanged = 19,
     CurrencyTransactionReversed = 20,
     CurrencyTransferLocked = 21,
-    CurrencyTransferUnlocked = 22
+    CurrencyTransferUnlocked = 22,
+
+    // Player statistics, diagnostics and privacy (KNG-34, knk-workspace docs/specs/player-statistics/
+    // IMPLEMENTATION_PLAN.md §8 link 6); values 30–34 are reserved for this feature.
+
+    /// <summary>The owner read diagnostic events (timeline, search or one event). Target = the player
+    /// whose events were read, or the reader when the search named no player.</summary>
+    TelemetryViewed = 30,
+
+    /// <summary>A GDPR deletion request was filed for the target player (by the player, staff or the
+    /// owner; Details.source).</summary>
+    PrivacyDeletionRequested = 31,
+
+    /// <summary>A GDPR deletion request was executed (by the owner, or by the scheduled job when the
+    /// actor is null). Details hold only counts.</summary>
+    PrivacyDeletionExecuted = 32,
+
+    /// <summary>An open GDPR deletion request was cancelled (by the player, staff or the owner).</summary>
+    PrivacyDeletionCancelled = 33,
+
+    /// <summary>The player confirmed their deletion request through the emailed link; it runs after
+    /// the grace period.</summary>
+    PrivacyDeletionConfirmed = 34
 }

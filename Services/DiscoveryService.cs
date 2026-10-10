@@ -569,12 +569,7 @@ namespace knkwebapi_v2.Services
         private async Task<(Dictionary<int, DiscoveryDomainNode> Nodes, List<DiscoveryDomainNode> Enabled)> LoadEnabledNodesAsync()
         {
             var nodes = (await _repo.GetAllDomainNodesAsync()).ToDictionary(n => n.Id);
-            var rules = (await _repo.GetRulesAsync()).ToDictionary(r => r.DomainType, StringComparer.OrdinalIgnoreCase);
-            var overrides = (await _repo.GetOverridesAsync()).ToDictionary(o => o.DomainId);
-            var enabled = nodes.Values
-                .Where(n => rules.TryGetValue(n.DomainType, out var rule)
-                    && DiscoveryRewardCalculator.Merge(rule, overrides.GetValueOrDefault(n.Id)).IsEnabled)
-                .ToList();
+            var enabled = DiscoveryEnabledDomains.Filter(nodes.Values, await _repo.GetRulesAsync(), await _repo.GetOverridesAsync());
             return (nodes, enabled);
         }
 
