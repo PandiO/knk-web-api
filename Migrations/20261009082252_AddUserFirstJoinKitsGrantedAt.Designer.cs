@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using knkwebapi_v2.Properties;
 
@@ -11,9 +12,11 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    partial class KnKDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261009082252_AddUserFirstJoinKitsGrantedAt")]
+    partial class AddUserFirstJoinKitsGrantedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1064,14 +1067,6 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("NavigationDefaultOverride")
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<string>("RoadAccessOverride")
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
                     b.Property<bool>("TeleportEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -1149,31 +1144,6 @@ namespace knkwebapi_v2.Migrations
                         .HasName("PRIMARY");
 
                     b.ToTable("domain_discovery_overrides", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.DomainNavigationDefault", b =>
-                {
-                    b.Property<string>("DomainType")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<string>("DefaultMode")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<string>("RoadAccess")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.HasKey("DomainType")
-                        .HasName("PRIMARY");
-
-                    b.ToTable("domain_navigation_defaults", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
@@ -1604,10 +1574,6 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("DefaultRespawnPolicyJson")
                         .HasColumnType("longtext");
 
-                    b.Property<string>("GroupOverridesJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<string>("JoinAnnouncement")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -1622,9 +1588,6 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<string>("LeaveAnnouncement")
                         .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Motd")
                         .HasColumnType("longtext");
 
                     b.Property<string>("RuntimeWorldsJson")
@@ -2436,9 +2399,6 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<string>("Name")
                         .HasColumnType("longtext");
 
@@ -2464,187 +2424,6 @@ namespace knkwebapi_v2.Migrations
                         .HasName("PRIMARY");
 
                     b.ToTable("locations", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.LocationOrphan", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("DecidedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("DecidedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DecisionNote")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<DateTime>("FlaggedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("FlaggedByRunId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("LastSeenAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("LastSeenRunId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("LocationCreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("LocationId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<float>("Pitch")
-                        .HasColumnType("float");
-
-                    b.Property<int?>("PreviousItemId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ResolvedReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<byte>("Status")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<int?>("SupersededByItemId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("World")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<double>("X")
-                        .HasColumnType("double");
-
-                    b.Property<double>("Y")
-                        .HasColumnType("double");
-
-                    b.Property<float>("Yaw")
-                        .HasColumnType("float");
-
-                    b.Property<double>("Z")
-                        .HasColumnType("double");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LocationId", "Status");
-
-                    b.HasIndex("Status", "FlaggedAt");
-
-                    b.ToTable("location_orphans", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.LocationRetentionRun", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AlreadyKnown")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CandidatesScanned")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("DigestQueuedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<long>("DurationMs")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Error")
-                        .HasMaxLength(1000)
-                        .HasColumnType("varchar(1000)");
-
-                    b.Property<DateTime?>("FinishedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("NewOrphans")
-                        .HasColumnType("int");
-
-                    b.Property<int>("OrphansFound")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Reflagged")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ResolvedCount")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ScheduledSlotUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("StartedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("Succeeded")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Trigger")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<int?>("TriggeredByUserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StartedAt");
-
-                    b.HasIndex("Trigger", "ScheduledSlotUtc");
-
-                    b.ToTable("location_retention_runs", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.LocationRetentionSettings", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<byte>("Frequency")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<int>("GracePeriodDays")
-                        .HasColumnType("int");
-
-                    b.Property<int>("KeptRecheckMonths")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RunAtMinuteOfDay")
-                        .HasColumnType("int");
-
-                    b.Property<byte>("RunDayOfWeek")
-                        .HasColumnType("tinyint unsigned");
-
-                    b.Property<bool>("ScheduleEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("UpdatedByUserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("location_retention_settings", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LootboxClaim", b =>
