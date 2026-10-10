@@ -140,7 +140,7 @@ public class SiegeDeleteBehaviourTests : IAsyncLifetime
     {
         var service = new GateStructureService(
             new GateStructureRepository(_context), new Mock<ILocationRepository>().Object,
-            new Mock<ILocationService>().Object, SiegeTestData.Mapper(), new Mock<IDomainRegionNameFinalizer>().Object);
+            new Mock<ILocationService>().Object, SiegeTestData.Mapper(), new Mock<IDomainRegionNameFinalizer>().Object, FixedWorldResolver.Instance);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteAsync(400));
         Assert.Contains("siege scenario", ex.Message);
@@ -154,7 +154,7 @@ public class SiegeDeleteBehaviourTests : IAsyncLifetime
         _context.ChangeTracker.Clear();
         var service = new GateStructureService(
             new GateStructureRepository(_context), new Mock<ILocationRepository>().Object,
-            new Mock<ILocationService>().Object, SiegeTestData.Mapper(), new Mock<IDomainRegionNameFinalizer>().Object);
+            new Mock<ILocationService>().Object, SiegeTestData.Mapper(), new Mock<IDomainRegionNameFinalizer>().Object, FixedWorldResolver.Instance);
 
         await service.DeleteAsync(400);
         _context.ChangeTracker.Clear();

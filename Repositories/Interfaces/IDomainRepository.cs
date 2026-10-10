@@ -8,6 +8,12 @@ namespace knkwebapi_v2.Repositories
         Task<IEnumerable<Domain>> GetAllAsync();
         Task<Domain?> GetByIdAsync(int id);
         Task<Domain?> GetByWgRegionNameAsync(string regionName);
+        /// <summary>
+        /// KNG-111: the domain whose region is <paramref name="regionName"/> in <paramref name="worldName"/>. A domain not
+        /// yet assigned a world still matches as a fallback; a domain of another world never does. A null world is the
+        /// world-blind lookup.
+        /// </summary>
+        Task<Domain?> GetByWgRegionNameAsync(string regionName, string? worldName);
         Task AddDomainAsync(Domain domain);
         Task UpdateDomainAsync(Domain domain);
         Task DeleteDomainAsync(int id);

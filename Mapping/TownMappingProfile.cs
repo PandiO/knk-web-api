@@ -33,7 +33,8 @@ namespace knkwebapi_v2.Mapping
                     Description = d.Description,
                     AllowEntry = d.AllowEntry,
                     AllowExit = d.AllowExit,
-                    WgRegionId = d.WgRegionId
+                    WgRegionId = d.WgRegionId,
+                    WorldName = d.WorldName
                 }).ToList()));
 
             CreateMap<TownDto, Town>()

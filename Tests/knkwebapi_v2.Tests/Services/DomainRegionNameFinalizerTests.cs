@@ -18,14 +18,15 @@ public class DomainRegionNameFinalizerTests : IDisposable
     private readonly KnKDbContext _context;
     private readonly Mock<IRegionService> _regions = new();
     private readonly List<(string Old, string New, string? Type, string? Parent)> _renames = new();
+    private readonly List<string?> _renameWorlds = new();
     private readonly DomainRegionNameFinalizer _finalizer;
 
     public DomainRegionNameFinalizerTests()
     {
         _context = new KnKDbContext(new DbContextOptionsBuilder<KnKDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
-        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
-            .Callback<string, string, string?, string?>((o, n, t, p) => _renames.Add((o, n, t, p)))
+        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Callback<string, string, string?, string?, string?>((o, n, t, p, w) => { _renames.Add((o, n, t, p)); _renameWorlds.Add(w); })
             .ReturnsAsync(true);
         _finalizer = new DomainRegionNameFinalizer(_context, _regions.Object, NullLogger<DomainRegionNameFinalizer>.Instance);
     }
@@ -75,6 +76,18 @@ public class DomainRegionNameFinalizerTests : IDisposable
     }
 
     [Fact]
+    public async Task TheRenameNamesTheDomainsWorld()
+    {
+        // KNG-111: the region id is only unique within a world, so the plugin is told which world's region to rename.
+        _context.Towns.Add(new Town { Id = 1, Name = "Hubtown", Description = "t", WgRegionId = "tempregion_worldtask_5", WorldName = "hub" });
+        await _context.SaveChangesAsync();
+
+        await _finalizer.FinalizeAsync(await _context.Towns.SingleAsync());
+
+        Assert.Equal("hub", Assert.Single(_renameWorlds));
+    }
+
+    [Fact]
     public async Task FinalName_IsLeftAlone()
     {
         await SeedAsync(gateRegion: "domain_11");
@@ -87,7 +100,7 @@ public class DomainRegionNameFinalizerTests : IDisposable
     public async Task FailedRename_KeepsTheTemporaryName()
     {
         await SeedAsync();
-        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
             .ReturnsAsync(false);
 
         Assert.False(await _finalizer.FinalizeAsync(await _context.GateStructures.SingleAsync()));
@@ -98,7 +111,7 @@ public class DomainRegionNameFinalizerTests : IDisposable
     public async Task UnreachablePlugin_DoesNotThrow()
     {
         await SeedAsync();
-        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
             .ThrowsAsync(new HttpRequestException("connection refused"));
 
         Assert.False(await _finalizer.FinalizeAsync(await _context.GateStructures.SingleAsync()));
@@ -129,7 +142,7 @@ public class DomainRegionNameFinalizerTests : IDisposable
     public async Task FinalizeAll_ReportsFailures_AndASecondRunRetriesOnlyThose()
     {
         await SeedAsync(districtRegion: "tempregion_worldtask_5");
-        _regions.Setup(r => r.RenameRegionAsync("tempregion_worldtask_97", It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+        _regions.Setup(r => r.RenameRegionAsync("tempregion_worldtask_97", It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
             .ReturnsAsync(false);
 
         var first = await _finalizer.FinalizeAllAsync();

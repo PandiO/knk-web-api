@@ -48,6 +48,7 @@ public class DomainMappingProfile : Profile
                 Id = current.Id,
                 Name = current.Name,
                 WgRegionId = current.WgRegionId,
+                WorldName = current.WorldName,
                 AllowEntry = current.AllowEntry,
                 AllowExit = current.AllowExit,
                 DomainType = current.GetType().Name
@@ -83,6 +84,7 @@ public class DomainMappingProfile : Profile
                 Id = current.Id,
                 Name = current.Name,
                 WgRegionId = current.WgRegionId,
+                WorldName = current.WorldName,
                 AllowEntry = current.AllowEntry,
                 AllowExit = current.AllowExit,
                 DomainType = current.GetType().Name

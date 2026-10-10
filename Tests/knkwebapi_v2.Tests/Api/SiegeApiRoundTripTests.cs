@@ -64,7 +64,7 @@ public class SiegeApiRoundTripTests : IAsyncLifetime
         _configuration = new SiegeConfigurationController(configurationService);
         _gates = new GateStructuresController(new GateStructureService(
             new GateStructureRepository(_context), new Mock<knkwebapi_v2.Repositories.Interfaces.ILocationRepository>().Object,
-            locationService.Object, mapper, new Mock<IDomainRegionNameFinalizer>().Object));
+            locationService.Object, mapper, new Mock<IDomainRegionNameFinalizer>().Object, knkwebapi_v2.Tests.Services.FixedWorldResolver.Instance));
     }
 
     public async Task DisposeAsync() => await _context.DisposeAsync();

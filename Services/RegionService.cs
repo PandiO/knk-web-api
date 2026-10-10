@@ -28,6 +28,12 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId);
 
         /// <summary>
+        /// The same, naming the world the region is in (KNG-111): a region id is only unique within a world. A plugin
+        /// that predates worlds ignores the parameter and renames the first region with that id.
+        /// </summary>
+        Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world);
+
+        /// <summary>
         /// Check whether a location (x,z) lies inside the specified region.
         /// </summary>
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
@@ -194,7 +200,12 @@ namespace knkwebapi_v2.Services
             return RenameRegionAsync(oldRegionId, newRegionId, null, null);
         }
 
-        public async Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId)
+        public Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId)
+        {
+            return RenameRegionAsync(oldRegionId, newRegionId, domainType, parentWgRegionId, null);
+        }
+
+        public async Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world)
         {
             Console.WriteLine("[VALIDATION_TRACE_BACKEND]     RegionService.RenameRegionAsync started");
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       oldRegionId: {oldRegionId}");
@@ -227,6 +238,10 @@ namespace knkwebapi_v2.Services
                         {
                             url += $"&parentRegionId={Uri.EscapeDataString(parentWgRegionId)}";
                         }
+                    }
+                    if (!string.IsNullOrWhiteSpace(world))
+                    {
+                        url += $"&world={Uri.EscapeDataString(world)}";
                     }
                     Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       POST {url}");
                     var response = await client.PostAsync(url, new StringContent(""));

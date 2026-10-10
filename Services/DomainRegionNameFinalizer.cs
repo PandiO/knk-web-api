@@ -77,10 +77,10 @@ namespace knkwebapi_v2.Services
             {
                 string? domainType = DomainTypeOf(domain);
                 string? parentRegionId = await ParentRegionIdAsync(domain);
-                _logger.LogInformation("Finalizing region name for {DomainType} {DomainId}: {TempName} -> {FinalName} (parent {ParentRegionId})",
-                    domainType ?? nameof(Domain), domain.Id, tempName, finalName, parentRegionId);
+                _logger.LogInformation("Finalizing region name for {DomainType} {DomainId}: {TempName} -> {FinalName} (parent {ParentRegionId}, world {World})",
+                    domainType ?? nameof(Domain), domain.Id, tempName, finalName, parentRegionId, domain.WorldName);
 
-                if (!await _regionService.RenameRegionAsync(tempName, finalName, domainType, parentRegionId))
+                if (!await _regionService.RenameRegionAsync(tempName, finalName, domainType, parentRegionId, domain.WorldName))
                 {
                     _logger.LogWarning("Failed to finalize region name for Domain {DomainId}: the plugin did not rename {TempName}",
                         domain.Id, tempName);

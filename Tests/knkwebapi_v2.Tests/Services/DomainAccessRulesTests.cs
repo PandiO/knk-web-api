@@ -19,7 +19,7 @@ public class DomainAccessRulesTests
     public DomainAccessRulesTests()
     {
         _service = new DomainService(_repo.Object, new Mock<IMapper>().Object,
-            new Mock<IDomainRegionNameFinalizer>().Object, NullLogger<DomainService>.Instance);
+            new Mock<IDomainRegionNameFinalizer>().Object, NullLogger<DomainService>.Instance, FixedWorldResolver.Instance);
     }
 
     [Fact]

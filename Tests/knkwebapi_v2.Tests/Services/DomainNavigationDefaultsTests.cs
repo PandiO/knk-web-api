@@ -142,7 +142,7 @@ public class DomainNavigationDefaultsTests
                 ["GateStructure"] = NavigationDestinationMode.Region,
             });
         var service = new DomainService(repo.Object, Mapper(), new Mock<IDomainRegionNameFinalizer>().Object,
-            NullLogger<DomainService>.Instance);
+            NullLogger<DomainService>.Instance, FixedWorldResolver.Instance);
 
         var result = await service.SearchAsync(new PagedQueryDto { PageNumber = 1, PageSize = 50 });
 
@@ -316,7 +316,7 @@ public class DomainNavigationDefaultsTests
         repo.Setup(r => r.GetRoadAccessDefaultsAsync()).ReturnsAsync(
             new Dictionary<string, RoadAccessRule>(StringComparer.OrdinalIgnoreCase) { ["Structure"] = RoadAccessRule.Ignored });
         var service = new DomainService(repo.Object, Mapper(), new Mock<IDomainRegionNameFinalizer>().Object,
-            NullLogger<DomainService>.Instance);
+            NullLogger<DomainService>.Instance, FixedWorldResolver.Instance);
 
         var result = await service.SearchAsync(new PagedQueryDto { PageNumber = 1, PageSize = 50 });
 

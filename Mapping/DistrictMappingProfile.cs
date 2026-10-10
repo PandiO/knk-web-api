@@ -31,6 +31,7 @@ namespace knkwebapi_v2.Mapping
                     AllowEntry = s.Town.AllowEntry,
                     AllowExit = s.Town.AllowExit,
                     WgRegionId = s.Town.WgRegionId,
+                    WorldName = s.Town.WorldName,
                     LocationId = s.Town.LocationId
                 }))
                 // Map embedded Streets as lightweight DTOs

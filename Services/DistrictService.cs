@@ -23,6 +23,7 @@ namespace knkwebapi_v2.Services
         private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly ILogger<DistrictService> _logger;
         private readonly ITeleportDestinationService _teleportDestinations;
+        private readonly IDomainWorldResolver _worlds;
 
         public DistrictService(
             IDistrictRepository repo,
@@ -32,7 +33,8 @@ namespace knkwebapi_v2.Services
             IMapper mapper,
             IDomainRegionNameFinalizer regionNames,
             ILogger<DistrictService> logger,
-            ITeleportDestinationService teleportDestinations)
+            ITeleportDestinationService teleportDestinations,
+            IDomainWorldResolver worlds)
         {
             _repo = repo;
             _townRepo = townRepo;
@@ -42,6 +44,7 @@ namespace knkwebapi_v2.Services
             _regionNames = regionNames;
             _logger = logger;
             _teleportDestinations = teleportDestinations;
+            _worlds = worlds;
         }
 
         public async Task<IEnumerable<DistrictDto>> GetAllAsync()
@@ -111,6 +114,8 @@ namespace knkwebapi_v2.Services
             var town = await _townRepo.GetByIdAsync(districtDto.TownId);
             if (town == null) throw new ArgumentException($"Town with id {districtDto.TownId} not found.", nameof(districtDto));
             await _teleportDestinations.ValidateSettingsAsync(districtDto);
+            // KNG-111: before the Location is saved, so a rejected world leaves nothing behind.
+            string worldName = await _worlds.ResolveAsync(WorldRequest(districtDto, null));
             // Cascade create/update for Location if embedded payload provided
             if (districtDto.Location != null)
             {
@@ -156,6 +161,7 @@ namespace knkwebapi_v2.Services
 
             var district = _mapper.Map<District>(districtDto);
             district.CreatedAt = DateTime.UtcNow;
+            district.WorldName = worldName;
             DomainTeleportSettings.Apply(district, districtDto);
             DomainNavigationDefaults.Apply(district, districtDto);
 
@@ -198,6 +204,7 @@ namespace knkwebapi_v2.Services
                 var town = await _townRepo.GetByIdAsync(districtDto.TownId);
                 if (town == null) throw new ArgumentException($"Town with id {districtDto.TownId} not found.", nameof(districtDto));
             }
+            string worldName = await _worlds.ResolveAsync(WorldRequest(districtDto, id));
             // Cascade create/update for Location if embedded payload provided
             if (districtDto.Location != null)
             {
@@ -246,6 +253,7 @@ namespace knkwebapi_v2.Services
             existing.WgRegionId = districtDto.WgRegionId;
             existing.LocationId = districtDto.LocationId;
             existing.TownId = districtDto.TownId;
+            existing.WorldName = worldName;
             DomainTeleportSettings.Apply(existing, districtDto);
             DomainNavigationDefaults.Apply(existing, districtDto);
 
@@ -289,5 +297,15 @@ namespace knkwebapi_v2.Services
 
             return resultDto;
         }
+
+        private static DomainWorldRequest WorldRequest(DistrictDto dto, int? id) => new()
+        {
+            DomainId = id,
+            RequestedWorld = dto.WorldName,
+            WgRegionId = dto.WgRegionId,
+            LocationWorld = dto.Location?.World,
+            LocationId = dto.Location?.Id ?? dto.LocationId,
+            ParentDomainId = dto.TownId
+        };
     }
 }

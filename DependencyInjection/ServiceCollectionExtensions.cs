@@ -179,6 +179,9 @@ namespace knkwebapi_v2.DependencyInjection
                 new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl)
             );
             services.AddScoped<IDomainRegionNameFinalizer, DomainRegionNameFinalizer>();
+            // KNG-111: each domain's Minecraft world (resolution, validation, backfill of older rows).
+            services.AddScoped<IDomainWorldResolver, DomainWorldResolver>();
+            services.AddScoped<IDomainWorldBackfill, DomainWorldBackfill>();
 
             // Currency ledger (docs/specs/currency-payments/IMPLEMENTATION_PLAN.md Phases 1-2)
             services.AddScoped<ICurrencyRepository, CurrencyRepository>();

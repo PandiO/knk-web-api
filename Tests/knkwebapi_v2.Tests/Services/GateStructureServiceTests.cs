@@ -35,7 +35,8 @@ public class GateStructureServiceTests
             _locationRepo.Object,
             _locationService.Object,
             _mapper.Object,
-            _regionNames.Object);
+            _regionNames.Object,
+            FixedWorldResolver.Instance);
     }
 
     private static GateStructureDto Dto(string name) =>
