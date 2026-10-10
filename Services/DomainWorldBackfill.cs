@@ -11,9 +11,10 @@ using Microsoft.Extensions.Logging;
 namespace knkwebapi_v2.Services
 {
     /// <summary>
-    /// Fills <see cref="Domain.WorldName"/> on domains created before KNG-111. The migration already copied the world of
-    /// each domain's Location and its parent; this pass also uses the game server's report of which world(s) hold each
-    /// region. A domain is only filled when its sources agree; the rest are listed for an admin to choose in the form.
+    /// Fills <see cref="Domain.WorldName"/> on domains created before KNG-111 (the migration leaves them NULL). The game
+    /// server's report of which world(s) hold each region decides; the domain's Location and its parent only choose
+    /// between several reported worlds, or stand in when the region is in no reported world. A domain is only filled
+    /// when its sources agree; the rest are listed for an admin to choose in the form.
     /// </summary>
     public interface IDomainWorldBackfill
     {
@@ -97,33 +98,38 @@ namespace knkwebapi_v2.Services
             return new DomainWorldBackfillResultDto { Updated = updated, Unresolved = unresolved };
         }
 
-        /// <summary>The domain's world when its Location, its region report and its parent don't contradict each other.</summary>
+        /// <summary>
+        /// The domain's world: where its region is, when that is one world; else the world its Location and parent agree on,
+        /// when that is among the region's worlds (or the region is in none). Null when anything contradicts.
+        /// </summary>
         private static string? Decide(Domain domain, Dictionary<int, Domain> byId, Dictionary<string, List<string>> reported,
             Dictionary<int, string?> locationWorlds)
         {
             var candidates = Candidates(domain, reported);
-            string? parentWorld = ParentWorld(domain, byId);
             string? locationWorld = domain.LocationId is int locationId && locationWorlds.TryGetValue(locationId, out var lw)
                 ? Normalize(lw)
                 : null;
-
-            bool FitsParent(string world) => parentWorld == null || Same(world, parentWorld);
-            bool FitsRegion(string world) => candidates.Count == 0 || candidates.Any(c => Same(c, world));
-
-            if (locationWorld != null)
+            var hints = new[] { locationWorld, ParentWorld(domain, byId) }
+                .Where(w => w != null)
+                .Select(w => w!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (hints.Count > 1)
             {
-                return FitsParent(locationWorld) && FitsRegion(locationWorld) ? locationWorld : null;
+                return null; // Location and parent disagree.
             }
+            string? hint = hints.FirstOrDefault();
+
             if (candidates.Count == 1)
             {
-                return FitsParent(candidates[0]) ? candidates[0] : null;
+                return hint == null || Same(hint, candidates[0]) ? candidates[0] : null;
             }
-            if (parentWorld != null && FitsRegion(parentWorld))
+            if (candidates.Count > 1)
             {
-                // Region in several worlds (or not found in any): the parent decides.
-                return parentWorld;
+                return hint != null && candidates.Any(c => Same(c, hint)) ? hint : null;
             }
-            return null;
+            // The region is in no reported world (or wasn't reported): the Location/parent world, if any.
+            return hint;
         }
 
         private static List<string> Candidates(Domain domain, Dictionary<string, List<string>> reported) =>

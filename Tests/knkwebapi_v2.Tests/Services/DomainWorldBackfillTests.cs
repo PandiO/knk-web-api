@@ -65,6 +65,22 @@ public class DomainWorldBackfillTests : IDisposable
     }
 
     [Fact]
+    public async Task ARegionInNoReportedWorldTakesItsParentsWorldButNotAContradictingLocation()
+    {
+        _context.Towns.Add(new Town { Id = 1, Name = "T", Description = "", WgRegionId = "town_1", WorldName = "hub" });
+        _context.Locations.Add(new Location { Id = 50, Name = "spawn", World = "gameplay" });
+        _context.Districts.Add(new District { Id = 2, Name = "Unbuilt", Description = "", WgRegionId = "gone", TownId = 1 });
+        _context.Districts.Add(new District { Id = 3, Name = "Odd", Description = "", WgRegionId = "odd", TownId = 1, LocationId = 50 });
+        await _context.SaveChangesAsync();
+
+        var result = await _backfill.ApplyAsync(Report(("gone", Array.Empty<string>())));
+
+        Assert.Equal(1, result.Updated);
+        Assert.Equal("hub", (await _context.Domains.FindAsync(2))!.WorldName);
+        Assert.Equal(3, Assert.Single(result.Unresolved).Id);
+    }
+
+    [Fact]
     public async Task ADomainThatAlreadyHasAWorldIsNeverChanged()
     {
         _context.Towns.Add(new Town { Id = 1, Name = "T", Description = "", WgRegionId = "town_1", WorldName = "world" });
