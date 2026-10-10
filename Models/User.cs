@@ -265,6 +265,16 @@ public class User : PermissionHolder
     public string? TransferLockReason { get; set; }
 
     public DateTime? TransferLockedAt { get; set; }
+
+    // ===== FIRST-JOIN KITS (docs/specs/kits DESIGN.md §4.4, KNG-81) =====
+
+    /// <summary>
+    /// When this player's first-join kits were granted; null until then. Set under the user's
+    /// row lock in the same transaction as the kit claims, so a repeated or concurrent
+    /// grant-first-join call (a quick relog while the plugin still caches isNewUser=true) grants
+    /// nothing a second time. Service-managed only, never through the generic user edit.
+    /// </summary>
+    public DateTime? FirstJoinKitsGrantedAt { get; set; }
 }
 
 /// <summary>
