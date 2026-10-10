@@ -1,10 +1,11 @@
 namespace knkwebapi_v2.Attributes
 {
     /// <summary>
-    /// Owner-only permission nodes (KNG-34 D12, DESIGN.md §F.13). Never granted by any seed or
+    /// Owner-only permission nodes (KNG-34 D12, D24, DESIGN.md §F.13). Never granted by any seed or
     /// migration: the owner grants them to themselves (POST api/users/{id}/grants). Enforced with
-    /// <see cref="RequireOwnerPermissionAttribute"/>, which demands an exact grant, because the
-    /// wildcard resolver lets <c>*</c> and <c>knk.*</c> match <c>knk.owner.*</c>.
+    /// <see cref="RequireOwnerPermissionAttribute"/>. The nodes in <see cref="ExactGrantOnly"/>
+    /// (personal diagnostic data, GDPR deletion) need an exact grant, because the wildcard resolver
+    /// lets <c>*</c> and <c>knk.*</c> match <c>knk.owner.*</c>; the others resolve like any node.
     /// </summary>
     public static class OwnerPermissions
     {
@@ -24,5 +25,13 @@ namespace knkwebapi_v2.Attributes
 
         /// <summary>Leaderboard exclusions (link 5).</summary>
         public const string LeaderboardManage = "knk.owner.leaderboard.manage";
+
+        /// <summary>
+        /// Owner nodes a wildcard never unlocks (D24): they reach per-player diagnostic data or run
+        /// irreversible GDPR deletions. World analytics (anonymous) and leaderboard exclusions also
+        /// accept <c>*</c>, <c>knk.*</c> and <c>knk.owner.*</c>.
+        /// </summary>
+        public static readonly IReadOnlySet<string> ExactGrantOnly =
+            new HashSet<string>(StringComparer.Ordinal) { TelemetryView, TelemetryManage, PrivacyManage };
     }
 }

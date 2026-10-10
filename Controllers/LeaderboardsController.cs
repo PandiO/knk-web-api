@@ -15,7 +15,7 @@ namespace knkwebapi_v2.Controllers;
 /// Leaderboards (KNG-34, knk-workspace docs/specs/player-statistics/IMPLEMENTATION_PLAN.md §3.2,
 /// DESIGN.md §F.11). Boards are served from precomputed snapshots. The viewer (JWT user, or plugin
 /// + X-Acting-User-Id) gets their own row; anonymous visitors may read always-public boards only
-/// (L1-3: a player's "everyone" means signed-in viewers). Exclusions are owner-only (exact grant).
+/// (L1-3: a player's "everyone" means signed-in viewers). Exclusions are owner-only (knk.owner.leaderboard.manage; wildcards count — D24).
 /// </summary>
 [ApiController]
 [Route("api/leaderboards")]

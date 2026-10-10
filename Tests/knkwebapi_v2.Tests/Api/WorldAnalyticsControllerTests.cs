@@ -11,7 +11,7 @@ namespace knkwebapi_v2.Tests.Api;
 
 /// <summary>
 /// WorldAnalyticsController (IMPLEMENTATION_PLAN.md §3.4; link 7 acceptance criterion 2): the batch
-/// route is plugin-only, every read needs the exact owner grant of knk.owner.analytics.view, the
+/// route is plugin-only, every read needs knk.owner.analytics.view (wildcards count, D24), the
 /// kill switch answers 503 and parameters are validated.
 /// </summary>
 public class WorldAnalyticsControllerTests : IDisposable

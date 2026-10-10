@@ -15,8 +15,8 @@ namespace knkwebapi_v2.Controllers;
 /// <summary>
 /// World analytics (KNG-34 link 7, knk-workspace docs/specs/player-statistics/
 /// IMPLEMENTATION_PLAN.md §3.4, DESIGN.md D10/D11): the plugin posts anonymous per-window aggregates
-/// (movement cells, menu funnel steps, domain interactions); every read is owner-only (exact grant of
-/// knk.owner.analytics.view — wildcards never unlock it). Ranges are inclusive local days
+/// (movement cells, menu funnel steps, domain interactions); every read is owner-only
+/// (knk.owner.analytics.view; the data is anonymous, so wildcards such as knk.* count — D24). Ranges are inclusive local days
 /// (yyyy-MM-dd, Statistics:TimeZone), default the last 7 days.
 /// </summary>
 [ApiController]

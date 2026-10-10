@@ -15,7 +15,8 @@ namespace knkwebapi_v2.Tests.Api;
 /// <summary>
 /// Owner-only nodes need an exact grant (KNG-34 D12, L1-17; link 2 acceptance criterion 8): the
 /// real PermissionResolutionService resolves <c>*</c>, <c>knk.*</c> and <c>knk.owner.*</c> to the
-/// owner node, and the attribute still refuses them.
+/// owner node, and the attribute still refuses them — for the personal-data and GDPR nodes. World
+/// analytics and leaderboard exclusions accept wildcards (D24).
 /// </summary>
 public class RequireOwnerPermissionAttributeTests
 {
@@ -34,10 +35,10 @@ public class RequireOwnerPermissionAttributeTests
         return new PermissionResolutionService(users.Object, grants.Object, groups.Object);
     }
 
-    private static async Task<int?> Run(HttpContext http, IPermissionResolutionService permissions)
+    private static async Task<int?> Run(HttpContext http, IPermissionResolutionService permissions, string node = Node)
     {
         var context = new AuthorizationFilterContext(new ActionContext(http, new RouteData(), new ActionDescriptor()), new List<IFilterMetadata>());
-        await new RequireOwnerPermissionFilter(Node, permissions).OnAuthorizationAsync(context);
+        await new RequireOwnerPermissionFilter(node, permissions).OnAuthorizationAsync(context);
         return context.Result switch
         {
             null => null,
@@ -67,6 +68,51 @@ public class RequireOwnerPermissionAttributeTests
         Assert.True((await permissions.CheckAsync(7, Node))!.Allowed); // the resolver says yes …
 
         Assert.Equal(403, await Run(ServiceAuthTestHelper.WebUser(7), permissions)); // … the attribute doesn't
+    }
+
+    [Theory]
+    [InlineData(OwnerPermissions.TelemetryManage, "knk.*")]
+    [InlineData(OwnerPermissions.PrivacyManage, "*")]
+    [InlineData(OwnerPermissions.PrivacyManage, "knk.*")]
+    [InlineData(OwnerPermissions.PrivacyManage, "knk.owner.*")]
+    public async Task WildcardGrants_Get403_ForEveryExactGrantNode(string node, string wildcard)
+    {
+        Assert.Equal(403, await Run(ServiceAuthTestHelper.WebUser(7), Resolver((7, wildcard, true)), node));
+        Assert.Null(await Run(ServiceAuthTestHelper.WebUser(7), Resolver((7, node, true)), node));
+    }
+
+    [Theory]
+    [InlineData(OwnerPermissions.AnalyticsView, "*")]
+    [InlineData(OwnerPermissions.AnalyticsView, "knk.*")]
+    [InlineData(OwnerPermissions.AnalyticsView, "knk.owner.*")]
+    [InlineData(OwnerPermissions.AnalyticsView, OwnerPermissions.AnalyticsView)]
+    [InlineData(OwnerPermissions.LeaderboardManage, "knk.*")]
+    [InlineData(OwnerPermissions.LeaderboardManage, "knk.owner.leaderboard.*")]
+    public async Task AnalyticsAndLeaderboardNodes_AcceptWildcards(string node, string granted)
+    {
+        var permissions = Resolver((7, granted, true));
+
+        Assert.Null(await Run(ServiceAuthTestHelper.WebUser(7), permissions, node));
+        Assert.Null(await Run(ServiceAuthTestHelper.Plugin(actingUserId: 7), permissions, node));
+    }
+
+    [Theory]
+    [InlineData(OwnerPermissions.AnalyticsView)]
+    [InlineData(OwnerPermissions.LeaderboardManage)]
+    public async Task AnalyticsAndLeaderboardNodes_RefuseStaffWildcards_DenialsAndNoGrant(string node)
+    {
+        Assert.Equal(403, await Run(ServiceAuthTestHelper.WebUser(7), Resolver((7, "knk.admin.*", true)), node));
+        Assert.Equal(403, await Run(ServiceAuthTestHelper.WebUser(7), Resolver((7, "knk.*", true), (7, node, false)), node));
+        Assert.Equal(403, await Run(ServiceAuthTestHelper.WebUser(7), Resolver(), node));
+        Assert.Equal(401, await Run(ServiceAuthTestHelper.Anonymous(), Resolver((7, node, true)), node));
+    }
+
+    [Fact]
+    public void ExactGrantOnly_IsTheTelemetryAndPrivacyNodes()
+    {
+        Assert.Equal(
+            new[] { OwnerPermissions.PrivacyManage, OwnerPermissions.TelemetryManage, OwnerPermissions.TelemetryView },
+            OwnerPermissions.ExactGrantOnly.OrderBy(n => n, StringComparer.Ordinal));
     }
 
     [Fact]
