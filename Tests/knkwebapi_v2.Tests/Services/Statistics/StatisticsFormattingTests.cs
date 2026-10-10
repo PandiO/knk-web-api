@@ -1,3 +1,4 @@
+using System.Globalization;
 using knkwebapi_v2.Services.Statistics;
 using Xunit;
 
@@ -19,7 +20,9 @@ public class StatisticsFormattingTests
     [InlineData("pvp_kills", "3", "3")]
     public void Display(string metric, string raw, string expected)
     {
-        Assert.Equal(decimal.Parse(expected), StatisticsFormatting.Display(metric, decimal.Parse(raw)));
+        // Invariant: on a machine with a comma decimal separator "23.45" would parse as 2345.
+        Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture),
+            StatisticsFormatting.Display(metric, decimal.Parse(raw, CultureInfo.InvariantCulture)));
     }
 
     [Fact]
