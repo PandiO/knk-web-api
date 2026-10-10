@@ -63,6 +63,10 @@ public class PrivacyDeletionServiceTests : IDisposable
             new PermissionGrant { HolderId = 50, Node = "knk.group" });
         c.UserPermissionGroups.AddRange(new UserPermissionGroup { UserId = 1, PermissionGroupId = 50 },
             new UserPermissionGroup { UserId = 2, PermissionGroupId = 50 });
+        // Road-builder proposals name who asked for the build (KNG-27): alice's name is cleared, bob's stays.
+        c.RoadTiles.Add(new RoadTile { Id = 1, World = "world" });
+        c.RoadTileProposals.AddRange(new RoadTileProposal { TileId = 1, CreatedBy = "alice" },
+            new RoadTileProposal { TileId = 1, CreatedBy = "bob" }, new RoadTileProposal { TileId = 1, CreatedBy = null });
         c.AuditLogEntries.AddRange(new AuditLogEntry { ActorUserId = 2, TargetUserId = 1, Action = AuditAction.TitleChanged },
             new AuditLogEntry { ActorUserId = 1, TargetUserId = 2, Action = AuditAction.TitleChanged },
             new AuditLogEntry { ActorUserId = null, TargetUserId = 3, Action = AuditAction.TitleChanged });
@@ -262,6 +266,7 @@ public class PrivacyDeletionServiceTests : IDisposable
         Assert.Equal(3, result.Deleted["player_pvp_kill_pairs_daily"]);
         Assert.Equal((2, 1, 1, 1, 2), (result.Deleted["private_message_logs"], result.Deleted["link_codes"], result.Deleted["permission_grants"],
             result.Deleted["user_permission_groups"], result.Deleted["audit_log_entries"]));
+        Assert.Equal(1, result.Deleted["road_tile_proposals.created_by"]);
         Assert.Equal(PrivacyRequestStatus.Pending, preview.Request.Status);
         Assert.Equal((6, 3, 3), (_db.NewContext().PlayerStatDailies.Count(), _db.NewContext().PlayerStatTotals.Count(), _db.NewContext().TelemetryEvents.Count(e => e.UserId != null)));
         Assert.Equal("alice", _db.NewContext().Users.Single(u => u.Id == 1).Username);
@@ -300,6 +305,8 @@ public class PrivacyDeletionServiceTests : IDisposable
         Assert.Equal(2, Assert.Single(c.UserPermissionGroups).UserId);
         var audit = Assert.Single(c.AuditLogEntries); // the row alice wrote about bob stays (bob's history)
         Assert.Equal((2, (int?)1), (audit.TargetUserId, audit.ActorUserId));
+        // Road proposals stay (road data); only alice's name is gone.
+        Assert.Equal(new string?[] { null, null, "bob" }, c.RoadTileProposals.Select(p => p.CreatedBy).OrderBy(n => n).ToArray());
     }
 
     [Fact]

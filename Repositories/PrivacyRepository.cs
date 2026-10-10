@@ -16,6 +16,7 @@ namespace knkwebapi_v2.Repositories
     /// GDPR deletion data access (KNG-34 link 6, DESIGN.md §F.14 + link 5's additions + developer
     /// decisions 2026-10-03). The erasure scope is listed once in <see cref="Scopes"/> so counting
     /// (dry run) and deleting can never disagree. Ledger and Siege match rows are never touched here.
+    /// Road-builder proposals keep their road data; only the requesting player's name is cleared.
     /// </summary>
     public class PrivacyRepository : IPrivacyRepository
     {
@@ -134,6 +135,8 @@ namespace knkwebapi_v2.Repositories
             {
                 counts[table] = await count(userIds, ct);
             }
+            var names = await UsernamesOfAsync(userIds, ct);
+            counts[RoadProposalNamesKey] = await RoadProposalsNaming(names).CountAsync(ct);
             return counts;
         }
 
@@ -144,6 +147,8 @@ namespace knkwebapi_v2.Repositories
             {
                 counts[table] = await delete(userIds, ct);
             }
+            // Runs before PseudonymizeUsersAsync, while the usernames are still known.
+            counts[RoadProposalNamesKey] = await ClearRoadProposalNamesAsync(await UsernamesOfAsync(userIds, ct), ct);
             return counts;
         }
 
@@ -169,6 +174,34 @@ namespace knkwebapi_v2.Repositories
             }
             await _context.SaveChangesAsync(ct);
             return users.Count;
+        }
+
+        /// <summary>Result key for the road-builder proposals whose requester name was cleared.</summary>
+        public const string RoadProposalNamesKey = "road_tile_proposals.created_by";
+
+        private async Task<List<string>> UsernamesOfAsync(IReadOnlyCollection<int> userIds, CancellationToken ct)
+        {
+            var ids = userIds.ToList();
+            return await _context.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).Select(u => u.Username).ToListAsync(ct);
+        }
+
+        /// <summary>Road-builder proposals (KNG-27) store the requesting player's name as plain text.</summary>
+        private IQueryable<RoadTileProposal> RoadProposalsNaming(List<string> names) =>
+            _context.RoadTileProposals.Where(p => p.CreatedBy != null && names.Contains(p.CreatedBy));
+
+        /// <summary>Clears the player's name from road-builder proposals (developer decision 2026-10-10); the
+        /// proposals themselves are road data and stay.</summary>
+        private async Task<int> ClearRoadProposalNamesAsync(List<string> names, CancellationToken ct)
+        {
+            if (names.Count == 0) return 0;
+            if (IsRelational)
+            {
+                return await RoadProposalsNaming(names).ExecuteUpdateAsync(u => u.SetProperty(p => p.CreatedBy, (string?)null), ct);
+            }
+            var rows = await RoadProposalsNaming(names).ToListAsync(ct);
+            rows.ForEach(p => p.CreatedBy = null);
+            await _context.SaveChangesAsync(ct);
+            return rows.Count;
         }
 
         /// <summary>The username a pseudonymized account gets.</summary>
