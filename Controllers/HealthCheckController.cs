@@ -40,10 +40,12 @@ public class HealthCheckController : ControllerBase
 
     /// <summary>
     /// Readiness probe: indicates if the service is ready to accept traffic.
-    /// Checks dependencies (database, etc.) and returns 200 only if all are healthy.
+    /// Runs every registered check, including the database (KNG-115). Returns 200 when the
+    /// result is healthy or degraded (degraded still serves requests) and 503 when unhealthy.
+    /// The Minecraft plugin's ApiConnectivity probe reads this endpoint.
     /// </summary>
-    /// <response code="200">Service and all dependencies are ready.</response>
-    /// <response code="503">Service or dependencies are not ready.</response>
+    /// <response code="200">Service is ready (status healthy or degraded).</response>
+    /// <response code="503">Service or a dependency such as the database is not ready.</response>
     [HttpGet("ready")]
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status503ServiceUnavailable)]
@@ -63,9 +65,15 @@ public class HealthCheckController : ControllerBase
             response.Checks[entry.Key] = entry.Value.Status.ToString().ToLower();
         }
 
-        var statusCode = report.Status == HealthStatus.Healthy ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable;
+        var statusCode = report.Status == HealthStatus.Unhealthy ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status200OK;
 
-        _logger.LogInformation("Health check: {Status}, entries: {Count}", report.Status, report.Entries.Count);
+        if (report.Status == HealthStatus.Unhealthy)
+        {
+            _logger.LogWarning("Readiness check unhealthy: {Checks}",
+                string.Join(", ", report.Entries.Select(e => $"{e.Key}={e.Value.Status}")));
+        }
+
+        _logger.LogDebug("Health check: {Status}, entries: {Count}", report.Status, report.Entries.Count);
 
         return StatusCode(statusCode, response);
     }
