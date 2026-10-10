@@ -118,6 +118,7 @@ namespace knkwebapi_v2.DependencyInjection
             // Road navigation (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
             services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();
             services.AddScoped<IRoadNetworkService, RoadNetworkService>();
+            services.AddScoped<IDomainNavigationSettingsService, DomainNavigationSettingsService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();
@@ -200,6 +201,18 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<CurrencyAnomalyDetector>();
             services.AddScoped<ICurrencyAlertService, CurrencyAlertService>();
             services.AddHostedService<CurrencyMonitorService>();
+
+            // Location retention (KNG-80): orphan check, review items, weekly scheduler.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.LocationRetentionOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.LocationRetentionOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.LocationRetention.LocationRetentionRunGate>();
+            services.AddScoped<knkwebapi_v2.Services.LocationRetention.ILocationReferenceSource, knkwebapi_v2.Services.LocationRetention.GameSettingsLocationReferenceSource>();
+            services.AddScoped<knkwebapi_v2.Services.LocationRetention.ILocationReferenceSource, knkwebapi_v2.Services.LocationRetention.FormDraftLocationReferenceSource>();
+            services.AddScoped<ILocationRetentionService, knkwebapi_v2.Services.LocationRetention.LocationRetentionService>();
+            services.AddHostedService<knkwebapi_v2.Services.LocationRetention.LocationRetentionScheduler>();
 
             // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();
