@@ -14,6 +14,7 @@ namespace knkwebapi_v2.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RankExpirySweepService> _logger;
         private readonly TimeSpan _interval;
+        private readonly ConnectivityAwareFailureLogger _failures;
 
         public RankExpirySweepService(IServiceProvider serviceProvider, ILogger<RankExpirySweepService> logger,
             TimeSpan? interval = null)
@@ -21,6 +22,7 @@ namespace knkwebapi_v2.Services
             _serviceProvider = serviceProvider;
             _logger = logger;
             _interval = interval ?? DefaultInterval;
+            _failures = new ConnectivityAwareFailureLogger(logger, "Rank expiry sweep");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -42,11 +44,12 @@ namespace knkwebapi_v2.Services
                         if (notified > 0)
                             _logger.LogInformation("Rank expiry sweep: {Count} user(s) updated/notified", notified);
                         since = now;
+                        _failures.Succeeded();
                     }
                     catch (Exception ex)
                     {
                         // Keep `since` so the next sweep covers this window again.
-                        _logger.LogError(ex, "Rank expiry sweep failed");
+                        _failures.Failed(ex, "Rank expiry sweep failed");
                     }
                 }
                 while (await timer.WaitForNextTickAsync(stoppingToken));

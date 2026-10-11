@@ -23,6 +23,9 @@ namespace knkwebapi_v2.Services
         private readonly CurrencyMonitorOptions _options;
         private DateTime _nextRules = DateTime.MinValue;
         private DateTime _nextReconciliation = DateTime.MinValue;
+        // Per step: the signals step only touches the database when there is something to store,
+        // so a shared state would read its success as "the database is back" mid-outage.
+        private readonly Dictionary<string, ConnectivityAwareFailureLogger> _failures = new();
 
         public CurrencyMonitorService(IServiceProvider serviceProvider, ILogger<CurrencyMonitorService> logger,
             IOptions<CurrencyMonitorOptions>? options = null)
@@ -92,6 +95,7 @@ namespace knkwebapi_v2.Services
                 {
                     _logger.LogInformation("Currency monitor {Step}: {Count} alert(s) raised", step, raised);
                 }
+                Failures(step).Succeeded();
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -99,8 +103,18 @@ namespace knkwebapi_v2.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Currency monitor step {Step} failed", step);
+                Failures(step).Failed(ex, "Currency monitor step {Step} failed", step);
             }
+        }
+
+        private ConnectivityAwareFailureLogger Failures(string step)
+        {
+            if (!_failures.TryGetValue(step, out var failures))
+            {
+                failures = new ConnectivityAwareFailureLogger(_logger, $"Currency monitor step {step}");
+                _failures[step] = failures;
+            }
+            return failures;
         }
     }
 }
