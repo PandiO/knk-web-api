@@ -1155,6 +1155,33 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("domain_discovery_overrides", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.DomainInteractionDaily", b =>
+                {
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<int>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UniquePlayers")
+                        .HasColumnType("int");
+
+                    b.HasKey("Day", "DomainId", "Kind")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("DomainId", "Day")
+                        .HasDatabaseName("IX_domain_interactions_daily_domain_day");
+
+                    b.ToTable("domain_interactions_daily", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.DomainNavigationDefault", b =>
                 {
                     b.Property<string>("DomainType")
@@ -2392,6 +2419,68 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("kit_purchases", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("BoardKey")
+                        .IsRequired()
+                        .HasMaxLength(96)
+                        .HasColumnType("varchar(96)");
+
+                    b.Property<int>("EntryCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<byte>("Period")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateOnly?>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("BoardKey", "Period", "IsCurrent");
+
+                    b.ToTable("leaderboard_snapshots", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshotEntry", b =>
+                {
+                    b.Property<long>("SnapshotId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ReachedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
+
+                    b.HasKey("SnapshotId", "UserId")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SnapshotId", "Rank");
+
+                    b.ToTable("leaderboard_snapshot_entries", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.LinkCode", b =>
                 {
                     b.Property<int>("Id")
@@ -3241,6 +3330,34 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("lootbox_type_grade_weights", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.MenuFunnelDaily", b =>
+                {
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<string>("MenuKey")
+                        .HasMaxLength(191)
+                        .HasColumnType("varchar(191)");
+
+                    b.Property<string>("Step")
+                        .HasMaxLength(96)
+                        .HasColumnType("varchar(96)");
+
+                    b.Property<byte>("Outcome")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("int");
+
+                    b.HasKey("Day", "MenuKey", "Step", "Outcome")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("MenuKey", "Day")
+                        .HasDatabaseName("IX_menu_funnel_daily_menu_day");
+
+                    b.ToTable("menu_funnel_daily", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>
                 {
                     b.Property<int>("Id")
@@ -3608,6 +3725,351 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("permission_holders", (string)null);
 
                     b.UseTptMappingStrategy();
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerPvpKillPairDaily", b =>
+                {
+                    b.Property<int>("KillerUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VictimUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ContextKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("int");
+
+                    b.HasKey("KillerUserId", "VictimUserId", "Day", "ContextKey")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Day");
+
+                    b.ToTable("player_pvp_kill_pairs_daily", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerStatBatch", b =>
+                {
+                    b.Property<Guid>("BatchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("EntryCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("RejectedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ServerName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("BatchId")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ReceivedAt");
+
+                    b.ToTable("player_stat_batches", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerStatDaily", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<string>("MetricKey")
+                        .HasMaxLength(48)
+                        .HasColumnType("varchar(48)");
+
+                    b.Property<string>("ContextKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
+
+                    b.HasKey("UserId", "Day", "MetricKey", "ContextKey")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("MetricKey", "ContextKey", "Day")
+                        .HasDatabaseName("IX_player_stat_daily_metric_day");
+
+                    b.ToTable("player_stat_daily", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerStatProfile", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FirstSessionAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("LeaderboardExcluded")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("LeaderboardExcludedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LeaderboardExcludedReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("UserId")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("player_stat_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerStatSession", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("ActiveSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AfkSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<byte?>("EndReason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("LastHeartbeatAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ServerName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<Guid>("SessionKey")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SessionKey")
+                        .IsUnique();
+
+                    b.HasIndex("EndedAt", "LastHeartbeatAt");
+
+                    b.HasIndex("UserId", "StartedAt");
+
+                    b.ToTable("player_stat_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerStatTotal", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MetricKey")
+                        .HasMaxLength(48)
+                        .HasColumnType("varchar(48)");
+
+                    b.Property<string>("ContextKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime>("ReachedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
+
+                    b.HasKey("UserId", "MetricKey", "ContextKey")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("MetricKey", "ContextKey", "Value");
+
+                    b.ToTable("player_stat_totals", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerStatVisibility", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SettingKey")
+                        .HasMaxLength(48)
+                        .HasColumnType("varchar(48)");
+
+                    b.Property<string>("ContextKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("Visibility")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.HasKey("UserId", "SettingKey", "ContextKey")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SettingKey", "ContextKey", "Visibility");
+
+                    b.ToTable("player_stat_visibility", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerTitleChange", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("CurrencyEntryId")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("Direction")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<long>("ExperienceAfter")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ExperienceBefore")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("FromTitleBracketId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FromTitleName")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("ToTitleBracketId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ToTitleName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CurrencyEntryId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "ChangedAt");
+
+                    b.ToTable("player_title_changes", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PrivacyDeletionRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CancelledByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ConfirmationExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ConfirmationTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("DueAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ExecutedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ExecutedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("RequestedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("json");
+
+                    b.Property<DateTime?>("ScheduledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("Source")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ConfirmationTokenHash");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Status", "DueAt");
+
+                    b.HasIndex("Status", "ScheduledAt");
+
+                    b.ToTable("privacy_deletion_requests", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.PrivateMessageLogEntry", b =>
@@ -4759,6 +5221,42 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("siege_teams", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.StatisticsProjectedSource", b =>
+                {
+                    b.Property<string>("SourceType")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<long>("SourceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ProjectedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("SourceType", "SourceId")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("statistics_projected_sources", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StatisticsProjectionCursor", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(48)
+                        .HasColumnType("varchar(48)");
+
+                    b.Property<long>("LastSourceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Name")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("statistics_projection_cursors", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.StepCondition", b =>
                 {
                     b.Property<int>("Id")
@@ -4863,6 +5361,183 @@ namespace knkwebapi_v2.Migrations
                         .HasName("PRIMARY");
 
                     b.ToTable("tags", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TelemetryEnhancedTarget", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("TestRunId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.ToTable("telemetry_enhanced_targets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_telemetry_enhanced_targets_OneTarget", "(`UserId` IS NULL) <> (`TestRunId` IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TelemetryEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("AppVersion")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Feature")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<byte>("Level")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int?>("MatchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("ObjectId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("ObjectType")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("Outcome")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("json");
+
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<short>("SchemaVersion")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("ServerName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<long>("ServerSeq")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SessionKey")
+                        .HasColumnType("char(36)");
+
+                    b.Property<byte>("Source")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int?>("TestRunId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CorrelationId");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("SessionKey");
+
+                    b.HasIndex("MatchId", "OccurredAt");
+
+                    b.HasIndex("Name", "OccurredAt");
+
+                    b.HasIndex("TestRunId", "OccurredAt");
+
+                    b.HasIndex("UserId", "OccurredAt");
+
+                    b.ToTable("telemetry_events", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TelemetryTestRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("telemetry_test_runs", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.TeleportFeeVoid", b =>
@@ -5143,6 +5818,67 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("workflow_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.WorldAnalyticsBatch", b =>
+                {
+                    b.Property<Guid>("BatchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("RejectedCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ServerName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("WindowStart")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("BatchId")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ReceivedAt");
+
+                    b.ToTable("world_analytics_batches", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.WorldMovementCellDaily", b =>
+                {
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<string>("World")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<short>("CellSize")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("CellX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CellZ")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Samples")
+                        .HasColumnType("int");
+
+                    b.HasKey("Day", "World", "CellSize", "CellX", "CellZ")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("World", "Day")
+                        .HasDatabaseName("IX_world_movement_cells_daily_world_day");
+
+                    b.ToTable("world_movement_cells_daily", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.WorldTask", b =>
                 {
                     b.Property<int>("Id")
@@ -5402,6 +6138,9 @@ namespace knkwebapi_v2.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("FirstJoinKitsGrantedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime?>("FrozenAt")
                         .HasColumnType("datetime(6)");
@@ -6290,6 +7029,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Kit");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshotEntry", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.LeaderboardSnapshot", "Snapshot")
+                        .WithMany("Entries")
+                        .HasForeignKey("SnapshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Snapshot");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LinkCode", b =>
@@ -7342,6 +8092,11 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.Kit", b =>
                 {
                     b.Navigation("Contents");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshot", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawnArea", b =>

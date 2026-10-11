@@ -522,6 +522,76 @@ public class KitServiceTests
         Assert.Equal(200, results[0].KitId);
     }
 
+    // KNG-81: the plugin calls grant-first-join whenever it reads isNewUser=true, so a relog
+    // inside its cache TTL calls it again. The second call must grant nothing.
+    [Fact]
+    public async Task GrantFirstJoinKitsAsync_RepeatedCall_GrantsKitsAndTokensOnce()
+    {
+        var lootbox = new Mock<ILootboxTokenGrantService>();
+        var service = ServiceWithLootbox(lootbox.Object);
+        var user = new User { Id = 27, Username = "ari" };
+        var kit = PlainKit(300); kit.GrantOnFirstJoin = true;
+        SetUser(user);
+        _kitRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Kit> { kit });
+        var nextClaimId = 1;
+        _kitRepo.Setup(r => r.AddClaimAsync(It.IsAny<KitClaim>()))
+            .ReturnsAsync((KitClaim c) => { c.Id = nextClaimId++; return c; });
+
+        var first = await service.GrantFirstJoinKitsAsync(user.Id);
+        var second = await service.GrantFirstJoinKitsAsync(user.Id);
+
+        Assert.Single(first);
+        Assert.Empty(second);
+        Assert.NotNull(user.FirstJoinKitsGrantedAt);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Once);
+        lootbox.Verify(l => l.IssueForKitAsync(user.Id, kit.Id, 1, null), Times.Once);
+        lootbox.Verify(l => l.IssueForKitAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int?>()), Times.Once);
+        _userRepo.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => ids.Single() == user.Id), It.IsAny<Func<Task>>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GrantFirstJoinKitsAsync_AlreadyGranted_GrantsNothing()
+    {
+        var user = new User { Id = 28, Username = "bo", FirstJoinKitsGrantedAt = DateTime.UtcNow.AddDays(-3) };
+        var kit = PlainKit(301); kit.GrantOnFirstJoin = true;
+        SetUser(user);
+        _kitRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Kit> { kit });
+
+        var results = await _service.GrantFirstJoinKitsAsync(user.Id);
+
+        Assert.Empty(results);
+        _kitRepo.Verify(r => r.AddClaimAsync(It.IsAny<KitClaim>()), Times.Never);
+        _userRepo.Verify(r => r.UpdateUserAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GrantFirstJoinKitsAsync_NoFlaggedKits_StillMarksFirstJoinHandled()
+    {
+        var user = new User { Id = 29, Username = "cy" };
+        SetUser(user);
+        _kitRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Kit>());
+
+        var results = await _service.GrantFirstJoinKitsAsync(user.Id);
+
+        Assert.Empty(results);
+        Assert.NotNull(user.FirstJoinKitsGrantedAt);
+        _userRepo.Verify(r => r.UpdateUserAsync(user), Times.Once);
+    }
+
+    private KitService ServiceWithLootbox(ILootboxTokenGrantService lootbox) => new(
+        _kitRepo.Object,
+        _userRepo.Object,
+        _itemBlueprintRepo.Object,
+        _titleBracketRepo.Object,
+        _permissionGroupRepo.Object,
+        _titleService.Object,
+        _userPermissionGroupService.Object,
+        _permissionResolutionService.Object,
+        _auditLogService.Object,
+        _mapper,
+        _currency,
+        lootbox);
+
     #endregion
 
     #region Price validation and minting guards (KNG-22, currency DESIGN.md §1.4 A4)
