@@ -24,6 +24,10 @@ public class PermissionEscalationGuardTests
     private const int AdminGroup = 500;
     private const int SupportGroup = 501;
     private const int SupportBaseGroup = 502;
+    private const int DefaultGroup = 503;
+    private const int NobleGroup = 504;
+    private const int RoyalGroup = 505;
+    private const int SneakyPremiumGroup = 506;
 
     private readonly Dictionary<int, string[]> _held = new()
     {
@@ -52,6 +56,10 @@ public class PermissionEscalationGuardTests
         Group(AdminGroup, null, "knk.admin.*");
         Group(SupportBaseGroup, null, "knk.freeze");
         Group(SupportGroup, SupportBaseGroup, "knk.admin.user.manage");
+        Group(DefaultGroup, null, "knk.freeze");
+        Group(NobleGroup, DefaultGroup, premium: true, "knk.teleport.free", "knk.chat.color");
+        Group(RoyalGroup, NobleGroup, premium: true, "knk.teleport.unlimited");
+        Group(SneakyPremiumGroup, AdminGroup, premium: true, "knk.chat.color");
         _guard = new PermissionEscalationGuard(_permissions.Object, _groups.Object);
     }
 
@@ -63,12 +71,15 @@ public class PermissionEscalationGuardTests
         return prefix.Length == 0 || node.StartsWith(prefix, StringComparison.Ordinal) || node == prefix.TrimEnd('.');
     }
 
-    private void Group(int id, int? parent, params string[] nodes) =>
+    private void Group(int id, int? parent, params string[] nodes) => Group(id, parent, false, nodes);
+
+    private void Group(int id, int? parent, bool premium, params string[] nodes) =>
         _groups.Setup(g => g.GetByIdAsync(id)).ReturnsAsync(new PermissionGroup
         {
             Id = id,
             Name = $"group{id}",
             ParentGroupId = parent,
+            IsPremiumTier = premium,
             Grants = nodes.Select(n => new PermissionGrant { HolderId = id, Node = n, Value = true }).ToList()
         });
 
@@ -118,6 +129,39 @@ public class PermissionEscalationGuardTests
         Assert.True((await _guard.CanAssignGroupAsync(Moderator, Player, SupportGroup)).Allowed);
         _held[Moderator] = new[] { "knk.admin.user.manage", "knk.admin.user.group" }; // lost knk.freeze
         Assert.False((await _guard.CanAssignGroupAsync(Moderator, Player, SupportGroup)).Allowed);
+    }
+
+    [Fact]
+    public async Task PremiumRanks_NeedTheirPerks_WithoutThePremiumNode()
+    {
+        Assert.False((await _guard.CanAssignGroupAsync(Moderator, Player, NobleGroup)).Allowed);
+    }
+
+    [Fact]
+    public async Task PremiumNode_LetsStaffHandOutPremiumRanks_WithoutTheirPerks()
+    {
+        _held[Moderator] = _held[Moderator].Append("knk.admin.user.group.premium").ToArray();
+        Assert.True((await _guard.CanAssignGroupAsync(Moderator, Player, NobleGroup)).Allowed);
+        Assert.True((await _guard.CanAssignGroupAsync(Moderator, Player, RoyalGroup)).Allowed);
+    }
+
+    [Fact]
+    public async Task PremiumNode_StillNeedsTheNonPremiumParentChain()
+    {
+        _held[Moderator] = new[] { "knk.admin.user.manage", "knk.admin.user.group", "knk.admin.user.group.premium" };
+        // Noble inherits Default (knk.freeze), which this moderator no longer holds.
+        Assert.False((await _guard.CanAssignGroupAsync(Moderator, Player, NobleGroup)).Allowed);
+        // A "premium" group under the Admin group can't be used to hand out knk.admin.*.
+        Assert.False((await _guard.CanAssignGroupAsync(Moderator, Player, SneakyPremiumGroup)).Allowed);
+        // Non-premium groups are unaffected.
+        Assert.False((await _guard.CanAssignGroupAsync(Moderator, Player, AdminGroup)).Allowed);
+    }
+
+    [Fact]
+    public async Task PremiumNode_DoesNotAllowGivingYourselfARank()
+    {
+        _held[Moderator] = _held[Moderator].Append("knk.admin.user.group.premium").ToArray();
+        Assert.Equal(PermissionEscalationGuard.SelfMessage, (await _guard.CanAssignGroupAsync(Moderator, Moderator, NobleGroup)).Message);
     }
 
     [Fact]

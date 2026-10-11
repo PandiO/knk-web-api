@@ -14,7 +14,8 @@ namespace knkwebapi_v2.Services
     /// <summary>
     /// Stops staff from handing out more than they hold (closed-alpha hardening WP3): a web user
     /// may only grant, deny or revoke a node they hold themselves, may only assign or remove a group
-    /// whose every node they hold, and may never change their own permissions unless they hold
+    /// whose every node they hold (premium-tier groups' own nodes are exempt for holders of
+    /// knk.admin.user.group.premium), and may never change their own permissions unless they hold
     /// <c>*</c> (the owner). The game server is not checked here: the plugin does its own in-game
     /// node checks before calling (see <see cref="EscalationGuardHttp"/>).
     /// </summary>
@@ -77,7 +78,15 @@ namespace knkwebapi_v2.Services
             {
                 return EscalationCheck.Refused(SelfMessage);
             }
-            return holdsWildcard ? EscalationCheck.Ok : await HoldsEveryGroupNodeAsync(actorId, groupId);
+            if (holdsWildcard)
+            {
+                return EscalationCheck.Ok;
+            }
+            // A premium rank's perks don't make staff more powerful, so knk.admin.user.group.premium
+            // lets staff hand them out without holding them. Any non-premium group in the rank's
+            // parent chain still needs every node held, so a premium rank can't smuggle staff nodes.
+            var skipPremium = await HoldsAsync(actorId, Attributes.StaffPermissions.UserPremiumGroups);
+            return await HoldsEveryGroupNodeAsync(actorId, groupId, skipPremium);
         }
 
         public async Task<EscalationCheck> CanInheritFromGroupAsync(int actorId, int parentGroupId)
@@ -85,7 +94,7 @@ namespace knkwebapi_v2.Services
             return await HoldsAsync(actorId, Wildcard) ? EscalationCheck.Ok : await HoldsEveryGroupNodeAsync(actorId, parentGroupId);
         }
 
-        private async Task<EscalationCheck> HoldsEveryGroupNodeAsync(int actorId, int groupId)
+        private async Task<EscalationCheck> HoldsEveryGroupNodeAsync(int actorId, int groupId, bool skipPremium = false)
         {
             var now = DateTime.UtcNow;
             var nodes = new HashSet<string>(StringComparer.Ordinal);
@@ -98,7 +107,7 @@ namespace knkwebapi_v2.Services
                 {
                     break; // an unknown group is the service's 404, not an escalation
                 }
-                foreach (var grant in group.Grants ?? new List<Models.PermissionGrant>())
+                foreach (var grant in skipPremium && group.IsPremiumTier ? new List<Models.PermissionGrant>() : group.Grants ?? new List<Models.PermissionGrant>())
                 {
                     if (grant.ExpiresAt == null || grant.ExpiresAt > now)
                     {

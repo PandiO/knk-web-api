@@ -38,6 +38,9 @@ namespace knkwebapi_v2.Attributes
         public const string UserSalary = "knk.admin.user.salary";
         public const string UserGroups = "knk.admin.user.group";
         public const string UserPermissions = "knk.admin.user.perm";
+        // Lets staff add and remove premium-tier groups (Noble, Royal, ...) without holding the
+        // perks those groups grant (closed-alpha hardening WP3, smoke-test follow-up).
+        public const string UserPremiumGroups = "knk.admin.user.group.premium";
         public const string Freeze = "knk.freeze";
         public const string Unfreeze = "knk.unfreeze";
 
