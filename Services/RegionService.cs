@@ -39,9 +39,21 @@ namespace knkwebapi_v2.Services
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
 
         /// <summary>
+        /// The same, for the region in <paramref name="world"/> (KNG-111: a region id is only unique within a world;
+        /// null asks the plugin to use the first loaded world that has the region, as before).
+        /// </summary>
+        Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary, string? world);
+
+        /// <summary>
         /// Check whether a child region is contained within a parent region.
         /// </summary>
         Task<bool> IsRegionContainedAsync(string parentRegionId, string childRegionId, bool requireFullContainment = true);
+
+        /// <summary>
+        /// The same, for both regions in <paramref name="world"/> (KNG-111; null: the plugin's first loaded world that
+        /// has them).
+        /// </summary>
+        Task<bool> IsRegionContainedAsync(string parentRegionId, string childRegionId, bool requireFullContainment, string? world);
     }
 
     /// <summary>
@@ -70,7 +82,16 @@ namespace knkwebapi_v2.Services
             _minecraftPluginBaseUrl = minecraftPluginBaseUrl;
         }
 
-        public async Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false)
+        /// <summary>The <c>&amp;world=</c> query part for a region's world (KNG-111), or nothing.</summary>
+        private static string WorldQuery(string? world) =>
+            string.IsNullOrWhiteSpace(world) ? string.Empty : $"&world={Uri.EscapeDataString(world.Trim())}";
+
+        public Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false)
+        {
+            return IsLocationInsideRegionAsync(regionId, x, z, allowBoundary, null);
+        }
+
+        public async Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary, string? world)
         {
             Console.WriteLine("[VALIDATION_TRACE_BACKEND]     RegionService.IsLocationInsideRegionAsync started");
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       regionId: {regionId}");
@@ -87,7 +108,7 @@ namespace knkwebapi_v2.Services
                 using var client = _httpClientFactory.CreateClient();
                 var xInvariant = x.ToString(CultureInfo.InvariantCulture);
                 var zInvariant = z.ToString(CultureInfo.InvariantCulture);
-                var url = $"{_minecraftPluginBaseUrl.TrimEnd('/')}/api/regions/{Uri.EscapeDataString(regionId)}/contains-location?x={xInvariant}&z={zInvariant}&allowBoundary={allowBoundary.ToString().ToLowerInvariant()}";
+                var url = $"{_minecraftPluginBaseUrl.TrimEnd('/')}/api/regions/{Uri.EscapeDataString(regionId)}/contains-location?x={xInvariant}&z={zInvariant}&allowBoundary={allowBoundary.ToString().ToLowerInvariant()}{WorldQuery(world)}";
                 Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       GET {url}");
                 var response = await client.GetAsync(url);
                 Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Response status: {(int)response.StatusCode} ({response.StatusCode})");
@@ -133,7 +154,12 @@ namespace knkwebapi_v2.Services
             }
         }
 
-        public async Task<bool> IsRegionContainedAsync(string parentRegionId, string childRegionId, bool requireFullContainment = true)
+        public Task<bool> IsRegionContainedAsync(string parentRegionId, string childRegionId, bool requireFullContainment = true)
+        {
+            return IsRegionContainedAsync(parentRegionId, childRegionId, requireFullContainment, null);
+        }
+
+        public async Task<bool> IsRegionContainedAsync(string parentRegionId, string childRegionId, bool requireFullContainment, string? world)
         {
             Console.WriteLine("[VALIDATION_TRACE_BACKEND]     RegionService.IsRegionContainedAsync started");
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       parentRegionId: {parentRegionId}");
@@ -149,7 +175,7 @@ namespace knkwebapi_v2.Services
             try
             {
                 using var client = _httpClientFactory.CreateClient();
-                var url = $"{_minecraftPluginBaseUrl.TrimEnd('/')}/api/regions/{Uri.EscapeDataString(parentRegionId)}/contains-region/{Uri.EscapeDataString(childRegionId)}?requireFullContainment={requireFullContainment.ToString().ToLowerInvariant()}";
+                var url = $"{_minecraftPluginBaseUrl.TrimEnd('/')}/api/regions/{Uri.EscapeDataString(parentRegionId)}/contains-region/{Uri.EscapeDataString(childRegionId)}?requireFullContainment={requireFullContainment.ToString().ToLowerInvariant()}{WorldQuery(world)}";
                 Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       GET {url}");
                 var response = await client.GetAsync(url);
                 Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Response status: {(int)response.StatusCode} ({response.StatusCode})");
