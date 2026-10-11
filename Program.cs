@@ -47,8 +47,10 @@ else
 }
 
 string? connectionString = builder.Configuration.GetConnectionString("MySqlDbConnection");
+// Once per process, not per DbContext: Database:MySqlServerVersion, else one AutoDetect on first use.
+var mySqlServerVersion = new knkwebapi_v2.Configuration.MySqlServerVersionResolver(builder.Configuration, connectionString);
 builder.Services.AddDbContext<KnKDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseMySql(connectionString, mySqlServerVersion.Version));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 
