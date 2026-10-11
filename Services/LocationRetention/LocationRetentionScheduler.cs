@@ -16,6 +16,7 @@ public class LocationRetentionScheduler : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<LocationRetentionScheduler> _logger;
     private readonly LocationRetentionOptions _options;
+    private readonly ConnectivityAwareFailureLogger _failures;
 
     public LocationRetentionScheduler(IServiceProvider serviceProvider, ILogger<LocationRetentionScheduler> logger,
         IOptions<LocationRetentionOptions>? options = null)
@@ -23,6 +24,7 @@ public class LocationRetentionScheduler : BackgroundService
         _serviceProvider = serviceProvider;
         _logger = logger;
         _options = options?.Value ?? new LocationRetentionOptions();
+        _failures = new ConnectivityAwareFailureLogger(logger, "Location retention schedule check");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -85,13 +87,16 @@ public class LocationRetentionScheduler : BackgroundService
             using var scope = _serviceProvider.CreateScope();
             var retention = scope.ServiceProvider.GetRequiredService<ILocationRetentionService>();
             var slot = await retention.DueScheduledSlotAsync(nowUtc, ct);
-            if (slot == null) return;
-            _logger.LogInformation("Location retention: running the scheduled check for slot {Slot:u}", slot);
-            await retention.RunCheckAsync("scheduled", null, slot, ct);
+            if (slot != null)
+            {
+                _logger.LogInformation("Location retention: running the scheduled check for slot {Slot:u}", slot);
+                await retention.RunCheckAsync("scheduled", null, slot, ct);
+            }
+            _failures.Succeeded();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogError(ex, "Location retention schedule check failed; retrying at the next check");
+            _failures.Failed(ex, "Location retention schedule check failed; retrying at the next check");
         }
     }
 }
