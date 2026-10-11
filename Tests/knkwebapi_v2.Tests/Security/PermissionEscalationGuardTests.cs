@@ -38,6 +38,10 @@ public class PermissionEscalationGuardTests
 
     private readonly Mock<IPermissionResolutionService> _permissions = new();
     private readonly Mock<IPermissionGroupRepository> _groups = new();
+    private readonly Mock<IUserPermissionGroupRepository> _memberships = new();
+    private const int ModeratorRankGroup = 600;
+    private const int AdminRankGroup = 601;
+    private const int StaffRankGroup = 602;
     private readonly PermissionEscalationGuard _guard;
 
     public PermissionEscalationGuardTests()
@@ -60,7 +64,11 @@ public class PermissionEscalationGuardTests
         Group(NobleGroup, DefaultGroup, premium: true, "knk.teleport.free", "knk.chat.color");
         Group(RoyalGroup, NobleGroup, premium: true, "knk.teleport.unlimited");
         Group(SneakyPremiumGroup, AdminGroup, premium: true, "knk.chat.color");
-        _guard = new PermissionEscalationGuard(_permissions.Object, _groups.Object);
+        // The moderator's own rank: a Weight-50 group (the test groups above default to Weight 0).
+        Group(ModeratorRankGroup, null, "knk.freeze");
+        _groups.Setup(g => g.GetByIdAsync(ModeratorRankGroup)).ReturnsAsync(new PermissionGroup { Id = ModeratorRankGroup, Name = "Moderator", Weight = 50, Grants = new List<PermissionGrant>() });
+        MemberOf(Moderator, 50);
+        _guard = new PermissionEscalationGuard(_permissions.Object, _groups.Object, _memberships.Object);
     }
 
     private static bool Matches(string grant, string node)
@@ -70,6 +78,20 @@ public class PermissionEscalationGuardTests
         var prefix = grant[..^1];
         return prefix.Length == 0 || node.StartsWith(prefix, StringComparison.Ordinal) || node == prefix.TrimEnd('.');
     }
+
+    private void MemberOf(int userId, params int[] weights) =>
+        _memberships.Setup(m => m.GetByUserAsync(userId)).ReturnsAsync(weights
+            .Select((w, i) => new UserPermissionGroup { UserId = userId, PermissionGroupId = 900 + i, PermissionGroup = new PermissionGroup { Id = 900 + i, Weight = w } })
+            .ToList());
+
+    private void RankedGroup(int id, int weight, int? parent, params PermissionGrant[] grants) =>
+        _groups.Setup(g => g.GetByIdAsync(id)).ReturnsAsync(new PermissionGroup
+        {
+            Id = id, Name = $"group{id}", Weight = weight, ParentGroupId = parent, Grants = grants.ToList()
+        });
+
+    private static PermissionGrant Allow(string node) => new() { Node = node, Value = true };
+    private static PermissionGrant Deny(string node) => new() { Node = node, Value = false };
 
     private void Group(int id, int? parent, params string[] nodes) => Group(id, parent, false, nodes);
 
@@ -162,6 +184,41 @@ public class PermissionEscalationGuardTests
     {
         _held[Moderator] = _held[Moderator].Append("knk.admin.user.group.premium").ToArray();
         Assert.Equal(PermissionEscalationGuard.SelfMessage, (await _guard.CanAssignGroupAsync(Moderator, Moderator, NobleGroup)).Message);
+    }
+
+    [Fact]
+    public async Task AnAdmin_CanHandOutLowerRanks_EvenWhenTheyCarryADeny()
+    {
+        const int admin = 30;
+        RankedGroup(StaffRankGroup, 25, null, Allow("knk.staffchat"), Deny("knk.teleport.bypass.requirements"));
+        RankedGroup(ModeratorRankGroup, 50, StaffRankGroup, Allow("knk.freeze"));
+        RankedGroup(AdminRankGroup, 100, ModeratorRankGroup, Allow("knk.admin.user.group"));
+        // What an Admin effectively holds through the chain: the deny is inherited as a deny.
+        _held[admin] = new[] { "knk.staffchat", "knk.freeze", "knk.admin.user.group" };
+        MemberOf(admin, 100);
+
+        Assert.True((await _guard.CanAssignGroupAsync(admin, Player, StaffRankGroup)).Allowed);
+        Assert.True((await _guard.CanAssignGroupAsync(admin, Player, ModeratorRankGroup)).Allowed);
+    }
+
+    [Fact]
+    public async Task NobodyHandsOutOrRemovesTheirOwnRankOrHigher()
+    {
+        const int admin = 30;
+        RankedGroup(AdminRankGroup, 100, null, Allow("knk.admin.user.group"));
+        RankedGroup(SupportGroup, 150, null);
+        _held[admin] = new[] { "knk.admin.user.group" };
+        MemberOf(admin, 100);
+
+        Assert.Equal(PermissionEscalationGuard.RankMessage, (await _guard.CanAssignGroupAsync(admin, Player, AdminRankGroup)).Message);
+        Assert.Equal(PermissionEscalationGuard.RankMessage, (await _guard.CanAssignGroupAsync(admin, Player, SupportGroup)).Message);
+    }
+
+    [Fact]
+    public async Task WithoutAnyGroup_NoGroupCanBeHandedOut()
+    {
+        MemberOf(Moderator);
+        Assert.Equal(PermissionEscalationGuard.RankMessage, (await _guard.CanAssignGroupAsync(Moderator, Player, SupportBaseGroup)).Message);
     }
 
     [Fact]

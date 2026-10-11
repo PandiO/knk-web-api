@@ -14,7 +14,8 @@ namespace knkwebapi_v2.Services
     /// <summary>
     /// Stops staff from handing out more than they hold (closed-alpha hardening WP3): a web user
     /// may only grant, deny or revoke a node they hold themselves, may only assign or remove a group
-    /// whose every node they hold (premium-tier groups' own nodes are exempt for holders of
+    /// ranked below their own highest group (Weight) whose every granted node they hold (denies don't
+    /// count; premium-tier groups' own nodes are exempt for holders of
     /// knk.admin.user.group.premium), and may never change their own permissions unless they hold
     /// <c>*</c> (the owner). The game server is not checked here: the plugin does its own in-game
     /// node checks before calling (see <see cref="EscalationGuardHttp"/>).
@@ -40,14 +41,18 @@ namespace knkwebapi_v2.Services
         public const string NotHeldMessage = "You can't grant a permission you don't have.";
         public const string SelfMessage = "You can't change your own permissions.";
         public const string GroupNotHeldMessage = "You can't hand out a group with permissions you don't have.";
+        public const string RankMessage = "You can only hand out or remove groups ranked below your own.";
 
         private readonly IPermissionResolutionService _permissions;
         private readonly IPermissionGroupRepository _groups;
+        private readonly IUserPermissionGroupRepository _memberships;
 
-        public PermissionEscalationGuard(IPermissionResolutionService permissions, IPermissionGroupRepository groups)
+        public PermissionEscalationGuard(IPermissionResolutionService permissions, IPermissionGroupRepository groups,
+            IUserPermissionGroupRepository memberships)
         {
             _permissions = permissions;
             _groups = groups;
+            _memberships = memberships;
         }
 
         public async Task<EscalationCheck> CanGrantNodeAsync(int actorId, int targetHolderId, string node)
@@ -82,6 +87,13 @@ namespace knkwebapi_v2.Services
             {
                 return EscalationCheck.Ok;
             }
+            // Rank: only groups below the actor's own highest group, so an Admin can make Moderators
+            // and Staff but not other Admins, and can't remove a peer's or a superior's group.
+            var target = await _groups.GetByIdAsync(groupId);
+            if (target != null && target.Weight >= await HighestRankAsync(actorId))
+            {
+                return EscalationCheck.Refused(RankMessage);
+            }
             // A premium rank's perks don't make staff more powerful, so knk.admin.user.group.premium
             // lets staff hand them out without holding them. Any non-premium group in the rank's
             // parent chain still needs every node held, so a premium rank can't smuggle staff nodes.
@@ -109,7 +121,8 @@ namespace knkwebapi_v2.Services
                 }
                 foreach (var grant in skipPremium && group.IsPremiumTier ? new List<Models.PermissionGrant>() : group.Grants ?? new List<Models.PermissionGrant>())
                 {
-                    if (grant.ExpiresAt == null || grant.ExpiresAt > now)
+                    // A deny only takes something away, so handing it out is never an escalation.
+                    if (grant.Value && (grant.ExpiresAt == null || grant.ExpiresAt > now))
                     {
                         nodes.Add(grant.Node);
                     }
@@ -125,6 +138,17 @@ namespace knkwebapi_v2.Services
                 }
             }
             return EscalationCheck.Ok;
+        }
+
+        /// <summary>The Weight of the actor's highest active group; no group means no rank.</summary>
+        private async Task<int> HighestRankAsync(int actorId)
+        {
+            var now = DateTime.UtcNow;
+            var weights = (await _memberships.GetByUserAsync(actorId))
+                .Where(m => m.PermissionGroup != null && (m.ExpiresAt == null || m.ExpiresAt > now))
+                .Select(m => m.PermissionGroup.Weight)
+                .ToList();
+            return weights.Count == 0 ? int.MinValue : weights.Max();
         }
 
         private async Task<bool> HoldsAsync(int userId, string node)

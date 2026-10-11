@@ -90,7 +90,8 @@ the closed-alpha plan § 7 in knk-workspace for every key.
   districts, structures, streets, locations, gates, world tasks, workflows); both
   are matched by `knk.admin.*` and `*`. Granting nodes or groups goes through
   `PermissionEscalationGuard`: web staff can only hand out what they hold, never
-  to themselves (unless they hold `*`). `knk.admin.user.group.premium` lets staff
+  to themselves (unless they hold `*`), and only groups ranked (Weight) below
+  their own highest group; a group's deny grants don't count as nodes to hold. `knk.admin.user.group.premium` lets staff
   add/remove premium-tier groups (`IsPremiumTier`) without holding their perks; a
   non-premium group in that rank's parent chain still needs every node held.
 - Rate limits (`Configuration/RateLimitingSetup.cs`): `[EnableRateLimiting("auth")]`
