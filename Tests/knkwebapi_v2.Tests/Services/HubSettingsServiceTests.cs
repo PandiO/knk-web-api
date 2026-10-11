@@ -110,6 +110,22 @@ public class HubSettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ANestedOrWorldlessDomainCannotBeSelected()
+    {
+        await _hub.SetEligibleAsync(1, true);
+        // A district later moved under a flagged town: both flagged.
+        (await _context.Districts.FindAsync(2))!.IsHub = true;
+        await _context.SaveChangesAsync();
+        var nested = await Assert.ThrowsAsync<ArgumentException>(() => _hub.NormalizeAsync(Hub(1)));
+        Assert.Contains("nested hubs", nested.Message);
+
+        _context.Towns.Add(new Town { Id = 8, Name = "Legacy", Description = "", WgRegionId = "town_8", IsHub = true });
+        await _context.SaveChangesAsync();
+        var worldless = await Assert.ThrowsAsync<ArgumentException>(() => _hub.NormalizeAsync(Hub(8)));
+        Assert.Contains("has no world yet", worldless.Message);
+    }
+
+    [Fact]
     public async Task AnExemptionNeedsTheGroupsEffectiveModeNode()
     {
         _permissions.Setup(p => p.CheckGroupAsync(7, HubSettingsService.StaffModeNode))

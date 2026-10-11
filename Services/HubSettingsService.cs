@@ -139,13 +139,24 @@ namespace knkwebapi_v2.Services
             {
                 throw new ArgumentException($"hub.domainId: '{domain.Name}' has no WorldGuard region; the hub's rules apply inside it");
             }
+            if (string.IsNullOrWhiteSpace(domain.WorldName))
+            {
+                throw new ArgumentException($"hub.domainId: '{domain.Name}' has no world yet; set it in the domain's form first");
+            }
+            // Flags are checked for nesting when set, but moving a District or Structure to another parent later can
+            // still nest two flagged domains: never select one that is nested (decision 4).
+            var nested = await RelatedHubAsync(domain);
+            if (nested != null)
+            {
+                throw new ArgumentException($"hub.domainId: '{domain.Name}' and '{nested.Name}' are nested hubs; "
+                    + "remove the hub flag from one of them first");
+            }
             var spawn = hub.SpawnReference?.Location;
             if (spawn == null)
             {
                 throw new ArgumentException("hub.spawnReference: a hub needs a spawn location");
             }
-            if (!string.IsNullOrWhiteSpace(domain.WorldName)
-                && !string.Equals(spawn.World?.Trim(), domain.WorldName.Trim(), StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(spawn.World?.Trim(), domain.WorldName.Trim(), StringComparison.OrdinalIgnoreCase))
             {
                 throw new ArgumentException($"hub.spawnReference: the spawn is in world '{spawn.World}', but '{domain.Name}' "
                     + $"is in world '{domain.WorldName}'");
