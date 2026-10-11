@@ -47,13 +47,10 @@ else
 }
 
 string? connectionString = builder.Configuration.GetConnectionString("MySqlDbConnection");
-// Detect the server version once (KNG-115). AutoDetect opens a connection; inside the options
-// lambda it ran for every DbContext, so while MySQL was down building any DbContext threw from
-// this file (debugger stop on every request/background tick). Startup seeding below already
-// needs the database, so detecting here doesn't change startup without MySQL.
-var mySqlServerVersion = ServerVersion.AutoDetect(connectionString);
+// Once per process, not per DbContext: Database:MySqlServerVersion, else one AutoDetect on first use.
+var mySqlServerVersion = new knkwebapi_v2.Configuration.MySqlServerVersionResolver(builder.Configuration, connectionString);
 builder.Services.AddDbContext<KnKDbContext>(options =>
-    options.UseMySql(connectionString, mySqlServerVersion));
+    options.UseMySql(connectionString, mySqlServerVersion.Version));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 
@@ -121,6 +118,10 @@ if (telemetryOptions.Enabled)
             metrics.AddMeter(knkwebapi_v2.Services.Lootbox.LootboxMetrics.MeterName);
             // Currency ledger counters and lock-wait histogram (currency-payments Phase 5).
             metrics.AddMeter(knkwebapi_v2.Services.CurrencyMetrics.MeterName);
+            // Player statistics ingestion and projection (KNG-34).
+            metrics.AddMeter(knkwebapi_v2.Services.Statistics.StatisticsMetrics.MeterName);
+            // Diagnostic telemetry pipeline (KNG-34 link 6).
+            metrics.AddMeter(knkwebapi_v2.Services.Telemetry.TelemetryMetrics.MeterName);
             if (string.Equals(telemetryOptions.Exporter, "otlp", StringComparison.OrdinalIgnoreCase)
                 && telemetryOptions.Otlp.EnableMetrics)
             {
@@ -194,6 +195,9 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Diagnostic api.request_failed events for 5xx answers and unhandled exceptions (KNG-34 link 6).
+app.UseMiddleware<knkwebapi_v2.Middleware.ApiFailureTelemetryMiddleware>();
 
 // Client activity tracking middleware
 app.UseMiddleware<knkwebapi_v2.Middleware.ClientActivityMiddleware>();

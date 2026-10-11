@@ -42,6 +42,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("deaths")] public int Deaths { get; set; }
         [JsonPropertyName("highestKillStreak")] public int HighestKillStreak { get; set; }
         [JsonPropertyName("captures")] public int Captures { get; set; }
+        // KNG-34 leaver fix: set for a member who left before the end and is reported only for their
+        // stats. Their row keeps (or, when the "left" call was lost, gets) this LeftAt, so they are not
+        // present at the end and get no reward. Omitted (null) for members present at the end.
+        [JsonPropertyName("leftAt")] public DateTime? LeftAt { get; set; }
     }
 
     // One capture of an objective, or - with capturedByUserId/capturedAt null - its final holder when
