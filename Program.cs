@@ -47,8 +47,10 @@ else
 }
 
 string? connectionString = builder.Configuration.GetConnectionString("MySqlDbConnection");
+// Once per process, not per DbContext: Database:MySqlServerVersion, else one AutoDetect on first use.
+var mySqlServerVersion = new knkwebapi_v2.Configuration.MySqlServerVersionResolver(builder.Configuration, connectionString);
 builder.Services.AddDbContext<KnKDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseMySql(connectionString, mySqlServerVersion.Version));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 
@@ -82,9 +84,14 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Health checks: add liveness/readiness
+// Health checks: /health/live is process-only; /health/ready also needs the database (KNG-115)
 builder.Services.AddHealthChecks()
-    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy())
+    .AddCheck<knkwebapi_v2.Services.DatabaseHealthCheck>(
+        knkwebapi_v2.Services.DatabaseHealthCheck.Name,
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+        tags: new[] { knkwebapi_v2.Services.DatabaseHealthCheck.Tag },
+        timeout: TimeSpan.FromSeconds(3));
 
 // Options binding for telemetry and client activity
 builder.Services.Configure<knkwebapi_v2.Configuration.TelemetryOptions>(builder.Configuration.GetSection(knkwebapi_v2.Configuration.TelemetryOptions.SectionName));
