@@ -149,6 +149,38 @@ namespace knkwebapi_v2.Services
             };
         }
 
+        public async Task<PermissionGroupCheckResponseDto?> CheckGroupAsync(int groupId, string node)
+        {
+            if (string.IsNullOrWhiteSpace(node)) throw new ArgumentException("Permission node is required.", nameof(node));
+
+            var groups = (await _groupRepo.GetAllAsync()).ToDictionary(g => g.Id);
+            if (!groups.TryGetValue(groupId, out var group)) return null;
+
+            var asOf = DateTime.UtcNow;
+            var visited = new HashSet<int>();
+            PermissionGroup? current = group;
+            while (current != null && visited.Add(current.Id))
+            {
+                var grants = await _grantRepo.GetActiveGrantsForHolderAsync(current.Id, asOf);
+                var best = BestMatchAtHolder(grants, node);
+                if (best != null)
+                {
+                    return new PermissionGroupCheckResponseDto
+                    {
+                        GroupId = groupId,
+                        Node = node,
+                        Result = best.Value ? PermissionResolutionResult.Granted : PermissionResolutionResult.Denied,
+                        SourceGroupId = current.Id,
+                        SourceGroupName = current.Name,
+                        MatchedNode = best.Node
+                    };
+                }
+                current = current.ParentGroupId is int parentId && groups.TryGetValue(parentId, out var parent) ? parent : null;
+            }
+
+            return new PermissionGroupCheckResponseDto { GroupId = groupId, Node = node, Result = PermissionResolutionResult.Undeclared };
+        }
+
         public async Task<PermissionEffectiveResponseDto?> GetEffectiveAsync(int userId)
         {
             var user = await _userRepo.GetByIdAsync(userId);

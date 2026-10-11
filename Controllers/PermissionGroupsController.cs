@@ -15,11 +15,14 @@ namespace KnKWebAPI.Controllers
     {
         private readonly IPermissionGroupService _service;
         private readonly IPermissionEscalationGuard _escalationGuard;
+        private readonly IPermissionResolutionService _resolution;
 
-        public PermissionGroupsController(IPermissionGroupService service, IPermissionEscalationGuard escalationGuard)
+        public PermissionGroupsController(IPermissionGroupService service, IPermissionEscalationGuard escalationGuard,
+            IPermissionResolutionService resolution)
         {
             _service = service;
             _escalationGuard = escalationGuard;
+            _resolution = resolution;
         }
 
         // Closed-alpha WP3: a group inherits every node of its parent chain, so a web user may only
@@ -139,6 +142,22 @@ namespace KnKWebAPI.Controllers
         /// "Premium expiring soon" moderation view (docs/specs/user-management/IMPLEMENTATION_PLAN.md
         /// Phase 3) — memberships in this group expiring within the next withinDays days.
         /// </summary>
+        /// <summary>
+        /// KNG-116: whether the group effectively has a node - the group, then its parent chain, matched with the same
+        /// wildcard and deny rules as a user's check.
+        /// </summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
+        [HttpGet("{id:int}/permissions/check")]
+        public async Task<ActionResult<PermissionGroupCheckResponseDto>> CheckPermission(int id, [FromQuery] string node)
+        {
+            if (string.IsNullOrWhiteSpace(node))
+            {
+                return BadRequest(new { message = "node is required" });
+            }
+            var result = await _resolution.CheckGroupAsync(id, node.Trim());
+            return result == null ? NotFound() : Ok(result);
+        }
+
         [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet("{id:int}/expiring-memberships")]
         public async Task<ActionResult<IEnumerable<ExpiringMembershipDto>>> GetExpiringMemberships(int id, [FromQuery] int withinDays = 7)

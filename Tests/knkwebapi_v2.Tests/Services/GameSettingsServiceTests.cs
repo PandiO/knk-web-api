@@ -294,4 +294,28 @@ public class GameSettingsServiceTests
         // A parent outside the given set ends the chain.
         Assert.Equal(new[] { 2 }, PermissionGroupPrecedence.Order(new[] { Noble }, new Dictionary<int, PermissionGroup> { [2] = Noble }).Select(g => g.Id));
     }
+
+    [Fact]
+    public async Task TheHubBlockAndTheOutageOverridesRoundTrip_OnlyATickedExemptionIsStored()
+    {
+        var dto = Update(new List<PermissionGroupGameSettingsDto>
+        {
+            new() { PermissionGroupId = 3, ExemptInStaffMode = true, ExemptInOwnerMode = false, OutageAction = "kick" },
+            new() { PermissionGroupId = 1, ExemptInStaffMode = false },
+        });
+        dto.Hub = new HubSettingsDto { OutageAction = "SendToWorldSpawn", OutageDelaySeconds = 30 };
+
+        var read = await _service.UpdateAsync(dto);
+
+        var staff = Assert.Single(read.GroupOverrides);
+        Assert.Equal((3, true, (bool?)null, "Kick"), (staff.PermissionGroupId, staff.ExemptInStaffMode == true, staff.ExemptInOwnerMode, staff.OutageAction));
+        Assert.Equal(("SendToWorldSpawn", 30), (read.Hub.OutageAction, read.Hub.OutageDelaySeconds));
+        Assert.True(read.Hub.Rules.DropPickup && !read.Hub.Rules.DamagePlayers && read.Hub.Rules.HealIntervalTicks == 20);
+
+        // A later update without a hub block keeps it.
+        Assert.Equal(30, (await _service.UpdateAsync(Update())).Hub.OutageDelaySeconds);
+        Assert.Null((await new GameSettingsService(_repo.Object,
+            new MapperConfiguration(cfg => cfg.AddProfile<GameSettingsMappingProfile>()).CreateMapper(), _groupRepo.Object)
+            .GetAsync()).Hub.DomainId);
+    }
 }
