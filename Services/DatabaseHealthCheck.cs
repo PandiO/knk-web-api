@@ -44,7 +44,9 @@ public sealed class DatabaseHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            return new HealthCheckResult(failureStatus, "Database check failed: " + ex.GetType().Name, ex);
+            // No exception attached: HealthCheckService would log its full stack on every probe
+            // (every 10 s from each game server) for as long as MySQL is down.
+            return new HealthCheckResult(failureStatus, $"Database check failed: {ex.GetType().Name}: {ex.Message}");
         }
     }
 }

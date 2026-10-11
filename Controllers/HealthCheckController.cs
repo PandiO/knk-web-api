@@ -14,6 +14,10 @@ public class HealthCheckController : ControllerBase
     private readonly HealthCheckService _healthCheckService;
     private readonly ILogger<HealthCheckController> _logger;
 
+    // Last readiness result across requests (controllers are per-request), so a database outage
+    // logs once when it starts and once when it ends instead of on every probe.
+    private static int _lastReadyStatus = (int)HealthStatus.Healthy;
+
     public HealthCheckController(HealthCheckService healthCheckService, ILogger<HealthCheckController> logger)
     {
         _healthCheckService = healthCheckService;
@@ -59,7 +63,10 @@ public class HealthCheckController : ControllerBase
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // A check that throws while being created must still read as "not ready", never a 500.
-            _logger.LogWarning(ex, "Readiness check threw; reporting unhealthy");
+            if (Interlocked.Exchange(ref _lastReadyStatus, (int)HealthStatus.Unhealthy) != (int)HealthStatus.Unhealthy)
+            {
+                _logger.LogWarning(ex, "Readiness check threw; reporting unhealthy");
+            }
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new HealthResponse
             {
                 Status = "unhealthy",
@@ -82,15 +89,30 @@ public class HealthCheckController : ControllerBase
 
         var statusCode = report.Status == HealthStatus.Unhealthy ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status200OK;
 
-        if (report.Status == HealthStatus.Unhealthy)
-        {
-            _logger.LogWarning("Readiness check unhealthy: {Checks}",
-                string.Join(", ", report.Entries.Select(e => $"{e.Key}={e.Value.Status}")));
-        }
+        LogIfChanged(report);
 
         _logger.LogDebug("Health check: {Status}, entries: {Count}", report.Status, report.Entries.Count);
 
         return StatusCode(statusCode, response);
+    }
+
+    private void LogIfChanged(HealthReport report)
+    {
+        var previous = (HealthStatus)Interlocked.Exchange(ref _lastReadyStatus, (int)report.Status);
+        if (previous == report.Status)
+        {
+            return;
+        }
+        var checks = string.Join(", ", report.Entries.Select(e =>
+            $"{e.Key}={e.Value.Status}" + (e.Value.Status == HealthStatus.Healthy ? "" : $" ({e.Value.Description})")));
+        if (report.Status == HealthStatus.Healthy)
+        {
+            _logger.LogInformation("Readiness recovered: {Checks}", checks);
+        }
+        else
+        {
+            _logger.LogWarning("Readiness now {Status}: {Checks}", report.Status, checks);
+        }
     }
 }
 

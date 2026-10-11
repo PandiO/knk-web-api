@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -122,6 +123,53 @@ public class HealthCheckControllerTests
 
         Assert.Equal(503, result.StatusCode);
         Assert.Equal("unhealthy", Assert.IsType<HealthResponse>(result.Value).Status);
+    }
+
+    private sealed class ListLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception)));
+    }
+
+    [Fact]
+    public async Task Ready_LogsAnOutageOnceAndTheRecoveryOnce()
+    {
+        var logger = new ListLogger<HealthCheckController>();
+        async Task Probe(HealthStatus db)
+        {
+            var service = new Mock<HealthCheckService>();
+            service.Setup(s => s.CheckHealthAsync(It.IsAny<Func<HealthCheckRegistration, bool>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Report(db));
+            await new HealthCheckController(service.Object, logger).GetReadiness();
+        }
+
+        await Probe(HealthStatus.Healthy); // settle the shared last-status
+        logger.Entries.Clear();
+
+        await Probe(HealthStatus.Unhealthy);
+        await Probe(HealthStatus.Unhealthy);
+        await Probe(HealthStatus.Unhealthy);
+        await Probe(HealthStatus.Healthy);
+        await Probe(HealthStatus.Healthy);
+
+        var levels = logger.Entries.Where(e => e.Level >= LogLevel.Information).Select(e => e.Level).ToList();
+        Assert.Equal(new[] { LogLevel.Warning, LogLevel.Information }, levels);
+        Assert.Contains("database=Unhealthy", logger.Entries[0].Message);
+    }
+
+    [Fact]
+    public async Task DatabaseCheck_FailureCarriesNoExceptionSoItIsNotLoggedWithAStack()
+    {
+        var service = Registered(s => s.AddScoped<KnKDbContext>(_ =>
+            throw new InvalidOperationException("Unable to connect to any of the specified MySQL hosts.")));
+
+        var entry = (await service.CheckHealthAsync()).Entries[DatabaseHealthCheck.Name];
+
+        Assert.Null(entry.Exception);
+        Assert.Contains("Unable to connect", entry.Description);
     }
 
     [Fact]
