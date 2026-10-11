@@ -47,7 +47,7 @@ public class SiegeApiRoundTripTests : IAsyncLifetime
         // A real LocationInsideRegion rule on the spawnpoint form, depending on the scenario form's
         // Town (a parent-form field); the plugin's region endpoint says "inside".
         var regionService = new Mock<IRegionService>();
-        regionService.Setup(r => r.IsLocationInsideRegionAsync(It.IsAny<string>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<bool>()))
+        regionService.Setup(r => r.IsLocationInsideRegionAsync(It.IsAny<string>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<bool>(), It.IsAny<string?>()))
             .ReturnsAsync(true);
         var locationService = new Mock<ILocationService>();
         var validators = new IValidationMethod[] { new LocationInsideRegionValidator(regionService.Object, locationService.Object) };
@@ -64,7 +64,7 @@ public class SiegeApiRoundTripTests : IAsyncLifetime
         _configuration = new SiegeConfigurationController(configurationService);
         _gates = new GateStructuresController(new GateStructureService(
             new GateStructureRepository(_context), new Mock<knkwebapi_v2.Repositories.Interfaces.ILocationRepository>().Object,
-            locationService.Object, mapper, new Mock<IDomainRegionNameFinalizer>().Object));
+            locationService.Object, mapper, new Mock<IDomainRegionNameFinalizer>().Object, knkwebapi_v2.Tests.Services.FixedWorldResolver.Instance));
     }
 
     public async Task DisposeAsync() => await _context.DisposeAsync();

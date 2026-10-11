@@ -18,19 +18,22 @@ namespace knkwebapi_v2.Services
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
         private readonly IDomainRegionNameFinalizer _regionNames;
+        private readonly IDomainWorldResolver _worlds;
 
         public GateStructureService(
             IGateStructureRepository repo,
             ILocationRepository locationRepo,
             ILocationService locationService,
             IMapper mapper,
-            IDomainRegionNameFinalizer regionNames)
+            IDomainRegionNameFinalizer regionNames,
+            IDomainWorldResolver worlds)
         {
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
             _mapper = mapper;
             _regionNames = regionNames;
+            _worlds = worlds;
         }
 
         public async Task<IEnumerable<GateStructureDto>> GetAllAsync()
@@ -75,6 +78,9 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Valid DistrictId is required.", nameof(gateStructureDto));
 
             var gateStructure = _mapper.Map<GateStructure>(gateStructureDto);
+            // KNG-111: resolved before any Location is saved, so a rejected world leaves nothing behind.
+            gateStructure.WorldName = await _worlds.ResolveAsync(WorldRequest(gateStructure, gateStructureDto, null));
+            await EnsureGuardSpawnsInWorldAsync(gateStructureDto, gateStructure.WorldName);
             DomainNavigationDefaults.Apply(gateStructure, gateStructureDto);
             await ApplyLocationReferencesAsync(gateStructure, gateStructureDto, isCreate: true);
             await _repo.AddGateStructureAsync(gateStructure);
@@ -97,6 +103,8 @@ namespace knkwebapi_v2.Services
                 throw new KeyNotFoundException($"GateStructure with id {id} not found.");
 
             _mapper.Map(gateStructureDto, existing);
+            existing.WorldName = await _worlds.ResolveAsync(WorldRequest(existing, gateStructureDto, id));
+            await EnsureGuardSpawnsInWorldAsync(gateStructureDto, existing.WorldName);
             DomainNavigationDefaults.Apply(existing, gateStructureDto);
             await ApplyLocationReferencesAsync(existing, gateStructureDto);
             await _repo.UpdateGateStructureAsync(existing);
@@ -179,6 +187,55 @@ namespace knkwebapi_v2.Services
             else if (value.HasValue)
             {
                 setter(value);
+            }
+        }
+
+        private static DomainWorldRequest WorldRequest(GateStructure gate, GateStructureDto dto, int? id) => new()
+        {
+            DomainId = id,
+            RequestedWorld = dto.WorldName,
+            WgRegionId = gate.WgRegionId,
+            LocationWorld = dto.Location?.World,
+            LocationId = dto.Location?.Id ?? dto.LocationId,
+            ParentDomainId = gate.DistrictId
+        };
+
+        /// <summary>KNG-111: guard spawns stand in the gate's world.</summary>
+        private async Task EnsureGuardSpawnsInWorldAsync(GateStructureDto dto, string worldName)
+        {
+            var worlds = new List<string?>();
+            if (dto.GuardSpawnLocations != null)
+            {
+                foreach (var location in dto.GuardSpawnLocations)
+                {
+                    if (location == null) continue;
+                    if (!string.IsNullOrWhiteSpace(location.World))
+                    {
+                        worlds.Add(location.World);
+                    }
+                    else if (location.Id is int savedId && savedId > 0)
+                    {
+                        worlds.Add((await _locationRepo.GetByIdAsync(savedId))?.World);
+                    }
+                }
+            }
+            if (dto.GuardSpawnLocationIds != null)
+            {
+                foreach (var locationId in dto.GuardSpawnLocationIds.Where(i => i > 0))
+                {
+                    worlds.Add((await _locationRepo.GetByIdAsync(locationId))?.World);
+                }
+            }
+
+            var other = worlds
+                .Where(w => !string.IsNullOrWhiteSpace(w) && !string.Equals(w!.Trim(), worldName, StringComparison.OrdinalIgnoreCase))
+                .Select(w => w!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (other.Count > 0)
+            {
+                throw new DomainWorldException(DomainWorldException.WorldConflict,
+                    $"Guard spawn locations must be in the gate's world '{worldName}', not {string.Join(", ", other.Select(w => $"'{w}'"))}.");
             }
         }
 

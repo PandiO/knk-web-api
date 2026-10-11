@@ -126,9 +126,10 @@ namespace knkwebapi_v2.Services.ValidationMethods
                 try
                 {
                     isContained = await _regionService.IsRegionContainedAsync(
-                        parentRegionId.ToString(),
-                        childRegionId.ToString(),
-                        config.RequireFullContainment);
+                        parentRegionId.ToString()!,
+                        childRegionId.ToString()!,
+                        config.RequireFullContainment,
+                        ExtractWorldName(dependencyValue));
                 }
                 catch (RegionServiceUnavailableException ex)
                 {
@@ -269,6 +270,31 @@ namespace knkwebapi_v2.Services.ValidationMethods
         /// Extract a property value from an object using dot notation path.
         /// Example: "Town.WgRegionId" or "WgRegionId"
         /// </summary>
+        /// <summary>
+        /// KNG-111: the parent domain's world, when the dependency is an entity that has one (a region id is unique per
+        /// world only); else null, and the plugin uses the first loaded world that has the region.
+        /// </summary>
+        private string? ExtractWorldName(object dependencyValue)
+        {
+            if (dependencyValue is JsonElement element && element.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+            if (dependencyValue is string || dependencyValue.GetType().IsPrimitive)
+            {
+                return null;
+            }
+            try
+            {
+                var value = ExtractPropertyValue(dependencyValue, "WorldName")?.ToString();
+                return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         private object? ExtractPropertyValue(object obj, string path)
         {
             Console.WriteLine($"[REGIONCONTAINMENT]   ExtractPropertyValue: path='{path}', obj type={obj?.GetType().Name ?? "null"}");
@@ -357,7 +383,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
 
                 // Handle regular objects via reflection
                 var property = current.GetType().GetProperty(part,
-                    System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public);
+                    System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
                 
                 if (property == null)
                 {

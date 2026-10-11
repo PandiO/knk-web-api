@@ -16,13 +16,16 @@ namespace knkwebapi_v2.Services
         private readonly IMapper _mapper;
         private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly ILogger<DomainService> _logger;
+        private readonly IDomainWorldResolver _worlds;
 
-        public DomainService(IDomainRepository repo, IMapper mapper, IDomainRegionNameFinalizer regionNames, ILogger<DomainService> logger)
+        public DomainService(IDomainRepository repo, IMapper mapper, IDomainRegionNameFinalizer regionNames, ILogger<DomainService> logger,
+            IDomainWorldResolver worlds)
         {
             _repo = repo;
             _mapper = mapper;
             _regionNames = regionNames;
             _logger = logger;
+            _worlds = worlds;
         }
 
         public async Task<IEnumerable<Domain>> GetAllAsync()
@@ -40,6 +43,12 @@ namespace knkwebapi_v2.Services
         {
             if (domain == null) throw new ArgumentNullException(nameof(domain));
             if (string.IsNullOrWhiteSpace(domain.Name)) throw new ArgumentException("Domain name is required.", nameof(domain));
+            domain.WorldName = await _worlds.ResolveAsync(new DomainWorldRequest
+            {
+                RequestedWorld = domain.WorldName,
+                WgRegionId = domain.WgRegionId,
+                LocationId = domain.LocationId
+            });
 
             await _repo.AddDomainAsync(domain);
             
@@ -62,6 +71,19 @@ namespace knkwebapi_v2.Services
                 GateNameRules.EnsureNotReserved(domain.Name, "gate structure", "/gate", nameof(domain));
 
             string oldRegionId = existing.WgRegionId;
+            string worldName = await _worlds.ResolveAsync(new DomainWorldRequest
+            {
+                DomainId = id,
+                RequestedWorld = domain.WorldName,
+                WgRegionId = domain.WgRegionId,
+                LocationId = domain.LocationId,
+                ParentDomainId = existing switch
+                {
+                    District district => district.TownId,
+                    Structure structure => structure.DistrictId,
+                    _ => null
+                }
+            });
             
             existing.Name = domain.Name;
             existing.Description = domain.Description;
@@ -69,6 +91,7 @@ namespace knkwebapi_v2.Services
             existing.AllowExit = domain.AllowExit;
             existing.LocationId = domain.LocationId;
             existing.WgRegionId = domain.WgRegionId;
+            existing.WorldName = worldName;
 
             await _repo.UpdateDomainAsync(existing);
             
@@ -85,13 +108,19 @@ namespace knkwebapi_v2.Services
             await _repo.DeleteDomainAsync(id);
         }
 
-        public async Task<DomainRegionDecisionDto?> GetByWgRegionNameAsync(string regionName)
+        public async Task<DomainRegionDecisionDto?> GetByWgRegionNameAsync(string regionName, string? worldName = null)
         {
             if (string.IsNullOrWhiteSpace(regionName)) return null;
-            var domain = await _repo.GetByWgRegionNameAsync(regionName);
+            var domain = await FindByRegionAsync(regionName, worldName);
             if (domain == null) return null;
             return _mapper.Map<DomainRegionDecisionDto>(domain);
         }
+
+        /// <summary>KNG-111: world-qualified when the caller names the world, the old world-blind lookup otherwise.</summary>
+        private Task<Domain?> FindByRegionAsync(string regionId, string? worldName) =>
+            string.IsNullOrWhiteSpace(worldName)
+                ? _repo.GetByWgRegionNameAsync(regionId)
+                : _repo.GetByWgRegionNameAsync(regionId, worldName);
 
         public async Task<PagedResultDto<DomainListDto>> SearchAsync(PagedQueryDto queryDto)
         {
@@ -135,6 +164,7 @@ namespace knkwebapi_v2.Services
                     Id = d.Id,
                     Name = d.Name,
                     WgRegionId = d.WgRegionId,
+                    WorldName = d.WorldName,
                     AllowEntry = d.AllowEntry,
                     AllowExit = d.AllowExit,
                     DomainType = d.GetType().Name
@@ -163,7 +193,7 @@ namespace knkwebapi_v2.Services
             var domainDecisions = new List<DomainRegionDecisionDto>();
             foreach (var regionId in queryDto.WgRegionIds)
             {
-                var domain = await _repo.GetByWgRegionNameAsync(regionId);
+                var domain = await FindByRegionAsync(regionId, queryDto.WorldName);
                 if (domain != null)
                 {
                     domainDecisions.Add(_mapper.Map<DomainRegionDecisionDto>(domain));
