@@ -9,10 +9,10 @@ namespace knkwebapi_v2.Services;
 /// Registered with the <see cref="Tag"/> tag so <c>GET /health/ready</c> runs it while
 /// <c>GET /health/live</c> stays a process-only probe.
 /// <para>
-/// The DbContext is resolved inside the check, not injected: building its options runs
-/// <c>ServerVersion.AutoDetect</c> (Program.cs), which itself opens a connection and throws when
-/// MySQL is down. HealthCheckService creates the check outside its own exception handling, so
-/// constructor injection turned "database down" into a 500 instead of "unhealthy".
+/// The DbContext is resolved inside the check, not injected: HealthCheckService creates the check
+/// outside its own exception handling, so a DbContext that fails to build (as it did while
+/// Program.cs ran <c>ServerVersion.AutoDetect</c> per DbContext) would turn "database down" into
+/// a 500 instead of "unhealthy".
 /// </para>
 /// </summary>
 public sealed class DatabaseHealthCheck : IHealthCheck

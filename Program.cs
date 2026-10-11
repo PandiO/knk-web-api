@@ -47,8 +47,13 @@ else
 }
 
 string? connectionString = builder.Configuration.GetConnectionString("MySqlDbConnection");
+// Detect the server version once (KNG-115). AutoDetect opens a connection; inside the options
+// lambda it ran for every DbContext, so while MySQL was down building any DbContext threw from
+// this file (debugger stop on every request/background tick). Startup seeding below already
+// needs the database, so detecting here doesn't change startup without MySQL.
+var mySqlServerVersion = ServerVersion.AutoDetect(connectionString);
 builder.Services.AddDbContext<KnKDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseMySql(connectionString, mySqlServerVersion));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 
