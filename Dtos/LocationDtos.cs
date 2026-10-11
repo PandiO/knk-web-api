@@ -6,7 +6,9 @@ namespace knkwebapi_v2.Dtos;
 
 public class LocationDto
 {
+    // KNG-130: a Location edited in a form's child form carries its id as a string ("83").
     [JsonPropertyName("id")]
+    [JsonConverter(typeof(NullableIntConverter))]
     public int? Id { get; set; }
     [JsonPropertyName("name")]
     public string? Name { get; set; }

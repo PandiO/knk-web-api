@@ -105,10 +105,13 @@ namespace knkwebapi_v2.Services.ValidationMethods
                     else
                     {
                         Console.WriteLine("[VALIDATION_TRACE_BACKEND]       Validation failed: unrecognized location value format");
+                        // KNG-130: the boundary was never checked, so the rule's "outside the boundaries" message
+                        // must not replace this one.
                         return new ValidationMethodResult
                         {
                             IsValid = false,
-                            Message = "Invalid location value format"
+                            Message = "Cannot check the location against the region: the form's location value could not be read.",
+                            Metadata = new Dictionary<string, object> { { "failureReason", "UnreadableLocation" } }
                         };
                     }
 
