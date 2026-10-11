@@ -313,6 +313,98 @@ public class SiegeMatchServiceTests : IAsyncLifetime
         Assert.Equal(10, (await UserAsync(4)).Coins);
     }
 
+    // ---- KNG-34 leaver fix: departed members reported with their stats ----
+
+    [Fact]
+    public async Task Complete_ReportedLeaver_KeepsLeftAt_GetsTheirStats_AndNoReward()
+    {
+        var id = await StartedMatchAsync((1, 201), (3, 202), (4, 202), (5, 202));
+        var left = DateTime.UtcNow.AddMinutes(-3);
+        await _service.ParticipantLeftAsync(id, 5, new SiegeMatchParticipantLeftDto { LeftAt = left });
+        _context.ChangeTracker.Clear();
+
+        var leaver = Result(5, 202, kills: 2);
+        leaver.Deaths = 3;
+        leaver.HighestKillStreak = 2;
+        leaver.LeftAt = DateTime.UtcNow.AddMinutes(-1); // a later marker never replaces the first
+        var result = await _service.CompleteAsync(id, AttackersWin(Result(1, 201), Result(3, 202, captures: 1), Result(4, 202, captures: 1), leaver));
+
+        var r5 = result.Rewards.Single(r => r.UserId == 5);
+        Assert.False(r5.PresentAtEnd);
+        Assert.Equal((0, 0, 0), (r5.Coins, r5.Experience, r5.Gems));
+        Assert.Equal(10, (await UserAsync(5)).Coins);
+        var stored = await _service.GetByIdAsync(id);
+        var p5 = stored!.Participants.Single(p => p.UserId == 5);
+        Assert.Equal(left, p5.LeftAt);
+        Assert.Equal((2, 3, 2), (p5.Kills, p5.Deaths, p5.HighestKillStreak));
+        // the others are paid exactly as without the leaver in the payload
+        Assert.Equal(250, result.Rewards.Single(r => r.UserId == 3).Coins);
+    }
+
+    [Fact]
+    public async Task Complete_ReportedLeaverWhoseLeftCallWasLost_GetsTheReportedLeftAt_AndNoReward()
+    {
+        var id = await StartedMatchAsync((1, 201), (3, 202), (4, 202), (5, 202));
+        var left = DateTime.UtcNow.AddMinutes(-2);
+        var leaver = Result(5, 202, kills: 1);
+        leaver.LeftAt = left;
+
+        var result = await _service.CompleteAsync(id, AttackersWin(Result(1, 201), Result(3, 202), Result(4, 202), leaver));
+
+        Assert.False(result.Rewards.Single(r => r.UserId == 5).PresentAtEnd);
+        Assert.Equal(0, result.Rewards.Single(r => r.UserId == 5).Coins);
+        var stored = await _service.GetByIdAsync(id);
+        Assert.Equal(left, stored!.Participants.Single(p => p.UserId == 5).LeftAt);
+    }
+
+    [Fact]
+    public async Task Complete_ReportedLeftAtAtOrAfterTheEnd_IsKeptBeforeTheEnd()
+    {
+        var id = await StartedMatchAsync((1, 201), (3, 202));
+        var leaver = Result(1, 201);
+        leaver.LeftAt = DateTime.UtcNow.AddMinutes(5); // plugin clock ahead of the API's
+        var dto = AttackersWin(Result(3, 202), leaver);
+        dto.EndedAt = DateTime.UtcNow;
+
+        var result = await _service.CompleteAsync(id, dto);
+
+        Assert.False(result.Rewards.Single(r => r.UserId == 1).PresentAtEnd);
+        var stored = await _service.GetByIdAsync(id);
+        Assert.True(stored!.Participants.Single(p => p.UserId == 1).LeftAt < stored.EndedAt);
+    }
+
+    [Fact]
+    public async Task Complete_ThenProjection_ReconcilesPvpKillsIncludingLeavers()
+    {
+        var id = await StartedMatchAsync((1, 201), (2, 201), (3, 202), (4, 202));
+        await _service.ParticipantLeftAsync(id, 2, new SiegeMatchParticipantLeftDto { LeftAt = DateTime.UtcNow.AddMinutes(-4) });
+        _context.ChangeTracker.Clear();
+        var leaver = Result(2, 201, kills: 3);
+        leaver.Deaths = 1;
+        leaver.LeftAt = DateTime.UtcNow.AddMinutes(-4);
+        var winner = Result(3, 202, kills: 4, captures: 1);
+        winner.Deaths = 2;
+
+        await _service.CompleteAsync(id, AttackersWin(Result(1, 201, kills: 1), leaver, winner, Result(4, 202, captures: 1)));
+        _context.ChangeTracker.Clear();
+
+        var match = await _context.SiegeMatches.AsNoTracking()
+            .Include(m => m.Participants).ThenInclude(p => p.SiegeTeam)
+            .SingleAsync(m => m.Id == id);
+        var deltas = new knkwebapi_v2.Services.Statistics.StatisticsDeltaSet();
+        knkwebapi_v2.Services.Statistics.SiegeStatisticsProjector.Project(match, deltas, TimeZoneInfo.Utc, null);
+        var totals = deltas.Totals.ToDictionary(t => (t.Key.UserId, t.Key.MetricKey), t => t.Value.Value);
+
+        Assert.Equal(match.Participants.Sum(p => p.Kills), totals.Where(t => t.Key.MetricKey == "pvp_kills").Sum(t => t.Value));
+        Assert.Equal(8m, totals.Where(t => t.Key.MetricKey == "pvp_kills").Sum(t => t.Value));
+        Assert.Equal(3m, totals[(2, "pvp_kills")]);
+        Assert.Equal(1m, totals[(2, "deaths")]);
+        Assert.Equal(1m, totals[(2, "losses")]); // left early: a loss (D1)
+        Assert.False(totals.ContainsKey((2, "wins")));
+        Assert.Equal(1m, totals[(3, "wins")]);
+        Assert.Equal(1m, totals[(1, "losses")]);
+    }
+
     [Fact]
     public async Task Complete_WithoutAStartCall_RecordsTheReportedParticipants()
     {

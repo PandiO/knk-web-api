@@ -208,10 +208,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("latest")]
         public DiscoveryProgressRowDto? Latest { get; set; }
 
+        /// <summary>Discovered enabled domains (the sum of ByType); past discoveries of disabled ones don't count.</summary>
         [JsonPropertyName("totalDiscovered")]
         public int TotalDiscovered { get; set; }
 
-        /// <summary>Lifetime amounts credited by discoveries.</summary>
+        /// <summary>Lifetime amounts credited by discoveries, disabled domains included.</summary>
         [JsonPropertyName("totalCoins")]
         public int TotalCoins { get; set; }
 
@@ -232,6 +233,13 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("total")]
         public int Total { get; set; }
+
+        /// <summary>
+        /// The type's reward rule is enabled. A disabled type has Total 0 unless overrides enable some of its
+        /// domains; staff screens tag it "Disabled", player screens leave it out.
+        /// </summary>
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; }
     }
 
     /// <summary>A domain type's reward rule (GET/PUT api/discovery-rewards).</summary>

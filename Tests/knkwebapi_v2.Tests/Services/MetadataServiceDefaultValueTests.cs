@@ -29,6 +29,37 @@ public class MetadataServiceDefaultValueTests
     }
 
     [Fact]
+    public void NullableValueTypes_HaveNoDefault_SoAFormCanLeaveThemEmpty()
+    {
+        // KNG-119: these reported the placeholder "default", which the Form Builder copied into the field
+        // and the wizard submitted for an empty override.
+        var service = new MetadataService(Mock.Of<IServiceScopeFactory>());
+        var getFieldMetadata = typeof(MetadataService).GetMethod(
+            "GetFieldMetadata",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        getFieldMetadata.Should().NotBeNull();
+        var fields = getFieldMetadata!.Invoke(service, new object[] { typeof(District) })
+            .Should().BeAssignableTo<List<FieldMetadataDto>>().Subject;
+
+        foreach (var name in new[]
+                 {
+                     nameof(District.RoadAccessOverride),
+                     nameof(District.NavigationDefaultOverride),
+                     nameof(District.TeleportMinTitleBracketId)
+                 })
+        {
+            fields.Single(field => field.FieldName == name)
+                .Should().Match<FieldMetadataDto>(field => field.IsNullable && !field.HasDefaultValue && field.DefaultValue == null,
+                    because: $"{name} is a nullable value type without an initializer");
+        }
+
+        // A non-nullable value type keeps its implicit default.
+        fields.Single(field => field.FieldName == nameof(District.TeleportEnabled))
+            .Should().Match<FieldMetadataDto>(field => field.HasDefaultValue && field.DefaultValue == "False");
+    }
+
+    [Fact]
     public void GateRegionData_HaveExplicitEmptyDefaults_WithoutMakingNameOptional()
     {
         var service = new MetadataService(Mock.Of<IServiceScopeFactory>());

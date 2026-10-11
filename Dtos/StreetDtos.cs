@@ -21,6 +21,14 @@ namespace knkwebapi_v2.Dtos
         // Optional embedded Structures collection
         [JsonPropertyName("structures")]
         public IEnumerable<StreetStructureDto>? Structures { get; set; }
+
+        // Road navigation (docs/specs/navigation/DESIGN.md §3.7): read-only counts of the road
+        // edges labelled with this street, filled by StreetService.
+        [JsonPropertyName("edgeCount")]
+        public int EdgeCount { get; set; }
+
+        [JsonPropertyName("totalLength")]
+        public double TotalLength { get; set; }
     }
 
     public class StreetListDto

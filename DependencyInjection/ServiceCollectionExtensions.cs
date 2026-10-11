@@ -124,6 +124,10 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ISiegeMatchRepository, SiegeMatchRepository>();
             services.AddScoped<ISiegeMatchService, SiegeMatchService>();
             services.AddScoped<ISiegeMatchGateService, SiegeMatchGateService>();
+            // Road navigation (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
+            services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();
+            services.AddScoped<IRoadNetworkService, RoadNetworkService>();
+            services.AddScoped<IDomainNavigationSettingsService, DomainNavigationSettingsService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();
@@ -208,6 +212,89 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<CurrencyAnomalyDetector>();
             services.AddScoped<ICurrencyAlertService, CurrencyAlertService>();
             services.AddHostedService<CurrencyMonitorService>();
+
+            // Player statistics (KNG-34, knk-workspace docs/specs/player-statistics/IMPLEMENTATION_PLAN.md §4).
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.StatisticsOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.StatisticsOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.Statistics.StatisticsMetrics>();
+            services.AddScoped<IStatisticsRepository, StatisticsRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Statistics.LedgerStatisticsProjector>();
+            services.AddScoped<knkwebapi_v2.Services.Statistics.SiegeStatisticsProjector>();
+            services.AddScoped<knkwebapi_v2.Services.Statistics.IStatisticsViewerResolver, knkwebapi_v2.Services.Statistics.StatisticsViewerResolver>();
+            services.AddScoped<IStatisticsIngestionService, knkwebapi_v2.Services.Statistics.StatisticsIngestionService>();
+            services.AddScoped<IStatisticsQueryService, knkwebapi_v2.Services.Statistics.StatisticsQueryService>();
+            services.AddScoped<IStatisticsVisibilityService, knkwebapi_v2.Services.Statistics.StatisticsVisibilityService>();
+            services.AddScoped<IStatisticsRebuildService, knkwebapi_v2.Services.Statistics.StatisticsRebuildService>();
+            services.AddHostedService<knkwebapi_v2.Services.Statistics.StatisticsProjectionService>();
+            services.AddHostedService<knkwebapi_v2.Services.Statistics.StatisticsRetentionService>();
+
+            // Leaderboards (KNG-34 link 5): snapshots every Leaderboards:RefreshSeconds; reads from snapshots only.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.LeaderboardsOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.LeaderboardsOptions.SectionName));
+            }
+            services.AddScoped<ILeaderboardRepository, LeaderboardRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Leaderboards.LeaderboardSnapshotBuilder>();
+            services.AddScoped<ILeaderboardQueryService, knkwebapi_v2.Services.Leaderboards.LeaderboardQueryService>();
+            services.AddHostedService<knkwebapi_v2.Services.Leaderboards.LeaderboardSnapshotService>();
+
+            // Diagnostic telemetry + GDPR deletion (KNG-34 link 6, IMPLEMENTATION_PLAN.md §4): bounded write
+            // queue drained by one background writer; owner-only reads; daily retention and deadline jobs.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.DiagnosticTelemetryOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.DiagnosticTelemetryOptions.SectionName));
+                services.Configure<knkwebapi_v2.Configuration.PrivacyOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.PrivacyOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.Telemetry.TelemetryMetrics>();
+            services.AddSingleton(sp => new knkwebapi_v2.Services.Telemetry.TelemetryWriteQueue(
+                sp.GetService<Microsoft.Extensions.Options.IOptions<knkwebapi_v2.Configuration.DiagnosticTelemetryOptions>>(),
+                sp.GetService<knkwebapi_v2.Services.Telemetry.TelemetryMetrics>()));
+            services.AddScoped<ITelemetryRepository, TelemetryRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Telemetry.ITelemetryIngestionService, knkwebapi_v2.Services.Telemetry.TelemetryIngestionService>();
+            services.AddScoped<knkwebapi_v2.Services.Telemetry.ITelemetryQueryService, knkwebapi_v2.Services.Telemetry.TelemetryQueryService>();
+            services.AddHostedService<knkwebapi_v2.Services.Telemetry.TelemetryWriterService>();
+            services.AddHostedService<knkwebapi_v2.Services.Telemetry.TelemetryRetentionService>();
+            services.AddScoped<IPrivacyRepository, PrivacyRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyDeletionService, knkwebapi_v2.Services.Privacy.PrivacyDeletionService>();
+            if (string.Equals(emailProvider, "Smtp", System.StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyEmailService, knkwebapi_v2.Services.Privacy.SmtpPrivacyEmailService>();
+            }
+            else
+            {
+                services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyEmailService, knkwebapi_v2.Services.Privacy.LogPrivacyEmailService>();
+            }
+            services.AddHostedService<knkwebapi_v2.Services.Privacy.PrivacyDeletionDueService>();
+
+            // World analytics (KNG-34 link 7, IMPLEMENTATION_PLAN.md §4): anonymous daily aggregates from the
+            // plugin; owner-only reads; daily retention.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.WorldAnalyticsOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.WorldAnalyticsOptions.SectionName));
+            }
+            services.AddScoped<IWorldAnalyticsRepository, WorldAnalyticsRepository>();
+            services.AddScoped<knkwebapi_v2.Services.WorldAnalytics.IWorldAnalyticsIngestionService, knkwebapi_v2.Services.WorldAnalytics.WorldAnalyticsIngestionService>();
+            services.AddScoped<knkwebapi_v2.Services.WorldAnalytics.IWorldAnalyticsQueryService, knkwebapi_v2.Services.WorldAnalytics.WorldAnalyticsQueryService>();
+            services.AddHostedService<knkwebapi_v2.Services.WorldAnalytics.WorldAnalyticsRetentionService>();
+
+            // Location retention (KNG-80): orphan check, review items, weekly scheduler.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.LocationRetentionOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.LocationRetentionOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.LocationRetention.LocationRetentionRunGate>();
+            services.AddScoped<knkwebapi_v2.Services.LocationRetention.ILocationReferenceSource, knkwebapi_v2.Services.LocationRetention.GameSettingsLocationReferenceSource>();
+            services.AddScoped<knkwebapi_v2.Services.LocationRetention.ILocationReferenceSource, knkwebapi_v2.Services.LocationRetention.FormDraftLocationReferenceSource>();
+            services.AddScoped<ILocationRetentionService, knkwebapi_v2.Services.LocationRetention.LocationRetentionService>();
+            services.AddHostedService<knkwebapi_v2.Services.LocationRetention.LocationRetentionScheduler>();
 
             // Retention policy service - background task for cleaning up old records
             services.AddHostedService<RetentionPolicyService>();

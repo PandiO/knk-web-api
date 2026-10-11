@@ -81,6 +81,7 @@ namespace knkwebapi_v2.Services
             var structure = _mapper.Map<Structure>(structureDto);
             structure.CreatedAt = DateTime.UtcNow;
             DomainTeleportSettings.Apply(structure, structureDto);
+            DomainNavigationDefaults.Apply(structure, structureDto);
             await _repo.AddStructureAsync(structure);
             await _regionNames.FinalizeAsync(structure);
             return _mapper.Map<StructureDto>(structure);
@@ -98,6 +99,9 @@ namespace knkwebapi_v2.Services
             
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Structure with id {id} not found.");
+            // KNG-78: this path can also rename a GateStructure; 'here' is reserved for gates only.
+            if (existing is GateStructure)
+                GateNameRules.EnsureNotReserved(structureDto.Name, "gate structure", "/gate", nameof(structureDto));
             await _teleportDestinations.ValidateSettingsAsync(structureDto);
 
             // Validate that Street exists if changing
@@ -132,6 +136,7 @@ namespace knkwebapi_v2.Services
             existing.DistrictId = structureDto.DistrictId;
             existing.HouseNumber = structureDto.HouseNumber;
             DomainTeleportSettings.Apply(existing, structureDto);
+            DomainNavigationDefaults.Apply(existing, structureDto);
 
             await _repo.UpdateStructureAsync(existing);
             await _regionNames.FinalizeAsync(existing);

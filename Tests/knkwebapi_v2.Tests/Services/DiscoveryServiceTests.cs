@@ -578,6 +578,24 @@ public class DiscoveryServiceTests : IDisposable
         Assert.Equal(3, summary.TotalDiscovered);
         Assert.Equal((first.TotalCoins, first.TotalGems, first.TotalExp), (summary.TotalCoins, summary.TotalGems, summary.TotalExp));
         Assert.NotNull(summary.Latest);
+        Assert.All(summary.ByType, t => Assert.True(t.Enabled));
+    }
+
+    [Fact]
+    public async Task Summary_FlagsADisabledTypeAndLeavesItsPastDiscoveriesOutOfTheTotal()
+    {
+        var service = Service();
+        var first = await service.DiscoverAsync(UserId, Regions("structure_smithy"));
+        _db.DiscoveryRewardRules.Single(r => r.DomainType == "Structure").IsEnabled = false;
+        await _db.SaveChangesAsync();
+
+        var summary = await service.GetSummaryAsync(UserId);
+
+        Assert.Equal(new[] { ("Town", 1, 2, true), ("District", 1, 2, true), ("Structure", 0, 0, false), ("GateStructure", 0, 1, true) },
+            summary.ByType.Select(t => (t.DomainType, t.Discovered, t.Total, t.Enabled)));
+        Assert.Equal(2, summary.TotalDiscovered);
+        // Rewards already credited stay in the lifetime amounts.
+        Assert.Equal((first.TotalCoins, first.TotalGems, first.TotalExp), (summary.TotalCoins, summary.TotalGems, summary.TotalExp));
     }
 
     [Fact]

@@ -91,6 +91,14 @@ namespace knkwebapi_v2.Dtos
         // (docs/specs/items/IMPLEMENTATION_PLAN.md §3.2/open question 4).
         [JsonPropertyName("domainType")]
         public string DomainType { get; set; } = null!;
+        // Where /navigate <domain> leads without spawn/region (KNG-73): "Spawn" or "Region" - the
+        // domain's own override, else its type's default. The game server's catalogue reads it here.
+        [JsonPropertyName("navigationDefault")]
+        public string NavigationDefault { get; set; } = "Spawn";
+        // Whether the domain's entry/exit rule keeps the game server's road router off its roads (rev. 7
+        // Part C, KNG-92): "Applies" or "Ignored" - the domain's own override, else its type's default.
+        [JsonPropertyName("roadAccess")]
+        public string RoadAccess { get; set; } = "Applies";
     }
 
     public class DomainRegionDecisionDto
@@ -113,6 +121,26 @@ namespace knkwebapi_v2.Dtos
         public Collection<DomainRegionDecisionDto> ParentDomainDecisions { get; set; } = new Collection<DomainRegionDecisionDto>();
         [JsonPropertyName("childDomainDecisions")]
         public Collection<DomainRegionDecisionDto> ChildDomainDecisions { get; set; } = new Collection<DomainRegionDecisionDto>();
+    }
+
+    /// <summary>
+    /// One domain's entry/exit rule, keyed by its WorldGuard region (KNG-56). The game server writes
+    /// these onto the regions as flags WorldGuard saves, so the rules hold while this API is down.
+    /// </summary>
+    public class DomainAccessRuleDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = null!;
+        [JsonPropertyName("wgRegionId")]
+        public string WgRegionId { get; set; } = null!;
+        [JsonPropertyName("allowEntry")]
+        public bool AllowEntry { get; set; }
+        [JsonPropertyName("allowExit")]
+        public bool AllowExit { get; set; }
+        [JsonPropertyName("domainType")]
+        public string DomainType { get; set; } = null!;
     }
 
     public class DomainRegionQueryDto

@@ -53,8 +53,10 @@ else
 var startupWarnings = knkwebapi_v2.Configuration.StartupSecurity.ApplySecretChecks(builder);
 
 string? connectionString = builder.Configuration.GetConnectionString("MySqlDbConnection");
+// Once per process, not per DbContext: Database:MySqlServerVersion, else one AutoDetect on first use.
+var mySqlServerVersion = new knkwebapi_v2.Configuration.MySqlServerVersionResolver(builder.Configuration, connectionString);
 builder.Services.AddDbContext<KnKDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseMySql(connectionString, mySqlServerVersion.Version));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 
@@ -105,9 +107,14 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Health checks: add liveness/readiness
+// Health checks: /health/live is process-only; /health/ready also needs the database (KNG-115)
 builder.Services.AddHealthChecks()
-    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy())
+    .AddCheck<knkwebapi_v2.Services.DatabaseHealthCheck>(
+        knkwebapi_v2.Services.DatabaseHealthCheck.Name,
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+        tags: new[] { knkwebapi_v2.Services.DatabaseHealthCheck.Tag },
+        timeout: TimeSpan.FromSeconds(3));
 
 // Options binding for telemetry and client activity
 builder.Services.Configure<knkwebapi_v2.Configuration.TelemetryOptions>(builder.Configuration.GetSection(knkwebapi_v2.Configuration.TelemetryOptions.SectionName));
@@ -134,6 +141,10 @@ if (telemetryOptions.Enabled)
             metrics.AddMeter(knkwebapi_v2.Services.Lootbox.LootboxMetrics.MeterName);
             // Currency ledger counters and lock-wait histogram (currency-payments Phase 5).
             metrics.AddMeter(knkwebapi_v2.Services.CurrencyMetrics.MeterName);
+            // Player statistics ingestion and projection (KNG-34).
+            metrics.AddMeter(knkwebapi_v2.Services.Statistics.StatisticsMetrics.MeterName);
+            // Diagnostic telemetry pipeline (KNG-34 link 6).
+            metrics.AddMeter(knkwebapi_v2.Services.Telemetry.TelemetryMetrics.MeterName);
             if (string.Equals(telemetryOptions.Exporter, "otlp", StringComparison.OrdinalIgnoreCase)
                 && telemetryOptions.Otlp.EnableMetrics)
             {
@@ -240,6 +251,9 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Diagnostic api.request_failed events for 5xx answers and unhandled exceptions (KNG-34 link 6).
+app.UseMiddleware<knkwebapi_v2.Middleware.ApiFailureTelemetryMiddleware>();
 
 // Client activity tracking middleware
 app.UseMiddleware<knkwebapi_v2.Middleware.ClientActivityMiddleware>();

@@ -42,6 +42,18 @@ public class GameSettings
 
     public DateTime? RuntimeWorldsLastUpdatedAt { get; set; }
 
+    /// <summary>
+    /// Server-list MOTD ("&amp;"-coded, up to two lines). Null or blank = the server's own
+    /// server.properties motd (KNG-52).
+    /// </summary>
+    public string? Motd { get; set; }
+
+    /// <summary>
+    /// Serialized List&lt;PermissionGroupGameSettingsDto&gt;: per-group join message, join spawn and
+    /// respawn overrides (KNG-52, docs/specs/game-settings/DESIGN.md §3.8).
+    /// </summary>
+    public string GroupOverridesJson { get; set; } = "[]";
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

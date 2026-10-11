@@ -39,6 +39,17 @@ public class EndpointAccessRulesTests
         "UsersController.ValidateLinkCode",
         "UsersController.CheckDuplicateAvailability",
         "UsersController.CheckDuplicate",
+        // Emailed GDPR deletion link: the token proves access to the mailbox (KNG-34).
+        "DataDeletionController.Confirm",
+        // Public, viewer-filtered player statistics (KNG-34).
+        "LeaderboardsController.GetBoards",
+        "LeaderboardsController.GetBoard",
+        "StatisticsController.GetCatalog",
+        "StatisticsController.GetUser",
+        "StatisticsController.GetSeries",
+        "StatisticsController.GetTitleHistory",
+        "StatisticsController.GetDiscoveries",
+        "PlayersController.GetByName",
     };
 
     private sealed record Endpoint(Type Controller, MethodInfo Action, IReadOnlyList<string> Verbs)

@@ -397,21 +397,41 @@ namespace knkwebapi_v2.Services
 
         public async Task<List<KitClaimResultDto>> GrantFirstJoinKitsAsync(int userId)
         {
-            var user = await _userRepo.GetByIdAsync(userId)
-                ?? throw new KeyNotFoundException($"User with id {userId} not found.");
             var kits = (await _kitRepo.GetAllAsync()).Where(k => k.GrantOnFirstJoin).ToList();
 
-            var results = new List<KitClaimResultDto>();
-            foreach (var kit in kits)
+            // Idempotent (KNG-81): the plugin calls this whenever it reads isNewUser=true, which a
+            // relog inside its cache TTL repeats. The user's FirstJoinKitsGrantedAt is read and set
+            // under the user's row lock, in one transaction with the claim rows, so a repeated or
+            // concurrent call waits for the first one, then sees the flag and grants nothing.
+            var granted = new List<(Kit Kit, KitClaim Claim)>();
+            await _userRepo.RunWithUsersLockedAsync(new[] { userId }, async () =>
             {
-                // Gating still applies (a brand-new player is bracket-0/group-less by definition,
-                // so a mistakenly-flagged premium/high-title kit still won't auto-grant) - but
-                // cost and cooldown are unconditionally ignored (DESIGN.md §4.4).
-                var (gatingPassed, _) = await CheckGatingAsync(kit, user);
-                if (!gatingPassed) continue;
+                var user = await _userRepo.GetByIdAsync(userId)
+                    ?? throw new KeyNotFoundException($"User with id {userId} not found.");
+                if (user.FirstJoinKitsGrantedAt.HasValue) return;
 
-                var claim = new KitClaim { KitId = kit.Id, UserId = userId, ClaimedAt = DateTime.UtcNow };
-                await _kitRepo.AddClaimAsync(claim);
+                user.FirstJoinKitsGrantedAt = DateTime.UtcNow;
+                await _userRepo.UpdateUserAsync(user);
+
+                foreach (var kit in kits)
+                {
+                    // Gating still applies (a brand-new player is bracket-0/group-less by definition,
+                    // so a mistakenly-flagged premium/high-title kit still won't auto-grant) - but
+                    // cost and cooldown are unconditionally ignored (DESIGN.md §4.4).
+                    var (gatingPassed, _) = await CheckGatingAsync(kit, user);
+                    if (!gatingPassed) continue;
+
+                    var claim = new KitClaim { KitId = kit.Id, UserId = userId, ClaimedAt = DateTime.UtcNow };
+                    await _kitRepo.AddClaimAsync(claim);
+                    granted.Add((kit, claim));
+                }
+            });
+
+            // After the commit, like ClaimKitAsync: tokens are keyed by the claim, so they are only
+            // issued for claims this call created.
+            var results = new List<KitClaimResultDto>();
+            foreach (var (kit, claim) in granted)
+            {
                 await IssueLootboxTokensAsync(userId, kit, claim, null);
                 results.Add(_mapper.Map<KitClaimResultDto>(kit));
             }

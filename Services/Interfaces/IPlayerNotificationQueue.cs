@@ -39,6 +39,12 @@ public interface IPlayerNotificationQueue
     long EnqueueDiscoveryReset(int userId, string? uuid, string username, DiscoveryResetNotificationDto reset) =>
         Enqueue(userId, uuid, username, PlayerNotificationTypes.DiscoveryReset, null);
 
+    /// <summary>A Location orphan digest for online staff (KNG-80): UserId 0, no player. The default
+    /// only queues the type.</summary>
+    /// <returns>The new notification's id.</returns>
+    long EnqueueLocationOrphanDigest(LocationOrphanDigestNotificationDto digest) =>
+        Enqueue(0, null, "", PlayerNotificationTypes.LocationOrphanDigest, null);
+
     /// <summary>Every unacknowledged, unexpired notification, oldest first.</summary>
     IReadOnlyList<PlayerNotificationDto> GetPending();
 

@@ -675,6 +675,10 @@ public static partial class MenuTemplateSeed
         // Siege Phase 8b (siege-minigame MENU_TEMPLATES.md Part C) - see MenuTemplateSeed.Siege.cs.
         foreach (var template in SiegeTemplates())
             yield return template;
+
+        // Player statistics privacy (KNG-34) - see MenuTemplateSeed.Statistics.cs.
+        foreach (var template in StatisticsTemplates())
+            yield return template;
     }
 
     /// <summary>

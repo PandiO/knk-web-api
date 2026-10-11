@@ -15,6 +15,10 @@ public class HealthCheckController : ControllerBase
     private readonly HealthCheckService _healthCheckService;
     private readonly ILogger<HealthCheckController> _logger;
 
+    // Last readiness result across requests (controllers are per-request), so a database outage
+    // logs once when it starts and once when it ends instead of on every probe.
+    private static int _lastReadyStatus = (int)HealthStatus.Healthy;
+
     public HealthCheckController(HealthCheckService healthCheckService, ILogger<HealthCheckController> logger)
     {
         _healthCheckService = healthCheckService;
@@ -41,16 +45,36 @@ public class HealthCheckController : ControllerBase
 
     /// <summary>
     /// Readiness probe: indicates if the service is ready to accept traffic.
-    /// Checks dependencies (database, etc.) and returns 200 only if all are healthy.
+    /// Runs every registered check, including the database (KNG-115). Returns 200 when the
+    /// result is healthy or degraded (degraded still serves requests) and 503 when unhealthy.
+    /// The Minecraft plugin's ApiConnectivity probe reads this endpoint.
     /// </summary>
-    /// <response code="200">Service and all dependencies are ready.</response>
-    /// <response code="503">Service or dependencies are not ready.</response>
+    /// <response code="200">Service is ready (status healthy or degraded).</response>
+    /// <response code="503">Service or a dependency such as the database is not ready.</response>
     [HttpGet("ready")]
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetReadiness()
     {
-        var report = await _healthCheckService.CheckHealthAsync();
+        HealthReport report;
+        try
+        {
+            report = await _healthCheckService.CheckHealthAsync(HttpContext?.RequestAborted ?? default);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A check that throws while being created must still read as "not ready", never a 500.
+            if (Interlocked.Exchange(ref _lastReadyStatus, (int)HealthStatus.Unhealthy) != (int)HealthStatus.Unhealthy)
+            {
+                _logger.LogWarning(ex, "Readiness check threw; reporting unhealthy");
+            }
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new HealthResponse
+            {
+                Status = "unhealthy",
+                Timestamp = DateTime.UtcNow,
+                Checks = new() { { "error", ex.GetType().Name } },
+            });
+        }
 
         var response = new HealthResponse
         {
@@ -64,11 +88,32 @@ public class HealthCheckController : ControllerBase
             response.Checks[entry.Key] = entry.Value.Status.ToString().ToLower();
         }
 
-        var statusCode = report.Status == HealthStatus.Healthy ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable;
+        var statusCode = report.Status == HealthStatus.Unhealthy ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status200OK;
 
-        _logger.LogInformation("Health check: {Status}, entries: {Count}", report.Status, report.Entries.Count);
+        LogIfChanged(report);
+
+        _logger.LogDebug("Health check: {Status}, entries: {Count}", report.Status, report.Entries.Count);
 
         return StatusCode(statusCode, response);
+    }
+
+    private void LogIfChanged(HealthReport report)
+    {
+        var previous = (HealthStatus)Interlocked.Exchange(ref _lastReadyStatus, (int)report.Status);
+        if (previous == report.Status)
+        {
+            return;
+        }
+        var checks = string.Join(", ", report.Entries.Select(e =>
+            $"{e.Key}={e.Value.Status}" + (e.Value.Status == HealthStatus.Healthy ? "" : $" ({e.Value.Description})")));
+        if (report.Status == HealthStatus.Healthy)
+        {
+            _logger.LogInformation("Readiness recovered: {Checks}", checks);
+        }
+        else
+        {
+            _logger.LogWarning("Readiness now {Status}: {Checks}", report.Status, checks);
+        }
     }
 }
 

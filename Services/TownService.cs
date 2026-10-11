@@ -61,6 +61,7 @@ namespace knkwebapi_v2.Services
             var town = _mapper.Map<Town>(townDto);
             town.LocationId = resolvedLocationId;
             DomainTeleportSettings.Apply(town, townDto);
+            DomainNavigationDefaults.Apply(town, townDto);
             town.CreatedAt = DateTime.UtcNow;
             await _repo.AddTownAsync(town);
             await _regionNames.FinalizeAsync(town);
@@ -88,6 +89,7 @@ namespace knkwebapi_v2.Services
             existing.WgRegionId = townDto.WgRegionId;
             existing.LocationId = resolvedLocationId;
             DomainTeleportSettings.Apply(existing, townDto);
+            DomainNavigationDefaults.Apply(existing, townDto);
 
             await _repo.UpdateTownAsync(existing);
             await _regionNames.FinalizeAsync(existing);

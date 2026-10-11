@@ -340,6 +340,7 @@ namespace knkwebapi_v2.Controllers
                 ChatPrimaryColor = item.ChatPrimaryColor,
                 ChatSecondaryColor = item.ChatSecondaryColor,
                 NameColor = item.NameColor,
+                PermissionGroups = item.PermissionGroups,
                 IsFrozen = item.IsFrozen,
                 FrozenReason = item.FrozenReason,
                 Gender = item.Gender
@@ -380,6 +381,7 @@ namespace knkwebapi_v2.Controllers
                 ChatPrimaryColor = item.ChatPrimaryColor,
                 ChatSecondaryColor = item.ChatSecondaryColor,
                 NameColor = item.NameColor,
+                PermissionGroups = item.PermissionGroups,
                 IsFrozen = item.IsFrozen,
                 FrozenReason = item.FrozenReason,
                 Gender = item.Gender

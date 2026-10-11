@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
@@ -56,6 +57,9 @@ namespace knkwebapi_v2.Services
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Domain with id {id} not found.");
+            // KNG-78: this path can also rename a GateStructure; 'here' is reserved for gates only.
+            if (existing is GateStructure)
+                GateNameRules.EnsureNotReserved(domain.Name, "gate structure", "/gate", nameof(domain));
 
             string oldRegionId = existing.WgRegionId;
             
@@ -95,7 +99,47 @@ namespace knkwebapi_v2.Services
 
             var query = _mapper.Map<PagedQuery>(queryDto);
             var result = await _repo.SearchAsync(query);
-            return _mapper.Map<PagedResultDto<DomainListDto>>(result);
+            var dto = _mapper.Map<PagedResultDto<DomainListDto>>(result);
+
+            // KNG-73: the effective /navigate default, so the game server's catalogue needs no extra call.
+            if (result?.Items != null)
+            {
+                var typeDefaults = await _repo.GetNavigationDefaultsAsync();
+                var roadAccessDefaults = await _repo.GetRoadAccessDefaultsAsync();
+                var byId = result.Items.GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First());
+                foreach (var item in dto.Items)
+                {
+                    if (item.Id is int id && byId.TryGetValue(id, out var domain))
+                    {
+                        item.NavigationDefault = DomainNavigationDefaults.Effective(domain, typeDefaults).ToString();
+                        // Rev. 7 Part C (KNG-92): whether the game server's road router heeds its entry rule.
+                        item.RoadAccess = DomainNavigationDefaults.EffectiveRoadAccess(domain, roadAccessDefaults).ToString();
+                    }
+                }
+            }
+            return dto;
+        }
+
+        /// <summary>
+        /// AllowEntry/AllowExit of every domain that has a WorldGuard region, for the game server's
+        /// flag sync (KNG-56). Domains without a region can't be entered or left in game and are skipped.
+        /// </summary>
+        public async Task<IReadOnlyList<DomainAccessRuleDto>> GetAccessRulesAsync()
+        {
+            var domains = await _repo.GetAllAsync();
+            return domains
+                .Where(d => !string.IsNullOrWhiteSpace(d.WgRegionId))
+                .OrderBy(d => d.Id)
+                .Select(d => new DomainAccessRuleDto
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    WgRegionId = d.WgRegionId,
+                    AllowEntry = d.AllowEntry,
+                    AllowExit = d.AllowExit,
+                    DomainType = d.GetType().Name
+                })
+                .ToList();
         }
 
         /// <summary>
@@ -132,7 +176,9 @@ namespace knkwebapi_v2.Services
 
             var townDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "Town");
             var districtDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "District");
-            var structureDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "Structure");
+            // A GateStructure is a Structure (gates, Keep Gate): left out, the game server never saw its entry rule
+            // (live test 2026-10-09: the navigator walked players into the Keep Gate the border then refused).
+            var structureDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "Structure" || d.DomainType == "GateStructure");
             int hierarchyIndex = 0;
             if (queryDto.TopDownHierarchy == true)
             {

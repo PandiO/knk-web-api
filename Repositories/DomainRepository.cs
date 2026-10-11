@@ -1,3 +1,4 @@
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
 using Microsoft.EntityFrameworkCore;
@@ -116,6 +117,18 @@ namespace knkwebapi_v2.Repositories
                 PageNumber = query.PageNumber,
                 PageSize = query.PageSize
             };
+        }
+
+        public async Task<IReadOnlyDictionary<string, NavigationDestinationMode>> GetNavigationDefaultsAsync()
+        {
+            var rows = await _context.DomainNavigationDefaults.AsNoTracking().ToListAsync();
+            return rows.ToDictionary(r => r.DomainType, r => r.DefaultMode, StringComparer.OrdinalIgnoreCase);
+        }
+
+        public async Task<IReadOnlyDictionary<string, RoadAccessRule>> GetRoadAccessDefaultsAsync()
+        {
+            var rows = await _context.DomainNavigationDefaults.AsNoTracking().ToListAsync();
+            return rows.ToDictionary(r => r.DomainType, r => r.RoadAccess, StringComparer.OrdinalIgnoreCase);
         }
     }
 }

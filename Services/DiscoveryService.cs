@@ -422,6 +422,7 @@ namespace knkwebapi_v2.Services
             await EnsureUserAsync(userId);
             var rows = await BuildProgressRowsAsync(userId);
             var discoveries = await _repo.GetByUserAsync(userId);
+            var rules = (await _repo.GetRulesAsync()).ToDictionary(r => r.DomainType, StringComparer.OrdinalIgnoreCase);
 
             var latest = rows.Where(r => r.Discovered).OrderByDescending(r => r.DiscoveredAt).ThenByDescending(r => r.DomainId).FirstOrDefault();
             return new DiscoverySummaryDto
@@ -430,10 +431,12 @@ namespace knkwebapi_v2.Services
                 {
                     DomainType = type,
                     Discovered = rows.Count(r => r.DomainType == type && r.Discovered),
-                    Total = rows.Count(r => r.DomainType == type)
+                    Total = rows.Count(r => r.DomainType == type),
+                    Enabled = rules.TryGetValue(type, out var rule) && rule.IsEnabled
                 }).ToList(),
                 Latest = latest,
-                TotalDiscovered = discoveries.Count,
+                // The rows hold enabled domains only, so this adds up with ByType.
+                TotalDiscovered = rows.Count(r => r.Discovered),
                 TotalCoins = discoveries.Sum(d => d.CoinsAwarded),
                 TotalGems = discoveries.Sum(d => d.GemsAwarded),
                 TotalExp = discoveries.Sum(d => d.ExpAwarded)
@@ -566,12 +569,7 @@ namespace knkwebapi_v2.Services
         private async Task<(Dictionary<int, DiscoveryDomainNode> Nodes, List<DiscoveryDomainNode> Enabled)> LoadEnabledNodesAsync()
         {
             var nodes = (await _repo.GetAllDomainNodesAsync()).ToDictionary(n => n.Id);
-            var rules = (await _repo.GetRulesAsync()).ToDictionary(r => r.DomainType, StringComparer.OrdinalIgnoreCase);
-            var overrides = (await _repo.GetOverridesAsync()).ToDictionary(o => o.DomainId);
-            var enabled = nodes.Values
-                .Where(n => rules.TryGetValue(n.DomainType, out var rule)
-                    && DiscoveryRewardCalculator.Merge(rule, overrides.GetValueOrDefault(n.Id)).IsEnabled)
-                .ToList();
+            var enabled = DiscoveryEnabledDomains.Filter(nodes.Values, await _repo.GetRulesAsync(), await _repo.GetOverridesAsync());
             return (nodes, enabled);
         }
 

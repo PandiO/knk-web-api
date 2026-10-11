@@ -14,27 +14,48 @@ namespace knkwebapi_v2.Services
     public class StreetService : IStreetService
     {
         private readonly IStreetRepository _repo;
-            private readonly IDistrictRepository _districtRepo;
+        private readonly IDistrictRepository _districtRepo;
+        private readonly IRoadNetworkRepository _roads;
         private readonly IMapper _mapper;
 
-        public StreetService(IStreetRepository repo, IDistrictRepository districtRepo, IMapper mapper)
+        public StreetService(IStreetRepository repo, IDistrictRepository districtRepo, IRoadNetworkRepository roads, IMapper mapper)
         {
             _repo = repo;
-                        _districtRepo = districtRepo;
+            _districtRepo = districtRepo;
+            _roads = roads;
             _mapper = mapper;
         }
 
         public async Task<IEnumerable<StreetDto>> GetAllAsync()
         {
             var streets = await _repo.GetAllAsync();
-            return _mapper.Map<IEnumerable<StreetDto>>(streets);
+            var dtos = _mapper.Map<List<StreetDto>>(streets);
+            // Road navigation (DESIGN §3.7): one grouped query for every street's edge counts.
+            var counts = await _roads.GetStreetEdgeStatsAsync(null);
+            foreach (var dto in dtos)
+            {
+                FillRoadCounts(dto, counts);
+            }
+            return dtos;
         }
 
         public async Task<StreetDto?> GetByIdAsync(int id)
         {
             if (id <= 0) return null;
             var street = await _repo.GetByIdAsync(id);
-            return _mapper.Map<StreetDto>(street);
+            if (street == null) return null;
+            var dto = _mapper.Map<StreetDto>(street);
+            FillRoadCounts(dto, await _roads.GetStreetEdgeStatsAsync(new[] { id }));
+            return dto;
+        }
+
+        private static void FillRoadCounts(StreetDto dto, Dictionary<int, (int edgeCount, double totalLength)> counts)
+        {
+            if (dto.Id is int id && counts.TryGetValue(id, out var stats))
+            {
+                dto.EdgeCount = stats.edgeCount;
+                dto.TotalLength = stats.totalLength;
+            }
         }
 
         public async Task<StreetDto> CreateAsync(StreetDto streetDto)

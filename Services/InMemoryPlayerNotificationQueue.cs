@@ -88,6 +88,16 @@ public class InMemoryPlayerNotificationQueue : IPlayerNotificationQueue
             DiscoveryReset = reset
         });
 
+    public long EnqueueLocationOrphanDigest(LocationOrphanDigestNotificationDto digest) =>
+        Add(new PlayerNotificationDto
+        {
+            UserId = 0,
+            Uuid = null,
+            Username = "",
+            Type = PlayerNotificationTypes.LocationOrphanDigest,
+            LocationOrphanDigest = digest
+        });
+
     private long Add(PlayerNotificationDto notification)
     {
         var id = Interlocked.Increment(ref _nextId);
