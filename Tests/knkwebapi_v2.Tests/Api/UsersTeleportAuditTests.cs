@@ -35,7 +35,8 @@ public class UsersTeleportAuditTests
     {
         _controller = new UsersController(_users.Object, new Mock<IMapper>().Object, new Mock<IPermissionResolutionService>().Object,
             new Mock<ISalaryService>().Object, new Mock<IUserProfileSummaryService>().Object,
-            new Mock<IUserPermissionGroupService>().Object, new Mock<IPermissionGrantService>().Object);
+            new Mock<IUserPermissionGroupService>().Object, new Mock<IPermissionGrantService>().Object,
+            new Mock<IPermissionEscalationGuard>().Object);
         SetRequest();
     }
 

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using System.Threading;
 using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
@@ -24,6 +25,9 @@ public class PlayersController : ControllerBase
 
     /// <summary>A player's public profile by Minecraft/web username (case-insensitive).</summary>
     /// <response code="404">Unknown or inactive (e.g. merged) account</response>
+    // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
+    // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
+    [AllowAnonymous]
     [HttpGet("by-name/{username}")]
     [ProducesResponseType(typeof(PublicPlayerProfileDto), 200)]
     [ProducesResponseType(404)]

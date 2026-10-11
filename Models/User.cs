@@ -183,6 +183,14 @@ public class User : PermissionHolder
     /// </summary>
     public DateTime? LastEmailChangeAt { get; set; }
 
+    /// <summary>
+    /// Session generation (closed-alpha hardening WP4, decision D5). Carried in every access token
+    /// as the "tv" claim and checked on each request; bumped on a password change or reset, an
+    /// email change, deactivation and "sign out everywhere", which ends every session at once.
+    /// Service-managed only (AuthService.RevokeAllSessionsAsync).
+    /// </summary>
+    public int TokenVersion { get; set; }
+
     // ===== SOFT DELETION =====
 
     /// <summary>
@@ -223,6 +231,9 @@ public class User : PermissionHolder
     /// One user can have multiple link codes (old codes expire, new ones generated).
     /// </summary>
     public ICollection<LinkCode> LinkCodes { get; set; } = new List<LinkCode>();
+
+    /// <summary>This user's web refresh tokens (closed-alpha hardening WP4).</summary>
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     /// <summary>
     /// This user's PermissionGroup memberships. A user can hold multiple groups at once

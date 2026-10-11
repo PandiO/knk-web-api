@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Models.ClientActivity;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -10,14 +10,14 @@ namespace knkwebapi_v2.Controllers;
 /// 
 /// SECURITY NOTE: These endpoints are intended for administrators only.
 /// TODO: Wire this controller to your existing authorization mechanism.
-/// Currently: No auth requirement. Add [Authorize(Policy = "RequireAdmin")] when auth is in place.
+/// Currently: No auth requirement. Add [RequirePermission(StaffPermissions.ServerConfig)] when auth is in place.
 /// 
 /// Privacy: Metrics are aggregated by client type/id, not by individual user/player.
 /// No sensitive data (player IDs, tokens, etc.) is stored or returned.
 /// </summary>
 [ApiController]
 [Route("api/admin/clients")]
-[Authorize(Policy = "RequireAdmin")]
+[RequirePermission(StaffPermissions.ServerConfig)]
 public class AdminClientsController : ControllerBase
 {
     private readonly IClientActivityStore _clientActivityStore;

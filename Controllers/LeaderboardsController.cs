@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +33,9 @@ public class LeaderboardsController : ControllerBase
     }
 
     /// <summary>Every board with its periods. Public.</summary>
+    // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
+    // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
+    [AllowAnonymous]
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<LeaderboardBoardDto>), 200)]
     public ActionResult<IReadOnlyList<LeaderboardBoardDto>> GetBoards() => Ok(_leaderboards.GetBoards());
@@ -44,6 +48,9 @@ public class LeaderboardsController : ControllerBase
     /// <response code="400">InvalidPeriod or InvalidTop</response>
     /// <response code="401">SignInRequired — the board ranks a configurable metric</response>
     /// <response code="404">UnknownBoard</response>
+    // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
+    // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
+    [AllowAnonymous]
     [HttpGet("{boardKey}")]
     [ProducesResponseType(typeof(LeaderboardViewDto), 200)]
     [ProducesResponseType(400)]

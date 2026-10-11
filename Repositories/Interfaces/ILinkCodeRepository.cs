@@ -48,6 +48,11 @@ namespace knkwebapi_v2.Repositories
         /// <param name="status">New status</param>
         Task UpdateLinkCodeStatusAsync(int id, LinkCodeStatus status);
 
+        /// <summary>Marks the code Used only if it is still Active, in one conditional write. Returns
+        /// false when another request already used (or expired) it, so two concurrent registrations
+        /// with the same code can't both succeed.</summary>
+        Task<bool> TryMarkUsedAsync(int id);
+
         /// <summary>
         /// Deletes a link code by ID.
         /// </summary>

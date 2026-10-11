@@ -17,7 +17,7 @@ namespace knkwebapi_v2.Attributes
     /// user-level wildcard is checked before group grants and would decide first).
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
-    public class RequireOwnerPermissionAttribute : TypeFilterAttribute
+    public class RequireOwnerPermissionAttribute : TypeFilterAttribute, IKnkAccessRule
     {
         public RequireOwnerPermissionAttribute(string node) : base(typeof(RequireOwnerPermissionFilter))
         {

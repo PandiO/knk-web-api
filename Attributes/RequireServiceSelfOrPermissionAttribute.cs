@@ -12,7 +12,7 @@ namespace knkwebapi_v2.Attributes
     /// game server, the player's own account page and staff all use (e.g. a player's discoveries).
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-    public class RequireServiceSelfOrPermissionAttribute : TypeFilterAttribute
+    public class RequireServiceSelfOrPermissionAttribute : TypeFilterAttribute, IKnkAccessRule
     {
         public RequireServiceSelfOrPermissionAttribute(string node, string userIdRouteKey = "userId")
             : base(typeof(RequireServiceSelfOrPermissionFilter))

@@ -135,7 +135,7 @@ namespace knkwebapi_v2.Attributes
     /// <c>HttpContext.GetKnkCaller()</c>. Several of these on one action must all pass.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
-    public class RequireServiceOrPermissionAttribute : TypeFilterAttribute
+    public class RequireServiceOrPermissionAttribute : TypeFilterAttribute, IKnkAccessRule
     {
         public RequireServiceOrPermissionAttribute(string node) : base(typeof(RequireServiceOrPermissionFilter))
         {
@@ -185,7 +185,7 @@ namespace knkwebapi_v2.Attributes
     /// a logged-in web user → 403.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-    public class RequirePluginServiceAttribute : Attribute, IAuthorizationFilter
+    public class RequirePluginServiceAttribute : Attribute, IAuthorizationFilter, IKnkAccessRule
     {
         public void OnAuthorization(AuthorizationFilterContext context)
         {

@@ -9,6 +9,7 @@ namespace knkwebapi_v2.Controllers;
 /// </summary>
 [ApiController]
 [Route("health")]
+[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public class HealthCheckController : ControllerBase
 {
     private readonly HealthCheckService _healthCheckService;

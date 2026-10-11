@@ -5,6 +5,7 @@ namespace knkwebapi_v2.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public class HealthController : ControllerBase
     {
         [HttpGet]

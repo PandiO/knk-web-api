@@ -27,5 +27,12 @@ namespace knkwebapi_v2.Services
 
             return Task.CompletedTask;
         }
+
+        public Task SendEmailChangedNoticeAsync(string previousEmail, string? username, string newEmailHint)
+        {
+            _logger.LogInformation("Email-changed notice for {Email} ({Username}): new address {NewEmailHint}",
+                previousEmail, string.IsNullOrWhiteSpace(username) ? "unknown" : username, newEmailHint);
+            return Task.CompletedTask;
+        }
     }
 }

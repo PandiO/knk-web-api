@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -109,6 +110,9 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>Metric keys, settings, groups, contexts and the period time zone. Public.</summary>
+    // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
+    // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
+    [AllowAnonymous]
     [HttpGet("catalog")]
     [ProducesResponseType(typeof(StatisticsCatalogDto), 200)]
     public ActionResult<StatisticsCatalogDto> GetCatalog() => Ok(_query.GetCatalog());
@@ -118,6 +122,9 @@ public class StatisticsController : ControllerBase
     /// <param name="period">lifetime (default), day, week or month.</param>
     /// <param name="date">A local day inside the wanted period (default today).</param>
     /// <param name="ct">Cancellation.</param>
+    // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
+    // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
+    [AllowAnonymous]
     [HttpGet("users/{userId:int}")]
     [ProducesResponseType(typeof(PlayerStatisticsDto), 200)]
     [ProducesResponseType(400)]
@@ -127,6 +134,9 @@ public class StatisticsController : ControllerBase
         Run(userId, viewer => _query.GetAsync(userId, viewer, period, date, ct));
 
     /// <summary>One metric per day, week or month (≤ 366 points); 403 when the caller may not see it.</summary>
+    // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
+    // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
+    [AllowAnonymous]
     [HttpGet("users/{userId:int}/series")]
     [ProducesResponseType(typeof(StatisticSeriesDto), 200)]
     [ProducesResponseType(400)]
@@ -137,6 +147,9 @@ public class StatisticsController : ControllerBase
         Run(userId, viewer => _query.GetSeriesAsync(userId, viewer, metric, context, granularity, from, to, ct));
 
     /// <summary>Title promotions and demotions, newest first (setting title_history).</summary>
+    // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
+    // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
+    [AllowAnonymous]
     [HttpGet("users/{userId:int}/title-history")]
     [ProducesResponseType(typeof(PagedResultDto<TitleChangeDto>), 200)]
     [ProducesResponseType(403)]
@@ -146,6 +159,9 @@ public class StatisticsController : ControllerBase
         Run(userId, viewer => _query.GetTitleHistoryAsync(userId, viewer, page, pageSize, ct));
 
     /// <summary>Named discovered places, newest first (setting discoveries.list).</summary>
+    // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
+    // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
+    [AllowAnonymous]
     [HttpGet("users/{userId:int}/discoveries")]
     [ProducesResponseType(typeof(PagedResultDto<DiscoveryListItemDto>), 200)]
     [ProducesResponseType(403)]
@@ -178,6 +194,7 @@ public class StatisticsController : ControllerBase
     /// <response code="400">UnknownSetting, NotContextual, InvalidContext, DuplicateChange, TooManyChanges</response>
     /// <response code="409">VisibilityConflict — body: { error, message, current }</response>
     [HttpPut("users/{userId:int}/visibility")]
+    [RequireServiceOrLoggedIn] // the action itself allows only the player themselves
     [ProducesResponseType(typeof(StatisticsVisibilityDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]

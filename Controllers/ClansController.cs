@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
@@ -9,6 +10,8 @@ namespace KnKWebAPI.Controllers
     // graph (base colour + ordered layers) so the plugin can build the banner item in one call.
     [ApiController]
     [Route("api/[controller]")]
+    // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
     public class ClansController : ControllerBase
     {
         private readonly IClanService _service;

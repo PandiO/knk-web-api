@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
@@ -8,6 +9,8 @@ namespace KnKWebAPI.Controllers
     // (GET/POST /api/BannerDesigns/{id}/layers), same split as GateDoors.
     [ApiController]
     [Route("api/[controller]")]
+    // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
     public class BannerLayersController : ControllerBase
     {
         private readonly IBannerDesignService _service;

@@ -23,6 +23,7 @@ public class RoadEdgesController : RoadControllerBase
 
     /// <summary>Filters: world, tileId, streetId, unlabelled (true), stale (true); sortBy id | length | streetId | tileId.</summary>
     [HttpPost("search")]
+    [RequireServiceOrLoggedIn] // a read sent as POST: the staff edge table and the plugin
     [ProducesResponseType(typeof(PagedResultDto<RoadEdgeDto>), 200)]
     public Task<IActionResult> Search([FromBody] PagedQueryDto query) =>
         Run(async () => Ok(await _service.SearchEdgesAsync(query)));

@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,8 @@ namespace KnKWebAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+// Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
+[RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
 public class MinecraftEnchantmentRefsController : ControllerBase
 {
     private readonly IMinecraftEnchantmentRefService _service;
