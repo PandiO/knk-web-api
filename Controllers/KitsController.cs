@@ -94,7 +94,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
-        [RequireServiceOrPermission(StaffPermissions.ManageKits)]
+        [RequireServiceOrLoggedIn] // a read sent as POST, like the GET list
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<KitDto>>> Search([FromBody] PagedQueryDto query)
         {

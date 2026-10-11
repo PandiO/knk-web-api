@@ -168,7 +168,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
-        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        [RequireServiceOrLoggedIn] // a read sent as POST, like the GET list
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<GateStructureListDto>>> SearchGateStructures([FromBody] PagedQueryDto query)
         {

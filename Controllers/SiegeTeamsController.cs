@@ -67,7 +67,7 @@ namespace KnKWebAPI.Controllers
 
         // Picker source for InitialHolderTeamId / InitialOwnerTeamId - pass
         // filters: { "siegeScenarioId": "<id>" } to scope it to one scenario.
-        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
+        [RequireServiceOrLoggedIn] // a read sent as POST, like the GET list
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<SiegeTeamReadDto>>> Search([FromBody] PagedQueryDto query)
         {

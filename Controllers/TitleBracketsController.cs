@@ -38,7 +38,7 @@ namespace KnKWebAPI.Controllers
             return bracket == null ? NotFound() : Ok(ToDto(bracket));
         }
 
-        [RequireServiceOrPermission(StaffPermissions.CurrencyPolicy)]
+        [RequireServiceOrLoggedIn] // a read sent as POST, like the GET list
         [HttpPost("search")]
         public async Task<IActionResult> Search([FromBody] PagedQueryDto? query)
         {

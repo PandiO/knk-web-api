@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using knkwebapi_v2.Services;
@@ -72,6 +73,20 @@ namespace knkwebapi_v2.Attributes
         public static bool IsRead(string method) =>
             HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method);
 
+        /// <summary>
+        /// A POST that only looks things up: its route ends in <c>search</c> or <c>search-…</c>
+        /// (<c>api/Domains/search</c>, <c>api/Domains/search-region-decisions</c>). The list views
+        /// send their paging and filters in the body, so these are reads.
+        /// </summary>
+        public static bool IsSearch(ActionDescriptor action)
+        {
+            var template = action.AttributeRouteInfo?.Template;
+            if (string.IsNullOrEmpty(template)) return false;
+            var last = template.TrimEnd('/').Split('/')[^1];
+            return last.Equals("search", StringComparison.OrdinalIgnoreCase)
+                || last.StartsWith("search-", StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>True when the metadata (controller + action attributes) holds an explicit rule.</summary>
         public static bool HasAccessRule(IEnumerable<object> metadata) =>
             metadata.Any(m => m is IKnkAccessRule or IAuthorizeData or IAllowAnonymous);
@@ -100,8 +115,9 @@ namespace knkwebapi_v2.Attributes
     /// writes (any method but GET/HEAD/OPTIONS): the write needs knk-plugin or a web user holding
     /// <c>node</c>, while reads keep the default "logged in or the game server" rule. Used on
     /// the generic CRUD controllers (closed-alpha hardening WP1.3), where every write needs the
-    /// controller's node and the reads stay open to logged-in users. A POST search is a write
-    /// under this rule.
+    /// controller's node and the reads stay open to logged-in users. A POST search
+    /// (<see cref="DefaultCallerRequiredFilter.IsSearch"/>) counts as a read, so content staff can
+    /// list world data and the reverse.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
     public class RequireServiceOrPermissionForWritesAttribute : TypeFilterAttribute, IKnkAccessRule
@@ -126,7 +142,9 @@ namespace knkwebapi_v2.Attributes
 
         public Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
-            return DefaultCallerRequiredFilter.IsRead(context.HttpContext.Request.Method)
+            var method = context.HttpContext.Request.Method;
+            return DefaultCallerRequiredFilter.IsRead(method)
+                || (HttpMethods.IsPost(method) && DefaultCallerRequiredFilter.IsSearch(context.ActionDescriptor))
                 ? Task.CompletedTask
                 : _inner.OnAuthorizationAsync(context);
         }

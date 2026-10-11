@@ -94,7 +94,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
-        [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
+        [RequireServiceOrLoggedIn] // a read sent as POST, like the GET list
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<SiegeScenarioListDto>>> Search([FromBody] PagedQueryDto query)
         {
