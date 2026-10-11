@@ -139,10 +139,6 @@ namespace KnKWebAPI.Controllers
         }
 
         /// <summary>
-        /// "Premium expiring soon" moderation view (docs/specs/user-management/IMPLEMENTATION_PLAN.md
-        /// Phase 3) — memberships in this group expiring within the next withinDays days.
-        /// </summary>
-        /// <summary>
         /// KNG-116: whether the group effectively has a node - the group, then its parent chain, matched with the same
         /// wildcard and deny rules as a user's check.
         /// </summary>
@@ -158,6 +154,10 @@ namespace KnKWebAPI.Controllers
             return result == null ? NotFound() : Ok(result);
         }
 
+        /// <summary>
+        /// "Premium expiring soon" moderation view (docs/specs/user-management/IMPLEMENTATION_PLAN.md
+        /// Phase 3) — memberships in this group expiring within the next withinDays days.
+        /// </summary>
         [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpGet("{id:int}/expiring-memberships")]
         public async Task<ActionResult<IEnumerable<ExpiringMembershipDto>>> GetExpiringMemberships(int id, [FromQuery] int withinDays = 7)

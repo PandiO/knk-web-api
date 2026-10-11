@@ -135,6 +135,10 @@ namespace knkwebapi_v2.Services
             {
                 throw new ArgumentException($"hub.domainId: '{domain.Name}' is not hub-eligible; flag it as a hub first");
             }
+            if (string.IsNullOrWhiteSpace(domain.WgRegionId))
+            {
+                throw new ArgumentException($"hub.domainId: '{domain.Name}' has no WorldGuard region; the hub's rules apply inside it");
+            }
             var spawn = hub.SpawnReference?.Location;
             if (spawn == null)
             {
@@ -156,10 +160,17 @@ namespace knkwebapi_v2.Services
             if (hub.DomainId is int domainId)
             {
                 var domain = await _context.Domains.AsNoTracking().FirstOrDefaultAsync(d => d.Id == domainId);
-                hub.DomainName = domain?.Name;
-                hub.DomainType = domain?.GetType().Name;
-                hub.WorldName = domain?.WorldName;
-                hub.WgRegionId = domain?.WgRegionId;
+                if (domain == null)
+                {
+                    // The selected hub was deleted: no hub, rather than a hub nobody can enter (the game server would
+                    // refuse every join while its region is missing).
+                    hub.DomainId = null;
+                    return hub;
+                }
+                hub.DomainName = domain.Name;
+                hub.DomainType = domain.GetType().Name;
+                hub.WorldName = domain.WorldName;
+                hub.WgRegionId = domain.WgRegionId;
             }
             return hub;
         }

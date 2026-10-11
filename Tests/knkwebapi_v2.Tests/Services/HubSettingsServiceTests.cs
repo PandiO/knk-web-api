@@ -99,6 +99,17 @@ public class HubSettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ADeletedHubIsNoHubAndAHubNeedsARegion()
+    {
+        Assert.Null((await _hub.DescribeAsync(new HubSettingsDto { DomainId = 99 })).DomainId);
+
+        _context.Towns.Add(new Town { Id = 9, Name = "Nowhere", Description = "", WgRegionId = " ", WorldName = "hub", IsHub = true });
+        await _context.SaveChangesAsync();
+        var noRegion = await Assert.ThrowsAsync<ArgumentException>(() => _hub.NormalizeAsync(Hub(9)));
+        Assert.Contains("no WorldGuard region", noRegion.Message);
+    }
+
+    [Fact]
     public async Task AnExemptionNeedsTheGroupsEffectiveModeNode()
     {
         _permissions.Setup(p => p.CheckGroupAsync(7, HubSettingsService.StaffModeNode))
