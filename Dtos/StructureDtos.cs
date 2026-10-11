@@ -26,6 +26,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("wgRegionId")]
         public string WgRegionId { get; set; } = null!;
 
+        // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
+
         [JsonPropertyName("locationId")]
         public int? LocationId { get; set; }
 
@@ -87,6 +91,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("wgRegionId")]
         public string wgRegionId { get; set; } = null!;
 
+        // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
+
         [JsonPropertyName("houseNumber")]
         public int houseNumber { get; set; }
 
@@ -126,6 +134,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("wgRegionId")]
         public string? WgRegionId { get; set; }
+
+        // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
     }
 
     // Lightweight Street DTO for embedding in Structure payloads

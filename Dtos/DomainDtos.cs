@@ -34,6 +34,10 @@ namespace knkwebapi_v2.Dtos
         public bool? AllowExit { get; set; }
         [JsonPropertyName("wgRegionId")]
         public string WgRegionId { get; set; } = null!;
+
+        // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
         [JsonPropertyName("locationId")]
         public int? LocationId { get; set; }
 
@@ -82,6 +86,10 @@ namespace knkwebapi_v2.Dtos
         public string Description { get; set; } = null!;
         [JsonPropertyName("wgRegionId")]
         public string WgRegionId { get; set; } = null!;
+
+        // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
         [JsonPropertyName("parentDomainId")]
         public int? ParentDomainId { get; set; }
         [JsonPropertyName("parentDomain")]
@@ -111,6 +119,10 @@ namespace knkwebapi_v2.Dtos
         public string Description { get; set; } = null!;
         [JsonPropertyName("wgRegionId")]
         public string WgRegionId { get; set; } = null!;
+
+        // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
         [JsonPropertyName("allowEntry")]
         public bool AllowEntry { get; set; }
         [JsonPropertyName("allowExit")]
@@ -135,6 +147,10 @@ namespace knkwebapi_v2.Dtos
         public string Name { get; set; } = null!;
         [JsonPropertyName("wgRegionId")]
         public string WgRegionId { get; set; } = null!;
+
+        // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
         [JsonPropertyName("allowEntry")]
         public bool AllowEntry { get; set; }
         [JsonPropertyName("allowExit")]
@@ -146,6 +162,12 @@ namespace knkwebapi_v2.Dtos
     public class DomainRegionQueryDto
     {
         public IEnumerable<String>? WgRegionIds { get; set; }
+
+        /// <summary>
+        /// KNG-111: the world the regions are in. When set, only domains of that world match (and, as a fallback, domains
+        /// not yet assigned a world). When null, the lookup is world-blind, as before.
+        /// </summary>
+        public string? WorldName { get; set; }
         /***
             * If true, the hierarchy is traversed from top to bottom (i.e., parent to child).
             * If false, the hierarchy is traversed from bottom to top (i.e., child to parent).

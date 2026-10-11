@@ -183,6 +183,8 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<Domain>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
+            // KNG-111: the domain's world. Region ids are unique per world, enforced by DomainWorldResolver.
+            entity.Property(e => e.WorldName).HasMaxLength(64);
             // Warp price (teleport DESIGN.md §3.7.1): never negative, never above the gem cap.
             entity.ToTable("domains", t =>
                 t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range",

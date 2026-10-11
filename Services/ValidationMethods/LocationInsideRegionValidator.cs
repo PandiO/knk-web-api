@@ -141,16 +141,40 @@ namespace knkwebapi_v2.Services.ValidationMethods
 
                 Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Region resolved: {regionId}");
 
+                // KNG-111: a region id is unique per world only, so ask about the parent domain's region in its world;
+                // a location in another world is outside it whatever its coordinates.
+                var regionWorld = ExtractWorldName(dependencyValue);
+                var locationWorld = string.IsNullOrWhiteSpace(location.World) ? null : location.World.Trim();
+                if (regionWorld != null && locationWorld != null
+                    && !string.Equals(regionWorld, locationWorld, StringComparison.OrdinalIgnoreCase))
+                {
+                    var owner = ExtractPropertyValue(dependencyValue, "Name")?.ToString() ?? "The region";
+                    Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Validation failed: location world '{locationWorld}' is not region world '{regionWorld}'");
+                    return new ValidationMethodResult
+                    {
+                        IsValid = false,
+                        Message = $"The location is in world '{locationWorld}', but {owner} is in world '{regionWorld}'. Please select a location in {regionWorld}.",
+                        Placeholders = new Dictionary<string, string>
+                        {
+                            { "parentEntityName", owner },
+                            { "locationWorld", locationWorld },
+                            { "regionWorld", regionWorld },
+                            { "regionName", regionId.ToString() ?? string.Empty }
+                        }
+                    };
+                }
+
                 // Check if location is inside region
                 Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Checking region boundary: regionId={regionId}, x={location.X ?? 0}, z={location.Z ?? 0}, allowBoundary={config.AllowBoundary}");
                 bool isInside;
                 try
                 {
                     isInside = await _regionService.IsLocationInsideRegionAsync(
-                        regionId.ToString(),
+                        regionId.ToString()!,
                         location.X ?? 0,
                         location.Z ?? 0,
-                        config.AllowBoundary);
+                        config.AllowBoundary,
+                        regionWorld ?? locationWorld);
                 }
                 catch (RegionServiceUnavailableException ex)
                 {
@@ -206,6 +230,28 @@ namespace knkwebapi_v2.Services.ValidationMethods
         /// Extract a property value from an object using dot notation path.
         /// Example: "Town.WgRegionId" or "WgRegionId"
         /// </summary>
+        /// <summary>KNG-111: the dependency domain's world, when it is an entity that has one; else null.</summary>
+        private string? ExtractWorldName(object dependencyValue)
+        {
+            if (dependencyValue is JsonElement element && element.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+            if (IsTerminalValue(dependencyValue))
+            {
+                return null;
+            }
+            try
+            {
+                var value = ExtractPropertyValue(dependencyValue, "WorldName")?.ToString();
+                return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         private object? ExtractPropertyValue(object obj, string path)
         {
             if (obj == null)

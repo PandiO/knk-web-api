@@ -31,7 +31,7 @@ public class DomainRegionDecisionTests
             repo.Setup(r => r.GetByWgRegionNameAsync(d.WgRegionId)).ReturnsAsync(d);
         }
         return new DomainService(repo.Object, Mapper(), new Mock<IDomainRegionNameFinalizer>().Object,
-            NullLogger<DomainService>.Instance);
+            NullLogger<DomainService>.Instance, FixedWorldResolver.Instance);
     }
 
     [Fact]

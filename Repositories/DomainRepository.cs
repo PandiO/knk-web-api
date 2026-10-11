@@ -26,13 +26,35 @@ namespace knkwebapi_v2.Repositories
             return await _context.Domains.FirstOrDefaultAsync(d => d.Id == id);
         }
 
-        public async Task<Domain?> GetByWgRegionNameAsync(string regionName)
+        public Task<Domain?> GetByWgRegionNameAsync(string regionName) => GetByWgRegionNameAsync(regionName, null);
+
+        public async Task<Domain?> GetByWgRegionNameAsync(string regionName, string? worldName)
         {
             if (string.IsNullOrWhiteSpace(regionName)) return null;
             var v = regionName.ToLower().Trim();
-            var domain = await _context.Domains
-                .FirstOrDefaultAsync(d => d.WgRegionId != null && d.WgRegionId.ToLower() == v);
-            
+            var candidates = _context.Domains
+                .Where(d => d.WgRegionId != null && d.WgRegionId.ToLower() == v);
+
+            Domain? domain;
+            if (string.IsNullOrWhiteSpace(worldName))
+            {
+                // World-blind (pre-KNG-111 callers): the lowest id, so duplicates resolve the same way every time.
+                domain = await candidates.OrderBy(d => d.Id).FirstOrDefaultAsync();
+            }
+            else
+            {
+                var w = worldName.ToLower().Trim();
+                domain = await candidates
+                    .Where(d => d.WorldName != null && d.WorldName.ToLower() == w)
+                    .OrderBy(d => d.Id)
+                    .FirstOrDefaultAsync()
+                    // Not assigned a world yet (created before KNG-111 and not backfilled): still found.
+                    ?? await candidates
+                        .Where(d => d.WorldName == null || d.WorldName == "")
+                        .OrderBy(d => d.Id)
+                        .FirstOrDefaultAsync();
+            }
+
             if (domain == null) return null;
 
             // Explicitly load the entire ParentDomain chain (unknown depth)

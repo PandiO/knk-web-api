@@ -18,6 +18,7 @@ namespace knkwebapi_v2.Services
         private readonly IMapper _mapper;
         private readonly ITeleportDestinationService _teleportDestinations;
         private readonly IDomainRegionNameFinalizer _regionNames;
+        private readonly IDomainWorldResolver _worlds;
 
         public TownService(
             ITownRepository repo,
@@ -25,7 +26,8 @@ namespace knkwebapi_v2.Services
             ILocationService locationService,
             IMapper mapper,
             ITeleportDestinationService teleportDestinations,
-            IDomainRegionNameFinalizer regionNames)
+            IDomainRegionNameFinalizer regionNames,
+            IDomainWorldResolver worlds)
         {
             _repo = repo;
             _locationRepo = locationRepo;
@@ -33,6 +35,7 @@ namespace knkwebapi_v2.Services
             _mapper = mapper;
             _teleportDestinations = teleportDestinations;
             _regionNames = regionNames;
+            _worlds = worlds;
         }
 
         public async Task<IEnumerable<TownDto>> GetAllAsync()
@@ -54,12 +57,15 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(townDto.Name)) throw new ArgumentException("Town name is required.", nameof(townDto));
             if (string.IsNullOrWhiteSpace(townDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(townDto));
             await _teleportDestinations.ValidateSettingsAsync(townDto);
+            // KNG-111: before the Location is saved, so a rejected world leaves nothing behind.
+            string worldName = await _worlds.ResolveAsync(WorldRequest(townDto, null));
 
             // Handle nested Location entity
             int? resolvedLocationId = await HandleLocationAsync(townDto);
 
             var town = _mapper.Map<Town>(townDto);
             town.LocationId = resolvedLocationId;
+            town.WorldName = worldName;
             DomainTeleportSettings.Apply(town, townDto);
             DomainNavigationDefaults.Apply(town, townDto);
             town.CreatedAt = DateTime.UtcNow;
@@ -78,11 +84,13 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Town with id {id} not found.");
             await _teleportDestinations.ValidateSettingsAsync(townDto);
+            string worldName = await _worlds.ResolveAsync(WorldRequest(townDto, id));
 
             // Handle nested Location entity
             int? resolvedLocationId = await HandleLocationAsync(townDto);
 
             existing.Name = townDto.Name;
+            existing.WorldName = worldName;
             existing.Description = townDto.Description;
             existing.AllowEntry = townDto.AllowEntry ?? true;
             existing.AllowExit = townDto.AllowExit ?? true;
@@ -114,6 +122,15 @@ namespace knkwebapi_v2.Services
 
             return resultDto;
         }
+
+        private static DomainWorldRequest WorldRequest(TownDto dto, int? id) => new()
+        {
+            DomainId = id,
+            RequestedWorld = dto.WorldName,
+            WgRegionId = dto.WgRegionId,
+            LocationWorld = dto.Location?.World,
+            LocationId = dto.Location?.Id ?? dto.LocationId
+        };
 
         /// <summary>
         /// Handles Location creation/update logic.

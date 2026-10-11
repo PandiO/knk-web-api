@@ -19,6 +19,7 @@ namespace knkwebapi_v2.Services
         private readonly IMapper _mapper;
         private readonly ITeleportDestinationService _teleportDestinations;
         private readonly IDomainRegionNameFinalizer _regionNames;
+        private readonly IDomainWorldResolver _worlds;
 
         public StructureService(
             IStructureRepository repo,
@@ -27,7 +28,8 @@ namespace knkwebapi_v2.Services
             ILocationRepository locationRepo,
             IMapper mapper,
             ITeleportDestinationService teleportDestinations,
-            IDomainRegionNameFinalizer regionNames)
+            IDomainRegionNameFinalizer regionNames,
+            IDomainWorldResolver worlds)
         {
             _repo = repo;
             _streetRepo = streetRepo;
@@ -36,6 +38,7 @@ namespace knkwebapi_v2.Services
             _mapper = mapper;
             _teleportDestinations = teleportDestinations;
             _regionNames = regionNames;
+            _worlds = worlds;
         }
 
         public async Task<IEnumerable<StructureDto>> GetAllAsync()
@@ -78,8 +81,11 @@ namespace knkwebapi_v2.Services
                     throw new ArgumentException($"Location with id {structureDto.LocationId} not found.", nameof(structureDto));
             }
 
+            string worldName = await _worlds.ResolveAsync(WorldRequest(structureDto, null));
+
             var structure = _mapper.Map<Structure>(structureDto);
             structure.CreatedAt = DateTime.UtcNow;
+            structure.WorldName = worldName;
             DomainTeleportSettings.Apply(structure, structureDto);
             DomainNavigationDefaults.Apply(structure, structureDto);
             await _repo.AddStructureAsync(structure);
@@ -126,8 +132,11 @@ namespace knkwebapi_v2.Services
                     throw new ArgumentException($"Location with id {structureDto.LocationId} not found.", nameof(structureDto));
             }
 
+            string worldName = await _worlds.ResolveAsync(WorldRequest(structureDto, id));
+
             existing.Name = structureDto.Name;
             existing.Description = structureDto.Description;
+            existing.WorldName = worldName;
             existing.AllowEntry = structureDto.AllowEntry ?? true;
             existing.AllowExit = structureDto.AllowExit ?? true;
             existing.WgRegionId = structureDto.WgRegionId;
@@ -161,5 +170,14 @@ namespace knkwebapi_v2.Services
 
             return resultDto;
         }
+
+        private static DomainWorldRequest WorldRequest(StructureDto dto, int? id) => new()
+        {
+            DomainId = id,
+            RequestedWorld = dto.WorldName,
+            WgRegionId = dto.WgRegionId,
+            LocationId = dto.LocationId,
+            ParentDomainId = dto.DistrictId
+        };
     }
 }

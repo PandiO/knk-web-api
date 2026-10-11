@@ -20,6 +20,14 @@ public class Domain
 
     public string WgRegionId { get; set; } = null!;
 
+    /// <summary>
+    /// The Minecraft world this domain (and its WorldGuard region) lives in, by world name (KNG-111). The region id is
+    /// only unique within a world, so every region lookup pairs it with this. Set by <c>DomainWorldResolver</c> from the
+    /// request, the region world task, the domain's Location or its parent; null only for rows created before KNG-111
+    /// that no source could fill yet.
+    /// </summary>
+    public string? WorldName { get; set; }
+
     [NavigationPair(nameof(Location))]
     [RelatedEntityField(typeof(Location))]
     public int? LocationId { get; set; }

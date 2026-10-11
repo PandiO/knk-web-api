@@ -129,8 +129,8 @@ public class SiegeScenarioFieldRuleReadinessTests
         var scenario = SiegeTestData.ValidScenario();
         scenario.Teams.Single(t => t.Id == 202).Spawnpoints.Single().Location!.X = 5000;
         var regionService = new Mock<IRegionService>();
-        regionService.Setup(r => r.IsLocationInsideRegionAsync("cinix", It.IsAny<double>(), It.IsAny<double>(), false))
-            .ReturnsAsync((string region, double x, double z, bool boundary) => x < 1000);
+        regionService.Setup(r => r.IsLocationInsideRegionAsync("cinix", It.IsAny<double>(), It.IsAny<double>(), false, It.IsAny<string?>()))
+            .ReturnsAsync((string region, double x, double z, bool boundary, string? world) => x < 1000);
 
         var result = await ReadinessOf(scenario, new LocationInsideRegionValidator(regionService.Object, _locationService.Object));
 
@@ -145,7 +145,7 @@ public class SiegeScenarioFieldRuleReadinessTests
     {
         _forms.AddLocationInsideTownRule(SiegeFormRules.SpawnpointLocationFieldId);
         var regionService = new Mock<IRegionService>();
-        regionService.Setup(r => r.IsLocationInsideRegionAsync(It.IsAny<string>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<bool>()))
+        regionService.Setup(r => r.IsLocationInsideRegionAsync(It.IsAny<string>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<bool>(), It.IsAny<string?>()))
             .ThrowsAsync(new RegionServiceUnavailableException("down", new HttpRequestException()));
 
         var result = await ReadinessOf(SiegeTestData.ValidScenario(), new LocationInsideRegionValidator(regionService.Object, _locationService.Object));

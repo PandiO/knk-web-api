@@ -23,7 +23,7 @@ public class DomainServiceGateNameTests
     public DomainServiceGateNameTests()
     {
         _service = new DomainService(_repo.Object, new Mock<IMapper>().Object,
-            new Mock<IDomainRegionNameFinalizer>().Object, NullLogger<DomainService>.Instance);
+            new Mock<IDomainRegionNameFinalizer>().Object, NullLogger<DomainService>.Instance, FixedWorldResolver.Instance);
     }
 
     [Theory]
@@ -67,7 +67,8 @@ public class StructureServiceGateNameTests
             new Mock<ILocationRepository>().Object,
             new Mock<IMapper>().Object,
             new Mock<ITeleportDestinationService>().Object,
-            new Mock<IDomainRegionNameFinalizer>().Object);
+            new Mock<IDomainRegionNameFinalizer>().Object,
+            FixedWorldResolver.Instance);
     }
 
     private static StructureDto Dto(string name) => new StructureDto

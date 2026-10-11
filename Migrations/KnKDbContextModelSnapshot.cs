@@ -1091,6 +1091,10 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("WorldName")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 

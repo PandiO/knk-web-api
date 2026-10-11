@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
@@ -16,11 +17,15 @@ namespace KnKWebAPI.Controllers
     {
         private readonly IDomainService _service;
         private readonly IMapper _mapper;
+        private readonly IDomainWorldResolver _worlds;
+        private readonly IDomainWorldBackfill _worldBackfill;
 
-        public DomainsController(IDomainService service, IMapper mapper)
+        public DomainsController(IDomainService service, IMapper mapper, IDomainWorldResolver worlds, IDomainWorldBackfill worldBackfill)
         {
             _service = service;
             _mapper = mapper;
+            _worlds = worlds;
+            _worldBackfill = worldBackfill;
         }
 
         [HttpGet]
@@ -109,11 +114,13 @@ namespace KnKWebAPI.Controllers
             return Ok(await _service.GetAccessRulesAsync());
         }
 
+        /// <param name="regionName">The WorldGuard region id.</param>
+        /// <param name="world">KNG-111: the world the region is in. Without it the lookup is world-blind.</param>
         [HttpGet("by-region/{regionName}")]
-        public async Task<ActionResult<DomainRegionDecisionDto>> GetByRegionName(string regionName)
+        public async Task<ActionResult<DomainRegionDecisionDto>> GetByRegionName(string regionName, [FromQuery] string? world = null)
         {
             if (string.IsNullOrWhiteSpace(regionName)) return BadRequest("regionName is required.");
-            var dto = await _service.GetByWgRegionNameAsync(regionName);
+            var dto = await _service.GetByWgRegionNameAsync(regionName, world);
             if (dto == null) return NotFound();
             return Ok(dto);
         }
@@ -132,6 +139,52 @@ namespace KnKWebAPI.Controllers
 
             var result = await _service.SearchDomainRegionDecisionAsync(queryDto);
             return Ok(result);
+        }
+
+        /// <summary>
+        /// KNG-111: which world a domain being created or edited is in, from the same sources the save uses (region world
+        /// task, Location, parent). <c>needsWorld</c> tells the form to ask; <c>error</c> names a conflict the save would
+        /// reject.
+        /// </summary>
+        [HttpPost("world/resolve")]
+        public async Task<ActionResult<DomainWorldResolutionDto>> ResolveWorld([FromBody] DomainWorldResolveRequestDto request)
+        {
+            if (request == null) return BadRequest("A request body is required.");
+            var resolution = await _worlds.TryResolveAsync(new DomainWorldRequest
+            {
+                DomainId = request.Id,
+                RequestedWorld = request.WorldName,
+                WgRegionId = request.WgRegionId,
+                LocationWorld = request.LocationWorld,
+                LocationId = request.LocationId,
+                ParentDomainId = request.TownId is > 0 ? request.TownId : request.DistrictId
+            });
+            return Ok(new DomainWorldResolutionDto
+            {
+                WorldName = resolution.WorldName,
+                Source = resolution.Source,
+                NeedsWorld = resolution.NeedsWorld,
+                Error = resolution.Error,
+                ErrorCode = resolution.ErrorCode
+            });
+        }
+
+        /// <summary>KNG-111: domains that still have no world (created before worlds were stored).</summary>
+        [HttpGet("world/missing")]
+        public async Task<ActionResult<List<DomainWorldMissingDto>>> GetDomainsWithoutWorld()
+        {
+            return Ok(await _worldBackfill.ListMissingAsync());
+        }
+
+        /// <summary>
+        /// KNG-111: the game server reports which world(s) hold each region; domains without a world get one where the
+        /// report, their Location and their parent agree. Returns the domains still left for an admin.
+        /// </summary>
+        [HttpPost("world/backfill")]
+        [RequireServiceOrPermission(StaffPermissions.ServerConfig)]
+        public async Task<ActionResult<DomainWorldBackfillResultDto>> BackfillWorlds([FromBody] DomainWorldBackfillRequestDto request)
+        {
+            return Ok(await _worldBackfill.ApplyAsync(request ?? new DomainWorldBackfillRequestDto()));
         }
     }
 }
