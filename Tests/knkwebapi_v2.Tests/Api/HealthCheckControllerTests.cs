@@ -97,6 +97,34 @@ public class HealthCheckControllerTests
     }
 
     [Fact]
+    public async Task DatabaseCheck_IsUnhealthyWhenBuildingTheDbContextThrows()
+    {
+        // Program.cs's ServerVersion.AutoDetect throws while the DbContext is built when MySQL is
+        // down; that must read as unhealthy, not escape as a 500 (live test 2026-10-11).
+        var service = Registered(s => s.AddScoped<KnKDbContext>(_ =>
+            throw new InvalidOperationException("Unable to connect to any of the specified MySQL hosts.")));
+
+        var report = await service.CheckHealthAsync();
+
+        Assert.Equal(HealthStatus.Unhealthy, report.Status);
+        Assert.Equal(HealthStatus.Unhealthy, report.Entries[DatabaseHealthCheck.Name].Status);
+    }
+
+    [Fact]
+    public async Task Ready_IsA503WhenTheHealthCheckServiceThrows()
+    {
+        var service = new Mock<HealthCheckService>();
+        service.Setup(s => s.CheckHealthAsync(It.IsAny<Func<HealthCheckRegistration, bool>?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("boom"));
+        var controller = new HealthCheckController(service.Object, NullLogger<HealthCheckController>.Instance);
+
+        var result = Assert.IsType<ObjectResult>(await controller.GetReadiness());
+
+        Assert.Equal(503, result.StatusCode);
+        Assert.Equal("unhealthy", Assert.IsType<HealthResponse>(result.Value).Status);
+    }
+
+    [Fact]
     public async Task DatabaseCheck_CarriesTheReadyTag()
     {
         var service = Registered(s => s.AddDbContext<KnKDbContext>(o => o.UseInMemoryDatabase("health-tag")));

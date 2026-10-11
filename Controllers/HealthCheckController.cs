@@ -51,7 +51,22 @@ public class HealthCheckController : ControllerBase
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetReadiness()
     {
-        var report = await _healthCheckService.CheckHealthAsync();
+        HealthReport report;
+        try
+        {
+            report = await _healthCheckService.CheckHealthAsync(HttpContext?.RequestAborted ?? default);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A check that throws while being created must still read as "not ready", never a 500.
+            _logger.LogWarning(ex, "Readiness check threw; reporting unhealthy");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new HealthResponse
+            {
+                Status = "unhealthy",
+                Timestamp = DateTime.UtcNow,
+                Checks = new() { { "error", ex.GetType().Name } },
+            });
+        }
 
         var response = new HealthResponse
         {
