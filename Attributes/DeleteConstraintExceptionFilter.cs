@@ -29,6 +29,7 @@ namespace knkwebapi_v2.Attributes
             ["FormStep.SubConfigurationId"] = ("form step that uses it as a sub-form", "form steps that use it as a sub-form"),
             ["WorkflowSession.FormConfigurationId"] = ("form session started with it", "form sessions started with it"),
             ["FormSubmissionProgress.FormConfigurationId"] = ("saved draft", "saved drafts"),
+            ["FormSubmissionProgress.ParentProgressId"] = ("draft of a sub-form opened from it", "drafts of sub-forms opened from it"),
         };
 
         private readonly ILogger<DeleteConstraintExceptionFilter> _logger;
@@ -77,6 +78,9 @@ namespace knkwebapi_v2.Attributes
             && exception.Message.Contains("has been severed", StringComparison.Ordinal);
 
         /// <summary>
+        /// Only the references that stop the delete (KNG-172): a configuration's own form steps and
+        /// saved drafts go with it, so naming them as the reason misled admins. When nothing blocking
+        /// is found the message stays generic.
         /// The entity is named by the controller ("Streets" → Street, "Categories" → Category) and
         /// the route's id. Null when neither fits a model type; the reason then stays generic.
         /// </summary>
@@ -91,7 +95,7 @@ namespace knkwebapi_v2.Attributes
             {
                 foreach (var typeName in SingularCandidates(action.ControllerName))
                 {
-                    var found = await _references.GetReferencesAsync(typeName, id);
+                    var found = await _references.GetReferencesAsync(typeName, id, blockingOnly: true);
                     if (found != null) return found;
                 }
             }

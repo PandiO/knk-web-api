@@ -39,7 +39,7 @@ public class DeleteConstraintExceptionFilterTests
 
     private sealed class NoReferences : IEntityReferenceService
     {
-        public Task<EntityReferencesDto?> GetReferencesAsync(string entityTypeName, string id, IEnumerable<string>? ignore = null) =>
+        public Task<EntityReferencesDto?> GetReferencesAsync(string entityTypeName, string id, IEnumerable<string>? ignore = null, bool blockingOnly = false) =>
             Task.FromResult<EntityReferencesDto?>(null);
     }
 
