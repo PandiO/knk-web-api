@@ -1,0 +1,29 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "b617631d-92ec-5f94-96b9-4ea8c9aea6db",
+  "entityTypeName": "SiegeScenarioDistrict",
+  "name": "SiegeScenarioDistrict - Join Entry (seed v1)",
+  "description": "Join entry for adding a district to a siege scenario (the scenario's Districts step).",
+  "steps": [
+    {
+      "stepGuid": "5b809d7b-b96d-5d12-8eee-831b8b465b87",
+      "stepName": "District",
+      "description": "One district of the scenario's town that is part of the siege area.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "35ddda8c-2c41-5710-b147-d408c2e63c5c",
+          "fieldName": "DistrictId",
+          "label": "District",
+          "description": "Lists the districts of the scenario's town; pick the town on the General step first.",
+          "fieldType": "Object",
+          "objectType": "District",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"townId\": \"{parent.TownId?}\"}}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -1,0 +1,174 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "0b365a29-9485-59d7-bd1a-faba51836667",
+  "entityTypeName": "SiegeObjective",
+  "name": "SiegeObjective - Default (seed v1)",
+  "description": "A capture objective of a siege scenario. Created from the scenario's Objectives step.",
+  "steps": [
+    {
+      "stepGuid": "a5682e2d-725b-5c65-97af-de37d11e3262",
+      "stepName": "General",
+      "description": "Name the objective and decide what holding it means.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4cf1bbb5-bd4d-5042-8b77-73b9a4e10e47",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "Filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "17c0617e-cd53-57c9-ac08-8df34294bbe6",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown to players in the match, e.g. 'Keep' or 'North gate'.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "88c18749-2a16-5fb2-b243-a618815f8057",
+          "fieldName": "InstantVictory",
+          "label": "Instant victory",
+          "description": "Capturing it ends the match (a main objective). Otherwise it is a side objective.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ec683b9d-817e-5636-9aeb-d84337abc311",
+          "fieldName": "InitialHolderTeamId",
+          "label": "Held by at match start",
+          "description": "Leave empty for the first Defender team.",
+          "fieldType": "Object",
+          "objectType": "SiegeTeam",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"siegeScenarioId\": \"{SiegeScenarioId}\"}}"
+        },
+        {
+          "fieldGuid": "82dfc314-2acc-54d3-b03e-7229693a62f9",
+          "fieldName": "SpawnWhenHeld",
+          "label": "Spawnpoint when held",
+          "description": "The team holding it may spawn here.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4827a91b-e39b-532a-8040-959590712d49",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing objectives.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "33147aa6-9daa-5790-b742-35b929208abc",
+      "stepName": "Capture point",
+      "description": "Where the objective is captured: at a gate, or at a spot you capture in game with Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "61d0d03a-5f80-50e3-9331-22398cc66116",
+          "fieldName": "GateStructureId",
+          "label": "Gate",
+          "description": "Optional: capturing this objective captures the gate. Only gates already saved on the scenario's Gates step are listed.",
+          "fieldType": "Object",
+          "objectType": "GateStructure",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"siegeScenarioId\": \"{SiegeScenarioId}\"}}"
+        },
+        {
+          "fieldGuid": "4afd6022-8b71-5cfd-b15b-4e2b204b5f3b",
+          "fieldName": "LocationId",
+          "label": "Capture location",
+          "description": "Stand on the spot and use Send to Minecraft. Required without a gate; with a gate it defaults to the gate's own location.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "8297e2bb-31a1-5d55-b882-845e07eb9caa",
+          "fieldName": "CapturePoints",
+          "label": "Capture points",
+          "description": "How much capture progress it takes; higher takes longer.",
+          "fieldType": "Integer",
+          "defaultValue": "500",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "391ca6dc-165b-5d30-bce3-b9069df1d685",
+          "fieldName": "CaptureRadius",
+          "label": "Capture radius (blocks)",
+          "description": "Players within this distance capture it (above 0, at most 32).",
+          "fieldType": "Decimal",
+          "defaultValue": "2.5",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "74f158a2-29e3-56b6-baac-1fbe21f29e5c",
+      "stepName": "Gate behaviour",
+      "description": "What happens to the objective's gate when the objective is captured. Only when a gate is picked.",
+      "isManyToManyRelationship": false,
+      "displayConditionGroups": [
+        {
+          "innerLogic": "And",
+          "combineWithPreviousLogic": "And",
+          "isActive": true,
+          "conditions": [
+            {
+              "sourceFieldGuid": "61d0d03a-5f80-50e3-9331-22398cc66116",
+              "operator": "IsNotEmpty",
+              "valueJson": "null"
+            }
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "fieldGuid": "fd39c326-bf33-50ab-8d33-b50fdb9c236a",
+          "fieldName": "GateStateOnCapture",
+          "label": "Gate state on capture",
+          "description": "The gate's doors switch to this state when the objective is captured.",
+          "fieldType": "Enum",
+          "defaultValue": "OPEN",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"OPEN\", \"CLOSED\"], \"enumValuesSubset\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "4afd6022-8b71-5cfd-b15b-4e2b204b5f3b",
+      "validationType": "LocationInsideRegion",
+      "dependsOn": {
+        "fieldGuid": "1e6f66e3-4d1c-5ba4-8568-7c4542fa244b",
+        "configurationGuid": "4daa6694-8c31-53d8-beea-0bbdb053efc5"
+      },
+      "dependencyPath": "Town.WgRegionId",
+      "configJson": "{\"regionPropertyPath\": \"WgRegionId\", \"allowBoundary\": false}",
+      "errorMessage": "Location {coordinates} is outside {parentEntityName}'s boundaries.",
+      "isBlocking": true,
+      "requiresDependencyFilled": true
+    }
+  ]
+}

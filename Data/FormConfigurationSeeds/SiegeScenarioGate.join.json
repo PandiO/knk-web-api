@@ -1,0 +1,61 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "e2420e7b-9636-5c40-a021-6ac93c49a681",
+  "entityTypeName": "SiegeScenarioGate",
+  "name": "SiegeScenarioGate - Join Entry (seed v1)",
+  "description": "Join entry for a gate that takes part in a siege scenario (the scenario's Gates step).",
+  "steps": [
+    {
+      "stepGuid": "543b34d9-843f-5931-910c-fe9cb9e3d96a",
+      "stepName": "Gate",
+      "description": "A gate the teams fight over, who controls it at the start and whether it can be broken.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "f25d0e18-7eb4-5e8c-8a9d-d3ccb3a8e930",
+          "fieldName": "GateStructureId",
+          "label": "Gate",
+          "description": "Lists the gates in the scenario's town. It must lie in one of the scenario's districts, if any are selected.",
+          "fieldType": "Object",
+          "objectType": "GateStructure",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"townId\": \"{parent.TownId?}\"}}"
+        },
+        {
+          "fieldGuid": "af5b60a0-0358-5835-8130-48435558f22d",
+          "fieldName": "InitialOwnerTeamId",
+          "label": "Owner team at match start",
+          "description": "This team and its allies may open and close the gate. Leave empty for the first Defender team.",
+          "fieldType": "Object",
+          "objectType": "SiegeTeam",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"siegeScenarioId\": \"{parent.id}\"}, \"pickerFiltersMissingMessage\": \"Save the scenario and add its teams first - leave empty for the first Defender team.\"}"
+        },
+        {
+          "fieldGuid": "e4030901-2504-5636-9c12-de335782684e",
+          "fieldName": "InitialState",
+          "label": "State at match start",
+          "description": "Whether the gate's doors are open or closed when the match starts.",
+          "fieldType": "Enum",
+          "defaultValue": "CLOSED",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"CLOSED\", \"OPEN\"], \"enumValuesSubset\": true}"
+        },
+        {
+          "fieldGuid": "be78e2a6-2cef-5b1a-bc96-71da9bfce220",
+          "fieldName": "Damageable",
+          "label": "Damageable",
+          "description": "Enemies of the owner can damage and destroy it; a destroyed gate stays destroyed until the match ends.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}
