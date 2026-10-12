@@ -83,6 +83,8 @@ namespace knkwebapi_v2.Services
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Town with id {id} not found.");
+            // KNG-103: the region this save replaces when the region step was run again
+            string previousRegionId = existing.WgRegionId;
             await _teleportDestinations.ValidateSettingsAsync(townDto);
             string worldName = await _worlds.ResolveAsync(WorldRequest(townDto, id));
 
@@ -100,7 +102,7 @@ namespace knkwebapi_v2.Services
             DomainNavigationDefaults.Apply(existing, townDto);
 
             await _repo.UpdateTownAsync(existing);
-            await _regionNames.FinalizeAsync(existing);
+            await _regionNames.FinalizeAsync(existing, previousRegionId);
         }
 
         public async Task DeleteAsync(int id)

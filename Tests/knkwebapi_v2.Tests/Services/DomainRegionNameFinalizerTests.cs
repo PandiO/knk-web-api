@@ -19,6 +19,7 @@ public class DomainRegionNameFinalizerTests : IDisposable
     private readonly Mock<IRegionService> _regions = new();
     private readonly List<(string Old, string New, string? Type, string? Parent)> _renames = new();
     private readonly List<string?> _renameWorlds = new();
+    private readonly List<(string Old, string New, string? Replace)> _replacements = new();
     private readonly DomainRegionNameFinalizer _finalizer;
 
     public DomainRegionNameFinalizerTests()
@@ -27,6 +28,9 @@ public class DomainRegionNameFinalizerTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
             .Callback<string, string, string?, string?, string?>((o, n, t, p, w) => { _renames.Add((o, n, t, p)); _renameWorlds.Add(w); })
+            .ReturnsAsync(true);
+        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Callback<string, string, string?, string?, string?, string?>((o, n, t, p, w, x) => { _renames.Add((o, n, t, p)); _renameWorlds.Add(w); _replacements.Add((o, n, x)); })
             .ReturnsAsync(true);
         _finalizer = new DomainRegionNameFinalizer(_context, _regions.Object, NullLogger<DomainRegionNameFinalizer>.Instance);
     }
@@ -151,5 +155,109 @@ public class DomainRegionNameFinalizerTests : IDisposable
 
         var second = await _finalizer.FinalizeAllAsync();
         Assert.Equal(1, second.Found);
+    }
+
+    // KNG-103: District 17's region step was run again. The save stored the new temp region; the finalizer is told the
+    // district's region before the save so the plugin can replace it instead of refusing the taken name.
+
+    [Fact]
+    public async Task ReRun_ReplacesTheDomainsOwnFinalRegion()
+    {
+        await SeedAsync(districtRegion: "tempregion_worldtask_227");
+        var district = await _context.Districts.SingleAsync();
+
+        Assert.True(await _finalizer.FinalizeAsync(district, "domain_10"));
+
+        Assert.Equal(("tempregion_worldtask_227", "domain_10", (string?)"domain_10"), Assert.Single(_replacements));
+        Assert.Equal(("tempregion_worldtask_227", "domain_10", (string?)"District", (string?)"town_1"), Assert.Single(_renames));
+        Assert.Equal("domain_10", await StoredRegionIdAsync(10));
+    }
+
+    [Fact]
+    public async Task ReRun_ReplacesAnEarlierTempRegion()
+    {
+        await SeedAsync(districtRegion: "tempregion_worldtask_227");
+
+        Assert.True(await _finalizer.FinalizeAsync(await _context.Districts.SingleAsync(), "tempregion_worldtask_200"));
+
+        Assert.Equal("tempregion_worldtask_200", Assert.Single(_replacements).Replace);
+    }
+
+    [Fact]
+    public async Task ARegionTheApiDidNotCreate_IsNotReplaced()
+    {
+        // e.g. a v1 region picked with "select" before the step was run again.
+        await SeedAsync(districtRegion: "tempregion_worldtask_227");
+
+        Assert.True(await _finalizer.FinalizeAsync(await _context.Districts.SingleAsync(), "old_town_district"));
+
+        Assert.Empty(_replacements);
+        Assert.Single(_renames);
+    }
+
+    [Fact]
+    public async Task AnotherDomainsRegion_IsNotReplaced_InTheSameWorld()
+    {
+        await SeedAsync(districtRegion: "tempregion_worldtask_227");
+        _context.Towns.Add(new Town { Id = 2, Name = "Other", Description = "t", WgRegionId = "tempregion_worldtask_200", WorldName = "world" });
+        await _context.SaveChangesAsync();
+        var district = await _context.Districts.SingleAsync();
+        district.WorldName = "world";
+
+        Assert.True(await _finalizer.FinalizeAsync(district, "tempregion_worldtask_200"));
+        Assert.Empty(_replacements);
+
+        // The same id in another world is a different region (KNG-111).
+        district.WorldName = "hub";
+        _renames.Clear();
+        Assert.True(await _finalizer.FinalizeAsync(await ResetTempAsync(district), "tempregion_worldtask_200"));
+        Assert.Equal("tempregion_worldtask_200", Assert.Single(_replacements).Replace);
+    }
+
+    [Fact]
+    public async Task AnUnchangedRegion_ReplacesNothing()
+    {
+        await SeedAsync();
+
+        Assert.True(await _finalizer.FinalizeAsync(await _context.GateStructures.SingleAsync(), "tempregion_worldtask_97"));
+
+        Assert.Empty(_replacements);
+    }
+
+    [Fact]
+    public async Task ARefusedReplacement_KeepsTheTemporaryName()
+    {
+        await SeedAsync(districtRegion: "tempregion_worldtask_227");
+        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .ReturnsAsync(false);
+
+        Assert.False(await _finalizer.FinalizeAsync(await _context.Districts.SingleAsync(), "domain_10"));
+
+        Assert.Equal("tempregion_worldtask_227", await StoredRegionIdAsync(10));
+    }
+
+    [Fact]
+    public async Task AFailedDatabaseUpdate_RenamesTheRegionBack()
+    {
+        // The domain row is gone by the time the name is stored: the region must not stay under a name nothing points to.
+        var town = new Town { Id = 99, Name = "Ghost", Description = "t", WgRegionId = "tempregion_worldtask_300", WorldName = "world" };
+
+        Assert.False(await _finalizer.FinalizeAsync(town, "domain_99"));
+
+        Assert.Equal(new[]
+        {
+            ("tempregion_worldtask_300", "domain_99", (string?)"Town", (string?)null),
+            ("domain_99", "tempregion_worldtask_300", null, null)
+        }, _renames);
+        Assert.Equal(new[] { "world", "world" }, _renameWorlds);
+        Assert.Equal("tempregion_worldtask_300", town.WgRegionId);
+    }
+
+    private async Task<District> ResetTempAsync(District district)
+    {
+        district.WgRegionId = "tempregion_worldtask_228";
+        await _context.SaveChangesAsync();
+        _replacements.Clear();
+        return district;
     }
 }
