@@ -57,18 +57,6 @@ public class GameSettingsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Per permission group, whether it may carry the hub's staff/owner mode exemptions: only when it effectively has
-    /// knk.mode.staff / knk.mode.owner (KNG-116).
-    /// </summary>
-    [RequireServiceOrPermission(StaffPermissions.ServerConfig)]
-    [HttpGet("hub/exemption-eligibility")]
-    [ProducesResponseType(typeof(List<HubExemptionEligibilityDto>), 200)]
-    public async Task<ActionResult<List<HubExemptionEligibilityDto>>> GetExemptionEligibility()
-    {
-        return Ok(await _hub.ExemptionEligibilityAsync());
-    }
-
     [HttpGet]
     [ProducesResponseType(typeof(GameSettingsReadDto), 200)]
     public async Task<ActionResult<GameSettingsReadDto>> Get()

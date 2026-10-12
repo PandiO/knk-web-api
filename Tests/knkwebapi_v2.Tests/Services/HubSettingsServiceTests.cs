@@ -14,20 +14,19 @@ using Xunit;
 namespace knkwebapi_v2.Tests.Services;
 
 /// <summary>
-/// Hub DESIGN §13 and §16.4: a domain is only hub-eligible by its flag, flagged domains are never nested, the selected
-/// hub must be eligible with a spawn in its world, and the mode exemptions need the group's effective node (KNG-116).
+/// Hub DESIGN §13 and §16.4: a domain is only hub-eligible by its flag, flagged domains are never nested, and the
+/// selected hub must be eligible with a spawn in its world. The KNG-116 group check is tested here too.
 /// </summary>
 public class HubSettingsServiceTests : IDisposable
 {
     private readonly KnKDbContext _context;
-    private readonly Mock<IPermissionResolutionService> _permissions = new();
     private readonly HubSettingsService _hub;
 
     public HubSettingsServiceTests()
     {
         _context = new KnKDbContext(new DbContextOptionsBuilder<KnKDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
-        _hub = new HubSettingsService(_context, _permissions.Object);
+        _hub = new HubSettingsService(_context);
         _context.Towns.Add(new Town { Id = 1, Name = "Hubtown", Description = "", WgRegionId = "town_1", WorldName = "hub" });
         _context.Districts.Add(new District { Id = 2, Name = "Square", Description = "", WgRegionId = "district_2", TownId = 1, WorldName = "hub" });
         _context.Structures.Add(new Structure { Id = 3, Name = "Inn", Description = "", WgRegionId = "domain_3", DistrictId = 2, WorldName = "hub" });
@@ -142,19 +141,13 @@ public class HubSettingsServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task AnExemptionNeedsTheGroupsEffectiveModeNode()
+    public async Task AGroupOverridesOutageActionAndDelayAreChecked()
     {
-        _permissions.Setup(p => p.CheckGroupAsync(7, HubSettingsService.StaffModeNode))
-            .ReturnsAsync(new PermissionGroupCheckResponseDto { GroupId = 7, Result = PermissionResolutionResult.Granted });
-        _permissions.Setup(p => p.CheckGroupAsync(7, HubSettingsService.OwnerModeNode))
-            .ReturnsAsync(new PermissionGroupCheckResponseDto { GroupId = 7, Result = PermissionResolutionResult.Undeclared });
-
-        await _hub.ValidateExemptionsAsync(new[] { new PermissionGroupGameSettingsDto { PermissionGroupId = 7, ExemptInStaffMode = true } });
-        var owner = await Assert.ThrowsAsync<ArgumentException>(() => _hub.ValidateExemptionsAsync(
-            new[] { new PermissionGroupGameSettingsDto { PermissionGroupId = 7, ExemptInOwnerMode = true } }));
-        Assert.Contains("knk.mode.owner", owner.Message);
-        // Decision 5: an unticked box is "not set" and needs nothing.
-        await _hub.ValidateExemptionsAsync(new[] { new PermissionGroupGameSettingsDto { PermissionGroupId = 7, ExemptInOwnerMode = false } });
+        await _hub.ValidateGroupOverridesAsync(new[] { new PermissionGroupGameSettingsDto { PermissionGroupId = 7, OutageAction = "kick", OutageDelaySeconds = 30 } });
+        await Assert.ThrowsAsync<ArgumentException>(() => _hub.ValidateGroupOverridesAsync(
+            new[] { new PermissionGroupGameSettingsDto { PermissionGroupId = 7, OutageAction = "Explode" } }));
+        await Assert.ThrowsAsync<ArgumentException>(() => _hub.ValidateGroupOverridesAsync(
+            new[] { new PermissionGroupGameSettingsDto { PermissionGroupId = 7, OutageDelaySeconds = -1 } }));
     }
 
     [Fact]

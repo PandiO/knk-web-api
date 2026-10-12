@@ -53,7 +53,7 @@ public class GameSettingsService : IGameSettingsService
         var cleanedOverrides = dto.GroupOverrides == null ? null : CleanGroupOverrides(dto.GroupOverrides, groupsById);
         if (cleanedOverrides != null && _hub != null)
         {
-            await _hub.ValidateExemptionsAsync(cleanedOverrides);
+            await _hub.ValidateGroupOverridesAsync(cleanedOverrides);
         }
         var hub = dto.Hub == null ? null : _hub != null ? await _hub.NormalizeAsync(dto.Hub) : dto.Hub;
 
@@ -207,15 +207,11 @@ public class GameSettingsService : IGameSettingsService
                 throw new ArgumentException($"groupOverrides: permission group {o.PermissionGroupId} is listed twice");
             }
             var atLastLocation = o.JoinAtLastLocation == true;
-            // Decision 5: only a ticked exemption counts, so false is stored as "not set".
-            var exemptStaff = o.ExemptInStaffMode == true;
-            var exemptOwner = o.ExemptInOwnerMode == true;
             var outageAction = string.IsNullOrWhiteSpace(o.OutageAction) ? null
                 : HubSettingsService.OutageActions.FirstOrDefault(a => a.Equals(o.OutageAction.Trim(), StringComparison.OrdinalIgnoreCase))
                   ?? o.OutageAction.Trim();
             if (o.JoinAnnouncement == null && o.LeaveAnnouncement == null && o.JoinSpawnReference == null
-                && !atLastLocation && o.RespawnPolicy == null && outageAction == null && o.OutageDelaySeconds == null
-                && !exemptStaff && !exemptOwner)
+                && !atLastLocation && o.RespawnPolicy == null && outageAction == null && o.OutageDelaySeconds == null)
             {
                 continue;
             }
@@ -230,8 +226,6 @@ public class GameSettingsService : IGameSettingsService
                 RespawnPolicy = o.RespawnPolicy,
                 OutageAction = outageAction,
                 OutageDelaySeconds = o.OutageDelaySeconds,
-                ExemptInStaffMode = exemptStaff ? true : null,
-                ExemptInOwnerMode = exemptOwner ? true : null,
             });
         }
         return cleaned;

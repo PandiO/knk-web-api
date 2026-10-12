@@ -199,32 +199,6 @@ public class HubRulesDto
 }
 
 /// <summary>
-/// Whether a group may carry the hub's mode exemptions (KNG-116, §13): only when it effectively has the mode's node,
-/// counting its parent chain and wildcards.
-/// </summary>
-public class HubExemptionEligibilityDto
-{
-    [JsonPropertyName("permissionGroupId")]
-    public int PermissionGroupId { get; set; }
-
-    [JsonPropertyName("groupName")]
-    public string GroupName { get; set; } = string.Empty;
-
-    [JsonPropertyName("canExemptStaffMode")]
-    public bool CanExemptStaffMode { get; set; }
-
-    /// <summary>The group (itself or a parent) whose grant gives the node; null when not granted.</summary>
-    [JsonPropertyName("staffModeSource")]
-    public string? StaffModeSource { get; set; }
-
-    [JsonPropertyName("canExemptOwnerMode")]
-    public bool CanExemptOwnerMode { get; set; }
-
-    [JsonPropertyName("ownerModeSource")]
-    public string? OwnerModeSource { get; set; }
-}
-
-/// <summary>
 /// One PermissionGroup's overrides of the global Game Settings (KNG-52). Every field is optional:
 /// null means "use the next group, else the global/world setting".
 /// </summary>
@@ -275,16 +249,6 @@ public class PermissionGroupGameSettingsDto
     [JsonPropertyName("outageDelaySeconds")]
     public int? OutageDelaySeconds { get; set; }
 
-    /// <summary>
-    /// Members whose active mode is staff mode are exempt from the outage action and may enter gameplay during an
-    /// outage (§13). Only true counts (decision 5); allowed only when the group effectively has knk.mode.staff.
-    /// </summary>
-    [JsonPropertyName("exemptInStaffMode")]
-    public bool? ExemptInStaffMode { get; set; }
-
-    /// <summary>As <see cref="ExemptInStaffMode"/>, for owner mode and knk.mode.owner.</summary>
-    [JsonPropertyName("exemptInOwnerMode")]
-    public bool? ExemptInOwnerMode { get; set; }
 }
 
 public class GameSettingsRuntimeWorldsUpdateDto

@@ -31,18 +31,12 @@ namespace knkwebapi_v2.Services
         /// <summary>Fills in the read-only fields of the hub block (domain name, type, world, region).</summary>
         Task<HubSettingsDto> DescribeAsync(HubSettingsDto hub);
 
-        /// <summary>Per group, whether it effectively has knk.mode.staff / knk.mode.owner.</summary>
-        Task<List<HubExemptionEligibilityDto>> ExemptionEligibilityAsync();
-
-        /// <summary>Throws when an override ticks an exemption its group is not eligible for.</summary>
-        Task ValidateExemptionsAsync(IEnumerable<PermissionGroupGameSettingsDto> overrides);
+        /// <summary>Throws when a group override's outage action or delay is invalid.</summary>
+        Task ValidateGroupOverridesAsync(IEnumerable<PermissionGroupGameSettingsDto> overrides);
     }
 
     public class HubSettingsService : IHubSettingsService
     {
-        public const string StaffModeNode = "knk.mode.staff";
-        public const string OwnerModeNode = "knk.mode.owner";
-
         /// <summary>The outage actions (§1, §2).</summary>
         public static readonly string[] OutageActions = { "None", "SendToHub", "Kick", "SendToWorldSpawn" };
 
@@ -50,12 +44,10 @@ namespace knkwebapi_v2.Services
         public const int MaxOutageDelaySeconds = 24 * 60 * 60;
 
         private readonly KnKDbContext _context;
-        private readonly IPermissionResolutionService _permissions;
 
-        public HubSettingsService(KnKDbContext context, IPermissionResolutionService permissions)
+        public HubSettingsService(KnKDbContext context)
         {
             _context = context;
-            _permissions = permissions;
         }
 
         public async Task<List<HubDomainDto>> ListEligibleAsync()
@@ -221,42 +213,13 @@ namespace knkwebapi_v2.Services
             return hub;
         }
 
-        public async Task<List<HubExemptionEligibilityDto>> ExemptionEligibilityAsync()
-        {
-            var groups = await _context.PermissionGroups.AsNoTracking().OrderBy(g => g.Name).ToListAsync();
-            var result = new List<HubExemptionEligibilityDto>();
-            foreach (var group in groups)
-            {
-                var staff = await _permissions.CheckGroupAsync(group.Id, StaffModeNode);
-                var owner = await _permissions.CheckGroupAsync(group.Id, OwnerModeNode);
-                result.Add(new HubExemptionEligibilityDto
-                {
-                    PermissionGroupId = group.Id,
-                    GroupName = group.Name,
-                    CanExemptStaffMode = staff?.Allowed == true,
-                    StaffModeSource = staff?.Allowed == true ? staff.SourceGroupName : null,
-                    CanExemptOwnerMode = owner?.Allowed == true,
-                    OwnerModeSource = owner?.Allowed == true ? owner.SourceGroupName : null
-                });
-            }
-            return result;
-        }
-
-        public async Task ValidateExemptionsAsync(IEnumerable<PermissionGroupGameSettingsDto> overrides)
+        public Task ValidateGroupOverridesAsync(IEnumerable<PermissionGroupGameSettingsDto> overrides)
         {
             foreach (var o in overrides ?? Enumerable.Empty<PermissionGroupGameSettingsDto>())
             {
                 if (o == null)
                 {
                     continue;
-                }
-                if (o.ExemptInStaffMode == true && (await _permissions.CheckGroupAsync(o.PermissionGroupId, StaffModeNode))?.Allowed != true)
-                {
-                    throw new ArgumentException($"groupOverrides[{o.PermissionGroupId}].exemptInStaffMode: the group does not have {StaffModeNode}");
-                }
-                if (o.ExemptInOwnerMode == true && (await _permissions.CheckGroupAsync(o.PermissionGroupId, OwnerModeNode))?.Allowed != true)
-                {
-                    throw new ArgumentException($"groupOverrides[{o.PermissionGroupId}].exemptInOwnerMode: the group does not have {OwnerModeNode}");
                 }
                 if (o.OutageAction != null && !OutageActions.Contains(o.OutageAction.Trim(), StringComparer.OrdinalIgnoreCase))
                 {
@@ -267,6 +230,7 @@ namespace knkwebapi_v2.Services
                     throw new ArgumentException($"groupOverrides[{o.PermissionGroupId}].outageDelaySeconds must be between 0 and {MaxOutageDelaySeconds}");
                 }
             }
+            return Task.CompletedTask;
         }
 
         /// <summary>A flagged domain that would be nested with this one: an ancestor or a descendant.</summary>

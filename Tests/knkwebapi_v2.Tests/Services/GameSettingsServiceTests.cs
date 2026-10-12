@@ -316,12 +316,12 @@ public class GameSettingsServiceTests
     }
 
     [Fact]
-    public async Task TheHubBlockAndTheOutageOverridesRoundTrip_OnlyATickedExemptionIsStored()
+    public async Task TheHubBlockAndTheOutageOverridesRoundTrip()
     {
         var dto = Update(new List<PermissionGroupGameSettingsDto>
         {
-            new() { PermissionGroupId = 3, ExemptInStaffMode = true, ExemptInOwnerMode = false, OutageAction = "kick" },
-            new() { PermissionGroupId = 1, ExemptInStaffMode = false },
+            new() { PermissionGroupId = 3, OutageAction = "kick" },
+            new() { PermissionGroupId = 1 },
         });
         dto.Hub = new HubSettingsDto { OutageAction = "SendToWorldSpawn", OutageDelaySeconds = 30,
             PortalRegionIds = new List<string> { "portal_north" } };
@@ -330,7 +330,7 @@ public class GameSettingsServiceTests
         Assert.Equal(new[] { "portal_north" }, read.Hub.PortalRegionIds);
 
         var staff = Assert.Single(read.GroupOverrides);
-        Assert.Equal((3, true, (bool?)null, "Kick"), (staff.PermissionGroupId, staff.ExemptInStaffMode == true, staff.ExemptInOwnerMode, staff.OutageAction));
+        Assert.Equal((3, "Kick"), (staff.PermissionGroupId, staff.OutageAction));
         Assert.Equal(("SendToWorldSpawn", 30), (read.Hub.OutageAction, read.Hub.OutageDelaySeconds));
         Assert.True(read.Hub.Rules.DropPickup && !read.Hub.Rules.DamagePlayers && read.Hub.Rules.HealIntervalTicks == 20);
 
