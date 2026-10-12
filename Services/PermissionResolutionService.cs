@@ -23,10 +23,9 @@ namespace knkwebapi_v2.Services
         /// <summary>
         /// One level in the resolution chain: a holder (the user itself, or one PermissionGroup
         /// in the user's membership/inheritance set) plus its own non-expired grants. Ordered
-        /// most-specific-first: the user itself, then each member group (highest Weight first),
-        /// then that group's own parent chain immediately after it (before moving to the next
-        /// member group) - see PermissionResolutionServiceTests for the exact ordering this
-        /// produces and why.
+        /// most-specific-first: the user itself, then the groups in PermissionGroupPrecedence order (a
+        /// member group before its parents, then weight) - see PermissionResolutionServiceTests for the
+        /// exact ordering this produces and why.
         /// </summary>
         private sealed record HolderLevel(int HolderId, string HolderType, string? HolderName, List<PermissionGrant> Grants);
 
@@ -37,19 +36,15 @@ namespace knkwebapi_v2.Services
             var directGrants = await _grantRepo.GetActiveGrantsForHolderAsync(user.Id, asOf);
             chain.Add(new HolderLevel(user.Id, nameof(User), user.Username, directGrants));
 
+            // Hierarchy first, then weight (decision 2026-10-12): a member group comes before the groups it inherits
+            // from, also when the player holds those directly (PermissionGroupPrecedence).
             var memberGroups = await _groupRepo.GetActiveGroupsForUserAsync(user.Id, asOf);
-            foreach (var group in memberGroups)
+            foreach (var current in PermissionGroupPrecedence.Chain(memberGroups, g => g.ParentGroup))
             {
-                PermissionGroup? current = group;
-                var visited = new HashSet<int>();
-                while (current != null && visited.Add(current.Id))
-                {
-                    var activeGrants = (current.Grants ?? new List<PermissionGrant>())
-                        .Where(g => g.ExpiresAt == null || g.ExpiresAt > asOf)
-                        .ToList();
-                    chain.Add(new HolderLevel(current.Id, nameof(PermissionGroup), current.Name, activeGrants));
-                    current = current.ParentGroup;
-                }
+                var activeGrants = (current.Grants ?? new List<PermissionGrant>())
+                    .Where(g => g.ExpiresAt == null || g.ExpiresAt > asOf)
+                    .ToList();
+                chain.Add(new HolderLevel(current.Id, nameof(PermissionGroup), current.Name, activeGrants));
             }
 
             return chain;
