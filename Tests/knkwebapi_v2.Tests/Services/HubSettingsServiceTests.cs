@@ -86,6 +86,22 @@ public class HubSettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task PortalsAreWorldGuardRegionsOtherThanTheHubItself()
+    {
+        await _hub.SetEligibleAsync(1, true);
+        var hub = Hub(1);
+        hub.PortalRegionIds = new List<string> { " Portal_North ", "portal_north", "", "gate-east" };
+        Assert.Equal(new[] { "portal_north", "gate-east" }, (await _hub.NormalizeAsync(hub)).PortalRegionIds);
+
+        hub.PortalRegionIds = new List<string> { "TOWN_1" };
+        var own = await Assert.ThrowsAsync<ArgumentException>(() => _hub.NormalizeAsync(hub));
+        Assert.Contains("hub's own region", own.Message);
+
+        hub.PortalRegionIds = new List<string> { "north portal" };
+        await Assert.ThrowsAsync<ArgumentException>(() => _hub.NormalizeAsync(hub));
+    }
+
+    [Fact]
     public async Task TheSelectedHubCannotBeUnflagged()
     {
         await _hub.SetEligibleAsync(1, true);

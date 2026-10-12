@@ -132,6 +132,14 @@ public class HubSettingsDto
 
     [JsonPropertyName("rules")]
     public HubRulesDto Rules { get; set; } = new();
+
+    /// <summary>
+    /// The hub's portals (§11, developer decision 2026-10-12): WorldGuard region ids in the hub's world. Walking into
+    /// one takes the player to the gameplay world through the Game Settings join chain (group spawn, else the default
+    /// spawn), once the API and their account are ready.
+    /// </summary>
+    [JsonPropertyName("portalRegionIds")]
+    public List<string> PortalRegionIds { get; set; } = new();
 }
 
 /// <summary>

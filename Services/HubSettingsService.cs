@@ -113,13 +113,16 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("hub.rules: heal, feed and saturation intervals are at least 1 tick");
             }
 
+            var portals = NormalizePortals(hub.PortalRegionIds);
+
             var normalized = new HubSettingsDto
             {
                 DomainId = hub.DomainId,
                 SpawnReference = hub.SpawnReference,
                 OutageAction = action,
                 OutageDelaySeconds = hub.OutageDelaySeconds,
-                Rules = rules
+                Rules = rules,
+                PortalRegionIds = portals
             };
             if (hub.DomainId is not int domainId)
             {
@@ -151,6 +154,11 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException($"hub.domainId: '{domain.Name}' and '{nested.Name}' are nested hubs; "
                     + "remove the hub flag from one of them first");
             }
+            if (portals.Contains(domain.WgRegionId.Trim().ToLowerInvariant()))
+            {
+                throw new ArgumentException($"hub.portalRegionIds: '{domain.WgRegionId}' is the hub's own region; "
+                    + "a portal is a smaller region inside the hub");
+            }
             var spawn = hub.SpawnReference?.Location;
             if (spawn == null)
             {
@@ -162,6 +170,33 @@ namespace knkwebapi_v2.Services
                     + $"is in world '{domain.WorldName}'");
             }
             return normalized;
+        }
+
+        /// <summary>At most this many portal regions.</summary>
+        public const int MaxPortals = 20;
+
+        private static readonly System.Text.RegularExpressions.Regex RegionIdPattern =
+            new("^[a-z0-9_,'\\-+/]{1,64}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        /// <summary>Trimmed, lower-cased (WorldGuard's ids are), blanks and duplicates dropped; a WorldGuard id each.</summary>
+        internal static List<string> NormalizePortals(IEnumerable<string>? ids)
+        {
+            var portals = (ids ?? Enumerable.Empty<string>())
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList();
+            var invalid = portals.FirstOrDefault(id => !RegionIdPattern.IsMatch(id));
+            if (invalid != null)
+            {
+                throw new ArgumentException($"hub.portalRegionIds: '{invalid}' is not a WorldGuard region id "
+                    + "(letters, digits and _ , ' - + / only, at most 64)");
+            }
+            if (portals.Count > MaxPortals)
+            {
+                throw new ArgumentException($"hub.portalRegionIds: at most {MaxPortals} portals");
+            }
+            return portals;
         }
 
         public async Task<HubSettingsDto> DescribeAsync(HubSettingsDto hub)

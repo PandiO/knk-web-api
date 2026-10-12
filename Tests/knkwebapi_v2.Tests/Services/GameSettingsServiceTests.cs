@@ -303,9 +303,11 @@ public class GameSettingsServiceTests
             new() { PermissionGroupId = 3, ExemptInStaffMode = true, ExemptInOwnerMode = false, OutageAction = "kick" },
             new() { PermissionGroupId = 1, ExemptInStaffMode = false },
         });
-        dto.Hub = new HubSettingsDto { OutageAction = "SendToWorldSpawn", OutageDelaySeconds = 30 };
+        dto.Hub = new HubSettingsDto { OutageAction = "SendToWorldSpawn", OutageDelaySeconds = 30,
+            PortalRegionIds = new List<string> { "portal_north" } };
 
         var read = await _service.UpdateAsync(dto);
+        Assert.Equal(new[] { "portal_north" }, read.Hub.PortalRegionIds);
 
         var staff = Assert.Single(read.GroupOverrides);
         Assert.Equal((3, true, (bool?)null, "Kick"), (staff.PermissionGroupId, staff.ExemptInStaffMode == true, staff.ExemptInOwnerMode, staff.OutageAction));
