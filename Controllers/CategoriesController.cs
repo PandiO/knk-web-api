@@ -105,15 +105,10 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex) when (!DeleteConstraintExceptionFilter.IsConstraintFailure(ex))
             {
                 // Business rule violation (e.g., has children)
                 return Conflict(new { code = "CategoryHasChildren", message = ex.Message });
-            }
-            catch (DbUpdateException ex)
-            {
-                // Database constraint violation
-                return Conflict(new { code = "DbConstraint", message = ex.Message });
             }
         }
 

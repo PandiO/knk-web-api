@@ -104,10 +104,6 @@ namespace knkwebapi_v2.Controllers
             {
                 return Conflict(new { code = ex.Code, message = ex.Message });
             }
-            catch (DbUpdateException ex)
-            {
-                return Conflict(new { code = "DbConstraint", message = ex.Message });
-            }
         }
 
         /// <summary>201 area; 409 <c>{code: NameTaken|RegionInUse}</c>; 400 invalid name.</summary>

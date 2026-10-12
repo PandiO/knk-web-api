@@ -92,10 +92,6 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (DbUpdateException ex)
-            {
-                return Conflict(new { code = "DbConstraint", message = ex.Message });
-            }
         }
     }
 }

@@ -91,12 +91,6 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (DbUpdateException ex)
-            {
-                // Still referenced (e.g. by a siege scenario, whose FKs restrict deletes): 409, not 500.
-                _logger.LogError(ex, "Deleting town {Id} hit a database constraint", id);
-                return Conflict(new { code = "DbConstraint", message = "This town is still in use and can't be deleted." });
-            }
         }
 
         [HttpPost("search")]
