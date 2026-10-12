@@ -116,6 +116,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.IsLinkedToSource, o => o.MapFrom(s => s.IsLinkedToSource))
                 .ForMember(d => d.Validations, o => o.MapFrom(s => s.Validations))
                 .ForMember(d => d.EnumType, o => o.MapFrom(s => s.EnumType))
+                .ForMember(d => d.MinSelection, o => o.MapFrom(s => s.MinSelection))
+                .ForMember(d => d.MaxSelection, o => o.MapFrom(s => s.MaxSelection))
+                .ForMember(d => d.CanCreate, o => o.MapFrom(s => s.CanCreate))
+                .ForMember(d => d.IncrementValue, o => o.MapFrom(s => s.IncrementValue))
                 .ForMember(d => d.DisplayConditionGroups, o => o.MapFrom(s => s.DisplayConditionGroups.OrderBy(g => g.Order)))
                 .ForMember(d => d.UsedInDisplayConditions, o => o.Ignore())
                 // ignore DTO.Order here; handled at step mapping level via FieldOrderJson
@@ -144,6 +148,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.IsLinkedToSource, o => o.MapFrom(s => s.IsLinkedToSource))
                 .ForMember(d => d.Validations, o => o.MapFrom(s => s.Validations))
                 .ForMember(d => d.EnumType, o => o.MapFrom(s => s.EnumType))
+                .ForMember(d => d.MinSelection, o => o.MapFrom(s => s.MinSelection))
+                .ForMember(d => d.MaxSelection, o => o.MapFrom(s => s.MaxSelection))
+                .ForMember(d => d.CanCreate, o => o.MapFrom(s => s.CanCreate))
+                .ForMember(d => d.IncrementValue, o => o.MapFrom(s => s.IncrementValue))
                 .ForMember(d => d.DisplayConditionGroups, o => o.MapFrom(s => s.DisplayConditionGroups.OrderBy(g => g.Order)))
                 .ForMember(d => d.Order, o => o.Ignore())
                 // compatibility issues handled at runtime by service

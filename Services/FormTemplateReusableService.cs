@@ -235,6 +235,10 @@ namespace knkwebapi_v2.Services
                 DependsOnFieldId = sourceField.DependsOnFieldId, // Keep dependency (may need adjustment)
                 DependencyConditionJson = sourceField.DependencyConditionJson,
                 SubConfigurationId = sourceField.SubConfigurationId,
+                MinSelection = sourceField.MinSelection,
+                MaxSelection = sourceField.MaxSelection,
+                CanCreate = sourceField.CanCreate,
+                IncrementValue = sourceField.IncrementValue,
                 Validations = new List<FieldValidation>(),
                 DependentFields = new List<FormField>()
             };
@@ -281,6 +285,10 @@ namespace knkwebapi_v2.Services
                 DependsOnFieldId = sourceField.DependsOnFieldId,
                 DependencyConditionJson = sourceField.DependencyConditionJson,
                 SubConfigurationId = sourceField.SubConfigurationId,
+                MinSelection = sourceField.MinSelection,
+                MaxSelection = sourceField.MaxSelection,
+                CanCreate = sourceField.CanCreate,
+                IncrementValue = sourceField.IncrementValue,
                 Validations = new List<FieldValidation>(), // Validations from source at read-time
                 DependentFields = new List<FormField>()
             };

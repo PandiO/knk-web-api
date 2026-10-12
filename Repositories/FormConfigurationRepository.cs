@@ -217,6 +217,10 @@ namespace knkwebapi_v2.Repositories
                             DependsOnFieldId = field.DependsOnFieldId,
                             DependencyConditionJson = field.DependencyConditionJson,
                             SubConfigurationId = field.SubConfigurationId,
+                            MinSelection = field.MinSelection,
+                            MaxSelection = field.MaxSelection,
+                            CanCreate = field.CanCreate,
+                            IncrementValue = field.IncrementValue,
                             FormStepId = match.Id,
                             CreatedAt = DateTime.UtcNow
                         };
@@ -245,6 +249,10 @@ namespace knkwebapi_v2.Repositories
                         fieldMatch.DependsOnFieldId = field.DependsOnFieldId;
                         fieldMatch.DependencyConditionJson = field.DependencyConditionJson;
                         fieldMatch.SubConfigurationId = field.SubConfigurationId;
+                        fieldMatch.MinSelection = field.MinSelection;
+                        fieldMatch.MaxSelection = field.MaxSelection;
+                        fieldMatch.CanCreate = field.CanCreate;
+                        fieldMatch.IncrementValue = field.IncrementValue;
                     }
 
                     // ----- Merge Validations -----
@@ -344,6 +352,10 @@ namespace knkwebapi_v2.Repositories
                                 DependsOnFieldId = field.DependsOnFieldId,
                                 DependencyConditionJson = field.DependencyConditionJson,
                                 SubConfigurationId = field.SubConfigurationId,
+                                MinSelection = field.MinSelection,
+                                MaxSelection = field.MaxSelection,
+                                CanCreate = field.CanCreate,
+                                IncrementValue = field.IncrementValue,
                                 FormStepId = childMatch.Id,
                                 CreatedAt = DateTime.UtcNow
                             };
@@ -372,6 +384,10 @@ namespace knkwebapi_v2.Repositories
                             fieldMatch.DependsOnFieldId = field.DependsOnFieldId;
                             fieldMatch.DependencyConditionJson = field.DependencyConditionJson;
                             fieldMatch.SubConfigurationId = field.SubConfigurationId;
+                            fieldMatch.MinSelection = field.MinSelection;
+                            fieldMatch.MaxSelection = field.MaxSelection;
+                            fieldMatch.CanCreate = field.CanCreate;
+                            fieldMatch.IncrementValue = field.IncrementValue;
                         }
 
                         // Merge child field validations
