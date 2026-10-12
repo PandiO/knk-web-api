@@ -142,6 +142,10 @@ namespace knkwebapi_v2.Dtos
         // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
         [JsonPropertyName("worldName")]
         public string? WorldName { get; set; }
+
+        // KNG-166: a picker row for a structure created in a form names its town, like a search row.
+        [JsonPropertyName("townName")]
+        public string? TownName { get; set; }
     }
 
     // Lightweight Street DTO for embedding in Structure payloads

@@ -72,7 +72,8 @@ namespace knkwebapi_v2.Mapping
                     AllowEntry = s.District.AllowEntry,
                     AllowExit = s.District.AllowExit,
                     WgRegionId = s.District.WgRegionId,
-                    WorldName = s.District.WorldName
+                    WorldName = s.District.WorldName,
+                    TownName = s.District.Town != null ? s.District.Town.Name : null
                 }))
                 .ForMember(dest => dest.IconMaterialRef, opt => opt.MapFrom(s => s.IconMaterial == null ? null : new MinecraftMaterialRefDto
                 {

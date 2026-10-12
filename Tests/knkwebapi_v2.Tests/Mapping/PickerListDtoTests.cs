@@ -110,4 +110,17 @@ public class PickerListDtoTests : IDisposable
         Assert.Equal(2, market.townId);
         Assert.Equal("Cinix", market.townName);
     }
+
+    [Fact]
+    public async Task StructureAndGateReads_NameTheirDistrictsTown()
+    {
+        // A structure or gate created in a form is pinned in the picker from its full read DTO; its
+        // Town column needs the district's town there too, like the search row.
+        var structure = await new StructureRepository(_ctx).GetByIdAsync(10);
+        Assert.Equal("Rivia", _mapper.Map<StructureDto>(structure).District!.TownName);
+
+        _ctx.ChangeTracker.Clear();
+        var gate = await new GateStructureRepository(_ctx).GetByIdAsync(11);
+        Assert.Equal("Cinix", _mapper.Map<GateStructureDto>(gate).District!.TownName);
+    }
 }

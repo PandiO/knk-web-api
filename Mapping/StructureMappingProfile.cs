@@ -34,7 +34,8 @@ namespace knkwebapi_v2.Mapping
                     AllowEntry = s.District.AllowEntry,
                     AllowExit = s.District.AllowExit,
                     WgRegionId = s.District.WgRegionId,
-                    WorldName = s.District.WorldName
+                    WorldName = s.District.WorldName,
+                    TownName = s.District.Town != null ? s.District.Town.Name : null
                 }));
 
             CreateMap<StructureDto, Structure>()

@@ -178,6 +178,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(gs => gs.Location)
                 .Include(gs => gs.Street)
                 .Include(gs => gs.District)
+                    .ThenInclude(d => d.Town)
                 .Include(gs => gs.IconMaterial)
                 .Include(gs => gs.GuardSpawnLocations)
                 .Include(gs => gs.GateDoors).ThenInclude(d => d.AnchorPoint)
