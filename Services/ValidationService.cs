@@ -9,6 +9,7 @@ using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.ValidationMethods;
 
 namespace knkwebapi_v2.Services
 {
@@ -315,6 +316,19 @@ namespace knkwebapi_v2.Services
         /// <summary>
         /// Execute a single validation rule with optional placeholder resolution.
         /// </summary>
+        /// <summary>
+        /// The rule's ErrorMessage for a failed check; for a region rule (KNG-173) followed by what it
+        /// must be inside ("Must be inside District "Old Quarter" (region domain_27)."), since the
+        /// rule's text names no place.
+        /// </summary>
+        private static string FailureMessage(FieldValidationRule rule, ValidationMethodResult result)
+        {
+            var message = rule.ErrorMessage ?? result.Message;
+            return RegionRuleMessages.AppliesTo(rule.ValidationType)
+                ? RegionRuleMessages.WithParent(rule, message, result.Placeholders)
+                : message;
+        }
+
         private async Task<ValidationResultDto> ExecuteValidationRuleAsync(
             FieldValidationRule rule,
             object? fieldValue,
@@ -401,7 +415,7 @@ namespace knkwebapi_v2.Services
                     IsBlocking = rule.IsBlocking,
                     Message = result.IsValid
                         ? (rule.SuccessMessage ?? result.Message)
-                        : (failureReason != null ? result.Message : (rule.ErrorMessage ?? result.Message)),
+                        : (failureReason != null ? result.Message : FailureMessage(rule, result)),
                     Placeholders = MergePlaceholders(result.Placeholders, resolvedPlaceholders),
                     Metadata = new ValidationMetadataDto
                     {
