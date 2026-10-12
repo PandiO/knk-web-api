@@ -118,6 +118,26 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// KNG-162: what still references one entity (any type in the model), so the web app can skip
+        /// an entity a cancelled form created when something else uses it, instead of deleting it.
+        /// Read-only; the delete itself goes through that entity's own endpoint.
+        /// `ignore` ("Type:id", repeatable or comma-separated) names entities being deleted in the same
+        /// run, whose references don't count.
+        /// GET api/FormSubmissionProgress/entity-references/District/12?ignore=Street:7
+        /// </summary>
+        [HttpGet("entity-references/{entityTypeName}/{id}")]
+        public async Task<IActionResult> GetEntityReferences(
+            string entityTypeName,
+            string id,
+            [FromQuery] string[]? ignore,
+            [FromServices] IEntityReferenceService references)
+        {
+            var result = await references.GetReferencesAsync(entityTypeName, id, ignore);
+            if (result == null) return NotFound(new { message = $"Unknown entity type or id: {entityTypeName} {id}." });
+            return Ok(result);
+        }
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

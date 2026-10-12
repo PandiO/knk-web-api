@@ -96,6 +96,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IPathResolutionService, PathResolutionService>();
             services.AddScoped<IFormSubmissionProgressRepository, FormSubmissionProgressRepository>();
             services.AddScoped<IFormSubmissionProgressService, FormSubmissionProgressService>();
+            services.AddScoped<IEntityReferenceService, EntityReferenceService>();
             services.AddScoped<IGateStructureRepository, GateStructureRepository>();
             services.AddScoped<IGateStructureService, GateStructureService>();
             services.AddScoped<IGateDoorRepository, GateDoorRepository>();
