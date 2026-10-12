@@ -61,8 +61,8 @@ namespace knkwebapi_v2.Dtos
 
     public class SiegeMatchCompleteDto
     {
-        // InstantVictory / TimeExpired / TeamEliminated / NotEnoughPlayers (AdminStopped and
-        // ServerRestart are aborts - use POST {id}/abort).
+        // InstantVictory / TimeExpired / TeamEliminated / NotEnoughPlayers (AdminStopped,
+        // ServerRestart and ApiOutage are aborts - use POST {id}/abort).
         [JsonPropertyName("endReason")] public SiegeMatchEndReason EndReason { get; set; }
         // null = draw (no win reward).
         [JsonPropertyName("winningAllianceGroup")] public int? WinningAllianceGroup { get; set; }
