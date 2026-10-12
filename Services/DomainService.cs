@@ -96,7 +96,7 @@ namespace knkwebapi_v2.Services
             await _repo.UpdateDomainAsync(existing);
             
             // A region drawn through a world task gets its final name (domain_<id>) now that the Domain exists
-            await _regionNames.FinalizeAsync(existing);
+            await _regionNames.FinalizeAsync(existing, oldRegionId);
         }
 
         public async Task DeleteAsync(int id)

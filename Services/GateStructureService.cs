@@ -101,6 +101,8 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null)
                 throw new KeyNotFoundException($"GateStructure with id {id} not found.");
+            // KNG-103: the region this save replaces when the region step was run again
+            string previousRegionId = existing.WgRegionId;
 
             _mapper.Map(gateStructureDto, existing);
             existing.WorldName = await _worlds.ResolveAsync(WorldRequest(existing, gateStructureDto, id));
@@ -108,7 +110,7 @@ namespace knkwebapi_v2.Services
             DomainNavigationDefaults.Apply(existing, gateStructureDto);
             await ApplyLocationReferencesAsync(existing, gateStructureDto);
             await _repo.UpdateGateStructureAsync(existing);
-            await _regionNames.FinalizeAsync(existing);
+            await _regionNames.FinalizeAsync(existing, previousRegionId);
         }
 
         public async Task DeleteAsync(int id)
