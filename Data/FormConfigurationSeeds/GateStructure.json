@@ -1,0 +1,200 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "cf75a25a-1a93-559c-895c-0dddffe781ca",
+  "entityTypeName": "GateStructure",
+  "name": "GateStructure - Default (seed v1)",
+  "description": "A gate: its name, address, WorldGuard region, spawn point and siege behaviour. Its doors are their own records, added on the last step once the gate is saved.",
+  "steps": [
+    {
+      "stepGuid": "78e493ee-2313-5177-95a0-358c2164d424",
+      "stepName": "General information",
+      "description": "Name the gate. The name is shown in game and is how /gate commands find it.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "0775f3cc-3f5e-5082-bc03-34fd25e8671b",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game and used by /gate commands, so keep it short. 'here' is reserved and refused.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6204d233-da0f-5071-b33f-fd564abe2ae4",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "One line for admins and the web app, e.g. what the gate guards.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e3f936dc-0210-52ab-8cc6-c62779df20a5",
+          "fieldName": "IconMaterialRefId",
+          "label": "Icon",
+          "description": "Item shown for this gate in menus. Leave empty for the default icon.",
+          "fieldType": "HybridMinecraftMaterialRefPicker",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "78269495-64cd-53b3-8f80-3ffd6e8d7164",
+      "stepName": "Address",
+      "description": "Where the gate stands. Pick the district first; create the street here if it doesn't exist yet.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "afdb105d-316b-5b97-a184-b5c2c7301a01",
+          "fieldName": "DistrictId",
+          "label": "District",
+          "description": "The district the gate belongs to. Its region is checked against the district's region on the next step.",
+          "fieldType": "Object",
+          "objectType": "District",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "055db0ba-6c8f-5502-a1c2-ef5214514fa1",
+          "fieldName": "StreetId",
+          "label": "Street",
+          "description": "The street the gate is on. Use Create New if the street isn't there yet.",
+          "fieldType": "Object",
+          "objectType": "Street",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2076a662-bbc8-5b44-8116-3d3e6da971a4",
+          "fieldName": "HouseNumber",
+          "label": "House number",
+          "description": "The gate's number on that street.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "9366d25a-0fa7-518c-9443-0ab1c2d19336",
+      "stepName": "Region and access",
+      "description": "The WorldGuard region around the whole gate, and whether players may walk in and out of it. Use Send to Minecraft and select the region in game with WorldEdit, or type an existing region's name.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "6887b19f-1ee2-54ef-ba42-2417cc29c9e3",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The WorldGuard region that encloses the gate and all its doors. Door points are checked against it, and it should lie inside the district's region.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
+        },
+        {
+          "fieldGuid": "79139c6c-0eb9-5613-b509-2a8745e31772",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the gate's region. Off keeps everyone out except admins.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "763e2bab-e822-57fe-93f1-3cbf99afb382",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the gate's region may walk out of it.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "d8361647-dbab-574e-a6c0-818d07a8f987",
+      "stepName": "Spawn point",
+      "description": "Where /gate tp, /warp and /navigate <gate> spawn put players. Stand on the spot in game, facing the gate, and use Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "751d3b92-2b22-5537-9378-67880bfa8dd0",
+          "fieldName": "LocationId",
+          "label": "Spawn point",
+          "description": "Optional. Without it, /gate tp puts players next to the gate's first door.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "5d81b916-ec81-5ff3-a4eb-fa0b07c3e665",
+      "stepName": "Siege behaviour",
+      "description": "How the gate behaves while a siege match has it locked down.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "eb3a12e2-1122-5fd6-a144-5c570ab1d94e",
+          "fieldName": "AnimateDuringSiege",
+          "label": "Animate during a siege",
+          "description": "Doors open and close with their animation during a match. Off switches them instantly.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0c51ee7e-1f58-5e68-bd26-0cea1b9165d2",
+          "fieldName": "IsOverridable",
+          "label": "Siege may take over",
+          "description": "A siege match may take control of this gate's doors (open, close, destroy). Off keeps the gate out of every siege.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b9e7a365-9218-50b1-93c4-78759ee7dfa2",
+      "stepName": "Gate doors",
+      "description": "The doors that open and close. Save the gate first (Submit), then Edit it to add doors; each door has its own form and is saved when you finish it.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "68cb8e67-2d9b-5b2d-aaf7-5c8bdaceb2a9",
+          "fieldName": "GateDoors",
+          "label": "Doors",
+          "description": "One entry per door. Create New opens the door form with this gate already filled in.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "GateDoor",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "6887b19f-1ee2-54ef-ba42-2417cc29c9e3",
+      "validationType": "RegionContainment",
+      "dependsOn": {
+        "fieldGuid": "afdb105d-316b-5b97-a184-b5c2c7301a01"
+      },
+      "dependencyPath": "District.WgRegionId",
+      "configJson": "{\"parentRegionPath\": \"WgRegionId\", \"requireFullContainment\": true}",
+      "errorMessage": "The gate's region is not completely inside the district's region.",
+      "isBlocking": false,
+      "requiresDependencyFilled": true
+    }
+  ]
+}
