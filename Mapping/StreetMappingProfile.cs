@@ -1,3 +1,4 @@
+using System.Linq;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
@@ -12,6 +13,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Id, src => src.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Name, src => src.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Districts, src => src.MapFrom(src => src.Districts))
+                // KNG-135: filled on read too, so a form field authored as DistrictIds loads the Street's Districts.
+                .ForMember(dest => dest.DistrictIds, src => src.MapFrom(src => src.Districts.Select(d => d.Id).ToList()))
                 .ForMember(dest => dest.Structures, src => src.MapFrom(src => src.Structures))
                 .ForMember(dest => dest.EdgeCount, src => src.Ignore())
                 .ForMember(dest => dest.TotalLength, src => src.Ignore());
