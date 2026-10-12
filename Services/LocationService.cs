@@ -83,6 +83,14 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Location with id {id} not found.");
 
+            // KNG-118 D3 (developer decision 2026-10-12): deleting a Location never deletes the domain that uses it.
+            var domains = await _repo.GetDomainsUsingAsync(id) ?? Array.Empty<string>();
+            if (domains.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"This location is the location of {string.Join(", ", domains)}. Give it another location first.");
+            }
+
             await _repo.DeleteLocationAsync(id);
         }
 

@@ -90,6 +90,10 @@ public class LocationsController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { code = "LocationUsedByDomain", message = ex.Message });
+        }
         catch (DbUpdateException ex)
         {
             // Still referenced (e.g. by a siege scenario, whose FKs restrict deletes): 409, not 500.

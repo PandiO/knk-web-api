@@ -1440,7 +1440,8 @@ public partial class KnKDbContext : DbContext
             .HasOne(d => d.Location)
             .WithOne()
             .HasForeignKey<Domain>(d => d.LocationId)
-            .OnDelete(DeleteBehavior.Cascade);
+            // KNG-118 D3: a Location used by a domain can't be deleted; the domain is never deleted with it.
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Street configuration
         modelBuilder.Entity<Street>(entity =>
