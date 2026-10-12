@@ -109,6 +109,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("districtName")]
         public string? districtName { get; set; }
+
+        // KNG-166: the district's town, for pickers. Read-only.
+        [JsonPropertyName("townName")]
+        public string? townName { get; set; }
     }
 }
 

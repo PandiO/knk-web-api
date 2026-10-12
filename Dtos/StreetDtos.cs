@@ -38,6 +38,14 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("name")]
         public string name { get; set; } = null!;
+
+        // KNG-166: what tells two streets of the same name apart in a picker: the districts it runs
+        // through and their towns (", "-joined, sorted; towns distinct). Read-only.
+        [JsonPropertyName("districtNames")]
+        public string? districtNames { get; set; }
+
+        [JsonPropertyName("townNames")]
+        public string? townNames { get; set; }
     }
 }
 

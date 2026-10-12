@@ -63,7 +63,10 @@ namespace knkwebapi_v2.Repositories
 
             var totalCount = await queryable.CountAsync();
 
+            // KNG-166: the list rows name the street's districts and their towns.
             var items = await queryable
+                .Include(s => s.Districts)
+                    .ThenInclude(d => d.Town)
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .ToListAsync();

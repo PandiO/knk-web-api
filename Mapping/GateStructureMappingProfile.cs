@@ -149,6 +149,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.streetName, opt => opt.MapFrom(src => src.Street != null ? src.Street.Name : null))
                 .ForMember(dest => dest.districtId, opt => opt.MapFrom(src => src.DistrictId))
                 .ForMember(dest => dest.districtName, opt => opt.MapFrom(src => src.District != null ? src.District.Name : null))
+                .ForMember(dest => dest.townName, opt => opt.MapFrom(src => src.District != null && src.District.Town != null ? src.District.Town.Name : null))
                 .ForMember(dest => dest.doorCount, opt => opt.MapFrom(src => src.GateDoors.Count));
 
             // PagedQuery DTO conversions

@@ -140,6 +140,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(gs => gs.Location)
                 .Include(gs => gs.Street)
                 .Include(gs => gs.District)
+                    .ThenInclude(d => d.Town) // KNG-166: the list rows name the town
                 .Include(gs => gs.IconMaterial)
                 .Include(gs => gs.GuardSpawnLocations)
                 .Include(gs => gs.GateDoors)
