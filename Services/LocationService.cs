@@ -87,7 +87,7 @@ namespace knkwebapi_v2.Services
             var domains = await _repo.GetDomainsUsingAsync(id) ?? Array.Empty<string>();
             if (domains.Count > 0)
             {
-                throw new InvalidOperationException(
+                throw new LocationInUseException(
                     $"This location is the location of {string.Join(", ", domains)}. Give it another location first.");
             }
 
@@ -108,5 +108,11 @@ namespace knkwebapi_v2.Services
 
             return resultDto;
         }
+    }
+
+    /// <summary>A Location a domain still uses can't be deleted (KNG-118 D3); the controller answers 409.</summary>
+    public class LocationInUseException : InvalidOperationException
+    {
+        public LocationInUseException(string message) : base(message) { }
     }
 }

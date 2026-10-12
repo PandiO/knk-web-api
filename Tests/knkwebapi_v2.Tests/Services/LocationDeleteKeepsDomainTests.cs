@@ -31,7 +31,7 @@ public class LocationDeleteKeepsDomainTests : IDisposable
     [Fact]
     public async Task ALocationADomainUsesIsRefusedWithTheDomainsName()
     {
-        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteAsync(1));
+        var refused = await Assert.ThrowsAsync<LocationInUseException>(() => _service.DeleteAsync(1));
         Assert.Contains("Town 'Kardenna'", refused.Message);
         Assert.NotNull(await _context.Locations.FindAsync(1));
         Assert.NotNull(await _context.Towns.FindAsync(4));

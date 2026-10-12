@@ -90,7 +90,7 @@ public class LocationsController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
-        catch (InvalidOperationException ex)
+        catch (LocationInUseException ex)
         {
             return Conflict(new { code = "LocationUsedByDomain", message = ex.Message });
         }
