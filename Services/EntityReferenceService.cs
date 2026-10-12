@@ -58,11 +58,9 @@ namespace knkwebapi_v2.Services
 
             var ignored = ParseIgnore(ignore);
             var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (var foreignKey in principal.GetReferencingForeignKeys())
+            foreach (var foreignKey in CountedForeignKeys(principal))
             {
-                if (foreignKey.IsOwnership || foreignKey.Properties.Count != 1) continue;
                 var dependent = foreignKey.DeclaringEntityType;
-                if (dependent.IsOwned()) continue;
 
                 // What identifies the referencing row for the ignore list: the other side of a join
                 // row, else the referencing entity itself.
@@ -86,6 +84,31 @@ namespace knkwebapi_v2.Services
                     .Select(entry => new EntityReferenceCountDto { ReferencedBy = entry.Key, Count = entry.Value })
                     .ToList()
             };
+        }
+
+        /// <summary>
+        /// The foreign keys whose rows count as uses of <paramref name="principal"/>: every one that
+        /// targets it or a base type, except ownerships, composite keys, owned dependents and the
+        /// table-per-type links between one entity's own tables (<c>District.Id</c> → <c>Domain.Id</c>
+        /// is the District's own row, so without this every District, Town and Structure was "in use"
+        /// by itself).
+        /// </summary>
+        public static IEnumerable<IForeignKey> CountedForeignKeys(IEntityType principal) =>
+            principal.GetReferencingForeignKeys().Where(foreignKey =>
+                !foreignKey.IsOwnership
+                && foreignKey.Properties.Count == 1
+                && !foreignKey.DeclaringEntityType.IsOwned()
+                && !IsInheritanceLink(foreignKey));
+
+        /// <summary>A primary key pointing at the primary key of a base or derived type: TPT's table link.</summary>
+        private static bool IsInheritanceLink(IForeignKey foreignKey)
+        {
+            var dependentKey = foreignKey.DeclaringEntityType.FindPrimaryKey();
+            if (dependentKey == null || !foreignKey.PrincipalKey.IsPrimaryKey()) return false;
+            if (!foreignKey.Properties.Select(p => p.Name).SequenceEqual(dependentKey.Properties.Select(p => p.Name))) return false;
+            var dependentType = foreignKey.DeclaringEntityType.ClrType;
+            var principalType = foreignKey.PrincipalEntityType.ClrType;
+            return principalType.IsAssignableFrom(dependentType) || dependentType.IsAssignableFrom(principalType);
         }
 
         private static HashSet<string> ParseIgnore(IEnumerable<string>? ignore) =>

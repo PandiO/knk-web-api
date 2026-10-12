@@ -96,4 +96,33 @@ public class EntityReferenceServiceTests : IDisposable
     {
         Assert.Null(await Service().GetReferencesAsync(type, id));
     }
+
+    // The in-memory provider has no table-per-type links, so these read the MySQL model (no connection).
+    [Theory]
+    [InlineData("District")]
+    [InlineData("Town")]
+    [InlineData("Structure")]
+    public void DomainTablePerTypeLink_IsNotAUse(string entityTypeName)
+    {
+        using var ctx = new KnKDbContext(new DbContextOptionsBuilder<KnKDbContext>()
+            .UseMySql("Server=127.0.0.1;Port=1;Database=knk;User=knk;Password=x", new MySqlServerVersion(new Version(8, 0, 36)))
+            .Options);
+        var principal = ctx.Model.GetEntityTypes().Single(t => t.ClrType.Name == entityTypeName);
+
+        var counted = EntityReferenceService.CountedForeignKeys(principal).ToList();
+
+        static bool IsOwnTableLink(Microsoft.EntityFrameworkCore.Metadata.IForeignKey fk) =>
+            fk.Properties[0].Name == "Id"
+            && (fk.PrincipalEntityType.ClrType.IsAssignableFrom(fk.DeclaringEntityType.ClrType)
+                || fk.DeclaringEntityType.ClrType.IsAssignableFrom(fk.PrincipalEntityType.ClrType));
+
+        // The link is in the model (that's what made every District "in use (used by District.Id)")...
+        Assert.Contains(principal.GetReferencingForeignKeys(), fk => fk.DeclaringEntityType == principal && IsOwnTableLink(fk));
+        // ...but isn't counted, while real references still are.
+        Assert.DoesNotContain(counted, IsOwnTableLink);
+        if (entityTypeName == "District")
+        {
+            Assert.Contains(counted, fk => fk.DeclaringEntityType.ClrType == typeof(Structure) && fk.Properties[0].Name == "DistrictId");
+        }
+    }
 }
