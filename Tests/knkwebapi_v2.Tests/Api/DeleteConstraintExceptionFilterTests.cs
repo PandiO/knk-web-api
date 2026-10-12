@@ -1,4 +1,10 @@
+using AutoMapper;
 using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Mapping;
+using knkwebapi_v2.Models;
+using knkwebapi_v2.Properties;
+using knkwebapi_v2.Repositories;
+using knkwebapi_v2.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -56,6 +62,29 @@ public class DeleteConstraintExceptionFilterTests
 
         Assert.False(context.ExceptionHandled);
         Assert.Null(context.Result);
+    }
+
+    [Fact]
+    public async Task DeletingAStreetAStructureStillUses_Answers409()
+    {
+        // StreetService loads the Street with its Structures first, so EF refuses the delete in its
+        // change tracker (a severed required relationship) before any SQL runs: no DbUpdateException.
+        using var db = new KnKDbContext(new DbContextOptionsBuilder<KnKDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        db.Towns.Add(new Town { Id = 1, Name = "Rivia", Description = "", WgRegionId = "town_rivia" });
+        db.Districts.Add(new District { Id = 2, Name = "Old Quarter", Description = "", WgRegionId = "d", TownId = 1 });
+        db.Streets.Add(new Street { Id = 4, Name = "Main" });
+        db.Structures.Add(new Structure { Id = 3, Name = "Smithy", Description = "", WgRegionId = "s", StreetId = 4, DistrictId = 2 });
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+        var mapper = new MapperConfiguration(cfg => cfg.AddProfile<StreetMappingProfile>()).CreateMapper();
+        var service = new StreetService(new StreetRepository(db), new DistrictRepository(db), new RoadNetworkRepository(db), mapper);
+
+        var thrown = await Record.ExceptionAsync(() => service.DeleteAsync(4));
+        var context = Context("DELETE", thrown!);
+        Filter.OnException(context);
+
+        Assert.IsType<ConflictObjectResult>(context.Result);
     }
 
     [Fact]
