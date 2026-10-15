@@ -168,7 +168,8 @@ namespace knkwebapi_v2.Services
         /// that is creating/updating the parent entity (Town, District, Structure, etc.)
         /// </summary>
         /// <param name="taskOutputJson">The WorldTask.OutputJson string containing location data</param>
-        /// <returns>LocationDto with extracted data, or null if parsing fails</returns>
+        /// <returns>LocationDto with extracted data, or null if parsing fails or the output names no world
+        /// (KNG-118 D9: a missing world is refused, never silently "world")</returns>
         public static LocationDto? ExtractLocationDataFromTaskOutput(string? taskOutputJson)
         {
             if (string.IsNullOrEmpty(taskOutputJson))
@@ -183,18 +184,26 @@ namespace knkwebapi_v2.Services
                 // Extract location data
                 double x = 0, y = 0, z = 0;
                 float yaw = 0, pitch = 0;
-                string worldName = "world";
+                string? worldName = null;
 
                 if (root.TryGetProperty("x", out var xProp)) x = xProp.GetDouble();
                 if (root.TryGetProperty("y", out var yProp)) y = yProp.GetDouble();
                 if (root.TryGetProperty("z", out var zProp)) z = zProp.GetDouble();
                 if (root.TryGetProperty("yaw", out var yawProp)) yaw = yawProp.GetSingle();
                 if (root.TryGetProperty("pitch", out var pitchProp)) pitch = pitchProp.GetSingle();
-                if (root.TryGetProperty("worldName", out var worldProp))
+                // The plugin's Location task writes "World"; older outputs used "worldName". Any casing.
+                foreach (var property in root.EnumerateObject())
                 {
-                    var worldStr = worldProp.GetString();
-                    if (!string.IsNullOrEmpty(worldStr)) worldName = worldStr;
+                    if ((property.Name.Equals("world", StringComparison.OrdinalIgnoreCase)
+                         || property.Name.Equals("worldName", StringComparison.OrdinalIgnoreCase))
+                        && property.Value.ValueKind == JsonValueKind.String
+                        && !string.IsNullOrWhiteSpace(property.Value.GetString()))
+                    {
+                        worldName = property.Value.GetString()!.Trim();
+                        break;
+                    }
                 }
+                if (worldName == null) return null;
 
                 // Return LocationDto with extracted data
                 return new LocationDto
