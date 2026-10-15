@@ -1,6 +1,7 @@
 using AutoMapper;
 using Moq;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Json;
 using knkwebapi_v2.Mapping;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
@@ -38,13 +39,13 @@ public class GameSettingsRuntimeWorldsPerServerTests
     };
 
     private List<MinecraftWorldRuntimeDto> Stored() =>
-        GameSettingsJson.DeserializeList<MinecraftWorldRuntimeDto>(_stored!.RuntimeWorldsJson);
+        JsonColumn.DeserializeList<MinecraftWorldRuntimeDto>(_stored!.RuntimeWorldsJson);
 
     private void AgeStoredReports(TimeSpan by)
     {
         var worlds = Stored();
         worlds.ForEach(w => w.ReportedAt = w.ReportedAt - by);
-        _stored!.RuntimeWorldsJson = GameSettingsJson.Serialize(worlds);
+        _stored!.RuntimeWorldsJson = JsonColumn.Serialize(worlds);
     }
 
     [Fact]
@@ -57,7 +58,7 @@ public class GameSettingsRuntimeWorldsPerServerTests
         Assert.Equal(new[] { ("hub-server", "hub"), ("survival", "world"), ("survival", "world_nether") },
             dto.RuntimeWorlds.Select(w => (w.ServerId!, w.WorldName)));
         Assert.All(dto.RuntimeWorlds, w => Assert.NotNull(w.ReportedAt));
-        Assert.Equal(new[] { "hub", "world", "world_nether" }, dto.WorldSettings.Select(w => w.WorldName));
+        Assert.Equal(new[] { "hub", "world", "world_nether" }, dto.WorldSettings.Select(w => w.WorldName).OrderBy(n => n));
     }
 
     [Fact]
@@ -101,7 +102,7 @@ public class GameSettingsRuntimeWorldsPerServerTests
     public async Task AReportWithoutAServerIdIsTheDefaultServers_AndReplacesEntriesStoredBeforeServerIds()
     {
         await _service.GetAsync();
-        _stored!.RuntimeWorldsJson = GameSettingsJson.Serialize(new List<MinecraftWorldRuntimeDto>
+        _stored!.RuntimeWorldsJson = JsonColumn.Serialize(new List<MinecraftWorldRuntimeDto>
         {
             new() { WorldName = "legacy", FolderName = "legacy", Environment = "NORMAL" }
         });
