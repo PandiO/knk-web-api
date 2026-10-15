@@ -78,6 +78,15 @@ public class GameSettingsService : IGameSettingsService
         return await ToReadDtoAsync(saved, groupsById);
     }
 
+    /// <summary>
+    /// KNG-118 (A9): another server's reported worlds are dropped once it hasn't reported for this long
+    /// (three of the plugin's 10-minute heartbeats).
+    /// </summary>
+    public static readonly TimeSpan RuntimeWorldsStaleAfter = TimeSpan.FromMinutes(30);
+
+    private static string ServerIdOf(string? serverId) =>
+        string.IsNullOrWhiteSpace(serverId) ? MinecraftWorldRuntimeDto.DefaultServerId : serverId.Trim();
+
     public async Task<GameSettingsReadDto> UpdateRuntimeWorldsAsync(GameSettingsRuntimeWorldsUpdateDto dto)
     {
         if (dto == null)
@@ -86,6 +95,8 @@ public class GameSettingsService : IGameSettingsService
         }
 
         var existing = await EnsureExistsAsync();
+        var now = DateTime.UtcNow;
+        var serverId = ServerIdOf(dto.ServerId);
 
         var cleanedRuntimeWorlds = (dto.RuntimeWorlds ?? new List<MinecraftWorldRuntimeDto>())
             .Where(world => !string.IsNullOrWhiteSpace(world.WorldName))
@@ -96,6 +107,8 @@ public class GameSettingsService : IGameSettingsService
                 first.WorldName = first.WorldName.Trim();
                 first.FolderName = (first.FolderName ?? first.WorldName).Trim();
                 first.Environment = (first.Environment ?? string.Empty).Trim();
+                first.ServerId = serverId;
+                first.ReportedAt = now;
                 return first;
             })
             .ToList();
@@ -126,8 +139,18 @@ public class GameSettingsService : IGameSettingsService
             }
         }
 
-        existing.RuntimeWorldsJson = GameSettingsJson.Serialize(cleanedRuntimeWorlds);
-        existing.RuntimeWorldsLastUpdatedAt = DateTime.UtcNow;
+        // KNG-118 (A9): the report replaces this server's worlds only. Other servers' worlds stay until
+        // they report again, or drop out once they haven't for RuntimeWorldsStaleAfter (a stopped server;
+        // the plugin re-reports at least every 10 minutes). Entries stored before KNG-118 count as the
+        // default server's and have no report time, so the next report of any server replaces them.
+        var otherServers = GameSettingsJson.DeserializeList<MinecraftWorldRuntimeDto>(existing.RuntimeWorldsJson)
+            .Where(world => !string.Equals(ServerIdOf(world.ServerId), serverId, StringComparison.OrdinalIgnoreCase))
+            .Where(world => world.ReportedAt.HasValue && now - world.ReportedAt.Value < RuntimeWorldsStaleAfter);
+        existing.RuntimeWorldsJson = GameSettingsJson.Serialize(otherServers
+            .Concat(cleanedRuntimeWorlds)
+            .OrderBy(world => world.ServerId, StringComparer.OrdinalIgnoreCase)
+            .ToList());
+        existing.RuntimeWorldsLastUpdatedAt = now;
         existing.WorldSettingsJson = GameSettingsJson.Serialize(worldSettings.Select(NormalizeWorldSettings).ToList());
         // The plugin reports every 30 s; only a newly seen world (a new per-world entry) changes the
         // settings themselves, so only that moves UpdatedAt (KNG-52).

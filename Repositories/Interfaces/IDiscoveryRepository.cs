@@ -8,8 +8,10 @@ namespace knkwebapi_v2.Repositories.Interfaces
     /// <summary>
     /// A discoverable domain reduced to what discovery needs: its concrete type (Town, District,
     /// Structure, GateStructure) and its parent (a District's Town, a Structure's District).
+    /// <see cref="WorldName"/> is the domain's Minecraft world (KNG-111), null when it has none yet.
     /// </summary>
-    public record DiscoveryDomainNode(int Id, string Name, string? WgRegionId, string DomainType, int? ParentId);
+    public record DiscoveryDomainNode(int Id, string Name, string? WgRegionId, string DomainType, int? ParentId,
+        string? WorldName = null);
 
     /// <summary>Discoverer count and first discovery time of one domain.</summary>
     public record DomainDiscovererCount(int DomainId, int Discoverers, DateTime FirstDiscoveredAt);
@@ -40,7 +42,7 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         Task<List<UserDomainDiscovery>> GetByUserAsync(int userId);
 
-        Task<List<(int DomainId, string? WgRegionId)>> GetKnownAsync(int userId);
+        Task<List<(int DomainId, string? WgRegionId, string? WorldName)>> GetKnownAsync(int userId);
 
         Task<HashSet<int>> GetDiscoveredDomainIdsAsync(int userId, IReadOnlyCollection<int> domainIds);
 

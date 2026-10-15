@@ -28,6 +28,8 @@ public class DiscoveriesController : ControllerBase
     /// Discovers and rewards the domains behind the given WorldGuard region ids and/or domain ids
     /// (plus their ancestors per the type rules). Called by knk-plugin. Idempotent: a repeat grants
     /// nothing and lists the domains under alreadyDiscovered. Amounts are computed server-side.
+    /// With worldName set, region ids match only that world's domains (or ones without a world
+    /// yet), since region ids are unique per world only (KNG-111/KNG-118).
     /// </summary>
     /// <response code="200">Evaluated - see granted / alreadyDiscovered / skipped</response>
     /// <response code="400">No ids, more than 50, or an unknown source</response>
