@@ -65,15 +65,6 @@
           "objectType": "Street",
           "isRequired": true,
           "isReadOnly": false
-        },
-        {
-          "fieldGuid": "2076a662-bbc8-5b44-8116-3d3e6da971a4",
-          "fieldName": "HouseNumber",
-          "label": "House number",
-          "description": "The gate's number on that street.",
-          "fieldType": "Integer",
-          "isRequired": true,
-          "isReadOnly": false
         }
       ]
     },
