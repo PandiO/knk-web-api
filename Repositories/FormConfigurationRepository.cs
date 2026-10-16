@@ -583,6 +583,10 @@ namespace knkwebapi_v2.Repositories
         ///   another field of the same configuration (FieldValidationRule.DependsOnFieldId, Restrict)
         ///   made MySQL refuse to delete that field first. They are deleted explicitly, so EF deletes
         ///   them before the fields (checked against MySQL 8).
+        /// - the display conditions of its steps and fields go with them (Cascade through their group),
+        ///   but a condition reads another field of the same configuration (SourceFormFieldId, required
+        ///   and Restrict), so EF refused to delete that field while the condition was tracked. They are
+        ///   deleted explicitly too.
         /// What really uses it (another configuration's step or field opening it as a sub-form, or
         /// depending on one of its fields) still stops the delete.
         /// </summary>
@@ -605,6 +609,14 @@ namespace knkwebapi_v2.Repositories
                 .Where(r => r.FormField.FormStepId != null && stepIds.Contains(r.FormField.FormStepId.Value))
                 .ToListAsync();
             _context.FieldValidationRules.RemoveRange(rules);
+
+            var conditions = await _context.DisplayConditions
+                .Where(c => (c.DisplayConditionGroup.TargetStepId != null
+                        && stepIds.Contains(c.DisplayConditionGroup.TargetStepId.Value))
+                    || (c.DisplayConditionGroup.TargetField != null && c.DisplayConditionGroup.TargetField.FormStepId != null
+                        && stepIds.Contains(c.DisplayConditionGroup.TargetField.FormStepId.Value)))
+                .ToListAsync();
+            _context.DisplayConditions.RemoveRange(conditions);
 
             var sessions = await _context.WorkflowSessions
                 .Where(s => s.FormConfigurationId == id)
