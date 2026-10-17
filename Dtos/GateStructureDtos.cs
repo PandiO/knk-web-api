@@ -63,8 +63,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("districtId")]
         public int DistrictId { get; set; }
 
+        // A gate needs no house number (the GateStructure seed leaves it off): null on create/update =
+        // not on this form, so a new gate keeps 0 and an existing gate keeps its number.
         [JsonPropertyName("houseNumber")]
-        public int HouseNumber { get; set; }
+        [JsonConverter(typeof(NullableIntConverter))]
+        public int? HouseNumber { get; set; }
 
         [JsonPropertyName("iconMaterialRefId")]
         [JsonConverter(typeof(NullableIntConverter))]

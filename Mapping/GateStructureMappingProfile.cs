@@ -97,7 +97,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.LocationId, opt => opt.MapFrom(src => src.LocationId))
                 .ForMember(dest => dest.StreetId, opt => opt.MapFrom(src => src.StreetId))
                 .ForMember(dest => dest.DistrictId, opt => opt.MapFrom(src => src.DistrictId))
-                .ForMember(dest => dest.HouseNumber, opt => opt.MapFrom(src => src.HouseNumber))
+                .ForMember(dest => dest.HouseNumber, opt => opt.MapFrom((src, dest) => src.HouseNumber ?? dest.HouseNumber))
                 .ForMember(dest => dest.IconMaterialRefId, opt => opt.MapFrom(src => src.IconMaterialRefId))
 
                 // Guard System
