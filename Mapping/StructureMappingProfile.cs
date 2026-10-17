@@ -34,7 +34,8 @@ namespace knkwebapi_v2.Mapping
                     AllowEntry = s.District.AllowEntry,
                     AllowExit = s.District.AllowExit,
                     WgRegionId = s.District.WgRegionId,
-                    WorldName = s.District.WorldName
+                    WorldName = s.District.WorldName,
+                    TownName = s.District.Town != null ? s.District.Town.Name : null
                 }));
 
             CreateMap<StructureDto, Structure>()
@@ -64,7 +65,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.streetId, src => src.MapFrom(src => src.StreetId))
                 .ForMember(dest => dest.streetName, src => src.MapFrom(src => src.Street != null ? src.Street.Name : null))
                 .ForMember(dest => dest.districtId, src => src.MapFrom(src => src.DistrictId))
-                .ForMember(dest => dest.districtName, src => src.MapFrom(src => src.District != null ? src.District.Name : null));
+                .ForMember(dest => dest.districtName, src => src.MapFrom(src => src.District != null ? src.District.Name : null))
+                .ForMember(dest => dest.townName, src => src.MapFrom(src => src.District != null && src.District.Town != null ? src.District.Town.Name : null));
         }
     }
 }

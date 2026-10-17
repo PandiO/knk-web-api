@@ -79,6 +79,12 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddSingleton<IMinecraftEnchantmentCatalogService, MinecraftEnchantmentCatalogService>();
             services.AddScoped<IFormConfigurationRepository, FormConfigurationRepository>();
             services.AddScoped<IFormConfigurationService, FormConfigurationService>();
+            // KNG-138: bundled FormConfiguration seed files, imported on request (no startup seeder).
+            services.AddSingleton(sp => new FormConfigurationSeedOptions
+            {
+                Directory = Path.Combine(sp.GetRequiredService<IHostEnvironment>().ContentRootPath, "Data", "FormConfigurationSeeds")
+            });
+            services.AddScoped<IFormConfigurationPortabilityService, FormConfigurationPortabilityService>();
             services.AddScoped<IFormStepRepository, FormStepRepository>();
             services.AddScoped<IFormStepService, FormStepService>();
             services.AddScoped<IFormFieldRepository, FormFieldRepository>();
@@ -96,6 +102,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IPathResolutionService, PathResolutionService>();
             services.AddScoped<IFormSubmissionProgressRepository, FormSubmissionProgressRepository>();
             services.AddScoped<IFormSubmissionProgressService, FormSubmissionProgressService>();
+            services.AddScoped<IEntityReferenceService, EntityReferenceService>();
             services.AddScoped<IGateStructureRepository, GateStructureRepository>();
             services.AddScoped<IGateStructureService, GateStructureService>();
             services.AddScoped<IGateDoorRepository, GateDoorRepository>();

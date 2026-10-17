@@ -98,13 +98,6 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (DbUpdateException ex)
-            {
-                // Surfaced now that ItemBlueprintOrigin.DomainId (Restrict) is the first FK to ever
-                // reference Domains - matches the DbUpdateException handling every other controller with
-                // an incoming FK already has (CategoriesController, GradesController, etc.).
-                return Conflict(new { code = "DbConstraint", message = ex.Message });
-            }
         }
 
         /// <summary>

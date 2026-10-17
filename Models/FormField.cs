@@ -205,6 +205,22 @@ namespace knkwebapi_v2.Models
         /// FormSubmissionProgress tracks nested progress so users can pause/resume at any level.
         /// </summary>
         public int? SubConfigurationId { get; set; }
+
+        /// <summary>
+        /// List relationship fields: fewest / most items the wizard accepts. NULL = no limit.
+        /// KNG-164: these and CanCreate/IncrementValue were on FormFieldDto only and dropped on save.
+        /// </summary>
+        public int? MinSelection { get; set; }
+        public int? MaxSelection { get; set; }
+
+        /// <summary>
+        /// Relationship fields: whether "Create New" is offered. NULL = yes (the web app treats only
+        /// false as "no").
+        /// </summary>
+        public bool? CanCreate { get; set; }
+
+        /// <summary>Integer fields: step of the number input. NULL = 1.</summary>
+        public int? IncrementValue { get; set; }
         
         /// <summary>
         /// Navigation property for the nested configuration.

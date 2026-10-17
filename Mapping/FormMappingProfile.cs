@@ -116,6 +116,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.IsLinkedToSource, o => o.MapFrom(s => s.IsLinkedToSource))
                 .ForMember(d => d.Validations, o => o.MapFrom(s => s.Validations))
                 .ForMember(d => d.EnumType, o => o.MapFrom(s => s.EnumType))
+                .ForMember(d => d.MinSelection, o => o.MapFrom(s => s.MinSelection))
+                .ForMember(d => d.MaxSelection, o => o.MapFrom(s => s.MaxSelection))
+                .ForMember(d => d.CanCreate, o => o.MapFrom(s => s.CanCreate))
+                .ForMember(d => d.IncrementValue, o => o.MapFrom(s => s.IncrementValue))
                 .ForMember(d => d.DisplayConditionGroups, o => o.MapFrom(s => s.DisplayConditionGroups.OrderBy(g => g.Order)))
                 .ForMember(d => d.UsedInDisplayConditions, o => o.Ignore())
                 // ignore DTO.Order here; handled at step mapping level via FieldOrderJson
@@ -144,6 +148,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.IsLinkedToSource, o => o.MapFrom(s => s.IsLinkedToSource))
                 .ForMember(d => d.Validations, o => o.MapFrom(s => s.Validations))
                 .ForMember(d => d.EnumType, o => o.MapFrom(s => s.EnumType))
+                .ForMember(d => d.MinSelection, o => o.MapFrom(s => s.MinSelection))
+                .ForMember(d => d.MaxSelection, o => o.MapFrom(s => s.MaxSelection))
+                .ForMember(d => d.CanCreate, o => o.MapFrom(s => s.CanCreate))
+                .ForMember(d => d.IncrementValue, o => o.MapFrom(s => s.IncrementValue))
                 .ForMember(d => d.DisplayConditionGroups, o => o.MapFrom(s => s.DisplayConditionGroups.OrderBy(g => g.Order)))
                 .ForMember(d => d.Order, o => o.Ignore())
                 // compatibility issues handled at runtime by service
@@ -254,6 +262,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.CreatedAt, o => o.MapFrom(s => ParseDateOrDefault(s.CreatedAt)))
                 .ForMember(d => d.UpdatedAt, o => o.MapFrom(s => ParseNullableDate(s.UpdatedAt)))
                 .ForMember(d => d.CompletedAt, o => o.MapFrom(s => ParseNullableDate(s.CompletedAt)))
+                .ForMember(d => d.CreatedEntitiesJson, o => o.MapFrom(s => string.IsNullOrWhiteSpace(s.CreatedEntitiesJson) ? null : s.CreatedEntitiesJson))
                 .ForMember(d => d.FormConfiguration, o => o.Ignore())
                 .ForMember(d => d.ParentProgress, o => o.Ignore());
 
@@ -271,6 +280,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.CreatedAt, o => o.MapFrom(s => s.CreatedAt.ToString("O")))
                 .ForMember(d => d.UpdatedAt, o => o.MapFrom(s => s.UpdatedAt.HasValue ? s.UpdatedAt.Value.ToString("O") : null))
                 .ForMember(d => d.CompletedAt, o => o.MapFrom(s => s.CompletedAt.HasValue ? s.CompletedAt.Value.ToString("O") : null))
+                .ForMember(d => d.CreatedEntitiesJson, o => o.MapFrom(s => s.CreatedEntitiesJson))
                 .ForMember(d => d.Configuration, o => o.Ignore())
                 .ForMember(d => d.ChildProgresses, o => o.Ignore());
 
@@ -285,6 +295,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.ParentProgressId, o => o.MapFrom(s => s.ParentProgressId.HasValue ? s.ParentProgressId.Value.ToString() : null))
                 .ForMember(d => d.CurrentStepIndex, o => o.MapFrom(s => s.CurrentStepIndex))
                 .ForMember(d => d.Status, o => o.MapFrom(s => ParseStatus(s.Status)))
+                .ForMember(d => d.CreatedEntitiesJson, o => o.MapFrom(s => s.CreatedEntitiesJson))
                 .ForMember(d => d.CreatedAt, o => o.MapFrom(s => s.CreatedAt.ToString("O")))
                 .ForMember(d => d.UpdatedAt, o => o.MapFrom(s => s.UpdatedAt.HasValue ? s.UpdatedAt.Value.ToString("O") : null));
         }

@@ -63,8 +63,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("districtId")]
         public int DistrictId { get; set; }
 
+        // A gate needs no house number (the GateStructure seed leaves it off): null on create/update =
+        // not on this form, so a new gate keeps 0 and an existing gate keeps its number.
         [JsonPropertyName("houseNumber")]
-        public int HouseNumber { get; set; }
+        [JsonConverter(typeof(NullableIntConverter))]
+        public int? HouseNumber { get; set; }
 
         [JsonPropertyName("iconMaterialRefId")]
         [JsonConverter(typeof(NullableIntConverter))]
@@ -278,6 +281,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("districtName")]
         public string? districtName { get; set; }
 
+        // KNG-166: the district's town, for pickers. Read-only.
+        [JsonPropertyName("townName")]
+        public string? townName { get; set; }
+
         // Per-door fields (isActive, gateType, healthCurrent, etc.) no longer have a single
         // well-defined structure-level value now that a structure can have multiple doors -
         // see GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md item 5. doorCount replaces them here;
@@ -470,5 +477,9 @@ namespace knkwebapi_v2.Dtos
         // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
         [JsonPropertyName("worldName")]
         public string? WorldName { get; set; }
+
+        // KNG-166: a picker row for a structure created in a form names its town, like a search row.
+        [JsonPropertyName("townName")]
+        public string? TownName { get; set; }
     }
 }

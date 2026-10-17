@@ -53,6 +53,21 @@ public class StreetServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetById_ReturnsDistrictIds_SoAFormFieldAuthoredAsDistrictIdsLoadsThem()
+    {
+        // KNG-135: DistrictIds was input-only, so GET api/Streets/{id} sent districtIds: [] and an edit form
+        // whose Districts field is authored as DistrictIds loaded empty.
+        var created = await _service.CreateAsync(new StreetDto { Name = "High Street", DistrictIds = new() { 2, 3 } });
+
+        var stored = await _service.GetByIdAsync(created.Id!.Value);
+
+        Assert.Equal(new[] { 2, 3 }, stored!.DistrictIds.OrderBy(id => id));
+        Assert.Equal(new[] { 2, 3 }, created.DistrictIds.OrderBy(id => id));
+        var json = System.Text.Json.JsonSerializer.Serialize(stored);
+        Assert.Contains("\"districtIds\":[", json);
+    }
+
+    [Fact]
     public async Task Create_RejectsAMissingNameOrUnknownDistrict()
     {
         await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(new StreetDto { Name = " " }));

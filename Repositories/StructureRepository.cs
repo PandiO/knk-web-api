@@ -19,6 +19,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(s => s.Location)
                 .Include(s => s.Street)
                 .Include(s => s.District)
+                    .ThenInclude(d => d.Town)
                 .ToListAsync();
         }
 
@@ -28,6 +29,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(s => s.Location)
                 .Include(s => s.Street)
                 .Include(s => s.District)
+                    .ThenInclude(d => d.Town)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
 
@@ -84,6 +86,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(s => s.Location)
                 .Include(s => s.Street)
                 .Include(s => s.District)
+                    .ThenInclude(d => d.Town) // KNG-166: the list rows name the town
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .ToListAsync();

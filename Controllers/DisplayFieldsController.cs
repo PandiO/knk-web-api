@@ -129,7 +129,7 @@ namespace knkwebapi_v2.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!DeleteConstraintExceptionFilter.IsConstraintFailure(ex))
             {
                 _logger.LogError(ex, "Error deleting field {Id}", id);
                 return StatusCode(500, new { message = "An error occurred while deleting the field." });

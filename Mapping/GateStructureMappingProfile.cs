@@ -72,7 +72,8 @@ namespace knkwebapi_v2.Mapping
                     AllowEntry = s.District.AllowEntry,
                     AllowExit = s.District.AllowExit,
                     WgRegionId = s.District.WgRegionId,
-                    WorldName = s.District.WorldName
+                    WorldName = s.District.WorldName,
+                    TownName = s.District.Town != null ? s.District.Town.Name : null
                 }))
                 .ForMember(dest => dest.IconMaterialRef, opt => opt.MapFrom(s => s.IconMaterial == null ? null : new MinecraftMaterialRefDto
                 {
@@ -96,7 +97,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.LocationId, opt => opt.MapFrom(src => src.LocationId))
                 .ForMember(dest => dest.StreetId, opt => opt.MapFrom(src => src.StreetId))
                 .ForMember(dest => dest.DistrictId, opt => opt.MapFrom(src => src.DistrictId))
-                .ForMember(dest => dest.HouseNumber, opt => opt.MapFrom(src => src.HouseNumber))
+                .ForMember(dest => dest.HouseNumber, opt => opt.MapFrom((src, dest) => src.HouseNumber ?? dest.HouseNumber))
                 .ForMember(dest => dest.IconMaterialRefId, opt => opt.MapFrom(src => src.IconMaterialRefId))
 
                 // Guard System
@@ -149,6 +150,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.streetName, opt => opt.MapFrom(src => src.Street != null ? src.Street.Name : null))
                 .ForMember(dest => dest.districtId, opt => opt.MapFrom(src => src.DistrictId))
                 .ForMember(dest => dest.districtName, opt => opt.MapFrom(src => src.District != null ? src.District.Name : null))
+                .ForMember(dest => dest.townName, opt => opt.MapFrom(src => src.District != null && src.District.Town != null ? src.District.Town.Name : null))
                 .ForMember(dest => dest.doorCount, opt => opt.MapFrom(src => src.GateDoors.Count));
 
             // PagedQuery DTO conversions

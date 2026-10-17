@@ -1423,6 +1423,9 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool?>("CanCreate")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -1457,6 +1460,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int?>("FormStepId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("IncrementValue")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsLinkedToSource")
                         .HasColumnType("tinyint(1)");
 
@@ -1466,6 +1472,12 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Label")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<int?>("MaxSelection")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MinSelection")
+                        .HasColumnType("int");
 
                     b.Property<string>("ObjectType")
                         .HasColumnType("longtext");
@@ -1583,6 +1595,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedEntitiesJson")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("CurrentStepDataJson")
                         .IsRequired()

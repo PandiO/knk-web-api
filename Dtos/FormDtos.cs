@@ -202,6 +202,9 @@ namespace knkwebapi_v2.Dtos
         public FormConfigurationDto? Configuration { get; set; }
         [JsonPropertyName("childProgresses")]
         public List<FormSubmissionProgressDto>? ChildProgresses { get; set; }
+        /// <summary>KNG-162: JSON array of the entities child forms saved under this root form (see the model).</summary>
+        [JsonPropertyName("createdEntitiesJson")]
+        public string? CreatedEntitiesJson { get; set; }
     }
 
     public class FormSubmissionProgressOverviewDto
@@ -243,9 +246,34 @@ namespace knkwebapi_v2.Dtos
         public int CurrentStepIndex { get; set; }
         [JsonPropertyName("status")]
         public FormSubmissionStatus Status { get; set; }
+        /// <summary>KNG-162: lets Saved Progress tell whether deleting the draft should offer the keep/delete prompt.</summary>
+        [JsonPropertyName("createdEntitiesJson")]
+        public string? CreatedEntitiesJson { get; set; }
         [JsonPropertyName("createdAt")]
         public string? CreatedAt { get; set; }
         [JsonPropertyName("updatedAt")]
         public string? UpdatedAt { get; set; }
+    }
+
+    /// <summary>KNG-162: what still references one entity (EntityReferenceService).</summary>
+    public class EntityReferencesDto
+    {
+        [JsonPropertyName("entityTypeName")]
+        public string EntityTypeName { get; set; } = null!;
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = null!;
+        [JsonPropertyName("inUse")]
+        public bool InUse { get; set; }
+        [JsonPropertyName("references")]
+        public List<EntityReferenceCountDto> References { get; set; } = new();
+    }
+
+    public class EntityReferenceCountDto
+    {
+        /// <summary>"GateStructure.DistrictId", or "Street (link)" for a many-to-many join row.</summary>
+        [JsonPropertyName("referencedBy")]
+        public string ReferencedBy { get; set; } = null!;
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
     }
 }

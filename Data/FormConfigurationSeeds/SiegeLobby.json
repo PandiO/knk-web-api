@@ -1,0 +1,138 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "503ec8b2-dd38-5811-9685-a981a80c1f5d",
+  "entityTypeName": "SiegeLobby",
+  "name": "SiegeLobby - Default (seed v1)",
+  "description": "A siege lobby players join with /siege join <key>: timings, voting and the scenario rotation.",
+  "steps": [
+    {
+      "stepGuid": "2277b17d-85c7-5265-8e6b-fb54698c5c28",
+      "stepName": "General",
+      "description": "Name the lobby and the key players type to join it. Only enabled lobbies reach the plugin.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "1d66ccbc-60ba-5c02-b02f-a6f37e9a3857",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in menus, e.g. 'Siege - Cinix'.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c42b010a-5f02-5fd3-93e5-300f21e3031b",
+          "fieldName": "Key",
+          "label": "Key",
+          "description": "What players type in /siege join <key>: lowercase letters, digits, - and _; unique.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "de80c710-bf92-5e4b-9bd9-2345ec623708",
+          "fieldName": "IsEnabled",
+          "label": "Enabled",
+          "description": "The plugin runs the lobby after the next /siege admin reload. Leave off while authoring.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fe6f37c5-0726-53bd-a242-01b27af77524",
+          "fieldName": "Mode",
+          "label": "Mode",
+          "description": "Continuous: matches follow each other with a cooldown. Scheduled lobbies come later.",
+          "fieldType": "Enum",
+          "defaultValue": "Continuous",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Continuous\"], \"enumValuesSubset\": true}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "e274271b-8718-5c3a-b913-ba83412e6e24",
+      "stepName": "Timings",
+      "description": "How long players wait before and between matches.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "c505c3b5-7472-586b-8419-be89e3e35672",
+          "fieldName": "MatchmakingSeconds",
+          "label": "Matchmaking (seconds)",
+          "description": "Time to gather players and vote before a match; at least 60.",
+          "fieldType": "Integer",
+          "defaultValue": "300",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "cd71267f-2876-5004-a3ed-f90a9a7b23c1",
+          "fieldName": "CooldownSeconds",
+          "label": "Cooldown between matches (seconds)",
+          "description": "Pause after a match before matchmaking starts again. Default 900 = 15 minutes.",
+          "fieldType": "Integer",
+          "defaultValue": "900",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "80b8b4de-11fe-500a-a401-3886de6434cd",
+      "stepName": "Voting",
+      "description": "How the next scenario is chosen.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "646a99d2-7cb8-5a29-85ff-45191b529d1b",
+          "fieldName": "VoteCandidateCount",
+          "label": "Scenarios to vote on",
+          "description": "How many ready scenarios from the rotation are put up for each vote (1 to 3).",
+          "fieldType": "Integer",
+          "defaultValue": "2",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b0abe311-1f2d-51b4-b807-d5b4c083537e",
+          "fieldName": "AllowRandomVote",
+          "label": "Allow a 'random' vote",
+          "description": "Players may vote for a random scenario instead of a named one.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "27bd07ff-cf95-5eac-b701-d5fbbbaa2a52",
+      "stepName": "Rotation",
+      "description": "The scenarios this lobby draws its vote candidates from. Add each with Create New Join Entry.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "Rotation",
+      "joinEntityType": "SiegeLobbyScenario",
+      "subConfigurationRef": {
+        "configurationGuid": "f75c5769-290d-58c6-afdc-7cc389bc5fa6",
+        "entityTypeName": "SiegeLobbyScenario",
+        "name": "SiegeLobbyScenario - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "5cfa39e8-27c2-5791-a680-ecf0f9e9eb9a",
+          "fieldName": "Rotation",
+          "label": "Rotation",
+          "description": "One entry per scenario, with a weight.",
+          "fieldType": "List",
+          "objectType": "SiegeLobbyScenario",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -120,13 +120,9 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex) when (!DeleteConstraintExceptionFilter.IsConstraintFailure(ex))
             {
                 return Conflict(new { code = "PermissionGroupHasChildren", message = ex.Message });
-            }
-            catch (DbUpdateException ex)
-            {
-                return Conflict(new { code = "DbConstraint", message = ex.Message });
             }
         }
 

@@ -119,10 +119,6 @@ namespace KnKWebAPI.Controllers
             {
                 return NotFound();
             }
-            catch (DbUpdateException ex)
-            {
-                return Conflict(new { code = "DbConstraint", message = ex.Message });
-            }
         }
 
         [RequireServiceOrPermission(StaffPermissions.UserPermissions)]

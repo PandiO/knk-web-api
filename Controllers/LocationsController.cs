@@ -94,12 +94,8 @@ public class LocationsController : ControllerBase
         {
             return Conflict(new { code = "LocationUsedByDomain", message = ex.Message });
         }
-        catch (DbUpdateException ex)
-        {
-            // Still referenced (e.g. by a siege scenario, whose FKs restrict deletes): 409, not 500.
-            _logger.LogError(ex, "Deleting location {Id} hit a database constraint", id);
-            return Conflict(new { code = "DbConstraint", message = "This location is still in use and can't be deleted." });
-        }
+        // Any other refused delete (e.g. a siege scenario still uses it) is left to
+        // DeleteConstraintExceptionFilter (KNG-169), which says what still uses it.
     }
 
     [HttpPost("search")]

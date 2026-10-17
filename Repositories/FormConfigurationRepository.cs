@@ -217,6 +217,10 @@ namespace knkwebapi_v2.Repositories
                             DependsOnFieldId = field.DependsOnFieldId,
                             DependencyConditionJson = field.DependencyConditionJson,
                             SubConfigurationId = field.SubConfigurationId,
+                            MinSelection = field.MinSelection,
+                            MaxSelection = field.MaxSelection,
+                            CanCreate = field.CanCreate,
+                            IncrementValue = field.IncrementValue,
                             FormStepId = match.Id,
                             CreatedAt = DateTime.UtcNow
                         };
@@ -245,6 +249,10 @@ namespace knkwebapi_v2.Repositories
                         fieldMatch.DependsOnFieldId = field.DependsOnFieldId;
                         fieldMatch.DependencyConditionJson = field.DependencyConditionJson;
                         fieldMatch.SubConfigurationId = field.SubConfigurationId;
+                        fieldMatch.MinSelection = field.MinSelection;
+                        fieldMatch.MaxSelection = field.MaxSelection;
+                        fieldMatch.CanCreate = field.CanCreate;
+                        fieldMatch.IncrementValue = field.IncrementValue;
                     }
 
                     // ----- Merge Validations -----
@@ -344,6 +352,10 @@ namespace knkwebapi_v2.Repositories
                                 DependsOnFieldId = field.DependsOnFieldId,
                                 DependencyConditionJson = field.DependencyConditionJson,
                                 SubConfigurationId = field.SubConfigurationId,
+                                MinSelection = field.MinSelection,
+                                MaxSelection = field.MaxSelection,
+                                CanCreate = field.CanCreate,
+                                IncrementValue = field.IncrementValue,
                                 FormStepId = childMatch.Id,
                                 CreatedAt = DateTime.UtcNow
                             };
@@ -372,6 +384,10 @@ namespace knkwebapi_v2.Repositories
                             fieldMatch.DependsOnFieldId = field.DependsOnFieldId;
                             fieldMatch.DependencyConditionJson = field.DependencyConditionJson;
                             fieldMatch.SubConfigurationId = field.SubConfigurationId;
+                            fieldMatch.MinSelection = field.MinSelection;
+                            fieldMatch.MaxSelection = field.MaxSelection;
+                            fieldMatch.CanCreate = field.CanCreate;
+                            fieldMatch.IncrementValue = field.IncrementValue;
                         }
 
                         // Merge child field validations
@@ -555,14 +571,80 @@ namespace knkwebapi_v2.Repositories
             }
         }
 
+        /// <summary>
+        /// KNG-172: deleting a configuration also clears what only refers to it in passing, in the
+        /// same SaveChanges (one transaction), so a form that was opened once can still be deleted:
+        /// - form sessions started with it keep their history but lose the link
+        ///   (WorkflowSession.FormConfigurationId is optional but Restrict in the database);
+        /// - its saved drafts go with it (Cascade), and so do the drafts of sub-forms opened from them,
+        ///   at any depth (FormSubmissionProgress.ParentProgressId is Restrict, and a sub-form's draft
+        ///   belongs to the sub-form's configuration, so no cascade reaches it).
+        /// - the validation rules of its fields go with them (Cascade), but a rule that depends on
+        ///   another field of the same configuration (FieldValidationRule.DependsOnFieldId, Restrict)
+        ///   made MySQL refuse to delete that field first. They are deleted explicitly, so EF deletes
+        ///   them before the fields (checked against MySQL 8).
+        /// - the display conditions of its steps and fields go with them (Cascade through their group),
+        ///   but a condition reads another field of the same configuration (SourceFormFieldId, required
+        ///   and Restrict), so EF refused to delete that field while the condition was tracked. They are
+        ///   deleted explicitly too.
+        /// What really uses it (another configuration's step or field opening it as a sub-form, or
+        /// depending on one of its fields) still stops the delete.
+        /// </summary>
         public async Task DeleteAsync(int id)
         {
-            var config = await _context.FormConfigurations.FindAsync(id);
-            if (config != null)
+            // The whole graph is loaded (tracked), so EF orders the deletes of steps and fields that
+            // point at each other (FormField.DependsOnFieldId is Restrict).
+            var config = await WithFullGraph(_context.FormConfigurations).FirstOrDefaultAsync(fc => fc.Id == id);
+            if (config == null) return;
+
+            var stepIds = new List<int>();
+            var pendingSteps = new Stack<FormStep>(config.Steps);
+            while (pendingSteps.Count > 0)
             {
-                _context.FormConfigurations.Remove(config);
-                await _context.SaveChangesAsync();
+                var step = pendingSteps.Pop();
+                stepIds.Add(step.Id);
+                foreach (var child in step.ChildFormSteps) pendingSteps.Push(child);
             }
+            var rules = await _context.FieldValidationRules
+                .Where(r => r.FormField.FormStepId != null && stepIds.Contains(r.FormField.FormStepId.Value))
+                .ToListAsync();
+            _context.FieldValidationRules.RemoveRange(rules);
+
+            var conditions = await _context.DisplayConditions
+                .Where(c => (c.DisplayConditionGroup.TargetStepId != null
+                        && stepIds.Contains(c.DisplayConditionGroup.TargetStepId.Value))
+                    || (c.DisplayConditionGroup.TargetField != null && c.DisplayConditionGroup.TargetField.FormStepId != null
+                        && stepIds.Contains(c.DisplayConditionGroup.TargetField.FormStepId.Value)))
+                .ToListAsync();
+            _context.DisplayConditions.RemoveRange(conditions);
+
+            var sessions = await _context.WorkflowSessions
+                .Where(s => s.FormConfigurationId == id)
+                .ToListAsync();
+            foreach (var session in sessions)
+            {
+                session.FormConfigurationId = null;
+                session.FormConfiguration = null;
+            }
+
+            var drafts = await _context.FormSubmissionProgresses
+                .Where(p => p.FormConfigurationId == id)
+                .ToListAsync();
+            var doomedIds = drafts.Select(p => p.Id).ToHashSet();
+            var parentIds = doomedIds.ToList();
+            while (parentIds.Count > 0)
+            {
+                var children = await _context.FormSubmissionProgresses
+                    .Where(p => p.ParentProgressId != null && parentIds.Contains(p.ParentProgressId.Value))
+                    .ToListAsync();
+                children = children.Where(child => doomedIds.Add(child.Id)).ToList();
+                drafts.AddRange(children);
+                parentIds = children.Select(child => child.Id).ToList();
+            }
+            _context.FormSubmissionProgresses.RemoveRange(drafts);
+
+            _context.FormConfigurations.Remove(config);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<string>> GetEntityTypeNamesAsync()

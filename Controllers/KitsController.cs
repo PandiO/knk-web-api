@@ -88,10 +88,6 @@ namespace knkwebapi_v2.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (DbUpdateException ex)
-            {
-                return Conflict(new { code = "DbConstraint", message = ex.Message });
-            }
         }
 
         [RequireServiceOrLoggedIn] // a read sent as POST, like the GET list
