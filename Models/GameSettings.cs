@@ -54,6 +54,9 @@ public class GameSettings
     /// </summary>
     public string GroupOverridesJson { get; set; } = "[]";
 
+    /// <summary>Serialized HubSettingsDto (hub DESIGN §16 Phase 4). Null = no hub configured.</summary>
+    public string? HubSettingsJson { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

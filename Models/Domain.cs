@@ -28,6 +28,12 @@ public class Domain
     /// </summary>
     public string? WorldName { get; set; }
 
+    /// <summary>
+    /// Eligible to be the hub (hub DESIGN §16.4 decision 4): only selectable in Game Settings, it changes nothing by
+    /// itself. A flagged domain may not contain or sit inside another flagged domain.
+    /// </summary>
+    public bool IsHub { get; set; }
+
     [NavigationPair(nameof(Location))]
     [RelatedEntityField(typeof(Location))]
     public int? LocationId { get; set; }

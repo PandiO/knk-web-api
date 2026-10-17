@@ -178,7 +178,7 @@ namespace knkwebapi_v2.Services
         public async Task<SiegeMatchResultDto> CompleteAsync(int id, SiegeMatchCompleteDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            if (dto.EndReason == SiegeMatchEndReason.AdminStopped || dto.EndReason == SiegeMatchEndReason.ServerRestart)
+            if (dto.EndReason is SiegeMatchEndReason.AdminStopped or SiegeMatchEndReason.ServerRestart or SiegeMatchEndReason.ApiOutage)
                 throw new ArgumentException($"{dto.EndReason} aborts a match; use POST {{id}}/abort.", nameof(dto));
 
             var titleChanges = new List<(User User, TitleChangeResultDto Change)>();

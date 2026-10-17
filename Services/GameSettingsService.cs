@@ -23,12 +23,16 @@ public class GameSettingsService : IGameSettingsService
     private readonly IGameSettingsRepository _repository;
     private readonly IMapper _mapper;
     private readonly IPermissionGroupRepository _groups;
+    private readonly IHubSettingsService? _hub;
 
-    public GameSettingsService(IGameSettingsRepository repository, IMapper mapper, IPermissionGroupRepository groups)
+    /// <param name="hub">the hub rules (hub DESIGN §16 Phase 4); null leaves the hub block unvalidated (tests)</param>
+    public GameSettingsService(IGameSettingsRepository repository, IMapper mapper, IPermissionGroupRepository groups,
+        IHubSettingsService? hub = null)
     {
         _repository = repository;
         _mapper = mapper;
         _groups = groups;
+        _hub = hub;
     }
 
     public async Task<GameSettingsReadDto> GetAsync()
@@ -47,6 +51,11 @@ public class GameSettingsService : IGameSettingsService
         ValidateUpdate(dto);
         var groupsById = (await _groups.GetAllAsync()).ToDictionary(g => g.Id);
         var cleanedOverrides = dto.GroupOverrides == null ? null : CleanGroupOverrides(dto.GroupOverrides, groupsById);
+        if (cleanedOverrides != null && _hub != null)
+        {
+            await _hub.ValidateGroupOverridesAsync(cleanedOverrides);
+        }
+        var hub = dto.Hub == null ? null : _hub != null ? await _hub.NormalizeAsync(dto.Hub) : dto.Hub;
 
         var existing = await EnsureExistsAsync();
 
@@ -71,6 +80,10 @@ public class GameSettingsService : IGameSettingsService
         if (cleanedOverrides != null)
         {
             existing.GroupOverridesJson = GameSettingsJson.Serialize(cleanedOverrides);
+        }
+        if (hub != null)
+        {
+            existing.HubSettingsJson = GameSettingsJson.Serialize(hub);
         }
         existing.UpdatedAt = DateTime.UtcNow;
 
@@ -170,6 +183,11 @@ public class GameSettingsService : IGameSettingsService
     private async Task<GameSettingsReadDto> ToReadDtoAsync(GameSettings settings, Dictionary<int, PermissionGroup>? groupsById = null)
     {
         var dto = _mapper.Map<GameSettingsReadDto>(settings);
+        dto.Hub ??= new HubSettingsDto();
+        if (_hub != null)
+        {
+            dto.Hub = await _hub.DescribeAsync(dto.Hub);
+        }
         if (dto.GroupOverrides.Count == 0)
         {
             return dto;
@@ -212,8 +230,11 @@ public class GameSettingsService : IGameSettingsService
                 throw new ArgumentException($"groupOverrides: permission group {o.PermissionGroupId} is listed twice");
             }
             var atLastLocation = o.JoinAtLastLocation == true;
+            var outageAction = string.IsNullOrWhiteSpace(o.OutageAction) ? null
+                : HubSettingsService.OutageActions.FirstOrDefault(a => a.Equals(o.OutageAction.Trim(), StringComparison.OrdinalIgnoreCase))
+                  ?? o.OutageAction.Trim();
             if (o.JoinAnnouncement == null && o.LeaveAnnouncement == null && o.JoinSpawnReference == null
-                && !atLastLocation && o.RespawnPolicy == null)
+                && !atLastLocation && o.RespawnPolicy == null && outageAction == null && o.OutageDelaySeconds == null)
             {
                 continue;
             }
@@ -226,6 +247,8 @@ public class GameSettingsService : IGameSettingsService
                 JoinSpawnReference = atLastLocation ? null : o.JoinSpawnReference,
                 JoinAtLastLocation = atLastLocation ? true : null,
                 RespawnPolicy = o.RespawnPolicy,
+                OutageAction = outageAction,
+                OutageDelaySeconds = o.OutageDelaySeconds,
             });
         }
         return cleaned;

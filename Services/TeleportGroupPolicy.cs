@@ -85,22 +85,8 @@ namespace knkwebapi_v2.Services
         /// </summary>
         public static List<PermissionGroup> Chain(IEnumerable<PermissionGroup> memberGroups)
         {
-            var chain = new List<PermissionGroup>();
-            var seen = new HashSet<int>();
-            foreach (var group in memberGroups.OrderByDescending(g => g.Weight).ThenBy(g => g.Id))
-            {
-                var current = group;
-                var walked = new HashSet<int>();
-                while (current != null && walked.Add(current.Id))
-                {
-                    if (seen.Add(current.Id))
-                    {
-                        chain.Add(current);
-                    }
-                    current = current.ParentGroup;
-                }
-            }
-            return chain;
+            // Hierarchy first, then weight (decision 2026-10-12): see PermissionGroupPrecedence.
+            return PermissionGroupPrecedence.Chain(memberGroups, g => g.ParentGroup);
         }
 
         public static TeleportKindPolicy Resolve(IReadOnlyList<PermissionGroup> chain, TeleportFeeKind kind)
