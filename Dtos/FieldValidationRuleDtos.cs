@@ -192,29 +192,37 @@ namespace knkwebapi_v2.Dtos
         
         [JsonPropertyName("dependsOnFieldId")]
         public int? DependsOnFieldId { get; set; }
-        
+
+        /// <summary>
+        /// Path from the dependency field's value to the property validated against (see
+        /// FieldValidationRuleDto). Was missing here, so an edited path was dropped and the rule kept its
+        /// old one while every other change was saved.
+        /// </summary>
+        [JsonPropertyName("dependencyPath")]
+        public string? DependencyPath { get; set; }
+
         [JsonPropertyName("configJson")]
         public string ConfigJson { get; set; } = "{}";
-        
+
         /// <summary>
         /// Error message template with placeholders. See FieldValidationRuleDto for placeholder syntax.
         /// </summary>
         [JsonPropertyName("errorMessage")]
         public string ErrorMessage { get; set; } = null!;
-        
+
         /// <summary>
         /// Success message template with placeholders. See FieldValidationRuleDto for placeholder syntax.
         /// </summary>
         [JsonPropertyName("successMessage")]
         public string? SuccessMessage { get; set; }
-        
+
         [JsonPropertyName("isBlocking")]
         public bool IsBlocking { get; set; }
-        
+
         [JsonPropertyName("requiresDependencyFilled")]
         public bool RequiresDependencyFilled { get; set; }
     }
-    
+
     /// <summary>
     /// Request DTO for validating a field value.
     /// </summary>
