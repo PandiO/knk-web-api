@@ -352,6 +352,10 @@ namespace knkwebapi_v2.Services
                 }
             }
 
+            // The result echoes what the form sent, not the loaded record: a tracked entity's navigations
+            // can point back at each other (a permission group and its parent), which the response
+            // serialiser refuses as a cycle.
+            var formDependencyValue = dependencyValue;
             dependencyValue = await ResolveDependencyRecordAsync(rule, dependencyValue);
 
             // Check if dependency is required but not filled
@@ -422,7 +426,7 @@ namespace knkwebapi_v2.Services
                         ValidationType = rule.ValidationType,
                         ExecutedAt = DateTime.UtcNow.ToString("o"),
                         DependencyFieldName = rule.DependsOnField?.FieldName,
-                        DependencyValue = dependencyValue,
+                        DependencyValue = formDependencyValue,
                         FailureReason = failureReason
                     }
                 };
