@@ -90,6 +90,12 @@ public class LocationsController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+        catch (LocationInUseException ex)
+        {
+            return Conflict(new { code = "LocationUsedByDomain", message = ex.Message });
+        }
+        // Any other refused delete (e.g. a siege scenario still uses it) is left to
+        // DeleteConstraintExceptionFilter (KNG-169), which says what still uses it.
     }
 
     [HttpPost("search")]

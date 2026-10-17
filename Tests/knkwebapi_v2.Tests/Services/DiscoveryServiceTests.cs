@@ -309,6 +309,61 @@ public class DiscoveryServiceTests : IDisposable
         Assert.Empty(result.Skipped);
     }
 
+    // KNG-118 (A5): region ids are unique per world only (KNG-111), so a grant names the world.
+    private void AddHubTwinOfKardenna(int id = 50, string? world = "hub")
+    {
+        _db.Towns.Find(Kardenna)!.WorldName = "world";
+        _db.Towns.Add(new Town { Id = id, Name = "Hub Kardenna", Description = "", WgRegionId = "town_kardenna", WorldName = world });
+        _db.SaveChanges();
+    }
+
+    [Theory]
+    [InlineData("world", Kardenna)]
+    [InlineData("HUB", 50)]
+    [InlineData(null, Kardenna)] // world-blind (older plugins): the lowest id, as before
+    public async Task SameRegionIdInTwoWorlds_ResolvesToTheDomainOfTheGivenWorld(string? world, int expected)
+    {
+        AddHubTwinOfKardenna();
+
+        var result = await Service().DiscoverAsync(UserId, new DiscoveryGrantRequestDto { WgRegionIds = new() { "town_kardenna" }, WorldName = world });
+
+        var grant = Assert.Single(result.Granted);
+        Assert.Equal(expected, grant.DomainId);
+        Assert.Equal(expected == Kardenna ? "world" : "hub", grant.WorldName);
+    }
+
+    [Fact]
+    public async Task RegionOfAnotherWorldOnly_IsNotADomain()
+    {
+        _db.Towns.Find(Kardenna)!.WorldName = "world";
+        _db.SaveChanges();
+
+        var result = await Service().DiscoverAsync(UserId, new DiscoveryGrantRequestDto { WgRegionIds = new() { "town_kardenna" }, WorldName = "hub" });
+
+        Assert.Empty(result.Granted);
+        Assert.Equal(new[] { ("town_kardenna", "NotADomain") }, result.Skipped.Select(s => (s.Key, s.Reason)));
+    }
+
+    [Fact]
+    public async Task DomainWithoutAWorldYet_StillMatchesAWorldQualifiedGrant()
+    {
+        // Kardenna has no WorldName (created before KNG-111, not backfilled).
+        var result = await Service().DiscoverAsync(UserId, new DiscoveryGrantRequestDto { WgRegionIds = new() { "town_kardenna" }, WorldName = "world" });
+
+        Assert.Equal(Kardenna, Assert.Single(result.Granted).DomainId);
+    }
+
+    [Fact]
+    public async Task ExactWorldMatch_WinsOverADomainWithoutAWorld()
+    {
+        _db.Towns.Add(new Town { Id = 50, Name = "Hub Kardenna", Description = "", WgRegionId = "town_kardenna", WorldName = "hub" });
+        _db.SaveChanges();
+
+        var result = await Service().DiscoverAsync(UserId, new DiscoveryGrantRequestDto { WgRegionIds = new() { "town_kardenna" }, WorldName = "hub" });
+
+        Assert.Equal(50, Assert.Single(result.Granted).DomainId);
+    }
+
     [Fact]
     public async Task DomainIds_CanBeSentInsteadOfRegions()
     {
@@ -530,6 +585,19 @@ public class DiscoveryServiceTests : IDisposable
 
         Assert.Equal(new[] { (Rivia, "town_rivia"), (OldQuarter, "district_oldquarter") }, known.Select(k => (k.DomainId, k.WgRegionId)));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetKnownAsync(999));
+    }
+
+    [Fact]
+    public async Task Known_CarriesEachDomainsWorld()
+    {
+        _db.Towns.Find(Rivia)!.WorldName = "world";
+        _db.SaveChanges();
+        var service = Service();
+        await service.DiscoverAsync(UserId, Regions("town_rivia", "town_kardenna"));
+
+        var known = await service.GetKnownAsync(UserId);
+
+        Assert.Equal(new[] { (Rivia, (string?)"world"), (Kardenna, (string?)null) }, known.Select(k => (k.DomainId, k.WorldName)));
     }
 
     [Fact]

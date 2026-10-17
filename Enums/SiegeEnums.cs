@@ -33,7 +33,9 @@ public enum SiegeMatchEndReason
     TeamEliminated,
     NotEnoughPlayers,
     AdminStopped,
-    ServerRestart
+    ServerRestart,
+    /// <summary>Aborted because an API-outage action evacuated a participant (hub DESIGN §16.4 decision 6).</summary>
+    ApiOutage
 }
 
 // DESIGN §8.5 degrade switch: PreLockdownView = per-player fake blocks + virtual collision +
