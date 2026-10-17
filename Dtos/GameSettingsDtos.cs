@@ -253,6 +253,14 @@ public class PermissionGroupGameSettingsDto
 
 public class GameSettingsRuntimeWorldsUpdateDto
 {
+    /// <summary>
+    /// KNG-118 (A9): the reporting game server's id (the plugin's <c>game-settings.server-id</c>). A report
+    /// replaces only that server's worlds, so a second server doesn't wipe the first's list. Null or blank =
+    /// <see cref="MinecraftWorldRuntimeDto.DefaultServerId"/> (plugins before KNG-118).
+    /// </summary>
+    [JsonPropertyName("serverId")]
+    public string? ServerId { get; set; }
+
     [JsonPropertyName("runtimeWorlds")]
     public List<MinecraftWorldRuntimeDto> RuntimeWorlds { get; set; } = new();
 }
@@ -276,6 +284,17 @@ public class MinecraftWorldRuntimeDto
 
     [JsonPropertyName("isPrimary")]
     public bool IsPrimary { get; set; }
+
+    /// <summary>The server id used for reports without one (and for entries stored before KNG-118).</summary>
+    public const string DefaultServerId = "default";
+
+    /// <summary>KNG-118 (A9), read-only: the game server that reported this world (set by the API).</summary>
+    [JsonPropertyName("serverId")]
+    public string? ServerId { get; set; }
+
+    /// <summary>KNG-118 (A9), read-only: when that server last reported it (set by the API, UTC).</summary>
+    [JsonPropertyName("reportedAt")]
+    public DateTime? ReportedAt { get; set; }
 }
 
 public class WorldGameSettingsDto

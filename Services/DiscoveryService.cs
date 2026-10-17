@@ -113,10 +113,11 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException($"At most {MaxIdsPerRequest} ids per request.", nameof(request));
             }
             var source = ParseSource(request.Source);
+            var worldName = string.IsNullOrWhiteSpace(request.WorldName) ? null : request.WorldName.Trim();
 
             try
             {
-                return await _repo.RunLockedForUserAsync(userId, () => GrantAsync(userId, regionIds, domainIds, source));
+                return await _repo.RunLockedForUserAsync(userId, () => GrantAsync(userId, regionIds, worldName, domainIds, source));
             }
             catch (DbUpdateException ex) when (IsDuplicateKey(ex))
             {
@@ -126,11 +127,12 @@ namespace knkwebapi_v2.Services
                 // alreadyDiscovered and anything left is still granted.
                 DuplicateCounter.Add(1);
                 _repo.ResetTracking();
-                return await _repo.RunLockedForUserAsync(userId, () => GrantAsync(userId, regionIds, domainIds, source));
+                return await _repo.RunLockedForUserAsync(userId, () => GrantAsync(userId, regionIds, worldName, domainIds, source));
             }
         }
 
-        private async Task<DiscoveryGrantResultDto> GrantAsync(int userId, List<string> regionIds, List<int> domainIds, DiscoverySource source)
+        private async Task<DiscoveryGrantResultDto> GrantAsync(int userId, List<string> regionIds, string? worldName,
+            List<int> domainIds, DiscoverySource source)
         {
             // Read inside the lock, so the XP the title is resolved from is current.
             var user = await _userRepo.GetByIdAsync(userId)
@@ -138,8 +140,9 @@ namespace knkwebapi_v2.Services
 
             var result = new DiscoveryGrantResultDto();
 
-            // 1. Resolve what was sent. Two domains sharing a region id (WgRegionId isn't unique)
-            // resolve to the lowest id, deterministically.
+            // 1. Resolve what was sent. Region ids are unique per world only (KNG-111): with a world,
+            // a region id matches that world's domain, else one not assigned a world yet; without
+            // one, any domain. Several matches resolve to the lowest id, deterministically.
             var nodes = new Dictionary<int, DiscoveryDomainNode>();
             var requested = new List<(int DomainId, string Key)>();
             if (regionIds.Count > 0)
@@ -147,7 +150,9 @@ namespace knkwebapi_v2.Services
                 var byRegion = (await _repo.FindByWgRegionIdsAsync(regionIds))
                     .Where(n => n.WgRegionId != null)
                     .GroupBy(n => n.WgRegionId!.Trim(), StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.OrderBy(n => n.Id).First(), StringComparer.OrdinalIgnoreCase);
+                    .Select(g => (g.Key, Node: PickForWorld(g, worldName)))
+                    .Where(p => p.Node != null)
+                    .ToDictionary(p => p.Key, p => p.Node!, StringComparer.OrdinalIgnoreCase);
                 foreach (var regionId in regionIds)
                 {
                     if (byRegion.TryGetValue(regionId, out var node))
@@ -253,6 +258,7 @@ namespace knkwebapi_v2.Services
                 {
                     DomainId = node.Id,
                     WgRegionId = node.WgRegionId,
+                    WorldName = node.WorldName,
                     Name = node.Name,
                     DomainType = node.DomainType,
                     ParentName = TownName(node, nodes),
@@ -364,7 +370,7 @@ namespace knkwebapi_v2.Services
         {
             await EnsureUserAsync(userId);
             return (await _repo.GetKnownAsync(userId))
-                .Select(k => new KnownDiscoveryDto { DomainId = k.DomainId, WgRegionId = k.WgRegionId })
+                .Select(k => new KnownDiscoveryDto { DomainId = k.DomainId, WgRegionId = k.WgRegionId, WorldName = k.WorldName })
                 .ToList();
         }
 
@@ -590,6 +596,20 @@ namespace knkwebapi_v2.Services
                     nodes[parent.Id] = parent;
                 }
             }
+        }
+
+        /// <summary>
+        /// The domain a region id means in <paramref name="worldName"/> (KNG-118 A5, the same rule as
+        /// DomainRepository.GetByWgRegionNameAsync): that world's domain, else one without a world yet
+        /// (created before KNG-111 and not backfilled); null when only other worlds have the region.
+        /// Without a world, the lowest id of any world. Lowest id wins among equals.
+        /// </summary>
+        internal static DiscoveryDomainNode? PickForWorld(IEnumerable<DiscoveryDomainNode> sameRegion, string? worldName)
+        {
+            var ordered = sameRegion.OrderBy(n => n.Id).ToList();
+            if (worldName == null) return ordered.FirstOrDefault();
+            return ordered.FirstOrDefault(n => string.Equals(n.WorldName?.Trim(), worldName, StringComparison.OrdinalIgnoreCase))
+                ?? ordered.FirstOrDefault(n => string.IsNullOrWhiteSpace(n.WorldName));
         }
 
         private static IEnumerable<DiscoveryDomainNode> Ancestors(DiscoveryDomainNode node, IReadOnlyDictionary<int, DiscoveryDomainNode> nodes)
