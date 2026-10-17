@@ -1,5 +1,6 @@
 using AutoMapper;
 using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Mapping;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
@@ -43,6 +44,13 @@ public class FormConfigurationDeleteTests : IDisposable
             new FormConfiguration { Id = 30, Name = "Town", EntityTypeName = "Town" });
         // A rule that depends on another field of the same configuration (Restrict in MySQL).
         _ctx.FieldValidationRules.Add(new FieldValidationRule { Id = 1, FormFieldId = 1001, DependsOnFieldId = 1000, ValidationType = "RegionContainment" });
+        // A field and a step shown only for some values of a field of the same configuration, like
+        // GateDoor's toggles and Rotation step (DisplayCondition.SourceFormFieldId is required, Restrict).
+        _ctx.DisplayConditionGroups.AddRange(
+            new DisplayConditionGroup { Id = 1, TargetType = DisplayConditionTargetType.FormField, TargetFieldId = 1001,
+                Conditions = { new DisplayCondition { Id = 1, SourceFormFieldId = 1000, ValueJson = "true" } } },
+            new DisplayConditionGroup { Id = 2, TargetType = DisplayConditionTargetType.FormStep, TargetStepId = 100,
+                Conditions = { new DisplayCondition { Id = 2, SourceFormFieldId = 1001, ValueJson = "\"Rotation\"" } } });
         _ctx.WorkflowSessions.AddRange(
             new WorkflowSession { Id = 1, UserId = 1, FormConfigurationId = 10 },
             new WorkflowSession { Id = 2, UserId = 1, FormConfigurationId = 10 },
@@ -75,6 +83,8 @@ public class FormConfigurationDeleteTests : IDisposable
         Assert.False(await _ctx.FormConfigurations.AnyAsync(c => c.Id == 10));
         Assert.False(await _ctx.FormSteps.AnyAsync(s => s.Id == 100));
         Assert.False(await _ctx.FieldValidationRules.AnyAsync());
+        Assert.False(await _ctx.DisplayConditionGroups.AnyAsync());
+        Assert.False(await _ctx.DisplayConditions.AnyAsync());
 
         // The sessions keep their history, without the link.
         var sessions = await _ctx.WorkflowSessions.OrderBy(s => s.Id).ToListAsync();
