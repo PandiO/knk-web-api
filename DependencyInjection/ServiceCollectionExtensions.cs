@@ -173,6 +173,7 @@ namespace knkwebapi_v2.DependencyInjection
             // Global game settings services
             services.AddScoped<IGameSettingsRepository, GameSettingsRepository>();
             services.AddScoped<IGameSettingsService, GameSettingsService>();
+            services.AddScoped<IHubSettingsService, HubSettingsService>();
 
             // Add FormTemplate services for reusable step/field management
             services.AddScoped<IFormTemplateValidationService, FormTemplateValidationService>();

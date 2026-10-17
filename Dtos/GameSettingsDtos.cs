@@ -44,6 +44,10 @@ public class GameSettingsReadDto
     [JsonPropertyName("groupOverrides")]
     public List<PermissionGroupGameSettingsDto> GroupOverrides { get; set; } = new();
 
+    /// <summary>The hub (hub DESIGN §16 Phase 4): never null on read; no hub domain = no hub.</summary>
+    [JsonPropertyName("hub")]
+    public HubSettingsDto Hub { get; set; } = new();
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
@@ -81,6 +85,117 @@ public class GameSettingsUpdateDto
     /// <summary>Null = keep the current overrides; a list (also empty) replaces them.</summary>
     [JsonPropertyName("groupOverrides")]
     public List<PermissionGroupGameSettingsDto>? GroupOverrides { get; set; }
+
+    /// <summary>Null = keep the current hub settings.</summary>
+    [JsonPropertyName("hub")]
+    public HubSettingsDto? Hub { get; set; }
+}
+
+/// <summary>
+/// The hub (hub DESIGN §2, §13, §16.4): where every joining player is placed, what happens to online players when the
+/// API is lost, and the rules inside the hub. No <see cref="DomainId"/> = no hub: players join as before.
+/// </summary>
+public class HubSettingsDto
+{
+    /// <summary>The selected hub: a Domain flagged <c>IsHub</c> (decision 4). Null = no hub.</summary>
+    [JsonPropertyName("domainId")]
+    public int? DomainId { get; set; }
+
+    /// <summary>Read-only, filled in on read: the hub domain's name, type and world.</summary>
+    [JsonPropertyName("domainName")]
+    public string? DomainName { get; set; }
+
+    [JsonPropertyName("domainType")]
+    public string? DomainType { get; set; }
+
+    [JsonPropertyName("worldName")]
+    public string? WorldName { get; set; }
+
+    /// <summary>Read-only, filled in on read: the hub domain's WorldGuard region (its rules apply inside it).</summary>
+    [JsonPropertyName("wgRegionId")]
+    public string? WgRegionId { get; set; }
+
+    /// <summary>Where joining players are placed: required with a hub, in the hub domain's world.</summary>
+    [JsonPropertyName("spawnReference")]
+    public LocationReferenceDto? SpawnReference { get; set; }
+
+    /// <summary>
+    /// What happens to online players when the API is lost: None, SendToHub (default), Kick, SendToWorldSpawn
+    /// (the world they are in at that moment, §15).
+    /// </summary>
+    [JsonPropertyName("outageAction")]
+    public string OutageAction { get; set; } = "SendToHub";
+
+    /// <summary>Seconds between detecting the outage and the action; 0 = "Uit", immediately (§10, §13).</summary>
+    [JsonPropertyName("outageDelaySeconds")]
+    public int OutageDelaySeconds { get; set; }
+
+    [JsonPropertyName("rules")]
+    public HubRulesDto Rules { get; set; } = new();
+
+    /// <summary>
+    /// The hub's portals (§11, developer decision 2026-10-12): WorldGuard region ids in the hub's world. Walking into
+    /// one takes the player to the gameplay world through the Game Settings join chain (group spawn, else the default
+    /// spawn), once the API and their account are ready.
+    /// </summary>
+    [JsonPropertyName("portalRegionIds")]
+    public List<string> PortalRegionIds { get; set; } = new();
+}
+
+/// <summary>
+/// The hub's rules (§13), applied inside the selected hub's region only. Defaults are the confirmed initial values;
+/// healing and feeding default to vanilla 1.21.10 Peaceful (§16.5).
+/// </summary>
+public class HubRulesDto
+{
+    [JsonPropertyName("damagePlayers")]
+    public bool DamagePlayers { get; set; }
+
+    [JsonPropertyName("damageEntities")]
+    public bool DamageEntities { get; set; }
+
+    [JsonPropertyName("takeDamage")]
+    public bool TakeDamage { get; set; }
+
+    [JsonPropertyName("buildBreak")]
+    public bool BuildBreak { get; set; }
+
+    [JsonPropertyName("dropPickup")]
+    public bool DropPickup { get; set; } = true;
+
+    [JsonPropertyName("useDoors")]
+    public bool UseDoors { get; set; } = true;
+
+    [JsonPropertyName("useNpcs")]
+    public bool UseNpcs { get; set; } = true;
+
+    /// <summary>Chests, barrels, shulker boxes and other block storage.</summary>
+    [JsonPropertyName("useStorage")]
+    public bool UseStorage { get; set; }
+
+    [JsonPropertyName("useItemFramesPaintings")]
+    public bool UseItemFramesPaintings { get; set; }
+
+    /// <summary>Health regained per heal; 0 = no hub healing.</summary>
+    [JsonPropertyName("healAmount")]
+    public double HealAmount { get; set; } = 1.0;
+
+    [JsonPropertyName("healIntervalTicks")]
+    public int HealIntervalTicks { get; set; } = 20;
+
+    /// <summary>Food level gained per feed; 0 = no hub feeding.</summary>
+    [JsonPropertyName("feedAmount")]
+    public int FeedAmount { get; set; } = 1;
+
+    [JsonPropertyName("feedIntervalTicks")]
+    public int FeedIntervalTicks { get; set; } = 10;
+
+    /// <summary>Saturation gained per interval, up to 20.</summary>
+    [JsonPropertyName("saturationAmount")]
+    public double SaturationAmount { get; set; } = 1.0;
+
+    [JsonPropertyName("saturationIntervalTicks")]
+    public int SaturationIntervalTicks { get; set; } = 20;
 }
 
 /// <summary>
@@ -125,6 +240,15 @@ public class PermissionGroupGameSettingsDto
     /// <summary>Respawn policy for this group's members, in every world.</summary>
     [JsonPropertyName("respawnPolicy")]
     public RespawnPolicyDto? RespawnPolicy { get; set; }
+
+    /// <summary>The hub's outage action for this group's members (null = the next group, else the hub's).</summary>
+    [JsonPropertyName("outageAction")]
+    public string? OutageAction { get; set; }
+
+    /// <summary>The outage delay in seconds for this group's members; 0 = immediately (null = not set).</summary>
+    [JsonPropertyName("outageDelaySeconds")]
+    public int? OutageDelaySeconds { get; set; }
+
 }
 
 public class GameSettingsRuntimeWorldsUpdateDto
@@ -271,4 +395,36 @@ public class LocationSnapshotDto
 
     [JsonPropertyName("world")]
     public string World { get; set; } = "world";
+}
+
+/// <summary>A domain flagged hub-eligible (decision 4), as the hub block lists them.</summary>
+public class HubDomainDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("domainType")]
+    public string DomainType { get; set; } = string.Empty;
+
+    [JsonPropertyName("worldName")]
+    public string? WorldName { get; set; }
+
+    [JsonPropertyName("wgRegionId")]
+    public string? WgRegionId { get; set; }
+
+    [JsonPropertyName("isHub")]
+    public bool IsHub { get; set; }
+
+    /// <summary>Whether it is the hub selected in Game Settings.</summary>
+    [JsonPropertyName("selected")]
+    public bool Selected { get; set; }
+}
+
+public class HubEligibilityUpdateDto
+{
+    [JsonPropertyName("isHub")]
+    public bool IsHub { get; set; }
 }

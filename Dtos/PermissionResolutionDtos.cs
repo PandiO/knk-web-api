@@ -11,6 +11,35 @@ namespace knkwebapi_v2.Dtos
         Undeclared = 2
     }
 
+    /// <summary>
+    /// A permission group's effective answer for a node (KNG-116): the group, then its parent chain, with the same
+    /// matching as a user's check. Used for the hub's mode-exemption checkboxes.
+    /// </summary>
+    public class PermissionGroupCheckResponseDto
+    {
+        [JsonPropertyName("groupId")]
+        public int GroupId { get; set; }
+
+        [JsonPropertyName("node")]
+        public string Node { get; set; } = null!;
+
+        [JsonPropertyName("result")]
+        public PermissionResolutionResult Result { get; set; }
+
+        [JsonPropertyName("allowed")]
+        public bool Allowed => Result == PermissionResolutionResult.Granted;
+
+        /// <summary>The group (this one or a parent) whose grant decided; null if Undeclared.</summary>
+        [JsonPropertyName("sourceGroupId")]
+        public int? SourceGroupId { get; set; }
+
+        [JsonPropertyName("sourceGroupName")]
+        public string? SourceGroupName { get; set; }
+
+        [JsonPropertyName("matchedNode")]
+        public string? MatchedNode { get; set; }
+    }
+
     public class PermissionCheckResponseDto
     {
         [JsonPropertyName("userId")]

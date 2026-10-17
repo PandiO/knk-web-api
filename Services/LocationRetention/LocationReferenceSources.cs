@@ -34,7 +34,7 @@ public sealed class GameSettingsLocationReferenceSource : ILocationReferenceSour
     {
         var found = new Dictionary<int, string>();
         var rows = await _context.GameSettings.AsNoTracking()
-            .Select(g => new { g.JoinSpawnReferenceJson, g.DefaultRespawnPolicyJson, g.WorldSettingsJson, g.GroupOverridesJson })
+            .Select(g => new { g.JoinSpawnReferenceJson, g.DefaultRespawnPolicyJson, g.WorldSettingsJson, g.GroupOverridesJson, g.HubSettingsJson })
             .ToListAsync(ct);
         foreach (var row in rows)
         {
@@ -42,6 +42,7 @@ public sealed class GameSettingsLocationReferenceSource : ILocationReferenceSour
             LocationJson.CollectReferences(row.DefaultRespawnPolicyJson, "Game settings: default respawn", found);
             LocationJson.CollectReferences(row.WorldSettingsJson, "Game settings: per-world spawn/respawn", found);
             LocationJson.CollectReferences(row.GroupOverridesJson, "Game settings: group spawn/respawn", found);
+            LocationJson.CollectReferences(row.HubSettingsJson, "Game settings: hub spawn", found);
         }
         return found;
     }

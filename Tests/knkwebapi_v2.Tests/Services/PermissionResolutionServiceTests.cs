@@ -167,6 +167,22 @@ public class PermissionResolutionServiceTests
         result.SourceHolderId.Should().Be(20);
     }
 
+    [Fact]
+    public async Task CheckAsync_AHeldChildGroupComesBeforeItsHeldParent_EvenWithALowerWeight()
+    {
+        // Decision 2026-10-12 (hub DESIGN §16.7, option (i)): hierarchy first, then weight.
+        SetupUser(MakeUser(1, "alice"));
+        SetupDirectGrants(1);
+        var squire = MakeGroup(30, "squire", weight: 50, parent: null, Grant(30, "knk.gate.open", true));
+        var knight = MakeGroup(31, "knight", weight: 10, parent: squire, Grant(31, "knk.gate.open", false));
+        SetupMemberGroups(1, squire, knight);
+
+        var result = await _service.CheckAsync(1, "knk.gate.open");
+
+        result!.Result.Should().Be(PermissionResolutionResult.Denied);
+        result.SourceHolderId.Should().Be(31);
+    }
+
     // ===== Inheritance chain walk =====
 
     [Fact]

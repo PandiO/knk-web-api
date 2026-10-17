@@ -1057,6 +1057,9 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<bool>("IsHub")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<int?>("LocationId")
                         .HasColumnType("int");
 
@@ -1637,6 +1640,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<string>("GroupOverridesJson")
                         .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("HubSettingsJson")
                         .HasColumnType("longtext");
 
                     b.Property<string>("JoinAnnouncement")
@@ -6618,7 +6624,7 @@ namespace knkwebapi_v2.Migrations
                     b.HasOne("knkwebapi_v2.Models.Location", "Location")
                         .WithOne()
                         .HasForeignKey("knkwebapi_v2.Models.Domain", "LocationId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("knkwebapi_v2.Models.PermissionGroup", "TeleportMinPremiumGroup")
                         .WithMany()

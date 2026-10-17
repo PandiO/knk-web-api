@@ -16,5 +16,11 @@ namespace knkwebapi_v2.Services
 
         /// <summary>Null if no user with this id exists.</summary>
         Task<PermissionEffectiveResponseDto?> GetEffectiveAsync(int userId);
+
+        /// <summary>
+        /// KNG-116: a group's effective answer for a node - the group, then its parent chain, matched like a user's
+        /// check. Null if no group with this id exists.
+        /// </summary>
+        Task<PermissionGroupCheckResponseDto?> CheckGroupAsync(int groupId, string node);
     }
 }
