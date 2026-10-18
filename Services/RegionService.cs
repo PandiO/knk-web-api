@@ -34,6 +34,14 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world);
 
         /// <summary>
+        /// KNG-103: the same, replacing <paramref name="replaceRegionId"/>, the domain's region before its region step was
+        /// run again. When that is <paramref name="newRegionId"/> itself the plugin redefines it in place with the new shape;
+        /// a temp-named one is removed after the rename. A plugin from before KNG-103 ignores the parameter and refuses a
+        /// taken name, as before.
+        /// </summary>
+        Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId);
+
+        /// <summary>
         /// Check whether a location (x,z) lies inside the specified region.
         /// </summary>
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
@@ -246,7 +254,12 @@ namespace knkwebapi_v2.Services
             return RenameRegionAsync(oldRegionId, newRegionId, domainType, parentWgRegionId, null);
         }
 
-        public async Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world)
+        public Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world)
+        {
+            return RenameRegionAsync(oldRegionId, newRegionId, domainType, parentWgRegionId, world, null);
+        }
+
+        public async Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId)
         {
             Console.WriteLine("[VALIDATION_TRACE_BACKEND]     RegionService.RenameRegionAsync started");
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       oldRegionId: {oldRegionId}");
@@ -283,6 +296,10 @@ namespace knkwebapi_v2.Services
                     if (!string.IsNullOrWhiteSpace(world))
                     {
                         url += $"&world={Uri.EscapeDataString(world)}";
+                    }
+                    if (!string.IsNullOrWhiteSpace(replaceRegionId))
+                    {
+                        url += $"&replaceRegionId={Uri.EscapeDataString(replaceRegionId)}";
                     }
                     Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       POST {url}");
                     var response = await client.PostAsync(url, new StringContent(""));

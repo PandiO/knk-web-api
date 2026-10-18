@@ -26,6 +26,14 @@ namespace knkwebapi_v2.Services
         Task<bool> FinalizeAsync(Domain domain);
 
         /// <summary>
+        /// KNG-103: as <see cref="FinalizeAsync(Domain)"/> after the domain's region step was run again.
+        /// <paramref name="previousRegionId"/> is the domain's WgRegionId before this save; the plugin replaces that region
+        /// with the new one when it is safe to (see <see cref="DomainRegionNameFinalizer.ReplaceableRegionAsync"/>), so the
+        /// new region takes the final name and the old one doesn't stay behind as an orphan.
+        /// </summary>
+        Task<bool> FinalizeAsync(Domain domain, string? previousRegionId);
+
+        /// <summary>
         /// Renames every domain region that still has a temporary name (domains created before rename-on-submit covered
         /// their type, or whose rename failed). Parents go first, so a child's region is set up under its parent's final name.
         /// </summary>
@@ -64,7 +72,9 @@ namespace knkwebapi_v2.Services
             _ => null
         };
 
-        public async Task<bool> FinalizeAsync(Domain domain)
+        public Task<bool> FinalizeAsync(Domain domain) => FinalizeAsync(domain, null);
+
+        public async Task<bool> FinalizeAsync(Domain domain, string? previousRegionId)
         {
             if (domain == null || domain.Id <= 0 || !IsTemporary(domain.WgRegionId))
             {
@@ -73,16 +83,21 @@ namespace knkwebapi_v2.Services
 
             string tempName = domain.WgRegionId;
             string finalName = FinalNameFor(domain.Id);
+            string? replaceRegionId = null;
             try
             {
                 string? domainType = DomainTypeOf(domain);
                 string? parentRegionId = await ParentRegionIdAsync(domain);
-                _logger.LogInformation("Finalizing region name for {DomainType} {DomainId}: {TempName} -> {FinalName} (parent {ParentRegionId}, world {World})",
-                    domainType ?? nameof(Domain), domain.Id, tempName, finalName, parentRegionId, domain.WorldName);
+                replaceRegionId = await ReplaceableRegionAsync(domain, previousRegionId);
+                _logger.LogInformation("Finalizing region name for {DomainType} {DomainId}: {TempName} -> {FinalName} (parent {ParentRegionId}, world {World}, replacing {ReplaceRegionId})",
+                    domainType ?? nameof(Domain), domain.Id, tempName, finalName, parentRegionId, domain.WorldName, replaceRegionId ?? "nothing");
 
-                if (!await _regionService.RenameRegionAsync(tempName, finalName, domainType, parentRegionId, domain.WorldName))
+                bool renamed = replaceRegionId == null
+                    ? await _regionService.RenameRegionAsync(tempName, finalName, domainType, parentRegionId, domain.WorldName)
+                    : await _regionService.RenameRegionAsync(tempName, finalName, domainType, parentRegionId, domain.WorldName, replaceRegionId);
+                if (!renamed)
                 {
-                    _logger.LogWarning("Failed to finalize region name for Domain {DomainId}: the plugin did not rename {TempName}",
+                    _logger.LogWarning("Failed to finalize region name for Domain {DomainId}: the plugin did not rename {TempName} (see the plugin log)",
                         domain.Id, tempName);
                     return false;
                 }
@@ -96,17 +111,81 @@ namespace knkwebapi_v2.Services
             try
             {
                 await StoreRegionIdAsync(domain, finalName);
-                _logger.LogInformation("Finalized region name for Domain {DomainId}: {FinalName}", domain.Id, finalName);
+                _logger.LogInformation("Finalized region name for Domain {DomainId}: {FinalName}{Replaced}", domain.Id, finalName,
+                    replaceRegionId != null ? $" (replaced {replaceRegionId})" : string.Empty);
                 return true;
             }
             catch (Exception ex)
             {
-                // The region is already renamed in WorldGuard: the domain now points at a region that no longer exists.
-                _logger.LogError(ex,
-                    "Region {TempName} was renamed to {FinalName} but Domain {DomainId} could not be updated; set its WgRegionId to {FinalName} by hand",
-                    tempName, finalName, domain.Id, finalName);
+                // The region is renamed in WorldGuard but the domain still says tempName. Rename it back so the stored id
+                // names a region that exists; the next save or finalize-temp-names finishes the job.
+                domain.WgRegionId = tempName;
+                await RenameBackAsync(domain, tempName, finalName, ex);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// KNG-103: which region, if any, the plugin may replace with the domain's new one. The API decides from the
+        /// database; the plugin double-checks the name. Only the domain's own regions qualify: its final name
+        /// (<c>domain_&lt;id&gt;</c>, redefined in place) or a temp-named region (removed), and only when no other domain
+        /// in the same world uses it. Anything else, such as a v1 region chosen with "select", is left alone.
+        /// </summary>
+        public async Task<string?> ReplaceableRegionAsync(Domain domain, string? previousRegionId)
+        {
+            if (string.IsNullOrWhiteSpace(previousRegionId))
+            {
+                return null;
+            }
+            string previous = previousRegionId.Trim();
+            if (previous.Equals(domain.WgRegionId, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            if (!previous.Equals(FinalNameFor(domain.Id), StringComparison.OrdinalIgnoreCase) && !IsTemporary(previous))
+            {
+                _logger.LogInformation("Domain {DomainId}'s previous region {PreviousRegionId} is not one the API creates; it is kept",
+                    domain.Id, previous);
+                return null;
+            }
+
+            string? world = string.IsNullOrWhiteSpace(domain.WorldName) ? null : domain.WorldName;
+            var sharedWith = await _context.Domains
+                .AsNoTracking()
+                .Where(d => d.Id != domain.Id && d.WgRegionId == previous)
+                .Select(d => new { d.Id, d.WorldName })
+                .ToListAsync();
+            // KNG-111: ids are unique per world; a domain without a stored world might be in any of them.
+            var other = sharedWith.FirstOrDefault(d => world == null || string.IsNullOrWhiteSpace(d.WorldName)
+                || d.WorldName.Equals(world, StringComparison.OrdinalIgnoreCase));
+            if (other != null)
+            {
+                _logger.LogWarning("Domain {DomainId}'s previous region {PreviousRegionId} is also Domain {OtherDomainId}'s; it is kept",
+                    domain.Id, previous, other.Id);
+                return null;
+            }
+            return previous;
+        }
+
+        private async Task RenameBackAsync(Domain domain, string tempName, string finalName, Exception storeError)
+        {
+            try
+            {
+                if (await _regionService.RenameRegionAsync(finalName, tempName, null, null, domain.WorldName))
+                {
+                    _logger.LogError(storeError,
+                        "Domain {DomainId} could not be updated after its region was renamed to {FinalName}; the region was renamed back to {TempName}, which the domain still names",
+                        domain.Id, finalName, tempName);
+                    return;
+                }
+            }
+            catch (Exception renameBackError)
+            {
+                _logger.LogError(renameBackError, "Renaming {FinalName} back to {TempName} failed", finalName, tempName);
+            }
+            _logger.LogError(storeError,
+                "Region {TempName} was renamed to {FinalName} but Domain {DomainId} could not be updated and the rename could not be undone; set its WgRegionId to {FinalName} by hand",
+                tempName, finalName, domain.Id, finalName);
         }
 
         public async Task<TempRegionFinalizeResult> FinalizeAllAsync()

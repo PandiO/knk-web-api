@@ -93,6 +93,22 @@ public class GateStructureServiceTests
         _repo.Verify(r => r.UpdateGateStructureAsync(existing), Times.Once);
     }
 
+    [Fact]
+    public async Task UpdateAsync_TellsTheFinalizerTheRegionThisSaveReplaces()
+    {
+        // KNG-103: the region step was run again, so the save brings a new temp region; the finalizer needs the old one.
+        var existing = new GateStructure { Id = 5, Name = "North Gate", WgRegionId = "domain_5" };
+        var dto = Dto("North Gate");
+        _repo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(existing);
+        _mapper.Setup(m => m.Map(dto, existing))
+            .Callback<GateStructureDto, GateStructure>((_, gate) => gate.WgRegionId = "tempregion_worldtask_227")
+            .Returns(existing);
+
+        await _service.UpdateAsync(5, dto);
+
+        _regionNames.Verify(r => r.FinalizeAsync(existing, "domain_5"), Times.Once);
+    }
+
     [Theory]
     [InlineData("here", true)]
     [InlineData("  hErE\t", true)]

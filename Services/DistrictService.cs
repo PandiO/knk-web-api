@@ -197,6 +197,8 @@ namespace knkwebapi_v2.Services
             
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"District with id {id} not found.");
+            // KNG-103: the region this save replaces when the region step was run again
+            string previousRegionId = existing.WgRegionId;
             await _teleportDestinations.ValidateSettingsAsync(districtDto);
 
             // Validate that Town exists if changing
@@ -277,7 +279,7 @@ namespace knkwebapi_v2.Services
             await _repo.UpdateDistrictAsync(existing);
             
             // A region drawn through a world task gets its final name (domain_<id>) now that the District exists
-            await _regionNames.FinalizeAsync(existing);
+            await _regionNames.FinalizeAsync(existing, previousRegionId);
         }
 
         public async Task DeleteAsync(int id)
