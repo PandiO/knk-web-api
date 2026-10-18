@@ -429,4 +429,24 @@ public class PermissionResolutionServiceTests
 
         result!.Permissions.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task GetEffectiveAsync_SourceRank_IsTheChainPosition_UserFirstThenGroupsInPrecedenceOrder()
+    {
+        // KNG-107: the plugin resolves nodes from this set; a wildcard granted at the user must still beat an
+        // exact deny further down the chain, which it can only tell from the rank.
+        SetupUser(MakeUser(1, "alice"));
+        SetupDirectGrants(1, Grant(1, "knk.*", true));
+
+        var parent = MakeGroup(1, "default", weight: 0, parent: null, Grant(1, "knk.account.use", true));
+        var child = MakeGroup(2, "vip", weight: 10, parent: parent, Grant(2, "knk.fly", false));
+        SetupMemberGroups(1, child);
+
+        var result = await _service.GetEffectiveAsync(1);
+
+        result!.Permissions.Should().ContainSingle(p => p.Node == "knk.*" && p.SourceRank == 0);
+        result.Permissions.Should().ContainSingle(p => p.Node == "knk.fly" && p.SourceRank == 1);
+        result.Permissions.Should().ContainSingle(p => p.Node == "knk.account.use" && p.SourceRank == 2);
+        (await _service.CheckAsync(1, "knk.fly"))!.Result.Should().Be(PermissionResolutionResult.Granted);
+    }
 }

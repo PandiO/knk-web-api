@@ -83,6 +83,14 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("sourceHolderName")]
         public string? SourceHolderName { get; set; }
+
+        /// <summary>
+        /// The source holder's place in the resolution chain: 0 for the user's own grants, then the groups in
+        /// precedence order. Lets a client resolve a node the way CheckAsync does - the lowest rank with any
+        /// matching entry decides - from this one response (KNG-107: the plugin's permission checks).
+        /// </summary>
+        [JsonPropertyName("sourceRank")]
+        public int SourceRank { get; set; }
     }
 
     public class PermissionEffectiveResponseDto

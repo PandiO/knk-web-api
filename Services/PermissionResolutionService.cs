@@ -186,11 +186,14 @@ namespace knkwebapi_v2.Services
             // Every distinct declared node across the whole chain, each resolved to whichever
             // holder wins for that *exact* node string per the same holder-precedence order
             // CheckAsync uses. Wildcard nodes are reported as their own entries (e.g.
-            // "knk.gate.*"), not expanded against a fixed node universe that doesn't exist.
+            // "knk.gate.*"), not expanded against a fixed node universe that doesn't exist. SourceRank keeps
+            // the chain position, so a client can resolve any node from this set exactly as CheckAsync would
+            // (an entry left out here is always shadowed by the same node at a lower rank).
             var byNode = new Dictionary<string, EffectivePermissionEntryDto>(StringComparer.Ordinal);
 
-            foreach (var level in chain)
+            for (var rank = 0; rank < chain.Count; rank++)
             {
+                var level = chain[rank];
                 foreach (var group in level.Grants.GroupBy(g => g.Node, StringComparer.Ordinal))
                 {
                     if (byNode.ContainsKey(group.Key)) continue;
@@ -202,7 +205,8 @@ namespace knkwebapi_v2.Services
                         Value = chosen.Value,
                         SourceHolderId = level.HolderId,
                         SourceHolderType = level.HolderType,
-                        SourceHolderName = level.HolderName
+                        SourceHolderName = level.HolderName,
+                        SourceRank = rank
                     };
                 }
             }
