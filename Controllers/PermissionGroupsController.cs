@@ -15,11 +15,14 @@ namespace KnKWebAPI.Controllers
     {
         private readonly IPermissionGroupService _service;
         private readonly IPermissionEscalationGuard _escalationGuard;
+        private readonly IPermissionResolutionService _resolution;
 
-        public PermissionGroupsController(IPermissionGroupService service, IPermissionEscalationGuard escalationGuard)
+        public PermissionGroupsController(IPermissionGroupService service, IPermissionEscalationGuard escalationGuard,
+            IPermissionResolutionService resolution)
         {
             _service = service;
             _escalationGuard = escalationGuard;
+            _resolution = resolution;
         }
 
         // Closed-alpha WP3: a group inherits every node of its parent chain, so a web user may only
@@ -117,13 +120,9 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex) when (!DeleteConstraintExceptionFilter.IsConstraintFailure(ex))
             {
                 return Conflict(new { code = "PermissionGroupHasChildren", message = ex.Message });
-            }
-            catch (DbUpdateException ex)
-            {
-                return Conflict(new { code = "DbConstraint", message = ex.Message });
             }
         }
 
@@ -133,6 +132,22 @@ namespace KnKWebAPI.Controllers
         {
             var result = await _service.SearchAsync(query);
             return Ok(result);
+        }
+
+        /// <summary>
+        /// KNG-116: whether the group effectively has a node - the group, then its parent chain, matched with the same
+        /// wildcard and deny rules as a user's check.
+        /// </summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
+        [HttpGet("{id:int}/permissions/check")]
+        public async Task<ActionResult<PermissionGroupCheckResponseDto>> CheckPermission(int id, [FromQuery] string node)
+        {
+            if (string.IsNullOrWhiteSpace(node))
+            {
+                return BadRequest(new { message = "node is required" });
+            }
+            var result = await _resolution.CheckGroupAsync(id, node.Trim());
+            return result == null ? NotFound() : Ok(result);
         }
 
         /// <summary>

@@ -7,6 +7,8 @@ using knkwebapi_v2.Services;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Repositories;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace KnKWebAPI.Controllers
 {
@@ -23,6 +25,7 @@ namespace KnKWebAPI.Controllers
         private readonly IFormConfigurationRepository _configRepo;
         private readonly IFormStepService _stepService;
         private readonly IFormFieldService _fieldService;
+        private readonly IFormConfigurationPortabilityService _portability;
 
         public FormConfigurationsController(
             IFormConfigurationService service,
@@ -31,7 +34,8 @@ namespace KnKWebAPI.Controllers
             IFormFieldRepository fieldRepo,
             IFormConfigurationRepository configRepo,
             IFormStepService stepService,
-            IFormFieldService fieldService)
+            IFormFieldService fieldService,
+            IFormConfigurationPortabilityService portability)
         {
             _service = service;
             _reusableService = reusableService;
@@ -40,6 +44,7 @@ namespace KnKWebAPI.Controllers
             _configRepo = configRepo;
             _stepService = stepService;
             _fieldService = fieldService;
+            _portability = portability;
         }
 
         [HttpGet]
@@ -262,6 +267,65 @@ namespace KnKWebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        // ---- KNG-138: portable export/import and bundled seeds (writes need knk.admin.content, class rule) ----
+
+        /// <summary>The configuration as a portable "knk-formconfig/1" file (GUIDs, no database ids).</summary>
+        [HttpGet("{id:int}/export")]
+        public async Task<IActionResult> Export(int id)
+        {
+            var file = await _portability.ExportAsync(id);
+            if (file == null) return NotFound();
+            return Content(FormConfigurationPortabilityService.Serialize(file), "application/json");
+        }
+
+        /// <summary>
+        /// Imports a portable file as a new configuration. Never overwrites: an existing configurationGuid
+        /// is 409 AlreadyImported and writes nothing. dryRun=true only checks. makeDefault=true replaces
+        /// the entity's default; otherwise the import is the default only when the entity has none.
+        /// </summary>
+        [HttpPost("import")]
+        public async Task<IActionResult> Import([FromBody] JsonElement file, [FromQuery] bool dryRun = false, [FromQuery] bool makeDefault = false)
+        {
+            if (file.ValueKind != JsonValueKind.Object) return BadRequest("The body must be a knk-formconfig/1 JSON object.");
+            return await RunImport(async () => await _portability.ImportJsonAsync(file.GetRawText(), dryRun, makeDefault));
+        }
+
+        /// <summary>The bundled seed files (Data/FormConfigurationSeeds/) and whether each is imported.</summary>
+        [HttpGet("seeds")]
+        public async Task<IActionResult> GetSeeds()
+        {
+            return Ok(await _portability.ListSeedsAsync());
+        }
+
+        [HttpPost("seeds/{name}/import")]
+        public async Task<IActionResult> ImportSeed(string name, [FromQuery] bool dryRun = false, [FromQuery] bool makeDefault = false)
+        {
+            return await RunImport(() => _portability.ImportSeedAsync(name, dryRun, makeDefault), $"No bundled seed named '{name}'.");
+        }
+
+        private async Task<IActionResult> RunImport(Func<Task<FormConfigurationImportResultDto?>> import, string? notFoundMessage = null)
+        {
+            FormConfigurationImportResultDto? result;
+            try
+            {
+                result = await import();
+            }
+            catch (DbUpdateException)
+            {
+                // e.g. the same file imported twice at once: the unique configurationGuid index refuses the second.
+                return Conflict(new { message = "The database refused the import (was it imported at the same time?). Nothing was written; reload and check." });
+            }
+
+            if (result == null) return NotFound(notFoundMessage);
+            return result.Status switch
+            {
+                FormConfigurationImportStatus.Imported => CreatedAtAction(nameof(GetById), new { id = int.Parse(result.FormConfigurationId!) }, result),
+                FormConfigurationImportStatus.DryRunPassed => Ok(result),
+                FormConfigurationImportStatus.AlreadyImported => Conflict(result),
+                _ => BadRequest(result)
+            };
         }
     }
 }

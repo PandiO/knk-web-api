@@ -102,6 +102,25 @@ public class LocationRetentionServiceTests
     }
 
     [Fact]
+    public async Task Run_SkipsTheHubSpawnLocation()
+    {
+        var hubSpawn = await AddLocationAsync();
+        var free = await AddLocationAsync();
+        await using (var context = NewContext())
+        {
+            context.GameSettings.Add(new GameSettings
+            {
+                HubSettingsJson = $"{{\"domainId\":4,\"spawnReference\":{{\"sourceType\":\"Location\",\"sourceId\":{hubSpawn}}}}}"
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await RunAsync();
+
+        Assert.Equal(new[] { free }, (await ItemsAsync()).Select(i => i.LocationId));
+    }
+
+    [Fact]
     public async Task Run_SkipsLocationsNamedInGroupOverrides()
     {
         var groupSpawn = await AddLocationAsync();

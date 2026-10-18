@@ -7,6 +7,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.ValidationMethods;
 using Microsoft.Extensions.Logging;
 
 namespace knkwebapi_v2.Services;
@@ -193,9 +194,10 @@ public class FieldValidationService : IFieldValidationService
             {
                 IsValid = result.IsValid,
                 IsBlocking = rule.IsBlocking,
+                // KNG-173: the rule's message names no place; append what it must be inside.
                 Message = result.IsValid
                     ? (rule.SuccessMessage ?? result.Message)
-                    : (failureReason != null ? result.Message : rule.ErrorMessage),
+                    : (failureReason != null ? result.Message : RegionRuleMessages.WithParent(rule, rule.ErrorMessage, result.Placeholders)),
                 Placeholders = result.Placeholders ?? placeholders,
                 Metadata = failureReason != null ? new ValidationMetadataDto { ValidationType = rule.ValidationType, ExecutedAt = DateTime.UtcNow.ToString("o"), FailureReason = failureReason } : null
             };
@@ -234,9 +236,10 @@ public class FieldValidationService : IFieldValidationService
             {
                 IsValid = result.IsValid,
                 IsBlocking = rule.IsBlocking,
+                // KNG-173: the rule's message names no place; append what it must be inside.
                 Message = result.IsValid
                     ? (rule.SuccessMessage ?? result.Message)
-                    : (failureReason != null ? result.Message : rule.ErrorMessage),
+                    : (failureReason != null ? result.Message : RegionRuleMessages.WithParent(rule, rule.ErrorMessage, result.Placeholders)),
                 Placeholders = result.Placeholders ?? placeholders,
                 Metadata = failureReason != null ? new ValidationMetadataDto { ValidationType = rule.ValidationType, ExecutedAt = DateTime.UtcNow.ToString("o"), FailureReason = failureReason } : null
             };

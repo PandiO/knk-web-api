@@ -19,6 +19,15 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("domainIds")]
         public List<int>? DomainIds { get; set; }
 
+        /// <summary>
+        /// KNG-118 (A5): the Minecraft world the region ids are in. When set, a region id matches only
+        /// a domain of that world (and, as a fallback, a domain not yet assigned a world), the same
+        /// rule as the KNG-111 region lookups; a same-named region of another world is NotADomain.
+        /// When null, the lookup is world-blind (lowest domain id), as before. Domain ids ignore it.
+        /// </summary>
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
+
         /// <summary>"RegionEnter", "JoinInside" or "Replay". Defaults to RegionEnter.</summary>
         [JsonPropertyName("source")]
         public string? Source { get; set; }
@@ -108,6 +117,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("wgRegionId")]
         public string? WgRegionId { get; set; }
 
+        /// <summary>KNG-118: the domain's world (null when it has none yet).</summary>
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
+
         [JsonPropertyName("name")]
         public string Name { get; set; } = "";
 
@@ -166,6 +179,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("wgRegionId")]
         public string? WgRegionId { get; set; }
+
+        /// <summary>KNG-118: the domain's world, so the plugin keys its known set by (world, region id);
+        /// null when the domain has no world yet.</summary>
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
     }
 
     /// <summary>One discoverable domain and whether the user has found it (discoveries menu, web).</summary>

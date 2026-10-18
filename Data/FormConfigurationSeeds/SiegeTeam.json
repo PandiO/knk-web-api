@@ -1,0 +1,135 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "95c7d9a5-1fb1-52eb-ac17-7c71dfb69a25",
+  "entityTypeName": "SiegeTeam",
+  "name": "SiegeTeam - Default (seed v1)",
+  "description": "A team of a siege scenario: role, alliance, identity (clan or ad hoc) and spawnpoints. Created from the scenario's Teams step.",
+  "steps": [
+    {
+      "stepGuid": "6a0a4ec6-7731-5d5f-8e23-ecd9343eeafe",
+      "stepName": "Role and alliance",
+      "description": "What the team does in the match and who its allies are.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "06c772b9-72d2-599d-9bb0-310200c0cb7e",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "Filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "9b071e39-10a0-5a1a-a930-81c41161cc03",
+          "fieldName": "Role",
+          "label": "Role",
+          "description": "The first Defender team holds the objectives and owns the gates unless set otherwise.",
+          "fieldType": "Enum",
+          "defaultValue": "Attacker",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Defender\", \"Attacker\"]}"
+        },
+        {
+          "fieldGuid": "64548700-5b85-5d3e-bd51-395c1f0b629b",
+          "fieldName": "AllianceGroup",
+          "label": "Alliance group",
+          "description": "Teams with the same number are allies; every other team is an enemy. A scenario needs at least two groups.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3ba3bb88-f2c7-5367-9dc6-9103284d7c52",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Position in the scenario's team list. Leave empty to add it after the existing teams.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "4bdcd2da-18ca-5460-8a80-e66ba170e81f",
+      "stepName": "Identity",
+      "description": "Name, colour and banner: take them from a clan, or give an ad-hoc team its own.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a1a5a1eb-d165-57b3-adec-cecf92e9e9b4",
+          "fieldName": "ClanId",
+          "label": "Clan",
+          "description": "Take name, colour and banner from a clan (the town's default clan is listed first). Leave empty for an ad-hoc team.",
+          "fieldType": "Object",
+          "objectType": "Clan",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"preferTownId\": \"{parent.TownId?}\"}}"
+        },
+        {
+          "fieldGuid": "b190b244-7b7c-5826-a431-1c87b0abb3b8",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Required without a clan; with a clan it replaces the clan's name in this scenario.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7cde8949-6d37-559a-a501-dc12255344d9",
+          "fieldName": "ChatColor",
+          "label": "Chat colour",
+          "description": "Required without a clan; with a clan it replaces the clan's colour.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"BLACK\", \"DARK_BLUE\", \"DARK_GREEN\", \"DARK_AQUA\", \"DARK_RED\", \"DARK_PURPLE\", \"GOLD\", \"GRAY\", \"DARK_GRAY\", \"BLUE\", \"GREEN\", \"AQUA\", \"RED\", \"LIGHT_PURPLE\", \"YELLOW\", \"WHITE\"]}"
+        },
+        {
+          "fieldGuid": "c8dd3ea7-a2ff-598a-86ba-70feeaa5b782",
+          "fieldName": "BannerDesignId",
+          "label": "Banner",
+          "description": "Required without a clan; with a clan it replaces the clan's banner.",
+          "fieldType": "Object",
+          "objectType": "BannerDesign",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f7c4edae-026e-5f17-927e-51b8c3d4cdf4",
+          "fieldName": "StartMessage",
+          "label": "Start message",
+          "description": "Optional action-bar message for this team when the match starts.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "e38105c2-3313-545b-bab2-36bbaf4047db",
+      "stepName": "Spawnpoints",
+      "description": "Every team needs at least one spawnpoint. Save the team first (Submit), then Edit it again to add spawnpoints.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ece1f997-328b-5e9a-b02a-96bff8d11bfe",
+          "fieldName": "Spawnpoints",
+          "label": "Spawnpoints",
+          "description": "Create New opens the spawnpoint form; capture each spot in game.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "SiegeSpawnpoint",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

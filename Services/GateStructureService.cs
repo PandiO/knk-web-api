@@ -85,7 +85,10 @@ namespace knkwebapi_v2.Services
             await ApplyLocationReferencesAsync(gateStructure, gateStructureDto, isCreate: true);
             await _repo.AddGateStructureAsync(gateStructure);
             await _regionNames.FinalizeAsync(gateStructure);
-            return _mapper.Map<GateStructureDto>(gateStructure);
+            // KNG-166: answer with the saved gate as a read returns it (its district and town included), so a
+            // gate created in a form shows the same picker columns as one found by search.
+            var saved = await _repo.GetByIdAsync(gateStructure.Id);
+            return _mapper.Map<GateStructureDto>(saved ?? gateStructure);
         }
 
         public async Task UpdateAsync(int id, GateStructureDto gateStructureDto)

@@ -116,6 +116,7 @@ namespace knkwebapi_v2.Services
             await _teleportDestinations.ValidateSettingsAsync(districtDto);
             // KNG-111: before the Location is saved, so a rejected world leaves nothing behind.
             string worldName = await _worlds.ResolveAsync(WorldRequest(districtDto, null));
+            RequireInlineWorld(districtDto);
             // Cascade create/update for Location if embedded payload provided
             if (districtDto.Location != null)
             {
@@ -131,7 +132,7 @@ namespace knkwebapi_v2.Services
                     existingLoc.Z = districtDto.Location.Z.HasValue ? districtDto.Location.Z.Value : existingLoc.Z;
                     existingLoc.Yaw = districtDto.Location.Yaw.HasValue ? districtDto.Location.Yaw.Value : existingLoc.Yaw;
                     existingLoc.Pitch = districtDto.Location.Pitch.HasValue ? districtDto.Location.Pitch.Value : existingLoc.Pitch;
-                    existingLoc.World = districtDto.Location.World ?? existingLoc.World;
+                    existingLoc.World = CleanWorld(districtDto.Location.World) ?? existingLoc.World;
                     await _locationRepo.UpdateLocationAsync(existingLoc);
                     districtDto.LocationId = existingLoc.Id;
                 }
@@ -145,7 +146,7 @@ namespace knkwebapi_v2.Services
                         Z = districtDto.Location.Z.HasValue ? districtDto.Location.Z.Value : 0,
                         Yaw = districtDto.Location.Yaw.HasValue ? districtDto.Location.Yaw.Value : 0,
                         Pitch = districtDto.Location.Pitch.HasValue ? districtDto.Location.Pitch.Value : 0,
-                        World = districtDto.Location.World ?? string.Empty,
+                        World = RequireInlineWorld(districtDto),
                     };
                     await _locationRepo.AddLocationAsync(newLoc);
                     districtDto.LocationId = newLoc.Id;
@@ -207,6 +208,7 @@ namespace knkwebapi_v2.Services
                 if (town == null) throw new ArgumentException($"Town with id {districtDto.TownId} not found.", nameof(districtDto));
             }
             string worldName = await _worlds.ResolveAsync(WorldRequest(districtDto, id));
+            RequireInlineWorld(districtDto);
             // Cascade create/update for Location if embedded payload provided
             if (districtDto.Location != null)
             {
@@ -221,7 +223,7 @@ namespace knkwebapi_v2.Services
                     existingLoc.Z = districtDto.Location.Z.HasValue ? districtDto.Location.Z.Value : existingLoc.Z;
                     existingLoc.Yaw = districtDto.Location.Yaw.HasValue ? districtDto.Location.Yaw.Value : existingLoc.Yaw;
                     existingLoc.Pitch = districtDto.Location.Pitch.HasValue ? districtDto.Location.Pitch.Value : existingLoc.Pitch;
-                    existingLoc.World = districtDto.Location.World ?? existingLoc.World;
+                    existingLoc.World = CleanWorld(districtDto.Location.World) ?? existingLoc.World;
                     await _locationRepo.UpdateLocationAsync(existingLoc);
                     districtDto.LocationId = existingLoc.Id;
                 }
@@ -235,7 +237,7 @@ namespace knkwebapi_v2.Services
                         Z = districtDto.Location.Z.HasValue ? districtDto.Location.Z.Value : 0,
                         Yaw = districtDto.Location.Yaw.HasValue ? districtDto.Location.Yaw.Value : 0,
                         Pitch = districtDto.Location.Pitch.HasValue ? districtDto.Location.Pitch.Value : 0,
-                        World = districtDto.Location.World ?? string.Empty,
+                        World = RequireInlineWorld(districtDto),
                     };
                     await _locationRepo.AddLocationAsync(newLoc);
                     districtDto.LocationId = newLoc.Id;
@@ -298,6 +300,23 @@ namespace knkwebapi_v2.Services
             var resultDto = _mapper.Map<PagedResultDto<DistrictListDto>>(result);
 
             return resultDto;
+        }
+
+        private static string? CleanWorld(string? world) => string.IsNullOrWhiteSpace(world) ? null : world.Trim();
+
+        /// <summary>
+        /// KNG-118 (D8): a new inline Location must name its world - it is refused rather than stored with an
+        /// empty world (LocationService refuses a blank world the same way). An existing Location (with an id)
+        /// keeps its world when none is sent. Returns the trimmed world of a new inline Location.
+        /// </summary>
+        private static string RequireInlineWorld(DistrictDto dto)
+        {
+            if (dto.Location == null || (dto.Location.Id.HasValue && dto.Location.Id.Value > 0))
+            {
+                return string.Empty;
+            }
+            return CleanWorld(dto.Location.World)
+                ?? throw new ArgumentException("The District's Location needs a world.", nameof(dto));
         }
 
         private static DomainWorldRequest WorldRequest(DistrictDto dto, int? id) => new()

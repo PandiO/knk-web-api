@@ -25,6 +25,8 @@ namespace knkwebapi_v2.Mapping
                     Id = s.Id,
                     Name = s.Name
                 }).ToList()))
+                // KNG-135: filled on read too (it was input-only), like StreetIds above.
+                .ForMember(dest => dest.DistrictIds, src => src.MapFrom(src => src.Districts.Select(d => d.Id).ToList()))
                 // Map embedded Districts as lightweight DTOs
                 .ForMember(dest => dest.Districts, src => src.MapFrom(src => src.Districts.Select(d => new TownDistrictDto
                 {

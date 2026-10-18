@@ -50,6 +50,19 @@ public class LocationRepository : ILocationRepository
         }
     }
 
+    public async Task<IReadOnlyList<string>> GetDomainsUsingAsync(int locationId)
+    {
+        var domains = await _context.Domains
+            .Where(d => d.LocationId == locationId)
+            .Select(d => new
+            {
+                d.Name,
+                Type = d is Town ? "Town" : d is District ? "District" : d is Structure ? "Structure" : "Domain"
+            })
+            .ToListAsync();
+        return domains.Select(d => $"{d.Type} '{d.Name}'").ToList();
+    }
+
     public async Task<PagedResult<Location>> SearchAsync(PagedQuery query)
     {
         var queryable = _context.Locations.AsQueryable();

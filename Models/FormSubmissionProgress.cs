@@ -139,5 +139,16 @@ namespace knkwebapi_v2.Models
         /// Used for analytics and auditing.
         /// </summary>
         public DateTime? CompletedAt { get; set; }
+
+        /// <summary>
+        /// KNG-162 (decision D2): the entities this form's child forms saved on their own while it
+        /// was filled out, as a JSON array written by the web app (entity type, id, a display label,
+        /// origin field, creation order). Only set on a root progress (ParentProgressId = NULL).
+        /// Lets the "keep or delete what this form created" prompt work when the draft is deleted
+        /// later from Saved Progress, and lets a resumed draft pin those entities again. Nothing
+        /// deletes these entities automatically; the 90-day cleanup removes only progress rows.
+        /// NULL = nothing recorded (every progress saved before this column existed).
+        /// </summary>
+        public string? CreatedEntitiesJson { get; set; }
     }
 }

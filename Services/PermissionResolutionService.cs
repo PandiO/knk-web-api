@@ -23,10 +23,9 @@ namespace knkwebapi_v2.Services
         /// <summary>
         /// One level in the resolution chain: a holder (the user itself, or one PermissionGroup
         /// in the user's membership/inheritance set) plus its own non-expired grants. Ordered
-        /// most-specific-first: the user itself, then each member group (highest Weight first),
-        /// then that group's own parent chain immediately after it (before moving to the next
-        /// member group) - see PermissionResolutionServiceTests for the exact ordering this
-        /// produces and why.
+        /// most-specific-first: the user itself, then the groups in PermissionGroupPrecedence order (a
+        /// member group before its parents, then weight) - see PermissionResolutionServiceTests for the
+        /// exact ordering this produces and why.
         /// </summary>
         private sealed record HolderLevel(int HolderId, string HolderType, string? HolderName, List<PermissionGrant> Grants);
 
@@ -37,19 +36,15 @@ namespace knkwebapi_v2.Services
             var directGrants = await _grantRepo.GetActiveGrantsForHolderAsync(user.Id, asOf);
             chain.Add(new HolderLevel(user.Id, nameof(User), user.Username, directGrants));
 
+            // Hierarchy first, then weight (decision 2026-10-12): a member group comes before the groups it inherits
+            // from, also when the player holds those directly (PermissionGroupPrecedence).
             var memberGroups = await _groupRepo.GetActiveGroupsForUserAsync(user.Id, asOf);
-            foreach (var group in memberGroups)
+            foreach (var current in PermissionGroupPrecedence.Chain(memberGroups, g => g.ParentGroup))
             {
-                PermissionGroup? current = group;
-                var visited = new HashSet<int>();
-                while (current != null && visited.Add(current.Id))
-                {
-                    var activeGrants = (current.Grants ?? new List<PermissionGrant>())
-                        .Where(g => g.ExpiresAt == null || g.ExpiresAt > asOf)
-                        .ToList();
-                    chain.Add(new HolderLevel(current.Id, nameof(PermissionGroup), current.Name, activeGrants));
-                    current = current.ParentGroup;
-                }
+                var activeGrants = (current.Grants ?? new List<PermissionGrant>())
+                    .Where(g => g.ExpiresAt == null || g.ExpiresAt > asOf)
+                    .ToList();
+                chain.Add(new HolderLevel(current.Id, nameof(PermissionGroup), current.Name, activeGrants));
             }
 
             return chain;
@@ -149,6 +144,38 @@ namespace knkwebapi_v2.Services
             };
         }
 
+        public async Task<PermissionGroupCheckResponseDto?> CheckGroupAsync(int groupId, string node)
+        {
+            if (string.IsNullOrWhiteSpace(node)) throw new ArgumentException("Permission node is required.", nameof(node));
+
+            var groups = (await _groupRepo.GetAllAsync()).ToDictionary(g => g.Id);
+            if (!groups.TryGetValue(groupId, out var group)) return null;
+
+            var asOf = DateTime.UtcNow;
+            var visited = new HashSet<int>();
+            PermissionGroup? current = group;
+            while (current != null && visited.Add(current.Id))
+            {
+                var grants = await _grantRepo.GetActiveGrantsForHolderAsync(current.Id, asOf);
+                var best = BestMatchAtHolder(grants, node);
+                if (best != null)
+                {
+                    return new PermissionGroupCheckResponseDto
+                    {
+                        GroupId = groupId,
+                        Node = node,
+                        Result = best.Value ? PermissionResolutionResult.Granted : PermissionResolutionResult.Denied,
+                        SourceGroupId = current.Id,
+                        SourceGroupName = current.Name,
+                        MatchedNode = best.Node
+                    };
+                }
+                current = current.ParentGroupId is int parentId && groups.TryGetValue(parentId, out var parent) ? parent : null;
+            }
+
+            return new PermissionGroupCheckResponseDto { GroupId = groupId, Node = node, Result = PermissionResolutionResult.Undeclared };
+        }
+
         public async Task<PermissionEffectiveResponseDto?> GetEffectiveAsync(int userId)
         {
             var user = await _userRepo.GetByIdAsync(userId);
@@ -159,11 +186,14 @@ namespace knkwebapi_v2.Services
             // Every distinct declared node across the whole chain, each resolved to whichever
             // holder wins for that *exact* node string per the same holder-precedence order
             // CheckAsync uses. Wildcard nodes are reported as their own entries (e.g.
-            // "knk.gate.*"), not expanded against a fixed node universe that doesn't exist.
+            // "knk.gate.*"), not expanded against a fixed node universe that doesn't exist. SourceRank keeps
+            // the chain position, so a client can resolve any node from this set exactly as CheckAsync would
+            // (an entry left out here is always shadowed by the same node at a lower rank).
             var byNode = new Dictionary<string, EffectivePermissionEntryDto>(StringComparer.Ordinal);
 
-            foreach (var level in chain)
+            for (var rank = 0; rank < chain.Count; rank++)
             {
+                var level = chain[rank];
                 foreach (var group in level.Grants.GroupBy(g => g.Node, StringComparer.Ordinal))
                 {
                     if (byNode.ContainsKey(group.Key)) continue;
@@ -175,7 +205,8 @@ namespace knkwebapi_v2.Services
                         Value = chosen.Value,
                         SourceHolderId = level.HolderId,
                         SourceHolderType = level.HolderType,
-                        SourceHolderName = level.HolderName
+                        SourceHolderName = level.HolderName,
+                        SourceRank = rank
                     };
                 }
             }

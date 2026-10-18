@@ -1,0 +1,38 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "f75c5769-290d-58c6-afdc-7cc389bc5fa6",
+  "entityTypeName": "SiegeLobbyScenario",
+  "name": "SiegeLobbyScenario - Join Entry (seed v1)",
+  "description": "Join entry for adding a scenario to a siege lobby's rotation.",
+  "steps": [
+    {
+      "stepGuid": "c8daec99-dae9-5f16-bef4-bdd7555cf809",
+      "stepName": "Scenario",
+      "description": "A scenario this lobby may put up for voting, and how often.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a8b9cd9a-41fc-59d7-8634-af294b0ce112",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "Only ready scenarios are put up for voting; an unready one may stay in the rotation and is skipped.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "aa94aeb3-50ec-5503-b083-a8cb7567173b",
+          "fieldName": "Weight",
+          "label": "Weight",
+          "description": "Relative chance of being a vote candidate (1 or more); 2 comes up twice as often as 1.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

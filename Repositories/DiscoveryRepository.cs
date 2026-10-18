@@ -77,23 +77,23 @@ namespace knkwebapi_v2.Repositories
         private async Task<List<DiscoveryDomainNode>> LoadNodesAsync(List<int>? ids)
         {
             var towns = await Filter(_context.Towns, ids)
-                .Select(t => new { t.Id, t.Name, t.WgRegionId })
+                .Select(t => new { t.Id, t.Name, t.WgRegionId, t.WorldName })
                 .ToListAsync();
             var districts = await Filter(_context.Districts, ids)
-                .Select(d => new { d.Id, d.Name, d.WgRegionId, d.TownId })
+                .Select(d => new { d.Id, d.Name, d.WgRegionId, d.WorldName, d.TownId })
                 .ToListAsync();
             var structures = await Filter(_context.Structures, ids)
-                .Select(s => new { s.Id, s.Name, s.WgRegionId, s.DistrictId })
+                .Select(s => new { s.Id, s.Name, s.WgRegionId, s.WorldName, s.DistrictId })
                 .ToListAsync();
             var gateIds = (await Filter(_context.GateStructures, ids).Select(g => g.Id).ToListAsync()).ToHashSet();
 
             var nodes = new List<DiscoveryDomainNode>(towns.Count + districts.Count + structures.Count);
-            nodes.AddRange(towns.Select(t => new DiscoveryDomainNode(t.Id, t.Name, t.WgRegionId, DiscoveryRewardRule.Town, null)));
+            nodes.AddRange(towns.Select(t => new DiscoveryDomainNode(t.Id, t.Name, t.WgRegionId, DiscoveryRewardRule.Town, null, t.WorldName)));
             nodes.AddRange(districts.Select(d => new DiscoveryDomainNode(d.Id, d.Name, d.WgRegionId, DiscoveryRewardRule.District,
-                d.TownId > 0 ? d.TownId : null)));
+                d.TownId > 0 ? d.TownId : null, d.WorldName)));
             nodes.AddRange(structures.Select(s => new DiscoveryDomainNode(s.Id, s.Name, s.WgRegionId,
                 gateIds.Contains(s.Id) ? DiscoveryRewardRule.GateStructure : DiscoveryRewardRule.Structure,
-                s.DistrictId > 0 ? s.DistrictId : null)));
+                s.DistrictId > 0 ? s.DistrictId : null, s.WorldName)));
             return nodes;
         }
 
@@ -103,14 +103,14 @@ namespace knkwebapi_v2.Repositories
         public Task<List<UserDomainDiscovery>> GetByUserAsync(int userId) =>
             _context.UserDomainDiscoveries.AsNoTracking().Where(d => d.UserId == userId).ToListAsync();
 
-        public async Task<List<(int DomainId, string? WgRegionId)>> GetKnownAsync(int userId)
+        public async Task<List<(int DomainId, string? WgRegionId, string? WorldName)>> GetKnownAsync(int userId)
         {
             var rows = await _context.UserDomainDiscoveries
                 .Where(d => d.UserId == userId)
                 .OrderBy(d => d.DomainId)
-                .Select(d => new { d.DomainId, d.Domain.WgRegionId })
+                .Select(d => new { d.DomainId, d.Domain.WgRegionId, d.Domain.WorldName })
                 .ToListAsync();
-            return rows.Select(r => (r.DomainId, (string?)r.WgRegionId)).ToList();
+            return rows.Select(r => (r.DomainId, (string?)r.WgRegionId, (string?)r.WorldName)).ToList();
         }
 
         public async Task<HashSet<int>> GetDiscoveredDomainIdsAsync(int userId, IReadOnlyCollection<int> domainIds)

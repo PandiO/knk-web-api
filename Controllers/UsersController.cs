@@ -1350,7 +1350,7 @@ namespace knkwebapi_v2.Controllers
             {
                 return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex) when (!DeleteConstraintExceptionFilter.IsConstraintFailure(ex))
             {
                 return Conflict(new { error = "UserHasCurrencyHistory", message = ex.Message });
             }

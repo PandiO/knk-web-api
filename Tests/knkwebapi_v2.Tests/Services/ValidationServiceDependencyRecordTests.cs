@@ -68,6 +68,30 @@ public class ValidationServiceDependencyRecordTests
     }
 
     [Fact]
+    public async Task TheResult_EchoesTheFormValue_NotTheLoadedRecord()
+    {
+        // A tracked record's navigations are fixed up with whatever the request loaded before, e.g. a
+        // permission group and its parent, which point at each other: serialising the record looped
+        // ("possible object cycle ... DependencyValue.TeleportMinPremiumGroup.ParentGroup.ChildGroups").
+        var premium = new PermissionGroup { Id = 5, Name = "Premium" };
+        var vip = new PermissionGroup { Id = 6, Name = "VIP", ParentGroup = premium };
+        premium.ChildGroups.Add(vip);
+        var town = new Town { Id = 1, Name = "Cinix", Description = "d", WgRegionId = "cinix", TeleportMinPremiumGroup = vip };
+        _placeholders.Setup(p => p.LoadEntityByIdAsync("Town", It.IsAny<object>())).ReturnsAsync(town);
+        // Only a failed rule's result carries the metadata (e.g. a region outside the town).
+        _validator.Setup(v => v.ValidateAsync(It.IsAny<object?>(), It.IsAny<object?>(), It.IsAny<string?>(), It.IsAny<Dictionary<string, object>?>()))
+            .ReturnsAsync(new ValidationMethodResult { IsValid = false, Message = "Outside" });
+        var formValue = JsonDocument.Parse("""{ "id": 1, "name": "Cinix" }""").RootElement;
+
+        var result = await Service().ValidateFieldAsync(10, 1000, null, new Dictionary<string, object> { ["TownId"] = formValue });
+
+        _validator.Verify(v => v.ValidateAsync(1000, town, It.IsAny<string?>(), It.IsAny<Dictionary<string, object>?>()), Times.Once);
+        Assert.False(result.IsValid);
+        Assert.Equal(formValue, result.Metadata!.DependencyValue);
+        JsonSerializer.Serialize(result);
+    }
+
+    [Fact]
     public async Task AnUnknownId_KeepsTheFormValue()
     {
         _placeholders.Setup(p => p.LoadEntityByIdAsync("Town", It.IsAny<object>())).ReturnsAsync((object?)null);

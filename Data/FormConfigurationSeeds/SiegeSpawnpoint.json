@@ -1,0 +1,89 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "c61d7d8d-3bf2-5c53-98c1-d3dac238494d",
+  "entityTypeName": "SiegeSpawnpoint",
+  "name": "SiegeSpawnpoint - Default (seed v1)",
+  "description": "A spawnpoint of a siege team. Created from the team's Spawnpoints step.",
+  "steps": [
+    {
+      "stepGuid": "30963066-bbab-5043-86bf-389c9cc92a4f",
+      "stepName": "Spawnpoint",
+      "description": "Name the spawnpoint and set its safe zone.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ed7e4241-6a93-543a-9bf5-e8877bd586df",
+          "fieldName": "SiegeTeamId",
+          "label": "Team",
+          "description": "Filled in from the team you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeTeam",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "2c7c5725-91d2-5dec-8997-8abf40f0b989",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown to the team when they choose where to spawn.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "19b1d7d2-ca2e-5a31-b395-4370e55de0d0",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "0 = the team's default spawn. Leave empty to add it after the existing ones.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e0f07b32-2a34-5bab-a41c-1728824c4533",
+          "fieldName": "SafeZoneRadius",
+          "label": "Safe-zone radius (blocks)",
+          "description": "Players of this team can't be attacked within this many blocks of the spawn (0-64).",
+          "fieldType": "Decimal",
+          "defaultValue": "4",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "cc0ae1d8-b53e-5499-a87f-48c95110fcab",
+      "stepName": "Location",
+      "description": "Stand on the spawn spot in game and use Send to Minecraft. It must be inside the town's region.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "605b3c5e-3328-57f1-ad4f-e016118dc7ae",
+          "fieldName": "LocationId",
+          "label": "Location",
+          "description": "Where the team's players appear when they choose this spawn.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        }
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "605b3c5e-3328-57f1-ad4f-e016118dc7ae",
+      "validationType": "LocationInsideRegion",
+      "dependsOn": {
+        "fieldGuid": "1e6f66e3-4d1c-5ba4-8568-7c4542fa244b",
+        "configurationGuid": "4daa6694-8c31-53d8-beea-0bbdb053efc5"
+      },
+      "dependencyPath": "Town.WgRegionId",
+      "configJson": "{\"regionPropertyPath\": \"WgRegionId\", \"allowBoundary\": false}",
+      "errorMessage": "Location {coordinates} is outside {parentEntityName}'s boundaries.",
+      "isBlocking": true,
+      "requiresDependencyFilled": true
+    }
+  ]
+}

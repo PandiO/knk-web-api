@@ -23,7 +23,12 @@ builder.Services.AddRazorPages();
 
 // Closed-alpha WP1 (D6): default-deny. Every action needs the plugin key or a logged-in user
 // unless it has [AllowAnonymous]; every write also needs an explicit access rule.
-builder.Services.AddControllers(options => options.Filters.Add<knkwebapi_v2.Attributes.DefaultCallerRequiredFilter>())
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<knkwebapi_v2.Attributes.DefaultCallerRequiredFilter>();
+        // KNG-162: a DELETE refused by a database constraint answers 409, not 500.
+        options.Filters.Add<knkwebapi_v2.Attributes.DeleteConstraintExceptionFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null;

@@ -93,6 +93,12 @@ namespace knkwebapi_v2.Services
             existing.CurrentStepDataJson = incoming.CurrentStepDataJson;
             existing.AllStepsDataJson = incoming.AllStepsDataJson;
             existing.Status = incoming.Status;
+            // KNG-162: null means "not sent" (an older client, or a save that doesn't track it) and
+            // keeps what is recorded; the web app sends "[]" to clear it.
+            if (incoming.CreatedEntitiesJson != null)
+            {
+                existing.CreatedEntitiesJson = incoming.CreatedEntitiesJson;
+            }
             existing.UpdatedAt = DateTime.UtcNow;
             if (string.Equals(incoming.Status, "Completed", StringComparison.OrdinalIgnoreCase))
             {

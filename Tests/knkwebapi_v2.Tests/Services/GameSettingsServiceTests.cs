@@ -138,7 +138,7 @@ public class GameSettingsServiceTests
     // ===== KNG-52 round 2: group overrides, MOTD, respawn modes =====
 
     [Fact]
-    public async Task GroupOverrides_AreReturnedInPrecedenceOrder_WeightFirstEachFollowedByItsParents()
+    public async Task GroupOverrides_AreReturnedInPrecedenceOrder_HierarchyFirstThenWeight()
     {
         var dto = await _service.UpdateAsync(Update(new()
         {
@@ -148,10 +148,12 @@ public class GameSettingsServiceTests
             Join(4, "&4Admin {player}"),
         }));
 
-        // Staff (w100); Noble (w10) followed by its parent Default; Admin (w5) last - its parent Staff is already placed.
-        Assert.Equal(new[] { "Staff", "Noble", "Default", "Admin" }, dto.GroupOverrides.Select(o => o.GroupName));
+        // Decision 2026-10-12, option (i): a group comes before the groups it inherits from. Noble (w10) and Admin (w5)
+        // inherit nothing that another group inherits from them, so they start, by weight, each followed by its parent:
+        // Noble, Default, then Admin before its parent Staff (w100).
+        Assert.Equal(new[] { "Noble", "Default", "Admin", "Staff" }, dto.GroupOverrides.Select(o => o.GroupName));
         Assert.Equal(new[] { 1, 2, 3, 4 }, dto.GroupOverrides.Select(o => o.Precedence));
-        Assert.Equal("&c[Staff] {player}", dto.GroupOverrides[0].JoinAnnouncement);
+        Assert.Equal("&6Noble {player}", dto.GroupOverrides[0].JoinAnnouncement);
     }
 
     [Fact]
@@ -280,7 +282,25 @@ public class GameSettingsServiceTests
         var teleport = TeleportGroupPolicy.Chain(all).Select(g => g.Id);
 
         Assert.Equal(teleport, precedence);
-        Assert.Equal(new[] { 3, 2, 1, 5, 4 }, precedence);
+        // Royal (w10) and Admin (w5) start; Royal's chain Noble, Default; Admin before Staff.
+        Assert.Equal(new[] { 5, 2, 1, 4, 3 }, precedence);
+    }
+
+    [Fact]
+    public void Precedence_AChainIsRankedByTheGroupThePlayerHolds()
+    {
+        // The developer's example (decision 2026-10-12, option (i)): Knight (w10) inherits from Squire (w50); Merchant (w30)
+        // is unrelated. A player holding Knight, Merchant and Squire: Merchant, Knight, Squire.
+        var squire = new PermissionGroup { Id = 20, Name = "Squire", Weight = 50 };
+        var knight = new PermissionGroup { Id = 21, Name = "Knight", Weight = 10, ParentGroupId = 20, ParentGroup = squire };
+        var merchant = new PermissionGroup { Id = 22, Name = "Merchant", Weight = 30 };
+        var held = new List<PermissionGroup> { squire, knight, merchant };
+
+        Assert.Equal(new[] { "Merchant", "Knight", "Squire" },
+            PermissionGroupPrecedence.Order(held, held.ToDictionary(g => g.Id)).Select(g => g.Name));
+        Assert.Equal(new[] { "Merchant", "Knight", "Squire" }, TeleportGroupPolicy.Chain(held).Select(g => g.Name));
+        // A held parent never comes first.
+        Assert.Equal(new[] { "Knight", "Squire" }, TeleportGroupPolicy.Chain(new[] { squire, knight }).Select(g => g.Name));
     }
 
     [Fact]
@@ -293,5 +313,31 @@ public class GameSettingsServiceTests
 
         // A parent outside the given set ends the chain.
         Assert.Equal(new[] { 2 }, PermissionGroupPrecedence.Order(new[] { Noble }, new Dictionary<int, PermissionGroup> { [2] = Noble }).Select(g => g.Id));
+    }
+
+    [Fact]
+    public async Task TheHubBlockAndTheOutageOverridesRoundTrip()
+    {
+        var dto = Update(new List<PermissionGroupGameSettingsDto>
+        {
+            new() { PermissionGroupId = 3, OutageAction = "kick" },
+            new() { PermissionGroupId = 1 },
+        });
+        dto.Hub = new HubSettingsDto { OutageAction = "SendToWorldSpawn", OutageDelaySeconds = 30,
+            PortalRegionIds = new List<string> { "portal_north" } };
+
+        var read = await _service.UpdateAsync(dto);
+        Assert.Equal(new[] { "portal_north" }, read.Hub.PortalRegionIds);
+
+        var staff = Assert.Single(read.GroupOverrides);
+        Assert.Equal((3, "Kick"), (staff.PermissionGroupId, staff.OutageAction));
+        Assert.Equal(("SendToWorldSpawn", 30), (read.Hub.OutageAction, read.Hub.OutageDelaySeconds));
+        Assert.True(read.Hub.Rules.DropPickup && !read.Hub.Rules.DamagePlayers && read.Hub.Rules.HealIntervalTicks == 20);
+
+        // A later update without a hub block keeps it.
+        Assert.Equal(30, (await _service.UpdateAsync(Update())).Hub.OutageDelaySeconds);
+        Assert.Null((await new GameSettingsService(_repo.Object,
+            new MapperConfiguration(cfg => cfg.AddProfile<GameSettingsMappingProfile>()).CreateMapper(), _groupRepo.Object)
+            .GetAsync()).Hub.DomainId);
     }
 }
