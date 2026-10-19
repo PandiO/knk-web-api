@@ -1,0 +1,211 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "5727dac2-bfcd-53d7-9a41-18b1579bd920",
+  "entityTypeName": "Structure",
+  "name": "Structure - Default (seed v1)",
+  "description": "A building in a district (a house, shop or keep): its address, WorldGuard region, entry rules, spawn point and /warp settings. Gates are structures too but have their own form.",
+  "steps": [
+    {
+      "stepGuid": "24b6a10d-4143-54b2-91cf-25202f7a464c",
+      "stepName": "General information",
+      "description": "Name the structure. The name is what players see in game and what /warp and /navigate look for.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "88dcd47d-dccd-5a9b-ac65-7365f4b723b6",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game (entry messages, /warp, /navigate, menus) and in the web app. Commands find the structure by this name, so keep it short.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "08a5250a-f386-5bd0-a699-9ae276fced06",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "A line or two about the structure for admins and the web app, e.g. who lives or trades there.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "4fcca566-6b9e-5203-b17b-489a03fe8aa1",
+      "stepName": "Address",
+      "description": "Where the structure stands: its district, street and house number. Pick the district first; create the street here if it doesn't exist yet.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "71d0eb26-0de2-5d47-a97a-e97a4f7f4017",
+          "fieldName": "DistrictId",
+          "label": "District",
+          "description": "The district the structure belongs to. Its region is the parent of the structure's region, and the structure is in the district's world.",
+          "fieldType": "Object",
+          "objectType": "District",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4812388c-db22-5a45-8553-735bbfc9cfd0",
+          "fieldName": "StreetId",
+          "label": "Street",
+          "description": "The street the structure's address is on. Use Create New if the street isn't there yet; the street form only asks for its name and districts.",
+          "fieldType": "Object",
+          "objectType": "Street",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "951fd33e-5e7a-5008-a5b8-1413b3fc9b29",
+          "fieldName": "HouseNumber",
+          "label": "House number",
+          "description": "The structure's number on its street, shown in its address. Must be 1 or higher.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "6f256ab9-7026-536d-92eb-6527e8ddafe4",
+      "stepName": "Region and access",
+      "description": "The WorldGuard region around the structure, and whether players may walk in and out of it. Use Send to Minecraft and select the area in game with WorldEdit, or type the name of an existing region.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "337d386f-a983-559f-9e0a-8ed6fd752efd",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The structure's WorldGuard region; it should lie inside the district's region. A region drawn here is renamed domain_<id> and set up under the district's region when the structure is saved.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"RegionClaim\"}}"
+        },
+        {
+          "fieldGuid": "35ee93f4-0e41-516d-84b2-f404963e162e",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the structure's region. Off keeps everyone out except staff with the region bypass permission, and the structure is no /warp destination.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e1167011-eb0c-586b-9dee-0c7874a9df90",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the structure's region may walk out of it. Off keeps them inside until staff let them out.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fdb94782-3275-5195-a444-e049e957e45c",
+          "fieldName": "RoadAccessOverride",
+          "label": "Entry rule on roads",
+          "description": "Applies: when players may not enter, /navigate routes avoid the roads through this region. Ignored: routes may use them, e.g. for a house whose region overlaps the public street; the rule still holds at the border and for teleports. Empty = the setting for all structures on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "RoadAccessRule",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Applies\", \"Ignored\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "1aaec3c0-bba0-594f-a089-b20ac0a922ae",
+      "stepName": "Spawn point",
+      "description": "Where players arrive when they teleport or navigate to the structure. Stand on the spot in game, facing the way arrivals should look, and use Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "50eb86ca-1211-54a4-a797-c89d3a25e424",
+          "fieldName": "Location",
+          "label": "Spawn point",
+          "description": "Optional. The arrival point for /warp and /navigate <structure> spawn; without it /navigate leads to the structure's region and /warp is not possible.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "5b8be10f-1c02-5097-949e-b22fd7c96075",
+          "fieldName": "NavigationDefaultOverride",
+          "label": "Navigate to",
+          "description": "Where /navigate <structure> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the structure's region. Leave empty to follow the setting for all structures on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "NavigationDestinationMode",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Spawn\", \"Region\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "89d32f19-6f2a-5e74-b2b8-675a15836cab",
+      "stepName": "Warp destination",
+      "description": "Whether players can /warp to the structure's spawn point, and what that requires. Requirements are checked in this order: title, premium tier, discovery, price.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a4546893-a3c8-5fc9-9dc0-5cc96fe2c533",
+          "fieldName": "TeleportEnabled",
+          "label": "Warp destination",
+          "description": "Lists the structure in /warp and the teleport menu. It also needs a spawn point and Allow entry on. Off keeps the settings below but doesn't use them.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "bae41aa8-d9ff-5084-b420-ca62d473b5a4",
+          "fieldName": "TeleportPriceGems",
+          "label": "Price (gems)",
+          "description": "Gems charged per warp, after the warmup. 0 = free. A permission group's /warp price setting can replace or multiply it.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b99e5863-efe6-568d-8dcb-e0cb1ac6f388",
+          "fieldName": "TeleportMinTitleBracket",
+          "label": "Minimum title",
+          "description": "Players whose experience is below this title can't warp here. Empty = no title needed.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b926544a-2ce9-5041-be43-34b3a9797932",
+          "fieldName": "TeleportMinPremiumGroup",
+          "label": "Minimum premium tier",
+          "description": "Only players whose highest premium tier has at least this group's weight may warp here. Only premium-tier groups can be picked. Empty = everyone.",
+          "fieldType": "Object",
+          "objectType": "PermissionGroup",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"isPremiumTier\": \"true\"}}"
+        },
+        {
+          "fieldGuid": "b6c799df-b01f-5989-8ae3-fbacec96d4ae",
+          "fieldName": "TeleportRequiresDiscovery",
+          "label": "Discovered structures only",
+          "description": "Only players who have discovered the structure (entered its region at least once) may warp here.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

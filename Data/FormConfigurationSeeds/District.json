@@ -1,0 +1,199 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "fd1f711e-9c6f-53de-b8be-1001d8781917",
+  "entityTypeName": "District",
+  "name": "District - Default (seed v1)",
+  "description": "A district inside a town: its WorldGuard region, entry rules, spawn point and /warp settings. Structures, gates and siege scenarios pick their district on their own forms.",
+  "steps": [
+    {
+      "stepGuid": "e35c19a9-ca2b-590c-9fd3-4509ee6d48f9",
+      "stepName": "General information",
+      "description": "Name the district and pick the town it belongs to. The town must exist already.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ab590ddf-dd0e-5289-b159-ae2ee70d85d0",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game (entry messages, /warp, /navigate, menus) and in the web app. Commands find the district by this name, so keep it short.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1ae400c8-3416-5d95-9f7e-20520cbba6f7",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "A line or two about the district for admins and the web app, e.g. what happens there.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "520d84a3-0d6e-5888-a050-0722c638686a",
+          "fieldName": "TownId",
+          "label": "Town",
+          "description": "The town this district is part of. Its region is the parent of the district's region, and the district is in the town's world.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "50e914e5-17b4-5735-9634-a434b6e15708",
+      "stepName": "Region and access",
+      "description": "The WorldGuard region that covers the district, and whether players may walk in and out of it. Use Send to Minecraft and select the area in game with WorldEdit, or type the name of an existing region.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b08cc470-88a9-59f6-9d0a-403b6d607430",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The district's WorldGuard region; it should lie inside the town's region (a warning shows when it is outside). A region drawn here is renamed domain_<id> and set up under the town's region when the district is saved.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
+        },
+        {
+          "fieldGuid": "bf2b02a8-ba63-52c1-ace3-c2b5a8b0dbcb",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the district's region. Off keeps everyone out except staff with the region bypass permission, and the district is no /warp destination.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "351a8036-3635-59b2-a489-3e0330b8f916",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the district's region may walk out of it. Off keeps them inside until staff let them out.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "dd78a51e-091e-58af-a69d-58b266437822",
+          "fieldName": "RoadAccessOverride",
+          "label": "Entry rule on roads",
+          "description": "Applies: when players may not enter, /navigate routes avoid the roads through this region. Ignored: routes may use them (for places along a public street); the rule still holds at the border and for teleports. Empty = the setting for all districts on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "RoadAccessRule",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Applies\", \"Ignored\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "3f477256-1686-53c8-bd3b-e4f9d2cb57aa",
+      "stepName": "Spawn point",
+      "description": "Where players arrive when they teleport or navigate to the district. Stand on the spot in game, facing the way arrivals should look, and use Send to Minecraft; pick a spot inside the district's region.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "03a72776-cefc-5261-9b50-a4b04e0f2e33",
+          "fieldName": "Location",
+          "label": "Spawn point",
+          "description": "The arrival point for /warp and /navigate <district> spawn. Capture it in game, or pick an existing Location.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "db50269a-c231-5d15-ba21-a279bf1b7a17",
+          "fieldName": "NavigationDefaultOverride",
+          "label": "Navigate to",
+          "description": "Where /navigate <district> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the district's region. Leave empty to follow the setting for all districts on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "NavigationDestinationMode",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Spawn\", \"Region\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "99578066-dc75-5bcd-bd6d-24187c2c88aa",
+      "stepName": "Warp destination",
+      "description": "Whether players can /warp to the district's spawn point, and what that requires. Requirements are checked in this order: title, premium tier, discovery, price.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "0ec96049-846e-5494-83cd-fc716ccc70f9",
+          "fieldName": "TeleportEnabled",
+          "label": "Warp destination",
+          "description": "Lists the district in /warp and the teleport menu. It also needs a spawn point and Allow entry on. Off keeps the settings below but doesn't use them.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b21d669e-1b23-54ba-b0ca-f242f9b999e6",
+          "fieldName": "TeleportPriceGems",
+          "label": "Price (gems)",
+          "description": "Gems charged per warp, after the warmup. 0 = free. A permission group's /warp price setting can replace or multiply it.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4baeb02e-6852-54e5-b9a8-8e089198d6f5",
+          "fieldName": "TeleportMinTitleBracket",
+          "label": "Minimum title",
+          "description": "Players whose experience is below this title can't warp here. Empty = no title needed.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "03c817ed-6860-590a-a9de-9e19f5f7db72",
+          "fieldName": "TeleportMinPremiumGroup",
+          "label": "Minimum premium tier",
+          "description": "Only players whose highest premium tier has at least this group's weight may warp here. Only premium-tier groups can be picked. Empty = everyone.",
+          "fieldType": "Object",
+          "objectType": "PermissionGroup",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"isPremiumTier\": \"true\"}}"
+        },
+        {
+          "fieldGuid": "40272ec6-cc8e-5d67-b078-32dc59e7476a",
+          "fieldName": "TeleportRequiresDiscovery",
+          "label": "Discovered districts only",
+          "description": "Only players who have discovered the district (entered its region at least once) may warp here.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "b08cc470-88a9-59f6-9d0a-403b6d607430",
+      "validationType": "RegionContainment",
+      "dependsOn": {
+        "fieldGuid": "520d84a3-0d6e-5888-a050-0722c638686a",
+        "fieldName": "TownId"
+      },
+      "dependencyPath": "Town.WgRegionId",
+      "configJson": "{\n  \"parentRegionPath\": \"WgRegionId\",\n  \"requireFullContainment\": false\n}",
+      "errorMessage": "The district's region lies outside the town's region.",
+      "successMessage": "The district's region is within the town's region.",
+      "isBlocking": false,
+      "requiresDependencyFilled": true
+    }
+  ]
+}

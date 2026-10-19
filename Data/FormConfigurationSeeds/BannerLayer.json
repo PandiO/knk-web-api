@@ -1,0 +1,59 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "4af7e5d6-de24-57de-a7a3-de0619d30668",
+  "entityTypeName": "BannerLayer",
+  "name": "BannerLayer - Default (seed v1)",
+  "description": "One pattern layer of a banner design: a pattern shape in one dye colour. Created from the banner's Layers step.",
+  "steps": [
+    {
+      "stepGuid": "dc5446f9-563d-53b3-9cff-b11ee08bf2c2",
+      "stepName": "Layer",
+      "description": "Pick the pattern and its colour. Layers are drawn bottom to top; a banner shows at most 16, and more than 6 can't be made in a survival loom.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "98ad9f0a-ee70-5de3-af2c-76c26686fa53",
+          "fieldName": "BannerDesignId",
+          "label": "Banner design",
+          "description": "Filled in from the banner you are editing. A layer can't be moved to another banner.",
+          "fieldType": "Object",
+          "objectType": "BannerDesign",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "350ce4a1-2dca-5a57-86fb-354dd85eba65",
+          "fieldName": "PatternKey",
+          "label": "Pattern",
+          "description": "The shape painted on the banner, as Minecraft names it (minecraft:stripe_top is a stripe along the top). A server that doesn't know a newer pattern skips that layer.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"minecraft:base\", \"minecraft:square_bottom_left\", \"minecraft:square_bottom_right\", \"minecraft:square_top_left\", \"minecraft:square_top_right\", \"minecraft:stripe_bottom\", \"minecraft:stripe_top\", \"minecraft:stripe_left\", \"minecraft:stripe_right\", \"minecraft:stripe_center\", \"minecraft:stripe_middle\", \"minecraft:stripe_downright\", \"minecraft:stripe_downleft\", \"minecraft:small_stripes\", \"minecraft:cross\", \"minecraft:straight_cross\", \"minecraft:triangle_bottom\", \"minecraft:triangle_top\", \"minecraft:triangles_bottom\", \"minecraft:triangles_top\", \"minecraft:diagonal_left\", \"minecraft:diagonal_up_right\", \"minecraft:diagonal_up_left\", \"minecraft:diagonal_right\", \"minecraft:circle\", \"minecraft:rhombus\", \"minecraft:half_vertical\", \"minecraft:half_horizontal\", \"minecraft:half_vertical_right\", \"minecraft:half_horizontal_bottom\", \"minecraft:border\", \"minecraft:curly_border\", \"minecraft:gradient\", \"minecraft:gradient_up\", \"minecraft:bricks\", \"minecraft:globe\", \"minecraft:creeper\", \"minecraft:skull\", \"minecraft:flower\", \"minecraft:mojang\", \"minecraft:piglin\", \"minecraft:flow\", \"minecraft:guster\"]}"
+        },
+        {
+          "fieldGuid": "f61bf8f8-66da-59ff-97a1-f8d61bb62f7e",
+          "fieldName": "Color",
+          "label": "Colour",
+          "description": "Dye colour of this pattern.",
+          "fieldType": "Enum",
+          "enumType": "BannerDyeColor",
+          "defaultValue": "BLACK",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"WHITE\", \"ORANGE\", \"MAGENTA\", \"LIGHT_BLUE\", \"YELLOW\", \"LIME\", \"PINK\", \"GRAY\", \"LIGHT_GRAY\", \"CYAN\", \"PURPLE\", \"BLUE\", \"BROWN\", \"GREEN\", \"RED\", \"BLACK\"]}"
+        },
+        {
+          "fieldGuid": "eee5aa54-7e8c-59f0-ab39-26e6c5371828",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Position from the bottom (0 = just above the base colour). Leave empty to put it on top of the existing layers; two layers may share a number while you reorder them.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

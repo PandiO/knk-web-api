@@ -1,0 +1,233 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "2ef61874-67ee-5448-8dc0-6f01a64a0918",
+  "entityTypeName": "ItemBlueprint",
+  "name": "ItemBlueprint - Default (seed v1)",
+  "description": "An item blueprint: the template every copy of an item is made from. Its name and lore in game, material, grade, price range, default enchantments, tags and origin.",
+  "sections": [
+    {
+      "sectionGuid": "bf4e1637-4759-550e-9bcb-5ef0bcf9470f",
+      "sectionName": "General information",
+      "description": "What the item is called, for admins and in game, and what it is made of.",
+      "fields": [
+        {
+          "fieldGuid": "865e31b5-3d45-5d51-a41c-16a136864f20",
+          "fieldName": "Name",
+          "label": "Admin name",
+          "description": "Name used in the web app and admin commands; players see the display name.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "0970e07b-5328-52e5-b6ad-fe7106c5a735",
+          "fieldName": "Description",
+          "label": "Admin description",
+          "description": "Notes for admins. Not shown in game.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "8531fcbe-bbba-56d6-a80a-096d790a1926",
+          "fieldName": "DefaultDisplayName",
+          "label": "Display name",
+          "description": "The item's name in game.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "5a514b67-d814-5171-8633-112b41fbd096",
+          "fieldName": "DefaultDisplayDescription",
+          "label": "Lore",
+          "description": "Text shown under the name on the item in game.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "9b7701ce-0c83-5e16-bb80-1e7ed83603dd",
+          "fieldName": "NamespaceKey",
+          "relatedEntityPropertyName": "IconMaterialRef",
+          "relatedEntityTypeName": "MinecraftMaterialRef",
+          "label": "Material",
+          "description": "The Minecraft material the item is made of; also its icon in menus.",
+          "fieldType": "String",
+          "metadataCheck": "warn"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "e7a11b9f-21bf-5072-9f59-2e063d762501",
+      "sectionName": "Classification",
+      "description": "Where the item sits in the catalog and how rare it is.",
+      "fields": [
+        {
+          "fieldGuid": "0cbb8e80-4492-5667-89ec-7c5cd0d2691a",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Category",
+          "relatedEntityTypeName": "Category",
+          "label": "Category",
+          "description": "Catalog group the item belongs to.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "35dbf22a-883a-590a-a523-3c5d68d93047",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Grade",
+          "relatedEntityTypeName": "Grade",
+          "label": "Grade",
+          "description": "Rarity tier. It sets the drop chance and caps the enchantment levels the item can hold.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "3c51c4c4-6328-5086-9a59-5a614e9dc1ba",
+          "fieldName": "Stars",
+          "relatedEntityPropertyName": "Grade",
+          "relatedEntityTypeName": "Grade",
+          "label": "Stars",
+          "description": "Stars shown in the item's lore for its grade.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "2669dbd0-2735-5f9f-821c-08e85bea783f",
+      "sectionName": "Stack and price",
+      "description": "How many come at once and what one item is worth.",
+      "fields": [
+        {
+          "fieldGuid": "869e1794-673f-5c8b-bc3f-807dedd88648",
+          "fieldName": "DefaultQuantity",
+          "label": "Default quantity",
+          "description": "How many are handed out at once, e.g. by a loot box roll, unless that says otherwise.",
+          "fieldType": "Integer",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "6a1aa9fa-fc66-59dd-b63c-9e3197bc8ee9",
+          "fieldName": "MaxStackSize",
+          "label": "Max stack size",
+          "description": "Most items that fit in one inventory slot (1-64).",
+          "fieldType": "Integer",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "b70d8dfa-cd3c-5921-9292-81ed36f41707",
+          "fieldName": "BasePriceMin",
+          "label": "Lowest base price",
+          "description": "Bottom of the item's price range for trading.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "f2b0cd94-fc69-56aa-acd6-5e65a899214c",
+          "fieldName": "BasePriceMax",
+          "label": "Highest base price",
+          "description": "Top of the item's price range for trading.",
+          "fieldType": "Decimal"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "a4c2d009-d20b-527e-b9cf-dec17265ed10",
+      "sectionName": "Default enchantments",
+      "description": "Enchantments every new copy of the item gets. Change them with Edit (Default enchantments step).",
+      "relatedEntityPropertyName": "DefaultEnchantments",
+      "relatedEntityTypeName": "ItemBlueprintDefaultEnchantment",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "d7572313-eaa6-5237-a2d3-3b880e5404fe",
+          "fieldName": "DisplayName",
+          "relatedEntityPropertyName": "EnchantmentDefinition",
+          "relatedEntityTypeName": "EnchantmentDefinition",
+          "label": "Enchantment",
+          "description": "The enchantment.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "bd877302-25c0-555a-92ee-6443b607762f",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "Level new copies get.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "383fd936-d42d-5dcd-9204-f98bf0ba1a3a",
+          "fieldName": "MaxLevel",
+          "relatedEntityPropertyName": "EnchantmentDefinition",
+          "relatedEntityTypeName": "EnchantmentDefinition",
+          "label": "Max level",
+          "description": "Highest level the enchantment allows.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "10889986-bee0-524c-8a68-8d85bf022ccb",
+          "fieldName": "IsCustom",
+          "relatedEntityPropertyName": "EnchantmentDefinition",
+          "relatedEntityTypeName": "EnchantmentDefinition",
+          "label": "Custom",
+          "description": "A Knights and Kings enchantment rather than a vanilla one.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "f1245712-6c09-5d46-9704-535440a45040",
+      "sectionName": "Tags",
+      "description": "Free labels used to search and filter items. Change them with Edit.",
+      "relatedEntityPropertyName": "Tags",
+      "relatedEntityTypeName": "ItemBlueprintTag",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "739745af-b752-5d5e-ab1b-1c3f680eb872",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Tag",
+          "relatedEntityTypeName": "Tag",
+          "label": "Tag",
+          "description": "The tag.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "7d40e63c-c8b0-5a3a-9a88-2d3a77fc4346",
+      "sectionName": "Origins",
+      "description": "Where the item comes from, oldest first: entry 0 is where it is produced, later entries are where it was changed. Change them with Edit.",
+      "relatedEntityPropertyName": "Origins",
+      "relatedEntityTypeName": "ItemBlueprintOrigin",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "c5a33d8e-1e37-5950-8ec3-bb167bb792df",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Domain",
+          "relatedEntityTypeName": "Domain",
+          "label": "Place",
+          "description": "Town, district or structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "9b665490-0dfc-5a31-ae04-41419eaeba98",
+          "fieldName": "DomainType",
+          "relatedEntityPropertyName": "Domain",
+          "relatedEntityTypeName": "Domain",
+          "label": "Kind of place",
+          "description": "Whether the place is a town, district or structure.",
+          "fieldType": "String",
+          "metadataCheck": "warn"
+        },
+        {
+          "fieldGuid": "1434c673-347f-515f-ab05-dd0030ed884e",
+          "fieldName": "SequenceNumber",
+          "label": "Order",
+          "description": "0 = where the item is produced; higher = later.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Material: the read DTO calls it \"iconMaterialRef\" (model navigation \"IconMaterial\"), hence metadataCheck \"warn\".",
+    "Origins/Domain.DomainType exists only on DomainNavDto.",
+    "The collections have no buttons: their items (join rows) have no id, so View/Edit would open \".../undefined\"."
+  ]
+}

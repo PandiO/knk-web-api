@@ -1,0 +1,47 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "1e25a1bf-c5da-5cea-9c22-cb0aa3930e88",
+  "entityTypeName": "KitContent",
+  "name": "KitContent - Join Entry (seed v1)",
+  "description": "One inventory slot of a kit: which item goes there and how many. Created from the kit's Contents step (Create New Join Entry), or filled in by a kit scan.",
+  "steps": [
+    {
+      "stepGuid": "38b84f1f-8914-5d14-bd46-d39b5275e65d",
+      "stepName": "Inventory slot",
+      "description": "The item placed in one slot of the player's inventory when the kit is granted. If the slot is taken, a matching stack is topped up, otherwise the item goes to the first free slot or is dropped at the player's feet.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "38c8ed15-9e3d-5c14-bb25-6e47b04ecff0",
+          "fieldName": "ItemBlueprintId",
+          "label": "Item",
+          "description": "The item blueprint to give; it is built with the blueprint's default name, lore and enchantments.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "84658391-54bf-5665-bba2-b00031fe8df7",
+          "fieldName": "SlotIndex",
+          "label": "Slot",
+          "description": "Inventory slot 0-35: 0-8 is the hotbar (left to right), 9-35 the three rows above it. Each slot can hold one entry; the save is refused otherwise.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "664c304d-2761-5020-aa26-abd5901b85eb",
+          "fieldName": "Quantity",
+          "label": "Quantity",
+          "description": "Stack size in this slot (e.g. 64 arrows, 1 bow). Keep it within the item's stack size.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

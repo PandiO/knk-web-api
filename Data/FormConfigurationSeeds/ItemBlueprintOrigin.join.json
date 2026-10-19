@@ -1,0 +1,38 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "43894a91-f9ef-5379-962e-e6aa50ddb79d",
+  "entityTypeName": "ItemBlueprintOrigin",
+  "name": "ItemBlueprintOrigin - Join Entry (seed v1)",
+  "description": "One place in an item blueprint's history: where it is produced, or a later place that altered it. Opened by Create New Join Entry on the item blueprint form's Origin step.",
+  "steps": [
+    {
+      "stepGuid": "1b90781d-7d8d-57a8-bbf4-8dba0a0c8d3b",
+      "stepName": "Origin",
+      "description": "Pick the place and its position in the item's history. The blueprint is the one you are editing.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e7c14f2d-e1f7-5a88-be2c-ef9b487c2d71",
+          "fieldName": "DomainId",
+          "label": "Place",
+          "description": "The town, district or structure. The first entry's name and type appear in the item's lore.",
+          "fieldType": "Object",
+          "objectType": "Domain",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fc72e46f-5b68-5595-b2a5-ea122e26f0bd",
+          "fieldName": "SequenceNumber",
+          "label": "Order",
+          "description": "0 = where the item is produced (the only entry most items need); 1, 2, ... = later places that altered it, in that order. Each number can be used once per item.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -1,0 +1,76 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "00cfb133-9b52-5dbb-b6fd-362d0eb87d89",
+  "entityTypeName": "Clan",
+  "name": "Clan - Default (seed v1)",
+  "description": "A clan identity: name, colour, banner and optionally the town it defends by default. Siege teams take their name, colour and banner from a clan. There is no membership or ranks yet.",
+  "steps": [
+    {
+      "stepGuid": "317c9fa9-b647-5ab7-b74f-d95cc8debb21",
+      "stepName": "Name and colour",
+      "description": "How the clan is named and coloured in game.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "c333e723-2e45-5175-973c-e83c2ccbfa6f",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in siege menus and messages, and as the name of the clan's banner item. Up to 100 characters.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "19dc49e0-10e6-55a0-bc4b-13b9482a540a",
+          "fieldName": "ChatColor",
+          "label": "Colour",
+          "description": "Colour of the clan's name in siege menus and messages, and of its team's capture effects on objectives.",
+          "fieldType": "String",
+          "defaultValue": "WHITE",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"BLACK\", \"DARK_BLUE\", \"DARK_GREEN\", \"DARK_AQUA\", \"DARK_RED\", \"DARK_PURPLE\", \"GOLD\", \"GRAY\", \"DARK_GRAY\", \"BLUE\", \"GREEN\", \"AQUA\", \"RED\", \"LIGHT_PURPLE\", \"YELLOW\", \"WHITE\"]}"
+        },
+        {
+          "fieldGuid": "3489ff21-5e9d-5fde-9878-7c717b59278c",
+          "fieldName": "IsNpc",
+          "label": "NPC clan",
+          "description": "A crown or garrison clan run by the server rather than by players. For information only: nothing in game treats NPC clans differently yet.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "61388ee6-aa26-59c8-8ce7-b19bc45a3fd3",
+      "stepName": "Banner and town",
+      "description": "The clan's banner, and the town it defends by default. Create the banner here if it doesn't exist yet.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "3a2d9262-87f7-55fa-9523-4730b3daccc2",
+          "fieldName": "BannerDesignId",
+          "label": "Banner",
+          "description": "Shown on objectives the clan's team holds in a siege and on its banner items. Create New opens the banner form; add its layers afterwards by editing the banner.",
+          "fieldType": "Object",
+          "objectType": "BannerDesign",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d6b43c49-fa90-5889-bc7f-cddc0cfb22c3",
+          "fieldName": "DefaultForTownId",
+          "label": "Default clan for town",
+          "description": "Optional. A town has at most one default clan, which siege scenarios in that town list first when picking a team's clan. Empty = no home town.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

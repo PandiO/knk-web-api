@@ -1,0 +1,28 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "ce32e836-f5be-5fd4-a38c-6fbf34aa6e25",
+  "entityTypeName": "CategoryTag",
+  "name": "CategoryTag - Join Entry (seed v1)",
+  "description": "One tag on a category. Opened by Create New Join Entry on the category form's Tags step.",
+  "steps": [
+    {
+      "stepGuid": "50dd97f2-a877-5d50-9481-1660bb23fc1b",
+      "stepName": "Tag",
+      "description": "Pick the tag to add. The category is the one you are editing.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ef4dc998-bed4-5154-ba96-9478cf5e9084",
+          "fieldName": "TagId",
+          "label": "Tag",
+          "description": "An existing tag; each tag can be on a category only once.",
+          "fieldType": "Object",
+          "objectType": "Tag",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

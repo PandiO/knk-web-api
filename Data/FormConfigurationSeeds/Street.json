@@ -1,0 +1,56 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "2ee56774-3c87-5109-9cee-9fe7e38b85da",
+  "entityTypeName": "Street",
+  "name": "Street - Default (seed v1)",
+  "description": "A named street. Structures and gates use it in their address, and road stretches carry its name for /navigate. Often created from a structure's or gate's Address step, or from the Roads page.",
+  "steps": [
+    {
+      "stepGuid": "c01e4472-9a83-5491-a426-d2d1d854f849",
+      "stepName": "Street",
+      "description": "Name the street and say which districts it runs through.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ea0ab199-5d69-5b30-b0fb-ebcb964c1eb3",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in addresses (with the house number) and as the road name in /navigate directions.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1cd2c165-a5a1-593e-82e1-d4dcf4ddc2bf",
+          "fieldName": "Districts",
+          "label": "Districts",
+          "description": "The districts the street runs through; a street may cross several. Optional, and can be filled in later.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "District",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "493f147f-ce7e-5f35-aa05-3e2f0bff1a5a",
+      "stepName": "Road",
+      "description": "The road stretches in the world that carry this street's name. Only shown for a saved street; stretches are labelled on the Roads page or in game, not here.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "aa679a82-fe99-5dc2-b1ad-6680630d47d3",
+          "fieldName": "Id",
+          "label": "Road",
+          "description": "Read-only: how many stretches carry this street's name, their total length and junctions, with links to the Roads page.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true,
+          "settingsJson": "{\"displayPanel\": \"streetRoad\"}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

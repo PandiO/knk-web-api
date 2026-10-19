@@ -1,0 +1,58 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "6a6c35b3-4948-59ef-a5ab-9799384ddcbd",
+  "entityTypeName": "PermissionGrant",
+  "name": "PermissionGrant - Default (seed v1)",
+  "description": "One permission node granted to, or denied for, a player or a permission group. Created here, from a player's admin page (grant or deny a node) or in game with /knk user perm. A holder has at most one grant per node, so creating a node the holder already has updates that grant.",
+  "steps": [
+    {
+      "stepGuid": "387b1da3-bf23-5c52-8917-cb828541c228",
+      "stepName": "Grant",
+      "description": "Who gets the node, and whether it is allowed or denied. You can only grant or deny nodes you hold yourself, and never on your own account.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "fdd60705-38a1-524c-8de9-db723d21dd11",
+          "fieldName": "HolderId",
+          "label": "Player or group",
+          "description": "The player or permission group that gets this node; the list shows both. A group's grants apply to all its members and to groups that inherit from it; a player's own grants win over their groups'.",
+          "fieldType": "Object",
+          "objectType": "PermissionHolder",
+          "isRequired": true,
+          "isReadOnly": false,
+          "canCreate": false
+        },
+        {
+          "fieldGuid": "ed3de6b6-ae42-5c28-9402-18002321bd5c",
+          "fieldName": "Node",
+          "label": "Permission node",
+          "placeholder": "knk.teleport.warp",
+          "description": "The dot-separated node the game checks. End it with .* to cover every node under it (knk.admin.*); an exact node wins over a wildcard.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ce7c8ca4-91aa-5e3f-8a1b-95d57daa5746",
+          "fieldName": "Value",
+          "label": "Allow",
+          "description": "Ticked grants the node. Unticked is an explicit deny, which overrides a grant at a less specific level (a player's deny beats a group's grant). A node granted nowhere is denied anyway.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "642bab54-dca3-5ced-b1c4-2bac8d0024fe",
+          "fieldName": "ExpiresAt",
+          "label": "Expires",
+          "description": "Leave empty for a permanent grant. From this moment on the grant is ignored, for example for a temporary perk.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

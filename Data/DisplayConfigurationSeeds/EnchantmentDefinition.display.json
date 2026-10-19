@@ -1,0 +1,133 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "64e3bfbc-0d1f-5cc1-8bab-6e026fa8e533",
+  "entityTypeName": "EnchantmentDefinition",
+  "name": "EnchantmentDefinition - Default (seed v1)",
+  "description": "An enchantment items can carry: a vanilla Minecraft enchantment, or a custom Knights and Kings one with its own ability. Item blueprints list their default enchantments from these.",
+  "sections": [
+    {
+      "sectionGuid": "4d0bad63-07ee-5ae1-804e-a32714bf7995",
+      "sectionName": "Enchantment",
+      "description": "What the enchantment is called and how strong it can get.",
+      "fields": [
+        {
+          "fieldGuid": "3131722c-d206-5b7e-ab03-a34ca49a9976",
+          "fieldName": "DisplayName",
+          "label": "Name",
+          "description": "Shown in the item's lore in game.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "dce09f51-9502-54b1-9385-6e7920d12562",
+          "fieldName": "Key",
+          "label": "Key",
+          "description": "Unique id: the Minecraft key for a vanilla enchantment (minecraft:sharpness), a short key for a custom one (armor_repair).",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "af0e3fa1-9e99-5ccb-ab63-90d9751427bd",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "What the enchantment does, in a sentence.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "1b4ee712-a423-5721-bbcf-e98fad9322c2",
+          "fieldName": "MaxLevel",
+          "label": "Max level",
+          "description": "Highest level an item may hold. An item's grade can cap it lower.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "51a3d728-7e3a-55d8-b54b-4961673debdd",
+          "fieldName": "IsCustom",
+          "label": "Custom",
+          "description": "On for Knights and Kings enchantments the plugin implements itself, off for vanilla ones.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "4b9abb33-0f12-51a3-a11b-6ecebb1529d0",
+      "sectionName": "Vanilla enchantment",
+      "description": "The Minecraft enchantment this one is based on. Empty for a fully custom enchantment.",
+      "relatedEntityPropertyName": "BaseEnchantmentRef",
+      "relatedEntityTypeName": "MinecraftEnchantmentRef",
+      "fields": [
+        {
+          "fieldGuid": "3a3dd14f-5ce7-5cdc-8bc0-62eae936eb46",
+          "fieldName": "NamespaceKey",
+          "label": "Minecraft key",
+          "description": "The enchantment's id in Minecraft.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "64efc127-f7c8-5f7f-b138-85494d16dd9f",
+          "fieldName": "DisplayName",
+          "label": "Minecraft name",
+          "description": "Its name in vanilla Minecraft.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "a49d41f1-7a16-50bc-a6e8-056d791caf0f",
+          "fieldName": "MaxLevel",
+          "label": "Vanilla max level",
+          "description": "Highest level vanilla Minecraft allows.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "b08e6bf9-833e-5bbb-a5ed-7a3dc04fee89",
+      "sectionName": "Custom ability",
+      "description": "Only for custom enchantments: the ability the plugin runs. Changed with Edit.",
+      "relatedEntityPropertyName": "AbilityDefinition",
+      "relatedEntityTypeName": "AbilityDefinition",
+      "fields": [
+        {
+          "fieldGuid": "54b895c7-8c59-5185-ab4e-706f9799bce9",
+          "fieldName": "AbilityKey",
+          "label": "Ability",
+          "description": "Which ability in the plugin this enchantment triggers.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "10b38621-8533-5593-83e4-e3fe8610fd5d",
+          "fieldName": "RuntimeConfigJson",
+          "label": "Ability settings",
+          "description": "Settings passed to the ability, as JSON.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "893fe6a1-3ab3-582e-bd42-061b88a826f2",
+      "sectionName": "Default on item blueprints",
+      "description": "Item blueprints whose new copies get this enchantment. View or Edit opens the blueprint.",
+      "relatedEntityPropertyName": "DefaultForBlueprints",
+      "relatedEntityTypeName": "ItemBlueprint",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showViewButton\":true,\"showEditButton\":true}",
+      "metadataCheck": "warn",
+      "fields": [
+        {
+          "fieldGuid": "508f6ec3-d1f6-5f02-8876-ea2d07be726a",
+          "fieldName": "Name",
+          "label": "Blueprint",
+          "description": "Admin name of the blueprint.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "f9c9ed72-f1c2-51cd-ab66-71dc3a5fcad7",
+          "fieldName": "DefaultDisplayName",
+          "label": "Display name",
+          "description": "The item's name in game.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Default on item blueprints: the read DTO lists ItemBlueprint summaries (ItemBlueprintNavDto, with the blueprint id), the model navigation is a list of ItemBlueprintDefaultEnchantment; relatedEntityTypeName is ItemBlueprint so View/Edit open the blueprint, hence metadataCheck \"warn\"."
+  ]
+}
