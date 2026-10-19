@@ -1,7 +1,8 @@
 # `knk-displayconfig/1` — portable DisplayConfiguration files
 
-Status: proposal (2026-10-19). Nothing in the API or web app reads or writes this format yet; this document is
-written so a later session can build the export/import endpoints from it. It is deliberately parallel to
+Status: implemented (2026-10-19): `Services/DisplayConfigurationPortabilityService.cs`, the export/import/seeds
+endpoints on `DisplayConfigurationsController`, and Export / Import / Seeds on the web app's display configuration
+list. §6 lists what the implementation settled that this spec left open. It is deliberately parallel to
 `knk-formconfig/1` (`Dtos/FormConfigurationPortableDtos.cs`, `DEFAULT_FORM_SEEDS.md` §3.2/§3.4): same envelope,
 same importer rules, same seed workflow. Where the two differ, the reason is a difference in the display model or
 renderer, and it is called out.
@@ -272,3 +273,30 @@ exporter should produce the same shape.
   need a dedicated endpoint.
 - Buttons only where they work: the related items have an `id`, the target type has a form (Edit) or a published
   default display config and a fetch-by-id (View). No Create on collection sections (no parent context).
+
+---
+
+## 6. Implementation notes (2026-10-19)
+
+What the importer (`DisplayConfigurationPortabilityService`) settled where §3/§4 left room:
+
+- **Result.** `DisplayConfigurationImportResultDto` uses the form statuses (`FormConfigurationImportStatus`) and adds
+  `isDraft` (what the import wrote, or would write). Export with `notes[0]` = source id and draft/default state.
+- **Warnings that would have been errors** under `metadataCheck: "warn"` end in ` (metadataCheck "warn")`
+  (`WarnMarker`). `DisplayConfigurationSeedFilesTests` allows only those on the bundled seeds: today exactly the 11
+  of the authoring notes, 0 errors.
+- **Where checks resolve.** Every element checks its own `relatedEntity*` and then goes on with the *declared*
+  `relatedEntityTypeName`, so a DTO-only navigation marked "warn" still has its fields checked against the declared
+  type. A sub-section's own `relatedEntity*` is ignored by the renderer (warning); its fields resolve on the
+  collection's item type.
+- **M2/M3 additions (same severity rules):** a `…Id` foreign key used as a navigation (the old EnchantmentDefinition
+  bug), a list used as a field's `relatedEntityPropertyName`, and a dotted path through a list or a scalar.
+- **M4** compares how the page formats the value: number (`Integer/Number/Decimal`), boolean, date
+  (`DateTime/Date`) and text (`String/Enum`). `String` for an enum property is therefore not a mismatch.
+- **E5** "[object Object]" warns whenever the property resolves to a navigation object or a list, whatever the
+  `fieldType`.
+- **E6**'s "computed" warning reads the model property's setter (no public setter = computed).
+- Also warned: a top-level collection without `relatedEntityPropertyName`; `${x.Count}` where `x` is not a list.
+- **Not added:** a unique index on `DisplayConfiguration.ConfigurationGuid` (forms have one). I1 checks before
+  writing; two simultaneous imports of the same file could still both get in. Needs a migration if wanted.
+- The entity name is stored with the metadata's spelling, whatever casing the file used.

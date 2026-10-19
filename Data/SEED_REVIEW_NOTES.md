@@ -714,35 +714,17 @@ completeness only.
    mark Structure's "Region and access" reusable?
 9. **Import as draft or published by default** (FORMAT I3 proposes published, `asDraft=true` to opt out)?
 
-## What is needed to import these files (no importer exists yet)
+## Importing these files
 
-Minimal API work (knk-web-api), mirroring KNG-138:
+Implemented 2026-10-19 (branch `claude/determined-franklin-xnfh3r` in knk-web-api and knk-web-app; README §6 lists
+the details): `GET api/DisplayConfigurations/{id}/export`, `POST api/DisplayConfigurations/import?dryRun=&makeDefault=&asDraft=`,
+`GET api/DisplayConfigurations/seeds`, `POST api/DisplayConfigurations/seeds/{name}/import` (writes behind
+`knk.admin.content`), and **Import / Seeds** plus **Export JSON** on the web app's display configuration list.
+`DisplayConfigurationSeedFilesTests` dry-runs and imports every file here, checks that only "warn" elements warn,
+and that exporting an imported seed gives the file back (without `notes` and `metadataCheck`).
 
-1. `Dtos/DisplayConfigurationPortableDtos.cs`: `PortableDisplayConfigurationDto` (`format`, `configurationGuid`,
-   `entityTypeName`, `name`, `description`, `sections`, `notes`), `PortableDisplaySectionDto`,
-   `PortableDisplayFieldDto` (FORMAT §2), result DTO + seed list DTO (copy of the form ones with section/field counts).
-2. `Services/DisplayConfigurationPortabilityService.cs` (+ interface, DI): `ExportAsync(id)` (FORMAT §4),
-   `ImportAsync(file, dryRun, makeDefault, asDraft)` (FORMAT §3: structure → never overwrite → build entity graph →
-   metadata check via `IMetadataService` → default handling → one transaction), `ListSeedsAsync`,
-   `ImportSeedAsync(name, …)` over `Data/DisplayConfigurationSeeds/` (copy to output like the form seeds). Reuse
-   `FormConfigurationPortabilityService.JsonOptions`. Write through `KnKDbContext` (not `CreateAsync`, which forces
-   draft and throws on a second default). Build sub-sections with `DisplayConfigurationId = null` via the
-   `SubSections` navigation; set `SectionOrderJson`/`FieldOrderJson` from array order.
-3. Display-specific metadata checks (FORMAT M1-M6): no display validator exists today (`DisplayValidationResultDto`
-   is unused), so this is new code; see README §3 for the rules.
-4. `DisplayConfigurationsController`: `GET {id}/export`, `POST import`, `GET seeds`, `POST seeds/{name}/import`
-   (writes behind the existing `RequireServiceOrPermissionForWrites`); add them to `EndpointAccessRulesTests`.
-5. Tests like `FormConfigurationPortabilityServiceTests` and a `DisplayConfigurationSeedFilesTests` that dry-runs and
-   imports every file in the seed folder.
-6. (Done: the seeds are in `Data/DisplayConfigurationSeeds/`.)
-
-Minimal web app work (knk-web-app):
-
-1. `displayConfigClient`: `export(id)`, `import(file, {dryRun, makeDefault, asDraft})`, `listSeeds()`,
-   `importSeed(name, opts)`.
-2. On the display configuration list (`components/FormWizard/DisplayConfigurationTable.tsx` / `FormWizardPage`):
-   Export (download JSON) per row, Import (file picker → dry-run result → confirm), and an "Available seeds" panel
-   with imported state and a dry run before importing — same components as the form seeds if they can be shared.
+Open questions 1 and 9 above were not decided by the implementation: the ItemBlueprintDefaultEnchantment seed stays
+(it imports cleanly), and imports are published unless `asDraft=true` (the README's proposal).
 
 Import order: no seed refers to another, so any order. Because six of the entities already have a default display
 config, import with `makeDefault=true` to see the seed on `/display/...` (or import non-default, check it via the
