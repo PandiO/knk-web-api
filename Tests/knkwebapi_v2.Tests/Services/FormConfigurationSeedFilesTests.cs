@@ -128,12 +128,12 @@ public class FormConfigurationSeedFilesTests
         ["SiegeScenarioDistrict"] = new() { ["SiegeScenarioId"] = "set by the scenario's Districts step (join entry)" },
         ["SiegeScenarioGate"] = new() { ["SiegeScenarioId"] = "set by the scenario's Gates step (join entry)" },
         ["SiegeLobbyScenario"] = new() { ["SiegeLobbyId"] = "set by the lobby's Rotation step (join entry)" },
-        // GateDoorMappingProfile maps a missing value to "" for these; a form field would have to be required
+        // GateDoorMappingProfile maps a missing value to "" for this one; a form field would have to be required
         // (FormTemplateValidationService doesn't see the "= string.Empty" initialiser), and empty is the normal value.
+        // ScanMaterialWhitelist/ScanMaterialBlacklist carry [DefaultValue("")] since KNG-193, so the whitelist is an
+        // optional field of the seed (v2) and the blacklist simply has a default.
         ["GateDoor"] = new()
         {
-            ["ScanMaterialWhitelist"] = "optional flood-fill filter, empty = every material",
-            ["ScanMaterialBlacklist"] = "optional flood-fill filter, empty = none",
             ["PassThroughConditionsJson"] = "not read by the plugin",
         },
     };
