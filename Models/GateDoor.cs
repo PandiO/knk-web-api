@@ -107,9 +107,14 @@ public class GateDoor
     public int ScanMaxBlocks { get; set; } = 500;
     public int ScanMaxRadius { get; set; } = 20;
 
+    // [DefaultValue("")] lets the metadata see the empty default (like ClosedRegionData below), so a
+    // form can offer the field as optional instead of required (KNG-193: the GateDoor seed v2 asks for
+    // the whitelist on region and flood-fill doors; the plugin also accepts a comma-separated list).
+    [DefaultValue("")]
     [MaxLength(1000)]
     public string ScanMaterialWhitelist { get; set; } = string.Empty;  // JSON: [materialIds]
 
+    [DefaultValue("")]
     [MaxLength(1000)]
     public string ScanMaterialBlacklist { get; set; } = string.Empty;  // JSON: [materialIds]
 

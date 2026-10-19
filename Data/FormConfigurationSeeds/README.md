@@ -19,7 +19,7 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 | Seed | Configuration | Import after |
 |---|---|---|
 | `GateStructure` | GateStructure - Default (seed v1) | — |
-| `GateDoor` | GateDoor - Default (seed v1) | — (its rules read its own Gate field) |
+| `GateDoor` | GateDoor - Default (seed v2) | — (its rules read its own Gate field) |
 | `SiegeScenarioDistrict.join` | SiegeScenarioDistrict - Join Entry (seed v1) | — |
 | `SiegeScenarioGate.join` | SiegeScenarioGate - Join Entry (seed v1) | — |
 | `SiegeLobbyScenario.join` | SiegeLobbyScenario - Join Entry (seed v1) | — |
@@ -32,6 +32,14 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 So one working order is: the three `.join` seeds, `SiegeScenario`, `SiegeTeam`, `SiegeSpawnpoint`,
 `SiegeObjective`, `SiegeLobby`, then `GateStructure` and `GateDoor`. The dry run names the missing seed if the
 order is wrong.
+
+**GateDoor seed v2 (KNG-193, 2026-10-19):** a new `configurationGuid` and name, so it imports next to an already
+imported v1 (never over it); make it the default and delete or keep v1 by hand. Changes: the travel distance field is
+also shown for rotating doors and sets a drawbridge's deck length in blocks when there is no open-door scan (design
+decision D2); a new optional "Door materials" field (`ScanMaterialWhitelist`) on region and flood-fill doors, needed
+to capture an arched door with `//sel convex` without the wall inside the selection (D8); "Shape from" says the plane
+grid is for rectangular doors only. Every step and field GUID of v2 is derived from its v1 GUID (uuid5, namespace =
+the v1 configuration GUID), so the two never share one.
 
 The gate seeds were written from the docs and the models; no export of the dev DB's configurations 9/12 was
 available. The siege seeds convert `siege-minigame/PHASE_3_FORMCONFIGS.md` (configurations 23-33). What changed

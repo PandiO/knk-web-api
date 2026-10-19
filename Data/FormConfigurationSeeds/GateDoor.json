@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "29e8395a-ac3b-5c26-8b85-847930997ac2",
+  "configurationGuid": "de3cb3e2-a9a3-5efd-9e06-b37ffc84ee02",
   "entityTypeName": "GateDoor",
-  "name": "GateDoor - Default (seed v1)",
-  "description": "One door of a gate: type, shape, motion, block scan, health and display. Usually opened from the gate's Gate doors step.",
+  "name": "GateDoor - Default (seed v2)",
+  "description": "One door of a gate: type, shape, motion, block scan, health and display. Usually opened from the gate's Gate doors step. Seed v2 (KNG-193): deck length for drawbridges, door materials for region and flood-fill scans.",
   "steps": [
     {
-      "stepGuid": "23387455-bec2-5356-b2dc-bc24dee2108f",
+      "stepGuid": "01c79d1d-3548-52e7-8780-c90a373d8ef9",
       "stepName": "Door",
       "description": "Which gate the door belongs to and what kind of door it is. Opened from a gate's Gate doors step, the gate is already filled in.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "073b7cb1-e16c-51e1-b137-ac09426b37db",
+          "fieldGuid": "b7e49909-bab4-5195-b415-7588dbdb08d5",
           "fieldName": "GateStructureId",
           "label": "Gate",
           "description": "The gate this door belongs to. Its region is used to check the door's points.",
@@ -22,7 +22,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "4c55e35c-829b-5eae-a2c4-06632c1d6236",
+          "fieldGuid": "f3c44c07-8254-5d55-a372-ee80e787cb9e",
           "fieldName": "Name",
           "label": "Name",
           "description": "Unique within the gate; /gatedoor commands use it, e.g. 'Left' or 'Portcullis'.",
@@ -31,7 +31,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "dc8dde73-3d87-54a9-8d74-04e80b4058c8",
+          "fieldGuid": "3d99e09e-3ea9-5001-b30f-32172c659a16",
           "fieldName": "GateType",
           "label": "Door type",
           "description": "Sliding: a portcullis or sliding wall. Trap: a hatch. Drawbridge: swings down on a hinge. Double doors: two wings on hinges.",
@@ -42,10 +42,10 @@
           "settingsJson": "{\"enumValues\": [\"SLIDING\", \"TRAP\", \"DRAWBRIDGE\", \"DOUBLE_DOORS\"]}"
         },
         {
-          "fieldGuid": "3a24f40c-5944-5736-ab5e-29c89b6b23a7",
+          "fieldGuid": "e1478fb7-7a7e-5be7-b9a4-dabcb9c3be49",
           "fieldName": "GeometryDefinitionMode",
           "label": "Shape from",
-          "description": "Plane grid: a box from three points (most doors). Flood fill: grows out from seed blocks (irregular shapes). Region: a WorldEdit selection, captured with /gatedoor capture after saving.",
+          "description": "Plane grid: a box from three points; rectangular doors only, because every block in the box is scanned (an arched door would take the wall above it along). Flood fill: grows out from seed blocks (irregular shapes). Region: a WorldEdit selection, captured with /gatedoor capture after saving; use it for arched and other non-rectangular doors, with //sel convex for a diagonal or vertical door and Door materials set below.",
           "fieldType": "Enum",
           "defaultValue": "PLANE_GRID",
           "isRequired": true,
@@ -53,7 +53,7 @@
           "settingsJson": "{\"enumValues\": [\"PLANE_GRID\", \"FLOOD_FILL\", \"REGION\"]}"
         },
         {
-          "fieldGuid": "86bcf4da-d176-59d1-ab4a-7bbd4e1ae539",
+          "fieldGuid": "32e48c05-1b46-5297-bd77-5f49741871d4",
           "fieldName": "FaceDirection",
           "label": "Facing",
           "description": "The side the door's front faces. The info display and /gatedoor tp use it.",
@@ -64,7 +64,7 @@
           "settingsJson": "{\"enumValues\": [\"NORTH\", \"NORTH_EAST\", \"EAST\", \"SOUTH_EAST\", \"SOUTH\", \"SOUTH_WEST\", \"WEST\", \"NORTH_WEST\"]}"
         },
         {
-          "fieldGuid": "e41c4c89-f708-52c6-a292-b55d8f349544",
+          "fieldGuid": "b4336d21-f2f4-5733-9280-189713b98629",
           "fieldName": "IsActive",
           "label": "Active",
           "description": "Active doors are loaded and can be opened in game. Leave off until the door is scanned.",
@@ -76,7 +76,7 @@
       ]
     },
     {
-      "stepGuid": "262a5ac6-652c-5d60-9d1c-a647f1cc62ca",
+      "stepGuid": "daef0e66-b0d3-55b2-9f74-aea28cedc6c8",
       "stepName": "Shape: three points",
       "description": "Stand at each point in game and use Send to Minecraft, in this order: anchor, then point 1, then point 2. All three must be inside the gate's region. Only for the plane grid and region shapes.",
       "isManyToManyRelationship": false,
@@ -87,7 +87,7 @@
           "isActive": true,
           "conditions": [
             {
-              "sourceFieldGuid": "3a24f40c-5944-5736-ab5e-29c89b6b23a7",
+              "sourceFieldGuid": "e1478fb7-7a7e-5be7-b9a4-dabcb9c3be49",
               "operator": "In",
               "valueJson": "[\"PLANE_GRID\", \"REGION\"]"
             }
@@ -96,7 +96,7 @@
       ],
       "fields": [
         {
-          "fieldGuid": "9e48c4ce-b532-5e35-9e5e-e3edd3633c1b",
+          "fieldGuid": "7e40a4c8-0e8a-5a15-a842-56b6920c5d21",
           "fieldName": "AnchorPointId",
           "label": "Anchor (corner)",
           "description": "One bottom corner of the door in its closed position; the box and the scan start here.",
@@ -107,7 +107,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "38fca3a0-2643-5cef-9dfb-ac055a95857e",
+          "fieldGuid": "091f1ddf-bea8-5899-b429-0e50d7a68967",
           "fieldName": "ReferencePoint1Id",
           "label": "Point 1 (width)",
           "description": "The block at the far end of the door's width, in line with the anchor. The width is worked out from it.",
@@ -118,7 +118,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "cfd3c705-ac90-5f4c-8ac7-f9f89460b6ad",
+          "fieldGuid": "e4269bfe-fc45-54a8-9868-7d2944714913",
           "fieldName": "ReferencePoint2Id",
           "label": "Point 2 (height)",
           "description": "The block at the far end of the door's height, at right angles to the anchor-point 1 line. The height is worked out from it.",
@@ -129,7 +129,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "e08b9c56-0dea-551e-b994-970cdfe1bd9d",
+          "fieldGuid": "5f6fba07-c561-56d9-8885-070ed6cf05c5",
           "fieldName": "GeometryWidth",
           "label": "Width (blocks)",
           "description": "Blocks from the anchor to point 1, both included. Filled in from the two points once both are captured.",
@@ -139,7 +139,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "1041db7c-41d5-5106-8f5c-12e5320163ab",
+          "fieldGuid": "e283187b-1cd5-5028-a617-7bb0e610d3c9",
           "fieldName": "GeometryHeight",
           "label": "Height (blocks)",
           "description": "Blocks from the anchor to point 2, both included. Filled in from the two points once both are captured.",
@@ -149,7 +149,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "7020ac56-7c2d-54f7-8ee6-1d36d83b5943",
+          "fieldGuid": "7b1a82ef-115c-5606-b819-1636f445d141",
           "fieldName": "GeometryDepth",
           "label": "Depth (blocks)",
           "description": "How many blocks thick the door is, at right angles to its face. 0 or 1 = a single layer.",
@@ -161,7 +161,7 @@
       ]
     },
     {
-      "stepGuid": "afe9195b-d30a-5267-9a08-c57581299ead",
+      "stepGuid": "1aff9153-389e-51f7-b25a-ea55c6325abd",
       "stepName": "Shape: flood fill",
       "description": "The scan starts at the seed blocks and adds every touching block, within the limits below. Only for the flood fill shape.",
       "isManyToManyRelationship": false,
@@ -172,7 +172,7 @@
           "isActive": true,
           "conditions": [
             {
-              "sourceFieldGuid": "3a24f40c-5944-5736-ab5e-29c89b6b23a7",
+              "sourceFieldGuid": "e1478fb7-7a7e-5be7-b9a4-dabcb9c3be49",
               "operator": "Equals",
               "valueJson": "\"FLOOD_FILL\""
             }
@@ -181,7 +181,7 @@
       ],
       "fields": [
         {
-          "fieldGuid": "b10d99d3-96c5-5a0a-b1cd-49d3930d5ca5",
+          "fieldGuid": "5ca558c0-f5ed-5409-a323-4a9997bd8dca",
           "fieldName": "SeedBlocks",
           "label": "Seed blocks",
           "description": "Coordinates of one or more door blocks as JSON, e.g. [{\"x\":10,\"y\":64,\"z\":-5}].",
@@ -190,7 +190,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "57052ce6-f37e-5ae9-b5a5-966a09406658",
+          "fieldGuid": "350e9264-ad1d-5ad6-8462-9a3a62760c0d",
           "fieldName": "ScanMaxBlocks",
           "label": "Maximum blocks",
           "description": "The scan stops after this many blocks, so a door touching a wall can't swallow the wall.",
@@ -200,7 +200,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "85c70a86-84e3-50fe-a0e6-c9a548ab4abb",
+          "fieldGuid": "24da818e-78af-5aff-94ab-28fdf9afb2fb",
           "fieldName": "ScanMaxRadius",
           "label": "Maximum radius (blocks)",
           "description": "Blocks further than this from the first seed are never added.",
@@ -210,7 +210,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "2787ccf4-c52c-51e5-a683-8e8a69920d63",
+          "fieldGuid": "72e1da23-ac67-5273-a57f-ab8a75c1434a",
           "fieldName": "ScanPlaneConstraint",
           "label": "Stay in one plane",
           "description": "Only add blocks in the seed's plane, so a flat door doesn't spread into the wall behind it.",
@@ -222,13 +222,13 @@
       ]
     },
     {
-      "stepGuid": "5106664c-c967-5cdf-9f8d-749d6571ba3c",
+      "stepGuid": "fbe2786d-e8fe-5fdf-8342-e06229fa6f48",
       "stepName": "Motion",
       "description": "How the door moves between closed and open, and how long that takes.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "d1a0acad-eac2-57f6-8eaf-a3cf6130db59",
+          "fieldGuid": "b0ffdc95-327b-569b-b41b-b7c60773c2b1",
           "fieldName": "MotionType",
           "label": "Motion",
           "description": "Sliding and trap doors: Vertical (up/down) or Lateral (sideways). Drawbridges and double doors: Rotation.",
@@ -239,10 +239,10 @@
           "settingsJson": "{\"enumValues\": [\"VERTICAL\", \"LATERAL\", \"ROTATION\"]}"
         },
         {
-          "fieldGuid": "988bb2f9-a674-5f19-9a78-b228598a2511",
+          "fieldGuid": "28d1815d-5b23-5c99-9f71-fc4df8d45514",
           "fieldName": "MotionDistanceBlocks",
-          "label": "Travel distance (blocks)",
-          "description": "How far the door slides between closed and open. 0 = its height (vertical) or width (lateral).",
+          "label": "Travel distance / deck length (blocks)",
+          "description": "Sliding and trap doors: how far the door moves between closed and open; 0 = its height (vertical) or width (lateral). Drawbridges and other rotating doors: how many blocks the open deck reaches from the hinge, counted along the door's direction (so an 8-tall door makes an 8-block deck); 0 = the door's height. Only used when there is no open-door scan: a scanned open shape sets the length itself, and a different value here is reported in the server log.",
           "fieldType": "Integer",
           "defaultValue": "0",
           "isRequired": false,
@@ -254,16 +254,16 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "d1a0acad-eac2-57f6-8eaf-a3cf6130db59",
+                  "sourceFieldGuid": "b0ffdc95-327b-569b-b41b-b7c60773c2b1",
                   "operator": "In",
-                  "valueJson": "[\"VERTICAL\", \"LATERAL\"]"
+                  "valueJson": "[\"VERTICAL\", \"LATERAL\", \"ROTATION\"]"
                 }
               ]
             }
           ]
         },
         {
-          "fieldGuid": "a4117609-5e32-53a4-927b-abef7cd6acd6",
+          "fieldGuid": "728d366d-f1f8-5935-9675-f69926892fe9",
           "fieldName": "ClipToGeometryBounds",
           "label": "Hide blocks outside the box",
           "description": "Blocks that move outside the width/height/depth box are hidden, so a door can slide into a housing and look smaller when open.",
@@ -273,7 +273,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "4d88a18a-138b-5012-9fb9-a8997b882742",
+          "fieldGuid": "20b6ffc7-8a63-5ec6-8a5b-a448430fd6eb",
           "fieldName": "AnimationDurationTicks",
           "label": "Duration (ticks)",
           "description": "Time to open or close, in ticks (20 ticks = 1 second). Default 60 = 3 seconds.",
@@ -283,7 +283,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "135b5172-9bad-57e7-90aa-0a2ddfff404c",
+          "fieldGuid": "f2217f72-b4a5-513b-9464-293d12181cc5",
           "fieldName": "AnimationTickRate",
           "label": "Update every (frames)",
           "description": "Move the blocks every Nth frame. 1 = smoothest; higher values are cheaper but choppier.",
@@ -295,7 +295,7 @@
       ]
     },
     {
-      "stepGuid": "43a11d6a-c845-587b-8cf6-0b2625fa24cc",
+      "stepGuid": "649b360b-f0d2-5a43-abbe-b1b94efbcd6a",
       "stepName": "Rotation",
       "description": "The hinge the door turns on. Only for rotating doors (drawbridges, double doors).",
       "isManyToManyRelationship": false,
@@ -306,7 +306,7 @@
           "isActive": true,
           "conditions": [
             {
-              "sourceFieldGuid": "d1a0acad-eac2-57f6-8eaf-a3cf6130db59",
+              "sourceFieldGuid": "b0ffdc95-327b-569b-b41b-b7c60773c2b1",
               "operator": "Equals",
               "valueJson": "\"ROTATION\""
             }
@@ -315,7 +315,7 @@
       ],
       "fields": [
         {
-          "fieldGuid": "ed0ce120-a0aa-5b08-bb9a-57a423f6643a",
+          "fieldGuid": "8f436d72-a88a-5d94-9626-8ee067d80e65",
           "fieldName": "HingeAxisId",
           "label": "Hinge",
           "description": "Stand on a block of the hinge line and use Send to Minecraft. It must be inside the gate's region.",
@@ -326,7 +326,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "166b46bb-496d-5d05-bcbe-d900e45646cb",
+          "fieldGuid": "97abc823-05ed-5106-9250-13a8fd4fdaba",
           "fieldName": "RotationMaxAngleDegrees",
           "label": "Opening angle (degrees)",
           "description": "How far the door turns when fully open. 90 = a drawbridge lying flat.",
@@ -336,7 +336,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "afd7bb7f-c155-5904-99c5-f6eafc1d8e51",
+          "fieldGuid": "62b69d98-fb08-5961-96bd-338594b82aa8",
           "fieldName": "LeftDoorSeedBlockId",
           "label": "Left wing block",
           "description": "Double doors only: a block of the left wing, so the scan can tell the wings apart.",
@@ -352,7 +352,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "dc8dde73-3d87-54a9-8d74-04e80b4058c8",
+                  "sourceFieldGuid": "3d99e09e-3ea9-5001-b30f-32172c659a16",
                   "operator": "Equals",
                   "valueJson": "\"DOUBLE_DOORS\""
                 }
@@ -361,7 +361,7 @@
           ]
         },
         {
-          "fieldGuid": "c86f77dc-cada-509a-91fa-ba0bdbdcae9f",
+          "fieldGuid": "1ed5e76b-73c4-5ea9-8303-a1bb49209f1f",
           "fieldName": "RightDoorSeedBlockId",
           "label": "Right wing block",
           "description": "Double doors only: a block of the right wing.",
@@ -377,7 +377,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "dc8dde73-3d87-54a9-8d74-04e80b4058c8",
+                  "sourceFieldGuid": "3d99e09e-3ea9-5001-b30f-32172c659a16",
                   "operator": "Equals",
                   "valueJson": "\"DOUBLE_DOORS\""
                 }
@@ -388,13 +388,13 @@
       ]
     },
     {
-      "stepGuid": "b8bc9d10-7ce4-52ea-9027-9d29229b8fca",
+      "stepGuid": "1b6668ff-16b8-5216-8c9f-e8114378d4a5",
       "stepName": "Block scan",
-      "description": "Records the door's blocks so the plugin can animate them. Save the door first (Submit), then Edit it and scan here; scan again whenever the door's blocks change in game.",
+      "description": "Records the door's blocks so the plugin can animate them. Save the door first (Submit), then Edit it and scan here; scan again whenever the door's blocks change in game. For a region or flood-fill door, set Door materials before the first scan.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "3307dc76-1eef-5070-846a-66303dbf8cbe",
+          "fieldGuid": "79cadff8-2538-563d-932c-6f7d01deb106",
           "fieldName": "TileEntityPolicy",
           "label": "Chests, signs and banners",
           "description": "Which block entities the scan keeps. None: skip them. Decorative only: signs, banners and the like. All: everything (container contents are not saved).",
@@ -405,7 +405,31 @@
           "settingsJson": "{\"enumValues\": [\"NONE\", \"DECORATIVE_ONLY\", \"ALL\"]}"
         },
         {
-          "fieldGuid": "d6b8cb6c-b93b-5bb7-a736-485a8453ff77",
+          "fieldGuid": "3ef17eb9-d898-5807-a56b-d27990f6f4fd",
+          "fieldName": "ScanMaterialWhitelist",
+          "label": "Door materials",
+          "description": "Only blocks of these materials are kept by a region or flood-fill scan, e.g. spruce_planks, spruce_log, iron_bars (comma-separated, or a JSON list). Empty = every block in the selection. Set it for an arched or otherwise non-rectangular door captured as a region, so the wall inside the selection is not scanned as part of the door. Not used by the plane grid scan.",
+          "fieldType": "String",
+          "defaultValue": "",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "e1478fb7-7a7e-5be7-b9a4-dabcb9c3be49",
+                  "operator": "In",
+                  "valueJson": "[\"FLOOD_FILL\", \"REGION\"]"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "35f225f2-edc3-5157-bb9f-f51f929d9f3a",
           "fieldName": "BlockSnapshots",
           "label": "Closed-door scan",
           "description": "Scan in Minecraft reads the closed door's blocks. Runs on the server; no player needed.",
@@ -418,7 +442,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"GateBlockScan\"}}"
         },
         {
-          "fieldGuid": "af0fb6c8-4b00-5a1d-ac42-0dffad24f13b",
+          "fieldGuid": "93461134-896a-5b94-b178-0597ec50c8b8",
           "fieldName": "OpenAnchorPointId",
           "label": "Open-door anchor",
           "description": "Optional, for doors whose open shape is built separately: the anchor of the open copy. Leave empty to let the plugin work out the open shape.",
@@ -429,7 +453,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "d56dd21b-a3b2-52a8-b747-38294df27861",
+          "fieldGuid": "c5af318a-788f-559c-93e7-6c45c0de8238",
           "fieldName": "OpenedBlockSnapshots",
           "label": "Open-door scan",
           "description": "Scans the separately built open shape from the open-door anchor. Save the anchor first.",
@@ -447,7 +471,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "af0fb6c8-4b00-5a1d-ac42-0dffad24f13b",
+                  "sourceFieldGuid": "93461134-896a-5b94-b178-0597ec50c8b8",
                   "operator": "IsNotEmpty",
                   "valueJson": "null"
                 }
@@ -458,13 +482,13 @@
       ]
     },
     {
-      "stepGuid": "e04e6123-c3e2-5aa6-8539-02d5192f1996",
+      "stepGuid": "0c27e52f-feee-588f-90ab-4beb1478d393",
       "stepName": "Health and respawn",
       "description": "How much damage the door takes before it breaks, and whether it comes back.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "757a6d64-daaf-522d-8c89-240464dd3a1f",
+          "fieldGuid": "22aecacb-3c59-5074-9836-f62d80b395c5",
           "fieldName": "HealthMax",
           "label": "Health",
           "description": "Damage the door can take before it is destroyed. A new door starts at full health.",
@@ -474,7 +498,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "77d420e3-d6ed-51d8-b0ce-251ad3a9bf66",
+          "fieldGuid": "99591b6f-6a8f-530a-b03b-b4c28c9614ee",
           "fieldName": "IsInvincible",
           "label": "Invincible",
           "description": "The door can't be damaged at all. Turn off for doors that can be broken (sieges).",
@@ -484,7 +508,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "04544740-f22a-5579-a7d0-07851b8d3a22",
+          "fieldGuid": "d041342d-78fb-543f-89ea-4cc57a658d42",
           "fieldName": "CanRespawn",
           "label": "Respawns",
           "description": "A destroyed door rebuilds itself after the respawn time.",
@@ -494,7 +518,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "85ef40d8-5082-5996-a144-3aebb11ce999",
+          "fieldGuid": "7c9609dc-d3c0-5be4-b037-e003ccc6e619",
           "fieldName": "RespawnRateSeconds",
           "label": "Respawn after (seconds)",
           "description": "Seconds from destruction to rebuild. Default 300 = 5 minutes.",
@@ -509,7 +533,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "04544740-f22a-5579-a7d0-07851b8d3a22",
+                  "sourceFieldGuid": "d041342d-78fb-543f-89ea-4cc57a658d42",
                   "operator": "Equals",
                   "valueJson": "true"
                 }
@@ -518,7 +542,7 @@
           ]
         },
         {
-          "fieldGuid": "51454fff-0977-5593-8ac6-4e1b50831f81",
+          "fieldGuid": "8ab422f5-d863-55f7-8ef6-64e0e871d16a",
           "fieldName": "AllowContinuousDamage",
           "label": "Damage over time",
           "description": "Attacks keep damaging the door for a few seconds after the hit.",
@@ -528,7 +552,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "e79a25ba-3362-5a95-b464-8efee7f2d64f",
+          "fieldGuid": "39063bdc-952d-58bd-9706-9eb5f585f44d",
           "fieldName": "ContinuousDamageMultiplier",
           "label": "Damage-over-time multiplier",
           "description": "Scales the damage over time. 1 = normal, 2 = double.",
@@ -543,7 +567,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "51454fff-0977-5593-8ac6-4e1b50831f81",
+                  "sourceFieldGuid": "8ab422f5-d863-55f7-8ef6-64e0e871d16a",
                   "operator": "Equals",
                   "valueJson": "true"
                 }
@@ -552,7 +576,7 @@
           ]
         },
         {
-          "fieldGuid": "6859895f-a2e6-586c-98bf-cbaa781b3572",
+          "fieldGuid": "6f598488-96aa-527b-a63d-3c5cf3d10b34",
           "fieldName": "ContinuousDamageDurationSeconds",
           "label": "Damage-over-time length (seconds)",
           "description": "How long the damage over time lasts after a hit.",
@@ -567,7 +591,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "51454fff-0977-5593-8ac6-4e1b50831f81",
+                  "sourceFieldGuid": "8ab422f5-d863-55f7-8ef6-64e0e871d16a",
                   "operator": "Equals",
                   "valueJson": "true"
                 }
@@ -578,13 +602,13 @@
       ]
     },
     {
-      "stepGuid": "60018861-2d8a-5e70-ad7f-d30da1704873",
+      "stepGuid": "41b3ffb5-8749-5c33-ae2c-48fca99bbe5c",
       "stepName": "Pass-through",
       "description": "Whether players may be let through a closed door (/gate passthrough), and for how long.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "a1741b02-0be6-5217-b50d-26283573fdf5",
+          "fieldGuid": "7a07235b-42d0-5e11-83bc-d3829778f28a",
           "fieldName": "AllowPassThrough",
           "label": "Allow pass-through",
           "description": "The door can be opened briefly to let a player through, then closes by itself.",
@@ -594,7 +618,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "2e72834a-720a-5a4e-bfb1-0bbd8695314a",
+          "fieldGuid": "d43a68fe-c07b-562f-8884-26994fe5e584",
           "fieldName": "PassThroughDurationSeconds",
           "label": "Open for (seconds)",
           "description": "How long the door stays open for a pass-through.",
@@ -609,7 +633,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "a1741b02-0be6-5217-b50d-26283573fdf5",
+                  "sourceFieldGuid": "7a07235b-42d0-5e11-83bc-d3829778f28a",
                   "operator": "Equals",
                   "valueJson": "true"
                 }
@@ -620,13 +644,13 @@
       ]
     },
     {
-      "stepGuid": "d778968c-e5bb-5c58-8f89-ea6a3746d0c5",
+      "stepGuid": "58901948-ff4b-56f6-b187-7a77a67d2dfd",
       "stepName": "Info display",
       "description": "The floating text above the door: gate name, door name, health and state. Each line can be shown always, never, or only during a siege.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "cdfe9e36-e3a4-54f2-ab14-9b1e408e4d14",
+          "fieldGuid": "bb3126b0-cf0f-5848-b738-49ecb782fe28",
           "fieldName": "ShowHealthDisplay",
           "label": "Show health",
           "description": "Show the door's health in the floating text.",
@@ -636,7 +660,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "bd9a48d2-3e57-542f-afe1-257f3d89557a",
+          "fieldGuid": "8c2bbbf9-e717-5217-84e0-5f7b55487afb",
           "fieldName": "HealthDisplayMode",
           "label": "Health shown",
           "description": "Always, only once damaged, never, or only during a siege.",
@@ -652,7 +676,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "cdfe9e36-e3a4-54f2-ab14-9b1e408e4d14",
+                  "sourceFieldGuid": "bb3126b0-cf0f-5848-b738-49ecb782fe28",
                   "operator": "Equals",
                   "valueJson": "true"
                 }
@@ -661,7 +685,7 @@
           ]
         },
         {
-          "fieldGuid": "59637595-273b-5d7d-91c0-0d6a0e7bcdd1",
+          "fieldGuid": "801e4489-bcf0-56ea-b572-945242a3d38a",
           "fieldName": "HealthDisplayYOffset",
           "label": "Height above the door (blocks)",
           "description": "How far above the door the text floats.",
@@ -676,7 +700,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "cdfe9e36-e3a4-54f2-ab14-9b1e408e4d14",
+                  "sourceFieldGuid": "bb3126b0-cf0f-5848-b738-49ecb782fe28",
                   "operator": "Equals",
                   "valueJson": "true"
                 }
@@ -685,7 +709,7 @@
           ]
         },
         {
-          "fieldGuid": "e7398859-3a71-5708-85f0-1824972b378c",
+          "fieldGuid": "4f322591-7b9d-570c-84d1-c6634e7b86b5",
           "fieldName": "GateNameDisplayMode",
           "label": "Gate name shown",
           "description": "When the gate's name line is shown.",
@@ -696,7 +720,7 @@
           "settingsJson": "{\"enumValues\": [\"ALWAYS\", \"NEVER\", \"SIEGE_ONLY\"]}"
         },
         {
-          "fieldGuid": "2e9bd1c4-3740-5675-90df-314991348346",
+          "fieldGuid": "79d64a50-9721-5a27-9abf-afb2d2575a98",
           "fieldName": "DoorNameDisplayMode",
           "label": "Door name shown",
           "description": "When this door's name line is shown.",
@@ -707,7 +731,7 @@
           "settingsJson": "{\"enumValues\": [\"ALWAYS\", \"NEVER\", \"SIEGE_ONLY\"]}"
         },
         {
-          "fieldGuid": "87b50bd3-fa02-5a23-9a4e-9d46a521b96e",
+          "fieldGuid": "f305209a-bf47-5d9e-b26d-b9f1cd2995f7",
           "fieldName": "StatusDisplayMode",
           "label": "State shown",
           "description": "When the open/closed line is shown.",
@@ -718,7 +742,7 @@
           "settingsJson": "{\"enumValues\": [\"ALWAYS\", \"NEVER\", \"SIEGE_ONLY\"]}"
         },
         {
-          "fieldGuid": "fcc1ff43-b470-5eb4-b1a1-1820d327c641",
+          "fieldGuid": "af3d0ab3-ccef-5272-b286-63c68776d9c8",
           "fieldName": "InfoDisplayLocationId",
           "label": "Text position",
           "description": "Optional. Stand where the text should float and use Send to Minecraft; empty = worked out from the door's shape and facing.",
@@ -733,10 +757,10 @@
   ],
   "validationRules": [
     {
-      "fieldGuid": "9e48c4ce-b532-5e35-9e5e-e3edd3633c1b",
+      "fieldGuid": "7e40a4c8-0e8a-5a15-a842-56b6920c5d21",
       "validationType": "LocationInsideRegion",
       "dependsOn": {
-        "fieldGuid": "073b7cb1-e16c-51e1-b137-ac09426b37db"
+        "fieldGuid": "b7e49909-bab4-5195-b415-7588dbdb08d5"
       },
       "dependencyPath": "GateStructure.WgRegionId",
       "configJson": "{\"regionPropertyPath\": \"WgRegionId\", \"allowBoundary\": true}",
@@ -745,10 +769,10 @@
       "requiresDependencyFilled": true
     },
     {
-      "fieldGuid": "38fca3a0-2643-5cef-9dfb-ac055a95857e",
+      "fieldGuid": "091f1ddf-bea8-5899-b429-0e50d7a68967",
       "validationType": "LocationInsideRegion",
       "dependsOn": {
-        "fieldGuid": "073b7cb1-e16c-51e1-b137-ac09426b37db"
+        "fieldGuid": "b7e49909-bab4-5195-b415-7588dbdb08d5"
       },
       "dependencyPath": "GateStructure.WgRegionId",
       "configJson": "{\"regionPropertyPath\": \"WgRegionId\", \"allowBoundary\": true}",
@@ -757,10 +781,10 @@
       "requiresDependencyFilled": true
     },
     {
-      "fieldGuid": "cfd3c705-ac90-5f4c-8ac7-f9f89460b6ad",
+      "fieldGuid": "e4269bfe-fc45-54a8-9868-7d2944714913",
       "validationType": "LocationInsideRegion",
       "dependsOn": {
-        "fieldGuid": "073b7cb1-e16c-51e1-b137-ac09426b37db"
+        "fieldGuid": "b7e49909-bab4-5195-b415-7588dbdb08d5"
       },
       "dependencyPath": "GateStructure.WgRegionId",
       "configJson": "{\"regionPropertyPath\": \"WgRegionId\", \"allowBoundary\": true}",
@@ -769,10 +793,10 @@
       "requiresDependencyFilled": true
     },
     {
-      "fieldGuid": "ed0ce120-a0aa-5b08-bb9a-57a423f6643a",
+      "fieldGuid": "8f436d72-a88a-5d94-9626-8ee067d80e65",
       "validationType": "LocationInsideRegion",
       "dependsOn": {
-        "fieldGuid": "073b7cb1-e16c-51e1-b137-ac09426b37db"
+        "fieldGuid": "b7e49909-bab4-5195-b415-7588dbdb08d5"
       },
       "dependencyPath": "GateStructure.WgRegionId",
       "configJson": "{\"regionPropertyPath\": \"WgRegionId\", \"allowBoundary\": true}",
