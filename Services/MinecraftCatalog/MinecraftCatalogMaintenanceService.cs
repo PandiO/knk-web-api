@@ -190,6 +190,10 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
                 && string.IsNullOrWhiteSpace(m.IconUrlOverride))
             .Select(Row)
             .ToList();
+        report.IconOverrides = materials
+            .Where(m => !string.IsNullOrWhiteSpace(m.IconUrlOverride))
+            .Select(Row)
+            .ToList();
         report.MissingButReferenced = materialRows
             .Where(r => r.CatalogStatus == nameof(MinecraftCatalogStatus.Missing) && r.TotalReferences > 0)
             .ToList();

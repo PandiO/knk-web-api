@@ -4,6 +4,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Services
 {
@@ -256,7 +257,8 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(namespaceKey))
                 return currentId;
 
-            var key = namespaceKey.Trim();
+            // KNG-200 §3: one normalisation, so "STONE" finds minecraft:stone instead of creating a duplicate.
+            var key = MinecraftNamespaceKey.Normalize(namespaceKey);
 
             // Check if material already exists
             var existing = await _materialRepo.GetByNamespaceKeyAsync(key);
@@ -267,13 +269,7 @@ namespace knkwebapi_v2.Services
             var catalogEntry = _materialCatalog.Search(key, null)
                 .FirstOrDefault(c => c.NamespaceKey.Equals(key, StringComparison.OrdinalIgnoreCase));
 
-            var newMaterial = new MinecraftMaterialRef
-            {
-                NamespaceKey = key,
-                Category = catalogEntry?.Category ?? "Uncategorized",
-                LegacyName = catalogEntry?.LegacyName,
-                IconUrl = catalogEntry?.IconUrl
-            };
+            var newMaterial = MinecraftMaterialRefFactory.NewUnverified(key, catalogEntry, "Uncategorized");
 
             await _materialRepo.AddAsync(newMaterial);
             return newMaterial.Id;

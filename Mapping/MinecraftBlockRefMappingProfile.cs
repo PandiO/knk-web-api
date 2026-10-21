@@ -14,8 +14,12 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl));
             CreateMap<MinecraftBlockRefUpdateDto, MinecraftBlockRef>()
                 .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl));
+            // KNG-200: a state without its own icon shows its material's; a database row is saved by definition.
             CreateMap<MinecraftBlockRef, MinecraftBlockRefListDto>()
-                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl));
+                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl
+                    ?? (src.MaterialRef != null ? src.MaterialRef.IconUrlOverride ?? src.MaterialRef.IconUrl : null)))
+                .ForMember(dest => dest.DisplayName, opt => opt.MapFrom(src => src.MaterialRef != null ? src.MaterialRef.DisplayName : null))
+                .ForMember(dest => dest.IsPersisted, opt => opt.MapFrom(_ => true));
 
             CreateMap<PagedResult<MinecraftBlockRef>, PagedResultDto<MinecraftBlockRefListDto>>()
                 .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))

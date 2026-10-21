@@ -48,7 +48,7 @@ namespace knkwebapi_v2.Repositories
 
         public async Task<PagedResult<MinecraftBlockRef>> SearchAsync(PagedQuery query)
         {
-            var queryable = _context.MinecraftBlockRefs.AsQueryable();
+            var queryable = _context.MinecraftBlockRefs.Include(x => x.MaterialRef).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
             {

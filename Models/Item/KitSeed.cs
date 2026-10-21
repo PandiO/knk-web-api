@@ -2,6 +2,7 @@ using knkwebapi_v2.Properties;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Models;
 
@@ -111,13 +112,7 @@ public static class KitSeed
         {
             if (materials.ContainsKey(key)) continue;
             catalogByKey.TryGetValue(key, out var entry);
-            var material = new MinecraftMaterialRef
-            {
-                NamespaceKey = key,
-                Category = entry?.Category ?? FallbackMaterialCategory,
-                LegacyName = entry?.LegacyName,
-                IconUrl = entry?.IconUrl,
-            };
+            var material = MinecraftMaterialRefFactory.NewUnverified(key, entry, FallbackMaterialCategory);
             context.MinecraftMaterialRefs.Add(material);
             materials[key] = material;
             Count(nameof(MinecraftMaterialRef));

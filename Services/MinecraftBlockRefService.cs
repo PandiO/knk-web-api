@@ -8,6 +8,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Services
 {
@@ -16,12 +17,15 @@ namespace knkwebapi_v2.Services
         private readonly IMinecraftBlockRefRepository _repo;
         private readonly IMapper _mapper;
         private readonly IMinecraftMaterialCatalogService _catalog;
+        private readonly IMinecraftCatalogPickerSource _pickerSource;
 
-        public MinecraftBlockRefService(IMinecraftBlockRefRepository repo, IMapper mapper, IMinecraftMaterialCatalogService catalog)
+        public MinecraftBlockRefService(IMinecraftBlockRefRepository repo, IMapper mapper, IMinecraftMaterialCatalogService catalog,
+            IMinecraftCatalogPickerSource pickerSource)
         {
             _repo = repo;
             _mapper = mapper;
             _catalog = catalog;
+            _pickerSource = pickerSource;
         }
 
         public async Task<IEnumerable<MinecraftBlockRefDto>> GetAllAsync()
@@ -141,6 +145,16 @@ namespace knkwebapi_v2.Services
         public async Task<PagedResultDto<MinecraftBlockRefListDto>> SearchHybridAsync(PagedQueryDto queryDto)
         {
             if (queryDto == null) throw new ArgumentNullException(nameof(queryDto));
+
+            // KNG-200 phase 4: once a server scan has completed, block refs are searched in the database only;
+            // the merge below keyed states by block key and threw on two states of one block.
+            if (await _pickerSource.UseDatabaseAsync())
+            {
+                var query = _mapper.Map<PagedQuery>(queryDto);
+                query.Filters?.Remove("SearchHybrid");
+                var result = await _repo.SearchAsync(query);
+                return _mapper.Map<PagedResultDto<MinecraftBlockRefListDto>>(result);
+            }
 
             // Extract filter parameters
             var search = queryDto.SearchTerm;

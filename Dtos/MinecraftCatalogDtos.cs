@@ -104,6 +104,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("missingIcons")]
         public List<MinecraftCatalogAuditMaterialDto> MissingIcons { get; set; } = new();
 
+        /// <summary>Materials with a manual icon, so the admin page can change or clear it.</summary>
+        [JsonPropertyName("iconOverrides")]
+        public List<MinecraftCatalogAuditMaterialDto> IconOverrides { get; set; } = new();
+
         /// <summary>Materials not in the latest scan that something still references (KNG-200 D3/D7).</summary>
         [JsonPropertyName("missingButReferenced")]
         public List<MinecraftCatalogAuditMaterialDto> MissingButReferenced { get; set; } = new();

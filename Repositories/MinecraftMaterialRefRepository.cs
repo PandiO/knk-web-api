@@ -1,3 +1,4 @@
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
 using knkwebapi_v2.Repositories.Interfaces;
@@ -61,6 +62,7 @@ namespace knkwebapi_v2.Repositories
             {
                 var term = query.SearchTerm.ToLower();
                 queryable = queryable.Where(x => x.NamespaceKey.ToLower().Contains(term)
+                                              || (x.DisplayName != null && x.DisplayName.ToLower().Contains(term))
                                               || (x.LegacyName != null && x.LegacyName.ToLower().Contains(term))
                                               || x.Category.ToLower().Contains(term));
             }
@@ -70,6 +72,28 @@ namespace knkwebapi_v2.Repositories
                 if (query.Filters.TryGetValue("category", out var category) && !string.IsNullOrWhiteSpace(category))
                 {
                     queryable = queryable.Where(x => x.Category.ToLower() == category.ToLower());
+                }
+                // KNG-200 phase 4 picker filters (MinecraftPickerFilters). A row no scan has seen yet has no
+                // flags; its legacy category decides.
+                if (query.Filters.TryGetValue("kind", out var kind) && !string.IsNullOrWhiteSpace(kind))
+                {
+                    if (kind.Equals("item", StringComparison.OrdinalIgnoreCase))
+                    {
+                        queryable = queryable.Where(x => x.IsItem == true || (x.IsItem == null && x.Category != "BLOCK"));
+                    }
+                    else if (kind.Equals("block", StringComparison.OrdinalIgnoreCase))
+                    {
+                        queryable = queryable.Where(x => x.IsBlock == true || (x.IsBlock == null && x.Category == "BLOCK"));
+                    }
+                }
+                if (query.Filters.TryGetValue("keyContains", out var keyContains) && !string.IsNullOrWhiteSpace(keyContains))
+                {
+                    var part = keyContains.ToLower();
+                    queryable = queryable.Where(x => x.NamespaceKey.ToLower().Contains(part));
+                }
+                if (query.Filters.TryGetValue("excludeMissing", out var excludeMissing) && excludeMissing.Equals("true", StringComparison.OrdinalIgnoreCase))
+                {
+                    queryable = queryable.Where(x => x.CatalogStatus != MinecraftCatalogStatus.Missing);
                 }
             }
 
@@ -100,6 +124,9 @@ namespace knkwebapi_v2.Repositories
             return sortBy.ToLower() switch
             {
                 "namespacekey" => sortDescending ? queryable.OrderByDescending(x => x.NamespaceKey) : queryable.OrderBy(x => x.NamespaceKey),
+                "displayname" or "name" => sortDescending
+                    ? queryable.OrderByDescending(x => x.DisplayName ?? x.NamespaceKey).ThenByDescending(x => x.NamespaceKey)
+                    : queryable.OrderBy(x => x.DisplayName ?? x.NamespaceKey).ThenBy(x => x.NamespaceKey),
                 "category" => sortDescending ? queryable.OrderByDescending(x => x.Category) : queryable.OrderBy(x => x.Category),
                 "id" => sortDescending ? queryable.OrderByDescending(x => x.Id) : queryable.OrderBy(x => x.Id),
                 _ => queryable.OrderBy(x => x.NamespaceKey)
