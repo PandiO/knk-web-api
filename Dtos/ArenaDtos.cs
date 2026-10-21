@@ -188,29 +188,4 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("arenaName")] public string? ArenaName { get; set; }
         [JsonPropertyName("location")] public LocationDto? Location { get; set; }
     }
-
-    /// <summary>
-    /// Creates the v1 arena <c>arena_2</c> and its flagged battlegrounds (KNG-210 seed). The district, street and house
-    /// number are picked by staff; the battleground region ids are the arena's <c>-battleground</c> children as WorldGuard
-    /// lists them. Locations are set afterwards. Idempotent: an existing arena with the key is completed, not duplicated.
-    /// </summary>
-    public class ArenaLegacySeedDto
-    {
-        [JsonPropertyName("key")] public string? Key { get; set; }
-        [JsonPropertyName("name")] public string? Name { get; set; }
-        [JsonPropertyName("wgRegionId")] public string? WgRegionId { get; set; }
-        [JsonPropertyName("worldName")] public string? WorldName { get; set; }
-        [JsonPropertyName("districtId")] public int DistrictId { get; set; }
-        [JsonPropertyName("streetId")] [JsonConverter(typeof(NullableIntConverter))] public int? StreetId { get; set; }
-        [JsonPropertyName("houseNumber")] [JsonConverter(typeof(NullableIntConverter))] public int? HouseNumber { get; set; }
-        [JsonPropertyName("battlegroundRegionIds")] public List<string> BattlegroundRegionIds { get; set; } = new();
-    }
-
-    public class ArenaLegacySeedResultDto
-    {
-        [JsonPropertyName("arena")] public ArenaDto Arena { get; set; } = null!;
-        [JsonPropertyName("arenaCreated")] public bool ArenaCreated { get; set; }
-        [JsonPropertyName("battlegroundsCreated")] public List<string> BattlegroundsCreated { get; set; } = new();
-        [JsonPropertyName("battlegroundsExisting")] public List<string> BattlegroundsExisting { get; set; } = new();
-    }
 }

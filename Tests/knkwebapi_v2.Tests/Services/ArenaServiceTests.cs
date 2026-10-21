@@ -534,37 +534,4 @@ public class ArenaServiceTests : IDisposable
         Assert.Contains(DomainNavigationDefault.ArenaSpectatorArea, DomainNavigationDefault.DomainTypes);
         Assert.DoesNotContain(nameof(ArenaBattleground), DomainNavigationDefault.DomainTypes);
     }
-
-    // ===== arena_2 seed =====
-
-    [Fact]
-    public async Task LegacySeed_CreatesTheArenaAndItsBattlegrounds_DisabledUntilLocationsAreSet_AndIsIdempotent()
-    {
-        var regions = Enumerable.Range(1, 8).Select(n => $"arena_2,{n}-battleground").ToList();
-        var seed = new ArenaLegacySeedDto { DistrictId = 10, StreetId = 5, WorldName = "world", BattlegroundRegionIds = regions };
-
-        var first = await _service.SeedLegacyArenaAsync(seed);
-
-        Assert.True(first.ArenaCreated);
-        Assert.Equal(8, first.BattlegroundsCreated.Count);
-        var arena = await _context.Arenas.AsNoTracking().SingleAsync();
-        Assert.Equal(("arena_2", "arena_2", false), (arena.Key, arena.WgRegionId, arena.IsDuelEnabled));
-        var bgs = await _context.ArenaBattlegrounds.AsNoTracking().OrderBy(b => b.SortOrder).ToListAsync();
-        Assert.Equal(regions, bgs.Select(b => b.WgRegionId));
-        Assert.All(bgs, b => Assert.False(b.IsEnabled || b.AllowEntry));
-        Assert.Equal(Enumerable.Range(1, 8).Select(n => $"bg{n}"), bgs.Select(b => b.Key));
-
-        var again = await _service.SeedLegacyArenaAsync(seed);
-        Assert.False(again.ArenaCreated);
-        Assert.Empty(again.BattlegroundsCreated);
-        Assert.Equal(8, again.BattlegroundsExisting.Count);
-        Assert.Equal(8, await _context.ArenaBattlegrounds.CountAsync());
-    }
-
-    [Fact]
-    public async Task LegacySeed_NeedsTheBattlegroundRegions()
-    {
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.SeedLegacyArenaAsync(new ArenaLegacySeedDto { DistrictId = 10, StreetId = 5 }));
-    }
 }
