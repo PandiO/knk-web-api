@@ -251,6 +251,7 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(InvitationsController), nameof(InvitationsController.Resume), "knk.admin.invites"),
         R(typeof(InvitationsController), nameof(InvitationsController.Revoke), "knk.admin.invites"),
         R(typeof(InvitationsController), nameof(InvitationsController.GetRedemptions), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.GetAccessSyncStatus), "knk.admin.invites"), // KNG-216
         // Admission (KNG-214): the gate is the game server's; Admit / Detach are staff only
         R(typeof(AdmissionController), nameof(AdmissionController.Check), null),
         R(typeof(UsersController), nameof(UsersController.Admit), "knk.admin.user.manage"),

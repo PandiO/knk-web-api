@@ -36,6 +36,7 @@ namespace knkwebapi_v2.Services
         private readonly ILinkCodeService _linkCodeService;
         private readonly IInvitationService? _invitations;
         private readonly IUserService? _users;
+        private readonly knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? _accessSync;
 
         public AuthService(
             IUserRepository userRepository,
@@ -53,8 +54,11 @@ namespace knkwebapi_v2.Services
             ILoginAttemptLimiter loginLimiter,
             IOptions<AppSettings>? app = null,
             IInvitationService? invitations = null,
-            IUserService? users = null)
+            IUserService? users = null,
+            knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null)
         {
+            // KNG-216: the inline Cloudflare Access add after a registration commits.
+            _accessSync = accessSync;
             // KNG-214: register with a claim code links through IUserService (case A / B).
             _users = users;
             _invitations = invitations;
@@ -260,6 +264,20 @@ namespace knkwebapi_v2.Services
 
         /// <inheritdoc/>
         public async Task<AuthRegisterOutcome> RegisterAsync(AuthRegisterRequestDto request, string? clientIp = null, string? userAgent = null)
+        {
+            var outcome = await RegisterCoreAsync(request, clientIp, userAgent);
+            if (outcome.Ok && outcome.Result != null && _accessSync is { Enabled: true })
+            {
+                // KNG-216 (DESIGN § 5.8): the account is committed; put its email on the Cloudflare
+                // Access list now, so the player is usually let in before the "Done" page. A failure
+                // or timeout is swallowed (TryAddNowAsync never throws); the reconcile adds it.
+                await _accessSync.TryAddNowAsync(outcome.Result.User?.Email, _accessSync.InlineAddTimeout);
+                outcome.Result.AccessGate = true;
+            }
+            return outcome;
+        }
+
+        private async Task<AuthRegisterOutcome> RegisterCoreAsync(AuthRegisterRequestDto request, string? clientIp, string? userAgent)
         {
             if (request == null)
             {
@@ -676,6 +694,11 @@ namespace knkwebapi_v2.Services
             }
 
             await _userRepository.UpdateUserAsync(user);
+            if (newEmail != null)
+            {
+                // KNG-216: the new address goes on the Cloudflare Access list, the old one off.
+                _accessSync?.RequestSync();
+            }
 
             // A password or email change ends every session (closed-alpha WP4); this tab gets a
             // fresh one so it stays logged in, keeping its "remember me" choice.

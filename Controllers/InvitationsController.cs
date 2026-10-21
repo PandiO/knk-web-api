@@ -19,11 +19,20 @@ namespace knkwebapi_v2.Controllers;
 public class InvitationsController : ControllerBase
 {
     private readonly IInvitationService _service;
+    private readonly knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? _accessSync;
 
-    public InvitationsController(IInvitationService service)
+    public InvitationsController(IInvitationService service, knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null)
     {
         _service = service;
+        _accessSync = accessSync;
     }
+
+    /// <summary>The Cloudflare Access sync's state (KNG-216): last success, last error, pending changes.</summary>
+    [HttpGet("access-sync")]
+    [RequirePermission(StaffPermissions.ManageInvites)]
+    [ProducesResponseType(typeof(CloudflareAccessSyncStatusDto), StatusCodes.Status200OK)]
+    public IActionResult GetAccessSyncStatus() =>
+        Ok(_accessSync?.GetStatus() ?? new CloudflareAccessSyncStatusDto());
 
     /// <summary>Newest first; filter by status (Active, Paused, Exhausted, Expired, Revoked) and kind (Personal, Shared).</summary>
     [HttpGet]

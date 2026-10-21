@@ -83,6 +83,7 @@ namespace knkwebapi_v2.Services.Invitations
         private readonly string _baseUrl;
         private readonly TimeProvider _time;
         private readonly ILogger _logger;
+        private readonly knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? _accessSync;
 
         public InvitationService(
             IInvitationRepository repo,
@@ -95,8 +96,11 @@ namespace knkwebapi_v2.Services.Invitations
             IOptions<SecuritySettings> security,
             IOptions<AppSettings>? app = null,
             TimeProvider? time = null,
-            ILogger<InvitationService>? logger = null)
+            ILogger<InvitationService>? logger = null,
+            knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null)
         {
+            // KNG-216: a personal invite's email goes on the Cloudflare Access list right away.
+            _accessSync = accessSync;
             _repo = repo;
             _users = users;
             _groups = groups;
@@ -207,6 +211,7 @@ namespace knkwebapi_v2.Services.Invitations
 
             _logger.LogInformation("Staff {ActorId} created {Count} personal invitation(s)", actorId,
                 response.Results.Count(r => r.Outcome == "Created"));
+            _accessSync?.RequestSync();
             return new InvitationOutcome<CreatePersonalInvitationsResponseDto>(response);
         }
 
@@ -305,6 +310,7 @@ namespace knkwebapi_v2.Services.Invitations
             });
 
             _logger.LogInformation("Staff {ActorId} resent personal invitation {InvitationId}", actorId, invitation.Id);
+            _accessSync?.RequestSync(); // an expired invite is live again
             return new InvitationOutcome<PersonalInvitationResultDto>(new PersonalInvitationResultDto
             {
                 Email = invitation.Email!,
@@ -389,6 +395,7 @@ namespace knkwebapi_v2.Services.Invitations
                     return true;
                 });
                 _logger.LogInformation("Staff {ActorId} revoked invitation {InvitationId}", actorId, invitation.Id);
+                _accessSync?.RequestSync();
             }
             return new InvitationOutcome<InvitationDto>(await ToDtoAsync(invitation));
         }

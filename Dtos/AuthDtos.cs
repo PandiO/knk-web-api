@@ -64,6 +64,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("minecraftName")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? MinecraftName { get; set; }
+
+        /// <summary>Register only (KNG-216): true when the Cloudflare Access sync is on, so the web
+        /// app tells the new player that Cloudflare emails them a one-time PIN next. Absent otherwise.</summary>
+        [JsonPropertyName("accessGate")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? AccessGate { get; set; }
     }
 
     /// <summary>

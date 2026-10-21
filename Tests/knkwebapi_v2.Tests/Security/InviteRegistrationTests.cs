@@ -79,6 +79,49 @@ public class InviteRegistrationTests : IDisposable
     }
 
     [Fact]
+    public async Task AccessSyncOn_AddsTheNewEmailInline_AndSetsAccessGate()
+    {
+        // KNG-216: the register response tells the web app to show the Cloudflare PIN step.
+        var sync = new knkwebapi_v2.Tests.Services.CloudflareAccess.RecordingAccessSync();
+        var shared = await SharedAsync();
+
+        var outcome = await _h.CreateAuthService(_invitations, accessSync: sync).RegisterAsync(Request("player@example.com", code: shared.Code));
+
+        Assert.True(outcome.Ok, outcome.Message);
+        Assert.True(outcome.Result!.AccessGate);
+        Assert.Equal(new[] { "player@example.com" }, sync.Added);
+    }
+
+    [Fact]
+    public async Task AccessSyncOn_InlineAddFailure_StillRegisters()
+    {
+        var sync = new knkwebapi_v2.Tests.Services.CloudflareAccess.RecordingAccessSync { Throw = true };
+        var token = await PersonalTokenAsync();
+
+        var outcome = await _h.CreateAuthService(_invitations, accessSync: sync).RegisterAsync(Request("tester@example.com", token: token));
+
+        Assert.True(outcome.Ok, outcome.Message);
+        Assert.True(outcome.Result!.AccessGate);
+    }
+
+    [Fact]
+    public async Task AccessSyncOffOrRefused_NoAccessGate_NoAdd()
+    {
+        var off = new knkwebapi_v2.Tests.Services.CloudflareAccess.RecordingAccessSync { Enabled = false };
+        var shared = await SharedAsync();
+
+        var ok = await _h.CreateAuthService(_invitations, accessSync: off).RegisterAsync(Request("player@example.com", code: shared.Code));
+        var refused = await _h.CreateAuthService(_invitations, accessSync: new knkwebapi_v2.Tests.Services.CloudflareAccess.RecordingAccessSync())
+            .RegisterAsync(Request("nobody@example.com", code: "KNK-00000-00000"));
+
+        Assert.True(ok.Ok, ok.Message);
+        Assert.Null(ok.Result!.AccessGate);
+        Assert.Empty(off.Added);
+        Assert.False(refused.Ok);
+        Assert.DoesNotContain("accessGate", System.Text.Json.JsonSerializer.Serialize(ok.Result));
+    }
+
+    [Fact]
     public async Task Personal_WithAnotherEmail_Is400Mismatch()
     {
         var token = await PersonalTokenAsync();

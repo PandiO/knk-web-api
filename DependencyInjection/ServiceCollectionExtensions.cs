@@ -16,6 +16,43 @@ namespace knkwebapi_v2.DependencyInjection
     public static class ServiceCollectionExtensions
     {
         /// <summary>
+        /// KNG-216: the named "cloudflare" HttpClient (base address, bearer token, 10 s timeout,
+        /// the optional forward proxy), the Zero Trust email list, the sync singleton and its
+        /// reconcile loop. Settings are read when the client is built, so tests can configure them.
+        /// </summary>
+        public static IServiceCollection AddCloudflareAccessSync(this IServiceCollection services)
+        {
+            services.AddOptions<knkwebapi_v2.Configuration.CloudflareAccessSettings>();
+            services.AddHttpClient(knkwebapi_v2.Configuration.CloudflareAccessSettings.HttpClientName, (sp, client) =>
+                {
+                    var cf = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<knkwebapi_v2.Configuration.CloudflareAccessSettings>>().Value;
+                    client.BaseAddress = new System.Uri(cf.BaseUrl);
+                    client.Timeout = System.TimeSpan.FromSeconds(System.Math.Clamp(cf.RequestTimeoutSeconds, 1, 60));
+                    if (!string.IsNullOrWhiteSpace(cf.ApiToken))
+                    {
+                        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", cf.ApiToken);
+                    }
+                })
+                .ConfigurePrimaryHttpMessageHandler(sp =>
+                {
+                    var cf = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<knkwebapi_v2.Configuration.CloudflareAccessSettings>>().Value;
+                    var handler = new System.Net.Http.HttpClientHandler();
+                    if (!string.IsNullOrWhiteSpace(cf.ProxyUrl) && System.Uri.TryCreate(cf.ProxyUrl, System.UriKind.Absolute, out var proxy))
+                    {
+                        handler.Proxy = new System.Net.WebProxy(proxy);
+                        handler.UseProxy = true;
+                    }
+                    return handler;
+                });
+            services.AddSingleton<knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessList, knkwebapi_v2.Services.CloudflareAccess.ZeroTrustEmailList>();
+            services.AddScoped<knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessDesiredSet, knkwebapi_v2.Services.CloudflareAccess.CloudflareAccessDesiredSet>();
+            services.AddSingleton<knkwebapi_v2.Services.CloudflareAccess.CloudflareAccessSync>();
+            services.AddSingleton<knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync>(sp => sp.GetRequiredService<knkwebapi_v2.Services.CloudflareAccess.CloudflareAccessSync>());
+            services.AddHostedService<knkwebapi_v2.Services.CloudflareAccess.CloudflareAccessSyncService>();
+            return services;
+        }
+
+        /// <summary>
         /// Centralized registration for application services and repositories.
         /// - Add explicit registrations for special cases.
         /// - Use simple convention scanning to auto-register IThing -> Thing for types named *Repository or *Service.
@@ -59,6 +96,15 @@ namespace knkwebapi_v2.DependencyInjection
             {
                 services.Configure<knkwebapi_v2.Configuration.InvitationSettings>(invitationsSection);
             }
+
+            // KNG-216: the Cloudflare Access sync (DESIGN § 5.8). Off by default: with
+            // CloudflareAccess:SyncEnabled=false nothing calls Cloudflare.
+            var cloudflareSection = configuration?.GetSection(knkwebapi_v2.Configuration.CloudflareAccessSettings.SectionName);
+            if (cloudflareSection != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.CloudflareAccessSettings>(cloudflareSection);
+            }
+            services.AddCloudflareAccessSync();
 
             var emailSection = configuration?.GetSection(knkwebapi_v2.Configuration.EmailSettings.SectionName);
             if (emailSection != null)

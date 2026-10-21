@@ -37,6 +37,7 @@ namespace knkwebapi_v2.Services
         private readonly RegistrationMode _registrationMode;
         private readonly IInvitationRepository? _invitations;
         private readonly IEmailComposer? _email;
+        private readonly knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? _accessSync;
 
         public UserService(
             IUserRepository repo,
@@ -55,8 +56,11 @@ namespace knkwebapi_v2.Services
             ILinkAttemptLimiter? linkAttempts = null,
             IOptions<SecuritySettings>? security = null,
             IInvitationRepository? invitations = null,
-            IEmailComposer? email = null)
+            IEmailComposer? email = null,
+            knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null)
         {
+            // KNG-216: account changes that affect the Cloudflare Access list wake its sync.
+            _accessSync = accessSync;
             // KNG-214: the MinecraftLinked mail; optional like the ones above.
             _email = email;
             _invitations = invitations;
@@ -323,10 +327,22 @@ namespace knkwebapi_v2.Services
             {
                 await RevokeSessionsAsync(id, "account deactivated");
             }
+            else if (!wasActive && existing.IsActive)
+            {
+                _accessSync?.RequestSync();
+            }
         }
 
-        private Task RevokeSessionsAsync(int userId, string reason) =>
-            _sessions?.RevokeAllSessionsAsync(userId, reason) ?? Task.CompletedTask;
+        /// <summary>
+        /// Ends the account's sessions. Every caller is an email change, a deactivation, a delete, a
+        /// merge, a detached web login or a password change, so it also wakes the Cloudflare Access
+        /// sync (KNG-216); a run that finds nothing to change costs one list read.
+        /// </summary>
+        private Task RevokeSessionsAsync(int userId, string reason)
+        {
+            _accessSync?.RequestSync();
+            return _sessions?.RevokeAllSessionsAsync(userId, reason) ?? Task.CompletedTask;
+        }
 
         /// <summary>Upper bound for a personal multiplier (KNG-22): keeps a typo or a hostile
         /// edit from turning one salary payout into billions of coins.</summary>
@@ -1348,6 +1364,7 @@ namespace knkwebapi_v2.Services
                 active = user.IsActive
             }));
             _logger.LogInformation("User {UserId} admitted by staff {ActorId}", user.Id, actorUserId);
+            _accessSync?.RequestSync();
             return (await MapToUserDtoAsync(user), true);
         }
 
