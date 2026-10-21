@@ -126,6 +126,10 @@ namespace knkwebapi_v2.Services
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             var existing = await _kitRepo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Kit with id {id} not found.");
+            // KNG-210: arena_kits restricts the delete; say why instead of failing on the foreign key.
+            var arenas = await _kitRepo.ArenaNamesUsingAsync(id);
+            if (arenas.Count > 0)
+                throw new ArgumentException($"Kit {existing.Name} is an eligible kit of {string.Join(", ", arenas)}; remove it from the arena first.");
 
             await _kitRepo.DeleteAsync(id);
         }

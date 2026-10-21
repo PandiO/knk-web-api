@@ -49,6 +49,9 @@ namespace knkwebapi_v2.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public Task<List<string>> ArenaNamesUsingAsync(int kitId) =>
+            _context.ArenaKits.Where(k => k.KitId == kitId).Select(k => k.Arena.Name).OrderBy(n => n).ToListAsync();
+
         public async Task DeleteAsync(int id)
         {
             var entity = await _context.Kits.FindAsync(id);

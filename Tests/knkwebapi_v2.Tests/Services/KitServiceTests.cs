@@ -1009,4 +1009,29 @@ public class KitServiceTests
     }
 
     #endregion
+
+    // ===== Arena duels (KNG-210): a kit an arena offers can't be deleted =====
+
+    [Fact]
+    public async Task Delete_IsRefused_WhileAnArenaOffersTheKit()
+    {
+        _kitRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(PlainKit());
+        _kitRepo.Setup(r => r.ArenaNamesUsingAsync(10)).ReturnsAsync(new List<string> { "Arena" });
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.DeleteAsync(10));
+
+        Assert.Contains("Arena", ex.Message);
+        _kitRepo.Verify(r => r.DeleteAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Delete_GoesAhead_WhenNoArenaOffersTheKit()
+    {
+        _kitRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(PlainKit());
+        _kitRepo.Setup(r => r.ArenaNamesUsingAsync(10)).ReturnsAsync(new List<string>());
+
+        await _service.DeleteAsync(10);
+
+        _kitRepo.Verify(r => r.DeleteAsync(10), Times.Once);
+    }
 }

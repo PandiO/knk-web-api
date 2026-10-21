@@ -464,6 +464,16 @@ public class ArenaServiceTests : IDisposable
         Assert.Equal("ArenaSpectatorArea", DomainRegionNameFinalizer.DomainTypeOf(new ArenaSpectatorArea()));
     }
 
+    [Fact]
+    public async Task KitRepository_NamesTheArenasThatOfferAKit()
+    {
+        await _service.CreateAsync(NewArena(d => { d.AllowFixedKit = true; d.EligibleKits = new() { new ArenaKitDto { KitId = 7 } }; }));
+        var kits = new KitRepository(_context);
+
+        Assert.Equal(new[] { "Arena" }, await kits.ArenaNamesUsingAsync(7));
+        Assert.Empty(await kits.ArenaNamesUsingAsync(8));
+    }
+
     // ===== Model delete rules (become the migration's ON DELETE) =====
 
     public static IEnumerable<object[]> ExpectedDeleteRules() => new List<object[]>

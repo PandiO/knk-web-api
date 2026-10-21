@@ -9,6 +9,8 @@ namespace knkwebapi_v2.Repositories
         Task AddAsync(Kit entity);
         Task UpdateAsync(Kit entity);
         Task DeleteAsync(int id);
+        /// <summary>Arena duels (KNG-210): the arenas that offer this kit (arena_kits restricts the delete).</summary>
+        Task<List<string>> ArenaNamesUsingAsync(int kitId);
         Task<PagedResult<Kit>> SearchAsync(PagedQuery query);
 
         /// <summary>Most recent claim for (kitId, userId), or null if never claimed - the
