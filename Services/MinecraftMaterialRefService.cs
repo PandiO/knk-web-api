@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
@@ -50,7 +51,14 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(dto.NamespaceKey)) throw new ArgumentException("NamespaceKey is required.", nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.Category)) throw new ArgumentException("Category is required.", nameof(dto));
 
+            // KNG-200 phase 1: one row per normalised key; a second one is a 409 that names the existing row.
+            var key = MinecraftNamespaceKey.Normalize(dto.NamespaceKey);
+            var existing = await _repo.GetByNamespaceKeyAsync(key);
+            if (existing != null) throw new MinecraftMaterialRefConflictException(key, existing.Id);
+
             var entity = _mapper.Map<MinecraftMaterialRef>(dto);
+            entity.NamespaceKey = key;
+            entity.DisplayName ??= MinecraftNamespaceKey.DisplayNameFromKey(key);
             await _repo.AddAsync(entity);
             return _mapper.Map<MinecraftMaterialRefDto>(entity);
         }
@@ -75,7 +83,18 @@ namespace knkwebapi_v2.Services
             entity.Category = category;
             entity.LegacyName = legacyName ?? entity.LegacyName;
 
-            await _repo.AddAsync(entity);
+            try
+            {
+                await _repo.AddAsync(entity);
+            }
+            catch (DbUpdateException)
+            {
+                // Two requests created the same key at once: the unique index kept the other one.
+                _repo.Detach(entity);
+                var winner = await _repo.GetByNamespaceKeyAsync(key);
+                if (winner == null) throw;
+                return _mapper.Map<MinecraftMaterialRefDto>(winner);
+            }
             return _mapper.Map<MinecraftMaterialRefDto>(entity);
         }
 
@@ -89,7 +108,11 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"MinecraftMaterialRef with id {id} not found.");
 
-            existing.NamespaceKey = dto.NamespaceKey;
+            var key = MinecraftNamespaceKey.Normalize(dto.NamespaceKey);
+            var other = await _repo.GetByNamespaceKeyAsync(key);
+            if (other != null && other.Id != id) throw new MinecraftMaterialRefConflictException(key, other.Id);
+
+            existing.NamespaceKey = key;
             existing.LegacyName = dto.LegacyName;
             existing.Category = dto.Category;
             existing.IconUrl = dto.IconUrl;
@@ -132,46 +155,47 @@ namespace knkwebapi_v2.Services
                 }).ToList();
             }
 
-            var dbItems = await _repo.GetAllAsync();
-            var dbByKey = dbItems.ToDictionary(x => x.NamespaceKey, StringComparer.OrdinalIgnoreCase);
-
-            var catalogItems = _catalog.Search(search, category);
+            // KNG-200 phase 1: saved rows match catalogue entries by normalised key ("STONE" is minecraft:stone),
+            // and saved rows the catalogue doesn't have pass the same search and category filter.
+            var dbItems = (await _repo.GetAllAsync()).ToList();
+            var dbByKey = dbItems
+                .GroupBy(m => MinecraftNamespaceKey.TryNormalize(m.NamespaceKey) ?? m.NamespaceKey, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.OrderBy(m => m.Id).First(), StringComparer.OrdinalIgnoreCase);
 
             var merged = new List<MinecraftHybridMaterialOptionDto>();
-
-            foreach (var cat in catalogItems)
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var cat in _catalog.Search(search, category))
             {
-                dbByKey.TryGetValue(cat.NamespaceKey, out var match);
+                var key = MinecraftNamespaceKey.TryNormalize(cat.NamespaceKey) ?? cat.NamespaceKey;
+                if (!seen.Add(key)) continue;
+                dbByKey.TryGetValue(key, out var match);
 
                 merged.Add(new MinecraftHybridMaterialOptionDto
                 {
                     Id = match?.Id,
-                    NamespaceKey = cat.NamespaceKey,
+                    NamespaceKey = match?.NamespaceKey ?? cat.NamespaceKey,
                     Category = cat.Category ?? match?.Category ?? string.Empty,
                     LegacyName = match?.LegacyName ?? cat.LegacyName,
-                    DisplayName = cat.DisplayName ?? match?.NamespaceKey ?? cat.NamespaceKey,
+                    DisplayName = cat.DisplayName ?? match?.DisplayName ?? key,
                     IsPersisted = match != null,
-                    // Use persisted IconUrl if available, otherwise use catalog IconUrl
                     IconUrl = match?.IconUrlOverride ?? match?.IconUrl ?? cat.IconUrl
                 });
             }
 
-            // Include any DB entries not present in catalog (edge cases)
-            foreach (var db in dbItems)
+            foreach (var (key, db) in dbByKey)
             {
-                if (!merged.Any(x => x.NamespaceKey.Equals(db.NamespaceKey, StringComparison.OrdinalIgnoreCase)))
+                if (seen.Contains(key) || !MatchesSearch(db, search)) continue;
+                if (!string.IsNullOrWhiteSpace(category) && !string.Equals(db.Category, category, StringComparison.OrdinalIgnoreCase)) continue;
+                merged.Add(new MinecraftHybridMaterialOptionDto
                 {
-                    merged.Add(new MinecraftHybridMaterialOptionDto
-                    {
-                        Id = db.Id,
-                        NamespaceKey = db.NamespaceKey,
-                        Category = db.Category,
-                        LegacyName = db.LegacyName,
-                        DisplayName = db.NamespaceKey,
-                        IsPersisted = true,
-                        IconUrl = db.IconUrlOverride ?? db.IconUrl
-                    });
-                }
+                    Id = db.Id,
+                    NamespaceKey = db.NamespaceKey,
+                    Category = db.Category,
+                    LegacyName = db.LegacyName,
+                    DisplayName = db.DisplayName ?? MinecraftNamespaceKey.DisplayNameFromKey(key),
+                    IsPersisted = true,
+                    IconUrl = db.IconUrlOverride ?? db.IconUrl
+                });
             }
 
             var ordered = merged
@@ -185,6 +209,35 @@ namespace knkwebapi_v2.Services
             }
 
             return ordered.ToList();
+        }
+
+        private static bool MatchesSearch(MinecraftMaterialRef material, string? search)
+        {
+            if (string.IsNullOrWhiteSpace(search)) return true;
+            var term = search.Trim();
+            return material.NamespaceKey.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (material.DisplayName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (material.LegacyName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false);
+        }
+
+        /// <summary>Sorts merged hybrid rows as the table asked; unsorted keeps saved rows first, then by name.</summary>
+        private static IEnumerable<MinecraftHybridMaterialOptionDto> SortHybrid(
+            IEnumerable<MinecraftHybridMaterialOptionDto> rows, string? sortBy, bool descending)
+        {
+            Func<MinecraftHybridMaterialOptionDto, object?>? key = sortBy?.Trim().ToLowerInvariant() switch
+            {
+                "namespacekey" => r => r.NamespaceKey,
+                "displayname" or "name" => r => r.DisplayName,
+                "category" => r => r.Category,
+                "legacyname" => r => r.LegacyName,
+                "id" => r => r.Id,
+                _ => null,
+            };
+            if (key == null) return rows;
+            var comparer = Comparer<object?>.Create((a, b) => a is string x && b is string y
+                ? StringComparer.OrdinalIgnoreCase.Compare(x, y)
+                : Comparer<object?>.Default.Compare(a, b));
+            return descending ? rows.OrderByDescending(key, comparer) : rows.OrderBy(key, comparer);
         }
 
         public async Task<PagedResultDto<MinecraftMaterialRefListDto>> SearchAsync(PagedQueryDto queryDto)
@@ -214,8 +267,8 @@ namespace knkwebapi_v2.Services
             var search = queryDto.SearchTerm;
             var category = queryDto.Filters?.TryGetValue("category", out var cat) == true ? cat?.ToString() : null;
             
-            // Get ALL hybrid results (unfiltered) to calculate total count
-            var allHybridResults = (await GetHybridAsync(search, category, null)).ToList();
+            // Get ALL hybrid results to calculate total count, sorted as the table asked (KNG-200 phase 1)
+            var allHybridResults = SortHybrid(await GetHybridAsync(search, category, null), queryDto.SortBy, queryDto.SortDescending).ToList();
             var totalCount = allHybridResults.Count;
             
             // Apply pagination
@@ -229,7 +282,8 @@ namespace knkwebapi_v2.Services
             {
                 Items = pagedResults.Select(h => new MinecraftMaterialRefListDto
                 {
-                    Id = h.Id ?? 0,
+                    // KNG-200 phase 1: an unsaved catalogue row has no id (null), not 0.
+                    Id = h.Id,
                     NamespaceKey = h.NamespaceKey,
                     Category = h.Category,
                     LegacyName = h.LegacyName,
@@ -239,7 +293,7 @@ namespace knkwebapi_v2.Services
                 }).ToList(),
                 TotalCount = totalCount,
                 PageNumber = queryDto.PageNumber,
-                PageSize = pagedResults.Count
+                PageSize = queryDto.PageSize
             };
         }
     }

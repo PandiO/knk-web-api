@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.MinecraftCatalog;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KnKWebAPI.Controllers
@@ -56,6 +57,11 @@ namespace KnKWebAPI.Controllers
                 var created = await _service.CreateAsync(dto);
                 return CreatedAtRoute("GetMinecraftMaterialRefById", new { id = created.Id }, created);
             }
+            catch (MinecraftMaterialRefConflictException ex)
+            {
+                // KNG-200 phase 1: the key exists; the body names the row to use instead.
+                return Conflict(new { message = ex.Message, id = ex.ExistingId });
+            }
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
@@ -85,6 +91,10 @@ namespace KnKWebAPI.Controllers
             {
                 await _service.UpdateAsync(id, dto);
                 return NoContent();
+            }
+            catch (MinecraftMaterialRefConflictException ex)
+            {
+                return Conflict(new { message = ex.Message, id = ex.ExistingId });
             }
             catch (KeyNotFoundException)
             {

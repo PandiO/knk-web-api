@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.MinecraftCatalog;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KnKWebAPI.Controllers
@@ -46,6 +47,26 @@ namespace KnKWebAPI.Controllers
                 var created = await _service.CreateAsync(dto);
                 return CreatedAtRoute("GetMinecraftBlockRefById", new { id = created.Id }, created);
             }
+            catch (MinecraftBlockRefConflictException ex)
+            {
+                // KNG-200 phase 1: the state exists; the body names the row to use instead.
+                return Conflict(new { message = ex.Message, id = ex.ExistingId });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>The saved ref for this block state (any notation), or a new one; what pickers call on select (KNG-200 phase 1).</summary>
+        [HttpPost("get-or-create")]
+        public async Task<IActionResult> GetOrCreate([FromBody] MinecraftBlockRefCreateDto dto)
+        {
+            if (dto == null) return BadRequest();
+            try
+            {
+                return Ok(await _service.GetOrCreateAsync(dto));
+            }
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
@@ -60,6 +81,10 @@ namespace KnKWebAPI.Controllers
             {
                 await _service.UpdateAsync(id, dto);
                 return NoContent();
+            }
+            catch (MinecraftBlockRefConflictException ex)
+            {
+                return Conflict(new { message = ex.Message, id = ex.ExistingId });
             }
             catch (KeyNotFoundException)
             {

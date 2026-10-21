@@ -38,6 +38,11 @@ namespace knkwebapi_v2.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public void Detach(MinecraftMaterialRef entity)
+        {
+            _context.Entry(entity).State = EntityState.Detached;
+        }
+
         public async Task UpdateAsync(MinecraftMaterialRef entity)
         {
             _context.MinecraftMaterialRefs.Update(entity);

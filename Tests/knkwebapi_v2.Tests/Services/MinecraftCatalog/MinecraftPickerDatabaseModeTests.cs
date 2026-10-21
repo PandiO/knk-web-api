@@ -195,7 +195,7 @@ public class MinecraftPickerDatabaseModeTests
 
         await using var context = NewContext();
         var service = new MinecraftBlockRefService(new MinecraftBlockRefRepository(context), _mapper, StaticCatalog(),
-            new MinecraftCatalogPickerSource(context, new MinecraftCatalogOptions()));
+            new MinecraftCatalogPickerSource(context, new MinecraftCatalogOptions()), new MinecraftMaterialRefRepository(context));
         var result = await service.SearchHybridAsync(PickerQuery());
 
         Assert.Equal(2, result.TotalCount);

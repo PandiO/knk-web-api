@@ -6,6 +6,7 @@ namespace knkwebapi_v2.Repositories.Interfaces
     {
         Task<IEnumerable<MinecraftBlockRef>> GetAllAsync();
         Task<MinecraftBlockRef?> GetByIdAsync(int id);
+        Task<MinecraftBlockRef?> GetByStateKeyAsync(string stateKey);
         Task AddAsync(MinecraftBlockRef entity);
         Task UpdateAsync(MinecraftBlockRef entity);
         Task DeleteAsync(int id);

@@ -30,3 +30,30 @@ public static class MinecraftMaterialRefFactory
         };
     }
 }
+
+/// <summary>A material with this normalised key already exists (HTTP 409 with its id, KNG-200 phase 1).</summary>
+public class MinecraftMaterialRefConflictException : InvalidOperationException
+{
+    public MinecraftMaterialRefConflictException(string namespaceKey, int existingId)
+        : base($"A MinecraftMaterialRef with key {namespaceKey} already exists (id {existingId}).")
+    {
+        NamespaceKey = namespaceKey;
+        ExistingId = existingId;
+    }
+
+    public string NamespaceKey { get; }
+
+    public int ExistingId { get; }
+}
+
+/// <summary>A block ref with this canonical state already exists (HTTP 409 with its id, KNG-200 phase 1).</summary>
+public class MinecraftBlockRefConflictException : InvalidOperationException
+{
+    public MinecraftBlockRefConflictException(string state, int existingId)
+        : base($"A MinecraftBlockRef for {state} already exists (id {existingId}).")
+    {
+        ExistingId = existingId;
+    }
+
+    public int ExistingId { get; }
+}
