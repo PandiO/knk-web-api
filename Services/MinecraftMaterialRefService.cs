@@ -127,7 +127,7 @@ namespace knkwebapi_v2.Services
                     DisplayName = cat.DisplayName ?? match?.NamespaceKey ?? cat.NamespaceKey,
                     IsPersisted = match != null,
                     // Use persisted IconUrl if available, otherwise use catalog IconUrl
-                    IconUrl = match?.IconUrl ?? cat.IconUrl
+                    IconUrl = match?.IconUrlOverride ?? match?.IconUrl ?? cat.IconUrl
                 });
             }
 
@@ -144,7 +144,7 @@ namespace knkwebapi_v2.Services
                         LegacyName = db.LegacyName,
                         DisplayName = db.NamespaceKey,
                         IsPersisted = true,
-                        IconUrl = db.IconUrl
+                        IconUrl = db.IconUrlOverride ?? db.IconUrl
                     });
                 }
             }

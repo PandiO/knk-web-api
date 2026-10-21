@@ -50,6 +50,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("totalReferences")]
         public int TotalReferences { get; set; }
+
+        /// <summary>The icon shown for this material (override first).</summary>
+        [JsonPropertyName("iconUrl")]
+        public string? IconUrl { get; set; }
     }
 
     /// <summary>A block ref row in the audit.</summary>
@@ -96,6 +100,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("notNormalizedMaterialKeys")]
         public List<MinecraftCatalogAuditMaterialDto> NotNormalizedMaterialKeys { get; set; } = new();
 
+        /// <summary>Active materials the scan found no icon for and that have no override.</summary>
+        [JsonPropertyName("missingIcons")]
+        public List<MinecraftCatalogAuditMaterialDto> MissingIcons { get; set; } = new();
+
         /// <summary>Materials not in the latest scan that something still references (KNG-200 D3/D7).</summary>
         [JsonPropertyName("missingButReferenced")]
         public List<MinecraftCatalogAuditMaterialDto> MissingButReferenced { get; set; } = new();
@@ -116,6 +124,112 @@ namespace knkwebapi_v2.Dtos
         /// <summary>Block refs whose stored key, state or StateKey differs from the canonical form or from their material.</summary>
         [JsonPropertyName("notCanonicalBlockRefs")]
         public List<MinecraftCatalogAuditBlockDto> NotCanonicalBlockRefs { get; set; } = new();
+    }
+
+    /// <summary>A scan as the admin page and the plugin see it (KNG-200 plan §5.2a).</summary>
+    public class MinecraftCatalogScanDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = null!;
+
+        [JsonPropertyName("requestedByUserId")]
+        public int? RequestedByUserId { get; set; }
+
+        [JsonPropertyName("worldTaskId")]
+        public int? WorldTaskId { get; set; }
+
+        [JsonPropertyName("minecraftVersion")]
+        public string? MinecraftVersion { get; set; }
+
+        [JsonPropertyName("serverVersion")]
+        public string? ServerVersion { get; set; }
+
+        [JsonPropertyName("entryCount")]
+        public int? EntryCount { get; set; }
+
+        [JsonPropertyName("inserted")]
+        public int Inserted { get; set; }
+
+        [JsonPropertyName("updated")]
+        public int Updated { get; set; }
+
+        [JsonPropertyName("unchanged")]
+        public int Unchanged { get; set; }
+
+        [JsonPropertyName("merged")]
+        public int Merged { get; set; }
+
+        [JsonPropertyName("deleted")]
+        public int Deleted { get; set; }
+
+        [JsonPropertyName("markedMissing")]
+        public int MarkedMissing { get; set; }
+
+        [JsonPropertyName("iconsMissing")]
+        public int IconsMissing { get; set; }
+
+        [JsonPropertyName("error")]
+        public string? Error { get; set; }
+
+        [JsonPropertyName("createdAt")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonPropertyName("completedAt")]
+        public DateTime? CompletedAt { get; set; }
+    }
+
+    /// <summary>The snapshot knk-plugin sends with <c>PUT api/MinecraftCatalog/scans/{id}/snapshot</c> (schema version 1).</summary>
+    public class MinecraftCatalogSnapshotDto
+    {
+        [JsonPropertyName("schemaVersion")]
+        public int SchemaVersion { get; set; }
+
+        [JsonPropertyName("minecraftVersion")]
+        public string? MinecraftVersion { get; set; }
+
+        [JsonPropertyName("serverVersion")]
+        public string? ServerVersion { get; set; }
+
+        [JsonPropertyName("contentHash")]
+        public string? ContentHash { get; set; }
+
+        [JsonPropertyName("entries")]
+        public List<MinecraftCatalogEntryDto>? Entries { get; set; }
+    }
+
+    /// <summary>One registry entry of a snapshot.</summary>
+    public class MinecraftCatalogEntryDto
+    {
+        [JsonPropertyName("key")]
+        public string Key { get; set; } = null!;
+
+        [JsonPropertyName("isItem")]
+        public bool IsItem { get; set; }
+
+        [JsonPropertyName("isBlock")]
+        public bool IsBlock { get; set; }
+
+        [JsonPropertyName("maxStackSize")]
+        public int? MaxStackSize { get; set; }
+
+        [JsonPropertyName("translationKey")]
+        public string? TranslationKey { get; set; }
+
+        [JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; }
+
+        [JsonPropertyName("defaultBlockState")]
+        public string? DefaultBlockState { get; set; }
+    }
+
+    /// <summary>Body of <c>PUT api/MinecraftCatalog/materials/{id}/icon-override</c>; null clears the override.</summary>
+    public class MinecraftIconOverrideDto
+    {
+        [JsonPropertyName("iconUrlOverride")]
+        public string? IconUrlOverride { get; set; }
     }
 
     /// <summary>Result of merging one material into another.</summary>

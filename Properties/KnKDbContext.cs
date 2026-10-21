@@ -1733,7 +1733,9 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("minecraft_catalog_scans");
-            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            // Concurrency token: a status read and written by a request (e.g. "the plugin failed its task")
+            // must not overwrite an ingest that completed the scan meanwhile.
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsConcurrencyToken();
             entity.Property(e => e.MinecraftVersion).HasMaxLength(32);
             entity.Property(e => e.ServerVersion).HasMaxLength(191);
             entity.Property(e => e.ContentHash).HasMaxLength(64);

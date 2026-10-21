@@ -8,14 +8,15 @@ namespace knkwebapi_v2.Mapping
     {
         public MinecraftMaterialRefMappingProfile()
         {
+            // KNG-200: the shown icon is the manual override when there is one.
             CreateMap<MinecraftMaterialRef, MinecraftMaterialRefDto>()
-                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl));
+                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrlOverride ?? src.IconUrl));
             CreateMap<MinecraftMaterialRefCreateDto, MinecraftMaterialRef>()
                 .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl));
             CreateMap<MinecraftMaterialRefUpdateDto, MinecraftMaterialRef>()
                 .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl));
             CreateMap<MinecraftMaterialRef, MinecraftMaterialRefListDto>()
-                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl));
+                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrlOverride ?? src.IconUrl));
 
             CreateMap<PagedResult<MinecraftMaterialRef>, PagedResultDto<MinecraftMaterialRefListDto>>()
                 .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))

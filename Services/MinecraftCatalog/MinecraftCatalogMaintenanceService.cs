@@ -153,6 +153,7 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
                 CatalogStatus = m.CatalogStatus.ToString(),
                 References = refs,
                 TotalReferences = refs.Values.Sum(),
+                IconUrl = m.IconUrlOverride ?? m.IconUrl,
             };
         }
 
@@ -183,6 +184,11 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
         var colliding = report.MaterialKeyCollisions.SelectMany(g => g).Select(r => r.Id).ToHashSet();
         report.NotNormalizedMaterialKeys = materialRows
             .Where(r => r.NormalizedKey != null && r.NormalizedKey != r.NamespaceKey && !colliding.Contains(r.Id))
+            .ToList();
+        report.MissingIcons = materials
+            .Where(m => m.CatalogStatus == MinecraftCatalogStatus.Active && m.IconStatus == MinecraftIconStatus.Missing
+                && string.IsNullOrWhiteSpace(m.IconUrlOverride))
+            .Select(Row)
             .ToList();
         report.MissingButReferenced = materialRows
             .Where(r => r.CatalogStatus == nameof(MinecraftCatalogStatus.Missing) && r.TotalReferences > 0)
@@ -238,16 +244,40 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
             ?? throw new KeyNotFoundException($"MinecraftMaterialRef with id {sourceId} not found.");
         var target = await _db.MinecraftMaterialRefs.FirstOrDefaultAsync(m => m.Id == targetId, ct)
             ?? throw new KeyNotFoundException($"MinecraftMaterialRef with id {targetId} not found.");
-        var targetKey = MinecraftNamespaceKey.TryNormalize(target.NamespaceKey) ?? target.NamespaceKey;
 
-        var result = new MinecraftMaterialMergeResultDto { SourceId = sourceId, TargetId = targetId };
+        var result = new MinecraftMaterialMergeResultDto
+        {
+            SourceId = sourceId,
+            TargetId = targetId,
+            Repointed = await RepointReferencesAsync(_db, sourceId, target, ct),
+        };
+
+        _db.MinecraftMaterialRefs.Remove(source);
+        await _db.SaveChangesAsync(ct);
+        if (transaction != null) await transaction.CommitAsync(ct);
+
+        _logger.LogInformation("Merged MinecraftMaterialRef {SourceId} ({SourceKey}) into {TargetId} ({TargetKey}): {Repointed}",
+            sourceId, source.NamespaceKey, targetId, target.NamespaceKey,
+            string.Join(", ", result.Repointed.Select(r => $"{r.Key}={r.Value}")));
+        return result;
+    }
+
+    /// <summary>
+    /// Points every reference to <paramref name="sourceId"/> at <paramref name="target"/> (tracked, not saved).
+    /// A block state follows its new material: same properties, the target's key. Used by the merge
+    /// action and by the scan's clean-up (KNG-200 D7).
+    /// </summary>
+    internal static async Task<Dictionary<string, int>> RepointReferencesAsync(
+        KnKDbContext db, int sourceId, MinecraftMaterialRef target, CancellationToken ct)
+    {
+        var targetKey = MinecraftNamespaceKey.TryNormalize(target.NamespaceKey) ?? target.NamespaceKey;
+        var repointed = new Dictionary<string, int>();
         foreach (var referrer in MinecraftMaterialReferences.All)
         {
-            var rows = await referrer.RepointAsync(_db, sourceId, targetId, ct);
+            var rows = await referrer.RepointAsync(db, sourceId, target.Id, ct);
             if (rows.Count == 0) continue;
-            result.Repointed[referrer.Name] = rows.Count;
+            repointed[referrer.Name] = rows.Count;
 
-            // A block state follows its new material: same properties, the target's key.
             foreach (var block in rows.OfType<MinecraftBlockRef>())
             {
                 var properties = block.BlockStateString is { } state && state.Contains('[') ? state[state.IndexOf('[')..] : null;
@@ -260,15 +290,7 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
                 }
             }
         }
-
-        _db.MinecraftMaterialRefs.Remove(source);
-        await _db.SaveChangesAsync(ct);
-        if (transaction != null) await transaction.CommitAsync(ct);
-
-        _logger.LogInformation("Merged MinecraftMaterialRef {SourceId} ({SourceKey}) into {TargetId} ({TargetKey}): {Repointed}",
-            sourceId, source.NamespaceKey, targetId, target.NamespaceKey,
-            string.Join(", ", result.Repointed.Select(r => $"{r.Key}={r.Value}")));
-        return result;
+        return repointed;
     }
 
     private Dictionary<string, string> StaticDisplayNames()

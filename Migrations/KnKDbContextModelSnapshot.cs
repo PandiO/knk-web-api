@@ -3691,6 +3691,7 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("varchar(191)");
 
                     b.Property<string>("Status")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
