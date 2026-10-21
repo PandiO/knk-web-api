@@ -679,6 +679,10 @@ public static partial class MenuTemplateSeed
         // Player statistics privacy (KNG-34) - see MenuTemplateSeed.Statistics.cs.
         foreach (var template in StatisticsTemplates())
             yield return template;
+
+        // Arena duels P6 (KNG-220) - see MenuTemplateSeed.Duel.cs.
+        foreach (var template in DuelTemplates())
+            yield return template;
     }
 
     /// <summary>

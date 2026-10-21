@@ -69,6 +69,10 @@ public class MenuTemplateContentSeedTests
         MenuTemplateSeed.StatisticsMainMenuKey,
         MenuTemplateSeed.LeaderboardsMenuKey,
         MenuTemplateSeed.LeaderboardMenuKey,
+        MenuTemplateSeed.DuelMatchesMenuKey,
+        MenuTemplateSeed.DuelMatchDetailMenuKey,
+        MenuTemplateSeed.ArenaMainMenuKey,
+        MenuTemplateSeed.DuelChallengeMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
