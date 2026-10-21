@@ -72,12 +72,32 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("passwordConfirmation")]
         public string? PasswordConfirmation { get; set; }
+
+        /// <summary>A personal invite's token from /invite/:token (KNG-212; Mode=Invite only).</summary>
+        [JsonPropertyName("inviteToken")]
+        public string? InviteToken { get; set; }
+
+        /// <summary>A shared code (KNK-XXXXX-XXXXX) from /join (KNG-212; Mode=Invite only).</summary>
+        [JsonPropertyName("inviteCode")]
+        public string? InviteCode { get; set; }
+
+        /// <summary>The claim code from the server's disconnect screen (KNG-214). Answers NotSupportedYet
+        /// until the admission gate is built.</summary>
+        [JsonPropertyName("claimCode")]
+        public string? ClaimCode { get; set; }
     }
 
     /// <summary>The result of AuthService.RegisterAsync: a login response, or an error code.</summary>
     public sealed class AuthRegisterOutcome
     {
         public const string RegistrationNeedsCode = "RegistrationNeedsCode";
+
+        // KNG-212 (Security:Registration:Mode).
+        public const string InviteRequired = "InviteRequired";
+        public const string InvalidInvite = "InvalidInvite";
+        public const string InvitesDisabled = "InvitesDisabled";
+        public const string InviteEmailMismatch = "InviteEmailMismatch";
+        public const string NotSupportedYet = "NotSupportedYet";
 
         public bool Ok { get; private init; }
         public AuthLoginResponseDto? Result { get; private init; }

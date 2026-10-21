@@ -8,6 +8,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Email;
+using knkwebapi_v2.Services.Invitations;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -33,6 +34,7 @@ namespace knkwebapi_v2.Services
         private readonly IRefreshTokenRepository _refreshTokens;
         private readonly ISessionRevocationService _sessionRevocation;
         private readonly ILinkCodeService _linkCodeService;
+        private readonly IInvitationService? _invitations;
 
         public AuthService(
             IUserRepository userRepository,
@@ -48,8 +50,10 @@ namespace knkwebapi_v2.Services
             ISessionRevocationService sessionRevocation,
             ILinkCodeService linkCodeService,
             ILoginAttemptLimiter loginLimiter,
-            IOptions<AppSettings>? app = null)
+            IOptions<AppSettings>? app = null,
+            IInvitationService? invitations = null)
         {
+            _invitations = invitations;
             _loginLimiter = loginLimiter;
             _linkCodeService = linkCodeService;
             _refreshTokens = refreshTokens;
@@ -258,9 +262,35 @@ namespace knkwebapi_v2.Services
                 return AuthRegisterOutcome.Fail("InvalidRequest", "Registration payload is required.");
             }
 
+            // KNG-214 adds claim codes; until then they are refused in every mode.
+            if (!string.IsNullOrWhiteSpace(request.ClaimCode))
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.NotSupportedYet, "Claim codes can't be used to sign up yet.");
+            }
+
+            var hasInvite = !string.IsNullOrWhiteSpace(request.InviteToken) || !string.IsNullOrWhiteSpace(request.InviteCode);
+            var inviteMode = _securitySettings.Registration.Mode != RegistrationMode.LinkCode;
+            if (hasInvite)
+            {
+                if (!inviteMode)
+                {
+                    // Mode=LinkCode (today's alpha): invites don't exist for sign-up yet.
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvitesDisabled, "Sign-up with an invitation isn't open yet. Join the server and run /account link to get your registration code.");
+                }
+                if (!string.IsNullOrWhiteSpace(request.LinkCode))
+                {
+                    return AuthRegisterOutcome.Fail("InvalidRequest", "Use either an invitation or a link code, not both.");
+                }
+                return await RegisterWithInviteAsync(request, clientIp, userAgent);
+            }
+
             // D1/D2: a code from the game server (/account link) is the only way in during the alpha.
             if (string.IsNullOrWhiteSpace(request.LinkCode))
             {
+                if (inviteMode)
+                {
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InviteRequired, "You need an invitation to create an account.");
+                }
                 return _securitySettings.Registration.AllowWebFirst
                     ? AuthRegisterOutcome.Fail("WebFirstUnavailable", "Web-only sign-up isn't available yet. Join the server and run /account link to get your registration code.")
                     : AuthRegisterOutcome.Fail(AuthRegisterOutcome.RegistrationNeedsCode, "Join the server and run /account link to get your registration code.");
@@ -282,6 +312,13 @@ namespace knkwebapi_v2.Services
             if (!string.IsNullOrEmpty(user.PasswordHash))
             {
                 return AuthRegisterOutcome.Fail("AlreadyRegistered", "This Minecraft account already has a web login. Log in or reset your password.");
+            }
+
+            // Mode=Invite: a link code alone only works for an account that is already admitted
+            // (grandfathered, or admitted by staff), so it can't be used to sign up without an invite.
+            if (inviteMode && !user.AdmittedAt.HasValue)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InviteRequired, "You need an invitation to create an account.");
             }
 
             var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
@@ -319,6 +356,73 @@ namespace knkwebapi_v2.Services
 
             var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
             _logger.LogInformation("Web login registered for Minecraft account {UserId} ({Username})", user.Id, user.Username);
+            return AuthRegisterOutcome.Success(new AuthLoginResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = null,
+                ExpiresIn = expiresIn,
+                User = _mapper.Map<UserDto>(user),
+                Session = session
+            });
+        }
+
+        /// <summary>
+        /// Mode=Invite with an invite (KNG-212, plan § 5.1): check the invite, the email (a personal
+        /// invite's address must match and is then verified), the password and duplicates, then take the
+        /// use and create the web shell account in one transaction (InvitationService.RedeemAsync) and
+        /// log it in.
+        /// </summary>
+        private async Task<AuthRegisterOutcome> RegisterWithInviteAsync(AuthRegisterRequestDto request, string? clientIp, string? userAgent)
+        {
+            const string invalidInvite = "This invitation is invalid or has expired. Ask whoever invited you for a new one.";
+            if (_invitations == null)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvitesDisabled, "Sign-up with an invitation isn't available.");
+            }
+
+            // A token is a personal invite, a code a shared one; the other field is ignored.
+            var invitation = !string.IsNullOrWhiteSpace(request.InviteToken)
+                ? await _invitations.FindUsableAsync(request.InviteToken, null)
+                : await _invitations.FindUsableAsync(null, request.InviteCode);
+            if (invitation == null)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidInvite, invalidInvite);
+            }
+
+            var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+            var personal = invitation.Kind == Models.InvitationKind.Personal;
+            if (personal && !string.Equals(email, invitation.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InviteEmailMismatch, "This invitation was sent to a different email address. Use the address it was sent to.");
+            }
+            if (!IsValidEmail(email))
+            {
+                return AuthRegisterOutcome.Fail("InvalidEmail", "Enter a valid email address.");
+            }
+
+            if (request.Password != request.PasswordConfirmation)
+            {
+                return AuthRegisterOutcome.Fail("PasswordMismatch", "Password and confirmation do not match.");
+            }
+            var (passwordValid, passwordError) = await _passwordService.ValidatePasswordAsync(request.Password ?? string.Empty);
+            if (!passwordValid)
+            {
+                return AuthRegisterOutcome.Fail("InvalidPassword", passwordError ?? "Password does not meet the requirements.");
+            }
+            if (await _userRepository.IsEmailTakenAsync(email))
+            {
+                return AuthRegisterOutcome.Fail("DuplicateEmail", "This email is already in use by another account.");
+            }
+
+            var passwordHash = await _passwordService.HashPasswordAsync(request.Password!);
+            var user = await _invitations.RedeemAsync(new InviteSignup(invitation, email, passwordHash, EmailVerified: personal));
+            if (user == null)
+            {
+                // Another sign-up took the last use, or the invite was paused or revoked meanwhile.
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidInvite, invalidInvite);
+            }
+
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
             return AuthRegisterOutcome.Success(new AuthLoginResponseDto
             {
                 AccessToken = accessToken,

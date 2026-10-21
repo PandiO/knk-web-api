@@ -240,6 +240,17 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(EmailOutboxController), nameof(EmailOutboxController.List), "knk.admin.config"),
         R(typeof(EmailOutboxController), nameof(EmailOutboxController.SendTest), "knk.admin.config"),
         R(typeof(EmailOutboxController), nameof(EmailOutboxController.Retry), "knk.admin.config"),
+        // Invitations (KNG-212): staff only (RequirePermission); the check is anonymous
+        R(typeof(InvitationsController), nameof(InvitationsController.List), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.GetOptions), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.CreatePersonal), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.CreateShared), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Resend), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Rotate), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Pause), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Resume), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Revoke), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.GetRedemptions), "knk.admin.invites"),
     };
 
     /// <summary>node null = plugin-only (RequirePluginService).</summary>

@@ -1193,6 +1193,49 @@ public class UserServiceTests
         _mockUserRepository.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => !ids.Any()), It.IsAny<Func<Task>>()), Times.Once);
     }
 
+    [Theory]
+    [InlineData(knkwebapi_v2.Configuration.RegistrationMode.LinkCode, true)]
+    [InlineData(knkwebapi_v2.Configuration.RegistrationMode.Open, true)]
+    [InlineData(knkwebapi_v2.Configuration.RegistrationMode.Invite, false)]
+    public async Task CreateAsync_AdmitsThePlayer_UnlessRegistrationIsInviteOnly(knkwebapi_v2.Configuration.RegistrationMode mode, bool admitted)
+    {
+        // KNG-212: players the plugin creates before the switch to Mode=Invite are admitted, so the
+        // admission gate (KNG-214) never stops them later.
+        var security = new knkwebapi_v2.Configuration.SecuritySettings();
+        security.Registration.Mode = mode;
+        var service = new UserService(_mockUserRepository.Object, _mockMapper.Object, _mockPasswordService.Object,
+            _mockLinkCodeService.Object, _mockTitleService.Object, _mockMembershipService.Object, _mockAuditLogService.Object,
+            _mockPermissionGroupRepository.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+            _currency, _titleProgression, security: Microsoft.Extensions.Options.Options.Create(security));
+        var user = new User { Username = "newbie" };
+        _mockMapper.Setup(m => m.Map<User>(It.IsAny<UserCreateDto>())).Returns(user);
+        _mockUserRepository.Setup(r => r.AddUserAsync(user)).Callback(() => user.Id = 9).Returns(Task.CompletedTask);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(9)).ReturnsAsync(user);
+        _mockMapper.Setup(m => m.Map<UserDto>(user)).Returns(new UserDto { Id = 9, Username = "newbie" });
+
+        await service.CreateAsync(new UserCreateDto { Username = "newbie", Uuid = "uuid-9" });
+
+        Assert.Equal(admitted, user.AdmittedAt.HasValue);
+        if (admitted)
+        {
+            Assert.Equal(user.CreatedAt, user.AdmittedAt);
+        }
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutSecuritySettings_Admits()
+    {
+        var user = new User { Username = "newbie" };
+        _mockMapper.Setup(m => m.Map<User>(It.IsAny<UserCreateDto>())).Returns(user);
+        _mockUserRepository.Setup(r => r.AddUserAsync(user)).Callback(() => user.Id = 10).Returns(Task.CompletedTask);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(user);
+        _mockMapper.Setup(m => m.Map<UserDto>(user)).Returns(new UserDto { Id = 10, Username = "newbie" });
+
+        await _userService.CreateAsync(new UserCreateDto { Username = "newbie" });
+
+        Assert.NotNull(user.AdmittedAt);
+    }
+
     [Fact]
     public async Task CreateAsync_SignupGrantComesFromThePolicy()
     {

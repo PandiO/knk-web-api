@@ -44,6 +44,14 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddHostedService<LinkCodeCleanupService>();
             // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
             services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
+            // KNG-212: invitations and invite-based registration (Security:Registration:Mode).
+            services.AddScoped<IInvitationRepository, InvitationRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Invitations.IInvitationService, knkwebapi_v2.Services.Invitations.InvitationService>();
+            var invitationsSection = configuration?.GetSection(knkwebapi_v2.Configuration.InvitationSettings.SectionName);
+            if (invitationsSection != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.InvitationSettings>(invitationsSection);
+            }
 
             var emailSection = configuration?.GetSection(knkwebapi_v2.Configuration.EmailSettings.SectionName);
             if (emailSection != null)

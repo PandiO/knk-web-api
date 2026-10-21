@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using AutoMapper;
+using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
+using Microsoft.Extensions.Options;
 
 namespace knkwebapi_v2.Services
 {
@@ -31,6 +33,8 @@ namespace knkwebapi_v2.Services
         private readonly IPlayerNotificationQueue? _notificationQueue;
         private readonly ISessionRevocationService? _sessions;
         private readonly ILinkAttemptLimiter? _linkAttempts;
+        private readonly RegistrationMode _registrationMode;
+        private readonly IInvitationRepository? _invitations;
 
         public UserService(
             IUserRepository repo,
@@ -46,8 +50,12 @@ namespace knkwebapi_v2.Services
             ITitleProgressionService titleProgression,
             IPlayerNotificationQueue? notificationQueue = null,
             ISessionRevocationService? sessions = null,
-            ILinkAttemptLimiter? linkAttempts = null)
+            ILinkAttemptLimiter? linkAttempts = null,
+            IOptions<SecuritySettings>? security = null,
+            IInvitationRepository? invitations = null)
         {
+            _invitations = invitations;
+            _registrationMode = security?.Value.Registration.Mode ?? RegistrationMode.LinkCode;
             _notificationQueue = notificationQueue;
             _sessions = sessions;
             _linkAttempts = linkAttempts;
@@ -194,6 +202,12 @@ namespace knkwebapi_v2.Services
             user.AccountCreatedVia = string.IsNullOrWhiteSpace(userDto.Email)
                 ? AccountCreationMethod.MinecraftServer
                 : AccountCreationMethod.WebApp;
+
+            // KNG-212: until Security:Registration:Mode is Invite, everyone who gets an account (the
+            // plugin creates it on first join through the whitelist) is admitted, so switching the
+            // plugin's admission gate on later locks nobody out. Under Invite an account needs an
+            // invitation, a claim-code link or staff to be admitted (KNG-214).
+            user.AdmittedAt = _registrationMode == RegistrationMode.Invite ? null : user.CreatedAt;
 
             // The row is inserted at balance 0 (EF never writes the balance columns); the starting
             // balance is a SIGNUP_GRANT ledger posting in the same transaction, so there is never
@@ -1311,10 +1325,12 @@ namespace knkwebapi_v2.Services
                 var lastPasswordChangeAt = shell.LastPasswordChangeAt;
                 var lastEmailChangeAt = shell.LastEmailChangeAt;
                 var emailVerified = shell.EmailVerified;
+                var emailVerifiedAt = shell.EmailVerifiedAt;
 
                 shell.Email = null;
                 shell.PasswordHash = null;
                 shell.EmailVerified = false;
+                shell.EmailVerifiedAt = null;
                 await _repo.UpdateUserAsync(shell);
 
                 minecraft.Email = email;
@@ -1322,7 +1338,27 @@ namespace knkwebapi_v2.Services
                 minecraft.LastPasswordChangeAt = lastPasswordChangeAt;
                 minecraft.LastEmailChangeAt = lastEmailChangeAt;
                 minecraft.EmailVerified = emailVerified;
+                minecraft.EmailVerifiedAt = emailVerifiedAt;
+                // KNG-212 (L1-2): the invite the shell was created with, and the admission it brought.
+                minecraft.InvitedViaInvitationId ??= shell.InvitedViaInvitationId;
+                minecraft.InvitedByUserId ??= shell.InvitedByUserId;
+                minecraft.AdmittedAt ??= shell.AdmittedAt;
                 await _repo.UpdateUserAsync(minecraft);
+
+                // The invite's group follows the login; Default the Minecraft account has already.
+                if (_invitations != null && shell.InvitedViaInvitationId.HasValue)
+                {
+                    var groupId = (await _invitations.GetByIdAsync(shell.InvitedViaInvitationId.Value))?.GrantGroupId;
+                    if (groupId.HasValue)
+                    {
+                        await _membershipService.UpsertAsync(new UpsertUserPermissionGroupDto
+                        {
+                            UserId = minecraftUserId,
+                            PermissionGroupId = groupId.Value,
+                            ExpiresAt = null
+                        });
+                    }
+                }
             });
 
             _logger.LogInformation("Web account {ShellId} folded into Minecraft account {UserId} (case B, KNG-207)", webUserId, minecraftUserId);

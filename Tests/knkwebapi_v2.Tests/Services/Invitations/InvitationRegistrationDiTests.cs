@@ -1,0 +1,41 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Xunit;
+using knkwebapi_v2.Configuration;
+using knkwebapi_v2.DependencyInjection;
+using knkwebapi_v2.Properties;
+using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Invitations;
+
+namespace knkwebapi_v2.Tests.Services.Invitations;
+
+/// <summary>KNG-212: the real service registration resolves the invitation service (and AuthService with
+/// it), and binds the Invitations section and Security:Registration:Mode.</summary>
+public class InvitationRegistrationDiTests
+{
+    [Fact]
+    public void ApplicationServices_ResolveTheInvitationService_AndBindItsSettings()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Invitations:MaxExpiryDays"] = "14",
+            ["Security:Registration:Mode"] = "Invite",
+            ["Security:Jwt:Secret"] = "test-only-jwt-secret-0123456789abcdef-0123456789",
+        }).Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddDbContext<KnKDbContext>(o => o.UseInMemoryDatabase("di-" + Guid.NewGuid()));
+        services.Configure<SecuritySettings>(configuration.GetSection("Security"));
+        services.AddApplicationServices(configuration);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        Assert.IsType<InvitationService>(scope.ServiceProvider.GetRequiredService<IInvitationService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IAuthService>());
+        Assert.Equal(14, scope.ServiceProvider.GetRequiredService<IOptions<InvitationSettings>>().Value.MaxExpiryDays);
+        Assert.Equal(RegistrationMode.Invite, scope.ServiceProvider.GetRequiredService<IOptions<SecuritySettings>>().Value.Registration.Mode);
+    }
+}

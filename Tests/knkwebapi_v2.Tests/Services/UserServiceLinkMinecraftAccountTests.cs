@@ -25,6 +25,7 @@ public class UserServiceLinkMinecraftAccountTests
     private readonly Mock<ILinkCodeService> _codes = new();
     private readonly Mock<ISessionRevocationService> _sessions = new();
     private readonly Mock<IAuditLogService> _audit = new();
+    private readonly Mock<IUserPermissionGroupService> _memberships = new();
     private readonly FakeCurrencyService _currency;
     private readonly SecuritySettings _settings = new() { LinkAttempts = new LockoutSettings { MaxFailures = 3, WindowMinutes = 15, LockMinutes = 15 } };
     private readonly LinkAttemptLimiter _limiter;
@@ -37,7 +38,7 @@ public class UserServiceLinkMinecraftAccountTests
             .Returns((object u) => new UserDto { Id = ((User)u).Id, Username = ((User)u).Username, Uuid = ((User)u).Uuid, Email = ((User)u).Email });
         var titles = new Mock<ITitleService>();
         titles.Setup(t => t.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto());
-        var memberships = new Mock<IUserPermissionGroupService>();
+        var memberships = _memberships;
         _users.Setup(r => r.RunWithUsersLockedAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<Func<Task>>()))
             .Returns((IEnumerable<int> _, Func<Task> work) => work());
         _currency = new FakeCurrencyService(id => _users.Object.GetByIdAsync(id).Result);
@@ -107,6 +108,49 @@ public class UserServiceLinkMinecraftAccountTests
         _sessions.Verify(s => s.RevokeAllSessionsAsync(1, It.IsAny<string>()), Times.Once);
         _sessions.Verify(s => s.RevokeAllSessionsAsync(2, It.IsAny<string>()), Times.Never);
         _codes.Verify(c => c.ConsumeLinkCodeAsync("ABCD2345"), Times.Once);
+    }
+
+    [Fact]
+    public async Task CaseB_CarriesTheInviteFields_TheVerification_AndTheInvitesGroup()
+    {
+        // KNG-212 (L1-2): a shell created from an invite brings its invite, admission, verified address
+        // and the invite's group to the Minecraft account it folds into.
+        var verifiedAt = new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Utc);
+        var web = Seed(new User { Id = 1, Username = "web-abc", Email = "steve@example.com", PasswordHash = "h", EmailVerified = true,
+            EmailVerifiedAt = verifiedAt, AdmittedAt = verifiedAt, InvitedViaInvitationId = 5, InvitedByUserId = 9 });
+        var minecraft = Seed(new User { Id = 2, Username = "Steve", Uuid = "uuid-2" });
+        LinkCodeFor(minecraft);
+        var invitations = new Mock<IInvitationRepository>();
+        invitations.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(new Invitation { Id = 5, GrantGroupId = 3 });
+        var service = new UserService(_users.Object, Mock.Of<IMapper>(m => m.Map<UserDto>(It.IsAny<User>()) == new UserDto { Id = 2 }),
+            new Mock<IPasswordService>().Object, _codes.Object,
+            Mock.Of<ITitleService>(t => t.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>()) == Task.FromResult(new TitleResolutionDto())),
+            _memberships.Object, _audit.Object, new Mock<IPermissionGroupRepository>().Object, NullLogger<UserService>.Instance,
+            _currency, new TitleProgressionService(_currency, _users.Object, new Mock<ITitleService>().Object, _memberships.Object, _audit.Object),
+            null, _sessions.Object, _limiter, null, invitations.Object);
+
+        var result = await service.LinkMinecraftAccountAsync(web.Id, "ABCD2345");
+
+        Assert.True(result.Merged);
+        Assert.Equal(verifiedAt, minecraft.EmailVerifiedAt);
+        Assert.Equal(verifiedAt, minecraft.AdmittedAt);
+        Assert.Equal((5, 9), (minecraft.InvitedViaInvitationId, minecraft.InvitedByUserId));
+        Assert.Null(web.EmailVerifiedAt);
+        _memberships.Verify(m => m.UpsertAsync(It.Is<UpsertUserPermissionGroupDto>(d => d.UserId == 2 && d.PermissionGroupId == 3 && d.ExpiresAt == null), It.IsAny<int?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CaseB_KeepsTheMinecraftAccountsOwnAdmission()
+    {
+        var admitted = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var web = Seed(new User { Id = 1, Username = "web-1", Email = "steve@example.com", PasswordHash = "h", AdmittedAt = DateTime.UtcNow });
+        var minecraft = Seed(new User { Id = 2, Username = "Steve", Uuid = "uuid-2", AdmittedAt = admitted });
+        LinkCodeFor(minecraft);
+
+        await _service.LinkMinecraftAccountAsync(web.Id, "ABCD2345");
+
+        Assert.Equal(admitted, minecraft.AdmittedAt);
+        _memberships.Verify(m => m.UpsertAsync(It.IsAny<UpsertUserPermissionGroupDto>(), It.IsAny<int?>()), Times.Never);
     }
 
     [Fact]

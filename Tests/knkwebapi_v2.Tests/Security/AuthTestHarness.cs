@@ -72,7 +72,7 @@ internal sealed class AuthTestHarness : IDisposable
             .Returns((User u) => new UserDto { Id = u.Id, Username = u.Username, Email = u.Email, IsActive = u.IsActive });
     }
 
-    public AuthService CreateAuthService() => new(
+    public AuthService CreateAuthService(knkwebapi_v2.Services.Invitations.IInvitationService? invitations = null) => new(
         Users,
         Tokens,
         Passwords,
@@ -85,7 +85,9 @@ internal sealed class AuthTestHarness : IDisposable
         RefreshTokens,
         Revocation,
         new LinkCodeService(new LinkCodeRepository(Db), Users, Mapper.Object, Options.Create(Settings)),
-        Limiter);
+        Limiter,
+        null,
+        invitations);
 
     /// <summary>An active /account link code for <paramref name="userId"/> (8 chars, 20 min).</summary>
     public async Task<string> AddLinkCodeAsync(int? userId, string code = "ABCD2345", DateTime? expiresAt = null)

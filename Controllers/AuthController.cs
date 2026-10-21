@@ -87,6 +87,10 @@ namespace knkwebapi_v2.Controllers
         /// /account link in game, enters the code here with an email and password, and is logged
         /// in (no "remember me"). 400 for a bad code, email or password, 409 AlreadyRegistered or
         /// DuplicateEmail, 403 RegistrationNeedsCode without a code.
+        /// KNG-212: with Security:Registration:Mode=Invite an inviteToken or inviteCode creates a web
+        /// account (400 InvalidInvite / InviteEmailMismatch), and 403 InviteRequired answers a missing
+        /// invite or a link code of an account that isn't admitted. Under Mode=LinkCode invites answer
+        /// 403 InvitesDisabled. claimCode answers 400 NotSupportedYet until KNG-214.
         /// </summary>
         [HttpPost("register")]
         [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
@@ -101,7 +105,8 @@ namespace knkwebapi_v2.Controllers
                 return outcome.Error switch
                 {
                     "AlreadyRegistered" or "DuplicateEmail" => Conflict(body),
-                    AuthRegisterOutcome.RegistrationNeedsCode => StatusCode(StatusCodes.Status403Forbidden, body),
+                    AuthRegisterOutcome.RegistrationNeedsCode or AuthRegisterOutcome.InviteRequired or AuthRegisterOutcome.InvitesDisabled
+                        => StatusCode(StatusCodes.Status403Forbidden, body),
                     _ => BadRequest(body)
                 };
             }

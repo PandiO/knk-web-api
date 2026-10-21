@@ -50,6 +50,8 @@ public class EndpointAccessRulesTests
         "StatisticsController.GetTitleHistory",
         "StatisticsController.GetDiscoveries",
         "PlayersController.GetByName",
+        // The sign-up pages check an invitation before login (KNG-212); auth rate limit.
+        "InvitationsController.Check",
     };
 
     private sealed record Endpoint(Type Controller, MethodInfo Action, IReadOnlyList<string> Verbs)

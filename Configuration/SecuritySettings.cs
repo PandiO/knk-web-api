@@ -88,8 +88,24 @@ public class RefreshCookieSettings
 
 public class RegistrationSettings
 {
-    /// <summary>Web-first sign-up without a code from the game server (closed-alpha D2). Off.</summary>
+    /// <summary>Web-first sign-up without a code from the game server (closed-alpha D2). Off. Read only
+    /// for the wording of the refusal since KNG-212; <see cref="Mode"/> decides.</summary>
     public bool AllowWebFirst { get; set; } = false;
+
+    /// <summary>
+    /// Security:Registration:Mode (KNG-212, DESIGN.md § 6). LinkCode (the default, today's alpha): only
+    /// /account link codes, invite fields are refused. Invite: an invitation creates a web account; a
+    /// link code alone works only for an admitted (grandfathered) account. Open is reserved: it behaves
+    /// like Invite until web-first sign-up without an invite is built.
+    /// </summary>
+    public RegistrationMode Mode { get; set; } = RegistrationMode.LinkCode;
+}
+
+public enum RegistrationMode
+{
+    LinkCode,
+    Invite,
+    Open
 }
 
 public class LockoutSettings
