@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,7 @@ namespace knkwebapi_v2.Services
     /// - Deletes AuditLogEntry records older than the configurable retention window
     ///   (AuditLogRetentionConfiguration, docs/specs/user-management/DESIGN.md §7 item 3 —
     ///   default 180 days, re-read each run so a config change takes effect without a restart).
+    /// - Deletes email_outbox rows older than 90 days (KNG-206).
     /// - Deletes PrivateMessageLogEntry records older than
     ///   AuditLogRetentionConfiguration.PrivateMessageRetentionDays (docs/specs/private-messages/
     ///   DESIGN.md §3.1 — default 30 days, also re-read each run).
@@ -86,6 +88,18 @@ namespace knkwebapi_v2.Services
             await RunInScopeAsync(RunAuditLogCleanupAsync);
             await RunInScopeAsync(RunPrivateMessageLogCleanupAsync);
             await RunInScopeAsync(RunRefreshTokenCleanupAsync);
+            await RunInScopeAsync(RunEmailOutboxCleanupAsync);
+        }
+
+        /// <summary>Mail outbox rows (metadata only once handled) are kept this long (KNG-206, DESIGN.md § 4.2).</summary>
+        public const int EmailOutboxRetentionDays = 90;
+
+        private async Task RunEmailOutboxCleanupAsync(IServiceProvider scopedProvider)
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-EmailOutboxRetentionDays);
+            var db = scopedProvider.GetRequiredService<knkwebapi_v2.Properties.KnKDbContext>();
+            var deleted = await db.EmailOutbox.Where(m => m.CreatedAt < cutoff).ExecuteDeleteAsync();
+            _logger.LogInformation("Email outbox cleanup completed. Deleted {Count} mails created before {CutoffDate}", deleted, cutoff);
         }
 
         /// <summary>Refresh tokens are kept this long after they expire or are revoked (closed-alpha WP4),

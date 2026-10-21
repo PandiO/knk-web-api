@@ -57,7 +57,8 @@ public class DeploymentSettingsTests
     [Fact]
     public void Production_StartsWithAGoodSecret()
     {
-        var builder = Builder(Environments.Production, new() { ["ConnectionStrings:MySqlDbConnection"] = Connection, ["Security:Jwt:Secret"] = GoodSecret });
+        // KNG-206: outside Development the mail transport must not be Log (EmailStartupGuardTests).
+        var builder = Builder(Environments.Production, new() { ["ConnectionStrings:MySqlDbConnection"] = Connection, ["Security:Jwt:Secret"] = GoodSecret, ["Email:Transport"] = "Smtp" });
         Assert.Empty(StartupSecurity.ApplySecretChecks(builder));
     }
 

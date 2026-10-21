@@ -1,0 +1,5 @@
+Hi {{username}},
+
+The email address of your Knights & Kings account was just changed to {{newEmailHint}}. Every session was signed out.
+
+If you didn't do this, contact the staff team right away.

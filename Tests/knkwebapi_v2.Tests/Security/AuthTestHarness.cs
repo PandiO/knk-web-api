@@ -12,6 +12,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Tests.Services.Email;
 
 namespace knkwebapi_v2.Tests.Security;
 
@@ -36,9 +37,9 @@ internal sealed class AuthTestHarness : IDisposable
     public RefreshTokenRepository RefreshTokens { get; }
     public UserSessionStateCache SessionState { get; }
     public SessionRevocationService Revocation { get; }
-    public Mock<IPasswordResetDeliveryService> Delivery { get; } = new();
-    public List<AccountMail> Mail { get; } = new();
-    public Mock<IAccountMailQueue> MailQueue { get; } = new();
+    /// <summary>Mails AuthService queued (KNG-206: through IEmailComposer into the outbox).</summary>
+    public CapturingEmailComposer Email { get; } = new();
+    public List<QueuedEmail> Mail => Email.Queued;
     public LoginAttemptLimiter Limiter { get; }
     public Mock<IMapper> Mapper { get; } = new();
 
@@ -46,7 +47,6 @@ internal sealed class AuthTestHarness : IDisposable
     {
         Settings.BcryptRounds = 4;
         configure?.Invoke(Settings);
-        MailQueue.Setup(q => q.Enqueue(It.IsAny<AccountMail>())).Callback((AccountMail m) => Mail.Add(m)).Returns(true);
         Limiter = new LoginAttemptLimiter(new MemoryCache(new MemoryCacheOptions()), Options.Create(Settings));
         Configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -78,7 +78,7 @@ internal sealed class AuthTestHarness : IDisposable
         Passwords,
         Mapper.Object,
         new LinkCodeRepository(Db),
-        MailQueue.Object,
+        Email,
         new MemoryCache(new MemoryCacheOptions()),
         Options.Create(Settings),
         NullLogger<AuthService>.Instance,

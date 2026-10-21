@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# KNG-206: the Pickup mail transport's .eml files (Email:PickupDirectory)
+mail-pickup/

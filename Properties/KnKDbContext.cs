@@ -21,6 +21,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<User> Users { get; set; } = null!;
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public virtual DbSet<EmailOutboxMessage> EmailOutbox { get; set; } = null!;
     public virtual DbSet<Category> Categories { get; set; } = null!;
     public DbSet<FormConfiguration> FormConfigurations { get; set; }
     public DbSet<FormStep> FormSteps { get; set; }
@@ -556,6 +557,29 @@ public partial class KnKDbContext : DbContext
 
         // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
         // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.
+        // KNG-206: the persistent mail outbox (EmailComposer / EmailDispatcher).
+        modelBuilder.Entity<EmailOutboxMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("email_outbox");
+
+            entity.Property(e => e.Kind).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.ToAddress).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.ToName).HasMaxLength(256);
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.TextBody).HasColumnType("longtext");
+            entity.Property(e => e.HtmlBody).HasColumnType("longtext");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.LastError).HasMaxLength(1000);
+            entity.Property(e => e.ProviderMessageId).HasMaxLength(255);
+            entity.Property(e => e.DedupeKey).IsRequired().HasMaxLength(120);
+
+            entity.HasIndex(e => e.DedupeKey).IsUnique();
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt });
+            entity.HasIndex(e => new { e.ToAddress, e.CreatedAt });
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");

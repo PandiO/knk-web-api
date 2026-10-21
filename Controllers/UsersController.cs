@@ -10,11 +10,14 @@ using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.Email;
 using AutoMapper;
 using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Dtos;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace knkwebapi_v2.Controllers
@@ -34,6 +37,8 @@ namespace knkwebapi_v2.Controllers
         private readonly IAuthService? _authService;
         private readonly IWebHostEnvironment? _environment;
         private readonly SecuritySettings _security;
+        private readonly IEmailComposer? _emailComposer;
+        private readonly ILogger _logger;
 
         public UsersController(
             IUserService service,
@@ -46,8 +51,13 @@ namespace knkwebapi_v2.Controllers
             IPermissionEscalationGuard escalationGuard,
             IAuthService? authService = null,
             IWebHostEnvironment? environment = null,
-            IOptions<SecuritySettings>? security = null)
+            IOptions<SecuritySettings>? security = null,
+            IEmailComposer? emailComposer = null,
+            ILogger<UsersController>? logger = null)
         {
+            // KNG-206: the old address hears of a staff email change; optional like the three above.
+            _emailComposer = emailComposer;
+            _logger = logger ?? (ILogger)NullLogger.Instance;
             // The last three only serve link-minecraft-account case B (a session for the account the
             // caller was folded into, KNG-207); optional so the many existing test constructions stand.
             _authService = authService;
@@ -1165,6 +1175,13 @@ namespace knkwebapi_v2.Controllers
                 }
 
                 await _service.UpdateEmailAsync(id, request.NewEmail, request.CurrentPassword);
+
+                // KNG-206 (verification report finding L101): tell the old address, like Auth/update does.
+                if (_emailComposer != null && !string.IsNullOrWhiteSpace(user.Email)
+                    && !string.Equals(user.Email.Trim(), request.NewEmail?.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    await AuthService.QueueEmailChangedNoticeAsync(_emailComposer, _logger, id, user.Username, user.Email, request.NewEmail!);
+                }
                 return NoContent();
             }
             catch (UnauthorizedAccessException ex)

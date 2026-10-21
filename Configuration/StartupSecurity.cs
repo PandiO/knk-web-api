@@ -87,7 +87,32 @@ namespace knkwebapi_v2.Configuration
                 }
             }
 
+            var emailProblem = EmailTransportProblem(configuration, isDevelopment);
+            if (emailProblem != null)
+            {
+                throw new InvalidOperationException($"Refusing to start: {emailProblem}");
+            }
+
             return warnings;
+        }
+
+        /// <summary>
+        /// KNG-206: the Log mail transport writes reset links to the log, so outside Development it
+        /// needs Email:AllowLogTransport=true (an emergency switch). Null when the settings are fine.
+        /// </summary>
+        public static string? EmailTransportProblem(IConfiguration configuration, bool isDevelopment)
+        {
+            if (isDevelopment)
+            {
+                return null;
+            }
+            var email = configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>() ?? new EmailSettings();
+            if (email.EffectiveTransport() == EmailSettings.LogTransport && !email.AllowLogTransport)
+            {
+                return "the mail transport is Log (Email:Transport, or Email:Provider when Transport is empty), which writes reset links to the log. "
+                    + "Configure SMTP (Email__Transport=Smtp, Email__SmtpHost, …), or set Email__AllowLogTransport=true to accept Log on purpose.";
+            }
+            return null;
         }
 
         /// <summary>

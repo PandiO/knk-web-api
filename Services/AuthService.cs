@@ -7,6 +7,7 @@ using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
+using knkwebapi_v2.Services.Email;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,7 +24,8 @@ namespace knkwebapi_v2.Services
         private readonly IPasswordService _passwordService;
         private readonly IMapper _mapper;
         private readonly ILinkCodeRepository _linkCodeRepository;
-        private readonly IAccountMailQueue _mailQueue;
+        private readonly IEmailComposer _email;
+        private readonly string _publicBaseUrl;
         private readonly ILoginAttemptLimiter _loginLimiter;
         private readonly IMemoryCache _memoryCache;
         private readonly SecuritySettings _securitySettings;
@@ -38,14 +40,15 @@ namespace knkwebapi_v2.Services
             IPasswordService passwordService,
             IMapper mapper,
             ILinkCodeRepository linkCodeRepository,
-            IAccountMailQueue mailQueue,
+            IEmailComposer email,
             IMemoryCache memoryCache,
             IOptions<SecuritySettings> securitySettings,
             ILogger<AuthService> logger,
             IRefreshTokenRepository refreshTokens,
             ISessionRevocationService sessionRevocation,
             ILinkCodeService linkCodeService,
-            ILoginAttemptLimiter loginLimiter)
+            ILoginAttemptLimiter loginLimiter,
+            IOptions<AppSettings>? app = null)
         {
             _loginLimiter = loginLimiter;
             _linkCodeService = linkCodeService;
@@ -56,10 +59,12 @@ namespace knkwebapi_v2.Services
             _passwordService = passwordService;
             _mapper = mapper;
             _linkCodeRepository = linkCodeRepository;
-            _mailQueue = mailQueue;
+            _email = email;
             _memoryCache = memoryCache;
             _securitySettings = securitySettings.Value;
             _logger = logger;
+            // KNG-206: App:PublicBaseUrl, with the reset-specific setting as the fallback.
+            _publicBaseUrl = AppSettings.ResolveBaseUrl(app?.Value.PublicBaseUrl, _securitySettings.PasswordResetFrontendBaseUrl);
         }
 
         /// <summary>Same text for every failed login (closed-alpha WP6.1): unknown name, wrong password,
@@ -476,10 +481,10 @@ namespace knkwebapi_v2.Services
             await RevokeAllSessionsAsync(user.Id, hasPasswordUpdate ? "password changed" : "email changed");
             var (accessToken, expiresIn, session) = await IssueSessionAsync(user, rememberMe, null, clientIp, userAgent);
 
-            // WP6.5: tell the old address, best effort (queued; logged when it fails).
+            // WP6.5: tell the old address, best effort (outbox, KNG-206; logged when it fails).
             if (newEmail != null && !string.IsNullOrWhiteSpace(previousEmail))
             {
-                _mailQueue.Enqueue(new AccountMail(AccountMailKind.EmailChangedNotice, previousEmail, user.Username, MaskEmail(newEmail)));
+                await QueueEmailChangedNoticeAsync(user.Id, user.Username, previousEmail, newEmail);
             }
 
             return (true, new AuthUpdateResponseDto
@@ -493,13 +498,31 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>"st***@example.com": enough for the old owner to recognise, not a full address.</summary>
-        public static string MaskEmail(string email)
+        public static string MaskEmail(string email) => EmailMask.Mask(email);
+
+        /// <summary>
+        /// Queues the "your email was changed" notice to <paramref name="previousEmail"/>. Used by
+        /// Auth/update and by staff update-email (KNG-206). Never throws: the change itself is done.
+        /// </summary>
+        public static async Task QueueEmailChangedNoticeAsync(IEmailComposer email, ILogger logger, int userId, string? username,
+            string previousEmail, string newEmail)
         {
-            var at = email.IndexOf('@');
-            if (at <= 0) return "***";
-            var local = email[..at];
-            return (local.Length <= 2 ? local[..1] : local[..2]) + "***" + email[at..];
+            try
+            {
+                await email.QueueAsync(EmailKind.EmailChanged, previousEmail,
+                    new { username = GreetingName(username), newEmailHint = MaskEmail(newEmail) },
+                    $"email-changed:{userId}:{DateTime.UtcNow.Ticks}", userId: userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Could not queue the email-changed notice for user {UserId}", userId);
+            }
         }
+
+        private Task QueueEmailChangedNoticeAsync(int userId, string? username, string previousEmail, string newEmail) =>
+            QueueEmailChangedNoticeAsync(_email, _logger, userId, username, previousEmail, newEmail);
+
+        private static string GreetingName(string? username) => string.IsNullOrWhiteSpace(username) ? "there" : username;
 
         /// <inheritdoc/>
         public async Task<AuthForgotPasswordResponseDto> RequestPasswordResetAsync(string email, string? clientIp, string? userAgent, bool allowDebugPayload)
@@ -531,7 +554,7 @@ namespace knkwebapi_v2.Services
             var tokenHash = HashToken(rawToken);
             var expiresAt = DateTime.UtcNow.AddMinutes(_securitySettings.PasswordResetTokenExpirationMinutes);
 
-            await _linkCodeRepository.CreateAsync(new LinkCode
+            var token = await _linkCodeRepository.CreateAsync(new LinkCode
             {
                 UserId = user.Id,
                 Code = tokenHash,
@@ -544,8 +567,17 @@ namespace knkwebapi_v2.Services
             var resetUrl = BuildResetUrl(rawToken);
             // Closed-alpha WP6.7 (SEC-13): queued, so the answer is the same whether or not SMTP
             // works (a 500 only for existing accounts told an attacker which emails exist).
-            // AccountMailSender logs a delivery failure.
-            _mailQueue.Enqueue(new AccountMail(AccountMailKind.PasswordReset, user.Email!, user.Username, resetUrl));
+            // KNG-206: the outbox row expires with the token; EmailDispatcher logs delivery failures.
+            try
+            {
+                await _email.QueueAsync(EmailKind.PasswordReset, user.Email!,
+                    new { username = GreetingName(user.Username), resetUrl, expiresAt },
+                    $"reset:{token.Id}", expiresAt, user.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not queue the password reset mail for user {UserId}", user.Id);
+            }
 
             _logger.LogInformation(
                 "Password reset token issued for user {UserId} from {Ip} ({UserAgent})",
@@ -687,11 +719,7 @@ namespace knkwebapi_v2.Services
 
         private string BuildResetUrl(string rawToken)
         {
-            var baseUrl = string.IsNullOrWhiteSpace(_securitySettings.PasswordResetFrontendBaseUrl)
-                ? "http://localhost:3000"
-                : _securitySettings.PasswordResetFrontendBaseUrl.TrimEnd('/');
-
-            return $"{baseUrl}/auth/reset-password?token={Uri.EscapeDataString(rawToken)}";
+            return $"{_publicBaseUrl}/auth/reset-password?token={Uri.EscapeDataString(rawToken)}";
         }
 
         private static string GenerateRawResetToken()

@@ -117,15 +117,16 @@ namespace knkwebapi_v2.Services.Privacy
 
         public PrivacyDeletionService(IPrivacyRepository repository, ICurrencyService currency, IAuditLogService audit,
             IPrivacyEmailService email, IMemoryCache cache, IOptions<PrivacyOptions>? options = null,
-            IOptions<SecuritySettings>? security = null, ILogger<PrivacyDeletionService>? logger = null)
+            IOptions<SecuritySettings>? security = null, ILogger<PrivacyDeletionService>? logger = null,
+            IOptions<AppSettings>? app = null)
             : this(repository, currency, audit, email, options?.Value ?? new PrivacyOptions(), () => DateTime.UtcNow,
-                security?.Value.PasswordResetFrontendBaseUrl, cache, logger)
+                security?.Value.PasswordResetFrontendBaseUrl, cache, logger, app?.Value.PublicBaseUrl)
         {
         }
 
         public PrivacyDeletionService(IPrivacyRepository repository, ICurrencyService currency, IAuditLogService audit,
             IPrivacyEmailService email, PrivacyOptions options, Func<DateTime> clock, string? fallbackFrontendBaseUrl = null,
-            IMemoryCache? cache = null, ILogger? logger = null)
+            IMemoryCache? cache = null, ILogger? logger = null, string? publicBaseUrl = null)
         {
             _repository = repository;
             _currency = currency;
@@ -133,10 +134,8 @@ namespace knkwebapi_v2.Services.Privacy
             _email = email;
             _options = options;
             _clock = clock;
-            var baseUrl = !string.IsNullOrWhiteSpace(options.FrontendBaseUrl) ? options.FrontendBaseUrl
-                : !string.IsNullOrWhiteSpace(fallbackFrontendBaseUrl) ? fallbackFrontendBaseUrl
-                : "http://localhost:3000";
-            _frontendBaseUrl = baseUrl.TrimEnd('/');
+            // KNG-206: App:PublicBaseUrl first; Privacy:FrontendBaseUrl and the reset setting stay as fallbacks.
+            _frontendBaseUrl = AppSettings.ResolveBaseUrl(publicBaseUrl, options.FrontendBaseUrl, fallbackFrontendBaseUrl);
             _cache = cache ?? new MemoryCache(new MemoryCacheOptions());
             _logger = logger ?? NullLogger.Instance;
         }

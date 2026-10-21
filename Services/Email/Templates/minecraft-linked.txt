@@ -1,0 +1,5 @@
+Hi {{username}},
+
+Your Knights & Kings account is now linked to the Minecraft account {{minecraftName}}. You can join the server.
+
+If you didn't do this, contact the staff team right away.

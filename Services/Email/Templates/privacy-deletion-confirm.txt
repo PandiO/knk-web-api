@@ -1,0 +1,11 @@
+Hi {{username}},
+
+You asked us to delete your Knights & Kings account data: your statistics, settings, discoveries, private-message logs and your username, email and Minecraft link. This cannot be undone.
+
+To confirm, open this link before {{expiresAt}}:
+
+{{confirmUrl}}
+
+After you confirm, the deletion waits five days so you can still cancel it on your account page.
+
+If you didn't ask for this, ignore this email and nothing will happen.

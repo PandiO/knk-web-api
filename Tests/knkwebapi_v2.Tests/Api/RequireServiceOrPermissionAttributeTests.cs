@@ -236,6 +236,10 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(KnKWebAPI.Controllers.PermissionGrantsController), "RevokeByNode", "knk.admin.user.perm"),
         R(typeof(KnKWebAPI.Controllers.UserPermissionGroupsController), "Upsert", "knk.admin.user.group"),
         R(typeof(KnKWebAPI.Controllers.UserPermissionGroupsController), "Delete", "knk.admin.user.group"),
+        // Mail log (KNG-206): staff only, the plugin never calls it (RequirePermission)
+        R(typeof(EmailOutboxController), nameof(EmailOutboxController.List), "knk.admin.config"),
+        R(typeof(EmailOutboxController), nameof(EmailOutboxController.SendTest), "knk.admin.config"),
+        R(typeof(EmailOutboxController), nameof(EmailOutboxController.Retry), "knk.admin.config"),
     };
 
     /// <summary>node null = plugin-only (RequirePluginService).</summary>
@@ -252,7 +256,9 @@ public class RequireServiceOrPermissionAttributeTests
         }
         else
         {
-            var gates = method.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node).ToList();
+            var gates = method.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node)
+                .Concat(method.GetCustomAttributes<RequirePermissionAttribute>().Select(a => (string)a.Arguments![0]))
+                .ToList();
             Assert.Equal(new[] { node }, gates);
         }
     }
