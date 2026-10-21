@@ -420,6 +420,22 @@ public class ArenaServiceTests : IDisposable
         Assert.Equal(2, areas.Count);
         Assert.All(areas, a => Assert.True(a.AllowEntry));
         Assert.Equal(101, areas[0].LocationId);
+        Assert.Equal("exit", areas[0].Location!.Name);
+    }
+
+    [Fact]
+    public async Task TheArenaReadCarriesItsLocationsForThePlugin()
+    {
+        var created = await _service.CreateAsync(NewArena(d => { d.LocationId = 101; d.ExitLocationId = 101; }));
+        await _service.CreateBattlegroundAsync(NewBattleground(created.Id!.Value, "bg1"));
+
+        var read = Assert.Single(await _service.GetAllAsync());
+
+        Assert.Equal("exit", read.Location!.Name);
+        Assert.Equal("lobby", read.LobbyLocation!.Name);
+        Assert.Equal("exit", read.ExitLocation!.Name);
+        Assert.Equal("spawn A", read.Battlegrounds![0].SpawnALocation!.Name);
+        Assert.Equal("spawn B", read.Battlegrounds![0].SpawnBLocation!.Name);
     }
 
     // ===== Region finalizer: District → Arena → children =====

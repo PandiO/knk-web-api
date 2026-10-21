@@ -95,6 +95,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("eligibleKits")] public List<ArenaKitDto>? EligibleKits { get; set; }
 
         // ===== Read-only =====
+        [JsonPropertyName("location")] public LocationDto? Location { get; set; }
         [JsonPropertyName("lobbyLocation")] public LocationDto? LobbyLocation { get; set; }
         [JsonPropertyName("exitLocation")] public LocationDto? ExitLocation { get; set; }
         [JsonPropertyName("battlegrounds")] public List<ArenaBattlegroundDto>? Battlegrounds { get; set; }
