@@ -2166,6 +2166,120 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("grades", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<string>("CodeHint")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("char(4)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("GrantGroupId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<DateTime?>("LastSentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("MaxUses")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("PausedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ResendWindowStartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ResendsInWindow")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("RevokedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SendCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UseCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("GrantGroupId");
+
+                    b.HasIndex("Kind", "ExpiresAt");
+
+                    b.ToTable("invitations", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.InvitationRedemption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("InvitationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RedeemedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("InvitationId");
+
+                    b.ToTable("invitation_redemptions", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
                 {
                     b.Property<int>("Id")
@@ -6292,6 +6406,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("ActiveMode")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("AdmittedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime?>("ArchiveUntil")
                         .HasColumnType("datetime(6)");
 
@@ -6314,6 +6431,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<bool>("EmailVerified")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("ExperiencePoints")
                         .ValueGeneratedOnAdd()
@@ -6341,6 +6461,12 @@ namespace knkwebapi_v2.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<int?>("Gender")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InvitedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InvitedViaInvitationId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
@@ -6974,6 +7100,27 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("GateDoor");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "GrantGroup")
+                        .WithMany()
+                        .HasForeignKey("GrantGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("GrantGroup");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.InvitationRedemption", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Invitation", "Invitation")
+                        .WithMany("Redemptions")
+                        .HasForeignKey("InvitationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invitation");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
@@ -8270,6 +8417,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("BlockSnapshots");
 
                     b.Navigation("OpenedBlockSnapshots");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.Navigation("Redemptions");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>

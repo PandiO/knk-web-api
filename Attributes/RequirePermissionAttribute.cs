@@ -85,6 +85,11 @@ namespace knkwebapi_v2.Attributes
         /// temporary region names (KNG-43). Also matched by knk.admin.* and *.</summary>
         public const string ManageRegions = "knk.admin.regions";
 
+        /// <summary>Create, resend, rotate, pause and revoke invitations and see who redeemed them
+        /// (knk-workspace docs/specs/invitations/DESIGN.md § 3.2, KNG-212). Granted to Admin by the
+        /// SeedInvitationStaffNode migration; also matched by knk.admin.* and *.</summary>
+        public const string ManageInvites = "knk.admin.invites";
+
         /// <summary>Server-wide admin settings with no narrower node (audit-log retention).</summary>
         public const string ServerConfig = "knk.admin.config";
 

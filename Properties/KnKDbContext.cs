@@ -22,6 +22,8 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
     public virtual DbSet<EmailOutboxMessage> EmailOutbox { get; set; } = null!;
+    public virtual DbSet<Invitation> Invitations { get; set; } = null!;
+    public virtual DbSet<InvitationRedemption> InvitationRedemptions { get; set; } = null!;
     public virtual DbSet<Category> Categories { get; set; } = null!;
     public DbSet<FormConfiguration> FormConfigurations { get; set; }
     public DbSet<FormStep> FormSteps { get; set; }
@@ -578,6 +580,41 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => new { e.Status, e.NextAttemptAt });
             entity.HasIndex(e => new { e.ToAddress, e.CreatedAt });
             entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // KNG-212: invitations (personal invites and shared codes) and who redeemed them.
+        modelBuilder.Entity<Invitation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("invitations");
+
+            entity.Property(e => e.CodeHash).IsRequired().HasMaxLength(64).IsFixedLength();
+            entity.Property(e => e.CodeHint).IsRequired().HasMaxLength(4).IsFixedLength();
+            entity.Property(e => e.Email).HasMaxLength(256);
+            entity.Property(e => e.Label).HasMaxLength(120);
+            entity.Property(e => e.Note).HasMaxLength(500);
+
+            entity.HasIndex(e => e.CodeHash).IsUnique();
+            entity.HasIndex(e => new { e.Kind, e.ExpiresAt });
+            entity.HasIndex(e => e.Email);
+
+            entity.HasOne(e => e.GrantGroup)
+                .WithMany()
+                .HasForeignKey(e => e.GrantGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<InvitationRedemption>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("invitation_redemptions");
+
+            entity.HasIndex(e => e.InvitationId);
+
+            entity.HasOne(e => e.Invitation)
+                .WithMany(i => i.Redemptions)
+                .HasForeignKey(e => e.InvitationId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>

@@ -77,5 +77,27 @@ public enum AuditAction
     /// renamed web-only account). Values 35-36 are allocated to the alpha hardening
     /// (30-34 belong to player statistics).
     /// </summary>
-    UsernameReleased = 35
+    UsernameReleased = 35,
+
+    // Invitations, Minecraft linking and admission (knk-workspace docs/specs/invitations/DESIGN.md § 6,
+    // KNG-212/KNG-214); values 37-42 are allocated to this feature (36 stays unused).
+
+    /// <summary>Staff created an invitation. Target = the actor (no account exists yet); Details name
+    /// the invitation, never its code.</summary>
+    InvitationCreated = 37,
+
+    /// <summary>Staff revoked an invitation. Target = the actor.</summary>
+    InvitationRevoked = 38,
+
+    /// <summary>An account was created with an invitation. Target and actor = the new account.</summary>
+    InvitationRedeemed = 39,
+
+    /// <summary>A web account was linked to a Minecraft account (KNG-214).</summary>
+    MinecraftLinked = 40,
+
+    /// <summary>Staff unlinked a Minecraft account from a web login (KNG-214).</summary>
+    MinecraftUnlinked = 41,
+
+    /// <summary>Staff admitted a player without an invitation (KNG-214).</summary>
+    PlayerAdmitted = 42
 }

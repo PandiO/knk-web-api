@@ -286,6 +286,27 @@ public class User : PermissionHolder
     /// nothing a second time. Service-managed only, never through the generic user edit.
     /// </summary>
     public DateTime? FirstJoinKitsGrantedAt { get; set; }
+
+    // ===== INVITATIONS AND ADMISSION (knk-workspace docs/specs/invitations, KNG-212) =====
+
+    /// <summary>The invitation this account was created with (DESIGN.md § 3.4); null for every
+    /// other account.</summary>
+    public int? InvitedViaInvitationId { get; set; }
+
+    /// <summary>Who created that invitation, so staff can see who brought whom.</summary>
+    public int? InvitedByUserId { get; set; }
+
+    /// <summary>
+    /// When this account was admitted to the server: set by an invite redemption, by the plugin's
+    /// account creation while Security:Registration:Mode isn't Invite, and for every account that
+    /// existed before invitations (the AddInvitations backfill, decision I3). The plugin's admission
+    /// gate (KNG-214) lets in only admitted accounts. Service-managed only.
+    /// </summary>
+    public DateTime? AdmittedAt { get; set; }
+
+    /// <summary>When the email address was proven (a personal invite's link came through the
+    /// inbox). Kept in step with <see cref="EmailVerified"/> until KNG-159 retires the bool.</summary>
+    public DateTime? EmailVerifiedAt { get; set; }
 }
 
 /// <summary>
