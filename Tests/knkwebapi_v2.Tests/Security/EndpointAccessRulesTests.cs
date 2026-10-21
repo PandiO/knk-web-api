@@ -132,7 +132,6 @@ public class EndpointAccessRulesTests
                 Assert.True(rule?.Node == StaffPermissions.ManageWorld, $"{endpoint.Name} must need {StaffPermissions.ManageWorld}");
             }
         }
-        Assert.Contains(arenaEndpoints, e => e.Name == "ArenasController.SeedLegacy");
     }
 
     [Fact]

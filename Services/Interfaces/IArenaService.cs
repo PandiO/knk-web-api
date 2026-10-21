@@ -26,9 +26,5 @@ namespace knkwebapi_v2.Services.Interfaces
         Task UpdateSpectatorAreaAsync(int id, ArenaSpectatorAreaDto dto);
         Task DeleteSpectatorAreaAsync(int id);
         Task<PagedResultDto<ArenaSpectatorAreaDto>> SearchSpectatorAreasAsync(PagedQueryDto query);
-
-        /// <summary>Creates (or completes) the v1 arena and its flagged battlegrounds, disabled until staff set the
-        /// lobby and spawn locations.</summary>
-        Task<ArenaLegacySeedResultDto> SeedLegacyArenaAsync(ArenaLegacySeedDto dto);
     }
 }

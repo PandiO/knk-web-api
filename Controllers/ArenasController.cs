@@ -77,12 +77,6 @@ namespace knkwebapi_v2.Controllers
                 return NoContent();
             });
 
-        /// <summary>Creates (or completes) the v1 arena and its flagged battlegrounds (KNG-210 seed).</summary>
-        [HttpPost("legacy-seed")]
-        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
-        public Task<IActionResult> SeedLegacy([FromBody] ArenaLegacySeedDto dto) =>
-            Run(async () => Ok(await _service.SeedLegacyArenaAsync(dto)), dto != null);
-
         // ===================================================================== Battlegrounds
 
         [HttpGet("{arenaId:int}/battlegrounds")]
