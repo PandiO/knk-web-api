@@ -20,7 +20,7 @@ namespace knkwebapi_v2.Services.Duel
     /// both stakes into SYS_DUEL; a paid result is a DUEL_PAYOUT of pot − fee to the winner plus a DUEL_FEE move
     /// of the fee from SYS_DUEL to SYS_FEES in the same transaction; every other end reverses the stake. A
     /// revert reverses the payout (and the fee) and pays the recovered coins back with DUEL_REFUND; a
-    /// confiscation moves them to SYS_FEES (DUEL_CONFISCATION). Σ SYS_DUEL over a closed match is 0.
+    /// confiscation moves them to SYS_CONFISCATED (DUEL_CONFISCATION). Σ SYS_DUEL over a closed match is 0.
     /// </para>
     /// </summary>
     public partial class DuelMatchService : IDuelMatchService

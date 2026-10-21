@@ -805,7 +805,8 @@ public class DuelMatchServiceTests : IDisposable
         Assert.Equal((49_000, 49_000), (await CoinsAsync(Alice), await CoinsAsync(Bob)));
         Assert.Equal(DuelUndeliveredItems.Destroy, result.Match.UndeliveredItems);
         Assert.Equal(0, await SystemSumAsync(CurrencyReasons.SysDuel, match.Id));
-        Assert.Equal(2_000, await SystemSumAsync(CurrencyReasons.SysFees, match.Id)); // fee 100 + confiscated 1,900
+        Assert.Equal(100, await SystemSumAsync(CurrencyReasons.SysFees, match.Id)); // the fee stays a fee
+        Assert.Equal(1_900, await SystemSumAsync(CurrencyReasons.SysConfiscated, match.Id));
         _audit.Verify(a => a.RecordAsync(Staff, Alice, AuditAction.DuelResultConfiscated, It.IsAny<string>()), Times.Once);
         Assert.True((await _service.RevertAsync(match.Id, Staff, "again", confiscate: true)).AlreadyDone);
         await AssertReconcilesAsync();

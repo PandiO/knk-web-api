@@ -69,6 +69,10 @@ namespace knkwebapi_v2.Services
         /// (arena duels DESIGN.md §7.1). Every closed match nets to zero here.</summary>
         public const string SysDuel = "SYS_DUEL";
 
+        /// <summary>Coins staff confiscated from a duel result (DUEL_CONFISCATION). Kept apart from SYS_FEES so fee
+        /// income and confiscations report separately (developer, 2026-10-21).</summary>
+        public const string SysConfiscated = "SYS_CONFISCATED";
+
         // ===== Reason codes =====
 
         /// <summary>Starting balance of a new account. Key: <c>signup:{userId}</c>.</summary>
@@ -156,7 +160,7 @@ namespace knkwebapi_v2.Services
         public const string DuelRefund = "DUEL_REFUND";
 
         /// <summary>A staff confiscation of a paid result: what the payout reversal recovered, from
-        /// SYS_DUEL to the SYS_FEES sink; no user leg. Key: <c>duel-confiscate:{matchId}</c>.</summary>
+        /// SYS_DUEL to SYS_CONFISCATED; no user leg. Key: <c>duel-confiscate:{matchId}</c>.</summary>
         public const string DuelConfiscation = "DUEL_CONFISCATION";
 
         public static string MergeForfeitKey(int secondaryUserId) => $"merge:{secondaryUserId}";
@@ -189,7 +193,7 @@ namespace knkwebapi_v2.Services
             [DuelPayout] = new(DuelPayout, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysDuel, "Duel winnings"),
             [DuelFee] = new(DuelFee, CurrencyTransactionKind.Spend, CurrencyReasonDirection.SystemToSystem, SysFees, "Arena fee", SysDuel),
             [DuelRefund] = new(DuelRefund, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysDuel, "Duel stake returned after a staff revert"),
-            [DuelConfiscation] = new(DuelConfiscation, CurrencyTransactionKind.Spend, CurrencyReasonDirection.SystemToSystem, SysFees, "Duel winnings confiscated by staff", SysDuel),
+            [DuelConfiscation] = new(DuelConfiscation, CurrencyTransactionKind.Spend, CurrencyReasonDirection.SystemToSystem, SysConfiscated, "Duel winnings confiscated by staff", SysDuel),
         };
 
         /// <summary>Every known reason, for docs, dropdowns and tests.</summary>

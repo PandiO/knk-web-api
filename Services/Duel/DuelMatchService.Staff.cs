@@ -104,7 +104,7 @@ namespace knkwebapi_v2.Services.Duel
         /// coins the winner already spent are recorded as missing instead of driving the balance negative.
         /// Revert: the fee is reversed too, and the recovered pool goes to the loser first (up to their stake),
         /// then to the winner (up to theirs) as one DUEL_REFUND posting. Confiscate: the recovered coins go from
-        /// SYS_DUEL to SYS_FEES; the fee stays taken. Either way SYS_DUEL nets to zero for the match.
+        /// SYS_DUEL to SYS_CONFISCATED; the fee stays in SYS_FEES. Either way SYS_DUEL nets to zero for the match.
         /// </summary>
         private async Task<DuelRevertResultDto> UndoPayoutAsync(DuelMatch match, int? actorUserId, string text, bool confiscate, CancellationToken ct)
         {

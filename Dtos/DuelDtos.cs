@@ -170,7 +170,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("returnedToLoserCoins")] public long ReturnedToLoserCoins { get; set; }
         [JsonPropertyName("returnedToWinnerCoins")] public long ReturnedToWinnerCoins { get; set; }
 
-        /// <summary>Sent to the SYS_FEES sink (confiscate only).</summary>
+        /// <summary>Sent to SYS_CONFISCATED (confiscate only).</summary>
         [JsonPropertyName("confiscatedCoins")] public long ConfiscatedCoins { get; set; }
 
         /// <summary>Revert: what the stakes are short (pot − returned). Confiscate: the payout not recovered.</summary>

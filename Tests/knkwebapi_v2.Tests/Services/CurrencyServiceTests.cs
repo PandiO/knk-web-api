@@ -528,7 +528,7 @@ public class CurrencyServiceTests
             (CurrencyReasons.Find("DUEL_PAYOUT")!.Kind, CurrencyReasons.Find("DUEL_PAYOUT")!.Direction, CurrencyReasons.Find("DUEL_PAYOUT")!.SystemAccount));
         var fee = CurrencyReasons.Find("DUEL_FEE")!;
         Assert.Equal((CurrencyReasonDirection.SystemToSystem, "SYS_DUEL", "SYS_FEES"), (fee.Direction, fee.FromSystemAccount, fee.SystemAccount));
-        Assert.Equal("SYS_FEES", CurrencyReasons.Find("DUEL_CONFISCATION")!.SystemAccount);
+        Assert.Equal(("SYS_DUEL", "SYS_CONFISCATED"), (CurrencyReasons.Find("DUEL_CONFISCATION")!.FromSystemAccount, CurrencyReasons.Find("DUEL_CONFISCATION")!.SystemAccount));
         Assert.Equal("SYS_DUEL", CurrencyReasons.Find("DUEL_REFUND")!.SystemAccount);
     }
 

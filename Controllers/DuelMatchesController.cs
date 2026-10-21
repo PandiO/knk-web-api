@@ -29,10 +29,12 @@ namespace knkwebapi_v2.Controllers
     public class DuelMatchesController : ControllerBase
     {
         private readonly IDuelMatchService _service;
+        private readonly IPermissionResolutionService? _permissions;
 
-        public DuelMatchesController(IDuelMatchService service)
+        public DuelMatchesController(IDuelMatchService service, IPermissionResolutionService? permissions = null)
         {
             _service = service;
+            _permissions = permissions;
         }
 
         // ===== Reads =====
@@ -165,11 +167,44 @@ namespace knkwebapi_v2.Controllers
 
         private static object NotFoundBody(string message) => new { code = "NotFound", message };
 
+        /// <summary>
+        /// Review data is staff-only (developer, 2026-10-21): reviewTier, reviewSignals and reviewDetails go only to
+        /// the plugin and to holders of knk.admin.duel.review; everyone else sees the review state and the result.
+        /// </summary>
+        private async Task<bool> SeesReviewDataAsync()
+        {
+            var caller = HttpContext?.GetKnkCaller();
+            if (caller == null) return false;
+            if (caller.IsPluginService) return true;
+            if (caller.WebUserId is not int userId || _permissions == null) return false;
+            return (await _permissions.CheckAsync(userId, StaffPermissions.DuelReview))?.Allowed == true;
+        }
+
+        private static void HideReviewData(DuelMatchDto? match)
+        {
+            if (match == null) return;
+            match.ReviewTier = null;
+            match.ReviewSignals = new List<string>();
+            match.ReviewDetails = null;
+        }
+
+        private async Task<IActionResult> FilterReviewDataAsync(IActionResult result)
+        {
+            if (result is not ObjectResult { Value: { } value } || await SeesReviewDataAsync()) return result;
+            switch (value)
+            {
+                case DuelMatchDto match: HideReviewData(match); break;
+                case IEnumerable<DuelMatchDto> matches: foreach (var m in matches) HideReviewData(m); break;
+                case DuelResultDto r: HideReviewData(r.Match); break;
+            }
+            return result;
+        }
+
         private async Task<IActionResult> Run(Func<Task<IActionResult>> action)
         {
             try
             {
-                return await action();
+                return await FilterReviewDataAsync(await action());
             }
             catch (DuelException ex)
             {
