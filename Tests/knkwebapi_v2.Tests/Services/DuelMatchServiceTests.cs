@@ -288,6 +288,23 @@ public class DuelMatchServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task StakeRatio_ValuesItemsAtTheirBlueprintsBasePrice()
+    {
+        _context.ItemBlueprints.Add(new ItemBlueprint { Id = 1, Name = "Edge", DefaultDisplayName = "Edge", BasePriceMin = 300.9m, BasePriceMax = 900 });
+        _context.ItemInstances.Add(new ItemInstance { Id = 99, ItemBlueprintId = 1 });
+        await _context.SaveChangesAsync();
+        DuelItemDto Sword(int owner, int amount = 1) => new() { OwnerUserId = owner, Material = "DIAMOND_SWORD", Amount = amount, InstanceId = 99 };
+
+        // "My diamond sword vs your 500 coins": 2 × 300 = 600 against 500 passes.
+        Assert.NotNull(await LockAsync(Duel(a: 0, b: 500, items: Sword(Alice, 2))));
+        // One sword (300) against 1,000 coins is under 50%; an item without a priced instance is worth nothing.
+        Assert.Equal(DuelErrorCode.StakeRatioTooLow, await RefusalAsync(() => _service.CreateAsync(Duel(Carol, Dave, 0, 1_000, items: Sword(Carol)))));
+        Assert.Equal(DuelErrorCode.StakeRatioTooLow, await RefusalAsync(() => _service.CreateAsync(Duel(Carol, Dave, 0, 500, items: Item(Carol)))));
+        var check = await _service.CheckAsync(Duel(Carol, Dave, 0, 1_000, items: Sword(Carol)));
+        Assert.Contains("300 vs 1,000", check.Refusals.Single().Message);
+    }
+
+    [Fact]
     public async Task ArenaGearKitAndItemRules_AreRefused()
     {
         var tooMany = Enumerable.Range(0, 10).Select(i => Item(Alice, $"STONE_{i}")).ToArray();

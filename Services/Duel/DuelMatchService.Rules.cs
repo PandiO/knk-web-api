@@ -130,13 +130,22 @@ namespace knkwebapi_v2.Services.Duel
                         new { userId, coins, max = arena.MaxCoinStake });
                 }
             }
-            var larger = Math.Max(r.ChallengerCoins, r.OpponentCoins);
-            var smaller = Math.Min(r.ChallengerCoins, r.OpponentCoins);
+            // The ratio compares each side's coins plus the coin value of its items (developer, 2026-10-21, KNG-197):
+            // an item is worth its ItemInstance's blueprint BasePriceMin × amount; anything else is worth 0.
+            var itemValues = await ItemValuesAsync(r.Items, ct);
+            var challengerValue = r.ChallengerCoins + itemValues.GetValueOrDefault(r.ChallengerUserId);
+            var opponentValue = r.OpponentCoins + itemValues.GetValueOrDefault(r.OpponentUserId);
+            var larger = Math.Max(challengerValue, opponentValue);
+            var smaller = Math.Min(challengerValue, opponentValue);
             if (larger > 0 && arena.MinStakeRatioPercent > 0 && smaller * 100 < larger * arena.MinStakeRatioPercent)
             {
                 Refuse(DuelErrorCode.StakeRatioTooLow,
-                    $"The smaller coin stake must be at least {arena.MinStakeRatioPercent}% of the larger ({smaller:N0} vs {larger:N0}).",
-                    new { minPercent = arena.MinStakeRatioPercent, smaller, larger, minimum = (larger * arena.MinStakeRatioPercent + 99) / 100 });
+                    $"The smaller stake must be worth at least {arena.MinStakeRatioPercent}% of the larger ({smaller:N0} vs {larger:N0} coins, items at their base price).",
+                    new
+                    {
+                        minPercent = arena.MinStakeRatioPercent, smaller, larger, minimum = (larger * arena.MinStakeRatioPercent + 99) / 100,
+                        challengerValue, opponentValue
+                    });
             }
             if (r.Items.Count > 0 && !arena.AllowItemStakes) Refuse(DuelErrorCode.ItemStakesNotAllowed, $"{arena.Name} doesn't allow item stakes.");
             foreach (var (userId, stacks) in new[] { (r.ChallengerUserId, r.ChallengerItemStacks), (r.OpponentUserId, r.OpponentItemStacks) })
@@ -281,6 +290,27 @@ namespace knkwebapi_v2.Services.Duel
                 }
             }
             return refusals;
+        }
+
+        /// <summary>
+        /// The coin value of each owner's stake items: BasePriceMin of the item instance's blueprint × amount, rounded
+        /// down (developer decision 2026-10-21; reversible default, BasePriceMax unused). An item without an instance
+        /// id, or whose instance or blueprint is gone, is worth 0.
+        /// </summary>
+        private async Task<Dictionary<int, long>> ItemValuesAsync(List<DuelItemDto> items, CancellationToken ct)
+        {
+            var ids = items.Where(i => i.InstanceId.HasValue).Select(i => i.InstanceId!.Value).Distinct().ToList();
+            var prices = ids.Count == 0
+                ? new Dictionary<long, decimal>()
+                : await _context.ItemInstances.AsNoTracking().Where(i => ids.Contains(i.Id))
+                    .Select(i => new { i.Id, i.ItemBlueprint.BasePriceMin })
+                    .ToDictionaryAsync(i => i.Id, i => i.BasePriceMin, ct);
+            return items
+                .GroupBy(i => i.OwnerUserId)
+                .ToDictionary(g => g.Key, g => g.Sum(i =>
+                    i.InstanceId is long id && prices.TryGetValue(id, out var price) && price > 0
+                        ? (long)Math.Floor(price * i.Amount)
+                        : 0L));
         }
 
         private static bool Allows(Arena arena, DuelGearMode mode) => mode switch
