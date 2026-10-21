@@ -445,6 +445,15 @@ namespace knkwebapi_v2.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = "Only the game server can create or link an account by Minecraft UUID." });
             }
 
+            // KNG-214 (defense in depth): in Security:Registration:Mode=Invite the game server's
+            // admission gate stops strangers before they get here, so a UUID without an admitted
+            // account is refused instead of becoming a new, unadmitted account.
+            if (!string.IsNullOrEmpty(user.Uuid) && _security.Registration.Mode == RegistrationMode.Invite
+                && !await _service.IsUuidAdmittedAsync(user.Uuid))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "NotAdmitted", message = "This Minecraft account isn't admitted. It needs an invitation (claim code) or staff Admit." });
+            }
+
             // Closed-alpha WP5.3: a web-only account (no UUID) can no longer be attached to the
             // Minecraft player who joins with its name - that let anyone pre-register a player's
             // name and take over their account. The game server's create releases the name instead
@@ -1416,6 +1425,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="400">Invalid or expired code, or validation failed</response>
         /// <response code="401">User not authenticated</response>
         /// <response code="404">User not found</response>
+        /// <response code="403"><c>InviteRequired</c>: a claim code on a web account that was never admitted (KNG-214)</response>
         /// <response code="409"><c>AlreadyRegistered</c>: that Minecraft account has a web login; <c>AlreadyLinked</c>: this web account is linked to another Minecraft account</response>
         /// <response code="429"><c>TooManyAttempts</c>: too many wrong codes for this account (Security:LinkAttempts)</response>
         [Authorize]
@@ -1483,6 +1493,10 @@ namespace knkwebapi_v2.Controllers
             {
                 return Conflict(new { error = ex.Code, message = ex.Message });
             }
+            catch (LinkForbiddenException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Code, message = ex.Message });
+            }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { error = "InvalidArgument", message = ex.Message });
@@ -1494,6 +1508,55 @@ namespace knkwebapi_v2.Controllers
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { error = "NotFound", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Staff "Admit" (KNG-214, DESIGN § 5.3): lets an existing account through the admission gate
+        /// without an invitation (a tester who can't use the web, a reactivated account, L3-9).
+        /// Sets AdmittedAt and audits PlayerAdmitted; an admitted account is returned unchanged.
+        /// </summary>
+        /// <response code="200"><c>{user, changed}</c></response>
+        /// <response code="404">Unknown or deleted account</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
+        [HttpPost("{id:int}/admit")]
+        public async Task<IActionResult> Admit(int id)
+        {
+            try
+            {
+                var (user, changed) = await _service.AdmitAsync(id, GetActorUserId());
+                return Ok(new { user, changed });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+        }
+
+        /// <summary>
+        /// Staff "Detach web login" (KNG-214, DESIGN § 5.5): the remedy for a claim or link code given
+        /// away under social engineering. Clears the email, password and verification, revokes the
+        /// sessions and audits MinecraftUnlinked; the Minecraft account and its data stay, and the
+        /// owner can register again with /account link.
+        /// </summary>
+        /// <response code="200">The account without its web login</response>
+        /// <response code="404">Unknown or deleted account</response>
+        /// <response code="409"><c>NotLinked</c>: a web-only account; <c>NoWebLogin</c>: nothing to detach</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
+        [HttpPost("{id:int}/detach-web-login")]
+        public async Task<IActionResult> DetachWebLogin(int id)
+        {
+            try
+            {
+                return Ok(await _service.DetachWebLoginAsync(id, GetActorUserId()));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (LinkConflictException ex)
+            {
+                return Conflict(new { error = ex.Code, message = ex.Message });
             }
         }
 

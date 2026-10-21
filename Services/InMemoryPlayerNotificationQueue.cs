@@ -98,6 +98,16 @@ public class InMemoryPlayerNotificationQueue : IPlayerNotificationQueue
             LocationOrphanDigest = digest
         });
 
+    public long EnqueueAccountLinked(int userId, string? uuid, string username, AccountLinkedNotificationDto linked) =>
+        Add(new PlayerNotificationDto
+        {
+            UserId = userId,
+            Uuid = uuid,
+            Username = username,
+            Type = PlayerNotificationTypes.AccountLinked,
+            AccountLinked = linked
+        });
+
     private long Add(PlayerNotificationDto notification)
     {
         var id = Interlocked.Increment(ref _nextId);

@@ -47,6 +47,13 @@ namespace knkwebapi_v2.DependencyInjection
             // KNG-212: invitations and invite-based registration (Security:Registration:Mode).
             services.AddScoped<IInvitationRepository, InvitationRepository>();
             services.AddScoped<knkwebapi_v2.Services.Invitations.IInvitationService, knkwebapi_v2.Services.Invitations.InvitationService>();
+            // KNG-214: the game server's admission gate (claim codes) and the FinishLinking reminder.
+            services.AddScoped<IAdmissionService, AdmissionService>();
+            var admissionSection = configuration?.GetSection(knkwebapi_v2.Configuration.AdmissionSettings.SectionName);
+            if (admissionSection != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.AdmissionSettings>(admissionSection);
+            }
             var invitationsSection = configuration?.GetSection(knkwebapi_v2.Configuration.InvitationSettings.SectionName);
             if (invitationsSection != null)
             {

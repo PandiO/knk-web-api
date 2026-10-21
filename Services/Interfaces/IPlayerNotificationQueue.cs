@@ -45,6 +45,12 @@ public interface IPlayerNotificationQueue
     long EnqueueLocationOrphanDigest(LocationOrphanDigestNotificationDto digest) =>
         Enqueue(0, null, "", PlayerNotificationTypes.LocationOrphanDigest, null);
 
+    /// <summary>An AccountLinked notification (KNG-214): the player's Minecraft account was linked
+    /// to a web account. The default only queues the type.</summary>
+    /// <returns>The new notification's id.</returns>
+    long EnqueueAccountLinked(int userId, string? uuid, string username, AccountLinkedNotificationDto linked) =>
+        Enqueue(userId, uuid, username, PlayerNotificationTypes.AccountLinked, null);
+
     /// <summary>Every unacknowledged, unexpired notification, oldest first.</summary>
     IReadOnlyList<PlayerNotificationDto> GetPending();
 

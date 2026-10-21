@@ -197,20 +197,6 @@ public class InviteRegistrationTests : IDisposable
     }
 
     [Fact]
-    public async Task ClaimCode_IsNotSupportedYet()
-    {
-        var shared = await SharedAsync();
-        var request = Request("steve@example.com", code: shared.Code);
-        request.ClaimCode = "ABCD-2345";
-
-        var outcome = await Auth().RegisterAsync(request);
-
-        Assert.Equal(AuthRegisterOutcome.NotSupportedYet, outcome.Error);
-        Assert.Equal(400, await ControllerStatusAsync(outcome));
-        Assert.Equal(0, (await _h.Db.Invitations.SingleAsync()).UseCount);
-    }
-
-    [Fact]
     public async Task ModeLinkCode_RefusesInvites()
     {
         var shared = await SharedAsync();

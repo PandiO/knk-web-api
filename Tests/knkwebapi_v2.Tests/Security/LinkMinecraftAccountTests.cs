@@ -155,6 +155,7 @@ public class LinkMinecraftAccountTests : IDisposable
     public async Task CaseA_AClaimCode_LinksTheWebAccountItself_WithoutANewSession()
     {
         var shell = await _h.AddUserAsync(username: "web-1", email: "steve@example.com", uuid: null);
+        shell.AdmittedAt = DateTime.UtcNow; // invited (KNG-214: claim codes only link admitted accounts)
         _h.Db.LinkCodes.Add(new LinkCode
         {
             Code = "7Q2HM4XA", Purpose = LinkCodePurpose.Claim, MinecraftUuid = "uuid-7", MinecraftName = "Steve",

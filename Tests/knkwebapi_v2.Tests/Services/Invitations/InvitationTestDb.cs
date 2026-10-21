@@ -48,11 +48,17 @@ internal sealed class InvitationTestDb : IDisposable
         Db.SaveChanges();
     }
 
-    public InvitationService Service()
+    /// <summary>The real composer with strict template rendering (every placeholder must be in the model).</summary>
+    public EmailComposer Composer()
     {
         var emailSettings = new EmailSettings { FromAddress = "no-reply@knightsandkings.net" };
-        var composer = new EmailComposer(Db, new EmailTemplateRenderer(emailSettings, "https://knk.example", strict: true),
+        return new EmailComposer(Db, new EmailTemplateRenderer(emailSettings, "https://knk.example", strict: true),
             new EmailThrottle(Db, Options.Create(emailSettings), new MemoryCache(new MemoryCacheOptions())), null, Clock);
+    }
+
+    public InvitationService Service()
+    {
+        var composer = Composer();
         return new InvitationService(new InvitationRepository(Db), new UserRepository(Db), new PermissionGroupRepository(Db),
             Guard.Object, Audit.Object, composer, Options.Create(Settings), Options.Create(Security), null, Clock);
     }

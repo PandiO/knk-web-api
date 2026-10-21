@@ -216,7 +216,7 @@ public class UserServiceLinkMinecraftAccountTests
     [Fact]
     public async Task CaseA_AClaimCodeForAnUnknownUuid_GivesTheWebAccountTheUuidAndVerifiedName()
     {
-        var web = Seed(new User { Id = 1, Username = "web-1", Email = "steve@example.com", PasswordHash = "h" });
+        var web = Seed(new User { Id = 1, Username = "web-1", Email = "steve@example.com", PasswordHash = "h", AdmittedAt = DateTime.UtcNow });
         _users.Setup(r => r.GetByUuidAsync("uuid-7")).ReturnsAsync((User?)null);
         _users.Setup(r => r.GetByUsernameAsync("Steve")).ReturnsAsync((User?)null);
         ClaimCodeFor("uuid-7", "Steve");
@@ -236,7 +236,7 @@ public class UserServiceLinkMinecraftAccountTests
     [Fact]
     public async Task CaseA_ReleasesTheNameFromASquattingWebOnlyAccountFirst()
     {
-        var web = Seed(new User { Id = 1, Username = "web-1", Email = "steve@example.com", PasswordHash = "h" });
+        var web = Seed(new User { Id = 1, Username = "web-1", Email = "steve@example.com", PasswordHash = "h", AdmittedAt = DateTime.UtcNow });
         var squatter = Seed(new User { Id = 3, Username = "Steve", Email = "other@example.com", PasswordHash = "h3" });
         _users.Setup(r => r.GetByUuidAsync("uuid-7")).ReturnsAsync((User?)null);
         _users.Setup(r => r.GetByUsernameAsync("Steve")).ReturnsAsync(squatter);
@@ -251,7 +251,7 @@ public class UserServiceLinkMinecraftAccountTests
     [Fact]
     public async Task AClaimCodeForAnExistingMinecraftAccount_IsCaseB()
     {
-        var web = Seed(new User { Id = 1, Username = "web-1", Email = "steve@example.com", PasswordHash = "h" });
+        var web = Seed(new User { Id = 1, Username = "web-1", Email = "steve@example.com", PasswordHash = "h", AdmittedAt = DateTime.UtcNow });
         var minecraft = Seed(new User { Id = 2, Username = "Steve", Uuid = "uuid-2" });
         ClaimCodeFor("uuid-2", "Steve");
 

@@ -35,6 +35,7 @@ namespace knkwebapi_v2.Services
         private readonly ISessionRevocationService _sessionRevocation;
         private readonly ILinkCodeService _linkCodeService;
         private readonly IInvitationService? _invitations;
+        private readonly IUserService? _users;
 
         public AuthService(
             IUserRepository userRepository,
@@ -51,8 +52,11 @@ namespace knkwebapi_v2.Services
             ILinkCodeService linkCodeService,
             ILoginAttemptLimiter loginLimiter,
             IOptions<AppSettings>? app = null,
-            IInvitationService? invitations = null)
+            IInvitationService? invitations = null,
+            IUserService? users = null)
         {
+            // KNG-214: register with a claim code links through IUserService (case A / B).
+            _users = users;
             _invitations = invitations;
             _loginLimiter = loginLimiter;
             _linkCodeService = linkCodeService;
@@ -262,14 +266,26 @@ namespace knkwebapi_v2.Services
                 return AuthRegisterOutcome.Fail("InvalidRequest", "Registration payload is required.");
             }
 
-            // KNG-214 adds claim codes; until then they are refused in every mode.
-            if (!string.IsNullOrWhiteSpace(request.ClaimCode))
-            {
-                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.NotSupportedYet, "Claim codes can't be used to sign up yet.");
-            }
-
             var hasInvite = !string.IsNullOrWhiteSpace(request.InviteToken) || !string.IsNullOrWhiteSpace(request.InviteCode);
             var inviteMode = _securitySettings.Registration.Mode != RegistrationMode.LinkCode;
+
+            // KNG-214 (game-first, DESIGN § 5.3): a claim code from the disconnect screen comes with an
+            // invitation; the account is created and linked in one step.
+            if (!string.IsNullOrWhiteSpace(request.ClaimCode))
+            {
+                if (!string.IsNullOrWhiteSpace(request.LinkCode))
+                {
+                    return AuthRegisterOutcome.Fail("InvalidRequest", "Use either a claim code or a link code, not both.");
+                }
+                if (!inviteMode)
+                {
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvitesDisabled, "Sign-up with an invitation isn't open yet. Join the server and run /account link to get your registration code.");
+                }
+                if (!hasInvite)
+                {
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InviteRequired, "You need an invitation to create an account.");
+                }
+            }
             if (hasInvite)
             {
                 if (!inviteMode)
@@ -415,7 +431,13 @@ namespace knkwebapi_v2.Services
             }
 
             var passwordHash = await _passwordService.HashPasswordAsync(request.Password!);
-            var user = await _invitations.RedeemAsync(new InviteSignup(invitation, email, passwordHash, EmailVerified: personal));
+            var signup = new InviteSignup(invitation, email, passwordHash, EmailVerified: personal);
+            if (!string.IsNullOrWhiteSpace(request.ClaimCode))
+            {
+                return await RegisterWithInviteAndClaimAsync(signup, request.ClaimCode!, clientIp, userAgent);
+            }
+
+            var user = await _invitations.RedeemAsync(signup);
             if (user == null)
             {
                 // Another sign-up took the last use, or the invite was paused or revoked meanwhile.
@@ -430,6 +452,85 @@ namespace knkwebapi_v2.Services
                 ExpiresIn = expiresIn,
                 User = _mapper.Map<UserDto>(user),
                 Session = session
+            });
+        }
+
+        private const string InvalidClaimMessage = "This code from the server is invalid or has expired. Join the server again for a new one.";
+
+        /// <summary>
+        /// Game-first sign-up (KNG-214, plan § 6.1): the claim code is checked before the invite's use
+        /// is taken, then the shell account is created (InvitationService.RedeemAsync) and linked
+        /// (UserService.LinkMinecraftAccountAsync: case A, or the fold of case B) in one transaction.
+        /// Any failure rolls all of it back, so there is never a new account without its Minecraft
+        /// identity, nor a used invite without an account.
+        /// </summary>
+        private async Task<AuthRegisterOutcome> RegisterWithInviteAndClaimAsync(InviteSignup signup, string claimCode, string? clientIp, string? userAgent)
+        {
+            if (_users == null)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+            }
+
+            var (valid, code, _) = await _linkCodeService.ValidateLinkCodeAsync(claimCode);
+            if (!valid || code == null || code.Purpose != LinkCodePurpose.Claim || string.IsNullOrWhiteSpace(code.MinecraftUuid))
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+            }
+            var holder = await _userRepository.GetByUuidAsync(code.MinecraftUuid);
+            if (holder != null && (!holder.IsActive || holder.DeletedAt.HasValue))
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+            }
+            if (holder != null && !string.IsNullOrEmpty(holder.PasswordHash))
+            {
+                return AuthRegisterOutcome.Fail("AlreadyRegistered", "This Minecraft account already has a web account. Log in with it, or use Forgot password.");
+            }
+
+            LinkMinecraftAccountResult? link = null;
+            var outcome = await _userRepository.RunInTransactionAsync(async () =>
+            {
+                var shell = await _invitations!.RedeemAsync(signup);
+                if (shell == null)
+                {
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidInvite, "This invitation is invalid or has expired. Ask whoever invited you for a new one.");
+                }
+                try
+                {
+                    link = await _users.LinkMinecraftAccountAsync(shell.Id, claimCode);
+                }
+                catch (LinkConflictException ex)
+                {
+                    return AuthRegisterOutcome.Fail(ex.Code, ex.Message);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Spent or expired between the check above and the link.
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+                }
+                return AuthRegisterOutcome.Pending;
+            }, result => result.Ok);
+            if (!outcome.Ok || link == null)
+            {
+                return outcome.Ok ? AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage) : outcome;
+            }
+
+            // The account the login now belongs to: the shell itself (case A) or the Minecraft account it was folded into (case B).
+            var user = await _userRepository.GetByIdAsync(link.User.Id);
+            if (user == null)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+            }
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
+            _logger.LogInformation("Web account {UserId} created with an invitation and linked to Minecraft {Username} (merged: {Merged})", user.Id, user.Username, link.Merged);
+            return AuthRegisterOutcome.Success(new AuthLoginResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = null,
+                ExpiresIn = expiresIn,
+                User = _mapper.Map<UserDto>(user),
+                Session = session,
+                Linked = true,
+                MinecraftName = user.Username
             });
         }
 

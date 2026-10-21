@@ -38,4 +38,26 @@ public class InvitationRegistrationDiTests
         Assert.Equal(14, scope.ServiceProvider.GetRequiredService<IOptions<InvitationSettings>>().Value.MaxExpiryDays);
         Assert.Equal(RegistrationMode.Invite, scope.ServiceProvider.GetRequiredService<IOptions<SecuritySettings>>().Value.Registration.Mode);
     }
+
+    [Fact]
+    public void ApplicationServices_ResolveTheAdmissionService_AndBindItsSettings()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Admission:ClaimCodeMinutes"] = "10",
+            ["Security:Jwt:Secret"] = "test-only-jwt-secret-0123456789abcdef-0123456789",
+        }).Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddDbContext<KnKDbContext>(o => o.UseInMemoryDatabase("di-" + Guid.NewGuid()));
+        services.Configure<SecuritySettings>(configuration.GetSection("Security"));
+        services.AddApplicationServices(configuration);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        Assert.IsType<AdmissionService>(scope.ServiceProvider.GetRequiredService<IAdmissionService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IUserService>());
+        Assert.Equal(10, scope.ServiceProvider.GetRequiredService<IOptions<AdmissionSettings>>().Value.ClaimCodeMinutes);
+    }
 }

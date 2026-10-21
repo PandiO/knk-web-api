@@ -8,6 +8,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
+using knkwebapi_v2.Services.Email;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.Extensions.Options;
 
@@ -35,6 +36,7 @@ namespace knkwebapi_v2.Services
         private readonly ILinkAttemptLimiter? _linkAttempts;
         private readonly RegistrationMode _registrationMode;
         private readonly IInvitationRepository? _invitations;
+        private readonly IEmailComposer? _email;
 
         public UserService(
             IUserRepository repo,
@@ -52,8 +54,11 @@ namespace knkwebapi_v2.Services
             ISessionRevocationService? sessions = null,
             ILinkAttemptLimiter? linkAttempts = null,
             IOptions<SecuritySettings>? security = null,
-            IInvitationRepository? invitations = null)
+            IInvitationRepository? invitations = null,
+            IEmailComposer? email = null)
         {
+            // KNG-214: the MinecraftLinked mail; optional like the ones above.
+            _email = email;
             _invitations = invitations;
             _registrationMode = security?.Value.Registration.Mode ?? RegistrationMode.LinkCode;
             _notificationQueue = notificationQueue;
@@ -1205,6 +1210,15 @@ namespace knkwebapi_v2.Services
                 throw new InvalidOperationException("Invalid or expired link code");
             }
 
+            // KNG-214: a claim code (the admission gate's) only links to an admitted web account,
+            // invited or grandfathered, so it can't be used to get in without an invitation.
+            var viaClaim = code!.Purpose == LinkCodePurpose.Claim;
+            if (viaClaim && !webAppUser.AdmittedAt.HasValue)
+            {
+                throw new LinkForbiddenException(LinkForbiddenException.InviteRequired,
+                    "You need an invitation before you can link a Minecraft account.");
+            }
+
             // Step 2: the caller's own state (DESIGN § 5.4).
             if (!string.IsNullOrWhiteSpace(webAppUser.Uuid))
             {
@@ -1242,16 +1256,25 @@ namespace knkwebapi_v2.Services
             if (minecraftUser == null)
             {
                 // Case A: no account has this UUID (only claim codes get here, KNG-214). The web
-                // account becomes the Minecraft account; its name is the Mojang-verified one.
-                if (!string.IsNullOrWhiteSpace(verifiedName) && !string.Equals(webAppUser.Username, verifiedName, StringComparison.OrdinalIgnoreCase))
+                // account becomes the Minecraft account; its name is the Mojang-verified one. One
+                // transaction: identity, admission, the starting balance it never got as a web
+                // shell (SIGNUP_GRANT, once-only key signup:{id}), the audit entry and the mail.
+                await _repo.RunWithUsersLockedAsync(new[] { webAppUser.Id }, async () =>
                 {
-                    await ReleaseUsernameFromWebOnlyAccountAsync(verifiedName, userId);
-                    webAppUser.Username = verifiedName;
-                }
-                webAppUser.Uuid = uuid;
-                await _repo.UpdateUserAsync(webAppUser);
+                    if (!string.IsNullOrWhiteSpace(verifiedName) && !string.Equals(webAppUser.Username, verifiedName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        await ReleaseUsernameFromWebOnlyAccountAsync(verifiedName, userId);
+                        webAppUser.Username = verifiedName;
+                    }
+                    webAppUser.Uuid = uuid;
+                    webAppUser.AdmittedAt ??= DateTime.UtcNow;
+                    await _repo.UpdateUserAsync(webAppUser);
+                    await GrantSignupBalanceAsync(webAppUser.Id);
+                    await RecordLinkedAsync(webAppUser, webAppUser.Id, "A", viaClaim);
+                });
                 _logger.LogInformation("Web account {UserId} linked to Minecraft UUID {Uuid} (case A)", webAppUser.Id, uuid);
                 var linked = await _repo.GetByIdAsync(webAppUser.Id);
+                NotifyLinked(linked!);
                 return new LinkMinecraftAccountResult(await MapToUserDtoAsync(linked!), Merged: false);
             }
 
@@ -1259,7 +1282,110 @@ namespace knkwebapi_v2.Services
             // groups and history (decision I7, KNG-207).
             await FoldWebAccountIntoMinecraftAccountAsync(minecraftUser.Id, webAppUser.Id);
             var survivor = await _repo.GetByIdAsync(minecraftUser.Id);
+            await RecordLinkedAsync(survivor!, webAppUser.Id, "B", viaClaim);
+            NotifyLinked(survivor!);
             return new LinkMinecraftAccountResult(await MapToUserDtoAsync(survivor!), Merged: true);
+        }
+
+        /// <summary>
+        /// Audit MinecraftLinked (target = the account that now holds both) and queue the
+        /// MinecraftLinked mail to its address (KNG-214, DESIGN § 5.5: the owner hears of every link).
+        /// </summary>
+        private async Task RecordLinkedAsync(User account, int webUserId, string linkCase, bool viaClaim)
+        {
+            await _auditLogService.RecordAsync(webUserId, account.Id, AuditAction.MinecraftLinked, JsonSerializer.Serialize(new
+            {
+                uuid = account.Uuid,
+                minecraftName = account.Username,
+                webUserId,
+                linkCase,
+                via = viaClaim ? "claim" : "link"
+            }));
+            if (_email != null && !string.IsNullOrWhiteSpace(account.Email))
+            {
+                await _email.QueueAsync(EmailKind.MinecraftLinked, account.Email!,
+                    new { username = account.Username, minecraftName = account.Username },
+                    $"minecraft-linked:{account.Id}:{account.Uuid}", userId: account.Id);
+            }
+        }
+
+        /// <summary>The in-game notice of a new link (AccountLinked), with the web login's address masked.
+        /// Queued after the change is saved; the plugin shows it on the player's next join.</summary>
+        private void NotifyLinked(User account) =>
+            _notificationQueue?.EnqueueAccountLinked(account.Id, account.Uuid, account.Username,
+                new AccountLinkedNotificationDto { MaskedEmail = EmailMask.Mask(account.Email) });
+
+        /// <inheritdoc/>
+        public async Task<bool> IsUuidAdmittedAsync(string uuid)
+        {
+            if (string.IsNullOrWhiteSpace(uuid))
+            {
+                return false;
+            }
+            var user = await _repo.GetByUuidAsync(uuid.Trim().ToLowerInvariant());
+            return user != null && user.IsActive && !user.DeletedAt.HasValue && user.AdmittedAt.HasValue;
+        }
+
+        /// <inheritdoc/>
+        public async Task<(UserDto User, bool Changed)> AdmitAsync(int userId, int? actorUserId)
+        {
+            var user = await _repo.GetByIdAsync(userId) ?? throw new KeyNotFoundException($"User with id {userId} not found.");
+            if (user.DeletedAt.HasValue)
+            {
+                throw new KeyNotFoundException($"User with id {userId} not found.");
+            }
+            if (user.AdmittedAt.HasValue)
+            {
+                return (await MapToUserDtoAsync(user), false);
+            }
+
+            user.AdmittedAt = DateTime.UtcNow;
+            await _repo.UpdateUserAsync(user);
+            await _auditLogService.RecordAsync(actorUserId, user.Id, AuditAction.PlayerAdmitted, JsonSerializer.Serialize(new
+            {
+                uuid = user.Uuid,
+                username = user.Username,
+                active = user.IsActive
+            }));
+            _logger.LogInformation("User {UserId} admitted by staff {ActorId}", user.Id, actorUserId);
+            return (await MapToUserDtoAsync(user), true);
+        }
+
+        /// <inheritdoc/>
+        public async Task<UserDto> DetachWebLoginAsync(int userId, int? actorUserId)
+        {
+            var user = await _repo.GetByIdAsync(userId) ?? throw new KeyNotFoundException($"User with id {userId} not found.");
+            if (user.DeletedAt.HasValue)
+            {
+                throw new KeyNotFoundException($"User with id {userId} not found.");
+            }
+            if (string.IsNullOrWhiteSpace(user.Uuid))
+            {
+                // A web-only account has nothing but its login; detaching would leave an empty row.
+                throw new LinkConflictException(LinkConflictException.NotLinked,
+                    "This account has no Minecraft account; there is nothing to detach the web login from.");
+            }
+            if (string.IsNullOrEmpty(user.Email) && string.IsNullOrEmpty(user.PasswordHash))
+            {
+                throw new LinkConflictException(LinkConflictException.NoWebLogin, "This account has no web login.");
+            }
+
+            var maskedEmail = EmailMask.Mask(user.Email);
+            user.Email = null;
+            user.PasswordHash = null;
+            user.EmailVerified = false;
+            user.EmailVerifiedAt = null;
+            user.LastPasswordChangeAt = null;
+            await _repo.UpdateUserAsync(user);
+            await RevokeSessionsAsync(user.Id, "web login detached by staff");
+            await _auditLogService.RecordAsync(actorUserId, user.Id, AuditAction.MinecraftUnlinked, JsonSerializer.Serialize(new
+            {
+                uuid = user.Uuid,
+                username = user.Username,
+                email = maskedEmail
+            }));
+            _logger.LogWarning("Web login of user {UserId} detached by staff {ActorId}", user.Id, actorUserId);
+            return await MapToUserDtoAsync(user);
         }
 
         /// <summary>

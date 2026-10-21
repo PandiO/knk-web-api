@@ -192,6 +192,23 @@ namespace knkwebapi_v2.Services
         /// <param name="linkCode">Link code from Minecraft</param>
         Task<LinkMinecraftAccountResult> LinkMinecraftAccountAsync(int userId, string linkCode);
 
+        /// <summary>True when an active, non-deleted account with this UUID is admitted (KNG-214).</summary>
+        Task<bool> IsUuidAdmittedAsync(string uuid);
+
+        /// <summary>
+        /// Staff "Admit" (KNG-214): sets AdmittedAt and audits PlayerAdmitted. Already admitted →
+        /// unchanged (Changed false, no audit entry). Unknown or deleted → KeyNotFoundException.
+        /// </summary>
+        Task<(UserDto User, bool Changed)> AdmitAsync(int userId, int? actorUserId);
+
+        /// <summary>
+        /// Staff "Detach web login" (KNG-214, DESIGN § 5.5): clears Email, PasswordHash and the
+        /// verification and password-change stamps, revokes the sessions and audits
+        /// MinecraftUnlinked. The Minecraft account and its data stay; the owner can register again
+        /// with /account link. LinkConflictException NotLinked (no UUID) or NoWebLogin.
+        /// </summary>
+        Task<UserDto> DetachWebLoginAsync(int userId, int? actorUserId);
+
         /// <summary>
         /// Closed-alpha hardening WP5.3: when a web-only account (no Minecraft UUID) holds
         /// <paramref name="username"/>, renames it to unclaimed-&lt;id&gt; and audits it, so the real

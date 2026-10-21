@@ -185,12 +185,22 @@ namespace knkwebapi_v2.Services
             // Normalize code (remove hyphens, uppercase)
             var normalizedCode = code.Replace("-", "").ToUpperInvariant();
 
-            if (normalizedCode.Length != CodeLength)
+            // A claim code typed off the disconnect screen may hold Crockford look-alikes (O, I, L)
+            // or spaces; only a claim code may match in that folded form (KNG-214).
+            var claimForm = NormalizeClaimCode(code);
+            if (normalizedCode.Length != CodeLength && claimForm.Length != CodeLength)
             {
                 return (false, null, "Invalid link code format.");
             }
 
-            var linkCode = await _linkCodeRepository.GetLinkCodeByCodeAsync(normalizedCode);
+            var linkCode = normalizedCode.Length == CodeLength
+                ? await _linkCodeRepository.GetLinkCodeByCodeAsync(normalizedCode)
+                : null;
+            if (linkCode == null && claimForm.Length == CodeLength && claimForm != normalizedCode)
+            {
+                var claim = await _linkCodeRepository.GetLinkCodeByCodeAsync(claimForm);
+                linkCode = claim?.Purpose == LinkCodePurpose.Claim ? claim : null;
+            }
 
             if (linkCode == null)
             {

@@ -90,7 +90,11 @@ namespace knkwebapi_v2.Controllers
         /// KNG-212: with Security:Registration:Mode=Invite an inviteToken or inviteCode creates a web
         /// account (400 InvalidInvite / InviteEmailMismatch), and 403 InviteRequired answers a missing
         /// invite or a link code of an account that isn't admitted. Under Mode=LinkCode invites answer
-        /// 403 InvitesDisabled. claimCode answers 400 NotSupportedYet until KNG-214.
+        /// 403 InvitesDisabled.
+        /// KNG-214: a claimCode (game-first) needs an invite as well (403 InviteRequired, or 403
+        /// InvitesDisabled under Mode=LinkCode) and links the new account in the same step: the answer
+        /// then holds <c>linked: true</c> and <c>minecraftName</c>. 400 InvalidClaimCode for a wrong,
+        /// spent or expired code, 409 AlreadyRegistered when that Minecraft account has a web login.
         /// </summary>
         [HttpPost("register")]
         [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
@@ -104,7 +108,7 @@ namespace knkwebapi_v2.Controllers
                 var body = new { error = outcome.Error, message = outcome.Message };
                 return outcome.Error switch
                 {
-                    "AlreadyRegistered" or "DuplicateEmail" => Conflict(body),
+                    "AlreadyRegistered" or "AlreadyLinked" or "DuplicateEmail" => Conflict(body),
                     AuthRegisterOutcome.RegistrationNeedsCode or AuthRegisterOutcome.InviteRequired or AuthRegisterOutcome.InvitesDisabled
                         => StatusCode(StatusCodes.Status403Forbidden, body),
                     _ => BadRequest(body)

@@ -107,9 +107,29 @@ namespace knkwebapi_v2.Services
         public const string AlreadyRegistered = "AlreadyRegistered";
         public const string AlreadyLinked = "AlreadyLinked";
 
+        // KNG-214, staff "Detach web login".
+        public const string NotLinked = "NotLinked";
+        public const string NoWebLogin = "NoWebLogin";
+
         public string Code { get; }
 
         public LinkConflictException(string code, string message) : base(message)
+        {
+            Code = code;
+        }
+    }
+
+    /// <summary>
+    /// A link the caller isn't allowed to make (403), e.g. a claim code on a web account that was
+    /// never admitted (KNG-214: InviteRequired).
+    /// </summary>
+    public sealed class LinkForbiddenException : Exception
+    {
+        public const string InviteRequired = "InviteRequired";
+
+        public string Code { get; }
+
+        public LinkForbiddenException(string code, string message) : base(message)
         {
             Code = code;
         }

@@ -53,6 +53,17 @@ namespace knkwebapi_v2.Dtos
         /// <summary>The refresh token for the cookie; not part of the JSON.</summary>
         [JsonIgnore]
         public IssuedRefreshToken? Session { get; set; }
+
+        /// <summary>Register with a claim code (KNG-214): true when the new login was linked to the
+        /// Minecraft account in the same step. Absent otherwise.</summary>
+        [JsonPropertyName("linked")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? Linked { get; set; }
+
+        /// <summary>With <see cref="Linked"/>: the Mojang-verified name the account now has.</summary>
+        [JsonPropertyName("minecraftName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MinecraftName { get; set; }
     }
 
     /// <summary>
@@ -81,8 +92,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("inviteCode")]
         public string? InviteCode { get; set; }
 
-        /// <summary>The claim code from the server's disconnect screen (KNG-214). Answers NotSupportedYet
-        /// until the admission gate is built.</summary>
+        /// <summary>The claim code from the server's disconnect screen (KNG-214, game-first sign-up):
+        /// only together with an invite; the new account is linked in the same step.</summary>
         [JsonPropertyName("claimCode")]
         public string? ClaimCode { get; set; }
     }
@@ -98,6 +109,12 @@ namespace knkwebapi_v2.Dtos
         public const string InvitesDisabled = "InvitesDisabled";
         public const string InviteEmailMismatch = "InviteEmailMismatch";
         public const string NotSupportedYet = "NotSupportedYet";
+
+        // KNG-214: register with a claim code.
+        public const string InvalidClaimCode = "InvalidClaimCode";
+
+        /// <summary>Internal: a step went through and the caller goes on (never returned to a client).</summary>
+        internal static AuthRegisterOutcome Pending { get; } = new() { Ok = true };
 
         public bool Ok { get; private init; }
         public AuthLoginResponseDto? Result { get; private init; }

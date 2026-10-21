@@ -3,7 +3,8 @@ using knkwebapi_v2.Services.Interfaces;
 namespace knkwebapi_v2.Services
 {
     /// <summary>
-    /// Hourly housekeeping of the linkcodes table (KNG-208): active codes past their ExpiresAt are
+    /// Hourly housekeeping of the linkcodes table (KNG-208), plus the FinishLinking reminder sweep
+    /// (KNG-214, IAdmissionService.QueueFinishLinkingRemindersAsync): active codes past their ExpiresAt are
     /// marked Expired (the existing <see cref="ILinkCodeService.CleanupExpiredCodesAsync"/>), and
     /// codes that were used or expired more than <see cref="DefaultRetention"/> ago are deleted.
     /// Used and expired codes have no further use; the retention only keeps a short audit trail
@@ -69,6 +70,12 @@ namespace knkwebapi_v2.Services
             var service = scope.ServiceProvider.GetRequiredService<ILinkCodeService>();
             var expired = await service.CleanupExpiredCodesAsync();
             var deleted = await service.DeleteFinishedCodesAsync(DateTime.UtcNow - _retention);
+            // KNG-214: invited accounts still without Minecraft get one FinishLinking mail (dedupe key).
+            var admission = scope.ServiceProvider.GetService<IAdmissionService>();
+            if (admission != null)
+            {
+                await admission.QueueFinishLinkingRemindersAsync(cancellationToken);
+            }
             return (expired, deleted);
         }
     }
