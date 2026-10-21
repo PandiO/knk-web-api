@@ -757,7 +757,7 @@ namespace knkwebapi_v2.Services
     }
 
     /// <summary>
-    /// Applies the warp settings of a Town/District/Structure DTO to the entity (teleport DESIGN.md
+    /// Applies the warp settings of a Town/District/Structure/GateStructure DTO to the entity (teleport DESIGN.md
     /// §3.7.1). A DTO without teleportEnabled (a form that doesn't show the teleport fields) leaves
     /// all five untouched; otherwise all five are set, null ids meaning "no requirement".
     /// </summary>

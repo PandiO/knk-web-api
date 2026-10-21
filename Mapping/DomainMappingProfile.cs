@@ -98,7 +98,7 @@ public class DomainMappingProfile : Profile
 
 /// <summary>
 /// The Domain warp settings (teleport DESIGN.md §3.7.1) are never mapped from a Town/District/
-/// Structure DTO: services apply them through DomainTeleportSettings.Apply after validation, so a
+/// Structure/GateStructure DTO: services apply them through DomainTeleportSettings.Apply after validation, so a
 /// form without the teleport fields leaves them untouched.
 /// </summary>
 public static class DomainTeleportSettingsMapping
