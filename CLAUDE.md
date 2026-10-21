@@ -88,7 +88,8 @@ the closed-alpha plan § 7 in knk-workspace for every key.
   `knk.admin.content` gates content definitions (items, forms/displays, menus,
   reference data) and `knk.admin.world` the world model (domains, towns,
   districts, structures, streets, locations, gates, world tasks, workflows); both
-  are matched by `knk.admin.*` and `*`. Granting nodes or groups goes through
+  are matched by `knk.admin.*` and `*`. `knk.admin.duel.review` gates the arena duel
+  staff tools (release/void/revert/confiscate, duel restrictions, the duel review policy). Granting nodes or groups goes through
   `PermissionEscalationGuard`: web staff can only hand out what they hold, never
   to themselves (unless they hold `*`), and only groups ranked (Weight) below
   their own highest group; a group's deny grants don't count as nodes to hold. `knk.admin.user.group.premium` lets staff

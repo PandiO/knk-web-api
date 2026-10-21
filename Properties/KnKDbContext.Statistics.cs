@@ -28,6 +28,7 @@ public partial class KnKDbContext
         ConfigureLeaderboards(modelBuilder);
         ConfigureTelemetry(modelBuilder);
         ConfigureWorldAnalytics(modelBuilder);
+        ConfigureDuels(modelBuilder);
     }
 
     private static void ConfigureStatistics(ModelBuilder modelBuilder)

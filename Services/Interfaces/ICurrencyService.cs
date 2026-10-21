@@ -57,6 +57,14 @@ namespace knkwebapi_v2.Services.Interfaces
         Task<PostingResult> AdminAdjustAsync(AdminAdjustRequest req, CurrencyContext ctx, CancellationToken ct = default);
 
         /// <summary>
+        /// Moves <paramref name="amount"/> between two system accounts, with no user leg: from the
+        /// reason's FromSystemAccount to its SystemAccount (a <see cref="CurrencyReasonDirection.SystemToSystem"/>
+        /// reason, e.g. DUEL_FEE from SYS_DUEL to SYS_FEES). Idempotent on the key like every posting;
+        /// enlists in the caller's transaction. ReverseAsync mirrors it.
+        /// </summary>
+        Task<PostingResult> MoveBetweenSystemAccountsAsync(Currency currency, long amount, CurrencyContext ctx, CancellationToken ct = default);
+
+        /// <summary>
         /// Posts the mirror of transaction <paramref name="transactionId"/> (reason REVERSAL, key
         /// usually <c>reverse:{transactionId}</c>, ctx.Reason required). Once per transaction
         /// (AlreadyReversed); a reversal itself can't be reversed (NotReversible). See

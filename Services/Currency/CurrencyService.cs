@@ -66,9 +66,10 @@ namespace knkwebapi_v2.Services
         private Task<PostingResult> PostCoreAsync(IReadOnlyList<CurrencyLeg> legs, CurrencyContext ctx, CancellationToken ct)
         {
             var reason = RequireReason(ctx);
-            if (reason.Kind is not (CurrencyTransactionKind.Grant or CurrencyTransactionKind.Spend or CurrencyTransactionKind.Merge))
+            if (reason.Kind is not (CurrencyTransactionKind.Grant or CurrencyTransactionKind.Spend or CurrencyTransactionKind.Merge)
+                || reason.Direction == CurrencyReasonDirection.SystemToSystem)
             {
-                throw Invalid($"{reason.Code} can't be posted this way (use AdminAdjustAsync, ReverseAsync or the transfer API).");
+                throw Invalid($"{reason.Code} can't be posted this way (use AdminAdjustAsync, ReverseAsync, MoveBetweenSystemAccountsAsync or the transfer API).");
             }
             ValidateContext(ctx, reason);
 
@@ -252,6 +253,32 @@ namespace knkwebapi_v2.Services
                 new { currency = currency.ToString(), cap, grantedLast24h = granted, remaining, requested = amount, triggered = what != null });
         }
 
+        public Task<PostingResult> MoveBetweenSystemAccountsAsync(Currency currency, long amount, CurrencyContext ctx, CancellationToken ct = default) =>
+            ObserveAsync(() => MoveBetweenSystemAccountsCoreAsync(currency, amount, ctx, ct), ctx);
+
+        private Task<PostingResult> MoveBetweenSystemAccountsCoreAsync(Currency currency, long amount, CurrencyContext ctx, CancellationToken ct)
+        {
+            var reason = RequireReason(ctx);
+            if (reason.Direction != CurrencyReasonDirection.SystemToSystem
+                || string.IsNullOrEmpty(reason.FromSystemAccount) || string.IsNullOrEmpty(reason.SystemAccount))
+            {
+                throw Invalid($"{reason.Code} doesn't move funds between system accounts.");
+            }
+            ValidateContext(ctx, reason);
+            RequireAmountInRange(currency, amount, allowZero: false);
+
+            var canonical = $"system|{reason.Code}|{(int)currency}:{amount}|source:{ctx.SourceType}:{ctx.SourceRef}";
+            // No user row is touched, so none is locked; the (scope, key) unique index makes a
+            // concurrent duplicate replay the first one.
+            return ExecuteAsync(ctx, reason, Array.Empty<int>(), canonical, (_, _) =>
+            {
+                var plan = new EntryPlan();
+                plan.AddSystemLeg(reason.FromSystemAccount!, currency, -amount);
+                plan.AddSystemLeg(reason.SystemAccount!, currency, amount);
+                return Task.FromResult(plan.ToDraft());
+            }, ct);
+        }
+
         public Task<PostingResult> ReverseAsync(long transactionId, ReversalOptions opts, CurrencyContext ctx, CancellationToken ct = default) =>
             ObserveAsync(() => ReverseCoreAsync(transactionId, opts, ctx, ct), ctx);
 
@@ -308,7 +335,9 @@ namespace knkwebapi_v2.Services
                     plan.AddUserLeg(user, leg.Currency, mirror, mirror < 0 ? CurrencyOperation.Remove : CurrencyOperation.Add);
                 }
 
-                foreach (var currency in userLegs.Select(e => e.Currency).Distinct())
+                // Every currency of the original: a system-to-system move (DUEL_FEE) has no user leg,
+                // so its legs are mirrored one by one below.
+                foreach (var currency in original.Entries.Select(e => e.Currency).Distinct())
                 {
                     var accounts = original.Entries
                         .Where(e => e.AccountKind == CurrencyAccountKind.System && e.Currency == currency)

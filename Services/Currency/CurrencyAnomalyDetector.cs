@@ -34,7 +34,8 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// R3: a player received transfers from at least FunnelMinNewSenders different players
-        /// whose accounts are younger than FunnelNewAccountDays, within FunnelWindowHours.
+        /// whose accounts are younger than FunnelNewAccountDays, within FunnelWindowHours. A won duel
+        /// counts as a transfer from the loser (DUEL_PAYOUT).
         /// </summary>
         public async Task<List<CurrencyAlertDraft>> FunnelAsync(DateTime now, CancellationToken ct = default)
         {
@@ -48,6 +49,15 @@ namespace knkwebapi_v2.Services
                           && t.ToUserId != null && u.CreatedAt >= newSince
                     select new { To = t.ToUserId!.Value, From = u.Id, t.Id })
                 .ToListAsync(ct);
+            // A duel payout is a flow from the loser to the winner (arena duels DESIGN.md §10.3).
+            var duelFlows = await DuelFlowsAsync(since, now, ct);
+            if (duelFlows.Count > 0)
+            {
+                var losers = duelFlows.Select(f => f.From).Distinct().ToList();
+                var young = (await _context.Users.AsNoTracking().Where(u => losers.Contains(u.Id) && u.CreatedAt >= newSince)
+                    .Select(u => u.Id).ToListAsync(ct)).ToHashSet();
+                pairs.AddRange(duelFlows.Where(f => young.Contains(f.From)).Select(f => new { To = f.To, From = f.From, Id = f.TransactionId }));
+            }
 
             var drafts = new List<CurrencyAlertDraft>();
             foreach (var group in pairs.GroupBy(p => p.To))
@@ -77,7 +87,8 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// R4: two players sent each other money back and forth at least PingPongMinCycles times
-        /// (min(A→B, B→A) transfers) within PingPongWindowMinutes.
+        /// (min(A→B, B→A) transfers) within PingPongWindowMinutes. A won duel counts as a transfer
+        /// from the loser to the winner (DUEL_PAYOUT).
         /// </summary>
         public async Task<List<CurrencyAlertDraft>> PingPongAsync(DateTime now, CancellationToken ct = default)
         {
@@ -88,6 +99,7 @@ namespace knkwebapi_v2.Services
                             && t.FromUserId != null && t.ToUserId != null)
                 .Select(t => new { From = t.FromUserId!.Value, To = t.ToUserId!.Value })
                 .ToListAsync(ct);
+            transfers.AddRange((await DuelFlowsAsync(since, now, ct)).Select(f => new { From = f.From, To = f.To }));
 
             var drafts = new List<CurrencyAlertDraft>();
             foreach (var pair in transfers.GroupBy(t => (A: Math.Min(t.From, t.To), B: Math.Max(t.From, t.To))))
@@ -248,7 +260,8 @@ namespace knkwebapi_v2.Services
         /// R7: what a reason code minted (credited to players from a system account, so not
         /// player transfers) of coins or gems in the last 24 h is more than MintRateMultiplier ×
         /// its daily mean over the MintRateBaselineDays before, and at least the noise floor. A
-        /// reason with no history is not compared.
+        /// reason with no history is not compared. DUEL_PAYOUT and DUEL_REFUND are paid out of the
+        /// stakes, so they are not counted.
         /// </summary>
         public async Task<List<CurrencyAlertDraft>> MintRateAsync(DateTime now, CancellationToken ct = default)
         {
@@ -280,17 +293,81 @@ namespace knkwebapi_v2.Services
             return drafts;
         }
 
+        /// <summary>Credits funded by duel stakes, not minted: left out of R7 (arena duels DESIGN.md §10.3).</summary>
+        private static readonly string[] StakeFundedReasons = { CurrencyReasons.DuelPayout, CurrencyReasons.DuelRefund };
+
         /// <summary>Minted per reason and currency in [from, to).</summary>
         private async Task<Dictionary<(string Reason, Currency Currency), long>> MintedAsync(DateTime from, DateTime to, CancellationToken ct)
         {
             var rows = await _context.CurrencyEntries.AsNoTracking()
                 .Where(e => e.AccountKind == CurrencyAccountKind.User && e.Amount > 0 && e.Currency != Currency.Experience
                             && e.Transaction.Kind != CurrencyTransactionKind.Transfer
+                            && !StakeFundedReasons.Contains(e.Transaction.ReasonCode)
                             && e.Transaction.CreatedAt >= from && e.Transaction.CreatedAt < to)
                 .GroupBy(e => new { e.Transaction.ReasonCode, e.Currency })
                 .Select(g => new { g.Key.ReasonCode, g.Key.Currency, Sum = g.Sum(e => e.Amount) })
                 .ToListAsync(ct);
             return rows.ToDictionary(r => (r.ReasonCode, r.Currency), r => r.Sum);
+        }
+
+        /// <summary>
+        /// R10 (arena duels DESIGN.md §10.3): within DuelPairWindowHours, one player won at least
+        /// DuelPairMinOneWayWins paid duels against the same opponent who won none back, or at least
+        /// DuelPairMinNetCoins coins moved one way between them through duel payouts. Medium.
+        /// </summary>
+        public async Task<List<CurrencyAlertDraft>> DuelPairAsync(DateTime now, CancellationToken ct = default)
+        {
+            var window = TimeSpan.FromHours(_options.DuelPairWindowHours);
+            var flows = await DuelFlowsAsync(now - window, now, ct);
+            var drafts = new List<CurrencyAlertDraft>();
+            foreach (var pair in flows.GroupBy(f => (A: Math.Min(f.From, f.To), B: Math.Max(f.From, f.To))))
+            {
+                var aWins = pair.Where(f => f.To == pair.Key.A).ToList();
+                var bWins = pair.Where(f => f.To == pair.Key.B).ToList();
+                var net = aWins.Sum(f => f.Coins) - bWins.Sum(f => f.Coins);
+                var oneWay = (aWins.Count == 0 || bWins.Count == 0) && Math.Max(aWins.Count, bWins.Count) >= _options.DuelPairMinOneWayWins;
+                var bigFlow = _options.DuelPairMinNetCoins > 0 && Math.Abs(net) >= _options.DuelPairMinNetCoins;
+                if (!oneWay && !bigFlow)
+                {
+                    continue;
+                }
+                var (winner, loser) = net > 0 || (net == 0 && aWins.Count >= bWins.Count) ? (pair.Key.A, pair.Key.B) : (pair.Key.B, pair.Key.A);
+                var names = await NamesAsync(new[] { pair.Key.A, pair.Key.B }, ct);
+                drafts.Add(new CurrencyAlertDraft(CurrencyAlertRules.DuelPair, CurrencyAlertSeverity.Medium,
+                    Truncate($"{names.GetValueOrDefault(winner, $"#{winner}")} won {Math.Max(aWins.Count, bWins.Count)} paid duels against {names.GetValueOrDefault(loser, $"#{loser}")} within {_options.DuelPairWindowHours} h ({aWins.Count}:{bWins.Count}), {Math.Abs(net):N0} coins net."),
+                    $"R10:pair:{pair.Key.A}:{pair.Key.B}", window)
+                {
+                    UserId = winner,
+                    Details = new
+                    {
+                        winnerUserId = winner,
+                        loserUserId = loser,
+                        winsA = aWins.Count,
+                        winsB = bWins.Count,
+                        userA = pair.Key.A,
+                        userB = pair.Key.B,
+                        netCoins = Math.Abs(net),
+                        matchTransactions = pair.Select(f => f.TransactionId),
+                        windowHours = _options.DuelPairWindowHours
+                    }
+                });
+            }
+            return drafts;
+        }
+
+        /// <summary>Paid duels in [since, now]: a flow of the loser's coin stake from the loser to the winner.</summary>
+        private async Task<List<(int From, int To, long TransactionId, long Coins)>> DuelFlowsAsync(DateTime since, DateTime now, CancellationToken ct)
+        {
+            var rows = await (
+                    from m in _context.DuelMatches.AsNoTracking()
+                    join t in _context.CurrencyTransactions.AsNoTracking() on m.SettlementTransactionId equals (long?)t.Id
+                    where m.WinnerUserId != null && t.CreatedAt >= since && t.CreatedAt <= now
+                    select new { m.ChallengerUserId, m.OpponentUserId, Winner = m.WinnerUserId!.Value, t.Id, m.ChallengerCoins, m.OpponentCoins })
+                .ToListAsync(ct);
+            return rows.Select(r => r.Winner == r.ChallengerUserId
+                    ? (r.OpponentUserId, r.Winner, r.Id, r.OpponentCoins)
+                    : (r.ChallengerUserId, r.Winner, r.Id, r.ChallengerCoins))
+                .ToList();
         }
 
         /// <summary>Most mismatches listed in one R1/R2 alert (the reconciliation page has all of them).</summary>

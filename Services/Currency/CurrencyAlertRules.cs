@@ -36,6 +36,15 @@ namespace knkwebapi_v2.Services
         /// <summary>A player whose transfers keep being refused. Low.</summary>
         public const string Probing = "R9";
 
+        /// <summary>Duel payouts flowing one way between the same two players (arena duels DESIGN.md §10.3). Medium.</summary>
+        public const string DuelPair = "R10";
+
+        /// <summary>A duel result with review signals, paid and flagged (tier 1, DuelMatchService). Medium.</summary>
+        public const string DuelFlag = "DUEL_FLAG";
+
+        /// <summary>A duel result held for staff review (tier 2: the same players flagged again). High.</summary>
+        public const string DuelHold = "DUEL_HOLD";
+
         /// <summary>Short names for staff screens.</summary>
         public static readonly IReadOnlyDictionary<string, string> Names = new Dictionary<string, string>
         {
@@ -47,7 +56,10 @@ namespace knkwebapi_v2.Services
             [Admin] = "Staff adjustments",
             [MintRate] = "Mint rate",
             [CapHit] = "Balance cap hit",
-            [Probing] = "Probing"
+            [Probing] = "Probing",
+            [DuelPair] = "Duel pair",
+            [DuelFlag] = "Duel flagged",
+            [DuelHold] = "Duel held for review"
         };
 
         public static string NameOf(string rule) => Names.TryGetValue(rule, out var name) ? name : rule;

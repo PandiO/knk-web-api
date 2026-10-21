@@ -97,6 +97,13 @@ namespace knkwebapi_v2.Attributes
         /// Matched by knk.admin.* and *.</summary>
         public const string ManageWorld = "knk.admin.world";
 
+        /// <summary>
+        /// Arena duel staff tools (arena duels DESIGN.md §10.3, KNG-213): release or void a held result,
+        /// revert or confiscate a paid one, clear a review escalation, duel restrictions and the duel review
+        /// policy. The same node gates /knk duel review in-game; matched by knk.admin.* and *.
+        /// </summary>
+        public const string DuelReview = "knk.admin.duel.review";
+
         /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
         /// owner group; every read is audited.</summary>
         public const string ReadPrivateMessages = "knk.pmlog.read";

@@ -176,7 +176,8 @@ namespace knkwebapi_v2.Services
                 (CurrencyAlertRules.PingPong, () => _detector.PingPongAsync(now, ct)),
                 (CurrencyAlertRules.Velocity, () => _detector.VelocityAsync(now, ct)),
                 (CurrencyAlertRules.Admin, () => _detector.AdminAsync(now, ct)),
-                (CurrencyAlertRules.MintRate, () => _detector.MintRateAsync(now, ct))
+                (CurrencyAlertRules.MintRate, () => _detector.MintRateAsync(now, ct)),
+                (CurrencyAlertRules.DuelPair, () => _detector.DuelPairAsync(now, ct))
             };
             var raised = 0;
             foreach (var (rule, evaluate) in rules)

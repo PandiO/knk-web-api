@@ -1228,6 +1228,318 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("domain_navigation_defaults", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.DuelMatch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long?>("AlertId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ArenaId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BattlegroundId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("ChallengerCoins")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ChallengerItemStacks")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ChallengerKitId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ChallengerUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("FeeCoins")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("FeePercent")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("FeeTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("FightStartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("FightTelemetryJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("FixedKitId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GearMode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime>("LockedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("OfferCount")
+                        .HasColumnType("int");
+
+                    b.Property<long>("OpponentCoins")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("OpponentItemStacks")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OpponentKitId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OpponentUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PublicToken")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<long?>("RefundTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("RevertResultJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Review")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("ReviewDetailsJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ReviewReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("ReviewSignals")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int?>("ReviewTier")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("SettlementTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SpoilsItemsJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("StakeItemsJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<long?>("StakeTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("UndeliveredItems")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("WinnerUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("BattlegroundId");
+
+                    b.HasIndex("ChallengerKitId");
+
+                    b.HasIndex("FixedKitId");
+
+                    b.HasIndex("OpponentKitId");
+
+                    b.HasIndex("PublicToken")
+                        .IsUnique();
+
+                    b.HasIndex("Review");
+
+                    b.HasIndex("SettlementTransactionId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ArenaId", "Status");
+
+                    b.HasIndex("ChallengerUserId", "CreatedAt");
+
+                    b.HasIndex("OpponentUserId", "CreatedAt");
+
+                    b.HasIndex("WinnerUserId", "EndedAt");
+
+                    b.ToTable("duel_matches", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_duel_matches_Coins_NonNegative", "`ChallengerCoins` >= 0 AND `OpponentCoins` >= 0 AND `FeeCoins` >= 0");
+
+                            t.HasCheckConstraint("CK_duel_matches_DistinctPlayers", "`ChallengerUserId` <> `OpponentUserId`");
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.DuelPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EscalationFlagCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EscalationWindowDays")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("S1Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("S1LoserDamagePercent")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("S2Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("S2ShortFightSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("S3Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("S4Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("S4MaxLoserAttackAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("S5Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("S5PairDuels")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("S6Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("S6MinYoungOpponents")
+                        .HasColumnType("int");
+
+                    b.Property<int>("S6WindowDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("S6YoungAccountDays")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("duel_policies", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_duel_policies_EscalationFlagCount_AtLeastTwo", "`EscalationFlagCount` >= 2");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            EscalationFlagCount = 2,
+                            EscalationWindowDays = 7,
+                            S1Enabled = true,
+                            S1LoserDamagePercent = 10,
+                            S2Enabled = true,
+                            S2ShortFightSeconds = 10,
+                            S3Enabled = true,
+                            S4Enabled = true,
+                            S4MaxLoserAttackAttempts = 0,
+                            S5Enabled = true,
+                            S5PairDuels = 3,
+                            S6Enabled = true,
+                            S6MinYoungOpponents = 3,
+                            S6WindowDays = 7,
+                            S6YoungAccountDays = 7,
+                            UpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.DuelRestriction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("LiftReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("LiftedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("LiftedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OtherUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("OtherUserId", "LiftedAt");
+
+                    b.HasIndex("UserId", "LiftedAt");
+
+                    b.ToTable("duel_restrictions", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
                 {
                     b.Property<int>("Id")
@@ -6877,6 +7189,73 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("Domain");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.DuelMatch", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Arena", "Arena")
+                        .WithMany()
+                        .HasForeignKey("ArenaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ArenaBattleground", "Battleground")
+                        .WithMany()
+                        .HasForeignKey("BattlegroundId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.Kit", null)
+                        .WithMany()
+                        .HasForeignKey("ChallengerKitId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "ChallengerUser")
+                        .WithMany()
+                        .HasForeignKey("ChallengerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Kit", null)
+                        .WithMany()
+                        .HasForeignKey("FixedKitId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.Kit", null)
+                        .WithMany()
+                        .HasForeignKey("OpponentKitId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "OpponentUser")
+                        .WithMany()
+                        .HasForeignKey("OpponentUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Arena");
+
+                    b.Navigation("Battleground");
+
+                    b.Navigation("ChallengerUser");
+
+                    b.Navigation("OpponentUser");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.DuelRestriction", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.User", "OtherUser")
+                        .WithMany()
+                        .HasForeignKey("OtherUserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OtherUser");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>

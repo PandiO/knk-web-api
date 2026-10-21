@@ -18,17 +18,23 @@ namespace knkwebapi_v2.Services
         Set,
 
         /// <summary>Decided by the operation itself (reversal mirrors the original, transfer is user to user).</summary>
-        Special
+        Special,
+
+        /// <summary>No user legs: moves funds from the reason's <see cref="CurrencyReasonInfo.FromSystemAccount"/>
+        /// to its <see cref="CurrencyReasonInfo.SystemAccount"/> (ICurrencyService.MoveBetweenSystemAccountsAsync).</summary>
+        SystemToSystem
     }
 
     /// <summary>One row of the reason table: the kind of transaction a reason produces and the
-    /// system account on the other side of the double entry.</summary>
+    /// system account on the other side of the double entry. A <see cref="CurrencyReasonDirection.SystemToSystem"/>
+    /// reason also names the account the funds leave (<paramref name="FromSystemAccount"/>).</summary>
     public sealed record CurrencyReasonInfo(
         string Code,
         CurrencyTransactionKind Kind,
         CurrencyReasonDirection Direction,
         string? SystemAccount,
-        string Description);
+        string Description,
+        string? FromSystemAccount = null);
 
     /// <summary>
     /// The ledger's reason codes (docs/specs/currency-payments/DESIGN.md §3.3) — the single table
@@ -58,6 +64,10 @@ namespace knkwebapi_v2.Services
         public const string SysFees = "SYS_FEES";
         public const string SysAdmin = "SYS_ADMIN";
         public const string SysMerge = "SYS_MERGE";
+
+        /// <summary>Holds both duel stakes from lock-in until the match is settled or refunded
+        /// (arena duels DESIGN.md §7.1). Every closed match nets to zero here.</summary>
+        public const string SysDuel = "SYS_DUEL";
 
         // ===== Reason codes =====
 
@@ -125,6 +135,30 @@ namespace knkwebapi_v2.Services
         /// </summary>
         public const string MergeCarryover = "MERGE_CARRYOVER";
 
+        // ----- Arena duels (DESIGN.md §7.1, KNG-213). Every leg carries SourceType "DuelMatch",
+        // SourceRef = the match id; Σ SYS_DUEL over a closed match's postings is 0. -----
+
+        /// <summary>Both duelists' coin stakes into SYS_DUEL at lock-in, one posting with two legs.
+        /// Key: <c>duel-lock:{publicToken}</c>.</summary>
+        public const string DuelStake = "DUEL_STAKE";
+
+        /// <summary>The pot minus the fee from SYS_DUEL to the winner of a decisive result (also on a
+        /// staff release of a held result). Funded by the stakes, so not minted. Key: <c>duel-payout:{matchId}</c>.</summary>
+        public const string DuelPayout = "DUEL_PAYOUT";
+
+        /// <summary>The arena fee (FeePercent of the pot, rounded down) from SYS_DUEL to SYS_FEES, in the
+        /// same database transaction as the payout; no user leg. Key: <c>duel-fee:{matchId}</c>.</summary>
+        public const string DuelFee = "DUEL_FEE";
+
+        /// <summary>A staff revert of a paid result: what the payout reversal recovered (plus the reversed
+        /// fee) back from SYS_DUEL to the loser first, up to their stake, then to the winner up to theirs.
+        /// Key: <c>duel-revert:{matchId}</c>.</summary>
+        public const string DuelRefund = "DUEL_REFUND";
+
+        /// <summary>A staff confiscation of a paid result: what the payout reversal recovered, from
+        /// SYS_DUEL to the SYS_FEES sink; no user leg. Key: <c>duel-confiscate:{matchId}</c>.</summary>
+        public const string DuelConfiscation = "DUEL_CONFISCATION";
+
         public static string MergeForfeitKey(int secondaryUserId) => $"merge:{secondaryUserId}";
 
         public static string MergeCarryoverKey(int secondaryUserId) => $"merge-carry:{secondaryUserId}";
@@ -151,6 +185,11 @@ namespace knkwebapi_v2.Services
             [Reversal] = new(Reversal, CurrencyTransactionKind.Reversal, CurrencyReasonDirection.Special, null, "Reversal"),
             [MergeForfeit] = new(MergeForfeit, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Debit, SysMerge, "Balance forfeited on account merge"),
             [MergeCarryover] = new(MergeCarryover, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Credit, SysMerge, "Higher balance kept on account merge"),
+            [DuelStake] = new(DuelStake, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysDuel, "Duel stake"),
+            [DuelPayout] = new(DuelPayout, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysDuel, "Duel winnings"),
+            [DuelFee] = new(DuelFee, CurrencyTransactionKind.Spend, CurrencyReasonDirection.SystemToSystem, SysFees, "Arena fee", SysDuel),
+            [DuelRefund] = new(DuelRefund, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysDuel, "Duel stake returned after a staff revert"),
+            [DuelConfiscation] = new(DuelConfiscation, CurrencyTransactionKind.Spend, CurrencyReasonDirection.SystemToSystem, SysFees, "Duel winnings confiscated by staff", SysDuel),
         };
 
         /// <summary>Every known reason, for docs, dropdowns and tests.</summary>

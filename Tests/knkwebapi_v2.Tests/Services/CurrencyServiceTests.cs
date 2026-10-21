@@ -472,6 +472,66 @@ public class CurrencyServiceTests
         Assert.Equal(700, shortfall.GetProperty("amount").GetInt64());
     }
 
+    // ===== System-to-system moves (arena duels DUEL_FEE, KNG-213) =====
+
+    [Fact]
+    public async Task MoveBetweenSystemAccounts_PostsTwoSystemLegs_IsIdempotent_AndReverses()
+    {
+        await using var ctx = NewContext();
+        var service = Service(ctx);
+        var key = "duel-fee:1";
+        var ctxFee = System(CurrencyReasons.DuelFee, key) with { SourceType = "DuelMatch", SourceRef = "1" };
+
+        var moved = await service.MoveBetweenSystemAccountsAsync(Currency.Coins, 75, ctxFee);
+        var again = await service.MoveBetweenSystemAccountsAsync(Currency.Coins, 75, ctxFee);
+
+        Assert.Empty(moved.Entries); // no user leg
+        Assert.True(again.Replayed);
+        var tx = Assert.Single(await TransactionsAsync());
+        Assert.Equal(new[] { ("SYS_DUEL", -75L), ("SYS_FEES", 75L) },
+            tx.Entries.OrderBy(e => e.Amount).Select(e => (e.SystemAccount!, e.Amount)));
+        Assert.All(tx.Entries, e => Assert.Equal(CurrencyAccountKind.System, e.AccountKind));
+
+        var reversal = await service.ReverseAsync(moved.TransactionId, new ReversalOptions(),
+            Staff(CurrencyReasons.Reversal, $"reverse:{moved.TransactionId}", "Fee refunded"));
+        var mirror = (await TransactionsAsync()).Single(t => t.Id == reversal.TransactionId);
+        Assert.Equal(new[] { ("SYS_FEES", -75L), ("SYS_DUEL", 75L) },
+            mirror.Entries.OrderBy(e => e.Amount).Select(e => (e.SystemAccount!, e.Amount)));
+
+        // A different amount under the same key is a different request.
+        var reuse = await Assert.ThrowsAsync<CurrencyException>(() => service.MoveBetweenSystemAccountsAsync(Currency.Coins, 76, ctxFee));
+        Assert.Equal(CurrencyErrorCode.IdempotencyKeyReuse, reuse.Code);
+    }
+
+    [Fact]
+    public async Task SystemToSystemReasons_OnlyGoThroughTheMove_AndTheMoveOnlyTakesThem()
+    {
+        var id = await SeedUserAsync();
+        await using var ctx = NewContext();
+        var service = Service(ctx);
+
+        async Task<CurrencyErrorCode> Code(Func<Task> call) => (await Assert.ThrowsAsync<CurrencyException>(call)).Code;
+
+        Assert.Equal(CurrencyErrorCode.InvalidRequest, await Code(() => service.PostAsync(new[] { new CurrencyLeg(id, Currency.Coins, -1) }, System(CurrencyReasons.DuelFee, "f1"))));
+        Assert.Equal(CurrencyErrorCode.InvalidRequest, await Code(() => service.SpendAsync(id, Currency.Coins, 1, System(CurrencyReasons.DuelConfiscation, "f2"))));
+        Assert.Equal(CurrencyErrorCode.InvalidRequest, await Code(() => service.MoveBetweenSystemAccountsAsync(Currency.Coins, 1, System(CurrencyReasons.DuelPayout, "f3"))));
+        Assert.Equal(CurrencyErrorCode.AmountOutOfRange, await Code(() => service.MoveBetweenSystemAccountsAsync(Currency.Coins, 0, System(CurrencyReasons.DuelFee, "f4"))));
+        Assert.Empty(await TransactionsAsync());
+    }
+
+    [Fact]
+    public void DuelReasons_FollowTheReasonTable()
+    {
+        Assert.Equal((CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, "SYS_DUEL"),
+            (CurrencyReasons.Find("DUEL_STAKE")!.Kind, CurrencyReasons.Find("DUEL_STAKE")!.Direction, CurrencyReasons.Find("DUEL_STAKE")!.SystemAccount));
+        Assert.Equal((CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, "SYS_DUEL"),
+            (CurrencyReasons.Find("DUEL_PAYOUT")!.Kind, CurrencyReasons.Find("DUEL_PAYOUT")!.Direction, CurrencyReasons.Find("DUEL_PAYOUT")!.SystemAccount));
+        var fee = CurrencyReasons.Find("DUEL_FEE")!;
+        Assert.Equal((CurrencyReasonDirection.SystemToSystem, "SYS_DUEL", "SYS_FEES"), (fee.Direction, fee.FromSystemAccount, fee.SystemAccount));
+        Assert.Equal("SYS_FEES", CurrencyReasons.Find("DUEL_CONFISCATION")!.SystemAccount);
+        Assert.Equal("SYS_DUEL", CurrencyReasons.Find("DUEL_REFUND")!.SystemAccount);
+    }
+
     // ===== Reconciliation and history =====
 
     [Fact]

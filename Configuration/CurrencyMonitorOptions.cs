@@ -59,4 +59,11 @@ public class CurrencyMonitorOptions
 
     // ===== R9 probing =====
     public int ProbingMaxDeniedPerHour { get; set; } = 20;
+
+    // ===== R10 duel pair (arena duels DESIGN.md §10.3): duel payouts flowing one way =====
+    public int DuelPairWindowHours { get; set; } = 24;
+    public int DuelPairMinOneWayWins { get; set; } = 3;
+
+    /// <summary>0 = only the one-way wins test.</summary>
+    public long DuelPairMinNetCoins { get; set; } = 20_000;
 }

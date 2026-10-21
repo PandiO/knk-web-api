@@ -77,5 +77,33 @@ public enum AuditAction
     /// renamed web-only account). Values 35-36 are allocated to the alpha hardening
     /// (30-34 belong to player statistics).
     /// </summary>
-    UsernameReleased = 35
+    UsernameReleased = 35,
+
+    // Arena duels staff tools (KNG-213, knk-workspace docs/specs/arena-duels/DESIGN.md §10.3); values
+    // 50–59 are reserved for arena duels. Target = the match's winner (review actions), the restricted
+    // player (restrictions), or the staff member (policy). Details carry the match id and reason.
+
+    /// <summary>A held duel result was paid out by staff.</summary>
+    DuelResultReleased = 50,
+
+    /// <summary>A held duel result was voided by staff: both stakes refunded, no fee.</summary>
+    DuelResultVoided = 51,
+
+    /// <summary>A paid duel result was reverted: the payout reversed (as far as the coins are still there), the loser refunded first.</summary>
+    DuelResultReverted = 52,
+
+    /// <summary>A paid duel result was confiscated: the payout reversed into the SYS_FEES sink.</summary>
+    DuelResultConfiscated = 53,
+
+    /// <summary>A stakes-only duel restriction was placed on the target player (or a pair including them).</summary>
+    DuelRestrictionCreated = 54,
+
+    /// <summary>A duel restriction was lifted.</summary>
+    DuelRestrictionLifted = 55,
+
+    /// <summary>The review escalation of a pair or beneficiary was cleared (their open flags acknowledged).</summary>
+    DuelEscalationCleared = 56,
+
+    /// <summary>The duel review policy (DuelPolicy) changed. Target = the staff member.</summary>
+    DuelPolicyChanged = 57
 }

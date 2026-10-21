@@ -72,6 +72,9 @@ public sealed class FakeCurrencyService : ICurrencyService
     public Task<PostingResult> ReverseAsync(long transactionId, ReversalOptions opts, CurrencyContext ctx, CancellationToken ct = default) =>
         throw new NotSupportedException();
 
+    public Task<PostingResult> MoveBetweenSystemAccountsAsync(Currency currency, long amount, CurrencyContext ctx, CancellationToken ct = default) =>
+        throw new NotSupportedException();
+
     public Task<PostingResult?> FindAsync(string scope, string idempotencyKey, CancellationToken ct = default) =>
         Task.FromResult(_byKey.TryGetValue((scope, idempotencyKey), out var stored) ? Replay(stored) : null);
 

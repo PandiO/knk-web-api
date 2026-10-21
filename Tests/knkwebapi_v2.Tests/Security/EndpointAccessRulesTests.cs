@@ -135,6 +135,38 @@ public class EndpointAccessRulesTests
         Assert.Contains(arenaEndpoints, e => e.Name == "ArenasController.SeedLegacy");
     }
 
+    /// <summary>Arena duels (KNG-213): the match lifecycle is the game server's only; staff actions, the policy edit and
+    /// restrictions need knk.admin.duel.review (or the game server, which checks the node in-game); the other reads only
+    /// need a caller.</summary>
+    [Fact]
+    public void DuelMatchWrites_AreForTheGameServer_AndStaffActionsNeedTheReviewNode()
+    {
+        var lifecycle = new[] { "Check", "Create", "StartFight", "Complete", "Cancel", "AbortUnfinished" };
+        var staff = new[] { "Release", "Void", "Revert", "Confiscate", "ClearEscalation", "UpdatePolicy", "GetRestrictions", "CreateRestriction", "LiftRestriction" };
+        var endpoints = Endpoints().Where(e => e.Controller == typeof(DuelMatchesController)).ToList();
+        Assert.Equal(lifecycle.Length + staff.Length + 4, endpoints.Count);
+        foreach (var endpoint in endpoints)
+        {
+            var name = endpoint.Action.Name;
+            var node = endpoint.Metadata.OfType<RequireServiceOrPermissionAttribute>().SingleOrDefault()?.Node;
+            var plugin = endpoint.Metadata.OfType<RequirePluginServiceAttribute>().Any();
+            Assert.False(endpoint.Metadata.OfType<IAllowAnonymous>().Any(), $"{endpoint.Name} must not be anonymous");
+            if (lifecycle.Contains(name))
+            {
+                Assert.True(plugin && node == null, $"{endpoint.Name} must be [RequirePluginService] only");
+            }
+            else if (staff.Contains(name))
+            {
+                Assert.True(node == StaffPermissions.DuelReview && !plugin, $"{endpoint.Name} must need {StaffPermissions.DuelReview}");
+            }
+            else
+            {
+                Assert.True(endpoint.Verbs.All(DefaultCallerRequiredFilter.IsRead) && node == null && !plugin, $"{endpoint.Name} is a plain read");
+            }
+        }
+        Assert.Equal("knk.admin.duel.review", StaffPermissions.DuelReview);
+    }
+
     [Fact]
     public void LinkAccountEndpoint_IsGone()
     {
