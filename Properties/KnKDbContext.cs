@@ -58,6 +58,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<ItemBlueprint> ItemBlueprints { get; set; } = null!;
     public virtual DbSet<MinecraftMaterialRef> MinecraftMaterialRefs { get; set; } = null!;
     public virtual DbSet<MinecraftBlockRef> MinecraftBlockRefs { get; set; } = null!;
+    public virtual DbSet<MinecraftCatalogScan> MinecraftCatalogScans { get; set; } = null!;
     public virtual DbSet<MinecraftEnchantmentRef> MinecraftEnchantmentRefs { get; set; } = null!;
     public virtual DbSet<EnchantmentDefinition> EnchantmentDefinitions { get; set; } = null!;
     public virtual DbSet<AbilityDefinition> AbilityDefinitions { get; set; } = null!;
@@ -1703,6 +1704,14 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => e.NamespaceKey).IsUnique();
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
             entity.Property(e => e.Category).IsRequired();
+            // KNG-200 catalogue fields (docs/specs/minecraft-catalog/IMPLEMENTATION_PLAN.md §2.1).
+            entity.Property(e => e.DisplayName).HasMaxLength(191);
+            entity.Property(e => e.CatalogStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.FirstSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.LastSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.IconSource).HasMaxLength(64);
+            entity.Property(e => e.IconStatus).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.CatalogStatus);
         });
 
         modelBuilder.Entity<MinecraftBlockRef>(entity =>
@@ -1710,6 +1719,25 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("minecraftblockrefs");
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
+            // KNG-200 §2.2: a block state belongs to its material. StateKey becomes unique only after the
+            // duplicate audit is clean (phase 4, migration MinecraftCatalogConstraints).
+            entity.HasOne(e => e.MaterialRef)
+                .WithMany()
+                .HasForeignKey(e => e.MaterialRefId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.Property(e => e.StateKey).HasMaxLength(64).IsFixedLength();
+            entity.HasIndex(e => e.StateKey);
+        });
+
+        modelBuilder.Entity<MinecraftCatalogScan>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("minecraft_catalog_scans");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.MinecraftVersion).HasMaxLength(32);
+            entity.Property(e => e.ServerVersion).HasMaxLength(191);
+            entity.Property(e => e.ContentHash).HasMaxLength(64);
+            entity.HasIndex(e => e.Status);
         });
 
         modelBuilder.Entity<MinecraftEnchantmentRef>(entity =>

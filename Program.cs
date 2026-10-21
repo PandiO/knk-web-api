@@ -289,6 +289,10 @@ using (var scope = app.Services.CreateScope())
     var menuSeedLogger = loggerFactory.CreateLogger("MenuTemplateSeed");
     await knkwebapi_v2.Models.MenuTemplateSeed.SeedCanonicalAsync(dbContext, menuSeedLogger);
 
+    // KNG-200 phase 2: normalise material keys, fill display names and link block refs to their material
+    // before the item seeds look materials up by key. Idempotent; GET api/MinecraftCatalog/audit lists what it left.
+    await scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftCatalogMaintenanceService>().BackfillAsync();
+
     var kitSeedLogger = loggerFactory.CreateLogger("KitSeed");
     var materialCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftMaterialCatalogService>();
     await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, materialCatalog, kitSeedLogger);

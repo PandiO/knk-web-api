@@ -3608,18 +3608,108 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("IconUrl")
                         .HasColumnType("longtext");
 
+                    b.Property<bool?>("IsPartial")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("LogicalType")
                         .HasColumnType("longtext");
+
+                    b.Property<int?>("MaterialRefId")
+                        .HasColumnType("int");
 
                     b.Property<string>("NamespaceKey")
                         .IsRequired()
                         .HasMaxLength(191)
                         .HasColumnType("varchar(191)");
 
+                    b.Property<string>("StateKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
+                    b.HasIndex("MaterialRefId");
+
+                    b.HasIndex("StateKey");
+
                     b.ToTable("minecraftblockrefs", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.MinecraftCatalogScan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Deleted")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EntryCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("IconsMissing")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Inserted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MarkedMissing")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Merged")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MinecraftVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int?>("RequestedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SchemaVersion")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ServerVersion")
+                        .HasMaxLength(191)
+                        .HasColumnType("varchar(191)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("Unchanged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Updated")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WorldTaskId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("minecraft_catalog_scans", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.MinecraftEnchantmentRef", b =>
@@ -3670,15 +3760,58 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CatalogStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("DefaultBlockState")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(191)
+                        .HasColumnType("varchar(191)");
+
+                    b.Property<string>("FirstSeenVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("IconSource")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("IconStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<string>("IconUrl")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("IconUrlOverride")
+                        .HasColumnType("longtext");
+
+                    b.Property<bool?>("IsBlock")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool?>("IsItem")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("LastScanId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastSeenVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
                     b.Property<string>("LegacyName")
                         .HasColumnType("longtext");
+
+                    b.Property<int?>("MaxStackSize")
+                        .HasColumnType("int");
 
                     b.Property<string>("NamespaceKey")
                         .IsRequired()
@@ -3687,6 +3820,8 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasKey("Id")
                         .HasName("PRIMARY");
+
+                    b.HasIndex("CatalogStatus");
 
                     b.HasIndex("NamespaceKey")
                         .IsUnique();
@@ -7480,6 +7615,16 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("BackgroundMaterialRef");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.MinecraftBlockRef", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "MaterialRef")
+                        .WithMany()
+                        .HasForeignKey("MaterialRefId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("MaterialRef");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>

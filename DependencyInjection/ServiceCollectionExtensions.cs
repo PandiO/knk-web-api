@@ -73,6 +73,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();
             services.AddScoped<IMinecraftBlockRefService, MinecraftBlockRefService>();
+            services.AddScoped<IMinecraftCatalogMaintenanceService, knkwebapi_v2.Services.MinecraftCatalog.MinecraftCatalogMaintenanceService>();
             services.AddScoped<IMinecraftEnchantmentRefRepository, MinecraftEnchantmentRefRepository>();
             services.AddScoped<IMinecraftEnchantmentRefService, MinecraftEnchantmentRefService>();
             services.AddSingleton<IMinecraftMaterialCatalogService, MinecraftMaterialCatalogService>();

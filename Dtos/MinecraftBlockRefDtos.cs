@@ -18,6 +18,16 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("iconUrl")]
         public string? IconUrl { get; set; }
+
+        // KNG-200 §2.2 (read-only; set by the backfill).
+        [JsonPropertyName("materialRefId")]
+        public int? MaterialRefId { get; set; }
+
+        [JsonPropertyName("stateKey")]
+        public string? StateKey { get; set; }
+
+        [JsonPropertyName("isPartial")]
+        public bool? IsPartial { get; set; }
     }
 
     public class MinecraftBlockRefCreateDto
