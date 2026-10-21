@@ -18,8 +18,17 @@ namespace knkwebapi_v2.Services
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
         private readonly SecuritySettings _securitySettings;
-        private const string ValidChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        private const int CodeLength = 8;
+        /// <summary>Link codes: A-Z0-9 (36^8). Typed into a web form, so the full alphabet is fine.</summary>
+        public const string ValidChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+        /// <summary>
+        /// Claim codes: Crockford base32 (32^8), read off a disconnect screen and typed by hand, so
+        /// the look-alikes I, L, O and U are left out and <see cref="NormalizeClaimCode"/> maps the
+        /// first three back (O→0, I/L→1).
+        /// </summary>
+        public const string ClaimChars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+        public const int CodeLength = 8;
 
         public LinkCodeService(
             ILinkCodeRepository linkCodeRepository,
@@ -34,22 +43,100 @@ namespace knkwebapi_v2.Services
         }
 
         /// <inheritdoc/>
-        public Task<string> GenerateCodeAsync()
+        public Task<string> GenerateCodeAsync() => Task.FromResult(GenerateCode(ValidChars));
+
+        /// <summary>
+        /// A code of <see cref="CodeLength"/> characters drawn from <paramref name="alphabet"/>
+        /// with <see cref="RandomNumberGenerator.GetInt32(int)"/>, which rejects out-of-range
+        /// draws instead of folding a byte with modulo (KNG-208: byte % 36 favoured A-D by 8/7).
+        /// </summary>
+        public static string GenerateCode(string alphabet)
         {
             var code = new char[CodeLength];
-            var randomBytes = new byte[CodeLength];
-
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomBytes);
-            }
-
             for (int i = 0; i < CodeLength; i++)
             {
-                code[i] = ValidChars[randomBytes[i] % ValidChars.Length];
+                code[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
             }
 
-            return Task.FromResult(new string(code));
+            return new string(code);
+        }
+
+        /// <summary>
+        /// What a player typed from the disconnect screen, as stored: upper case, without hyphens
+        /// or spaces, with the Crockford look-alikes folded (O→0, I→1, L→1). Never applied to link
+        /// codes, whose alphabet has those letters.
+        /// </summary>
+        public static string NormalizeClaimCode(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return string.Empty;
+            }
+
+            var result = new System.Text.StringBuilder(input.Length);
+            foreach (var raw in input.Trim().ToUpperInvariant())
+            {
+                var c = raw switch
+                {
+                    'O' => '0',
+                    'I' or 'L' => '1',
+                    _ => raw
+                };
+                if (c == '-' || c == ' ')
+                {
+                    continue;
+                }
+                result.Append(c);
+            }
+            return result.ToString();
+        }
+
+        /// <summary>XXXX-XXXX, the way the claim code is shown on the disconnect screen.</summary>
+        public static string FormatClaimCode(string code) =>
+            code.Length == CodeLength ? $"{code[..4]}-{code[4..]}" : code;
+
+        /// <inheritdoc/>
+        public async Task<LinkCode> CreateClaimCodeAsync(string minecraftUuid, string minecraftName, TimeSpan timeToLive)
+        {
+            if (string.IsNullOrWhiteSpace(minecraftUuid))
+            {
+                throw new ArgumentException("A Minecraft UUID is required.", nameof(minecraftUuid));
+            }
+            if (timeToLive <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeToLive));
+            }
+
+            var uuid = minecraftUuid.Trim().ToLowerInvariant();
+            var existing = await _linkCodeRepository.GetActiveClaimCodeByUuidAsync(uuid);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            string code;
+            int attempts = 0;
+            do
+            {
+                code = GenerateCode(ClaimChars);
+                if (++attempts > 10)
+                {
+                    throw new InvalidOperationException("Failed to generate a unique claim code after multiple attempts");
+                }
+            } while (await _linkCodeRepository.GetLinkCodeByCodeAsync(code) != null);
+
+            var now = DateTime.UtcNow;
+            return await _linkCodeRepository.CreateAsync(new LinkCode
+            {
+                UserId = null,
+                Code = code,
+                Purpose = LinkCodePurpose.Claim,
+                MinecraftUuid = uuid,
+                MinecraftName = string.IsNullOrWhiteSpace(minecraftName) ? null : minecraftName.Trim(),
+                CreatedAt = now,
+                ExpiresAt = now.Add(timeToLive),
+                Status = LinkCodeStatus.Active
+            });
         }
 
         /// <inheritdoc/>
@@ -77,6 +164,7 @@ namespace knkwebapi_v2.Services
             {
                 UserId = userId,
                 Code = code,
+                Purpose = LinkCodePurpose.Link,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(_securitySettings.LinkCodeExpirationMinutes),
                 Status = LinkCodeStatus.Active
@@ -173,5 +261,9 @@ namespace knkwebapi_v2.Services
 
             return count;
         }
+
+        /// <inheritdoc/>
+        public Task<int> DeleteFinishedCodesAsync(DateTime before) =>
+            _linkCodeRepository.DeleteFinishedBeforeAsync(before);
     }
 }

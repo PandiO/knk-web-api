@@ -2520,6 +2520,19 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("MinecraftName")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("MinecraftUuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<int>("Purpose")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -2538,6 +2551,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("ExpiresAt");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("Purpose", "Status", "ExpiresAt");
 
                     b.ToTable("linkcodes", (string)null);
                 });

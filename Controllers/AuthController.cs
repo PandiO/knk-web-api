@@ -21,10 +21,10 @@ namespace knkwebapi_v2.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        public const string RefreshTokenCookieName = "refreshToken";
+        public const string RefreshTokenCookieName = RefreshTokenCookie.Name;
 
         /// <summary>The refresh cookie is only sent to the auth endpoints (closed-alpha WP4).</summary>
-        public const string RefreshCookiePath = "/api/Auth";
+        public const string RefreshCookiePath = RefreshTokenCookie.Path;
 
         private readonly IAuthService _authService;
         private readonly ITokenService _tokenService;
@@ -294,58 +294,12 @@ namespace knkwebapi_v2.Controllers
                 : null;
         }
 
-        /// <summary>
-        /// HttpOnly, Secure outside Development, SameSite from Security:RefreshCookie:SameSite,
-        /// Path /api/Auth. Without "remember me" it is a session cookie (no Expires); the server
-        /// still ends it after Security:Jwt:SessionRefreshHours.
-        /// </summary>
-        private void SetRefreshTokenCookie(IssuedRefreshToken? session)
-        {
-            if (session == null)
-            {
-                return;
-            }
+        /// <summary>See <see cref="RefreshTokenCookie"/>.</summary>
+        private void SetRefreshTokenCookie(IssuedRefreshToken? session) =>
+            RefreshTokenCookie.Set(Response, session, _environment.IsDevelopment(), _security);
 
-            var options = BuildRefreshCookieOptions();
-            if (session.RememberMe)
-            {
-                options.Expires = session.ExpiresAt;
-            }
-
-            DeleteLegacyRootCookie();
-            Response.Cookies.Append(RefreshTokenCookieName, session.Token, options);
-        }
-
-        private void ClearRefreshTokenCookie()
-        {
-            Response.Cookies.Delete(RefreshTokenCookieName, BuildRefreshCookieOptions());
-            DeleteLegacyRootCookie();
-        }
-
-        /// <summary>Before closed-alpha WP4 the cookie lived at Path=/ and held a refresh JWT.</summary>
-        private void DeleteLegacyRootCookie()
-        {
-            var legacy = BuildRefreshCookieOptions();
-            legacy.Path = "/";
-            Response.Cookies.Delete(RefreshTokenCookieName, legacy);
-        }
-
-        private CookieOptions BuildRefreshCookieOptions()
-        {
-            return new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = !_environment.IsDevelopment(),
-                SameSite = ParseSameSite(_security.RefreshCookie.SameSite),
-                Path = RefreshCookiePath,
-                IsEssential = true
-            };
-        }
-
-        private static SameSiteMode ParseSameSite(string? value) =>
-            Enum.TryParse<SameSiteMode>(value, ignoreCase: true, out var mode) && mode != SameSiteMode.Unspecified
-                ? mode
-                : SameSiteMode.Lax;
+        private void ClearRefreshTokenCookie() =>
+            RefreshTokenCookie.Clear(Response, _environment.IsDevelopment(), _security);
 
         private int? GetUserIdFromClaims(ClaimsPrincipal principal)
         {

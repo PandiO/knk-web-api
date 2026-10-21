@@ -41,6 +41,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddSingleton<ILoginAttemptLimiter, LoginAttemptLimiter>();
             services.AddSingleton<IAccountMailQueue, AccountMailQueue>();
             services.AddHostedService<AccountMailSender>();
+            // KNG-208: failed link/claim codes per account, and hourly linkcodes housekeeping.
+            services.AddSingleton<ILinkAttemptLimiter, LinkAttemptLimiter>();
+            services.AddHostedService<LinkCodeCleanupService>();
             // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
             services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
 

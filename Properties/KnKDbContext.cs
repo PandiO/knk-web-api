@@ -587,6 +587,12 @@ public partial class KnKDbContext : DbContext
             
             // Index on ExpiresAt for efficient cleanup queries
             entity.HasIndex(e => e.ExpiresAt);
+
+            // KNG-208: what the row is for, and the claim code's Mojang identity (KNG-214).
+            entity.Property(e => e.Purpose).HasDefaultValue(LinkCodePurpose.Link);
+            entity.Property(e => e.MinecraftUuid).HasMaxLength(36);
+            entity.Property(e => e.MinecraftName).HasMaxLength(16);
+            entity.HasIndex(e => new { e.Purpose, e.Status, e.ExpiresAt });
             
             // FK to User (no cascade - handled at application level)
             entity.HasOne(e => e.User)

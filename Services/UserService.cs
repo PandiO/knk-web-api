@@ -30,6 +30,7 @@ namespace knkwebapi_v2.Services
         private readonly ITitleProgressionService _titleProgression;
         private readonly IPlayerNotificationQueue? _notificationQueue;
         private readonly ISessionRevocationService? _sessions;
+        private readonly ILinkAttemptLimiter? _linkAttempts;
 
         public UserService(
             IUserRepository repo,
@@ -44,10 +45,12 @@ namespace knkwebapi_v2.Services
             ICurrencyService currency,
             ITitleProgressionService titleProgression,
             IPlayerNotificationQueue? notificationQueue = null,
-            ISessionRevocationService? sessions = null)
+            ISessionRevocationService? sessions = null,
+            ILinkAttemptLimiter? linkAttempts = null)
         {
             _notificationQueue = notificationQueue;
             _sessions = sessions;
+            _linkAttempts = linkAttempts;
             _currency = currency;
             _titleProgression = titleProgression;
             _repo = repo;
@@ -1151,11 +1154,8 @@ namespace knkwebapi_v2.Services
 
         // ===== HELPER METHODS =====
 
-        /// <summary>
-        /// Link an authenticated web app user to a Minecraft account using a link code.
-        /// This handles the web-app-first scenario where user already has email/password set.
-        /// </summary>
-        public async Task<UserDto> LinkMinecraftAccountAsync(int userId, string linkCode)
+        /// <inheritdoc/>
+        public async Task<LinkMinecraftAccountResult> LinkMinecraftAccountAsync(int userId, string linkCode)
         {
             if (userId <= 0)
             {
@@ -1167,60 +1167,165 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Link code is required.", nameof(linkCode));
             }
 
-            // Step 1: Validate link code WITHOUT consuming it
-            var (isLinkCodeValid, minecraftUser) = await ValidateLinkCodeAsync(linkCode);
-            
-            if (!isLinkCodeValid || minecraftUser == null)
+            // KNG-208: after Security:LinkAttempts:MaxFailures wrong codes the account waits, and
+            // the code isn't even looked up.
+            if (_linkAttempts != null && _linkAttempts.IsLocked(userId, out var remaining))
             {
-                throw new InvalidOperationException("Invalid or expired link code");
+                throw new LinkAttemptsExceededException(remaining);
             }
 
-            // Step 2: Get the authenticated user
             var webAppUser = await _repo.GetByIdAsync(userId);
             if (webAppUser == null)
             {
                 throw new KeyNotFoundException($"Web app user with ID {userId} not found");
             }
 
-            // Step 3: Check if the Minecraft account already has a different UUID
-            // (i.e., if the link code points to a different user)
-            if (minecraftUser.Id != webAppUser.Id && minecraftUser.Uuid != null)
+            // Step 1: validate the code without consuming it, and find the Minecraft identity it stands for.
+            var (isCodeValid, code, _) = await _linkCodeService.ValidateLinkCodeAsync(linkCode);
+            var (uuid, verifiedName, minecraftUser) = isCodeValid && code != null
+                ? await ResolveLinkedIdentityAsync(code)
+                : (null, null, null);
+            if (string.IsNullOrWhiteSpace(uuid))
             {
-                // Step 3a: We have a duplicate scenario
-                // The Minecraft account (minecraftUser) already exists with a UUID
-                // And our authenticated user (webAppUser) wants to link to it
+                _linkAttempts?.RecordFailure(userId);
+                throw new InvalidOperationException("Invalid or expired link code");
+            }
 
-                // Check if they have the same UUID already
-                if (!string.IsNullOrWhiteSpace(webAppUser.Uuid) && webAppUser.Uuid == minecraftUser.Uuid)
+            // Step 2: the caller's own state (DESIGN § 5.4).
+            if (!string.IsNullOrWhiteSpace(webAppUser.Uuid))
+            {
+                if (webAppUser.Uuid != uuid)
                 {
-                    // Already linked, just consume the code
-                    await _linkCodeService.ConsumeLinkCodeAsync(linkCode);
-                    return await MapToUserDtoAsync(webAppUser);
+                    throw new LinkConflictException(LinkConflictException.AlreadyLinked,
+                        "Your web account is already linked to another Minecraft account. Changing it is a staff action.");
                 }
 
-                // If different users, merge them (keep web app user as primary)
-                await MergeWithForfeitAsync(webAppUser.Id, minecraftUser.Id);
+                // Already linked to exactly this account: nothing to change, the code is spent.
+                await ConsumeOrThrowAsync(linkCode);
+                _linkAttempts?.Reset(userId);
+                return new LinkMinecraftAccountResult(await MapToUserDtoAsync(webAppUser), Merged: false);
             }
 
-            // Step 4: Consume the link code AFTER all validation
-            var (isConsumed, consumedUser) = await ConsumeLinkCodeAsync(linkCode);
-            if (!isConsumed || consumedUser == null)
+            if (minecraftUser != null && minecraftUser.Id != webAppUser.Id)
             {
-                throw new InvalidOperationException("Failed to consume link code");
+                if (!minecraftUser.IsActive || minecraftUser.DeletedAt.HasValue)
+                {
+                    _linkAttempts?.RecordFailure(userId);
+                    throw new InvalidOperationException("Invalid or expired link code");
+                }
+                if (!string.IsNullOrEmpty(minecraftUser.PasswordHash))
+                {
+                    throw new LinkConflictException(LinkConflictException.AlreadyRegistered,
+                        "This Minecraft account already has a web account. Log in with it, or use Forgot password.");
+                }
             }
 
-            // Step 5: Update the web app user with the Minecraft UUID from the consumed user
-            minecraftUser = consumedUser; // Use the consumed user to get the UUID
-            
-            if (string.IsNullOrWhiteSpace(webAppUser.Uuid) && !string.IsNullOrWhiteSpace(minecraftUser.Uuid))
+            // Step 3: the code is spent before anything changes, so two requests with the same code
+            // can't both get here (TryMarkUsedAsync is a conditional write).
+            await ConsumeOrThrowAsync(linkCode);
+            _linkAttempts?.Reset(userId);
+
+            if (minecraftUser == null)
             {
-                webAppUser.Uuid = minecraftUser.Uuid;
+                // Case A: no account has this UUID (only claim codes get here, KNG-214). The web
+                // account becomes the Minecraft account; its name is the Mojang-verified one.
+                if (!string.IsNullOrWhiteSpace(verifiedName) && !string.Equals(webAppUser.Username, verifiedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    await ReleaseUsernameFromWebOnlyAccountAsync(verifiedName, userId);
+                    webAppUser.Username = verifiedName;
+                }
+                webAppUser.Uuid = uuid;
                 await _repo.UpdateUserAsync(webAppUser);
+                _logger.LogInformation("Web account {UserId} linked to Minecraft UUID {Uuid} (case A)", webAppUser.Id, uuid);
+                var linked = await _repo.GetByIdAsync(webAppUser.Id);
+                return new LinkMinecraftAccountResult(await MapToUserDtoAsync(linked!), Merged: false);
             }
 
-            // Step 6: Return updated user
-            var updatedUser = await _repo.GetByIdAsync(webAppUser.Id);
-            return await MapToUserDtoAsync(updatedUser!);
+            // Case B: fold the web account into the Minecraft account, which keeps its id, stats,
+            // groups and history (decision I7, KNG-207).
+            await FoldWebAccountIntoMinecraftAccountAsync(minecraftUser.Id, webAppUser.Id);
+            var survivor = await _repo.GetByIdAsync(minecraftUser.Id);
+            return new LinkMinecraftAccountResult(await MapToUserDtoAsync(survivor!), Merged: true);
+        }
+
+        /// <summary>
+        /// The Minecraft identity a validated code stands for: a link code names the account that
+        /// ran /account link, a claim code carries the UUID the admission gate saw (KNG-214).
+        /// Reset-token hashes and codes of web-only accounts resolve to nothing.
+        /// </summary>
+        private async Task<(string? Uuid, string? Name, User? MinecraftUser)> ResolveLinkedIdentityAsync(LinkCode code)
+        {
+            switch (code.Purpose)
+            {
+                case LinkCodePurpose.Link:
+                    if (!code.UserId.HasValue)
+                    {
+                        return (null, null, null);
+                    }
+                    var owner = await _repo.GetByIdAsync(code.UserId.Value);
+                    return owner == null || string.IsNullOrWhiteSpace(owner.Uuid)
+                        ? (null, null, null)
+                        : (owner.Uuid, owner.Username, owner);
+                case LinkCodePurpose.Claim:
+                    if (string.IsNullOrWhiteSpace(code.MinecraftUuid))
+                    {
+                        return (null, null, null);
+                    }
+                    var holder = await _repo.GetByUuidAsync(code.MinecraftUuid);
+                    return (code.MinecraftUuid, code.MinecraftName ?? holder?.Username, holder);
+                default:
+                    return (null, null, null);
+            }
+        }
+
+        private async Task ConsumeOrThrowAsync(string linkCode)
+        {
+            var (consumed, _, _) = await _linkCodeService.ConsumeLinkCodeAsync(linkCode);
+            if (!consumed)
+            {
+                throw new InvalidOperationException("Invalid or expired link code");
+            }
+        }
+
+        /// <summary>
+        /// Case B of DESIGN § 5.4, in one transaction with both rows locked: the balance merge
+        /// (MergeWithForfeitAsync: forfeit + carry-over postings, soft delete of the shell), then
+        /// the shell's email is cleared and saved first because users.Email is unique, then the web
+        /// login (email, password hash, verification and change stamps) moves to the Minecraft
+        /// account. The shell's sessions are revoked by the merge. Invite fields follow in KNG-212,
+        /// when they exist.
+        /// </summary>
+        private async Task FoldWebAccountIntoMinecraftAccountAsync(int minecraftUserId, int webUserId)
+        {
+            await _repo.RunWithUsersLockedAsync(new[] { minecraftUserId, webUserId }, async () =>
+            {
+                await MergeWithForfeitAsync(minecraftUserId, webUserId);
+
+                var shell = await _repo.GetByIdAsync(webUserId)
+                    ?? throw new KeyNotFoundException($"Web app user with ID {webUserId} not found");
+                var minecraft = await _repo.GetByIdAsync(minecraftUserId)
+                    ?? throw new KeyNotFoundException($"Minecraft account with ID {minecraftUserId} not found");
+
+                var email = shell.Email;
+                var passwordHash = shell.PasswordHash;
+                var lastPasswordChangeAt = shell.LastPasswordChangeAt;
+                var lastEmailChangeAt = shell.LastEmailChangeAt;
+                var emailVerified = shell.EmailVerified;
+
+                shell.Email = null;
+                shell.PasswordHash = null;
+                shell.EmailVerified = false;
+                await _repo.UpdateUserAsync(shell);
+
+                minecraft.Email = email;
+                minecraft.PasswordHash = passwordHash;
+                minecraft.LastPasswordChangeAt = lastPasswordChangeAt;
+                minecraft.LastEmailChangeAt = lastEmailChangeAt;
+                minecraft.EmailVerified = emailVerified;
+                await _repo.UpdateUserAsync(minecraft);
+            });
+
+            _logger.LogInformation("Web account {ShellId} folded into Minecraft account {UserId} (case B, KNG-207)", webUserId, minecraftUserId);
         }
 
         /// <inheritdoc/>

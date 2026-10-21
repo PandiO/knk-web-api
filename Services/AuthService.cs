@@ -324,6 +324,26 @@ namespace knkwebapi_v2.Services
             });
         }
 
+        /// <inheritdoc/>
+        public async Task<AuthLoginResponseDto?> StartSessionAsync(int userId, string? clientIp = null, string? userAgent = null)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null || !user.IsActive || user.DeletedAt.HasValue)
+            {
+                return null;
+            }
+
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
+            return new AuthLoginResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = null,
+                ExpiresIn = expiresIn,
+                User = _mapper.Map<UserDto>(user),
+                Session = session
+            };
+        }
+
         private static bool IsValidEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email) || email.Length > 256)
@@ -515,6 +535,7 @@ namespace knkwebapi_v2.Services
             {
                 UserId = user.Id,
                 Code = tokenHash,
+                Purpose = LinkCodePurpose.PasswordReset,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = expiresAt,
                 Status = LinkCodeStatus.Active

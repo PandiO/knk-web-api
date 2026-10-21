@@ -11,7 +11,11 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 using AutoMapper;
+using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Dtos;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace knkwebapi_v2.Controllers
 {
@@ -27,6 +31,9 @@ namespace knkwebapi_v2.Controllers
         private readonly IUserPermissionGroupService _membershipService;
         private readonly IPermissionGrantService _grantService;
         private readonly IPermissionEscalationGuard _escalationGuard;
+        private readonly IAuthService? _authService;
+        private readonly IWebHostEnvironment? _environment;
+        private readonly SecuritySettings _security;
 
         public UsersController(
             IUserService service,
@@ -36,8 +43,16 @@ namespace knkwebapi_v2.Controllers
             IUserProfileSummaryService profileSummaryService,
             IUserPermissionGroupService membershipService,
             IPermissionGrantService grantService,
-            IPermissionEscalationGuard escalationGuard)
+            IPermissionEscalationGuard escalationGuard,
+            IAuthService? authService = null,
+            IWebHostEnvironment? environment = null,
+            IOptions<SecuritySettings>? security = null)
         {
+            // The last three only serve link-minecraft-account case B (a session for the account the
+            // caller was folded into, KNG-207); optional so the many existing test constructions stand.
+            _authService = authService;
+            _environment = environment;
+            _security = security?.Value ?? new SecuritySettings();
             _escalationGuard = escalationGuard;
             _service = service;
             _mapper = mapper;
@@ -1369,24 +1384,23 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Link an authenticated web app account to a Minecraft account using a link code
+        /// Link the logged-in web account to a Minecraft account with a link code from /account link
+        /// (and, from KNG-214, a claim code from the disconnect screen).
         /// </summary>
         /// <remarks>
-        /// Used in the web-app-first flow where user already has email/password set.
-        /// Requires authentication (JWT token in Authorization header).
-        /// Requires a valid link code generated from Minecraft (/account link command).
-        /// 
-        /// If the link code points to an existing Minecraft account (with UUID), 
-        /// the system will automatically merge the accounts (keep web app account as primary);
-        /// the web app account keeps the higher of the two balances of each currency, as for
-        /// POST merge.
+        /// Invitations DESIGN § 5.4 (decision I7, KNG-207): when the code's Minecraft account exists
+        /// and has no web login, the web account is folded into it, the Minecraft account survives
+        /// with the web login, and the response carries a new <c>accessToken</c> (and refresh cookie)
+        /// for it because the caller's own account is now soft-deleted and signed out. Otherwise the
+        /// web account simply gets the UUID and <c>accessToken</c> is absent.
         /// </remarks>
         /// <param name="request">Link request with link code only</param>
-        /// <returns>Updated user account with linked Minecraft UUID</returns>
-        /// <response code="200">Account linked successfully</response>
-        /// <response code="400">Invalid link code, or validation failed</response>
+        /// <response code="200"><c>{user, message}</c>, plus <c>{accessToken, expiresIn}</c> after a fold</response>
+        /// <response code="400">Invalid or expired code, or validation failed</response>
         /// <response code="401">User not authenticated</response>
         /// <response code="404">User not found</response>
+        /// <response code="409"><c>AlreadyRegistered</c>: that Minecraft account has a web login; <c>AlreadyLinked</c>: this web account is linked to another Minecraft account</response>
+        /// <response code="429"><c>TooManyAttempts</c>: too many wrong codes for this account (Security:LinkAttempts)</response>
         [Authorize]
         [HttpPost("link-minecraft-account")]
         [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
@@ -1408,14 +1422,49 @@ namespace knkwebapi_v2.Controllers
                     return NotFound(new { error = "UserNotFound", message = $"User with ID {userId.Value} not found" });
                 }
 
-                // Link the account
-                var linkedUser = await _service.LinkMinecraftAccountAsync(userId.Value, request.LinkCode);
+                var result = await _service.LinkMinecraftAccountAsync(userId.Value, request.LinkCode);
+                if (!result.Merged || result.User.Id == userId.Value)
+                {
+                    return Ok(new
+                    {
+                        user = result.User,
+                        message = "Minecraft account successfully linked to your web app account"
+                    });
+                }
 
+                // Case B: the caller's account was folded into the Minecraft account. Log them into it.
+                var session = _authService == null
+                    ? null
+                    : await _authService.StartSessionAsync(result.User.Id,
+                        HttpContext?.Connection.RemoteIpAddress?.ToString(), HttpContext?.Request.Headers.UserAgent.ToString());
+                if (session == null)
+                {
+                    return Ok(new
+                    {
+                        user = result.User,
+                        merged = true,
+                        message = "Your web login now belongs to your Minecraft account. Please log in again."
+                    });
+                }
+
+                RefreshTokenCookie.Set(Response, session.Session, _environment?.IsDevelopment() ?? false, _security);
                 return Ok(new
                 {
-                    user = linkedUser,
-                    message = "Minecraft account successfully linked to your web app account"
+                    user = result.User,
+                    merged = true,
+                    accessToken = session.AccessToken,
+                    expiresIn = session.ExpiresIn,
+                    message = "Your web login now belongs to your Minecraft account"
                 });
+            }
+            catch (LinkAttemptsExceededException ex)
+            {
+                Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(ex.Remaining.TotalSeconds)).ToString();
+                return StatusCode(StatusCodes.Status429TooManyRequests, new { error = "TooManyAttempts", message = ex.Message });
+            }
+            catch (LinkConflictException ex)
+            {
+                return Conflict(new { error = ex.Code, message = ex.Message });
             }
             catch (ArgumentException ex)
             {

@@ -709,10 +709,11 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task LinkMinecraftAccountAsync_MergingTheMinecraftAccount_KeepsTheHigherBalances()
+    public async Task LinkMinecraftAccountAsync_FoldingIntoTheMinecraftAccount_KeepsTheHigherBalances()
     {
-        // The Minecraft-account link merge takes the same path as POST merge (KNG-21).
-        var web = new User { Id = 1, Username = "web", Coins = 10, Gems = 60 };
+        // The link merge takes the same ledger path as POST merge (KNG-21); since KNG-207 the
+        // Minecraft account is the primary (invitations DESIGN § 5.4, decision I7).
+        var web = new User { Id = 1, Username = "web-1", Email = "w@example.com", PasswordHash = "hash", Coins = 10, Gems = 60 };
         var minecraft = new User { Id = 2, Username = "mc", Uuid = "uuid-2", Coins = 900, Gems = 1 };
         _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(web);
         _mockUserRepository.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(minecraft);
@@ -721,12 +722,14 @@ public class UserServiceTests
         _mockLinkCodeService.Setup(l => l.ValidateLinkCodeAsync("ABC123")).ReturnsAsync((true, code, (string?)null));
         _mockLinkCodeService.Setup(l => l.ConsumeLinkCodeAsync("ABC123")).ReturnsAsync((true, code, (string?)null));
 
-        await _userService.LinkMinecraftAccountAsync(1, "ABC123");
+        var result = await _userService.LinkMinecraftAccountAsync(1, "ABC123");
 
-        Assert.Equal((900, 60), (web.Coins, web.Gems));
-        Assert.Equal((0, 0), (minecraft.Coins, minecraft.Gems));
+        Assert.True(result.Merged);
+        Assert.Equal(2, result.User.Id);
+        Assert.Equal((900, 60), (minecraft.Coins, minecraft.Gems));
+        Assert.Equal((0, 0), (web.Coins, web.Gems));
         Assert.Equal(new[] { CurrencyReasons.MergeForfeit, CurrencyReasons.MergeCarryover }, _currency.Postings.Select(p => p.Ctx.ReasonCode));
-        _mockUserRepository.Verify(r => r.MergeUsersAsync(1, 2), Times.Once);
+        _mockUserRepository.Verify(r => r.MergeUsersAsync(2, 1), Times.Once);
     }
 
     [Fact]

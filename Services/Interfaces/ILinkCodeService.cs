@@ -43,9 +43,23 @@ namespace knkwebapi_v2.Services
         Task<IEnumerable<LinkCode>> GetExpiredCodesAsync();
 
         /// <summary>
-        /// Deletes expired link codes and returns count deleted.
+        /// Marks active codes past their ExpiresAt as Expired and returns how many it changed.
         /// </summary>
-        /// <returns>Number of codes deleted</returns>
         Task<int> CleanupExpiredCodesAsync();
+
+        /// <summary>
+        /// Deletes codes that were used or expired before <paramref name="before"/> (KNG-208,
+        /// run hourly by LinkCodeCleanupService). Active codes are never deleted.
+        /// </summary>
+        /// <returns>Number of rows deleted</returns>
+        Task<int> DeleteFinishedCodesAsync(DateTime before);
+
+        /// <summary>
+        /// The admission gate's claim code for a Mojang-verified player (KNG-214, DESIGN § 5.2):
+        /// 8 Crockford base32 characters, <see cref="LinkCodePurpose.Claim"/>, no user, bound to
+        /// the UUID and name. One active code per UUID: an unexpired one is returned again
+        /// instead of a new one, so a player who rejoins sees the same code.
+        /// </summary>
+        Task<LinkCode> CreateClaimCodeAsync(string minecraftUuid, string minecraftName, TimeSpan timeToLive);
     }
 }

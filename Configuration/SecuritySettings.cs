@@ -52,6 +52,9 @@ public class SecuritySettings
 
     /// <summary>Security:Lockout - per-account login lockout (closed-alpha WP6).</summary>
     public LockoutSettings Lockout { get; set; } = new();
+
+    /// <summary>Security:LinkAttempts - per-account limit on failed link and claim codes (KNG-208).</summary>
+    public LockoutSettings LinkAttempts { get; set; } = new();
 }
 
 public class JwtSettings
