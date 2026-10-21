@@ -46,11 +46,7 @@ namespace knkwebapi_v2.Services
 
         private async Task SendAsync(string recipientEmail, string subject, string body)
         {
-            if (string.IsNullOrWhiteSpace(_settings.SmtpUsername) || string.IsNullOrWhiteSpace(_settings.SmtpPassword))
-            {
-                throw new InvalidOperationException(
-                    "Email:SmtpUsername/Email:SmtpPassword are not configured. Set Email__SmtpPassword via environment variable or user-secrets.");
-            }
+            var credentials = SmtpCredentials.Resolve(_settings);
 
             using var message = new MailMessage
             {
@@ -64,10 +60,37 @@ namespace knkwebapi_v2.Services
             using var client = new SmtpClient(_settings.SmtpHost, _settings.SmtpPort)
             {
                 EnableSsl = _settings.UseStartTls,
-                Credentials = new NetworkCredential(_settings.SmtpUsername, _settings.SmtpPassword)
+                Credentials = credentials
             };
 
-            await client.SendMailAsync(message);
+            await DeliverAsync(client, message);
+        }
+
+        /// <summary>Hands the built message to the client. A seam for tests; production sends it.</summary>
+        protected virtual Task DeliverAsync(SmtpClient client, MailMessage message) => client.SendMailAsync(message);
+    }
+
+    /// <summary>
+    /// SMTP authentication is optional (KNG-211): with <c>Email:SmtpUsername</c> empty the mail goes
+    /// out without credentials, for an internal relay such as the alpha's mailrelay container. With
+    /// a username set, the password is still required.
+    /// </summary>
+    public static class SmtpCredentials
+    {
+        public static NetworkCredential? Resolve(EmailSettings settings)
+        {
+            if (string.IsNullOrWhiteSpace(settings.SmtpUsername))
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.SmtpPassword))
+            {
+                throw new InvalidOperationException(
+                    "Email:SmtpUsername is set but Email:SmtpPassword is not. Set Email__SmtpPassword via environment variable or user-secrets, or clear Email:SmtpUsername to send without authentication.");
+            }
+
+            return new NetworkCredential(settings.SmtpUsername, settings.SmtpPassword);
         }
     }
 }
