@@ -19,6 +19,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ExperiencePoints, src => src.MapFrom(src => src.ExperiencePoints))
                 .ForMember(dest => dest.EmailVerified, src => src.MapFrom(src => src.EmailVerified || src.EmailVerifiedAt != null))
                 .ForMember(dest => dest.MinecraftLinked, src => src.MapFrom(src => !string.IsNullOrEmpty(src.Uuid)))
+                .ForMember(dest => dest.Admitted, src => src.MapFrom(src => src.AdmittedAt != null))
                 .ForMember(dest => dest.AccountCreatedVia, src => src.MapFrom(src => src.AccountCreatedVia))
                 .ForMember(dest => dest.GatePassThroughMethodDefault, src => src.MapFrom(src => src.GatePassThroughMethodDefault))
                 .ForMember(dest => dest.ActiveMode, src => src.MapFrom(src => src.ActiveMode))

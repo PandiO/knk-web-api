@@ -96,6 +96,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("minecraftLinked")]
         public bool MinecraftLinked { get; set; }
 
+        /// <summary>True when the account may pass the game server's admission gate (AdmittedAt set:
+        /// grandfathered, invited, claim-linked or staff Admit, KNG-214). Read-only: the name doesn't
+        /// match User.AdmittedAt on purpose, so the generic edit can never write it.</summary>
+        [JsonPropertyName("admitted")]
+        public bool Admitted { get; set; }
+
         [JsonPropertyName("accountCreatedVia")]
         public AccountCreationMethod AccountCreatedVia { get; set; }
 
