@@ -126,27 +126,32 @@ namespace knkwebapi_v2.Services.Email
         }
     }
 
-    /// <summary>Logs instead of sending. Links (the text body) only in Development; elsewhere just
-    /// kind, masked recipient and subject (allowed there only with Email:AllowLogTransport).</summary>
+    /// <summary>
+    /// Logs instead of sending. The text body (with its links) is logged in Development and, outside
+    /// it, only with Email:AllowLogTransport=true - the explicit opt-in the alpha uses while it has
+    /// no mail relay, so staff can still hand a reset link to a tester (DESIGN.md § 4.2). Otherwise
+    /// just kind, masked recipient and subject (the startup guard refuses Log there anyway).
+    /// </summary>
     public class LogEmailTransport : IEmailTransport
     {
         private readonly ILogger<LogEmailTransport> _logger;
-        private readonly bool _development;
+        private readonly bool _logBodies;
 
-        public LogEmailTransport(ILogger<LogEmailTransport> logger, IWebHostEnvironment? environment = null)
-            : this(logger, environment?.IsDevelopment() ?? false)
+        public LogEmailTransport(ILogger<LogEmailTransport> logger, IOptions<EmailSettings>? settings = null,
+            IWebHostEnvironment? environment = null)
+            : this(logger, (environment?.IsDevelopment() ?? false) || (settings?.Value.AllowLogTransport ?? false))
         {
         }
 
-        public LogEmailTransport(ILogger<LogEmailTransport> logger, bool development)
+        public LogEmailTransport(ILogger<LogEmailTransport> logger, bool logBodies)
         {
             _logger = logger;
-            _development = development;
+            _logBodies = logBodies;
         }
 
         public Task<string?> SendAsync(OutgoingEmail email, CancellationToken ct = default)
         {
-            if (_development)
+            if (_logBodies)
             {
                 _logger.LogInformation("Mail {Kind} to {To}: {Subject}\n{TextBody}", email.Kind, email.To, email.Subject, email.TextBody);
             }

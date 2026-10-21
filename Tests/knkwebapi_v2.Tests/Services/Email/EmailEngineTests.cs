@@ -446,18 +446,23 @@ public class EmailTransportTests
     }
 
     [Fact]
-    public async Task Log_OutsideDevelopment_NeverLogsTheBodyOrTheFullAddress()
+    public async Task Log_LogsTheBody_OnlyInDevelopmentOrWithAllowLogTransport()
     {
         var logger = new ListLogger<LogEmailTransport>();
-        await new LogEmailTransport(logger, development: false).SendAsync(Mail());
+        await new LogEmailTransport(logger, Options.Create(new EmailSettings { AllowLogTransport = false })).SendAsync(Mail());
 
         var line = Assert.Single(logger.Lines);
         Assert.DoesNotContain("SECRET", line);
         Assert.DoesNotContain("steve@example.com", line);
         Assert.Contains("st***@example.com", line);
 
+        // The alpha's opt-in while it has no relay: staff read reset links from the log, as before KNG-206.
+        var allowedLogger = new ListLogger<LogEmailTransport>();
+        await new LogEmailTransport(allowedLogger, Options.Create(new EmailSettings { AllowLogTransport = true })).SendAsync(Mail());
+        Assert.Contains("SECRET", Assert.Single(allowedLogger.Lines));
+
         var devLogger = new ListLogger<LogEmailTransport>();
-        await new LogEmailTransport(devLogger, development: true).SendAsync(Mail());
+        await new LogEmailTransport(devLogger, logBodies: true).SendAsync(Mail());
         Assert.Contains("SECRET", Assert.Single(devLogger.Lines));
     }
 }
