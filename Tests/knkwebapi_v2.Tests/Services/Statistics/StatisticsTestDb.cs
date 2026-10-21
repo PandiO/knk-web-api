@@ -69,6 +69,9 @@ internal sealed class StatisticsTestDb : IDisposable
     public SiegeStatisticsProjector SiegeProjector() =>
         new(Repository(), Microsoft.Extensions.Options.Options.Create(Options), null, NullLogger<SiegeStatisticsProjector>.Instance, Time);
 
+    public DuelStatisticsProjector DuelProjector() =>
+        new(Repository(), Microsoft.Extensions.Options.Options.Create(Options), null, NullLogger<DuelStatisticsProjector>.Instance, Time);
+
     public StatisticsVisibilityService Visibility() => new(Repository(), Currency(), Time);
 
     public StatisticsQueryService Query() =>

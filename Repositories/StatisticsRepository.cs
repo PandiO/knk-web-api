@@ -26,6 +26,12 @@ namespace knkwebapi_v2.Repositories
     {
         public const string SiegeMatchSourceType = "siege_match";
 
+        /// <summary>A duel match counted in the "duel" statistics.</summary>
+        public const string DuelMatchSourceType = "duel_match";
+
+        /// <summary>A counted duel match taken back out after staff voided it (revert/confiscate).</summary>
+        public const string DuelMatchRetractedSourceType = "duel_match_retracted";
+
         // 6 parameters per row; 500 rows stay far below MySQL's 65,535 placeholders.
         private const int UpsertChunk = 500;
 
@@ -464,6 +470,32 @@ namespace knkwebapi_v2.Repositories
                 .OrderBy(m => m.Id)
                 .Include(m => m.Participants).ThenInclude(p => p.SiegeTeam)
                 .AsSplitQuery()
+                .ToListAsync(ct);
+
+        public Task<List<DuelMatch>> GetUnprojectedDuelMatchesAsync(int take, CancellationToken ct = default) =>
+            _context.DuelMatches.AsNoTracking()
+                .Where(m => m.Status == DuelMatchStatus.Completed && m.EndedAt != null
+                    && m.Review != DuelReviewState.Held && m.Review != DuelReviewState.Voided)
+                .Where(m => !_context.StatisticsProjectedSources.Any(p => p.SourceType == DuelMatchSourceType && p.SourceId == m.Id))
+                .OrderBy(m => m.Id)
+                .Take(take)
+                .ToListAsync(ct);
+
+        public Task<List<DuelMatch>> GetDuelMatchesToRetractAsync(int take, CancellationToken ct = default) =>
+            _context.DuelMatches.AsNoTracking()
+                .Where(m => m.Review == DuelReviewState.Voided)
+                .Where(m => _context.StatisticsProjectedSources.Any(p => p.SourceType == DuelMatchSourceType && p.SourceId == m.Id))
+                .Where(m => !_context.StatisticsProjectedSources.Any(p => p.SourceType == DuelMatchRetractedSourceType && p.SourceId == m.Id))
+                .OrderBy(m => m.Id)
+                .Take(take)
+                .ToListAsync(ct);
+
+        public Task<List<DuelMatch>> GetCountedDuelMatchesOfUserAsync(int userId, CancellationToken ct = default) =>
+            _context.DuelMatches.AsNoTracking()
+                .Where(m => m.ChallengerUserId == userId || m.OpponentUserId == userId)
+                .Where(m => _context.StatisticsProjectedSources.Any(p => p.SourceType == DuelMatchSourceType && p.SourceId == m.Id))
+                .Where(m => !_context.StatisticsProjectedSources.Any(p => p.SourceType == DuelMatchRetractedSourceType && p.SourceId == m.Id))
+                .OrderBy(m => m.Id)
                 .ToListAsync(ct);
 
         public void AddProjectedSources(IEnumerable<StatisticsProjectedSource> sources) =>

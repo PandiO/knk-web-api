@@ -37,6 +37,10 @@ namespace knkwebapi_v2.Services.Leaderboards
         /// <summary>Minigame contexts (wins/objectives boards). Siege is the only minigame today.</summary>
         public static IReadOnlyList<string> MinigameContexts { get; } = new[] { StatisticsCatalog.Siege };
 
+        /// <summary>Contexts of the per-context kill and killstreak boards. Not "duel": duel leaderboards
+        /// need per-opponent caps first (arena duels DESIGN §10.4, §15).</summary>
+        public static IReadOnlyList<string> RankedContexts { get; } = new[] { StatisticsCatalog.OpenWorld, StatisticsCatalog.Siege };
+
         public static IReadOnlyList<LeaderboardPeriod> Periods { get; } =
             new[] { LeaderboardPeriod.Weekly, LeaderboardPeriod.Monthly, LeaderboardPeriod.Lifetime };
 
@@ -63,6 +67,7 @@ namespace knkwebapi_v2.Services.Leaderboards
         {
             StatisticsCatalog.OpenWorld => "Open world",
             StatisticsCatalog.Siege => "Siege",
+            StatisticsCatalog.Duel => "Duel",
             _ => string.Join(' ', context.Split('_', StringSplitOptions.RemoveEmptyEntries))
         };
 
@@ -108,9 +113,9 @@ namespace knkwebapi_v2.Services.Leaderboards
             Total(StatisticsCatalog.ActivePlaytime);
             Total(StatisticsCatalog.XpGained);
             Total(StatisticsCatalog.PvpKills);
-            PerContext(StatisticsCatalog.PvpKills, StatisticsCatalog.KnownContexts);
+            PerContext(StatisticsCatalog.PvpKills, RankedContexts);
             Total(StatisticsCatalog.PveKills);
-            PerContext(StatisticsCatalog.PveKills, StatisticsCatalog.KnownContexts);
+            PerContext(StatisticsCatalog.PveKills, RankedContexts);
             PerContext(StatisticsCatalog.Wins, MinigameContexts);
             PerContext(StatisticsCatalog.ObjectivesCaptured, MinigameContexts);
             Total("gate_damage");
@@ -119,7 +124,7 @@ namespace knkwebapi_v2.Services.Leaderboards
             Total("distance.vehicle");
             Total(StatisticsCatalog.Discoveries);
             Total(StatisticsCatalog.HighestKillstreak);
-            PerContext(StatisticsCatalog.HighestKillstreak, StatisticsCatalog.KnownContexts);
+            PerContext(StatisticsCatalog.HighestKillstreak, RankedContexts);
             return boards;
         }
     }

@@ -169,7 +169,7 @@ namespace knkwebapi_v2.Services.Statistics
                         item.Contexts.Add(new StatisticsVisibilityContextDto
                         {
                             Context = context,
-                            Visibility = overrideRow?.Visibility ?? item.Visibility,
+                            Visibility = StatisticsVisibilityRules.ForContext(rows, setting.SettingKey, context),
                             IsOverride = overrideRow != null
                         });
                     }

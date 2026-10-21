@@ -27,7 +27,7 @@ namespace knkwebapi_v2.Repositories.Interfaces
     /// <summary>
     /// Player statistics data access (KNG-34, IMPLEMENTATION_PLAN.md §1.1, §3.1). Writes go through
     /// <see cref="ApplyAsync"/> (multi-row MySQL upserts; tracked-entity updates on EF InMemory).
-    /// Reads the ledger and Siege tables but never writes them.
+    /// Reads the ledger, Siege and duel tables but never writes them.
     /// </summary>
     public interface IStatisticsRepository
     {
@@ -118,6 +118,16 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<List<SiegeMatch>> GetUnprojectedSiegeMatchesAsync(int take, CancellationToken ct = default);
 
         Task<List<SiegeMatch>> GetProjectedSiegeMatchesOfUserAsync(int userId, CancellationToken ct = default);
+
+        /// <summary>Duel matches whose result counts (completed, ended, not held or voided) and that have no
+        /// "duel_match" projected-source row.</summary>
+        Task<List<DuelMatch>> GetUnprojectedDuelMatchesAsync(int take, CancellationToken ct = default);
+
+        /// <summary>Voided duel matches that were counted and not yet retracted.</summary>
+        Task<List<DuelMatch>> GetDuelMatchesToRetractAsync(int take, CancellationToken ct = default);
+
+        /// <summary>A user's duel matches that are counted now (projected and not retracted).</summary>
+        Task<List<DuelMatch>> GetCountedDuelMatchesOfUserAsync(int userId, CancellationToken ct = default);
 
         void AddProjectedSources(IEnumerable<StatisticsProjectedSource> sources);
 

@@ -12,8 +12,8 @@ namespace knkwebapi_v2.Services.Statistics
 {
     /// <summary>
     /// Runs the statistics projectors every Statistics:ProjectionIntervalSeconds (default 30;
-    /// IMPLEMENTATION_PLAN.md §4): the ledger projector and the Siege match projector until caught
-    /// up (bounded per cycle), then closes sessions without a heartbeat for
+    /// IMPLEMENTATION_PLAN.md §4): the ledger, Siege match and duel match (KNG-221) projectors until
+    /// caught up (bounded per cycle), then closes sessions without a heartbeat for
     /// Statistics:SessionTimeoutMinutes. Each step has its own scope and try/catch, so one failing
     /// step never stops the others. Does nothing when Statistics:Enabled is false.
     /// </summary>
@@ -61,6 +61,7 @@ namespace knkwebapi_v2.Services.Statistics
         {
             await StepAsync("ledger", sp => DrainAsync(t => sp.GetRequiredService<LedgerStatisticsProjector>().ProjectNextAsync(t), ct), ct);
             await StepAsync("siege", sp => DrainAsync(t => sp.GetRequiredService<SiegeStatisticsProjector>().ProjectNextAsync(t), ct), ct);
+            await StepAsync("duel", sp => DrainAsync(t => sp.GetRequiredService<DuelStatisticsProjector>().ProjectNextAsync(t), ct), ct);
             await StepAsync("session-timeout", sp => sp.GetRequiredService<IStatisticsRepository>()
                 .CloseTimedOutSessionsAsync(now.AddMinutes(-Math.Max(1, _options.SessionTimeoutMinutes)), ct), ct);
         }

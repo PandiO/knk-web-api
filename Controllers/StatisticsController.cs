@@ -51,7 +51,7 @@ public class StatisticsController : ControllerBase
     /// re-projects the whole ledger, so prefer a userId.
     /// </summary>
     /// <response code="200">Rebuilt; reprojected = source records re-projected</response>
-    /// <response code="400">InvalidProjection (ledger, siege or all)</response>
+    /// <response code="400">InvalidProjection (ledger, siege, duel or all)</response>
     /// <response code="401">No signed-in owner</response>
     /// <response code="403">No exact grant of knk.owner.telemetry.manage</response>
     /// <response code="503">Statistics:Enabled is false</response>
@@ -70,9 +70,9 @@ public class StatisticsController : ControllerBase
                 new { error = "StatisticsDisabled", message = "Statistics are disabled (Statistics:Enabled = false)." });
         }
         var projection = (request?.Projection ?? "all").Trim().ToLowerInvariant();
-        if (projection is not ("ledger" or "siege" or "all"))
+        if (projection is not ("ledger" or "siege" or "duel" or "all"))
         {
-            return BadRequest(new { error = "InvalidProjection", message = "projection must be ledger, siege or all." });
+            return BadRequest(new { error = "InvalidProjection", message = "projection must be ledger, siege, duel or all." });
         }
         var count = await _rebuild.RebuildAsync(projection, request?.UserId, ct);
         return Ok(new StatisticsRebuildResultDto { Projection = projection, UserId = request?.UserId, Reprojected = count });

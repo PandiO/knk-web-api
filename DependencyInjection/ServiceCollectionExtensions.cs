@@ -238,6 +238,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IStatisticsRepository, StatisticsRepository>();
             services.AddScoped<knkwebapi_v2.Services.Statistics.LedgerStatisticsProjector>();
             services.AddScoped<knkwebapi_v2.Services.Statistics.SiegeStatisticsProjector>();
+            services.AddScoped<knkwebapi_v2.Services.Statistics.DuelStatisticsProjector>();
             services.AddScoped<knkwebapi_v2.Services.Statistics.IStatisticsViewerResolver, knkwebapi_v2.Services.Statistics.StatisticsViewerResolver>();
             services.AddScoped<IStatisticsIngestionService, knkwebapi_v2.Services.Statistics.StatisticsIngestionService>();
             services.AddScoped<IStatisticsQueryService, knkwebapi_v2.Services.Statistics.StatisticsQueryService>();

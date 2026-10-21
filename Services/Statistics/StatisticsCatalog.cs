@@ -79,6 +79,9 @@ namespace knkwebapi_v2.Services.Statistics
         public const string OpenWorld = "open_world";
         public const string Siege = "siege";
 
+        /// <summary>Arena duels (KNG-221): wins, losses and draws are projected from duel_matches.</summary>
+        public const string Duel = "duel";
+
         public const string GroupActivity = "activity";
         public const string GroupCombat = "combat";
         public const string GroupMinigames = "minigames";
@@ -126,9 +129,28 @@ namespace knkwebapi_v2.Services.Statistics
 
         private static readonly IReadOnlySet<string> NoContexts = new HashSet<string>();
         private static readonly IReadOnlySet<string> SiegeOwned = new HashSet<string> { Siege };
+        private static readonly IReadOnlySet<string> MatchOwned = new HashSet<string> { Siege, Duel };
 
         /// <summary>Contexts that exist today; others matching the pattern are accepted too (§F.1).</summary>
-        public static IReadOnlyList<string> KnownContexts { get; } = new[] { OpenWorld, Siege };
+        public static IReadOnlyList<string> KnownContexts { get; } = new[] { OpenWorld, Siege, Duel };
+
+        /// <summary>
+        /// Per-context visibility defaults that apply while the player has set neither the context nor
+        /// the metric level (otherwise the general default is Nobody, §F.4): duel wins, losses and draws
+        /// are public (arena duels D17, KNG-221). A player's own choice always wins.
+        /// </summary>
+        private static readonly Dictionary<(string Setting, string Context), StatisticVisibility> ContextVisibilityDefaults = new()
+        {
+            [("wins", Duel)] = StatisticVisibility.Everyone,
+            [("losses", Duel)] = StatisticVisibility.Everyone,
+            [("draws", Duel)] = StatisticVisibility.Everyone,
+        };
+
+        /// <summary>The default visibility of a setting in a context when the player set nothing for it.</summary>
+        public static StatisticVisibility DefaultVisibility(string settingKey, string? context) =>
+            !string.IsNullOrEmpty(context) && ContextVisibilityDefaults.TryGetValue((settingKey, context), out var visibility)
+                ? visibility
+                : StatisticVisibility.Nobody;
 
         public static IReadOnlyList<StatisticMetricDefinition> Metrics { get; } = BuildMetrics();
 
@@ -169,8 +191,9 @@ namespace knkwebapi_v2.Services.Statistics
 
         /// <summary>
         /// Whether the plugin may send <paramref name="metric"/> in <paramref name="context"/>:
-        /// false for ledger/derived/projection metrics everywhere, and for the Siege-owned pairs
-        /// (pvp_kills, deaths, highest_killstreak in "siege" — the match tables count them, §F.6).
+        /// false for ledger/derived/projection metrics everywhere, and for the projection-owned pairs
+        /// (pvp_kills, deaths, highest_killstreak in "siege" — the match tables count them, §F.6; wins,
+        /// losses and draws in "siege" and "duel").
         /// Context validity is checked separately.
         /// </summary>
         public static bool IsPluginWritable(string metric, string context)
@@ -221,10 +244,10 @@ namespace knkwebapi_v2.Services.Statistics
             Add("headshots", "headshots", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.Plugin, StatisticPluginInput.Counter, MaxCount, GroupCombat, "Headshots");
             Add(HighestKillstreak, "highest_killstreak", Max, StatisticUnit.Count, true, Configurable, StatisticSource.Plugin, StatisticPluginInput.Record, MaxCount, GroupCombat, "Highest killstreak", SiegeOwned);
 
-            // Minigames (§F.6, §F.8)
-            Add(Wins, "wins", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.SiegeProjection, StatisticPluginInput.None, MaxCount, GroupMinigames, "Wins");
-            Add(Losses, "losses", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.SiegeProjection, StatisticPluginInput.None, MaxCount, GroupMinigames, "Losses");
-            Add(Draws, "draws", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.SiegeProjection, StatisticPluginInput.None, MaxCount, GroupMinigames, "Draws");
+            // Minigames (§F.6, §F.8); wins/losses/draws come from the Siege and duel match projections.
+            Add(Wins, "wins", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.SiegeProjection, StatisticPluginInput.None, MaxCount, GroupMinigames, "Wins", MatchOwned);
+            Add(Losses, "losses", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.SiegeProjection, StatisticPluginInput.None, MaxCount, GroupMinigames, "Losses", MatchOwned);
+            Add(Draws, "draws", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.SiegeProjection, StatisticPluginInput.None, MaxCount, GroupMinigames, "Draws", MatchOwned);
             Add(ObjectivesCaptured, "objectives_captured", Sum, StatisticUnit.Count, true, Configurable, StatisticSource.SiegeProjection, StatisticPluginInput.None, MaxCount, GroupMinigames, "Objectives captured");
             Add("gate_damage", "gate_damage", Sum, StatisticUnit.Points, true, Configurable, StatisticSource.Plugin, StatisticPluginInput.Counter, MaxDamage, GroupMinigames, "Gate-door damage");
 

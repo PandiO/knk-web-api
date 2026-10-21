@@ -429,7 +429,7 @@ public class TelemetryHealthDto
 /// <summary><c>POST api/statistics/rebuild</c> body.</summary>
 public class StatisticsRebuildRequestDto
 {
-    /// <summary>"ledger", "siege" or "all".</summary>
+    /// <summary>"ledger", "siege", "duel" or "all".</summary>
     [JsonPropertyName("projection")]
     public string? Projection { get; set; }
 
