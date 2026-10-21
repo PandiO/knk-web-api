@@ -137,6 +137,24 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("menu_action_bindings", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaKit", b =>
+                {
+                    b.Property<int>("ArenaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("KitId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("ArenaId", "KitId");
+
+                    b.HasIndex("KitId");
+
+                    b.ToTable("arena_kits", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.AuditLogEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -6036,6 +6054,58 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("world_tasks", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaBattleground", b =>
+                {
+                    b.HasBaseType("knkwebapi_v2.Models.Domain");
+
+                    b.Property<int>("ArenaId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SpawnALocationId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SpawnBLocationId")
+                        .HasColumnType("int");
+
+                    b.HasIndex("SpawnALocationId");
+
+                    b.HasIndex("SpawnBLocationId");
+
+                    b.HasIndex("ArenaId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("arena_battlegrounds", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaSpectatorArea", b =>
+                {
+                    b.HasBaseType("knkwebapi_v2.Models.Domain");
+
+                    b.Property<int>("ArenaId")
+                        .HasColumnType("int");
+
+                    b.HasIndex("ArenaId");
+
+                    b.ToTable("arena_spectator_areas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+                        });
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.District", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
@@ -6315,6 +6385,127 @@ namespace knkwebapi_v2.Migrations
                         });
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Arena", b =>
+                {
+                    b.HasBaseType("knkwebapi_v2.Models.Structure");
+
+                    b.Property<bool>("AllowCoinStakes")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowFixedKit")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowItemStakes")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowKitChoice")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowOwnGearDrop")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowOwnGearKeep")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AnnounceFriendly")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AnnounceMatches")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("CountdownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DailyCoinWinCap")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DefaultGearMode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int?>("ExitLocationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FeePercent")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FightTimeLimitSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDuelEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int?>("LobbyLocationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxCoinStake")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxItemStacks")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxOffers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxQueuedMatches")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxStakedDuelsPerPairPerDay")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWaitSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinStakeRatioPercent")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OfferSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PairCooldownMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StakeMinAccountAgeHours")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StakeMinTitleBracketId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WarmupSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WinnerLingerSeconds")
+                        .HasColumnType("int");
+
+                    b.HasIndex("ExitLocationId");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.HasIndex("LobbyLocationId");
+
+                    b.HasIndex("StakeMinTitleBracketId");
+
+                    b.ToTable("arenas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+
+                            t.HasCheckConstraint("CK_arenas_FeePercent_Range", "`FeePercent` >= 0 AND `FeePercent` <= 20");
+
+                            t.HasCheckConstraint("CK_arenas_FightTimeLimitSeconds_NonNegative", "`FightTimeLimitSeconds` >= 0");
+
+                            t.HasCheckConstraint("CK_arenas_MaxOffers_Range", "`MaxOffers` >= 1 AND `MaxOffers` <= 6");
+
+                            t.HasCheckConstraint("CK_arenas_MinStakeRatioPercent_Range", "`MinStakeRatioPercent` >= 0 AND `MinStakeRatioPercent` <= 100");
+                        });
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Structure");
@@ -6461,6 +6652,25 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("MenuItemTemplate");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaKit", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Arena", "Arena")
+                        .WithMany("EligibleKits")
+                        .HasForeignKey("ArenaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Kit", "Kit")
+                        .WithMany()
+                        .HasForeignKey("KitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Arena");
+
+                    b.Navigation("Kit");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.BannerLayer", b =>
@@ -7988,6 +8198,54 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("WorkflowSession");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaBattleground", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Arena", "Arena")
+                        .WithMany("Battlegrounds")
+                        .HasForeignKey("ArenaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Domain", null)
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.ArenaBattleground", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Location", "SpawnALocation")
+                        .WithMany()
+                        .HasForeignKey("SpawnALocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Location", "SpawnBLocation")
+                        .WithMany()
+                        .HasForeignKey("SpawnBLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Arena");
+
+                    b.Navigation("SpawnALocation");
+
+                    b.Navigation("SpawnBLocation");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaSpectatorArea", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Arena", "Arena")
+                        .WithMany("SpectatorAreas")
+                        .HasForeignKey("ArenaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Domain", null)
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.ArenaSpectatorArea", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Arena");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.District", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Domain", null)
@@ -8062,6 +8320,36 @@ namespace knkwebapi_v2.Migrations
                         .HasForeignKey("knkwebapi_v2.Models.User", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Arena", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Location", "ExitLocation")
+                        .WithMany()
+                        .HasForeignKey("ExitLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Structure", null)
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.Arena", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Location", "LobbyLocation")
+                        .WithMany()
+                        .HasForeignKey("LobbyLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.TitleBracket", "StakeMinTitleBracket")
+                        .WithMany()
+                        .HasForeignKey("StakeMinTitleBracketId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ExitLocation");
+
+                    b.Navigation("LobbyLocation");
+
+                    b.Navigation("StakeMinTitleBracket");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>
@@ -8315,6 +8603,15 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("PermissionGroupMemberships");
 
                     b.Navigation("RefreshTokens");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Arena", b =>
+                {
+                    b.Navigation("Battlegrounds");
+
+                    b.Navigation("EligibleKits");
+
+                    b.Navigation("SpectatorAreas");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>

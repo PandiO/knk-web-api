@@ -11,8 +11,8 @@ namespace knkwebapi_v2.Services
 {
     /// <summary>
     /// Gives a domain's WorldGuard region its final name once the domain exists. A region drawn through a WgRegionId world
-    /// task is called <c>tempregion_worldtask_&lt;taskId&gt;</c>; after the Town, District, Structure, GateStructure or
-    /// Domain is saved, the region is renamed to <c>domain_&lt;id&gt;</c> (all share Domain's id sequence) and the plugin
+    /// task is called <c>tempregion_worldtask_&lt;taskId&gt;</c>; after the Town, District, Structure, GateStructure, Arena,
+    /// ArenaBattleground, ArenaSpectatorArea or Domain is saved, the region is renamed to <c>domain_&lt;id&gt;</c> (all share Domain's id sequence) and the plugin
     /// sets it up as that type: parent region, priority and flags. See knk-workspace
     /// <c>docs/architecture/managed-worldguard-regions.md</c> §7 (KNG-43).
     /// </summary>
@@ -66,7 +66,10 @@ namespace knkwebapi_v2.Services
         public static string? DomainTypeOf(Domain domain) => domain switch
         {
             GateStructure => nameof(GateStructure),
+            Arena => nameof(Arena),
             Structure => nameof(Structure),
+            ArenaBattleground => nameof(ArenaBattleground),
+            ArenaSpectatorArea => nameof(ArenaSpectatorArea),
             District => nameof(District),
             Town => nameof(Town),
             _ => null
@@ -219,7 +222,9 @@ namespace knkwebapi_v2.Services
             Town => 0,
             District => 1,
             Structure => 2,
-            _ => 3
+            // KNG-210: an arena's battlegrounds and spectator areas after the arena (a Structure).
+            ArenaBattleground or ArenaSpectatorArea => 3,
+            _ => 4
         };
 
         private async Task<string?> ParentRegionIdAsync(Domain domain)
@@ -228,6 +233,9 @@ namespace knkwebapi_v2.Services
             {
                 District district => district.TownId,
                 Structure structure => structure.DistrictId,
+                // KNG-210: District -> Arena -> its battlegrounds and spectator areas.
+                ArenaBattleground battleground => battleground.ArenaId,
+                ArenaSpectatorArea spectatorArea => spectatorArea.ArenaId,
                 _ => 0
             };
             if (parentId <= 0)

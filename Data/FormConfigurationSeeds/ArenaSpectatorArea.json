@@ -1,0 +1,166 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "0e7df0c3-8bdd-5dd9-bda0-d92dc4b80556",
+  "entityTypeName": "ArenaSpectatorArea",
+  "name": "ArenaSpectatorArea - Default (seed v1)",
+  "description": "Where players watch an arena's duels: an ordinary walkable region and, when enabled, a /warp destination with the usual warp conditions.",
+  "steps": [
+    {
+      "stepGuid": "ab2924f2-24fe-5ca7-8dbc-d4a10b40b88f",
+      "stepName": "General",
+      "description": "Name the spectator area and pick its arena.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "c38f0978-9b37-5f3b-af3e-a0c887e7fa66",
+          "fieldName": "ArenaId",
+          "label": "Arena",
+          "description": "The arena whose duels are watched from here.",
+          "fieldType": "Object",
+          "objectType": "Arena",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "05c0d488-f7bc-502c-8dcb-548daf7f5fc2",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in /warp and the arena menu.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7b9f3d91-9775-59bc-92ed-74c98db7c119",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "One line for admins and the web app.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "35e7af8b-8efd-530e-8426-dd755c009739",
+      "stepName": "Region and access",
+      "description": "The spectator area's region, inside the arena's region.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "75b84195-13ee-5a22-9733-35ab7381a568",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "Use Send to Minecraft, or type an existing region's name.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
+        },
+        {
+          "fieldGuid": "f4ae7b90-e052-5336-b909-87227c4acac3",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk in. Needed for the warp too.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "569097a0-8449-5591-8ded-7a93c80f08d5",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players may walk out.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "09f78bd4-6652-5c4f-b871-71dc5056ae64",
+      "stepName": "Warp",
+      "description": "The arrival point and the warp conditions. The arena menu's [Spectate] starts this same warp.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "58257f6f-121e-5cc4-a294-0d37c31e2e39",
+          "fieldName": "LocationId",
+          "label": "Arrival point",
+          "description": "Where /warp and [Spectate] put players. Stand on it in game and use Send to Minecraft.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "e7789916-2ffd-5461-a45f-f6cf55140743",
+          "fieldName": "TeleportEnabled",
+          "label": "Listed in /warp",
+          "description": "Players can warp here (needs the arrival point and entry on).",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2d2c6651-e245-5c3f-8c23-d41c08296f3c",
+          "fieldName": "TeleportPriceGems",
+          "label": "Price (gems)",
+          "description": "Charged per warp after the warmup; 0 = free.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ab5aeb1a-68d2-59e5-a5dc-59a586db4150",
+          "fieldName": "TeleportMinTitleBracketId",
+          "label": "Minimum title",
+          "description": "Optional.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "431da4b6-963c-54c2-a174-c284a2685bb0",
+          "fieldName": "TeleportMinPremiumGroupId",
+          "label": "Minimum premium tier",
+          "description": "Optional: a premium-tier group.",
+          "fieldType": "Object",
+          "objectType": "PermissionGroup",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "350c0b4a-39cc-5674-b8d2-445f9a8d5f35",
+          "fieldName": "TeleportRequiresDiscovery",
+          "label": "Requires discovery",
+          "description": "Only players who have walked into the spectator area once may warp here.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "75b84195-13ee-5a22-9733-35ab7381a568",
+      "validationType": "RegionContainment",
+      "dependsOn": {
+        "fieldGuid": "c38f0978-9b37-5f3b-af3e-a0c887e7fa66"
+      },
+      "dependencyPath": "Arena.WgRegionId",
+      "configJson": "{\"parentRegionPath\": \"WgRegionId\", \"requireFullContainment\": true}",
+      "errorMessage": "The spectator area's region is not completely inside the arena's region.",
+      "isBlocking": false,
+      "requiresDependencyFilled": true
+    }
+  ]
+}

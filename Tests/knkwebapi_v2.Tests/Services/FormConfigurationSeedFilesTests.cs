@@ -128,6 +128,7 @@ public class FormConfigurationSeedFilesTests
         ["SiegeScenarioDistrict"] = new() { ["SiegeScenarioId"] = "set by the scenario's Districts step (join entry)" },
         ["SiegeScenarioGate"] = new() { ["SiegeScenarioId"] = "set by the scenario's Gates step (join entry)" },
         ["SiegeLobbyScenario"] = new() { ["SiegeLobbyId"] = "set by the lobby's Rotation step (join entry)" },
+        ["ArenaKit"] = new() { ["ArenaId"] = "set by the arena's Eligible kits step (join entry)" },
         // GateDoorMappingProfile maps a missing value to "" for this one; a form field would have to be required
         // (FormTemplateValidationService doesn't see the "= string.Empty" initialiser), and empty is the normal value.
         // ScanMaterialWhitelist/ScanMaterialBlacklist carry [DefaultValue("")] since KNG-193, so the whitelist is an
@@ -204,6 +205,7 @@ public class FormConfigurationSeedFilesTests
             Assert.Equal(IdOf("SiegeScenarioDistrict.join"), (await StepAsync("SiegeScenario", "Districts")).SubConfigurationId);
             Assert.Equal(IdOf("SiegeScenarioGate.join"), (await StepAsync("SiegeScenario", "Gates")).SubConfigurationId);
             Assert.Equal(IdOf("SiegeLobbyScenario.join"), (await StepAsync("SiegeLobby", "Rotation")).SubConfigurationId);
+            Assert.Equal(IdOf("ArenaKit.join"), (await StepAsync("Arena", "Eligible kits")).SubConfigurationId);
 
             // Parent-form rules depend on the scenario seed's Town field; same-form rules on their own form's field.
             var scenarioTown = await FieldIdAsync("SiegeScenario", "TownId");
@@ -214,6 +216,9 @@ public class FormConfigurationSeedFilesTests
                 ("SiegeObjective", "LocationId", scenarioTown),
                 ("GateDoor", "AnchorPointId", await FieldIdAsync("GateDoor", "GateStructureId")),
                 ("GateStructure", "WgRegionId", await FieldIdAsync("GateStructure", "DistrictId")),
+                ("Arena", "WgRegionId", await FieldIdAsync("Arena", "DistrictId")),
+                ("ArenaBattleground", "WgRegionId", await FieldIdAsync("ArenaBattleground", "ArenaId")),
+                ("ArenaSpectatorArea", "WgRegionId", await FieldIdAsync("ArenaSpectatorArea", "ArenaId")),
             })
             {
                 var fieldId = await FieldIdAsync(seed, field);

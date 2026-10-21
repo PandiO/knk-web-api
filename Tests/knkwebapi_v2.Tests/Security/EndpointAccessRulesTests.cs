@@ -110,6 +110,31 @@ public class EndpointAccessRulesTests
         Assert.DoesNotContain(typeof(UsersController).Assembly.GetTypes(), t => t.Name == name);
     }
 
+    /// <summary>Arena duels (KNG-210): arena, battleground and spectator-area writes need knk.admin.world or the game
+    /// server; reads (GET and POST search) only need a caller.</summary>
+    [Fact]
+    public void ArenaWrites_NeedManageWorld_AndReadsOnlyACaller()
+    {
+        var arenaEndpoints = Endpoints().Where(e => e.Controller == typeof(ArenasController)).ToList();
+        Assert.NotEmpty(arenaEndpoints);
+        foreach (var endpoint in arenaEndpoints)
+        {
+            bool isSearch = endpoint.Action.Name.StartsWith("Search", StringComparison.Ordinal);
+            bool isRead = endpoint.Verbs.All(DefaultCallerRequiredFilter.IsRead) || isSearch;
+            var rule = endpoint.Metadata.OfType<RequireServiceOrPermissionAttribute>().SingleOrDefault();
+            if (isRead)
+            {
+                Assert.True(rule == null, $"{endpoint.Name} is a read and should not need a staff node");
+                Assert.False(endpoint.Metadata.OfType<IAllowAnonymous>().Any(), $"{endpoint.Name} must not be anonymous");
+            }
+            else
+            {
+                Assert.True(rule?.Node == StaffPermissions.ManageWorld, $"{endpoint.Name} must need {StaffPermissions.ManageWorld}");
+            }
+        }
+        Assert.Contains(arenaEndpoints, e => e.Name == "ArenasController.SeedLegacy");
+    }
+
     [Fact]
     public void LinkAccountEndpoint_IsGone()
     {

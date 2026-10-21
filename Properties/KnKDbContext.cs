@@ -52,6 +52,11 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<District> Districts { get; set; } = null!;
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
+    // Arena duels (KNG-210, docs/specs/arena-duels/DESIGN.md §4.1)
+    public virtual DbSet<Arena> Arenas { get; set; } = null!;
+    public virtual DbSet<ArenaBattleground> ArenaBattlegrounds { get; set; } = null!;
+    public virtual DbSet<ArenaSpectatorArea> ArenaSpectatorAreas { get; set; } = null!;
+    public virtual DbSet<ArenaKit> ArenaKits { get; set; } = null!;
     public virtual DbSet<GateDoor> GateDoors { get; set; } = null!;
     public virtual DbSet<GateBlockSnapshot> GateBlockSnapshots { get; set; } = null!;
     public virtual DbSet<GateOpenedBlockSnapshot> GateOpenedBlockSnapshots { get; set; } = null!;
@@ -1536,6 +1541,55 @@ public partial class KnKDbContext : DbContext
                 .WithOne(d => d.GateStructure)
                 .HasForeignKey(d => d.GateStructureId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Arena duels (KNG-210, docs/specs/arena-duels/DESIGN.md §4.1): Arena : Structure, and its battlegrounds and
+        // spectator areas as Domain subtypes, each with its own TPT table like GateStructure. The children's FKs cascade
+        // in the database; ArenaService deletes them through EF so their domains rows go too.
+        modelBuilder.Entity<Arena>(entity =>
+        {
+            entity.ToTable("arenas", t =>
+            {
+                t.HasCheckConstraint("CK_arenas_MaxOffers_Range", "`MaxOffers` >= 1 AND `MaxOffers` <= 6");
+                t.HasCheckConstraint("CK_arenas_FeePercent_Range", "`FeePercent` >= 0 AND `FeePercent` <= 20");
+                t.HasCheckConstraint("CK_arenas_MinStakeRatioPercent_Range", "`MinStakeRatioPercent` >= 0 AND `MinStakeRatioPercent` <= 100");
+                t.HasCheckConstraint("CK_arenas_FightTimeLimitSeconds_NonNegative", "`FightTimeLimitSeconds` >= 0");
+            });
+            entity.Property(e => e.Key).HasMaxLength(64).IsRequired();
+            entity.HasIndex(e => e.Key).IsUnique();
+            entity.Property(e => e.DefaultGearMode).HasConversion<string>().HasMaxLength(32);
+
+            // A Location an arena uses can't be deleted (KNG-118 D3, like Domain.Location).
+            entity.HasOne(e => e.LobbyLocation).WithMany().HasForeignKey(e => e.LobbyLocationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ExitLocation).WithMany().HasForeignKey(e => e.ExitLocationId).OnDelete(DeleteBehavior.Restrict);
+            // Deleting the title bracket just drops the requirement (back to the /pay minimum).
+            entity.HasOne(e => e.StakeMinTitleBracket).WithMany().HasForeignKey(e => e.StakeMinTitleBracketId).OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(e => e.Battlegrounds).WithOne(b => b.Arena).HasForeignKey(b => b.ArenaId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.SpectatorAreas).WithOne(a => a.Arena).HasForeignKey(a => a.ArenaId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ArenaBattleground>(entity =>
+        {
+            entity.ToTable("arena_battlegrounds");
+            entity.Property(e => e.Key).HasMaxLength(64).IsRequired();
+            entity.HasIndex(e => new { e.ArenaId, e.Key }).IsUnique();
+            entity.HasOne(e => e.SpawnALocation).WithMany().HasForeignKey(e => e.SpawnALocationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SpawnBLocation).WithMany().HasForeignKey(e => e.SpawnBLocationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ArenaSpectatorArea>(entity =>
+        {
+            entity.ToTable("arena_spectator_areas");
+        });
+
+        modelBuilder.Entity<ArenaKit>(entity =>
+        {
+            entity.ToTable("arena_kits");
+            entity.HasKey(e => new { e.ArenaId, e.KitId });
+            entity.HasOne(e => e.Arena).WithMany(a => a.EligibleKits).HasForeignKey(e => e.ArenaId).OnDelete(DeleteBehavior.Cascade);
+            // A kit an arena offers can't be deleted.
+            entity.HasOne(e => e.Kit).WithMany().HasForeignKey(e => e.KitId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // GateDoor configuration - most of what used to be per-GateStructure geometry/animation/

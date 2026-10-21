@@ -280,7 +280,8 @@ namespace knkwebapi_v2.Services.Statistics
                 Total = discovered.Count,
                 Towns = Count(DiscoveryRewardRule.Town),
                 Districts = Count(DiscoveryRewardRule.District),
-                Structures = Count(DiscoveryRewardRule.Structure, DiscoveryRewardRule.GateStructure)
+                Structures = Count(DiscoveryRewardRule.Structure, DiscoveryRewardRule.GateStructure, DiscoveryRewardRule.Arena,
+                    DiscoveryRewardRule.ArenaSpectatorArea, DiscoveryRewardRule.ArenaBattleground)
             };
         }
 

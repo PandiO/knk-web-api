@@ -105,6 +105,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IEntityReferenceService, EntityReferenceService>();
             services.AddScoped<IGateStructureRepository, GateStructureRepository>();
             services.AddScoped<IGateStructureService, GateStructureService>();
+            // Arena duels (KNG-210)
+            services.AddScoped<IArenaRepository, ArenaRepository>();
+            services.AddScoped<IArenaService, ArenaService>();
             services.AddScoped<IGateDoorRepository, GateDoorRepository>();
             services.AddScoped<IGateDoorService, GateDoorService>();
             services.AddScoped<IItemBlueprintRepository, ItemBlueprintRepository>();

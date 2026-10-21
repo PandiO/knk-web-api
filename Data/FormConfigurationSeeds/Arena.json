@@ -1,0 +1,508 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "32b90fa9-b6d1-5809-8029-f3abe57b672b",
+  "entityTypeName": "Arena",
+  "name": "Arena - Default (seed v1)",
+  "description": "A duel arena: its place, region and locations, and the duel settings players negotiate within. Every setting starts at the design default, so a new arena works untouched. Battlegrounds and spectator areas are their own records, added on the last step once the arena is saved.",
+  "steps": [
+    {
+      "stepGuid": "2950d4cf-dc47-57b1-b473-751310378d46",
+      "stepName": "General",
+      "description": "Name the arena, place it and capture its region and locations. Duels stay off until the lobby location is set.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4052ec1e-fe71-5533-915f-7bdc1a2d98c9",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown to players in menus and announcements.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "56ab1825-2074-509e-97ef-0a21674cb386",
+          "fieldName": "Key",
+          "label": "Key",
+          "description": "Short unique id for commands and config, e.g. arena_2. Letters, digits and _ . , - only.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1e07d3bf-31bb-55b6-a15e-b712dd5c7799",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "One line for admins and the web app, e.g. what the arena is used for.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c0078b88-fbee-500a-87ad-f3d55dab2916",
+          "fieldName": "DistrictId",
+          "label": "District",
+          "description": "The district the arena stands in. Its region is the arena region's parent.",
+          "fieldType": "Object",
+          "objectType": "District",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3378f878-c40a-5044-bb7d-196bd077b4ab",
+          "fieldName": "StreetId",
+          "label": "Street",
+          "description": "The street the arena is on. Use Create New if the street isn't there yet.",
+          "fieldType": "Object",
+          "objectType": "Street",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b2c37103-8c81-5260-ba72-06d90ea1578f",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The WorldGuard region around the whole arena (lobby, battlegrounds and spectator areas inside it). Use Send to Minecraft, or type an existing region's name such as arena_2.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
+        },
+        {
+          "fieldGuid": "00b8920b-11e0-5aeb-9289-bb313797efe0",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the arena. Battlegrounds have their own rule.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9eb2b8ac-3069-5c2a-927b-7a53dfac79f4",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the arena may walk out of it.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6c43d75d-1b17-5ea7-845b-ca4a6b730eeb",
+          "fieldName": "LocationId",
+          "label": "Spawn point",
+          "description": "Optional: where /warp and /navigate <arena> spawn put players.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "4c0ce47e-1c01-5977-af19-198195464de9",
+          "fieldName": "LobbyLocationId",
+          "label": "Lobby location",
+          "description": "Where both duelists arrive for the warmup. Required before duels can be turned on.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "5ba48f19-3716-5e16-a8af-799df7b20239",
+          "fieldName": "ExitLocationId",
+          "label": "Exit location",
+          "description": "Where duelists go after the match. Leave empty for the spawn point.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "c8fa35f8-7aa0-5cad-bdd4-904b4a5b54f9",
+          "fieldName": "IsDuelEnabled",
+          "label": "Duels enabled",
+          "description": "Players can challenge each other here. Needs the lobby location.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "64c3b269-bb75-57e3-8fd6-ef046b1f66a1",
+      "stepName": "Negotiation & stakes",
+      "description": "How invitations are negotiated and what may be staked.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "09e1f2b6-0762-5470-84bd-9c0d328c97dd",
+          "fieldName": "MaxOffers",
+          "label": "Offers per negotiation",
+          "description": "1-6. Offer 1 is the inviter's, each later one a counter; the last can only be accepted or declined. 2 = offer and one counter.",
+          "fieldType": "Integer",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c22ec6ef-f42d-5fcb-8656-3aba07b5be8e",
+          "fieldName": "OfferSeconds",
+          "label": "Seconds per offer",
+          "description": "How long each side has to answer an offer.",
+          "fieldType": "Integer",
+          "defaultValue": "60",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9b9b5174-9504-5d6d-9729-456971aef5af",
+          "fieldName": "AllowCoinStakes",
+          "label": "Allow coin stakes",
+          "description": "Players may stake coins.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0e3da667-2f08-589e-a7ce-5b23d2c26f20",
+          "fieldName": "AllowItemStakes",
+          "label": "Allow item stakes",
+          "description": "Players may stake items from their inventory.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "622de2fe-b7e2-5420-8fa8-ac92e24ad2ec",
+          "fieldName": "MaxCoinStake",
+          "label": "Maximum coin stake",
+          "description": "Per side.",
+          "fieldType": "Integer",
+          "defaultValue": "10000",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b37d63c0-d45e-58a1-acfc-9b9dd925ab2b",
+          "fieldName": "MaxItemStacks",
+          "label": "Maximum item stacks",
+          "description": "Per side.",
+          "fieldType": "Integer",
+          "defaultValue": "9",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b7175129-c504-5355-9e52-7f91e141061f",
+          "fieldName": "MinStakeRatioPercent",
+          "label": "Minimum stake ratio (%)",
+          "description": "0-100. The smaller coin stake must be at least this % of the larger; 0 = off. Stops one-sided stakes that move coins.",
+          "fieldType": "Integer",
+          "defaultValue": "50",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "067494df-5fa2-53f8-8bc4-4b214e211d31",
+          "fieldName": "FeePercent",
+          "label": "Arena fee (%)",
+          "description": "0-20. Taken from the coin pot of a decisive result, never on draws, cancels or friendly duels.",
+          "fieldType": "Integer",
+          "defaultValue": "5",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "4bd535dc-fd02-5458-a3e8-37e83bd3fe91",
+      "stepName": "Eligibility & abuse limits",
+      "description": "Who may stake, and limits that make thrown duels pointless. Empty eligibility fields follow the /pay rules.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "046c5a00-78b9-5342-965b-2ca7acae7614",
+          "fieldName": "StakeMinAccountAgeHours",
+          "label": "Minimum account age (hours)",
+          "description": "Optional. Empty = the /pay minimum (currency policy, 48 hours).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "40158bf5-307f-56a1-afa8-b014b6caf00f",
+          "fieldName": "StakeMinTitleBracketId",
+          "label": "Minimum title",
+          "description": "Optional. Empty = the /pay minimum title.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f6181c89-a24d-5836-b5de-06be72b76a2f",
+          "fieldName": "MaxStakedDuelsPerPairPerDay",
+          "label": "Staked duels per pair per day",
+          "description": "The same two players can't play more staked duels than this in a day.",
+          "fieldType": "Integer",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3e57ab67-13be-569e-824a-45dec71a122a",
+          "fieldName": "PairCooldownMinutes",
+          "label": "Pair cooldown (minutes)",
+          "description": "Between staked duels of the same two players.",
+          "fieldType": "Integer",
+          "defaultValue": "10",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "48a5d0bc-8ed1-5b54-a53c-3d8964a2eadc",
+          "fieldName": "DailyCoinWinCap",
+          "label": "Daily coin win cap",
+          "description": "Per player per day; 0 = off.",
+          "fieldType": "Integer",
+          "defaultValue": "25000",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "775b4d81-bbd4-579e-9796-72fd99c4db89",
+      "stepName": "Gear & kits",
+      "description": "Which gear modes a proposal may pick. Allow at least one; the kit modes need eligible kits on the next step.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "da2cbfda-7652-51f8-a899-4f9b26566522",
+          "fieldName": "AllowOwnGearKeep",
+          "label": "Own gear, keep inventory",
+          "description": "Duelists fight with their own gear and keep it on death.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ecef2db8-31d0-5283-b3f5-88c8e2e21adc",
+          "fieldName": "AllowOwnGearDrop",
+          "label": "Own gear, loser drops",
+          "description": "The loser's inventory goes to the winner. High stakes; both duelists must be eligible to stake.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "79b3a71e-88dc-529c-82c2-a124508a5616",
+          "fieldName": "AllowFixedKit",
+          "label": "Fixed kit",
+          "description": "Both duelists use the kit the proposal names; their own inventory is stored and given back.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "cbcda6ed-e1bc-5c8d-8e0c-02497b01e032",
+          "fieldName": "AllowKitChoice",
+          "label": "Kit choice",
+          "description": "Each duelist picks one of the eligible kits in the warmup.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "478f9255-5516-507d-8190-e9409a05505a",
+          "fieldName": "DefaultGearMode",
+          "label": "Default gear mode",
+          "description": "Pre-selected in a new proposal; must be one of the allowed modes.",
+          "fieldType": "Enum",
+          "defaultValue": "OWN_GEAR_KEEP",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"OWN_GEAR_KEEP\", \"OWN_GEAR_DROP\", \"FIXED_KIT\", \"KIT_CHOICE\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "8069db62-9e49-52d5-8bce-b096cff327e3",
+      "stepName": "Eligible kits",
+      "description": "The kits for the fixed-kit and kit-choice modes. Add each with Create New Join Entry and drag to order; the first is the default pick.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "EligibleKits",
+      "joinEntityType": "ArenaKit",
+      "subConfigurationRef": {
+        "configurationGuid": "28b4c5f5-356c-5f2b-9a38-bf1d82229466",
+        "entityTypeName": "ArenaKit",
+        "name": "ArenaKit - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "71f824f3-cd89-55fd-8004-b230342f8d21",
+          "fieldName": "EligibleKits",
+          "label": "Eligible kits",
+          "description": "One entry per kit.",
+          "fieldType": "List",
+          "objectType": "ArenaKit",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b4b1a378-6b6c-56e7-adf9-85add516a4f5",
+      "stepName": "Timing & queue",
+      "description": "How long each phase lasts, and how many accepted matches may wait for a battleground.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "54fed520-c3ba-5fd6-94bf-598c4399463d",
+          "fieldName": "MaxQueuedMatches",
+          "label": "Queued matches",
+          "description": "Accepted matches not yet in a battleground (travelling, warmup, waiting). The next accept is refused at this number.",
+          "fieldType": "Integer",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e0936073-e5cd-5932-b271-0a0ec8be9473",
+          "fieldName": "WarmupSeconds",
+          "label": "Warmup (seconds)",
+          "description": "In the lobby before the countdown.",
+          "fieldType": "Integer",
+          "defaultValue": "30",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c472ddec-2e54-5a01-845e-63a6f7cb1c33",
+          "fieldName": "CountdownSeconds",
+          "label": "Countdown (seconds)",
+          "description": "Frozen on the spawn before the fight.",
+          "fieldType": "Integer",
+          "defaultValue": "10",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2ac6989c-5616-5efb-9ac0-204690b6c22b",
+          "fieldName": "FightTimeLimitSeconds",
+          "label": "Fight time limit (seconds)",
+          "description": "At the limit the match is a draw with a full refund. 0 = no limit (players can agree a draw).",
+          "fieldType": "Integer",
+          "defaultValue": "300",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a1d3b0fe-f0f4-50c0-a103-afe9b4a6d8d6",
+          "fieldName": "MaxWaitSeconds",
+          "label": "Maximum wait (seconds)",
+          "description": "Waiting for a free battleground, then the match is cancelled and refunded.",
+          "fieldType": "Integer",
+          "defaultValue": "180",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "48aa0de1-1c6a-5288-809a-260bd6943338",
+          "fieldName": "WinnerLingerSeconds",
+          "label": "Winner linger (seconds)",
+          "description": "How long the winner stays in the battleground before the exit teleport.",
+          "fieldType": "Integer",
+          "defaultValue": "5",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "c97014e1-683b-5c71-a1df-17e9a4145fc5",
+      "stepName": "Announcements",
+      "description": "What the server is told about matches in this arena.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "37432daa-2444-5853-b491-135b6d8087f5",
+          "fieldName": "AnnounceMatches",
+          "label": "Announce matches",
+          "description": "Broadcast the warmup with [Spectate] [Details], and the result.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4508e191-44fa-53d2-ae90-0f614b0c8302",
+          "fieldName": "AnnounceFriendly",
+          "label": "Announce friendly duels",
+          "description": "Also announce duels without stakes.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "146ecb9e-0be6-50e7-b2ac-e439fb293ab6",
+      "stepName": "Battlegrounds and spectator areas",
+      "description": "The fighting areas and where players watch. Save the arena first (Submit), then Edit it to add them; each has its own form.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e9c1570b-a554-5bad-a531-4a6373092457",
+          "fieldName": "Battlegrounds",
+          "label": "Battlegrounds",
+          "description": "One per fighting area; a match takes one free battleground.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "ArenaBattleground",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        },
+        {
+          "fieldGuid": "0ffbedc3-7811-5205-8d35-e42a2c17f15d",
+          "fieldName": "SpectatorAreas",
+          "label": "Spectator areas",
+          "description": "Usually one. Reached on foot, by /warp and from the arena menu.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "ArenaSpectatorArea",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "b2c37103-8c81-5260-ba72-06d90ea1578f",
+      "validationType": "RegionContainment",
+      "dependsOn": {
+        "fieldGuid": "c0078b88-fbee-500a-87ad-f3d55dab2916"
+      },
+      "dependencyPath": "District.WgRegionId",
+      "configJson": "{\"parentRegionPath\": \"WgRegionId\", \"requireFullContainment\": true}",
+      "errorMessage": "The arena's region is not completely inside the district's region.",
+      "isBlocking": false,
+      "requiresDependencyFilled": true
+    }
+  ]
+}

@@ -642,11 +642,14 @@ public class DiscoveryServiceTests : IDisposable
         var summary = await service.GetSummaryAsync(UserId);
 
         Assert.Equal(new[] { ("Town", 1, 2), ("District", 1, 2), ("Structure", 1, 1), ("GateStructure", 0, 1) },
-            summary.ByType.Select(t => (t.DomainType, t.Discovered, t.Total)));
+            summary.ByType.Take(4).Select(t => (t.DomainType, t.Discovered, t.Total)));
+        // KNG-210: the arena types follow, empty here (no arenas, no rules seeded).
+        Assert.Equal(new[] { "Arena", "ArenaSpectatorArea", "ArenaBattleground" }, summary.ByType.Skip(4).Select(t => t.DomainType));
+        Assert.All(summary.ByType.Skip(4), t => Assert.Equal(0, t.Total));
         Assert.Equal(3, summary.TotalDiscovered);
         Assert.Equal((first.TotalCoins, first.TotalGems, first.TotalExp), (summary.TotalCoins, summary.TotalGems, summary.TotalExp));
         Assert.NotNull(summary.Latest);
-        Assert.All(summary.ByType, t => Assert.True(t.Enabled));
+        Assert.All(summary.ByType.Take(4), t => Assert.True(t.Enabled));
     }
 
     [Fact]
@@ -660,7 +663,7 @@ public class DiscoveryServiceTests : IDisposable
         var summary = await service.GetSummaryAsync(UserId);
 
         Assert.Equal(new[] { ("Town", 1, 2, true), ("District", 1, 2, true), ("Structure", 0, 0, false), ("GateStructure", 0, 1, true) },
-            summary.ByType.Select(t => (t.DomainType, t.Discovered, t.Total, t.Enabled)));
+            summary.ByType.Take(4).Select(t => (t.DomainType, t.Discovered, t.Total, t.Enabled)));
         Assert.Equal(2, summary.TotalDiscovered);
         // Rewards already credited stay in the lifetime amounts.
         Assert.Equal((first.TotalCoins, first.TotalGems, first.TotalExp), (summary.TotalCoins, summary.TotalGems, summary.TotalExp));

@@ -28,9 +28,14 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 | `SiegeSpawnpoint` | SiegeSpawnpoint - Default (seed v1) | `SiegeScenario` (location rule reads the scenario's Town) |
 | `SiegeObjective` | SiegeObjective - Default (seed v1) | `SiegeScenario` (same) |
 | `SiegeLobby` | SiegeLobby - Default (seed v1) | `SiegeLobbyScenario.join` |
+| `ArenaKit.join` | ArenaKit - Join Entry (seed v1) | — |
+| `Arena` | Arena - Default (seed v1) | `ArenaKit.join` |
+| `ArenaBattleground` | ArenaBattleground - Default (seed v1) | — |
+| `ArenaSpectatorArea` | ArenaSpectatorArea - Default (seed v1) | — |
 
 So one working order is: the three `.join` seeds, `SiegeScenario`, `SiegeTeam`, `SiegeSpawnpoint`,
-`SiegeObjective`, `SiegeLobby`, then `GateStructure` and `GateDoor`. The dry run names the missing seed if the
+`SiegeObjective`, `SiegeLobby`, then `GateStructure` and `GateDoor`, then `ArenaKit.join` and `Arena`,
+`ArenaBattleground`, `ArenaSpectatorArea`. The dry run names the missing seed if the
 order is wrong.
 
 **GateDoor seed v2 (KNG-193, 2026-10-19):** a new `configurationGuid` and name, so it imports next to an already
@@ -45,3 +50,11 @@ The gate seeds were written from the docs and the models; no export of the dev D
 available. The siege seeds convert `siege-minigame/PHASE_3_FORMCONFIGS.md` (configurations 23-33). What changed
 against those forms, and what was left off on purpose: knk-workspace
 `docs/reports/2026-10-11-form-wizard-chain.md`, link 7.
+
+**Arena duels (KNG-210, 2026-10-21):** `Arena` follows the steps of the arena duels plan (General, Negotiation & stakes,
+Eligibility & abuse limits, Gear & kits, Timing & queue, Announcements) plus two the wizard needs as their own steps:
+"Eligible kits" (a many-to-many step; a step is either that or plain fields) and "Battlegrounds and spectator areas"
+(owned child lists, added once the arena is saved, like a gate's doors). Every setting carries the design default
+(knk-workspace `docs/specs/arena-duels/DESIGN.md` §4.2). Step and field GUIDs are uuid5 of the entity, "step"/"field"
+and the name under the namespace `6f1d1c3e-8a4b-5b1e-9c7d-a2d0e0a1b210`. The arena form needs the web app's Arena,
+ArenaBattleground and ArenaSpectatorArea clients (knk-web-app `claude/arena-duels`).

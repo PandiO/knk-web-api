@@ -1,0 +1,28 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "28b4c5f5-356c-5f2b-9a38-bf1d82229466",
+  "entityTypeName": "ArenaKit",
+  "name": "ArenaKit - Join Entry (seed v1)",
+  "description": "Join entry for a kit duelists may use in the arena's kit modes (the arena's Eligible kits step).",
+  "steps": [
+    {
+      "stepGuid": "00daf282-05a5-5a2c-a41e-a6d7b7519a67",
+      "stepName": "Kit",
+      "description": "A kit for the fixed-kit and kit-choice modes. Drag the entries to order them; the first is the default pick in kit choice.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "881c022b-1297-5bb6-8b5c-2fb6bcb14844",
+          "fieldName": "KitId",
+          "label": "Kit",
+          "description": "The kit is loaned for the match and taken back afterwards; its own cost, cooldown and access rules don't apply in the arena.",
+          "fieldType": "Object",
+          "objectType": "Kit",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

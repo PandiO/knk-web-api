@@ -166,9 +166,10 @@ public class DomainNavigationDefaultsTests
         await using var read = NewContext();
         var list = await new DomainNavigationSettingsService(read).GetTypeDefaultsAsync();
 
-        Assert.Equal(new[] { "Town", "District", "Structure", "GateStructure" }, list.Select(d => d.DomainType));
-        Assert.Equal(new[] { "Region", "Spawn", "Spawn", "Spawn" }, list.Select(d => d.DefaultMode));
-        Assert.Equal(new[] { 1, 0, 0, 0 }, list.Select(d => d.OverrideCount));
+        // KNG-210: arenas and spectator areas are navigable, battlegrounds are not listed.
+        Assert.Equal(new[] { "Town", "District", "Structure", "GateStructure", "Arena", "ArenaSpectatorArea" }, list.Select(d => d.DomainType));
+        Assert.Equal(new[] { "Region", "Spawn", "Spawn", "Spawn", "Spawn", "Spawn" }, list.Select(d => d.DefaultMode));
+        Assert.Equal(new[] { 1, 0, 0, 0, 0, 0 }, list.Select(d => d.OverrideCount));
     }
 
     [Fact]
@@ -337,9 +338,9 @@ public class DomainNavigationDefaultsTests
         await using var read = NewContext();
         var list = await new DomainNavigationSettingsService(read).GetTypeDefaultsAsync();
 
-        Assert.Equal(new[] { "Applies", "Applies", "Ignored", "Applies" }, list.Select(d => d.RoadAccess));
-        Assert.Equal(new[] { 0, 0, 1, 0 }, list.Select(d => d.RoadAccessOverrideCount));
-        Assert.Equal(new[] { 0, 0, 1, 0 }, list.Select(d => d.OverrideCount));
+        Assert.Equal(new[] { "Applies", "Applies", "Ignored", "Applies", "Applies", "Applies" }, list.Select(d => d.RoadAccess));
+        Assert.Equal(new[] { 0, 0, 1, 0, 0, 0 }, list.Select(d => d.RoadAccessOverrideCount));
+        Assert.Equal(new[] { 0, 0, 1, 0, 0, 0 }, list.Select(d => d.OverrideCount));
         Assert.Null(list[0].UpdatedAt);
     }
 

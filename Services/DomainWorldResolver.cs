@@ -256,7 +256,16 @@ namespace knkwebapi_v2.Services
                 .Where(s => s.DistrictId == domainId && s.WorldName != null && s.WorldName != "" && s.WorldName.ToLower() != lowered)
                 .Select(s => new { s.Id, s.Name, s.WorldName })
                 .ToListAsync();
-            var children = districts.Concat(structures).ToList();
+            // KNG-210: an arena's battlegrounds and spectator areas.
+            var battlegrounds = await _context.ArenaBattlegrounds.AsNoTracking()
+                .Where(b => b.ArenaId == domainId && b.WorldName != null && b.WorldName != "" && b.WorldName.ToLower() != lowered)
+                .Select(b => new { b.Id, b.Name, b.WorldName })
+                .ToListAsync();
+            var spectatorAreas = await _context.ArenaSpectatorAreas.AsNoTracking()
+                .Where(a => a.ArenaId == domainId && a.WorldName != null && a.WorldName != "" && a.WorldName.ToLower() != lowered)
+                .Select(a => new { a.Id, a.Name, a.WorldName })
+                .ToListAsync();
+            var children = districts.Concat(structures).Concat(battlegrounds).Concat(spectatorAreas).ToList();
             if (children.Count == 0) return null;
             string listed = string.Join(", ", children.Take(5).Select(c => $"{c.Name} (#{c.Id}, world '{c.WorldName}')"));
             return $"The domain can't move to world '{world}': its children are in another world: {listed}.";

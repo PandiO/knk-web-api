@@ -51,7 +51,7 @@ namespace knkwebapi_v2.Services
 
         private static readonly Regex KeyPattern = new("^[A-Za-z0-9:_.\\-]{1,100}$", RegexOptions.Compiled);
 
-        private static readonly string[] TypeOrder = { "Town", "District", "Structure", "GateStructure" };
+        private static readonly string[] TypeOrder = { "Town", "District", "Structure", "GateStructure", "Arena", "ArenaSpectatorArea", "ArenaBattleground" };
 
         private const string WarpPurpose = "to teleport to this location";
         private const string RequestPurpose = "to send this teleport request";
@@ -509,7 +509,10 @@ namespace knkwebapi_v2.Services
         public static string DomainType(Domain domain) => domain switch
         {
             GateStructure => "GateStructure",
+            Arena => "Arena",
             Structure => "Structure",
+            ArenaSpectatorArea => "ArenaSpectatorArea",
+            ArenaBattleground => "ArenaBattleground",
             District => "District",
             Town => "Town",
             _ => "Domain"

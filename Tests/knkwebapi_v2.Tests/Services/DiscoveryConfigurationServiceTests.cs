@@ -47,7 +47,9 @@ public class DiscoveryConfigurationServiceTests : IDisposable
     {
         var rules = await _service.GetRulesAsync();
 
-        Assert.Equal(new[] { "Town", "District", "Structure", "GateStructure" }, rules.Select(r => r.DomainType));
+        // KNG-210 added the arena types after the four v1 ones.
+        Assert.Equal(new[] { "Town", "District", "Structure", "GateStructure", "Arena", "ArenaSpectatorArea", "ArenaBattleground" },
+            rules.Select(r => r.DomainType));
         Assert.Equal((1m, 4m, 5, 15), (rules[0].ExpUnitsMin, rules[0].ExpUnitsMax, rules[0].GemsMin, rules[0].GemsMax));
         Assert.False(rules[3].IsEnabled); // no GateStructure row seeded in this test
     }

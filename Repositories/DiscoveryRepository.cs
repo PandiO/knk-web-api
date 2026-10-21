@@ -72,7 +72,7 @@ namespace knkwebapi_v2.Repositories
 
         public Task<List<DiscoveryDomainNode>> GetAllDomainNodesAsync() => LoadNodesAsync(null);
 
-        // Domain is TPT (domains -> towns/districts/structures -> gate_structures). One small
+        // Domain is TPT (domains -> towns/districts/structures -> gate_structures/arenas, and the arena children). One small
         // projection per subtype keeps the SQL simple on both MySQL and the in-memory provider.
         private async Task<List<DiscoveryDomainNode>> LoadNodesAsync(List<int>? ids)
         {
@@ -86,14 +86,27 @@ namespace knkwebapi_v2.Repositories
                 .Select(s => new { s.Id, s.Name, s.WgRegionId, s.WorldName, s.DistrictId })
                 .ToListAsync();
             var gateIds = (await Filter(_context.GateStructures, ids).Select(g => g.Id).ToListAsync()).ToHashSet();
+            var arenaIds = (await Filter(_context.Arenas, ids).Select(a => a.Id).ToListAsync()).ToHashSet();
+            // Arena children (KNG-210) hang under their arena.
+            var battlegrounds = await Filter(_context.ArenaBattlegrounds, ids)
+                .Select(b => new { b.Id, b.Name, b.WgRegionId, b.WorldName, b.ArenaId })
+                .ToListAsync();
+            var spectatorAreas = await Filter(_context.ArenaSpectatorAreas, ids)
+                .Select(a => new { a.Id, a.Name, a.WgRegionId, a.WorldName, a.ArenaId })
+                .ToListAsync();
 
             var nodes = new List<DiscoveryDomainNode>(towns.Count + districts.Count + structures.Count);
             nodes.AddRange(towns.Select(t => new DiscoveryDomainNode(t.Id, t.Name, t.WgRegionId, DiscoveryRewardRule.Town, null, t.WorldName)));
             nodes.AddRange(districts.Select(d => new DiscoveryDomainNode(d.Id, d.Name, d.WgRegionId, DiscoveryRewardRule.District,
                 d.TownId > 0 ? d.TownId : null, d.WorldName)));
             nodes.AddRange(structures.Select(s => new DiscoveryDomainNode(s.Id, s.Name, s.WgRegionId,
-                gateIds.Contains(s.Id) ? DiscoveryRewardRule.GateStructure : DiscoveryRewardRule.Structure,
+                gateIds.Contains(s.Id) ? DiscoveryRewardRule.GateStructure
+                    : arenaIds.Contains(s.Id) ? DiscoveryRewardRule.Arena : DiscoveryRewardRule.Structure,
                 s.DistrictId > 0 ? s.DistrictId : null, s.WorldName)));
+            nodes.AddRange(spectatorAreas.Select(a => new DiscoveryDomainNode(a.Id, a.Name, a.WgRegionId, DiscoveryRewardRule.ArenaSpectatorArea,
+                a.ArenaId > 0 ? a.ArenaId : null, a.WorldName)));
+            nodes.AddRange(battlegrounds.Select(b => new DiscoveryDomainNode(b.Id, b.Name, b.WgRegionId, DiscoveryRewardRule.ArenaBattleground,
+                b.ArenaId > 0 ? b.ArenaId : null, b.WorldName)));
             return nodes;
         }
 
