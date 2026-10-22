@@ -35,7 +35,6 @@
           "fieldGuid": "7b74e9fc-3b4b-5c8b-9ed1-4ee9d414d62e",
           "fieldName": "World",
           "label": "World",
-          "placeholder": "world",
           "description": "The world the region is in, exactly as the server names it (shown in the region result above). Boxes only spawn there when the name matches.",
           "fieldType": "String",
           "isRequired": true,

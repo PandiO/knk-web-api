@@ -521,7 +521,7 @@ Fixes to wrong text:
 **World default removed (decision, flag):** the old default was `world`. The dev server's world is `world_KNK-DEV`
 (380 `'world_KNK-DEV'` against 12 `'world'` literals in the dump; the only real area row uses it), and the API refuses a spawn whose world doesn't match the area's. A wrong
 default would make an area silently never spawn, and KNG-118 D9 says a missing world must never silently become
-`world`. The field is now required with no default; the placeholder `world` shows the format. The web app drops the
+`world`. The field is now required with no default and no placeholder (the placeholder `world` was removed on 2026-10-22, developer decision; KNG-247 tracks a default from the game's own default world). The web app drops the
 task's `worldName` (multiworld audit U1), so it can't be filled automatically.
 
 ## Properties not on the forms
@@ -733,3 +733,27 @@ config, import with `makeDefault=true` to see the seed on `/display/...` (or imp
 builder, then make it default). EnchantmentDefinition and MinecraftMaterialRef become default automatically if their
 old drafts are not default / are deleted first (MinecraftMaterialRef's old draft *is* the default — use
 `makeDefault=true`).
+
+---
+
+## Smoke test and developer decisions (2026-10-22)
+
+Smoke test by the developer on `claude/determined-franklin-xnfh3r` with `claude/kng-195-form-submit-fixes` merged
+locally: every step passed or was accepted, except 2.5 (Location child form) and 5.1 (Kit scan), skipped because no
+"Send to Minecraft" button showed (KNG-245). Findings filed: KNG-243 (a duplicate EnchantmentDefinition after picking a
+not-yet-saved vanilla enchantment), KNG-244 (ItemScan copies custom-enchantment and grade lines into Display
+description), KNG-248 (players without an email can't be edited; the developer used a placeholder email in the test).
+
+Decisions on the open questions:
+- Domain Q7: Structure keeps `RegionClaim`, which both creates and claims existing regions.
+- Domain Q5: "only after discovery" stays on by default for Town, District and Structure.
+- People Q4: the Gem/XP bonus multipliers stay limited to premium groups.
+- Loot Q3 (Kit premium price): keep the value while the form is open, so ticking Premium again restores it; once the
+  form is saved, closed or reloaded it is gone. The wizard already does this: a hidden field's value is kept in its
+  in-memory hidden stash (`formVisibility.reconcileVisibility`) and not submitted. No change.
+- Loot Q1: the renaming task should handle lootbox spawn area regions too, with a less obvious name than
+  `lootbox_spawn_area` (KNG-246).
+- Loot Q2: World gets the game's default world when one is available, otherwise no default and no placeholder
+  (placeholder removed in this file's seed; KNG-247).
+- Display Q5: no GateDoor display seed for now.
+
