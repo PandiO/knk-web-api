@@ -3694,6 +3694,49 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("minecraftmaterialrefs", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.NavigationCompassSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("GeneralEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("GeneralTargets")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<string>("Material")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("NameMatch")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<bool>("SiegeEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("navigation_compass_settings", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>
                 {
                     b.Property<int>("Id")

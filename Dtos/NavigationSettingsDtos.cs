@@ -53,3 +53,64 @@ namespace knkwebapi_v2.Dtos
         public string? RoadAccess { get; set; }
     }
 }
+
+namespace knkwebapi_v2.Dtos
+{
+    /// <summary>The navigation compass settings (api/navigation-settings/compass, KNG-234).</summary>
+    public class NavigationCompassSettingsDto
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; }
+
+        /// <summary>The compass item's material, e.g. "COMPASS".</summary>
+        [JsonPropertyName("material")]
+        public string Material { get; set; } = "";
+
+        /// <summary>The display name to match (colour codes ignored); empty matches any name.</summary>
+        [JsonPropertyName("displayName")]
+        public string DisplayName { get; set; } = "";
+
+        /// <summary>"Exact" or "Contains".</summary>
+        [JsonPropertyName("nameMatch")]
+        public string NameMatch { get; set; } = "";
+
+        [JsonPropertyName("siegeEnabled")]
+        public bool SiegeEnabled { get; set; }
+
+        [JsonPropertyName("generalEnabled")]
+        public bool GeneralEnabled { get; set; }
+
+        /// <summary>Destinations outside a siege, one /navigate argument per line.</summary>
+        [JsonPropertyName("generalTargets")]
+        public string GeneralTargets { get; set; } = "";
+
+        /// <summary>Null while nothing was ever saved (the defaults are shown).</summary>
+        [JsonPropertyName("updatedAt")]
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    /// <summary>A partial update: null leaves a field as it is.</summary>
+    public class UpdateNavigationCompassSettingsDto
+    {
+        [JsonPropertyName("enabled")]
+        public bool? Enabled { get; set; }
+
+        [JsonPropertyName("material")]
+        public string? Material { get; set; }
+
+        [JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; }
+
+        [JsonPropertyName("nameMatch")]
+        public string? NameMatch { get; set; }
+
+        [JsonPropertyName("siegeEnabled")]
+        public bool? SiegeEnabled { get; set; }
+
+        [JsonPropertyName("generalEnabled")]
+        public bool? GeneralEnabled { get; set; }
+
+        [JsonPropertyName("generalTargets")]
+        public string? GeneralTargets { get; set; }
+    }
+}

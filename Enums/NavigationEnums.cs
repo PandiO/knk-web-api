@@ -23,3 +23,14 @@ public enum RoadAccessRule
     Applies,
     Ignored
 }
+
+/// <summary>
+/// How the navigation compass item's display name is compared with the configured one (KNG-234):
+/// <c>Exact</c> (the whole name, ignoring colour codes and case) or <c>Contains</c> (part of it).
+/// Stored as a string, serialized by name.
+/// </summary>
+public enum NavigationCompassNameMatch
+{
+    Exact,
+    Contains
+}
