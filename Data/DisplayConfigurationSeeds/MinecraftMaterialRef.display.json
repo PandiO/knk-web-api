@@ -1,0 +1,44 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "aeb91332-aef6-566c-8847-6e006bd2b025",
+  "entityTypeName": "MinecraftMaterialRef",
+  "name": "MinecraftMaterialRef - Default (seed v1)",
+  "description": "A Minecraft material (item, block or banner) by its namespaced key. Item blueprints, gates and categories pick one of these as their material or icon.",
+  "sections": [
+    {
+      "sectionGuid": "fb5861cf-dc44-59fb-9b78-7a669bb6122f",
+      "sectionName": "Material",
+      "description": "The material as Minecraft knows it. A row is added the first time the material is picked from the material catalog in a form.",
+      "fields": [
+        {
+          "fieldGuid": "20568f0e-9e16-52dc-8f26-ba9bd8343bc4",
+          "fieldName": "NamespaceKey",
+          "label": "Namespaced key",
+          "description": "The id Minecraft and the plugin use for this material, e.g. minecraft:oak_log.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "cea7203b-1770-5f8d-bf9d-3f62c4af576c",
+          "fieldName": "Category",
+          "label": "Kind",
+          "description": "ITEM, BLOCK or BANNER, from the material catalog. Only blocks can be placed in the world.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d7fcab15-34fc-520f-87a0-e53865af824a",
+          "fieldName": "LegacyName",
+          "label": "Legacy name",
+          "description": "Older material name kept for reference when the catalog has one. Usually empty.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "17cc8b1a-ead5-5906-aefa-30c93fdb148f",
+          "fieldName": "IconUrl",
+          "label": "Icon image",
+          "description": "Web address of the picture the web app shows for this material. Comes from the catalog (minecraft-assets).",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

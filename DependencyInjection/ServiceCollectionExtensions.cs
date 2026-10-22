@@ -160,6 +160,12 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IDisplayConfigurationService, DisplayConfigurationService>();
             services.AddScoped<IDisplaySectionService, DisplaySectionService>();
             services.AddScoped<IDisplayFieldService, DisplayFieldService>();
+            // knk-displayconfig/1: bundled DisplayConfiguration seed files, imported on request (no startup seeder).
+            services.AddSingleton(sp => new DisplayConfigurationSeedOptions
+            {
+                Directory = Path.Combine(sp.GetRequiredService<IHostEnvironment>().ContentRootPath, "Data", "DisplayConfigurationSeeds")
+            });
+            services.AddScoped<IDisplayConfigurationPortabilityService, DisplayConfigurationPortabilityService>();
 
             // InventoryMenu (docs/specs/inventory-menu/IMPLEMENTATION_PLAN.md Phase 1)
             services.AddScoped<IMenuTemplateRepository, MenuTemplateRepository>();

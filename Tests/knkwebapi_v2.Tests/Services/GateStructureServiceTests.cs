@@ -7,6 +7,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Interfaces;
 using Xunit;
 
 namespace knkwebapi_v2.Tests.Services;
@@ -20,6 +21,7 @@ public class GateStructureServiceTests
     private readonly Mock<ILocationService> _locationService;
     private readonly Mock<IMapper> _mapper;
     private readonly Mock<IDomainRegionNameFinalizer> _regionNames;
+    private readonly Mock<ITeleportDestinationService> _teleportDestinations;
     private readonly GateStructureService _service;
 
     public GateStructureServiceTests()
@@ -29,12 +31,14 @@ public class GateStructureServiceTests
         _locationService = new Mock<ILocationService>();
         _mapper = new Mock<IMapper>();
         _regionNames = new Mock<IDomainRegionNameFinalizer>();
+        _teleportDestinations = new Mock<ITeleportDestinationService>();
 
         _service = new GateStructureService(
             _repo.Object,
             _locationRepo.Object,
             _locationService.Object,
             _mapper.Object,
+            _teleportDestinations.Object,
             _regionNames.Object,
             FixedWorldResolver.Instance);
     }
@@ -107,6 +111,79 @@ public class GateStructureServiceTests
         await _service.UpdateAsync(5, dto);
 
         _regionNames.Verify(r => r.FinalizeAsync(existing, "domain_5"), Times.Once);
+    }
+
+    // KNG-229: the GateStructure form has the warp step now, so a gate takes its warp settings like a structure.
+    [Fact]
+    public async Task CreateAsync_WithWarpSettings_ValidatesAndAppliesThem()
+    {
+        var dto = Dto("North Gate");
+        dto.TeleportEnabled = true;
+        dto.TeleportPriceGems = 25;
+        dto.TeleportMinTitleBracketId = 3;
+        dto.TeleportMinPremiumGroupId = 7;
+        dto.TeleportRequiresDiscovery = true;
+        var gate = new GateStructure { Name = "North Gate" };
+        _mapper.Setup(m => m.Map<GateStructure>(dto)).Returns(gate);
+        _mapper.Setup(m => m.Map<GateStructureDto>(It.IsAny<GateStructure>())).Returns(Dto("North Gate"));
+
+        await _service.CreateAsync(dto);
+
+        _teleportDestinations.Verify(t => t.ValidateSettingsAsync(dto), Times.Once);
+        Assert.True(gate.TeleportEnabled);
+        Assert.Equal(25, gate.TeleportPriceGems);
+        Assert.Equal(3, gate.TeleportMinTitleBracketId);
+        Assert.Equal(7, gate.TeleportMinPremiumGroupId);
+        Assert.True(gate.TeleportRequiresDiscovery);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithRefusedWarpSettings_DoesNotSave()
+    {
+        var dto = Dto("North Gate");
+        dto.TeleportEnabled = true;
+        dto.TeleportMinPremiumGroupId = 8;
+        _teleportDestinations.Setup(t => t.ValidateSettingsAsync(dto))
+            .ThrowsAsync(new ArgumentException("'Member' isn't a premium tier"));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(dto));
+
+        _repo.Verify(r => r.AddGateStructureAsync(It.IsAny<GateStructure>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithoutTeleportEnabled_LeavesTheWarpSettingsAlone()
+    {
+        // The plugin and a form without the warp step send no teleportEnabled.
+        var existing = new GateStructure
+        {
+            Id = 5, Name = "North Gate", TeleportEnabled = true, TeleportPriceGems = 10,
+            TeleportMinTitleBracketId = 2, TeleportRequiresDiscovery = true,
+        };
+        _repo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(existing);
+
+        await _service.UpdateAsync(5, Dto("North Gate"));
+
+        Assert.True(existing.TeleportEnabled);
+        Assert.Equal(10, existing.TeleportPriceGems);
+        Assert.Equal(2, existing.TeleportMinTitleBracketId);
+        Assert.True(existing.TeleportRequiresDiscovery);
+        _repo.Verify(r => r.UpdateGateStructureAsync(existing), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithWarpSettings_ValidatesAndAppliesThem()
+    {
+        var existing = new GateStructure { Id = 5, Name = "North Gate", TeleportEnabled = true, TeleportPriceGems = 10 };
+        var dto = Dto("North Gate");
+        dto.TeleportEnabled = false;
+        _repo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(existing);
+
+        await _service.UpdateAsync(5, dto);
+
+        _teleportDestinations.Verify(t => t.ValidateSettingsAsync(dto), Times.Once);
+        Assert.False(existing.TeleportEnabled);
+        Assert.Equal(0, existing.TeleportPriceGems);
     }
 
     [Theory]

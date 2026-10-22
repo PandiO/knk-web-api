@@ -1,6 +1,9 @@
+using System.Text.Json;
 using knkwebapi_v2.Attributes;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 
 namespace knkwebapi_v2.Controllers
@@ -12,13 +15,16 @@ namespace knkwebapi_v2.Controllers
     public class DisplayConfigurationsController : ControllerBase
     {
         private readonly IDisplayConfigurationService _service;
+        private readonly IDisplayConfigurationPortabilityService _portability;
         private readonly ILogger<DisplayConfigurationsController> _logger;
 
         public DisplayConfigurationsController(
             IDisplayConfigurationService service,
+            IDisplayConfigurationPortabilityService portability,
             ILogger<DisplayConfigurationsController> logger)
         {
             _service = service;
+            _portability = portability;
             _logger = logger;
         }
 
@@ -230,6 +236,74 @@ namespace knkwebapi_v2.Controllers
                 _logger.LogError(ex, "Error publishing display configuration {Id}", id);
                 return StatusCode(500, new { message = "An error occurred while publishing the configuration." });
             }
+        }
+
+        // ---- knk-displayconfig/1: portable export/import and bundled seeds (writes need knk.admin.content, class rule) ----
+
+        /// <summary>The configuration as a portable "knk-displayconfig/1" file (GUIDs, no database ids).</summary>
+        [HttpGet("{id:int}/export")]
+        public async Task<IActionResult> Export(int id)
+        {
+            var file = await _portability.ExportAsync(id);
+            if (file == null) return NotFound(new { message = $"DisplayConfiguration with id {id} not found." });
+            return Content(DisplayConfigurationPortabilityService.Serialize(file), "application/json");
+        }
+
+        /// <summary>
+        /// Imports a portable file as a new display configuration. Never overwrites: an existing configurationGuid is
+        /// 409 AlreadyImported and writes nothing. dryRun=true only checks. makeDefault=true replaces the entity's
+        /// default; otherwise the import is the default only when the entity has none. The import is published
+        /// unless asDraft=true (the display page only shows a published default).
+        /// </summary>
+        [HttpPost("import")]
+        public async Task<IActionResult> Import(
+            [FromBody] JsonElement file,
+            [FromQuery] bool dryRun = false,
+            [FromQuery] bool makeDefault = false,
+            [FromQuery] bool asDraft = false)
+        {
+            if (file.ValueKind != JsonValueKind.Object) return BadRequest(new { message = "The body must be a knk-displayconfig/1 JSON object." });
+            return await RunImport(async () => await _portability.ImportJsonAsync(file.GetRawText(), dryRun, makeDefault, asDraft));
+        }
+
+        /// <summary>The bundled seed files (Data/DisplayConfigurationSeeds/) and whether each is imported.</summary>
+        [HttpGet("seeds")]
+        public async Task<IActionResult> GetSeeds()
+        {
+            return Ok(await _portability.ListSeedsAsync());
+        }
+
+        [HttpPost("seeds/{name}/import")]
+        public async Task<IActionResult> ImportSeed(
+            string name,
+            [FromQuery] bool dryRun = false,
+            [FromQuery] bool makeDefault = false,
+            [FromQuery] bool asDraft = false)
+        {
+            return await RunImport(() => _portability.ImportSeedAsync(name, dryRun, makeDefault, asDraft), $"No bundled display seed named '{name}'.");
+        }
+
+        private async Task<IActionResult> RunImport(Func<Task<DisplayConfigurationImportResultDto?>> import, string? notFoundMessage = null)
+        {
+            DisplayConfigurationImportResultDto? result;
+            try
+            {
+                result = await import();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "The database refused a display configuration import");
+                return Conflict(new { message = "The database refused the import (was it imported at the same time?). Nothing was written; reload and check." });
+            }
+
+            if (result == null) return NotFound(new { message = notFoundMessage });
+            return result.Status switch
+            {
+                FormConfigurationImportStatus.Imported => Created($"/api/displayconfigurations/{result.DisplayConfigurationId}", result),
+                FormConfigurationImportStatus.DryRunPassed => Ok(result),
+                FormConfigurationImportStatus.AlreadyImported => Conflict(result),
+                _ => BadRequest(result)
+            };
         }
     }
 }

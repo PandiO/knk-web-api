@@ -1,0 +1,85 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "2ab3cdcb-93b2-537a-b516-b883f084d635",
+  "entityTypeName": "Location",
+  "name": "Location - Default (seed v1)",
+  "description": "A point in a Minecraft world: coordinates, facing direction and world. Usually opened from another form's location field (a spawn point, hub or door point) and filled by capturing the spot in game.",
+  "steps": [
+    {
+      "stepGuid": "7e9fa743-ef6d-50b4-8559-2c6d217dab79",
+      "stepName": "Position",
+      "description": "Where the point is and which way it faces. When this form offers Send to Minecraft, stand on the spot in game, face the way players should look, and capture it: every field is filled in. Otherwise type the values from the F3 screen.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "10dfb4bb-9ffb-5d24-a74c-a5a4ce7546d4",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "A label for staff; capturing never overwrites it. A point that keeps the default name 'Location' and is no longer used anywhere is flagged by the weekly orphan check; a point with its own name never is.",
+          "fieldType": "String",
+          "defaultValue": "Location",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6cc1f4fe-4dce-53dd-87e8-8568332956ef",
+          "fieldName": "World",
+          "label": "World",
+          "description": "The Minecraft world the point is in, by world name. Filled by the capture; it must match the world of the region the point belongs to.",
+          "placeholder": "e.g. world",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d8650af3-00d8-533b-be8c-52071cbde802",
+          "fieldName": "X",
+          "label": "X",
+          "description": "East-west coordinate in blocks (east is positive).",
+          "fieldType": "Decimal",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1316496c-180e-59f8-b194-e48254cf401a",
+          "fieldName": "Y",
+          "label": "Y (height)",
+          "description": "Height in blocks, at the player's feet.",
+          "fieldType": "Decimal",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2c898981-e379-5c02-8d2f-75645230e7d1",
+          "fieldName": "Z",
+          "label": "Z",
+          "description": "North-south coordinate in blocks (south is positive).",
+          "fieldType": "Decimal",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2a834512-1867-529f-b188-0585c6ede757",
+          "fieldName": "Yaw",
+          "label": "Facing (yaw)",
+          "description": "The direction a player faces on arrival, in degrees: 0 = south, 90 = west, 180 = north, -90 = east.",
+          "fieldType": "Decimal",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d6f262d5-70b5-59c7-8435-c02fbc8f8b33",
+          "fieldName": "Pitch",
+          "label": "Look up/down (pitch)",
+          "description": "How far a player looks up or down on arrival, in degrees: 0 = straight ahead, -90 = up, 90 = down.",
+          "fieldType": "Decimal",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

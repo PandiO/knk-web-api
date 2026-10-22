@@ -1,0 +1,28 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "9264ed0c-89b6-5f07-8619-b77fce7e53fe",
+  "entityTypeName": "LootboxSpawnAreaType",
+  "name": "LootboxSpawnAreaType - Join Entry (seed v1)",
+  "description": "A lootbox type allowed to spawn in a spawn area. Created from the area's Allowed types step (Create New Join Entry).",
+  "steps": [
+    {
+      "stepGuid": "fe4613c7-e2fd-5415-b49d-514f07866d46",
+      "stepName": "Box type",
+      "description": "One type that may spawn in this area. An area without entries allows every enabled type.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "1bfe51fa-b3ad-5fa6-b51e-7e1d3b4a046e",
+          "fieldName": "LootboxTypeId",
+          "label": "Box type",
+          "description": "Picked by its spawn weight among the area's allowed types. A disabled type or one with spawn weight 0 never spawns, even when listed.",
+          "fieldType": "Object",
+          "objectType": "LootboxType",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

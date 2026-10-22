@@ -65,6 +65,7 @@ public class StructureServiceGateNameTests
             new Mock<IStreetRepository>().Object,
             new Mock<IDistrictRepository>().Object,
             new Mock<ILocationRepository>().Object,
+            new Mock<ILocationService>().Object,
             new Mock<IMapper>().Object,
             new Mock<ITeleportDestinationService>().Object,
             new Mock<IDomainRegionNameFinalizer>().Object,

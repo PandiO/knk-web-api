@@ -25,7 +25,9 @@ namespace knkwebapi_v2.Mapping
                     IconUrl = s.IconMaterialRef.IconUrl
                 }))
                 .ForMember(dest => dest.ChildCategories, src => src.MapFrom(s => s.ChildCategories))
-                .ForMember(dest => dest.Tags, src => src.MapFrom(s => s.Tags));
+                .ForMember(dest => dest.Tags, src => src.MapFrom(s => s.Tags))
+                // Write-only alias of IconNamespaceKey (KNG-195); never filled on read.
+                .ForMember(dest => dest.IconMaterialRefNamespaceKey, src => src.Ignore());
 
             CreateMap<CategoryTag, CategoryTagDto>()
                 .ForMember(dest => dest.CategoryId, src => src.MapFrom(s => s.CategoryId))

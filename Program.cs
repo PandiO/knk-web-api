@@ -32,6 +32,9 @@ builder.Services.AddControllers(options =>
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
+        // KNG-195: "" for a nullable enum (an Enum field's empty option) reads as null instead of failing
+        // the whole request. Must come before JsonStringEnumConverter, which it delegates to.
+        options.JsonSerializerOptions.Converters.Add(new knkwebapi_v2.Json.NullableEnumConverterFactory());
         // Add converter for enums to be serialized/deserialized as strings
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     })

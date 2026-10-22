@@ -1,0 +1,78 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "90a2e4a3-e889-5403-9729-4fda2fdfbf55",
+  "entityTypeName": "LootboxEnchantRoll",
+  "name": "LootboxEnchantRoll - Join Entry (seed v1)",
+  "description": "One enchantment that items from a lootbox type may get, with its chance and levels. Created from the type's Enchantment rolls step (Create New Join Entry).",
+  "steps": [
+    {
+      "stepGuid": "8d0e2542-37c7-5096-b021-0334bd692396",
+      "stepName": "Enchantment roll",
+      "description": "Each roll is tried once per opened item. Enchantment books and stackable items never get rolled enchantments; an item keeps its default enchantments when they are higher.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "1626398b-683f-5ee5-a5c7-0a6c2dd8e121",
+          "fieldName": "EnchantmentDefinitionId",
+          "label": "Enchantment",
+          "description": "Vanilla enchantments are also capped by the item's grade; custom ones only by their own maximum level.",
+          "fieldType": "Object",
+          "objectType": "EnchantmentDefinition",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e5f0353d-f94c-5a1a-9662-942d2352224d",
+          "fieldName": "ChancePercent",
+          "label": "Chance (%)",
+          "description": "Chance that an item gets this enchantment, 0-100 (up to 4 decimals).",
+          "fieldType": "Decimal",
+          "defaultValue": "25",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0912483b-0cc8-5809-acc9-ee5e80b65a3f",
+          "fieldName": "MinLevel",
+          "label": "Minimum level",
+          "description": "Lowest level rolled, at least 1.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "23612373-28e7-5593-91a0-a12475e14195",
+          "fieldName": "MaxLevel",
+          "label": "Maximum level",
+          "description": "Highest level rolled, at most the enchantment's maximum level. The level is picked evenly between minimum and maximum.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fb58d1ab-a06f-5e95-b79e-18760b0c98a3",
+          "fieldName": "MinBoxStars",
+          "label": "From box grade (stars)",
+          "description": "Only boxes with at least this many stars (1-10) roll this enchantment.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "44548499-6425-58c7-8a5a-792931509c78",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Rolls are tried from low to high; a later hit that conflicts with an earlier enchantment is skipped. Steps of 10 leave room to insert one.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

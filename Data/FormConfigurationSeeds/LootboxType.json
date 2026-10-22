@@ -1,0 +1,215 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "06fd8530-2d71-5bfd-96c7-8268872776ca",
+  "entityTypeName": "LootboxType",
+  "name": "LootboxType - Default (seed v1)",
+  "description": "A lootbox type: the box of one item category, with its spawn weight, box grades, item pool and enchantment rolls. Every category already has one (disabled), so you normally edit it rather than create one.",
+  "steps": [
+    {
+      "stepGuid": "3da3fcbc-f861-5042-8d06-40380524e1b7",
+      "stepName": "Type",
+      "description": "Which category the box gives items from, and whether it spawns at all.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "7f7825a5-34ec-5158-a682-6ccc7acce40b",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game after the box grade, e.g. 'Legendary Weapons Lootbox'. At most 128 characters.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9232ec35-3fea-5fd7-ae0c-233572aa1645",
+          "fieldName": "CategoryId",
+          "label": "Category",
+          "description": "The pool is every graded item of this category that isn't a lootbox special. Each category can have one type only.",
+          "fieldType": "Object",
+          "objectType": "Category",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d077c8cd-4883-5d6e-9791-29c932a925b7",
+          "fieldName": "IncludeSubcategories",
+          "label": "Include subcategories",
+          "description": "Also take items from the category's subcategories.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a09870f5-285b-5f90-be8b-6f206f8eabab",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Only enabled types spawn as world boxes. Leave it off until the pool and odds look right (check the Odds tab on the lootbox admin page).",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "91b55215-2546-5a12-8214-7fa7e07e7e5b",
+      "stepName": "Spawning and grades",
+      "description": "How often this type is picked, and which box grades it spawns at. A box's grade decides the grades of the items it can give.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4b025d2e-065f-57fc-b64a-c6ed100a0494",
+          "fieldName": "SpawnWeight",
+          "label": "Spawn weight",
+          "description": "Relative chance of this type among the enabled types an area allows (0 or more). 0 = never spawns in the world.",
+          "fieldType": "Integer",
+          "defaultValue": "10",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3b41ae89-2a32-56eb-a021-efee18176440",
+          "fieldName": "MinBoxStars",
+          "label": "Lowest box grade (stars)",
+          "description": "1-10, at most the highest box grade. New types use 1-5.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ebb721d5-2ce7-5309-bdc2-073881455d3d",
+          "fieldName": "MaxBoxStars",
+          "label": "Highest box grade (stars)",
+          "description": "1-10. When a box's grade window has no items, it gives lower-grade items instead.",
+          "fieldType": "Integer",
+          "defaultValue": "5",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1cea8854-2357-568c-998d-8157d65e849a",
+          "fieldName": "ItemStarSpread",
+          "label": "Item grade spread",
+          "description": "0-9. A box with B stars gives items of B minus the spread up to B stars, e.g. spread 2: a 5-star box gives 3- to 5-star items.",
+          "fieldType": "Integer",
+          "defaultValue": "2",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b817e51f-ab9c-50d4-b557-ae7aee8422a9",
+      "stepName": "Look and limits",
+      "description": "How the box looks and per-type limits that override the global lootbox settings. Leave these empty to use the global settings.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "200afdbd-0e3b-58ea-9637-db461161d8e7",
+          "fieldName": "DisplayMaterialRefId",
+          "label": "Box model",
+          "description": "Item shown as the box when the server shows boxes by type (display model 'type'); by default boxes look like the lootbox item. Empty = the category's icon, else a chest.",
+          "fieldType": "HybridMinecraftMaterialRefPicker",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3cd105a4-a964-5f77-9029-44865317af01",
+          "fieldName": "MaxClaimsPerPlayerPerDay",
+          "label": "Daily limit per player",
+          "description": "Boxes of this type one player may pick up (and, counted separately, open) per UTC day, on top of the global limit. Empty = only the global limit; else 1 or more.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "76f5934c-9904-5239-ba76-689cef708475",
+          "fieldName": "AnnounceMinItemStars",
+          "label": "Announce drops from item grade",
+          "description": "Drops of at least this many stars (1-10) are announced to the whole server; specials always are. Empty = the global setting (5 by default).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "927e15a9-eb24-5757-8d76-d3ba889acdaa",
+      "stepName": "Grade weights",
+      "description": "Optional: change how often this type spawns at each box grade. Without entries the grades' own drop chances are used.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "GradeWeights",
+      "joinEntityType": "LootboxTypeGradeWeight",
+      "subConfigurationRef": {
+        "configurationGuid": "7573a006-3d99-5a2d-9421-9cd07ba770fa",
+        "entityTypeName": "LootboxTypeGradeWeight",
+        "name": "LootboxTypeGradeWeight - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "6f969018-24a0-5b60-a426-b12e832ad2a0",
+          "fieldName": "GradeWeights",
+          "label": "Grade weights",
+          "description": "One entry per grade you want to change; Create New Join Entry asks for the grade and its weight.",
+          "fieldType": "List",
+          "objectType": "LootboxTypeGradeWeight",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "51f870f3-6f86-5f44-b152-aa95ebbaffc1",
+      "stepName": "Item pool",
+      "description": "Optional: add items from other categories, change an item's weight, or leave items out. The category is the starting pool.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "PoolEntries",
+      "joinEntityType": "LootboxPoolEntry",
+      "subConfigurationRef": {
+        "configurationGuid": "912ad61f-c45e-5124-944d-a6c6a0d9fd6f",
+        "entityTypeName": "LootboxPoolEntry",
+        "name": "LootboxPoolEntry - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "60c993c6-6539-5d97-a4f4-db51382ef388",
+          "fieldName": "PoolEntries",
+          "label": "Pool changes",
+          "description": "One entry per item; Create New Join Entry asks for the item, Include or Exclude, and an optional weight and grade.",
+          "fieldType": "List",
+          "objectType": "LootboxPoolEntry",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "3efeb217-2837-5b0a-8e47-2e7b3ba45393",
+      "stepName": "Enchantment rolls",
+      "description": "Enchantments the items from this type may get. Without entries items keep only their default enchantments.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "EnchantRolls",
+      "joinEntityType": "LootboxEnchantRoll",
+      "subConfigurationRef": {
+        "configurationGuid": "90a2e4a3-e889-5403-9729-4fda2fdfbf55",
+        "entityTypeName": "LootboxEnchantRoll",
+        "name": "LootboxEnchantRoll - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "b6a69e3d-b2bf-59c2-945a-c2829ed32f79",
+          "fieldName": "EnchantRolls",
+          "label": "Enchantment rolls",
+          "description": "Create New Join Entry asks for the enchantment, its chance, levels and from which box grade it applies.",
+          "fieldType": "List",
+          "objectType": "LootboxEnchantRoll",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}
