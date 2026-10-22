@@ -33,6 +33,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("locationId")]
         public int? LocationId { get; set; }
 
+        // KNG-195: embedded Location, like Town/District/GateStructure. A spawn point captured in game or
+        // created on the form arrives here (no id = create, id = update); a plain pick sends locationId.
+        [JsonPropertyName("location")]
+        public LocationDto? Location { get; set; }
+
         // Warp destination settings (teleport DESIGN.md §3.7.1). On create/update a null
         // teleportEnabled means "not on this form": all five are left as they are.
         [JsonPropertyName("teleportEnabled")]

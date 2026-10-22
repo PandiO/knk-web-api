@@ -88,6 +88,10 @@ namespace knkwebapi_v2.Services
             {
                 existing.AbilityDefinition = null;
             }
+            else if (!dto.HasAbilityDefinition)
+            {
+                // KNG-195: not sent (the generic web form) - keep the custom enchantment's ability.
+            }
             else if (dto.AbilityDefinition != null)
             {
                 if (existing.AbilityDefinition == null)
