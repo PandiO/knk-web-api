@@ -4787,6 +4787,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("EnchantLevelMin")
                         .HasColumnType("int");
 
+                    b.Property<bool>("GiveNavigationItem")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<double>("HeadshotMultiplier")
                         .HasColumnType("double");
 
@@ -4868,6 +4871,11 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("NavigationItem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<string>("ScheduleJson")
                         .HasColumnType("longtext");
@@ -5194,6 +5202,11 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("NavigationItem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<int>("PlayersMax")
                         .HasColumnType("int");

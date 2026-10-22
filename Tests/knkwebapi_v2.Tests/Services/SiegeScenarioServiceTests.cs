@@ -90,6 +90,27 @@ public class SiegeScenarioServiceTests
     }
 
     [Fact]
+    public async Task CreateScenario_StoresTheNavigationItemChoice_AndDefaultsToInherit()
+    {
+        await _service.CreateAsync(ScenarioDto());
+        Assert.Equal(SiegeNavigationItemMode.Inherit, _addedScenario!.NavigationItem);
+
+        var dto = ScenarioDto();
+        dto.NavigationItem = SiegeNavigationItemMode.Give;
+        await _service.CreateAsync(dto);
+        Assert.Equal(SiegeNavigationItemMode.Give, _addedScenario!.NavigationItem);
+    }
+
+    [Fact]
+    public async Task CreateScenario_RefusesAnUndefinedNavigationItemChoice()
+    {
+        var dto = ScenarioDto();
+        dto.NavigationItem = (SiegeNavigationItemMode)42;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(dto));
+    }
+
+    [Fact]
     public async Task CreateScenario_WithInlineHubLocation_CreatesTheLocation()
     {
         var dto = ScenarioDto();

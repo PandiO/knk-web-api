@@ -392,6 +392,8 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_scenarios");
 
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
+
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(1000);
 
@@ -468,6 +470,8 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_lobbies");
+
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
 
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Key).IsRequired().HasMaxLength(64);
