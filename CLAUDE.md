@@ -99,8 +99,9 @@ the closed-alpha plan § 7 in knk-workspace for every key.
   set `ForwardedHeaders:Enabled` or every player shares one budget.
 - No API versioning in place — routes follow the plain `api/[controller]`
   convention; no `Asp.Versioning`/`[ApiVersion]` usage found
-- Observability: OpenTelemetry is wired in (see `OBSERVABILITY.md`),
-  Prometheus metrics exposed at `/metrics`
+- Observability: OpenTelemetry is wired in (see `OBSERVABILITY.md`). A Prometheus
+  `/metrics` endpoint exists since KNG-232 but is **off by default** and needs
+  `Telemetry__Prometheus__Enabled` + a bearer token (`Telemetry__Prometheus__BearerToken`)
 
 **Talks to:** `knk-web-app` (browser clients with JWT bearer tokens) and
 `knk-plugin` (REST through `knk-api-client`; protected service routes use
