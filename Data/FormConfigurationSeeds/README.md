@@ -68,6 +68,9 @@ live review.
 | Items | `CategoryTag.join`, `ItemBlueprintDefaultEnchantment.join`, `ItemBlueprintOrigin.join`, `ItemBlueprintTag.join`, then `Grade`, `Tag`, `Category`, `EnchantmentDefinition`, `ItemBlueprint` | 16, 18, 19, 20, 13, 14, 17, 15, 21 |
 | Kits and lootboxes | `KitContent.join`, `LootboxTypeGradeWeight.join`, `LootboxPoolEntry.join`, `LootboxEnchantRoll.join`, `LootboxSpawnAreaType.join`, then `Kit`, `LootboxType`, `LootboxSpecialEntry`, `LootboxSpawnArea` | 34, 36-39, 35, 40-42 |
 
+Per-step change tables, properties left off and the developer's decisions (smoke test 2026-10-22): knk-workspace
+`docs/reports/2026-10-19-kng-139-seed-review-notes.md` (it was `Data/SEED_REVIEW_NOTES.md` here until the merge).
+
 The older non-default configurations 5 (ItemBlueprint), 6 (ItemBlueprintDefaultEnchantment) and 8
 (EnchantmentDefinition) have no seed; ideas from them were folded into the defaults.
 
