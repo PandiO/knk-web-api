@@ -649,12 +649,13 @@ group for warps (DTO carries ids only), `IsHub` (not on `StructureDto`), `Create
 | "Regions and Rules" (copy) | "Region and access": Region, + World, Allow entry, Allow exit | As Structure |
 | "Geometry: Plane Grid": `AnchorPoint` | dropped | Moved to GateDoor |
 | — | + "Spawn point" (related `Location`, X/Y/Z/World, Edit) | Where /gate tp, /warp, /navigate land |
+| — | + "Warp and navigation": Warp destination, Warp price (gems), Only after discovery, /navigate leads to, Road access | Added 2026-10-22 on the developer's request (KNG-229: the gate form seed v2 edits these, and `GateStructureDto` carries the warp settings since `master` `be9f4e1`) |
 | — | + "Siege behaviour": Animate during a siege, Siege may take over, Locked by siege match (`CurrentSiegeId`), Siege objective | Siege integration; runtime values labelled as set by the server |
 | — | + "Door overrides": 8 structure-level overrides | Shows when a whole-gate override is in force ("-" = none) |
 | — | + "Doors" collection (Door, Type, State, Health template, Active, Destroyed; Edit) | The gate's doors were not on the page at all |
 Left off: guard fields (`GuardCount`, `GuardSpawnLocations`, `GuardNpcTemplateId` — "future feature"), the other six
-overrides (health display mode/offset, gate name/status display modes, continuous damage + multiplier), navigation /
-road-access overrides (kept the page focused; easy to add), `HouseNumber`, `CreatedAt`.
+overrides (health display mode/offset, gate name/status display modes, continuous damage + multiplier), `HouseNumber`,
+`CreatedAt`.
 
 ### User
 | Old | Seed | Why |
@@ -701,7 +702,8 @@ completeness only.
    none of the seeds do this).
 3. **User Username**: should admins be able to rename a player here (needs the update to stop requiring an email for
    in-game accounts), or is the name always taken from Minecraft? Seed: read-only.
-4. **GateStructure**: show the remaining six door overrides and the navigation/road-access overrides? Is there (or
+4. **GateStructure**: show the remaining six door overrides? (The navigation/road-access overrides were added with the
+   warp section, 2026-10-22.) Is there (or
    will there be) a web UI for the overrides PATCH, so the section can point to it? Guards stay hidden until built?
 5. **GateDoor has no display config**, so a View button on the Doors list would fail; only Edit is offered. Add a
    GateDoor display seed next?

@@ -149,6 +149,48 @@
       ]
     },
     {
+      "sectionGuid": "b681bd09-5483-5d8e-99ab-b1375a295c7b",
+      "sectionName": "Warp and navigation",
+      "description": "Whether players can /warp to the gate and where /navigate leads. Changed with Edit.",
+      "fields": [
+        {
+          "fieldGuid": "9b2e0041-8b24-5034-a02d-84332b5ec6a7",
+          "fieldName": "TeleportEnabled",
+          "label": "Warp destination",
+          "description": "Listed in /warp. A warp also needs a spawn point and entry allowed.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "cefa3df6-1283-5048-bf42-d2417c78167d",
+          "fieldName": "TeleportPriceGems",
+          "label": "Warp price (gems)",
+          "description": "Gems charged for each warp here. 0 = free.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "a2e42d32-f4ec-5035-8628-caac596d6eec",
+          "fieldName": "TeleportRequiresDiscovery",
+          "label": "Only after discovery",
+          "description": "Only players who have discovered this gate may warp here.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "8c5c8051-4e31-51cd-911a-68c9c2287455",
+          "fieldName": "NavigationDefaultOverride",
+          "label": "/navigate leads to",
+          "description": "Spawn or Region: where /navigate <gate> takes players. Empty = the default for gates.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "4746d5e8-16e1-5c81-8131-aad7d73b743b",
+          "fieldName": "RoadAccessOverride",
+          "label": "Road access",
+          "description": "Applies or Ignored: whether the entry rule keeps routes off the roads in this region. Empty = the default for gates.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
       "sectionGuid": "b448860c-a5cf-5108-bc41-d362fd445044",
       "sectionName": "Siege behaviour",
       "description": "How the gate behaves when a siege match uses it.",
