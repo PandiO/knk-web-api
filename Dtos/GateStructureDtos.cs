@@ -10,7 +10,7 @@ namespace knkwebapi_v2.Dtos
     // multi-door support - see docs/features/gate-structure-animation/
     // GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md. Structure-level cascading overrides (decision
     // 5.0-B) live here as nullable fields alongside the embedded GateDoors list.
-    public class GateStructureDto : IDomainNavigationDefaultDto
+    public class GateStructureDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
     {
         [JsonPropertyName("id")]
         [JsonConverter(typeof(NullableIntConverter))]
@@ -46,6 +46,29 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("location")]
         public LocationDto? Location { get; set; }
+
+        // Warp destination settings (teleport DESIGN.md §3.7.1, KNG-229). On create/update a null
+        // teleportEnabled means "not on this form" (the plugin, a form without the warp step): all
+        // five are left as they are.
+        [JsonPropertyName("teleportEnabled")]
+        [JsonConverter(typeof(NullableBoolConverter))]
+        public bool? TeleportEnabled { get; set; }
+
+        [JsonPropertyName("teleportPriceGems")]
+        [JsonConverter(typeof(NullableIntConverter))]
+        public int? TeleportPriceGems { get; set; }
+
+        [JsonPropertyName("teleportMinTitleBracketId")]
+        [JsonConverter(typeof(NullableIntConverter))]
+        public int? TeleportMinTitleBracketId { get; set; }
+
+        [JsonPropertyName("teleportMinPremiumGroupId")]
+        [JsonConverter(typeof(NullableIntConverter))]
+        public int? TeleportMinPremiumGroupId { get; set; }
+
+        [JsonPropertyName("teleportRequiresDiscovery")]
+        [JsonConverter(typeof(NullableBoolConverter))]
+        public bool? TeleportRequiresDiscovery { get; set; }
 
         // /navigate default (KNG-73): null on create/update = not on this form; "" or "TypeDefault"
         // = follow the domain type; "Spawn" / "Region" = this gate's own default.

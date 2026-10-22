@@ -18,7 +18,7 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 
 | Seed | Configuration | Import after |
 |---|---|---|
-| `GateStructure` | GateStructure - Default (seed v1) | — |
+| `GateStructure` | GateStructure - Default (seed v2) | — |
 | `GateDoor` | GateDoor - Default (seed v2) | — (its rules read its own Gate field) |
 | `SiegeScenarioDistrict.join` | SiegeScenarioDistrict - Join Entry (seed v1) | — |
 | `SiegeScenarioGate.join` | SiegeScenarioGate - Join Entry (seed v1) | — |
@@ -40,6 +40,15 @@ decision D2); a new optional "Door materials" field (`ScanMaterialWhitelist`) on
 to capture an arched door with `//sel convex` without the wall inside the selection (D8); "Shape from" says the plane
 grid is for rectangular doors only. Every step and field GUID of v2 is derived from its v1 GUID (uuid5, namespace =
 the v1 configuration GUID), so the two never share one.
+
+**GateStructure seed v2 (KNG-229, 2026-10-21):** a new `configurationGuid` and name, so it imports next to the
+imported v1; make it the default and delete or keep v1 by hand. Adds the domain settings the Structure form has:
+"Entry rule on roads" (`RoadAccessOverride`) on Region and access, "Navigate to" (`NavigationDefaultOverride`) on Spawn
+point, and a new "Warp destination" step (`TeleportEnabled`, `TeleportPriceGems`, `TeleportMinTitleBracketId`,
+`TeleportMinPremiumGroupId` limited to premium tiers, `TeleportRequiresDiscovery` default on). Needs the knk-web-api
+change of the same issue: before it, `GateStructureService` ignored the warp settings. A gate saved without the warp
+step (the plugin, v1) keeps its settings. GUIDs: configuration uuid5(v1 configuration GUID, "seed-v2"), every kept
+step/field uuid5(v1 configuration GUID, its v1 GUID), new ones uuid5(v2 configuration GUID, "step:"/"field:" + name).
 
 ## Priority 2 and 3 (KNG-139, 2026-10-19)
 
