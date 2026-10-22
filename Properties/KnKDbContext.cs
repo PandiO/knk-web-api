@@ -1719,14 +1719,14 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("minecraftblockrefs");
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
-            // KNG-200 §2.2: a block state belongs to its material. StateKey becomes unique only after the
-            // duplicate audit is clean (phase 4, migration MinecraftCatalogConstraints).
+            // KNG-200 §2.2: a block state belongs to its material, and StateKey is its identity (unique since
+            // migration MinecraftCatalogConstraints, applied after a clean audit).
             entity.HasOne(e => e.MaterialRef)
                 .WithMany()
                 .HasForeignKey(e => e.MaterialRefId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.Property(e => e.StateKey).HasMaxLength(64).IsFixedLength();
-            entity.HasIndex(e => e.StateKey);
+            entity.HasIndex(e => e.StateKey).IsUnique();
         });
 
         modelBuilder.Entity<MinecraftCatalogScan>(entity =>

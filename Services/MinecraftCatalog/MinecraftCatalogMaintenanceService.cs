@@ -18,17 +18,11 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
     private const string CreatedForBlockCategory = "BLOCK";
 
     private readonly KnKDbContext _db;
-    private readonly IMinecraftMaterialCatalogService? _staticCatalog;
     private readonly ILogger<MinecraftCatalogMaintenanceService> _logger;
 
-    /// <param name="staticCatalog">Only used for display names until phase 5 removes it.</param>
-    public MinecraftCatalogMaintenanceService(
-        KnKDbContext db,
-        IMinecraftMaterialCatalogService? staticCatalog,
-        ILogger<MinecraftCatalogMaintenanceService> logger)
+    public MinecraftCatalogMaintenanceService(KnKDbContext db, ILogger<MinecraftCatalogMaintenanceService> logger)
     {
         _db = db;
-        _staticCatalog = staticCatalog;
         _logger = logger;
     }
 
@@ -36,7 +30,6 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
     {
         var result = new MinecraftCatalogBackfillResultDto();
         var materials = await _db.MinecraftMaterialRefs.ToListAsync(ct);
-        var staticNames = StaticDisplayNames();
 
         foreach (var material in materials.OrderBy(m => m.Id))
         {
@@ -63,7 +56,7 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
         {
             var key = MinecraftNamespaceKey.TryNormalize(material.NamespaceKey);
             if (key == null) continue;
-            material.DisplayName = staticNames.GetValueOrDefault(key) ?? MinecraftNamespaceKey.DisplayNameFromKey(key);
+            material.DisplayName = MinecraftNamespaceKey.DisplayNameFromKey(key);
             result.MaterialDisplayNamesFilled++;
         }
 
@@ -73,7 +66,7 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
             .ToDictionary(g => g.Key, g => g.OrderBy(m => m.Id).First());
         var materialsById = materials.ToDictionary(m => m.Id);
 
-        var blocks = await _db.MinecraftBlockRefs.ToListAsync(ct);
+        var blocks = await BlockRefs().ToListAsync(ct);
         foreach (var block in blocks)
         {
             var canonical = MinecraftBlockState.TryCanonicalize(block.NamespaceKey, block.BlockStateString);
@@ -83,18 +76,12 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
                 continue;
             }
 
-            if (block.MaterialRefId == null)
+            // A block ref only lacks its material in data written before KNG-200 (0 in the model).
+            if (block.MaterialRefId <= 0)
             {
                 if (!materialsByKey.TryGetValue(canonical.NamespaceKey, out var material))
                 {
-                    material = new MinecraftMaterialRef
-                    {
-                        NamespaceKey = canonical.NamespaceKey,
-                        Category = CreatedForBlockCategory,
-                        DisplayName = staticNames.GetValueOrDefault(canonical.NamespaceKey)
-                            ?? MinecraftNamespaceKey.DisplayNameFromKey(canonical.NamespaceKey),
-                        CatalogStatus = MinecraftCatalogStatus.Unverified,
-                    };
+                    material = MinecraftMaterialRefFactory.NewUnverified(canonical.NamespaceKey, CreatedForBlockCategory);
                     _db.MinecraftMaterialRefs.Add(material);
                     materialsByKey[canonical.NamespaceKey] = material;
                     result.MaterialsCreated++;
@@ -102,7 +89,7 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
                 block.MaterialRef = material;
                 result.BlockRefsLinked++;
             }
-            else if (materialsById.TryGetValue(block.MaterialRefId.Value, out var linked)
+            else if (materialsById.TryGetValue(block.MaterialRefId, out var linked)
                      && MinecraftNamespaceKey.TryNormalize(linked.NamespaceKey) is { } linkedKey
                      && linkedKey != canonical.NamespaceKey)
             {
@@ -137,7 +124,7 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
     public async Task<MinecraftCatalogAuditDto> AuditAsync(CancellationToken ct = default)
     {
         var materials = await _db.MinecraftMaterialRefs.AsNoTracking().OrderBy(m => m.Id).ToListAsync(ct);
-        var blocks = await _db.MinecraftBlockRefs.AsNoTracking().OrderBy(b => b.Id).ToListAsync(ct);
+        var blocks = await BlockRefs().AsNoTracking().OrderBy(b => b.Id).ToListAsync(ct);
         var references = await MinecraftMaterialReferences.CountAsync(_db, null, ct);
         var materialsById = materials.ToDictionary(m => m.Id);
 
@@ -210,15 +197,15 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
             var stateKey = MinecraftBlockState.StateKey(canonical);
             stateKeys[block.Id] = stateKey;
 
-            if (block.MaterialRefId == null)
+            if (block.MaterialRefId <= 0)
             {
                 report.UnlinkedBlockRefs.Add(BlockRow(block));
             }
-            var materialKey = block.MaterialRefId is { } materialId && materialsById.TryGetValue(materialId, out var material)
+            var materialKey = materialsById.TryGetValue(block.MaterialRefId, out var material)
                 ? MinecraftNamespaceKey.TryNormalize(material.NamespaceKey)
                 : null;
             if (block.NamespaceKey != canonical.NamespaceKey || block.BlockStateString != canonical.State || block.StateKey != stateKey
-                || (block.MaterialRefId != null && materialKey != canonical.NamespaceKey))
+                || (block.MaterialRefId > 0 && materialKey != canonical.NamespaceKey))
             {
                 report.NotCanonicalBlockRefs.Add(BlockRow(block));
             }
@@ -267,6 +254,16 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
     }
 
     /// <summary>
+    /// Every block ref, also while the database still has rows without a material: between the phase 2
+    /// migration and MinecraftCatalogConstraints the column is nullable, and a NULL reads as 0 here so the
+    /// backfill can link the row and the constraints migration can then be applied.
+    /// </summary>
+    private IQueryable<MinecraftBlockRef> BlockRefs() => _db.Database.IsRelational()
+        ? _db.MinecraftBlockRefs.FromSqlRaw(
+            "SELECT Id, NamespaceKey, BlockStateString, LogicalType, IconUrl, COALESCE(MaterialRefId, 0) AS MaterialRefId, StateKey, IsPartial FROM minecraftblockrefs")
+        : _db.MinecraftBlockRefs;
+
+    /// <summary>
     /// Points every reference to <paramref name="sourceId"/> at <paramref name="target"/> (tracked, not saved).
     /// A block state follows its new material: same properties, the target's key. Used by the merge
     /// action and by the scan's clean-up (KNG-200 D7).
@@ -295,17 +292,5 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
             }
         }
         return repointed;
-    }
-
-    private Dictionary<string, string> StaticDisplayNames()
-    {
-        var names = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (_staticCatalog == null) return names;
-        foreach (var entry in _staticCatalog.GetAll())
-        {
-            var key = MinecraftNamespaceKey.TryNormalize(entry.NamespaceKey);
-            if (key != null && !string.IsNullOrWhiteSpace(entry.DisplayName)) names.TryAdd(key, entry.DisplayName);
-        }
-        return names;
     }
 }

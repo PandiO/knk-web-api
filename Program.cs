@@ -297,22 +297,21 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftCatalogMaintenanceService>().BackfillAsync();
 
     var kitSeedLogger = loggerFactory.CreateLogger("KitSeed");
-    var materialCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftMaterialCatalogService>();
-    await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, materialCatalog, kitSeedLogger);
+    await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, kitSeedLogger);
 
     // After KitSeed, so on a fresh DB the kit's own "Iron Sword"/"Arrow" rows win the shared names.
     var v1BlueprintSeedLogger = loggerFactory.CreateLogger("ItemBlueprintV1Seed");
     var enchantmentCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftEnchantmentCatalogService>();
-    await knkwebapi_v2.Models.ItemBlueprintV1Seed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, v1BlueprintSeedLogger);
+    await knkwebapi_v2.Models.ItemBlueprintV1Seed.SeedCanonicalAsync(dbContext, enchantmentCatalog, v1BlueprintSeedLogger);
 
     // After the ability (custom) and V1 (vanilla) seeds: permanent enchantment books reuse their EnchantmentDefinitions (KNG-5).
     var enchantBookSeedLogger = loggerFactory.CreateLogger("EnchantBookSeed");
-    await knkwebapi_v2.Models.EnchantBookSeed.SeedCanonicalAsync(dbContext, materialCatalog, enchantBookSeedLogger);
+    await knkwebapi_v2.Models.EnchantBookSeed.SeedCanonicalAsync(dbContext, enchantBookSeedLogger);
 
     // After every item seed: one disabled lootbox type per category, the specials (incl. the Flaming Samurai), enchant
     // rolls and the lootbox settings (docs/specs/lootboxes/DESIGN.md §3.5).
     var lootboxSeedLogger = loggerFactory.CreateLogger("LootboxSeed");
-    await knkwebapi_v2.Models.LootboxSeed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, lootboxSeedLogger);
+    await knkwebapi_v2.Models.LootboxSeed.SeedCanonicalAsync(dbContext, enchantmentCatalog, lootboxSeedLogger);
 
     // Siege Phase 9: one disabled example lobby (create-only by key).
     var siegeLobbySeedLogger = loggerFactory.CreateLogger("SiegeLobbySeed");

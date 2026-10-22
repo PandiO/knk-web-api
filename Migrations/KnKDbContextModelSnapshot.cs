@@ -3614,7 +3614,7 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("LogicalType")
                         .HasColumnType("longtext");
 
-                    b.Property<int?>("MaterialRefId")
+                    b.Property<int>("MaterialRefId")
                         .HasColumnType("int");
 
                     b.Property<string>("NamespaceKey")
@@ -3632,7 +3632,8 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("MaterialRefId");
 
-                    b.HasIndex("StateKey");
+                    b.HasIndex("StateKey")
+                        .IsUnique();
 
                     b.ToTable("minecraftblockrefs", (string)null);
                 });
@@ -7623,7 +7624,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "MaterialRef")
                         .WithMany()
                         .HasForeignKey("MaterialRefId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("MaterialRef");
                 });

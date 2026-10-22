@@ -30,16 +30,6 @@ namespace KnKWebAPI.Controllers
             return Ok(items);
         }
 
-        [HttpGet("hybrid")]
-        public async Task<ActionResult<IEnumerable<MinecraftHybridMaterialOptionDto>>> GetHybrid(
-            [FromQuery] string? search = null,
-            [FromQuery] string? category = null,
-            [FromQuery] int? take = null)
-        {
-            var result = await _service.GetHybridAsync(search, category, take);
-            return Ok(result);
-        }
-
         [HttpGet("{id:int}", Name = "GetMinecraftMaterialRefById")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -129,14 +119,12 @@ namespace KnKWebAPI.Controllers
         {
             query ??= new PagedQueryDto();
 
-            // Check if hybrid mode is requested via filter
-            if (query.Filters != null && query.Filters.TryGetValue("SearchHybrid", out var hybridValue) && hybridValue?.ToString()?.ToLower() == "true")
+            // KNG-200: pickers send Picker=true (SearchHybrid=true before KNG-200); the database is the catalogue.
+            if (MinecraftPickerFilters.IsPickerSearch(query.Filters))
             {
-                var hybridResult = await _service.SearchHybridAsync(query);
-                return Ok(hybridResult);
+                return Ok(await _service.SearchPickerAsync(query));
             }
 
-            // Default: normal paged search
             var result = await _service.SearchAsync(query);
             return Ok(result);
         }

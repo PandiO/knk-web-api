@@ -55,7 +55,6 @@ public static class EnchantBookSeed
 
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -69,9 +68,7 @@ public static class EnchantBookSeed
             .FirstOrDefaultAsync(cancellationToken);
         if (material == null)
         {
-            var entry = materialCatalog?.GetAll()
-                .FirstOrDefault(e => string.Equals(e.NamespaceKey, BookMaterialKey, StringComparison.OrdinalIgnoreCase));
-            material = MinecraftMaterialRefFactory.NewUnverified(BookMaterialKey, entry, "ITEM");
+            material = MinecraftMaterialRefFactory.NewUnverified(BookMaterialKey, "ITEM");
             context.MinecraftMaterialRefs.Add(material);
             Count(nameof(MinecraftMaterialRef));
         }

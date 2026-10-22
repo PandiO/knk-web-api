@@ -99,7 +99,6 @@ public static class LootboxSeed
 
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog = null,
         IMinecraftEnchantmentCatalogService? enchantmentCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
@@ -246,7 +245,7 @@ public static class LootboxSeed
                     DefaultDisplayName = "&cFlaming Samurai",
                     DefaultDisplayDescription = FlamingSamuraiDescription,
                     Description = "New v3 lootbox special (2026-09-26). Not a v1 port.",
-                    IconMaterial = await MaterialAsync(context, materialCatalog, FlamingSamuraiIconKey, Count, cancellationToken),
+                    IconMaterial = await MaterialAsync(context, FlamingSamuraiIconKey, Count, cancellationToken),
                     Category = weapons,
                     Grade = grades[5],
                     DefaultQuantity = 1,
@@ -384,7 +383,6 @@ public static class LootboxSeed
 
     private static async Task<MinecraftMaterialRef> MaterialAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog,
         string key,
         Action<string> count,
         CancellationToken cancellationToken)
@@ -395,9 +393,7 @@ public static class LootboxSeed
             .FirstOrDefaultAsync(cancellationToken);
         if (material != null) return material;
 
-        var entry = materialCatalog?.GetAll()
-            .FirstOrDefault(e => string.Equals(e.NamespaceKey, key, StringComparison.OrdinalIgnoreCase));
-        material = MinecraftMaterialRefFactory.NewUnverified(key, entry, "ITEM");
+        material = MinecraftMaterialRefFactory.NewUnverified(key, "ITEM");
         context.MinecraftMaterialRefs.Add(material);
         count(nameof(MinecraftMaterialRef));
         return material;

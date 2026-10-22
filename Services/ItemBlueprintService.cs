@@ -12,7 +12,6 @@ namespace knkwebapi_v2.Services
     {
         private readonly IItemBlueprintRepository _repo;
         private readonly IMinecraftMaterialRefRepository _materialRepo;
-        private readonly IMinecraftMaterialCatalogService _materialCatalog;
         private readonly IEnchantmentDefinitionRepository _enchantmentRepo;
         private readonly ICategoryRepository _categoryRepo;
         private readonly IGradeRepository _gradeRepo;
@@ -23,7 +22,6 @@ namespace knkwebapi_v2.Services
         public ItemBlueprintService(
             IItemBlueprintRepository repo,
             IMinecraftMaterialRefRepository materialRepo,
-            IMinecraftMaterialCatalogService materialCatalog,
             IEnchantmentDefinitionRepository enchantmentRepo,
             ICategoryRepository categoryRepo,
             IGradeRepository gradeRepo,
@@ -33,7 +31,6 @@ namespace knkwebapi_v2.Services
         {
             _repo = repo;
             _materialRepo = materialRepo;
-            _materialCatalog = materialCatalog;
             _enchantmentRepo = enchantmentRepo;
             _categoryRepo = categoryRepo;
             _gradeRepo = gradeRepo;
@@ -265,11 +262,8 @@ namespace knkwebapi_v2.Services
             if (existing != null)
                 return existing.Id;
 
-            // Look up catalog info
-            var catalogEntry = _materialCatalog.Search(key, null)
-                .FirstOrDefault(c => c.NamespaceKey.Equals(key, StringComparison.OrdinalIgnoreCase));
-
-            var newMaterial = MinecraftMaterialRefFactory.NewUnverified(key, catalogEntry, "Uncategorized");
+            // Unverified until a server scan sees the key (KNG-200).
+            var newMaterial = MinecraftMaterialRefFactory.NewUnverified(key, "Uncategorized");
 
             await _materialRepo.AddAsync(newMaterial);
             return newMaterial.Id;

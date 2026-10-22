@@ -9,8 +9,8 @@ namespace knkwebapi_v2.Services
         Task<MinecraftBlockRefDto> CreateAsync(MinecraftBlockRefCreateDto dto);
         /// <summary>The saved ref for this canonical state, or a new one (KNG-200 phase 1).</summary>
         Task<MinecraftBlockRefDto> GetOrCreateAsync(MinecraftBlockRefCreateDto dto);
-        Task<IEnumerable<MinecraftHybridBlockOptionDto>> GetHybridAsync(string? search = null, string? category = null, int? take = null);
-        Task<PagedResultDto<MinecraftBlockRefListDto>> SearchHybridAsync(PagedQueryDto queryDto);
+        /// <summary>A picker search (KNG-200): the saved block states, each with its material's name and icon.</summary>
+        Task<PagedResultDto<MinecraftBlockRefListDto>> SearchPickerAsync(PagedQueryDto queryDto);
         Task UpdateAsync(int id, MinecraftBlockRefUpdateDto dto);
         Task DeleteAsync(int id);
         Task<PagedResultDto<MinecraftBlockRefListDto>> SearchAsync(PagedQueryDto queryDto);

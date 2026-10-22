@@ -16,20 +16,17 @@ namespace knkwebapi_v2.Services
     {
         private readonly ICategoryRepository _repo;
         private readonly IMinecraftMaterialRefRepository _materialRepo;
-        private readonly IMinecraftMaterialCatalogService _catalog;
         private readonly ITagRepository _tagRepo;
         private readonly IMapper _mapper;
 
         public CategoryService(
             ICategoryRepository repo,
             IMinecraftMaterialRefRepository materialRepo,
-            IMinecraftMaterialCatalogService catalog,
             ITagRepository tagRepo,
             IMapper mapper)
         {
             _repo = repo;
             _materialRepo = materialRepo;
-            _catalog = catalog;
             _tagRepo = tagRepo;
             _mapper = mapper;
         }
@@ -189,11 +186,8 @@ namespace knkwebapi_v2.Services
                 return existing.Id;
             }
 
-            // Look up catalog info to seed category/legacy
-            var catalogEntry = _catalog.Search(namespaceKey, null)
-                .FirstOrDefault(c => c.NamespaceKey.Equals(namespaceKey, StringComparison.OrdinalIgnoreCase));
-
-            var newMaterial = MinecraftMaterialRefFactory.NewUnverified(namespaceKey, catalogEntry, "Uncategorized");
+            // Unverified until a server scan sees the key (KNG-200).
+            var newMaterial = MinecraftMaterialRefFactory.NewUnverified(namespaceKey, "Uncategorized");
 
             await _materialRepo.AddAsync(newMaterial);
 

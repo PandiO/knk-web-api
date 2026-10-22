@@ -34,15 +34,12 @@ public class MinecraftMaterialGetOrCreateMySqlTests : IClassFixture<MySqlTestDat
     [MySqlFact]
     public async Task ParallelGetOrCreate_OfOneKey_GivesEveryCallerTheSameRow()
     {
-        var catalog = new Mock<IMinecraftMaterialCatalogService>();
-        catalog.Setup(c => c.Search(It.IsAny<string?>(), It.IsAny<string?>())).Returns(Array.Empty<MinecraftMaterialCatalogEntry>());
         var notations = new[] { "minecraft:race_block", "RACE_BLOCK", " Minecraft:Race_Block ", "race_block" };
 
         var results = await Task.WhenAll(Enumerable.Range(0, 12).Select(async i =>
         {
             await using var context = _db.NewContext();
-            var service = new MinecraftMaterialRefService(new MinecraftMaterialRefRepository(context), _mapper, catalog.Object,
-                new MinecraftCatalogPickerSource(context, new MinecraftCatalogOptions()));
+            var service = new MinecraftMaterialRefService(new MinecraftMaterialRefRepository(context), _mapper);
             return await service.GetOrCreateAsync(notations[i % notations.Length], "ITEM");
         }));
 

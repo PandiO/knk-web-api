@@ -24,12 +24,12 @@ public class MinecraftBlockRef
 
     public string? IconUrl { get; set; }
 
-    /// <summary>The material this state belongs to; nullable until the backfill has linked every row.</summary>
-    public int? MaterialRefId { get; set; }
+    /// <summary>The material this state belongs to (required since migration MinecraftCatalogConstraints).</summary>
+    public int MaterialRefId { get; set; }
 
     public MinecraftMaterialRef? MaterialRef { get; set; }
 
-    /// <summary>SHA-256 (hex) of the normalised key and canonical state; see <c>MinecraftBlockState.StateKey</c>.</summary>
+    /// <summary>SHA-256 (hex) of the normalised key and canonical state, unique; see <c>MinecraftBlockState.StateKey</c>.</summary>
     [MaxLength(64)]
     public string? StateKey { get; set; }
 

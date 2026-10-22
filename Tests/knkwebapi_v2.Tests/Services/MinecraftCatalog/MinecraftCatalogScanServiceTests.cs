@@ -214,7 +214,7 @@ public class MinecraftCatalogScanServiceTests
         Assert.Equal(1, (await check.ItemBlueprints.SingleAsync(b => b.Id == 30)).IconMaterialRefId);
         Assert.Equal(MinecraftCatalogStatus.Missing, (await check.MinecraftMaterialRefs.SingleAsync(m => m.Id == 4)).CatalogStatus);
         var block = await check.MinecraftBlockRefs.SingleAsync();
-        Assert.Equal((1, "minecraft:oak_planks[axis=y]"), (block.MaterialRefId!.Value, block.BlockStateString));
+        Assert.Equal((1, "minecraft:oak_planks[axis=y]"), (block.MaterialRefId, block.BlockStateString));
     }
 
     [Fact]

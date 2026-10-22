@@ -18,12 +18,8 @@ public class MinecraftCatalogMaintenanceServiceTests
     private KnKDbContext NewContext() =>
         new(new DbContextOptionsBuilder<KnKDbContext>().UseInMemoryDatabase(_dbName).Options);
 
-    private static MinecraftCatalogMaintenanceService Service(KnKDbContext context, params MinecraftMaterialCatalogEntry[] staticEntries)
-    {
-        var catalog = new Mock<IMinecraftMaterialCatalogService>();
-        catalog.Setup(c => c.GetAll()).Returns(staticEntries);
-        return new MinecraftCatalogMaintenanceService(context, catalog.Object, NullLogger<MinecraftCatalogMaintenanceService>.Instance);
-    }
+    private static MinecraftCatalogMaintenanceService Service(KnKDbContext context) =>
+        new(context, NullLogger<MinecraftCatalogMaintenanceService>.Instance);
 
     private static MinecraftMaterialRef Material(int id, string key, string category = "ITEM") =>
         new() { Id = id, NamespaceKey = key, Category = category };
@@ -54,20 +50,19 @@ public class MinecraftCatalogMaintenanceServiceTests
     }
 
     [Fact]
-    public async Task Backfill_FillsDisplayNames_FromTheStaticCatalogue_ElseFromTheKey_AndLeavesFlagsUnknown()
+    public async Task Backfill_FillsDisplayNamesFromTheKey_AndLeavesFlagsUnknown()
     {
         await SeedAsync(Material(1, "minecraft:wall_torch"), Material(2, "minecraft:pale_oak_log"),
             new MinecraftMaterialRef { Id = 3, NamespaceKey = "minecraft:stone", Category = "ITEM", DisplayName = "Kept" });
 
         await using (var context = NewContext())
         {
-            await Service(context, new MinecraftMaterialCatalogEntry { NamespaceKey = "minecraft:wall_torch", DisplayName = "Torch", Category = "ITEM" })
-                .BackfillAsync();
+            await Service(context).BackfillAsync();
         }
 
         await using var check = NewContext();
         var rows = await check.MinecraftMaterialRefs.OrderBy(m => m.Id).ToListAsync();
-        Assert.Equal(new[] { "Torch", "Pale Oak Log", "Kept" }, rows.Select(m => m.DisplayName));
+        Assert.Equal(new[] { "Wall Torch", "Pale Oak Log", "Kept" }, rows.Select(m => m.DisplayName));
         Assert.All(rows, m => Assert.Null(m.IsItem));
         Assert.All(rows, m => Assert.Equal(MinecraftCatalogStatus.Unverified, m.CatalogStatus));
     }
@@ -131,7 +126,7 @@ public class MinecraftCatalogMaintenanceServiceTests
 
         await using var check = NewContext();
         Assert.Equal("oak planks", (await check.MinecraftMaterialRefs.SingleAsync()).NamespaceKey);
-        Assert.Null((await check.MinecraftBlockRefs.SingleAsync()).MaterialRefId);
+        Assert.Equal(0, (await check.MinecraftBlockRefs.SingleAsync()).MaterialRefId); // still unlinked
     }
 
     [Fact]
