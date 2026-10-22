@@ -1,0 +1,90 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "42bfe821-6e36-505c-ae00-237989dc583e",
+  "entityTypeName": "EnchantmentDefinition",
+  "name": "EnchantmentDefinition - Default (seed v1)",
+  "description": "An enchantment the server knows: a vanilla Minecraft one or a custom Knights and Kings ability (Poison, Freeze, ...). Item blueprints, enchantment books and lootbox enchant rolls pick from these.",
+  "steps": [
+    {
+      "stepGuid": "e0bfff5b-84e6-58e2-93c7-0c485d958b89",
+      "stepName": "Enchantment",
+      "description": "Choose vanilla or custom first. For a vanilla enchantment, pick it as the base and its key, name and max level are filled in for you.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "fec9ff19-6743-562e-a85c-81bb45bd9ebd",
+          "fieldName": "IsCustom",
+          "label": "Custom enchantment",
+          "description": "Tick for a Knights and Kings ability that the plugin adds itself (written into the item's lore); leave unticked for a vanilla Minecraft enchantment. Custom enchantments are not limited by the grade cap. The built-in abilities (Poison, Freeze, ...) get their code-defined name, description and max level back whenever the API starts.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "03d13d95-2cbe-5546-b96c-94e252b6b9f8",
+          "fieldName": "MinecraftEnchantmentRefId",
+          "label": "Vanilla enchantment",
+          "description": "The Minecraft enchantment this entry stands for. Picking one fills in the key, display name and max level below when they are still empty. Only for vanilla enchantments.",
+          "fieldType": "Object",
+          "objectType": "MinecraftEnchantmentRef",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"valueProjection\": {\"enabled\": true, \"defaultOverwritePolicy\": \"if-empty\", \"clearOnNull\": false, \"mappings\": [{\"source\": \"namespaceKey\", \"target\": \"Key\", \"sourceContext\": \"changedField\", \"transform\": \"none\"}, {\"source\": \"displayName\", \"target\": \"DisplayName\", \"sourceContext\": \"changedField\", \"transform\": \"none\"}, {\"source\": \"maxLevel\", \"target\": \"MaxLevel\", \"sourceContext\": \"changedField\", \"transform\": \"toInt\"}]}}",
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "fec9ff19-6743-562e-a85c-81bb45bd9ebd",
+                  "operator": "NotEquals",
+                  "valueJson": "true"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "57b3be6a-dfee-583b-b3ad-74b3ee39c963",
+          "fieldName": "Key",
+          "label": "Key",
+          "placeholder": "minecraft:sharpness",
+          "description": "How the game finds the enchantment: minecraft:<name> for a vanilla one, the ability key for a custom one (e.g. poison, flash_chaos). Must be unique; changing it breaks books and items that already carry the old key.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "35e95f3c-3606-5f09-83f2-51385aa19ba4",
+          "fieldName": "DisplayName",
+          "label": "Display name",
+          "description": "The name players see, e.g. on an enchantment book (\"Teaches: Sharpness III\") and in messages.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ca0962b8-1d72-5cb8-acdd-4d9d695816af",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "One line on what the enchantment does, for admins (custom ones: how a player uses it, e.g. \"Right-click to become invisible for a short duration.\").",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f2888b29-edd5-50ad-9d81-f09d4251621d",
+          "fieldName": "MaxLevel",
+          "label": "Max level",
+          "description": "Highest level this enchantment can reach on an item; the grade cap divides this number. Vanilla: Minecraft's own maximum (Sharpness 5, Unbreaking 3).",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

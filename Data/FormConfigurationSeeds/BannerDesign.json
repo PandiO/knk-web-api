@@ -1,0 +1,59 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "5583d3d0-8249-5bd1-9d56-34a8f0177041",
+  "entityTypeName": "BannerDesign",
+  "name": "BannerDesign - Default (seed v1)",
+  "description": "A reusable banner, built like a Minecraft banner: a base colour plus pattern layers. Used by clans and ad-hoc siege teams, and shown on siege objectives.",
+  "steps": [
+    {
+      "stepGuid": "80b1953d-552d-5359-ae3a-10c726d6aca8",
+      "stepName": "Banner",
+      "description": "Name the banner and pick its background colour.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b6a42c40-7d90-5219-a31b-4e139205406d",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Identifies the banner when you pick one for a clan or a siege team; players don't see it. Up to 100 characters.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f1bf3a7f-3a81-5f1f-9acc-1d79bf915be9",
+          "fieldName": "BaseColor",
+          "label": "Base colour",
+          "description": "Background dye colour of the banner, under every layer.",
+          "fieldType": "Enum",
+          "enumType": "BannerDyeColor",
+          "defaultValue": "WHITE",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"WHITE\", \"ORANGE\", \"MAGENTA\", \"LIGHT_BLUE\", \"YELLOW\", \"LIME\", \"PINK\", \"GRAY\", \"LIGHT_GRAY\", \"CYAN\", \"PURPLE\", \"BLUE\", \"BROWN\", \"GREEN\", \"RED\", \"BLACK\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "90175836-5dd8-5237-a8db-e3d6f0e2305c",
+      "stepName": "Layers",
+      "description": "The patterns on top of the base colour, drawn bottom to top. Save the banner first (Submit), then open it again to add layers.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a012c736-7a1a-58e3-be20-12efe67cd7d0",
+          "fieldName": "Layers",
+          "label": "Layers",
+          "description": "Create New opens the layer form (pattern, colour, order); each layer is saved on its own. At most 16; more than 6 can't be made in a survival loom.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "BannerLayer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

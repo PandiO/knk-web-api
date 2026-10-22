@@ -1,0 +1,71 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "f0daf403-8bd8-55f0-bb20-ec04c09113d5",
+  "entityTypeName": "Category",
+  "name": "Category - Default (seed v1)",
+  "description": "A group of item blueprints (Weapons, Armor, Food, ...), optionally inside a parent category. Categories filter the in-game item catalogue and decide which items a lootbox type can drop.",
+  "steps": [
+    {
+      "stepGuid": "c05cd8f7-47a0-5128-bfa7-acbab93cc790",
+      "stepName": "Category",
+      "description": "Name the category and place it in the category tree. Items are put in a category on the item blueprint form.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "28a6b54d-210b-5879-a670-a2345ab7673a",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown to players as a filter value in the item catalogue, so keep it short and unique.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "373945ec-2c77-576f-ae32-c735d958ce31",
+          "fieldName": "ParentCategoryId",
+          "label": "Parent category",
+          "description": "Makes this a subcategory (e.g. Swords under Weapons). A lootbox type set to include subcategories also drops items from here. Leave empty for a top-level category; never pick one of its own subcategories.",
+          "fieldType": "Object",
+          "objectType": "Category",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2affe05c-5c7d-51a4-b54c-a968fe69d8bd",
+          "fieldName": "IconMaterialRefId",
+          "label": "Icon",
+          "description": "The Minecraft item that represents this category where categories are shown with an icon. Optional.",
+          "fieldType": "HybridMinecraftMaterialRefPicker",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "da88184b-ae08-595e-a5c8-d36b76d3de42",
+      "stepName": "Tags",
+      "description": "Labels that describe every item in this category. Add each with Create New Join Entry; create the tag itself on the tag form first.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "Tags",
+      "joinEntityType": "CategoryTag",
+      "subConfigurationRef": {
+        "configurationGuid": "ce32e836-f5be-5fd4-a38c-6fbf34aa6e25",
+        "entityTypeName": "CategoryTag",
+        "name": "CategoryTag - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "ffee5e8d-be4c-57ab-b472-63d84aabe1ea",
+          "fieldName": "Tags",
+          "label": "Tags",
+          "description": "For grouping and searching only: game rules such as \"Lootbox Special\" read the item's own tags, not its category's.",
+          "fieldType": "List",
+          "objectType": "CategoryTag",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -1,0 +1,86 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "9f74a9ee-18b0-5e79-ae89-e03e624f5f5b",
+  "entityTypeName": "LootboxSpecialEntry",
+  "name": "LootboxSpecialEntry - Default (seed v1)",
+  "description": "A lootbox special (jackpot): a rare item that boxes can give instead of a normal roll. Saving it tags the item 'Lootbox Special', which takes it out of every normal pool.",
+  "steps": [
+    {
+      "stepGuid": "87a96347-b2fb-5672-a73d-0a53a5c2f763",
+      "stepName": "Item and box",
+      "description": "The jackpot item and which boxes can give it.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "5e3544b5-e210-5bbb-879a-25a5ad94025a",
+          "fieldName": "ItemBlueprintId",
+          "label": "Item",
+          "description": "Given exactly as designed, with its default enchantments and no rolled ones. Deleting the special later keeps the tag; remove it on the item to return the item to the pools.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "bbd4fb6d-5f0d-5407-b23a-41562dd9ab57",
+          "fieldName": "LootboxTypeId",
+          "label": "Box type",
+          "description": "Only boxes of this type can give it. Empty = boxes of every type.",
+          "fieldType": "Object",
+          "objectType": "LootboxType",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7addb710-9298-51bf-ae50-1e2a3269d529",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Disabled specials are skipped; the item stays out of the normal pools.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "52e9f840-46bc-5198-b1fc-e1e1a3225ca3",
+      "stepName": "Odds",
+      "description": "Specials are checked before the normal roll, each with its own chance; the first hit wins.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "d1e4875d-ab2d-51b2-ac84-b105733480b7",
+          "fieldName": "ChancePerMillion",
+          "label": "Chance per million",
+          "description": "0-1,000,000 per opened box: 2000 = 0.2%, 500 = 0.05%.",
+          "fieldType": "Integer",
+          "defaultValue": "2000",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "50a00d1c-848b-5b6a-abae-48ea4e022ff2",
+          "fieldName": "MinBoxStars",
+          "label": "From box grade (stars)",
+          "description": "Only boxes with at least this many stars (1-10) can give it.",
+          "fieldType": "Integer",
+          "defaultValue": "5",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f65b9cbf-3c30-514e-8d6a-bffea420769b",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Specials are checked from low to high; with several hits the first one wins.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

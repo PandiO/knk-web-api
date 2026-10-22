@@ -1,0 +1,168 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "15d51987-df1e-5a35-af7e-2e1791b7a8f4",
+  "entityTypeName": "LootboxSpawnArea",
+  "name": "LootboxSpawnArea - Default (seed v1)",
+  "description": "A lootbox spawn area: a WorldGuard region where world boxes appear, with its spawn rules and allowed box types. Also created in game with /knk lootbox area create, which opens in this form too.",
+  "steps": [
+    {
+      "stepGuid": "72c5d3f8-8112-5623-9f09-c95d6a4c8057",
+      "stepName": "Area and region",
+      "description": "Name the area and pick its WorldGuard region. For a new region, /knk lootbox area create <name> in game is simplest; here, use Send to Minecraft and type select <region> to use an existing one.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "c0c7ea40-b891-56ee-b711-8acfcf93cec4",
+          "fieldName": "Name",
+          "label": "Name",
+          "placeholder": "cinix_market",
+          "description": "1-32 letters, digits, _ or -, unique. The in-game /knk lootbox area commands use it.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2031e8b4-cd39-5864-9ec3-7e0aa2109d5e",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "Boxes appear on the ground anywhere inside this region. Prefer an existing region (select <region>): one drawn here gets a temporary name, is only as high as your selection, and the server removes it after 14 days.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
+        },
+        {
+          "fieldGuid": "7b74e9fc-3b4b-5c8b-9ed1-4ee9d414d62e",
+          "fieldName": "World",
+          "label": "World",
+          "description": "The world the region is in, exactly as the server names it (shown in the region result above). Boxes only spawn there when the name matches.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9e39feca-5187-5d0e-83e5-8bd7955db1e6",
+          "fieldName": "ExcludedRegionIds",
+          "label": "Excluded regions",
+          "placeholder": "plot_12,domain_45",
+          "description": "Comma-separated WorldGuard region ids inside the area where boxes must not appear, such as plots or buildings. At most 1024 characters.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "fec3b697-4351-55e5-a436-290a6b4af504",
+      "stepName": "Spawn rules",
+      "description": "When the server tries to spawn a box here. Every try waits the full interval, whether a box appears or not.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "7cc9cf18-94df-5388-8abc-4c8c28d4abc5",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Only enabled areas spawn boxes. Turn it on once the region and allowed types are set.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d9d864e6-4f0f-5db8-a73c-218b7d29ddba",
+          "fieldName": "SpawnIntervalSeconds",
+          "label": "Try every (seconds)",
+          "description": "Time between spawn tries, at least 60.",
+          "fieldType": "Integer",
+          "defaultValue": "600",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ee2bcb96-2fd8-51bd-91b7-d77769d16b59",
+          "fieldName": "SpawnChancePercent",
+          "label": "Spawn chance (%)",
+          "description": "Chance that a try spawns a box, 0-100.",
+          "fieldType": "Decimal",
+          "defaultValue": "100",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a1021dcc-6cb8-5818-a086-68189a3c3b71",
+          "fieldName": "MinOnlinePlayers",
+          "label": "Minimum players online",
+          "description": "No tries while fewer players are on the server. 0 = always.",
+          "fieldType": "Integer",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "44d38bb0-29f2-5d5b-85bd-5dc6e822eb4a",
+      "stepName": "Box limits",
+      "description": "How many boxes the area holds at once, how close to players they may appear, and how long they last.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "cae4ccd9-682b-5d4a-bddf-1cec30ceaf3e",
+          "fieldName": "MaxActive",
+          "label": "Maximum boxes at once",
+          "description": "No new box while this many are waiting in the area (0 or more). The global limit in the lootbox settings applies as well.",
+          "fieldType": "Integer",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d97e39d4-4f57-5b67-b6a5-6ca417d4bd60",
+          "fieldName": "MinDistanceFromPlayers",
+          "label": "Minimum distance from players (blocks)",
+          "description": "A spot closer than this to any player is skipped, so boxes don't appear in front of someone. 0 = anywhere.",
+          "fieldType": "Integer",
+          "defaultValue": "24",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2256212b-e54a-5b81-9cd1-e5a6f516a61a",
+          "fieldName": "LifetimeMinutes",
+          "label": "Box lifetime (minutes)",
+          "description": "A box nobody picks up crumbles after this time, at least 1.",
+          "fieldType": "Integer",
+          "defaultValue": "30",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "456d911b-7dc0-535a-8ceb-446508abe398",
+      "stepName": "Allowed types",
+      "description": "Which box types may spawn here. Leave it empty to allow every enabled type.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "AllowedTypes",
+      "joinEntityType": "LootboxSpawnAreaType",
+      "subConfigurationRef": {
+        "configurationGuid": "9264ed0c-89b6-5f07-8619-b77fce7e53fe",
+        "entityTypeName": "LootboxSpawnAreaType",
+        "name": "LootboxSpawnAreaType - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "d4c64d4e-eb81-55e8-997f-6ae1845118c6",
+          "fieldName": "AllowedTypes",
+          "label": "Allowed box types",
+          "description": "Create New Join Entry adds a type; types are picked by their spawn weight.",
+          "fieldType": "List",
+          "objectType": "LootboxSpawnAreaType",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

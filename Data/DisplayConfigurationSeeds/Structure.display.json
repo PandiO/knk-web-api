@@ -1,0 +1,154 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "e0242a63-86e8-53b9-9cf8-9e6d4556988a",
+  "entityTypeName": "Structure",
+  "name": "Structure - Default (seed v1)",
+  "description": "A building or plot inside a district, with its own WorldGuard region. Gates are structures too but have their own page.",
+  "sections": [
+    {
+      "sectionGuid": "85a9da69-0141-5506-b47b-ccb8a37e80aa",
+      "sectionName": "General information",
+      "description": "What the structure is called and what it is for.",
+      "fields": [
+        {
+          "fieldGuid": "c67df9c3-c4c8-54ff-b192-915ef1e39ad7",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game and in the web app.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "f9838421-98e6-55c6-bde4-6e18bfeaf321",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "One line for admins, e.g. what the building is used for.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        }
+      ]
+    },
+    {
+      "sectionGuid": "a5b58c46-c963-5cdb-af49-d50d925c8b29",
+      "sectionName": "Address",
+      "description": "Where the structure stands. Street and district are changed with Edit.",
+      "fields": [
+        {
+          "fieldGuid": "117c91a9-a863-5c4e-94dd-313ebf19b151",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Street",
+          "relatedEntityTypeName": "Street",
+          "label": "Street",
+          "description": "The street the structure is on.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d0d90e80-0aca-5774-ba93-311490d1de8f",
+          "fieldName": "HouseNumber",
+          "label": "House number",
+          "description": "The structure's number on its street. 0 = no number.",
+          "fieldType": "Integer",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "09cbe9f0-bc4c-5603-ac48-33ed30822ed9",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "District",
+          "relatedEntityTypeName": "District",
+          "label": "District",
+          "description": "The district the structure belongs to. Its region should lie inside the district's region.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "51a1d9c9-22cd-5861-a9a1-1d173539f0ba",
+          "fieldName": "TownName",
+          "relatedEntityPropertyName": "District",
+          "relatedEntityTypeName": "District",
+          "label": "Town",
+          "description": "The town that district is part of.",
+          "fieldType": "String",
+          "metadataCheck": "warn"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "15f0cdfc-eb46-503f-b81c-5233e2c5286b",
+      "sectionName": "Region and access",
+      "description": "The WorldGuard region that is the structure in game, and whether players may walk in and out of it.",
+      "fields": [
+        {
+          "fieldGuid": "1918a44e-108d-595d-a369-7f09a680aec9",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "Name of the WorldGuard region around the structure. The entry and exit rules below apply to it.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "8c78091a-60ae-588f-b8f4-c6402ce2e5c9",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The Minecraft world the region is in. Region names are only unique within one world.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "8ce05151-b4ad-54ca-ade3-aa0e26a0dd0c",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the region. Off keeps everyone out except admins.",
+          "fieldType": "Boolean",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "e65a17a2-8b31-5869-9cb3-7c361f61dd94",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the region may walk out of it.",
+          "fieldType": "Boolean",
+          "isEditableInDisplay": true
+        }
+      ]
+    },
+    {
+      "sectionGuid": "d045f946-bf41-5962-aaab-981a38d9c199",
+      "sectionName": "Warp and navigation",
+      "description": "Whether players can /warp here and where /navigate leads. Changed with Edit.",
+      "fields": [
+        {
+          "fieldGuid": "6e751f0c-cbbd-5ad1-ab14-2b2b39e880cb",
+          "fieldName": "TeleportEnabled",
+          "label": "Warp destination",
+          "description": "Listed in /warp. A warp also needs a spawn location and entry allowed.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "3df05ff1-29ea-5915-aae6-73bbc068fa3d",
+          "fieldName": "TeleportPriceGems",
+          "label": "Warp price (gems)",
+          "description": "Gems charged for each warp here. 0 = free.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "ad2c50de-13bb-53e2-868b-e71ee7e7a96c",
+          "fieldName": "TeleportRequiresDiscovery",
+          "label": "Only after discovery",
+          "description": "Only players who have discovered this structure may warp here.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "5010bd1a-e52c-5ff8-a816-061fe03fbc71",
+          "fieldName": "NavigationDefaultOverride",
+          "label": "/navigate leads to",
+          "description": "Spawn or Region: where /navigate <structure> takes players. Empty = the default for structures.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "2f15a13a-78bb-525a-bcde-fa4efcd472a6",
+          "fieldName": "RoadAccessOverride",
+          "label": "Road access",
+          "description": "Applies or Ignored: whether the entry rule keeps routes off the roads in this region. Empty = the default for structures.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

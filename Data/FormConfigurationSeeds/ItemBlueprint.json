@@ -1,0 +1,209 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "69dd8fe5-c419-5a3f-bab6-bbc7b414b836",
+  "entityTypeName": "ItemBlueprint",
+  "name": "ItemBlueprint - Default (seed v1)",
+  "description": "A catalog item: what it looks like in game, its category, grade and price, default enchantments, origin and tags. Kits, lootboxes, enchantment books and the item catalogue hand out items made from blueprints.",
+  "steps": [
+    {
+      "stepGuid": "099916ba-834e-5152-9b1a-892198640eba",
+      "stepName": "Item in game",
+      "description": "How the item looks in game. Quickest: hold the item in your main hand, use Send to Minecraft on Display name and claim the task in game (the code in chat, or /knk itemscan claim <code>); the scan fills this step and Default enchantments. You can also fill everything by hand.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "8ff5a4f6-6f07-5e93-8068-1b39621862b7",
+          "fieldName": "DefaultDisplayName",
+          "label": "Display name",
+          "placeholder": "&9Steel Sword",
+          "description": "The item's name as players see it. & colour codes work (&9 blue, &l bold, ...); the preview shows the result.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ItemScan\"}, \"minecraft-text-color\": {\"enabled\": true}}"
+        },
+        {
+          "fieldGuid": "ec366652-10a9-5ea9-9beb-ac4b5261647b",
+          "fieldName": "DefaultDisplayDescription",
+          "label": "Display description",
+          "description": "Lore under the enchantments in the item's tooltip, one line per row. Lines without a colour code of their own are dark grey. The grade stars and origin lines are added below it automatically. Optional.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"minecraft-text-color\": {\"enabled\": true}}"
+        },
+        {
+          "fieldGuid": "f350d85a-5b21-52db-b1d2-27d46b80d139",
+          "fieldName": "IconMaterialRefId",
+          "label": "Material",
+          "description": "The Minecraft item type the item is made as (e.g. diamond_sword): its look and vanilla behaviour. Without a material the item can't be handed out in game. Material enchanted_book makes a permanent enchantment book that teaches its default enchantment.",
+          "fieldType": "HybridMinecraftMaterialRefPicker",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9133e790-84ac-5632-9d53-2a8ca6940262",
+          "fieldName": "DefaultQuantity",
+          "label": "Default quantity",
+          "description": "How many items one stack has when the blueprint is handed out without a quantity of its own (e.g. a lootbox drop or the give command); kit contents set their own. 1 for almost everything; never more than the max stack size.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f1bb5058-17a4-559c-a998-0159f4d58fd2",
+          "fieldName": "MaxStackSize",
+          "label": "Max stack size",
+          "description": "Largest stack of this item when it is handed out. Normally the material's own: 64, 16 (snowballs, ender pearls) or 1 (tools, weapons, armour). 0 = use the material's.",
+          "fieldType": "Integer",
+          "defaultValue": "64",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "4bee2a77-f1e8-5cb0-907e-41864b4880df",
+      "stepName": "Catalog and price",
+      "description": "How admins find the item, and what kind of item it is. Create a missing category or grade on its own form first.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "1863e1cb-e898-5fb6-b9e1-f521a374023f",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The blueprint's catalog name, used in lists, pickers (kits, lootboxes) and /knk itemblueprints search. Usually the display name without colour codes.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4a4af5c9-aec0-5fdc-b5ff-dcbd79935bfb",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Admin note on what the item is for. Not shown in game: the tooltip text is the display description. Optional.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1de21a14-dfbc-5bf6-92e9-ff68f9710507",
+          "fieldName": "CategoryId",
+          "label": "Category",
+          "description": "Groups the item in the in-game item catalogue and puts it in the drop pool of the lootbox type for that category. Leave empty to keep it out of category-based lootboxes.",
+          "fieldType": "Object",
+          "objectType": "Category",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b57e25c1-16f3-54c8-ab68-0f7f1661454a",
+          "fieldName": "GradeId",
+          "label": "Grade",
+          "description": "The item's rarity: adds the star line to its lore and limits how far enchantment books can raise it. Lootbox pools only take graded items. Leave empty for items without a rarity, such as trade goods and books.",
+          "fieldType": "Object",
+          "objectType": "Grade",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1aa62904-768f-5dea-a631-23a5ca471872",
+          "fieldName": "BasePriceMin",
+          "label": "Lowest price",
+          "description": "Bottom of the item's price range for the planned supply-and-demand economy, which will move the price between the lowest and highest price. Not used in game yet; 0 = no price.",
+          "fieldType": "Decimal",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "70aa6f25-b040-5ac8-bc0d-0117851efdcc",
+          "fieldName": "BasePriceMax",
+          "label": "Highest price",
+          "description": "Top of the price range; at least the lowest price. 0 = no price.",
+          "fieldType": "Decimal",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "0991986c-60af-56ca-8b41-e70bd15b6435",
+      "stepName": "Default enchantments",
+      "description": "Enchantments every item made from this blueprint starts with. An item scan fills this list; add more with Create New Join Entry. On an enchantment-book blueprint this is the enchantment the book teaches.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "DefaultEnchantments",
+      "joinEntityType": "ItemBlueprintDefaultEnchantment",
+      "subConfigurationRef": {
+        "configurationGuid": "5c710b7f-8944-5625-b090-c4b22f5d4a02",
+        "entityTypeName": "ItemBlueprintDefaultEnchantment",
+        "name": "ItemBlueprintDefaultEnchantment - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "38df9958-150a-59bf-a0ac-af205cfc85bd",
+          "fieldName": "DefaultEnchantments",
+          "label": "Default enchantments",
+          "description": "One entry per enchantment, with its level. Lootbox rolls can add enchantments or raise these levels, never lower them.",
+          "fieldType": "List",
+          "objectType": "ItemBlueprintDefaultEnchantment",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "8dc61c9b-e679-5704-b31c-9634eccda789",
+      "stepName": "Origin",
+      "description": "Where the item comes from: the town, district or structure that produces it. Most items need one entry; add it with Create New Join Entry.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "Origins",
+      "joinEntityType": "ItemBlueprintOrigin",
+      "subConfigurationRef": {
+        "configurationGuid": "43894a91-f9ef-5379-962e-e6aa50ddb79d",
+        "entityTypeName": "ItemBlueprintOrigin",
+        "name": "ItemBlueprintOrigin - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "3636f3f5-8a2b-5466-9823-6413d92be76a",
+          "fieldName": "Origins",
+          "label": "Origins",
+          "description": "The entry with the lowest order number is shown in the item's lore as \"Origin: <place> (<type>)\". Later entries record places that altered the item. Optional.",
+          "fieldType": "List",
+          "objectType": "ItemBlueprintOrigin",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "90bc5ba3-e57f-5c1a-8d1c-5ee1e86e1498",
+      "stepName": "Tags",
+      "description": "Labels on this item itself, on top of its category's tags. Add each with Create New Join Entry; create the tag on the tag form first.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "Tags",
+      "joinEntityType": "ItemBlueprintTag",
+      "subConfigurationRef": {
+        "configurationGuid": "13075838-b6ee-5457-b46e-e284608867d4",
+        "entityTypeName": "ItemBlueprintTag",
+        "name": "ItemBlueprintTag - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "95dd521b-b4fd-50e0-967a-a0c8386bcc7f",
+          "fieldName": "Tags",
+          "label": "Tags",
+          "description": "Tag an item \"Lootbox Special\" to keep it out of normal lootbox pools; it then drops only through a lootbox special entry.",
+          "fieldType": "List",
+          "objectType": "ItemBlueprintTag",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -1,0 +1,28 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "13075838-b6ee-5457-b46e-e284608867d4",
+  "entityTypeName": "ItemBlueprintTag",
+  "name": "ItemBlueprintTag - Join Entry (seed v1)",
+  "description": "One tag on an item blueprint. Opened by Create New Join Entry on the item blueprint form's Tags step.",
+  "steps": [
+    {
+      "stepGuid": "33eaac99-54fd-5fc4-85ba-1a4cb864fbee",
+      "stepName": "Tag",
+      "description": "Pick the tag to add. The blueprint is the one you are editing.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "24f35013-48a5-552d-b3e8-afe0e0773e9b",
+          "fieldName": "TagId",
+          "label": "Tag",
+          "description": "An existing tag; each tag can be on an item once. \"Lootbox Special\" keeps the item out of normal lootbox pools.",
+          "fieldType": "Object",
+          "objectType": "Tag",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

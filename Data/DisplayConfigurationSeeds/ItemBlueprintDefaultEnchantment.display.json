@@ -1,0 +1,62 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "50fba8c3-26e4-5232-9f7f-91cc8daccbe4",
+  "entityTypeName": "ItemBlueprintDefaultEnchantment",
+  "name": "ItemBlueprintDefaultEnchantment - Default (seed v1)",
+  "description": "One default enchantment of an item blueprint, with its level. Normally seen on the blueprint's page; this page can only be opened once the API has an endpoint for single entries.",
+  "sections": [
+    {
+      "sectionGuid": "875d940f-ddfb-571c-819d-81d05adfb1ad",
+      "sectionName": "Default enchantment",
+      "description": "The enchantment and level new copies of the blueprint get.",
+      "fields": [
+        {
+          "fieldGuid": "79a64716-5bdd-5d6d-813a-06ce0c7929e5",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Item blueprint",
+          "description": "The blueprint this default belongs to.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "038070de-e640-5c9b-b5d6-745e19204acc",
+          "fieldName": "DisplayName",
+          "relatedEntityPropertyName": "EnchantmentDefinition",
+          "relatedEntityTypeName": "EnchantmentDefinition",
+          "label": "Enchantment",
+          "description": "The enchantment.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "04341744-05fb-59ac-9e13-4f8424b584aa",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "Level new copies get; at most the enchantment's max level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "52e736d6-dad3-5c57-b4a2-a16e1e458007",
+          "fieldName": "MaxLevel",
+          "relatedEntityPropertyName": "EnchantmentDefinition",
+          "relatedEntityTypeName": "EnchantmentDefinition",
+          "label": "Max level",
+          "description": "Highest level the enchantment allows.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "11abd762-8e3a-55ff-9594-1c8f46aa8bff",
+          "fieldName": "IsCustom",
+          "relatedEntityPropertyName": "EnchantmentDefinition",
+          "relatedEntityTypeName": "EnchantmentDefinition",
+          "label": "Custom",
+          "description": "A Knights and Kings enchantment rather than a vanilla one.",
+          "fieldType": "Boolean"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "No API endpoint returns a single ItemBlueprintDefaultEnchantment and the web app has no fetch-by-id for it, so /display/ItemBlueprintDefaultEnchantment/{id} fails today. Kept for completeness; see NOTES.md."
+  ]
+}

@@ -1,0 +1,248 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "1780c635-1a1f-5935-95d9-69248030a430",
+  "entityTypeName": "Kit",
+  "name": "Kit - Default (seed v1)",
+  "description": "A kit: a loadout of equipment and inventory items that players claim with /kit, staff give, or new players receive on first join, with optional access rules, cooldown and price.",
+  "steps": [
+    {
+      "stepGuid": "b167980f-e38c-5ba8-b1c0-d268679a27c3",
+      "stepName": "Kit",
+      "description": "Name the kit. To copy a loadout, wear and hold it in game, fill your inventory, and use Send to Minecraft on the name: the scan fills the Equipment and Contents steps and asks before overwriting.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4cf8b583-35b8-5f81-b78a-5aee08cda3f8",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Players claim the kit with /kit get <name> (any case), so keep it short and unique. The scan button on this field never changes the name.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"KitScan\"}}"
+        },
+        {
+          "fieldGuid": "49543d2f-79fd-557f-83e6-5ad2a78aac4b",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Optional; a short line about what the kit is for.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "5fc1b8b9-e19f-5446-a0de-faf825bd6b4d",
+      "stepName": "Equipment",
+      "description": "What the player wears and holds. Every slot is optional. If the player already has something in a slot, the kit's item goes to the first free inventory slot (or is dropped at their feet).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "8f8be6af-41ab-5e2f-ad14-b2bccb015617",
+          "fieldName": "HelmetId",
+          "label": "Helmet",
+          "description": "Worn on the head.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "25b39bec-9978-5b7a-ad45-c529598c075d",
+          "fieldName": "ChestplateId",
+          "label": "Chestplate",
+          "description": "Worn on the body.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "13077097-a131-55fb-af1a-030b2b30fb2b",
+          "fieldName": "LeggingsId",
+          "label": "Leggings",
+          "description": "Worn on the legs.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "87010921-1ab9-5016-83a7-254fe15946fa",
+          "fieldName": "BootsId",
+          "label": "Boots",
+          "description": "Worn on the feet.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e75b56cf-e1ac-5b30-ae1a-7cd82434b3dc",
+          "fieldName": "ShieldId",
+          "label": "Off-hand",
+          "description": "Placed in the off-hand; usually a shield, but any item works.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "25370c12-ca5d-59ed-b799-21f92842b4eb",
+          "fieldName": "HandId",
+          "label": "Main hand",
+          "description": "Placed in the hotbar slot the player has selected when the kit is granted.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b2795d6c-45e6-51bd-b9f2-4f6e76c5208b",
+      "stepName": "Contents",
+      "description": "Items placed in fixed inventory slots, one entry per slot. A kit scan fills this list; add or edit entries with Create New Join Entry.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "Contents",
+      "joinEntityType": "KitContent",
+      "subConfigurationRef": {
+        "configurationGuid": "1e25a1bf-c5da-5cea-9c22-cb0aa3930e88",
+        "entityTypeName": "KitContent",
+        "name": "KitContent - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "5ca414cd-b261-5351-99fd-e9876376987d",
+          "fieldName": "Contents",
+          "label": "Inventory slots",
+          "description": "Each entry is an item, a slot (0-35) and a quantity.",
+          "fieldType": "List",
+          "objectType": "KitContent",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "2e65f9ba-6221-507a-a842-6513d27d65aa",
+      "stepName": "Who can claim",
+      "description": "Who may claim the kit, and whether new players get it automatically. The three requirements are optional and must all be met.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b0784968-b0aa-5403-8eb5-5d91f50b2377",
+          "fieldName": "MinTitleBracketId",
+          "label": "Minimum title",
+          "description": "Players below this title (by experience) can't claim the kit. Empty = any title.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "493a8aa3-89c4-5fcf-93e5-c1390a070b4a",
+          "fieldName": "RequiredPermissionGroupId",
+          "label": "Permission group",
+          "description": "Only active members of this group can claim it, e.g. a premium tier such as Noble for a tier-only kit. Membership of another group doesn't count.",
+          "fieldType": "Object",
+          "objectType": "PermissionGroup",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "14a50874-91a7-5d56-8561-f558005377ca",
+          "fieldName": "RequiredPermissionNode",
+          "label": "Permission node",
+          "placeholder": "knk.kit.archer",
+          "description": "Players need this permission (directly or through a group). Empty = no permission needed.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8e30287a-b52d-57a3-ae39-ca67f16d577e",
+          "fieldName": "GrantOnFirstJoin",
+          "label": "Give on first join",
+          "description": "Every new player gets this kit once on their first join, free and without cooldown; the requirements above still apply.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "c1c6698b-66cb-5fdc-8402-2917e6dcab53",
+      "stepName": "Cooldown and price",
+      "description": "How often the kit can be claimed and what it costs. A premium kit is bought once with Gems; after that it is free and has no cooldown.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "9819f45f-53f9-5f96-b558-5dff56533577",
+          "fieldName": "CooldownSeconds",
+          "label": "Cooldown (seconds)",
+          "description": "Time a player must wait after claiming before claiming again, e.g. 86400 = once a day. 0 = no cooldown.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7fadd3d2-94ad-596a-88d8-7bb5ed3958cc",
+          "fieldName": "CostAmount",
+          "label": "Price per claim",
+          "description": "Taken from the player's balance on every claim (0 or more; at most 999,999,999 Coins or 999,999 Gems). Empty or 0 = free.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "93dc4013-3253-5823-a8b5-a8972e1c2ba7",
+          "fieldName": "CostCurrency",
+          "label": "Price currency",
+          "description": "Coins (earned in game) or Gems (premium). Needed for the price to apply: a price without a currency charges nothing.",
+          "fieldType": "Enum",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Coins\", \"Gems\"]}"
+        },
+        {
+          "fieldGuid": "831425bd-f5f6-5ac4-ac42-051b977e7eab",
+          "fieldName": "IsSinglePurchasePremium",
+          "label": "Premium kit (buy once)",
+          "description": "Players must buy the kit once with Gems before they can claim it; after that, claims are free and have no cooldown.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "97327fdf-3e88-5d0e-8855-54c605074df8",
+          "fieldName": "PremiumPriceGems",
+          "label": "Premium price (Gems)",
+          "description": "One-time price in Gems, 1-999,999. A premium kit without a price can't be bought.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "831425bd-f5f6-5ac4-ac42-051b977e7eab",
+                  "operator": "Equals",
+                  "valueJson": "true"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}
