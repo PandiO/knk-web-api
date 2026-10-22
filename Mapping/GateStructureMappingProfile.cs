@@ -29,6 +29,13 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.HouseNumber, opt => opt.MapFrom(src => src.HouseNumber))
                 .ForMember(dest => dest.IconMaterialRefId, opt => opt.MapFrom(src => src.IconMaterialRefId))
 
+                // Warp destination settings (KNG-229)
+                .ForMember(dest => dest.TeleportEnabled, opt => opt.MapFrom(src => src.TeleportEnabled))
+                .ForMember(dest => dest.TeleportPriceGems, opt => opt.MapFrom(src => src.TeleportPriceGems))
+                .ForMember(dest => dest.TeleportMinTitleBracketId, opt => opt.MapFrom(src => src.TeleportMinTitleBracketId))
+                .ForMember(dest => dest.TeleportMinPremiumGroupId, opt => opt.MapFrom(src => src.TeleportMinPremiumGroupId))
+                .ForMember(dest => dest.TeleportRequiresDiscovery, opt => opt.MapFrom(src => src.TeleportRequiresDiscovery))
+
                 // Guard & Defense System
                 .ForMember(dest => dest.GuardSpawnLocationIds, opt => opt.MapFrom(src => src.GuardSpawnLocations.Select(l => l.Id).ToList()))
                 .ForMember(dest => dest.GuardSpawnLocations, opt => opt.MapFrom(src => src.GuardSpawnLocations))
@@ -137,6 +144,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Location, opt => opt.Ignore())
                 .ForMember(dest => dest.GuardSpawnLocations, opt => opt.Ignore())
                 .ForMember(dest => dest.IconMaterial, opt => opt.Ignore())
+                .IgnoreTeleportSettings()
                 .IgnoreNavigationDefault();
 
             // GateStructure -> GateStructureListDto (for search results)
