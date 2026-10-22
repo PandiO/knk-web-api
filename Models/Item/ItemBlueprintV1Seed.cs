@@ -143,7 +143,6 @@ public static class ItemBlueprintV1Seed
 
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftEnchantmentCatalogService? enchantmentCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -214,17 +213,15 @@ public static class ItemBlueprintV1Seed
                 continue;
             }
 
-            var catalogEntry = enchantmentCatalog?.GetByNamespaceKey(key);
+            // KNG-250: no static catalogue; the server scan fills in names and levels of the Unverified ref.
+            var maxLevel = ItemBlueprintV1Seed.SeedMaxLevel(key);
             if (!enchantmentRefs.TryGetValue(key, out var enchantmentRef))
             {
                 enchantmentRef = new MinecraftEnchantmentRef
                 {
                     NamespaceKey = key,
-                    LegacyName = catalogEntry?.LegacyName,
-                    Category = catalogEntry?.Category,
-                    IconUrl = catalogEntry?.IconUrl,
-                    MaxLevel = catalogEntry?.MaxLevel ?? 1,
-                    DisplayName = catalogEntry?.DisplayName ?? ToDisplayName(key),
+                    DisplayName = ToDisplayName(key),
+                    MaxLevel = maxLevel,
                     IsCustom = false,
                 };
                 context.MinecraftEnchantmentRefs.Add(enchantmentRef);
@@ -235,10 +232,10 @@ public static class ItemBlueprintV1Seed
             var definition = new EnchantmentDefinition
             {
                 Key = key,
-                DisplayName = catalogEntry?.DisplayName ?? ToDisplayName(key),
+                DisplayName = ToDisplayName(key),
                 Description = string.Empty,
                 IsCustom = false,
-                MaxLevel = catalogEntry?.MaxLevel ?? 1,
+                MaxLevel = maxLevel,
                 BaseEnchantmentRef = enchantmentRef,
             };
             context.EnchantmentDefinitions.Add(definition);
@@ -303,6 +300,19 @@ public static class ItemBlueprintV1Seed
             created.Count == 0 ? "nothing" : string.Join(", ", created.Select(kv => $"{kv.Value} {kv.Key}")),
             reused.Count == 0 ? "none" : string.Join(", ", reused));
     }
+
+    /// <summary>
+    /// The level a seeded vanilla EnchantmentDefinition (and its Unverified ref) starts with: the highest level the
+    /// lootbox seed rolls or gives for the key, at least 1, so seeded enchant rolls stay valid without a catalogue.
+    /// Blueprint levels may exceed it, as before. The server scan then raises it to the vanilla maximum, because
+    /// the definition still has its ref's level (KNG-250 §12.4).
+    /// </summary>
+    internal static int SeedMaxLevel(string key) =>
+        LootboxSeed.SeededEnchantmentLevels
+            .Where(e => string.Equals(e.Key, key, StringComparison.OrdinalIgnoreCase))
+            .Select(e => e.Level)
+            .DefaultIfEmpty(1)
+            .Max();
 
     // Vanilla keys match as-is ("minecraft:sharpness"); custom keys match the way the plugin's
     // EnchantmentDefinitionBukkitMapper resolves them ("blindness", "knk:blindness" and

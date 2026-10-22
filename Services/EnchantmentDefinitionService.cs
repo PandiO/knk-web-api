@@ -3,6 +3,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Services
 {
@@ -10,18 +11,15 @@ namespace knkwebapi_v2.Services
     {
         private readonly IEnchantmentDefinitionRepository _repo;
         private readonly IMinecraftEnchantmentRefRepository _enchantmentRefRepo;
-        private readonly IMinecraftEnchantmentCatalogService _enchantmentCatalog;
         private readonly IMapper _mapper;
 
         public EnchantmentDefinitionService(
             IEnchantmentDefinitionRepository repo,
             IMinecraftEnchantmentRefRepository enchantmentRefRepo,
-            IMinecraftEnchantmentCatalogService enchantmentCatalog,
             IMapper mapper)
         {
             _repo = repo;
             _enchantmentRefRepo = enchantmentRefRepo;
-            _enchantmentCatalog = enchantmentCatalog;
             _mapper = mapper;
         }
 
@@ -47,7 +45,7 @@ namespace knkwebapi_v2.Services
             ValidateAbilityInvariant(dto.IsCustom, dto.AbilityDefinition);
 
             // Ensure base enchantment ref exists
-            var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey);
+            var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, dto.IsCustom);
 
             var entity = _mapper.Map<EnchantmentDefinition>(dto);
             entity.MinecraftEnchantmentRefId = baseEnchantmentRefId;
@@ -74,7 +72,7 @@ namespace knkwebapi_v2.Services
             ValidateAbilityInvariant(dto.IsCustom, dto.AbilityDefinition);
 
             // Ensure base enchantment ref exists
-            var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, existing.MinecraftEnchantmentRefId);
+            var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, dto.IsCustom, existing.MinecraftEnchantmentRefId);
 
             // Update properties
             existing.Key = dto.Key;
@@ -136,7 +134,7 @@ namespace knkwebapi_v2.Services
             return _mapper.Map<PagedResultDto<EnchantmentDefinitionListDto>>(result);
         }
 
-        private async Task<int?> EnsureEnchantmentRefAsync(int? explicitId, string? namespaceKey, int? currentId = null)
+        private async Task<int?> EnsureEnchantmentRefAsync(int? explicitId, string? namespaceKey, bool isCustom, int? currentId = null)
         {
             // If explicit ID provided, validate and return
             if (explicitId.HasValue && explicitId > 0)
@@ -151,25 +149,20 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(namespaceKey))
                 return currentId;
 
-            var key = namespaceKey.Trim();
+            // KNG-250: no catalogue lookup. A bare key of a custom definition belongs in the knk namespace; an unknown
+            // key becomes an Unverified ref that the next server scan confirms, merges or marks Missing.
+            var key = MinecraftEnchantmentKey.Normalize(namespaceKey, isCustom);
 
             // Check if enchantment ref already exists
             var existing = await _enchantmentRefRepo.GetByNamespaceKeyAsync(key);
             if (existing != null)
                 return existing.Id;
 
-            // Look up catalog info
-            var catalogEntry = _enchantmentCatalog.GetByNamespaceKey(key);
-
             var newEnchRef = new MinecraftEnchantmentRef
             {
                 NamespaceKey = key,
-                Category = catalogEntry?.Category ?? "Uncategorized",
-                LegacyName = catalogEntry?.LegacyName,
-                DisplayName = catalogEntry?.DisplayName,
-                MaxLevel = catalogEntry?.MaxLevel ?? 1,
-                IconUrl = catalogEntry?.IconUrl,
-                IsCustom = catalogEntry == null // If not in catalog, it's custom
+                DisplayName = MinecraftNamespaceKey.DisplayNameFromKey(key),
+                IsCustom = MinecraftEnchantmentKey.IsCustomKey(key),
             };
 
             await _enchantmentRefRepo.AddAsync(newEnchRef);

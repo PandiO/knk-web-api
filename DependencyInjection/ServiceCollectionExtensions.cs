@@ -81,7 +81,6 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.MinecraftCatalog.IMinecraftIconResolver, knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconResolver>();
             services.AddScoped<IMinecraftEnchantmentRefRepository, MinecraftEnchantmentRefRepository>();
             services.AddScoped<IMinecraftEnchantmentRefService, MinecraftEnchantmentRefService>();
-            services.AddSingleton<IMinecraftEnchantmentCatalogService, MinecraftEnchantmentCatalogService>();
             services.AddScoped<IFormConfigurationRepository, FormConfigurationRepository>();
             services.AddScoped<IFormConfigurationService, FormConfigurationService>();
             // KNG-138: bundled FormConfiguration seed files, imported on request (no startup seeder).

@@ -1748,6 +1748,11 @@ public partial class KnKDbContext : DbContext
             entity.ToTable("minecraftenchantmentrefs");
             entity.HasIndex(e => e.NamespaceKey).IsUnique();
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
+            // KNG-250 catalogue fields (docs/specs/minecraft-catalog/IMPLEMENTATION_PLAN.md §12).
+            entity.Property(e => e.CatalogStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.FirstSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.LastSeenVersion).HasMaxLength(32);
+            entity.HasIndex(e => e.CatalogStatus);
         });
 
         modelBuilder.Entity<AbilityDefinition>(entity =>

@@ -37,6 +37,25 @@ public class MinecraftCatalogScan
 
     public int IconsMissing { get; set; }
 
+    // KNG-250: the enchantment part of a schema 2 snapshot (null/0 for schema 1).
+    public int? EnchantmentCount { get; set; }
+
+    public int EnchantmentsInserted { get; set; }
+
+    public int EnchantmentsUpdated { get; set; }
+
+    public int EnchantmentsUnchanged { get; set; }
+
+    public int EnchantmentsMerged { get; set; }
+
+    public int EnchantmentsDeleted { get; set; }
+
+    public int EnchantmentsMarkedMissing { get; set; }
+
+    public int EnchantmentDefinitionsCreated { get; set; }
+
+    public int EnchantmentDefinitionsLinked { get; set; }
+
     public string? Error { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
