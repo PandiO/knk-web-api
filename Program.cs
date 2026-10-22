@@ -60,8 +60,13 @@ var startupWarnings = knkwebapi_v2.Configuration.StartupSecurity.ApplySecretChec
 string? connectionString = builder.Configuration.GetConnectionString("MySqlDbConnection");
 // Once per process, not per DbContext: Database:MySqlServerVersion, else one AutoDetect on first use.
 var mySqlServerVersion = new knkwebapi_v2.Configuration.MySqlServerVersionResolver(builder.Configuration, connectionString);
-builder.Services.AddDbContext<KnKDbContext>(options =>
-    options.UseMySql(connectionString, mySqlServerVersion.Version));
+// KNG-232: database command durations (meter Knk.Db) through an EF Core interceptor.
+builder.Services.AddSingleton<knkwebapi_v2.Services.Telemetry.DbCommandMetrics>();
+builder.Services.AddSingleton<knkwebapi_v2.Services.Telemetry.DbCommandMetricsInterceptor>();
+builder.Services.AddSingleton<knkwebapi_v2.Services.Telemetry.ProcessMetrics>();
+builder.Services.AddDbContext<KnKDbContext>((serviceProvider, options) =>
+    options.UseMySql(connectionString, mySqlServerVersion.Version)
+        .AddInterceptors(serviceProvider.GetRequiredService<knkwebapi_v2.Services.Telemetry.DbCommandMetricsInterceptor>()));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 
@@ -137,12 +142,35 @@ builder.Services.AddSingleton<knkwebapi_v2.Services.Interfaces.IClientActivitySt
 var telemetryOptions = builder.Configuration.GetSection(knkwebapi_v2.Configuration.TelemetryOptions.SectionName)
     .Get<knkwebapi_v2.Configuration.TelemetryOptions>() ?? new knkwebapi_v2.Configuration.TelemetryOptions();
 
+// KNG-232: the Prometheus scrape endpoint is off by default and needs a bearer token outside Development.
+var prometheusProblem = knkwebapi_v2.Services.Telemetry.MetricsEndpoint.Problem(
+    telemetryOptions.Prometheus, builder.Environment.IsDevelopment());
+if (telemetryOptions.Enabled && prometheusProblem != null)
+{
+    throw new InvalidOperationException("Refusing to start: " + prometheusProblem + ".");
+}
+var prometheusEnabled = telemetryOptions.Enabled && telemetryOptions.Prometheus.Enabled;
+
 if (telemetryOptions.Enabled)
 {
     builder.Services.AddOpenTelemetry()
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation();
+            // KNG-232: .NET runtime (GC, heap, thread pool), outbound HttpClient, process/cgroup and DB command metrics.
+            metrics.AddRuntimeInstrumentation();
+            metrics.AddHttpClientInstrumentation();
+            metrics.AddMeter(knkwebapi_v2.Services.Telemetry.ProcessMetrics.MeterName);
+            metrics.AddMeter(knkwebapi_v2.Services.Telemetry.DbCommandMetrics.MeterName);
+            metrics.AddView(knkwebapi_v2.Services.Telemetry.DbCommandMetrics.DurationName,
+                new OpenTelemetry.Metrics.ExplicitBucketHistogramConfiguration
+                {
+                    Boundaries = knkwebapi_v2.Services.Telemetry.DbCommandMetrics.BucketBoundaries
+                });
+            if (prometheusEnabled)
+            {
+                metrics.AddPrometheusExporter();
+            }
             metrics.AddMeter(knkwebapi_v2.Services.Lootbox.LootboxMetrics.MeterName);
             // Currency ledger counters and lock-wait histogram (currency-payments Phase 5).
             metrics.AddMeter(knkwebapi_v2.Services.CurrencyMetrics.MeterName);
@@ -272,9 +300,15 @@ if (hasHttpsListener)
     app.UseHttpsRedirection();
 }
 
-// TODO: Prometheus exporter endpoint can be added with OpenTelemetry Prometheus AspNetCore package
-
 app.MapControllers();
+
+// KNG-232: Prometheus scrape endpoint (own bearer-token gate, not an MVC action). Never route it through the ingress.
+if (prometheusEnabled)
+{
+    knkwebapi_v2.Services.Telemetry.MetricsEndpoint.MapKnkMetrics(app, telemetryOptions.Prometheus);
+}
+// Instruments are only observed while this singleton lives.
+app.Services.GetRequiredService<knkwebapi_v2.Services.Telemetry.ProcessMetrics>();
 
 using (var scope = app.Services.CreateScope())
 {

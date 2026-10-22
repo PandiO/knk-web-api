@@ -65,7 +65,14 @@ public class PrometheusExporterOptions
     public string Endpoint { get; set; } = "/metrics";
 
     /// <summary>
-    /// Enable Prometheus metrics scraping.
+    /// Serve the Prometheus scrape endpoint (KNG-232). Off by default; outside Development it also needs
+    /// <see cref="BearerToken"/> (the API refuses to start without one). Requires <c>Telemetry:Enabled</c>.
     /// </summary>
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; } = false;
+
+    /// <summary>
+    /// Bearer token a scraper must send (<c>Authorization: Bearer ...</c>); set it with
+    /// <c>Telemetry__Prometheus__BearerToken</c>. Empty is only allowed in Development.
+    /// </summary>
+    public string BearerToken { get; set; } = string.Empty;
 }
