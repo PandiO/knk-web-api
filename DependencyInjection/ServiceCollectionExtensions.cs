@@ -73,9 +73,14 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();
             services.AddScoped<IMinecraftBlockRefService, MinecraftBlockRefService>();
+            services.AddScoped<IMinecraftCatalogMaintenanceService, knkwebapi_v2.Services.MinecraftCatalog.MinecraftCatalogMaintenanceService>();
+            services.AddScoped<IMinecraftCatalogScanService, knkwebapi_v2.Services.MinecraftCatalog.MinecraftCatalogScanService>();
+            services.AddSingleton(sp => sp.GetRequiredService<IConfiguration>()
+                .GetSection(knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconOptions.SectionName)
+                .Get<knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconOptions>() ?? new knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconOptions());
+            services.AddScoped<knkwebapi_v2.Services.MinecraftCatalog.IMinecraftIconResolver, knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconResolver>();
             services.AddScoped<IMinecraftEnchantmentRefRepository, MinecraftEnchantmentRefRepository>();
             services.AddScoped<IMinecraftEnchantmentRefService, MinecraftEnchantmentRefService>();
-            services.AddSingleton<IMinecraftMaterialCatalogService, MinecraftMaterialCatalogService>();
             services.AddSingleton<IMinecraftEnchantmentCatalogService, MinecraftEnchantmentCatalogService>();
             services.AddScoped<IFormConfigurationRepository, FormConfigurationRepository>();
             services.AddScoped<IFormConfigurationService, FormConfigurationService>();

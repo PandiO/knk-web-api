@@ -27,6 +27,11 @@ namespace knkwebapi_v2.Dtos
         // Player-driven KitScan WorldTask (docs/specs/kits/DESIGN.md §6) - same shape as
         // ItemScan, handled entirely by knk-plugin's KitScanTaskHandler.
         public const string KitScan = "KitScan";
+
+        // Headless scan of the server's Minecraft registry (KNG-200, docs/specs/minecraft-catalog/
+        // IMPLEMENTATION_PLAN.md §5.2a) - knk-plugin's MinecraftCatalogScanTaskHandler sends the snapshot
+        // to api/MinecraftCatalog/scans/{id}/snapshot, then completes the task.
+        public const string MinecraftCatalogScan = "MinecraftCatalogScan";
     }
 
     /// <summary>

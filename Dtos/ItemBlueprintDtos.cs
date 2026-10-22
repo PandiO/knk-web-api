@@ -225,6 +225,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("iconNamespaceKey")]
         public string? IconNamespaceKey { get; set; }
 
+        /// <summary>KNG-200: the icon material's picture (manual override first), for the blueprint overview.</summary>
+        [JsonPropertyName("iconUrl")]
+        public string? IconUrl { get; set; }
+
         [JsonPropertyName("categoryId")]
         public int? CategoryId { get; set; }
 

@@ -18,6 +18,28 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("iconUrl")]
         public string? IconUrl { get; set; }
+
+        // KNG-200 catalogue fields (read-only; set by the backfill and the server scan).
+        [JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; }
+
+        [JsonPropertyName("isItem")]
+        public bool? IsItem { get; set; }
+
+        [JsonPropertyName("isBlock")]
+        public bool? IsBlock { get; set; }
+
+        [JsonPropertyName("maxStackSize")]
+        public int? MaxStackSize { get; set; }
+
+        [JsonPropertyName("defaultBlockState")]
+        public string? DefaultBlockState { get; set; }
+
+        [JsonPropertyName("catalogStatus")]
+        public string? CatalogStatus { get; set; }
+
+        [JsonPropertyName("lastSeenVersion")]
+        public string? LastSeenVersion { get; set; }
     }
 
     public class MinecraftMaterialRefCreateDto
@@ -72,5 +94,15 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("iconUrl")]
         public string? IconUrl { get; set; }
+
+        // KNG-200 catalogue fields; null on hybrid rows from the static catalogue.
+        [JsonPropertyName("isItem")]
+        public bool? IsItem { get; set; }
+
+        [JsonPropertyName("isBlock")]
+        public bool? IsBlock { get; set; }
+
+        [JsonPropertyName("catalogStatus")]
+        public string? CatalogStatus { get; set; }
     }
 }

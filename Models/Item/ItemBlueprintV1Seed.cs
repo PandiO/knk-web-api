@@ -2,6 +2,7 @@ using knkwebapi_v2.Properties;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Models;
 
@@ -32,7 +33,7 @@ public static class ItemBlueprintV1Seed
 {
     public const string LegacyTag = "Legacy v1";
 
-    // Fallback MinecraftMaterialRef.Category when the static catalog doesn't know the key.
+    // MinecraftMaterialRef.Category for a material this seed creates (the server scan sets the real flags).
     private const string FallbackMaterialCategory = "ITEM";
 
     private static readonly (string Name, string IconKey)[] Categories =
@@ -142,7 +143,6 @@ public static class ItemBlueprintV1Seed
 
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog = null,
         IMinecraftEnchantmentCatalogService? enchantmentCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
@@ -158,21 +158,10 @@ public static class ItemBlueprintV1Seed
         var materials = ByKey(
             await context.MinecraftMaterialRefs.Where(m => iconKeys.Contains(m.NamespaceKey)).ToListAsync(cancellationToken),
             m => m.NamespaceKey, m => m.Id);
-        var materialCatalogByKey = materialCatalog?.GetAll()
-            .GroupBy(e => e.NamespaceKey, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase)
-            ?? new Dictionary<string, MinecraftMaterialCatalogEntry>(StringComparer.OrdinalIgnoreCase);
         foreach (var key in iconKeys)
         {
             if (materials.ContainsKey(key)) continue;
-            materialCatalogByKey.TryGetValue(key, out var entry);
-            var material = new MinecraftMaterialRef
-            {
-                NamespaceKey = key,
-                Category = entry?.Category ?? FallbackMaterialCategory,
-                LegacyName = entry?.LegacyName,
-                IconUrl = entry?.IconUrl,
-            };
+            var material = MinecraftMaterialRefFactory.NewUnverified(key, FallbackMaterialCategory);
             context.MinecraftMaterialRefs.Add(material);
             materials[key] = material;
             Count(nameof(MinecraftMaterialRef));
