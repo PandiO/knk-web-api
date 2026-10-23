@@ -319,26 +319,31 @@ public class AbilityDefinition
         AbilityCatalogEntry entry)
     {
         var aliases = BuildAliasSet(entry);
-        return customEnchantments.FirstOrDefault(e => aliases.Contains(NormalizeKey(e.Key)));
+        return customEnchantments.FirstOrDefault(e => aliases.Contains(MatchKey(e.Key)));
     }
 
     private static HashSet<string> BuildAliasSet(AbilityCatalogEntry entry)
     {
         var aliases = new HashSet<string>(StringComparer.Ordinal)
         {
-            NormalizeKey(entry.EnchantmentKey),
-            NormalizeKey(entry.AbilityKey)
+            MatchKey(entry.EnchantmentKey),
+            MatchKey(entry.AbilityKey)
         };
 
         foreach (var alias in entry.MatchAliases)
         {
-            aliases.Add(NormalizeKey(alias));
+            aliases.Add(MatchKey(alias));
         }
 
         return aliases;
     }
 
-    private static string NormalizeKey(string value)
+    /// <summary>
+    /// The form custom-enchantment keys are compared in: no namespace, lower-case letters and digits only
+    /// (<c>knk:flash_chaos</c>, <c>flash_chaos</c> and <c>flashchaos</c> are equal). Also used by the
+    /// Minecraft catalogue scan to match old custom refs and definitions to scanned <c>knk:</c> keys (KNG-250).
+    /// </summary>
+    public static string MatchKey(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {

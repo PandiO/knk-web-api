@@ -13,7 +13,6 @@ public class EnchantmentDefinitionServiceTests
 {
     private readonly Mock<IEnchantmentDefinitionRepository> _enchantmentRepo;
     private readonly Mock<IMinecraftEnchantmentRefRepository> _enchantmentRefRepo;
-    private readonly Mock<IMinecraftEnchantmentCatalogService> _catalogService;
     private readonly Mock<IMapper> _mapper;
     private readonly EnchantmentDefinitionService _service;
 
@@ -21,13 +20,11 @@ public class EnchantmentDefinitionServiceTests
     {
         _enchantmentRepo = new Mock<IEnchantmentDefinitionRepository>();
         _enchantmentRefRepo = new Mock<IMinecraftEnchantmentRefRepository>();
-        _catalogService = new Mock<IMinecraftEnchantmentCatalogService>();
         _mapper = new Mock<IMapper>();
 
         _service = new EnchantmentDefinitionService(
             _enchantmentRepo.Object,
             _enchantmentRefRepo.Object,
-            _catalogService.Object,
             _mapper.Object);
     }
 

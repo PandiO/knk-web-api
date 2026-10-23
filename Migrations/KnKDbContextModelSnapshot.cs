@@ -3659,6 +3659,33 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("Deleted")
                         .HasColumnType("int");
 
+                    b.Property<int?>("EnchantmentCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentDefinitionsCreated")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentDefinitionsLinked")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsDeleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsInserted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsMarkedMissing")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsMerged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsUnchanged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsUpdated")
+                        .HasColumnType("int");
+
                     b.Property<int?>("EntryCount")
                         .HasColumnType("int");
 
@@ -3722,17 +3749,33 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CatalogStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<string>("Category")
                         .HasColumnType("longtext");
 
                     b.Property<string>("DisplayName")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("FirstSeenVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
                     b.Property<string>("IconUrl")
                         .HasColumnType("longtext");
 
                     b.Property<bool>("IsCustom")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("LastScanId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastSeenVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<string>("LegacyName")
                         .HasColumnType("longtext");
@@ -3747,6 +3790,8 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasKey("Id")
                         .HasName("PRIMARY");
+
+                    b.HasIndex("CatalogStatus");
 
                     b.HasIndex("NamespaceKey")
                         .IsUnique();

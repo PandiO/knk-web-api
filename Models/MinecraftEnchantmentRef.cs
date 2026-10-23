@@ -1,8 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Enums;
 
 namespace knkwebapi_v2.Models;
 
+/// <summary>
+/// The catalogue entry for one enchantment (KNG-250): vanilla ones from the server's enchantment registry,
+/// custom ones (<c>knk:&lt;id&gt;</c>) from knk-plugin's EnchantmentRegistry, both filled by the server scan.
+/// </summary>
 [FormConfigurableEntity("MinecraftEnchantmentRef")]
 public class MinecraftEnchantmentRef
 {
@@ -14,6 +19,7 @@ public class MinecraftEnchantmentRef
 
     public string? LegacyName { get; set; }
 
+    /// <summary>Legacy category (Weapon, Armor, ...) for vanilla rows; ATTACK/SUPPORT for custom ones.</summary>
     public string? Category { get; set; }
 
     public string? IconUrl { get; set; }
@@ -24,7 +30,13 @@ public class MinecraftEnchantmentRef
 
     public bool IsCustom { get; set; } = false;
 
-    // TODO: Future extension—custom enchantment metadata/rules
-    // - EnchantmentDefinition with effects/conflicts/allowed item types
-    // - Plugin-driven custom enchantment engine (knk:* namespace)
+    public MinecraftCatalogStatus CatalogStatus { get; set; } = MinecraftCatalogStatus.Unverified;
+
+    [MaxLength(32)]
+    public string? FirstSeenVersion { get; set; }
+
+    [MaxLength(32)]
+    public string? LastSeenVersion { get; set; }
+
+    public int? LastScanId { get; set; }
 }

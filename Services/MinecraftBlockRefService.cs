@@ -139,8 +139,7 @@ namespace knkwebapi_v2.Services
 
             // KNG-200: block refs are always saved rows; the picker flags are not filters.
             var query = _mapper.Map<PagedQuery>(queryDto);
-            query.Filters?.Remove("Picker");
-            query.Filters?.Remove("SearchHybrid");
+            query.Filters?.Remove(MinecraftPickerFilters.Picker);
             var result = await _repo.SearchAsync(query);
             return _mapper.Map<PagedResultDto<MinecraftBlockRefListDto>>(result);
         }

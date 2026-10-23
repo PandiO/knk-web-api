@@ -75,6 +75,41 @@ namespace knkwebapi_v2.Dtos
         public string? StateKey { get; set; }
     }
 
+    /// <summary>An enchantment the latest scan didn't see that definitions still use (KNG-250).</summary>
+    public class MinecraftCatalogAuditEnchantmentDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("namespaceKey")]
+        public string NamespaceKey { get; set; } = null!;
+
+        [JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; }
+
+        [JsonPropertyName("isCustom")]
+        public bool IsCustom { get; set; }
+
+        [JsonPropertyName("catalogStatus")]
+        public string CatalogStatus { get; set; } = null!;
+
+        [JsonPropertyName("definitions")]
+        public List<MinecraftCatalogAuditDefinitionDto> Definitions { get; set; } = new();
+    }
+
+    /// <summary>An EnchantmentDefinition in the audit.</summary>
+    public class MinecraftCatalogAuditDefinitionDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("key")]
+        public string Key { get; set; } = null!;
+
+        [JsonPropertyName("displayName")]
+        public string DisplayName { get; set; } = null!;
+    }
+
     /// <summary>Read-only report of what blocks the phase 4 constraints and what needs a merge (KNG-200 §8 step 3).</summary>
     public class MinecraftCatalogAuditDto
     {
@@ -128,6 +163,16 @@ namespace knkwebapi_v2.Dtos
         /// <summary>Block refs whose stored key, state or StateKey differs from the canonical form or from their material.</summary>
         [JsonPropertyName("notCanonicalBlockRefs")]
         public List<MinecraftCatalogAuditBlockDto> NotCanonicalBlockRefs { get; set; } = new();
+
+        [JsonPropertyName("enchantmentCount")]
+        public int EnchantmentCount { get; set; }
+
+        [JsonPropertyName("unverifiedEnchantmentCount")]
+        public int UnverifiedEnchantmentCount { get; set; }
+
+        /// <summary>Enchantments not in the latest scan that definitions still use (KNG-250).</summary>
+        [JsonPropertyName("missingEnchantmentsReferenced")]
+        public List<MinecraftCatalogAuditEnchantmentDto> MissingEnchantmentsReferenced { get; set; } = new();
     }
 
     /// <summary>A scan as the admin page and the plugin see it (KNG-200 plan §5.2a).</summary>
@@ -175,6 +220,34 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("iconsMissing")]
         public int IconsMissing { get; set; }
 
+        /// <summary>Enchantments in the snapshot (KNG-250); null for a schema 1 snapshot.</summary>
+        [JsonPropertyName("enchantmentCount")]
+        public int? EnchantmentCount { get; set; }
+
+        [JsonPropertyName("enchantmentsInserted")]
+        public int EnchantmentsInserted { get; set; }
+
+        [JsonPropertyName("enchantmentsUpdated")]
+        public int EnchantmentsUpdated { get; set; }
+
+        [JsonPropertyName("enchantmentsUnchanged")]
+        public int EnchantmentsUnchanged { get; set; }
+
+        [JsonPropertyName("enchantmentsMerged")]
+        public int EnchantmentsMerged { get; set; }
+
+        [JsonPropertyName("enchantmentsDeleted")]
+        public int EnchantmentsDeleted { get; set; }
+
+        [JsonPropertyName("enchantmentsMarkedMissing")]
+        public int EnchantmentsMarkedMissing { get; set; }
+
+        [JsonPropertyName("enchantmentDefinitionsCreated")]
+        public int EnchantmentDefinitionsCreated { get; set; }
+
+        [JsonPropertyName("enchantmentDefinitionsLinked")]
+        public int EnchantmentDefinitionsLinked { get; set; }
+
         [JsonPropertyName("error")]
         public string? Error { get; set; }
 
@@ -185,7 +258,7 @@ namespace knkwebapi_v2.Dtos
         public DateTime? CompletedAt { get; set; }
     }
 
-    /// <summary>The snapshot knk-plugin sends with <c>PUT api/MinecraftCatalog/scans/{id}/snapshot</c> (schema version 1).</summary>
+    /// <summary>The snapshot knk-plugin sends with <c>PUT api/MinecraftCatalog/scans/{id}/snapshot</c> (schema version 1 or 2).</summary>
     public class MinecraftCatalogSnapshotDto
     {
         [JsonPropertyName("schemaVersion")]
@@ -202,6 +275,33 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("entries")]
         public List<MinecraftCatalogEntryDto>? Entries { get; set; }
+
+        /// <summary>Schema 2 (KNG-250): vanilla and custom enchantments.</summary>
+        [JsonPropertyName("enchantments")]
+        public List<MinecraftCatalogEnchantmentDto>? Enchantments { get; set; }
+    }
+
+    /// <summary>One enchantment of a schema 2 snapshot: the server's registry or knk-plugin's custom ones (KNG-250 §12.2).</summary>
+    public class MinecraftCatalogEnchantmentDto
+    {
+        [JsonPropertyName("key")]
+        public string Key { get; set; } = null!;
+
+        [JsonPropertyName("isCustom")]
+        public bool IsCustom { get; set; }
+
+        [JsonPropertyName("maxLevel")]
+        public int? MaxLevel { get; set; }
+
+        [JsonPropertyName("translationKey")]
+        public string? TranslationKey { get; set; }
+
+        [JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; }
+
+        /// <summary>ATTACK/SUPPORT for custom enchantments; null for vanilla ones.</summary>
+        [JsonPropertyName("category")]
+        public string? Category { get; set; }
     }
 
     /// <summary>One registry entry of a snapshot.</summary>

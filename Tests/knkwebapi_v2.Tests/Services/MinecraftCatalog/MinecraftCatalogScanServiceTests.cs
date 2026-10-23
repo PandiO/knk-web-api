@@ -260,7 +260,7 @@ public class MinecraftCatalogScanServiceTests
             "invalid" => Snapshot(Entry("minecraft:sto ne")),
             _ => Snapshot(Entry("minecraft:stone")),
         };
-        if (defect == "schema") snapshot.SchemaVersion = 2;
+        if (defect == "schema") snapshot.SchemaVersion = 3;
         if (defect == "hash") snapshot.ContentHash = new string('0', 64);
 
         await Assert.ThrowsAsync<ArgumentException>(() => IngestAsync(scanId, snapshot));

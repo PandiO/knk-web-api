@@ -24,8 +24,11 @@ public class MinecraftCatalogConflictException : InvalidOperationException
 /// </summary>
 public class MinecraftCatalogScanService : IMinecraftCatalogScanService
 {
-    public const int SchemaVersion = 1;
+    /// <summary>The newest snapshot schema; schema 1 (materials only) is still accepted (KNG-250 E6).</summary>
+    public const int SchemaVersion = 2;
     public const int MaxEntries = 10_000;
+    public const int MaxEnchantments = 1_000;
+    public const string EnchantedBookKey = "minecraft:enchanted_book";
 
     /// <summary>A scan with no snapshot after this long no longer blocks a new one.</summary>
     public static readonly TimeSpan ScanTimeout = TimeSpan.FromMinutes(15);
@@ -157,7 +160,8 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
     {
         // 1. Validation, before any write.
         var entries = Validate(snapshot);
-        var hash = MinecraftCatalogSnapshotHash.Compute(snapshot.Entries!);
+        var enchantments = ValidateEnchantments(snapshot);
+        var hash = MinecraftCatalogSnapshotHash.Compute(snapshot.Entries!, enchantments == null ? null : snapshot.Enchantments);
         if (!string.Equals(hash, snapshot.ContentHash?.Trim(), StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException($"contentHash does not match the entries (expected {hash}).");
@@ -190,6 +194,11 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
             tracked.Status = MinecraftCatalogScanStatus.Ingesting;
 
             await ApplyAsync(tracked, snapshot, entries, icons, ct);
+            if (enchantments != null)
+            {
+                await ApplyEnchantmentsAsync(tracked, snapshot, enchantments, icons, ct);
+                tracked.EnchantmentCount = enchantments.Count;
+            }
 
             tracked.MinecraftVersion = Truncate(snapshot.MinecraftVersion, 32);
             tracked.ServerVersion = Truncate(snapshot.ServerVersion, 191);
@@ -205,6 +214,13 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
             _logger.LogInformation(
                 "Minecraft catalogue scan {ScanId} ({Version}) applied: {Inserted} inserted, {Updated} updated, {Unchanged} unchanged, {Merged} merged, {Deleted} deleted, {Missing} marked missing, {IconsMissing} without icon",
                 scanId, tracked.MinecraftVersion, tracked.Inserted, tracked.Updated, tracked.Unchanged, tracked.Merged, tracked.Deleted, tracked.MarkedMissing, tracked.IconsMissing);
+            if (enchantments != null)
+            {
+                _logger.LogInformation(
+                    "Minecraft catalogue scan {ScanId} enchantments: {Count} scanned, {Inserted} inserted, {Updated} updated, {Unchanged} unchanged, {Merged} merged, {Deleted} deleted, {Missing} marked missing; definitions {Created} created, {Linked} linked",
+                    scanId, tracked.EnchantmentCount, tracked.EnchantmentsInserted, tracked.EnchantmentsUpdated, tracked.EnchantmentsUnchanged, tracked.EnchantmentsMerged,
+                    tracked.EnchantmentsDeleted, tracked.EnchantmentsMarkedMissing, tracked.EnchantmentDefinitionsCreated, tracked.EnchantmentDefinitionsLinked);
+            }
             return ToDto(tracked);
         }
         catch (Exception ex) when (ex is not MinecraftCatalogConflictException and not OperationCanceledException)
@@ -242,9 +258,9 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
     private static List<ValidEntry> Validate(MinecraftCatalogSnapshotDto? snapshot)
     {
         if (snapshot == null) throw new ArgumentException("A snapshot is required.");
-        if (snapshot.SchemaVersion != SchemaVersion)
+        if (snapshot.SchemaVersion is < 1 or > SchemaVersion)
         {
-            throw new ArgumentException($"schemaVersion {snapshot.SchemaVersion} is not supported (expected {SchemaVersion}).");
+            throw new ArgumentException($"schemaVersion {snapshot.SchemaVersion} is not supported (expected 1 to {SchemaVersion}).");
         }
         if (snapshot.Entries == null || snapshot.Entries.Count == 0) throw new ArgumentException("The snapshot has no entries.");
         if (snapshot.Entries.Count > MaxEntries) throw new ArgumentException($"The snapshot has more than {MaxEntries} entries.");
@@ -257,6 +273,32 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
                 ?? throw new ArgumentException($"\"{entry?.Key}\" is not a valid namespaced key.");
             if (!seen.Add(key)) throw new ArgumentException($"The key {key} occurs more than once.");
             valid.Add(new ValidEntry(key, entry!));
+        }
+        return valid;
+    }
+
+    private sealed record ValidEnchantment(string Key, MinecraftCatalogEnchantmentDto Entry);
+
+    /// <summary>The schema 2 enchantments (§12.2), or null for a schema 1 snapshot.</summary>
+    private static List<ValidEnchantment>? ValidateEnchantments(MinecraftCatalogSnapshotDto snapshot)
+    {
+        if (snapshot.SchemaVersion < 2) return null;
+        if (snapshot.Enchantments == null) throw new ArgumentException("A schema 2 snapshot needs an enchantments list (it may be empty).");
+        if (snapshot.Enchantments.Count > MaxEnchantments) throw new ArgumentException($"The snapshot has more than {MaxEnchantments} enchantments.");
+
+        var valid = new List<ValidEnchantment>(snapshot.Enchantments.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in snapshot.Enchantments)
+        {
+            if (entry == null) throw new ArgumentException("The snapshot has an empty enchantment.");
+            var key = MinecraftEnchantmentKey.TryNormalize(entry.Key, entry.IsCustom)
+                ?? throw new ArgumentException($"\"{entry.Key}\" is not a valid enchantment key.");
+            if (entry.IsCustom && !MinecraftEnchantmentKey.IsCustomKey(key))
+            {
+                throw new ArgumentException($"The custom enchantment {key} must not use the minecraft namespace.");
+            }
+            if (!seen.Add(key)) throw new ArgumentException($"The enchantment {key} occurs more than once.");
+            valid.Add(new ValidEnchantment(key, entry));
         }
         return valid;
     }
@@ -383,6 +425,144 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
     }
 
     /// <summary>
+    /// KNG-250 §12.4: upserts the scanned enchantments by key (§12.3), merges notation duplicates, deletes
+    /// unreferenced unseen refs and marks referenced ones Missing, then gives every scanned enchantment an
+    /// EnchantmentDefinition (an unlinked matching one, else a new one). Definitions are never deleted.
+    /// </summary>
+    private async Task ApplyEnchantmentsAsync(
+        MinecraftCatalogScan scan,
+        MinecraftCatalogSnapshotDto snapshot,
+        List<ValidEnchantment> enchantments,
+        IReadOnlyDictionary<string, MinecraftIconResult> icons,
+        CancellationToken ct)
+    {
+        var version = Truncate(snapshot.MinecraftVersion, 32);
+        var bookIcon = icons.TryGetValue(EnchantedBookKey, out var book) && book.Outcome == MinecraftIconOutcome.Resolved ? book.Url : null;
+        var scanned = new ScannedEnchantmentKeys(enchantments.Select(e => (e.Key, e.Entry.IsCustom)));
+        var refs = await _db.MinecraftEnchantmentRefs.ToListAsync(ct);
+        var definitions = await _db.EnchantmentDefinitions.ToListAsync(ct);
+
+        var byKey = refs
+            .Select(r => (Row: r, Key: MinecraftEnchantmentKey.Resolve(r.NamespaceKey, r.IsCustom, scanned)))
+            .Where(x => x.Key != null && scanned.Contains(x.Key))
+            .GroupBy(x => x.Key!, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Row)
+                .OrderBy(r => string.Equals(r.NamespaceKey, g.Key, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(r => r.Id).ToList(), StringComparer.Ordinal);
+
+        var merged = new List<MinecraftEnchantmentRef>();
+        var rowsByKey = new Dictionary<string, MinecraftEnchantmentRef>(StringComparer.Ordinal);
+        var previousMaxLevel = refs.ToDictionary(r => r.Id, r => r.MaxLevel);
+        foreach (var (key, entry) in enchantments)
+        {
+            byKey.TryGetValue(key, out var rows);
+            var row = rows?.FirstOrDefault();
+            var isNew = row == null;
+            if (row == null)
+            {
+                row = new MinecraftEnchantmentRef { NamespaceKey = key, FirstSeenVersion = version };
+                _db.MinecraftEnchantmentRefs.Add(row);
+            }
+            else if (rows!.Count > 1)
+            {
+                foreach (var duplicate in rows.Skip(1))
+                {
+                    foreach (var definition in definitions.Where(d => d.MinecraftEnchantmentRefId == duplicate.Id))
+                    {
+                        definition.MinecraftEnchantmentRefId = row.Id;
+                    }
+                    _db.MinecraftEnchantmentRefs.Remove(duplicate);
+                    merged.Add(duplicate);
+                }
+                // Delete the duplicates before the kept row takes the normal key, so the unique index never sees both.
+                await _db.SaveChangesAsync(ct);
+            }
+
+            var before = Facts(row);
+            row.NamespaceKey = key;
+            row.DisplayName = Truncate(entry.DisplayName, 191) ?? MinecraftNamespaceKey.DisplayNameFromKey(key);
+            row.MaxLevel = entry.MaxLevel;
+            row.IsCustom = entry.IsCustom;
+            row.Category = Truncate(entry.Category, 191) ?? row.Category;
+            row.CatalogStatus = MinecraftCatalogStatus.Active;
+            row.FirstSeenVersion ??= version;
+            row.LastSeenVersion = version;
+            row.LastScanId = scan.Id;
+            // E5: the enchanted book, unless someone set another picture by hand.
+            if (bookIcon != null && (string.IsNullOrWhiteSpace(row.IconUrl) || row.IconUrl.EndsWith("/enchanted_book.png", StringComparison.OrdinalIgnoreCase)))
+            {
+                row.IconUrl = bookIcon;
+            }
+            rowsByKey[key] = row;
+
+            if (isNew) scan.EnchantmentsInserted++;
+            else if (before == Facts(row)) scan.EnchantmentsUnchanged++;
+            else scan.EnchantmentsUpdated++;
+        }
+        scan.EnchantmentsMerged = merged.Count;
+        await _db.SaveChangesAsync(ct);
+
+        // Refs the server doesn't know: delete when no definition uses them, else keep as Missing.
+        var referenced = definitions.Where(d => d.MinecraftEnchantmentRefId != null).Select(d => d.MinecraftEnchantmentRefId!.Value).ToHashSet();
+        foreach (var row in refs.Where(r => !merged.Contains(r) && !rowsByKey.Values.Contains(r)))
+        {
+            if (referenced.Contains(row.Id))
+            {
+                row.CatalogStatus = MinecraftCatalogStatus.Missing;
+                scan.EnchantmentsMarkedMissing++;
+            }
+            else
+            {
+                _db.MinecraftEnchantmentRefs.Remove(row);
+                scan.EnchantmentsDeleted++;
+                _logger.LogInformation("Minecraft catalogue scan {ScanId} deleted unreferenced enchantment {Id} ({Key})", scan.Id, row.Id, row.NamespaceKey);
+            }
+        }
+
+        // E3: unlinked definitions of a scanned enchantment are linked to it, and one without any gets a new one.
+        foreach (var (key, entry) in enchantments)
+        {
+            var row = rowsByKey[key];
+            var linked = definitions.Where(d => d.MinecraftEnchantmentRefId == row.Id).ToList();
+
+            // A vanilla definition still at its ref's previous level (as seeded) follows the server's maximum; one
+            // set to another level by staff keeps it.
+            if (entry.MaxLevel is { } serverMax && previousMaxLevel.GetValueOrDefault(row.Id) is { } oldMax)
+            {
+                foreach (var definition in linked.Where(d => !d.IsCustom && d.MaxLevel == oldMax && d.MaxLevel != serverMax))
+                {
+                    definition.MaxLevel = Math.Max(1, serverMax);
+                }
+            }
+
+            var matches = definitions
+                .Where(d => d.MinecraftEnchantmentRefId == null && d.IsCustom == entry.IsCustom)
+                .Where(d => MinecraftEnchantmentKey.Resolve(d.Key, d.IsCustom, scanned) == key)
+                .ToList();
+            foreach (var match in matches)
+            {
+                match.MinecraftEnchantmentRefId = row.Id;
+                scan.EnchantmentDefinitionsLinked++;
+            }
+            if (linked.Count > 0 || matches.Count > 0) continue;
+
+            var created = new EnchantmentDefinition
+            {
+                // Custom definitions are keyed by the ability key (AbilityDefinition seed), vanilla ones by the namespaced key.
+                Key = entry.IsCustom ? key[(key.IndexOf(':') + 1)..] : key,
+                DisplayName = row.DisplayName ?? MinecraftNamespaceKey.DisplayNameFromKey(key),
+                Description = string.Empty,
+                IsCustom = entry.IsCustom,
+                MaxLevel = Math.Max(1, entry.MaxLevel ?? 1),
+                MinecraftEnchantmentRefId = row.Id,
+            };
+            _db.EnchantmentDefinitions.Add(created);
+            definitions.Add(created);
+            scan.EnchantmentDefinitionsCreated++;
+        }
+    }
+
+    /// <summary>
     /// Saves a status change unless the scan's status changed in the database meanwhile (an ingest that
     /// completed it); then the scan is reloaded and false returned.
     /// </summary>
@@ -405,6 +585,9 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
     /// <summary>The scan-owned facts of a row, to tell an update from an unchanged row (provenance excluded).</summary>
     private static string Facts(MinecraftMaterialRef m) => string.Join('|',
         m.NamespaceKey, m.DisplayName, m.IsItem, m.IsBlock, m.MaxStackSize, m.DefaultBlockState, m.CatalogStatus, m.IconUrl, m.IconStatus);
+
+    private static string Facts(MinecraftEnchantmentRef e) => string.Join('|',
+        e.NamespaceKey, e.DisplayName, e.MaxLevel, e.IsCustom, e.Category, e.CatalogStatus, e.IconUrl);
 
     private async Task FailAsync(MinecraftCatalogScan scan, string error, CancellationToken ct)
     {
@@ -446,6 +629,15 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
         Deleted = scan.Deleted,
         MarkedMissing = scan.MarkedMissing,
         IconsMissing = scan.IconsMissing,
+        EnchantmentCount = scan.EnchantmentCount,
+        EnchantmentsInserted = scan.EnchantmentsInserted,
+        EnchantmentsUpdated = scan.EnchantmentsUpdated,
+        EnchantmentsUnchanged = scan.EnchantmentsUnchanged,
+        EnchantmentsMerged = scan.EnchantmentsMerged,
+        EnchantmentsDeleted = scan.EnchantmentsDeleted,
+        EnchantmentsMarkedMissing = scan.EnchantmentsMarkedMissing,
+        EnchantmentDefinitionsCreated = scan.EnchantmentDefinitionsCreated,
+        EnchantmentDefinitionsLinked = scan.EnchantmentDefinitionsLinked,
         Error = scan.Error,
         CreatedAt = scan.CreatedAt,
         CompletedAt = scan.CompletedAt,

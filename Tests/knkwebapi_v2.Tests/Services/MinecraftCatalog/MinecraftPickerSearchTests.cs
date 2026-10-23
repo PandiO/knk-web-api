@@ -83,7 +83,7 @@ public class MinecraftPickerSearchTests
 
     [Theory]
     [InlineData("Picker", "true", true)]
-    [InlineData("SearchHybrid", "TRUE", true)]
+    [InlineData("SearchHybrid", "TRUE", false)]
     [InlineData("picker", "false", false)]
     [InlineData("kind", "item", false)]
     public void IsPickerSearch_AcceptsTheFlagAndItsOldName(string key, string value, bool expected)

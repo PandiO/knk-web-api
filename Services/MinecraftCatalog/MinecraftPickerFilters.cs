@@ -10,14 +10,16 @@ public static class MinecraftPickerFilters
     public const string KeyContains = "keyContains";
     public const string ExcludeMissing = "excludeMissing";
 
-    /// <summary>Search filter that makes a search a picker search; <c>SearchHybrid</c> is its pre-KNG-200 name.</summary>
+    /// <summary>Search filter that makes a search a picker search (its pre-KNG-200 name <c>SearchHybrid</c> went with KNG-250).</summary>
     public const string Picker = "Picker";
-    public const string LegacyPicker = "SearchHybrid";
+
+    /// <summary>Enchantment picker filter (KNG-250): <c>vanilla</c>, <c>custom</c>, or absent for both.</summary>
+    public const string Origin = "origin";
 
     /// <summary>True when the query's filters ask for a picker search.</summary>
     public static bool IsPickerSearch(IReadOnlyDictionary<string, string>? filters) =>
         filters != null && filters.Any(f =>
-            (string.Equals(f.Key, Picker, StringComparison.OrdinalIgnoreCase) || string.Equals(f.Key, LegacyPicker, StringComparison.OrdinalIgnoreCase))
+            string.Equals(f.Key, Picker, StringComparison.OrdinalIgnoreCase)
             && string.Equals(f.Value, "true", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
@@ -47,6 +49,22 @@ public static class MinecraftPickerFilters
                 break;
         }
         if (kind is "item" or "block") result[Kind] = kind;
+        return result;
+    }
+
+    /// <summary>
+    /// Database filters for an enchantment picker query (KNG-250 §12.5): <c>origin</c> (vanilla/custom) and the
+    /// legacy <c>category</c> as sent, Missing rows hidden.
+    /// </summary>
+    public static Dictionary<string, string> ForEnchantmentDatabase(IReadOnlyDictionary<string, string>? pickerFilters)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [ExcludeMissing] = "true" };
+        string? Get(string name) => pickerFilters?.FirstOrDefault(f => string.Equals(f.Key, name, StringComparison.OrdinalIgnoreCase)).Value;
+
+        var origin = Get(Origin)?.Trim().ToLowerInvariant();
+        if (origin is "vanilla" or "custom") result[Origin] = origin;
+        var category = Get("category")?.Trim();
+        if (!string.IsNullOrEmpty(category)) result["category"] = category;
         return result;
     }
 }

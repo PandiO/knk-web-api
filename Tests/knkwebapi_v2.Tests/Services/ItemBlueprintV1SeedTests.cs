@@ -22,17 +22,6 @@ public class ItemBlueprintV1SeedTests
     private KnKDbContext NewContext() =>
         new(new DbContextOptionsBuilder<KnKDbContext>().UseInMemoryDatabase(_dbName).Options);
 
-    private static IMinecraftEnchantmentCatalogService EnchantmentCatalog()
-    {
-        var catalog = new Mock<IMinecraftEnchantmentCatalogService>();
-        catalog.Setup(c => c.GetByNamespaceKey(It.IsAny<string>())).Returns((MinecraftEnchantmentCatalogEntry?)null);
-        catalog.Setup(c => c.GetByNamespaceKey("minecraft:power")).Returns(new MinecraftEnchantmentCatalogEntry
-        {
-            NamespaceKey = "minecraft:power", DisplayName = "Power", Category = "Ranged", MaxLevel = 5, LegacyName = "Power",
-        });
-        return catalog.Object;
-    }
-
     private async Task SeedAsync(bool withCustomEnchantments = true)
     {
         await using var context = NewContext();
@@ -40,7 +29,7 @@ public class ItemBlueprintV1SeedTests
         {
             await AbilityDefinition.SeedCanonicalAsync(context);
         }
-        await ItemBlueprintV1Seed.SeedCanonicalAsync(context, enchantmentCatalog: EnchantmentCatalog());
+        await ItemBlueprintV1Seed.SeedCanonicalAsync(context);
     }
 
     private async Task<Dictionary<string, ItemBlueprint>> LoadBlueprintsAsync(KnKDbContext db) =>
@@ -105,12 +94,14 @@ public class ItemBlueprintV1SeedTests
         blueprints.Values.Should().OnlyContain(b => b.DefaultQuantity == 1 && b.BasePriceMin == 0 && b.BasePriceMax == 0);
         blueprints.Values.Should().OnlyContain(b => !b.DefaultDisplayName.Contains('§') && !b.DefaultDisplayName.Contains('Â'));
 
-        // New vanilla definitions get a catalog-backed base ref (falling back to a humanized name).
+        // KNG-250: new vanilla definitions get an Unverified base ref named after the key, at the level the lootbox
+        // seed needs (1 for Power); the server scan fills in the rest.
         var power = await db.EnchantmentDefinitions.Include(e => e.BaseEnchantmentRef).SingleAsync(e => e.Key == "minecraft:power");
         power.DisplayName.Should().Be("Power");
-        power.MaxLevel.Should().Be(5);
+        power.MaxLevel.Should().Be(1);
+        power.BaseEnchantmentRef!.MaxLevel.Should().Be(1);
         power.BaseEnchantmentRef!.NamespaceKey.Should().Be("minecraft:power");
-        power.BaseEnchantmentRef.Category.Should().Be("Ranged");
+        power.BaseEnchantmentRef.CatalogStatus.Should().Be(knkwebapi_v2.Enums.MinecraftCatalogStatus.Unverified);
         (await db.EnchantmentDefinitions.SingleAsync(e => e.Key == "minecraft:aqua_affinity")).DisplayName.Should().Be("Aqua Affinity");
     }
 
