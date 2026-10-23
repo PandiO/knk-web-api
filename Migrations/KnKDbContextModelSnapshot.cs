@@ -1403,6 +1403,67 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("FieldValidationRules");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.FieldValidationRunLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DependencyKey")
+                        .HasMaxLength(192)
+                        .HasColumnType("varchar(192)");
+
+                    b.Property<DateTime>("ExecutedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("InputHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<bool>("IsBlocking")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsValid")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("PlaceholdersJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("RuleHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("RuleId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("SubjectId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DependencyKey");
+
+                    b.HasIndex("ExecutedAt");
+
+                    b.HasIndex("RuleId", "SubjectType", "SubjectId")
+                        .IsUnique();
+
+                    b.ToTable("FieldValidationRunLogs", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.FormConfiguration", b =>
                 {
                     b.Property<int>("Id")
@@ -6931,6 +6992,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("DependsOnField");
 
                     b.Navigation("FormField");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.FieldValidationRunLog", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.FieldValidationRule", "Rule")
+                        .WithMany()
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rule");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.FormField", b =>

@@ -19,6 +19,21 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <param name="request">The validation request containing field ID, value, and context</param>
         /// <returns>Validation result with success/failure, messages, and metadata</returns>
         Task<ValidationResultDto> ValidateFieldAsync(ValidateFieldRequestDto request);
+
+        /// <summary>
+        /// KNG-269: as the four-argument overload, answered from the result log for <paramref name="subject"/>
+        /// when the rule and its inputs are unchanged (unless <paramref name="force"/>).
+        /// </summary>
+        Task<ValidationResultDto> ValidateFieldAsync(
+            int fieldId,
+            object? fieldValue,
+            object? dependencyValue,
+            Dictionary<string, object>? formContextData,
+            knkwebapi_v2.Services.ValidationResultLog.ValidationSubject? subject,
+            bool force = false);
+
+        /// <summary>KNG-269: every field of a step in one request; results by field id.</summary>
+        Task<ValidateFieldsBatchResultDto> ValidateFieldsAsync(ValidateFieldsBatchRequestDto request);
     
         /// <summary>
         /// Validate a field value against its configured validation rules.
