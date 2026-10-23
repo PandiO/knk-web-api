@@ -1,17 +1,17 @@
 {
   "format": "knk-displayconfig/1",
-  "configurationGuid": "e0242a63-86e8-53b9-9cf8-9e6d4556988a",
+  "configurationGuid": "1359fbc5-7a8e-5980-b173-575d3898ce02",
   "entityTypeName": "Structure",
-  "name": "Structure - Default (seed v1)",
+  "name": "Structure - Default (seed v2)",
   "description": "A building or plot inside a district, with its own WorldGuard region. Gates are structures too but have their own page.",
   "sections": [
     {
-      "sectionGuid": "85a9da69-0141-5506-b47b-ccb8a37e80aa",
+      "sectionGuid": "02826ec9-5789-53f6-b4c5-10946499a015",
       "sectionName": "General information",
       "description": "What the structure is called and what it is for.",
       "fields": [
         {
-          "fieldGuid": "c67df9c3-c4c8-54ff-b192-915ef1e39ad7",
+          "fieldGuid": "80788531-3edf-5430-8a17-05492ae01fd8",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in game and in the web app.",
@@ -19,7 +19,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "f9838421-98e6-55c6-bde4-6e18bfeaf321",
+          "fieldGuid": "3523551d-d56f-51f5-af96-1147032f7b7e",
           "fieldName": "Description",
           "label": "Description",
           "description": "One line for admins, e.g. what the building is used for.",
@@ -29,12 +29,12 @@
       ]
     },
     {
-      "sectionGuid": "a5b58c46-c963-5cdb-af49-d50d925c8b29",
+      "sectionGuid": "9676e3a8-355a-54fd-b7f0-80d2a9330d77",
       "sectionName": "Address",
       "description": "Where the structure stands. Street and district are changed with Edit.",
       "fields": [
         {
-          "fieldGuid": "117c91a9-a863-5c4e-94dd-313ebf19b151",
+          "fieldGuid": "efe2be89-dbaa-5732-abf4-54557607f435",
           "fieldName": "Name",
           "relatedEntityPropertyName": "Street",
           "relatedEntityTypeName": "Street",
@@ -43,7 +43,7 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "d0d90e80-0aca-5774-ba93-311490d1de8f",
+          "fieldGuid": "7473a8d6-0de9-5a9c-9cf5-533e77ec2e06",
           "fieldName": "HouseNumber",
           "label": "House number",
           "description": "The structure's number on its street. 0 = no number.",
@@ -51,7 +51,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "09cbe9f0-bc4c-5603-ac48-33ed30822ed9",
+          "fieldGuid": "01558a92-32bc-569d-8324-5fdccbd46f48",
           "fieldName": "Name",
           "relatedEntityPropertyName": "District",
           "relatedEntityTypeName": "District",
@@ -60,7 +60,7 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "51a1d9c9-22cd-5861-a9a1-1d173539f0ba",
+          "fieldGuid": "c866ca98-0e67-5e0c-b8a0-e671f94d3b0c",
           "fieldName": "TownName",
           "relatedEntityPropertyName": "District",
           "relatedEntityTypeName": "District",
@@ -72,26 +72,26 @@
       ]
     },
     {
-      "sectionGuid": "15f0cdfc-eb46-503f-b81c-5233e2c5286b",
+      "sectionGuid": "b6cc43b8-b8ee-5316-b6f1-f06d1306d6cb",
       "sectionName": "Region and access",
       "description": "The WorldGuard region that is the structure in game, and whether players may walk in and out of it.",
       "fields": [
         {
-          "fieldGuid": "1918a44e-108d-595d-a369-7f09a680aec9",
+          "fieldGuid": "33982702-dfb4-57c1-91b8-3d3183166ea5",
           "fieldName": "WgRegionId",
           "label": "Region",
           "description": "Name of the WorldGuard region around the structure. The entry and exit rules below apply to it.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "8c78091a-60ae-588f-b8f4-c6402ce2e5c9",
+          "fieldGuid": "82a885fc-19e4-5d19-9d01-a5acc2ea8110",
           "fieldName": "WorldName",
           "label": "World",
           "description": "The Minecraft world the region is in. Region names are only unique within one world.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "8ce05151-b4ad-54ca-ade3-aa0e26a0dd0c",
+          "fieldGuid": "5320cdcb-63a0-5417-93b2-5424c4e182c4",
           "fieldName": "AllowEntry",
           "label": "Allow entry",
           "description": "Players may walk into the region. Off keeps everyone out except admins.",
@@ -99,7 +99,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "e65a17a2-8b31-5869-9cb3-7c361f61dd94",
+          "fieldGuid": "2cdded00-e97f-5e4e-9618-849a6c0b2bd9",
           "fieldName": "AllowExit",
           "label": "Allow exit",
           "description": "Players inside the region may walk out of it.",
@@ -109,43 +109,68 @@
       ]
     },
     {
-      "sectionGuid": "d045f946-bf41-5962-aaab-981a38d9c199",
+      "sectionGuid": "8b258f68-8af1-5a05-bd37-cfaf5059a208",
       "sectionName": "Warp and navigation",
       "description": "Whether players can /warp here and where /navigate leads. Changed with Edit.",
       "fields": [
         {
-          "fieldGuid": "6e751f0c-cbbd-5ad1-ab14-2b2b39e880cb",
+          "fieldGuid": "43276ab8-987e-5d03-9471-cdbe9d1940e3",
           "fieldName": "TeleportEnabled",
           "label": "Warp destination",
           "description": "Listed in /warp. A warp also needs a spawn location and entry allowed.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "3df05ff1-29ea-5915-aae6-73bbc068fa3d",
+          "fieldGuid": "e83c4af8-e8c2-5d9e-a567-84cbc1c97e64",
           "fieldName": "TeleportPriceGems",
           "label": "Warp price (gems)",
           "description": "Gems charged for each warp here. 0 = free.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "ad2c50de-13bb-53e2-868b-e71ee7e7a96c",
+          "fieldGuid": "0279267b-407d-560e-bcf5-3300f6103e43",
           "fieldName": "TeleportRequiresDiscovery",
           "label": "Only after discovery",
           "description": "Only players who have discovered this structure may warp here.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "5010bd1a-e52c-5ff8-a816-061fe03fbc71",
+          "fieldGuid": "0776219a-a61d-553c-b167-61a3bc8f762e",
           "fieldName": "NavigationDefaultOverride",
           "label": "/navigate leads to",
           "description": "Spawn or Region: where /navigate <structure> takes players. Empty = the default for structures.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "2f15a13a-78bb-525a-bcde-fa4efcd472a6",
+          "fieldGuid": "8839aa61-128a-55eb-a3ea-5ea322df8dfa",
           "fieldName": "RoadAccessOverride",
           "label": "Road access",
           "description": "Applies or Ignored: whether the entry rule keeps routes off the roads in this region. Empty = the default for structures.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "faa02c96-d163-5258-989d-8ee30949ce20",
+      "sectionName": "Sub-regions",
+      "description": "The structure's extra WorldGuard regions (KNG-254), each a copy of its main region. Edit opens a sub-region's form; add them by editing the structure.",
+      "relatedEntityPropertyName": "SubRegions",
+      "relatedEntityTypeName": "DomainSubRegion",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showEditButton\":true}",
+      "fields": [
+        {
+          "fieldGuid": "8445506c-d880-5313-93ca-27b437e52140",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The sub-region's label, e.g. 'Tower'.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "8c3cbd59-a761-5174-9b0a-2999184afccb",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "Its WorldGuard region, domain_<id>_sub_<n> once saved.",
           "fieldType": "String"
         }
       ]

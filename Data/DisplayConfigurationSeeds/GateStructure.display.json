@@ -1,17 +1,17 @@
 {
   "format": "knk-displayconfig/1",
-  "configurationGuid": "7b10e6c7-207f-5df7-9cbf-7198e0e96ac6",
+  "configurationGuid": "23f8c05a-0a39-5431-84e8-a182f46eeab4",
   "entityTypeName": "GateStructure",
-  "name": "GateStructure - Default (seed v1)",
+  "name": "GateStructure - Default (seed v2)",
   "description": "A gate: its address, WorldGuard region, spawn point, siege behaviour and doors. Each door is its own record, listed at the bottom of the page.",
   "sections": [
     {
-      "sectionGuid": "bed9ff7c-890f-586b-8a4d-d8532a245c4c",
+      "sectionGuid": "b9ee45c2-1d75-559e-868b-74db13d23ae4",
       "sectionName": "General information",
       "description": "The gate's name, description and menu icon.",
       "fields": [
         {
-          "fieldGuid": "a960292e-1b89-5c8c-908d-29f1978c30be",
+          "fieldGuid": "83b7b74e-8713-5b23-a979-c5fd39d3fa23",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in game and used by /gate commands.",
@@ -19,7 +19,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "d144ebbd-5b0c-5bbe-8d82-a2d70cf9226c",
+          "fieldGuid": "3bc93255-12ea-51e1-9ae6-e8e403dbf169",
           "fieldName": "Description",
           "label": "Description",
           "description": "One line for admins, e.g. what the gate guards.",
@@ -27,7 +27,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "79d479d3-acd2-519c-8f8a-10054fd4ec62",
+          "fieldGuid": "530bd9b7-976f-592f-a809-b7a71fa85bff",
           "fieldName": "NamespaceKey",
           "relatedEntityPropertyName": "IconMaterialRef",
           "relatedEntityTypeName": "MinecraftMaterialRef",
@@ -39,12 +39,12 @@
       ]
     },
     {
-      "sectionGuid": "999d3098-748e-517e-bb5d-f27574efa6e1",
+      "sectionGuid": "86b0d785-92ed-50b1-a435-928cec7d7c28",
       "sectionName": "Address",
       "description": "Where the gate stands. A gate has no house number.",
       "fields": [
         {
-          "fieldGuid": "d663e1d3-4caa-5577-85ef-43cb25e7da33",
+          "fieldGuid": "fbb135f3-5fc4-5348-8cff-83944f7f129c",
           "fieldName": "Name",
           "relatedEntityPropertyName": "District",
           "relatedEntityTypeName": "District",
@@ -53,7 +53,7 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "f7d53754-f7cf-5002-997e-29df79cde689",
+          "fieldGuid": "471061cc-1d50-5ef8-bc0b-857058f30e8c",
           "fieldName": "TownName",
           "relatedEntityPropertyName": "District",
           "relatedEntityTypeName": "District",
@@ -63,7 +63,7 @@
           "metadataCheck": "warn"
         },
         {
-          "fieldGuid": "f79cf4b5-51f7-5cdc-8e0d-3974274ec9d7",
+          "fieldGuid": "cbcacf27-24cc-5914-8ef6-0b0643e0418e",
           "fieldName": "Name",
           "relatedEntityPropertyName": "Street",
           "relatedEntityTypeName": "Street",
@@ -74,26 +74,26 @@
       ]
     },
     {
-      "sectionGuid": "5cb50c4f-2cee-5689-900e-59f977e29b19",
+      "sectionGuid": "222696c9-e1d8-53b9-9aa1-fa5dca6232aa",
       "sectionName": "Region and access",
       "description": "The WorldGuard region around the whole gate, and whether players may walk in and out of it.",
       "fields": [
         {
-          "fieldGuid": "b7e21d8d-98fd-5f73-b502-6dc92eeb0614",
+          "fieldGuid": "317e2cb6-aeaf-5b03-95eb-6b3eeca1b531",
           "fieldName": "WgRegionId",
           "label": "Region",
           "description": "The WorldGuard region that encloses the gate and all its doors. Door points must lie inside it.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "bf774b3f-c759-5a22-a58e-f5fb41cf8d2d",
+          "fieldGuid": "34112b5f-50d4-51a0-b131-afb8d2098d55",
           "fieldName": "WorldName",
           "label": "World",
           "description": "The Minecraft world the region is in. Region names are only unique within one world.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "484229e9-4d9e-5466-a3c9-399b848ecf21",
+          "fieldGuid": "f4f6ab3d-253a-5793-8ff2-d68cedfc5ce8",
           "fieldName": "AllowEntry",
           "label": "Allow entry",
           "description": "Players may walk into the gate's region. Off keeps everyone out except admins.",
@@ -101,7 +101,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "94467c07-f95c-5dde-92b4-ad21697eab57",
+          "fieldGuid": "26bf941e-e2e0-58b2-a17a-400c2334017d",
           "fieldName": "AllowExit",
           "label": "Allow exit",
           "description": "Players inside the gate's region may walk out of it.",
@@ -111,7 +111,7 @@
       ]
     },
     {
-      "sectionGuid": "7e01a8d9-1cae-5504-8575-9a4ea573ec01",
+      "sectionGuid": "3206fdd2-7021-548c-b624-64062cb710eb",
       "sectionName": "Spawn point",
       "description": "Where /gate tp, /warp and /navigate put players. Empty when not set: /gate tp then uses the first door. Edit opens the location.",
       "relatedEntityPropertyName": "Location",
@@ -119,28 +119,28 @@
       "actionButtonsConfigJson": "{\"showEditButton\":true}",
       "fields": [
         {
-          "fieldGuid": "b23874d0-9189-5144-8d10-d3bf99da8edf",
+          "fieldGuid": "e08d1861-4cf1-5953-8966-cf6fb3a565a1",
           "fieldName": "X",
           "label": "X",
           "description": "East-west coordinate.",
           "fieldType": "Decimal"
         },
         {
-          "fieldGuid": "04aaeed7-906b-541a-8163-c11b898a4d9e",
+          "fieldGuid": "5b2fb137-fdb9-5abc-a2e3-88c310521532",
           "fieldName": "Y",
           "label": "Y",
           "description": "Height.",
           "fieldType": "Decimal"
         },
         {
-          "fieldGuid": "a1279b6a-6227-5056-aaac-7a3a645138c2",
+          "fieldGuid": "6b8a6814-1c38-5d82-9622-c0675c36773d",
           "fieldName": "Z",
           "label": "Z",
           "description": "North-south coordinate.",
           "fieldType": "Decimal"
         },
         {
-          "fieldGuid": "8910c5a4-3417-51f3-b2d7-d9385f4456d5",
+          "fieldGuid": "8a7e3b36-5750-5a32-be36-542e3fb28ef8",
           "fieldName": "World",
           "label": "World",
           "description": "The world the point is in.",
@@ -149,40 +149,40 @@
       ]
     },
     {
-      "sectionGuid": "b681bd09-5483-5d8e-99ab-b1375a295c7b",
+      "sectionGuid": "89ce8adc-c20e-5dbd-96dc-14007fdaca2a",
       "sectionName": "Warp and navigation",
       "description": "Whether players can /warp to the gate and where /navigate leads. Changed with Edit.",
       "fields": [
         {
-          "fieldGuid": "9b2e0041-8b24-5034-a02d-84332b5ec6a7",
+          "fieldGuid": "1296e92f-83ef-5fc0-b333-231c4ebff71f",
           "fieldName": "TeleportEnabled",
           "label": "Warp destination",
           "description": "Listed in /warp. A warp also needs a spawn point and entry allowed.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "cefa3df6-1283-5048-bf42-d2417c78167d",
+          "fieldGuid": "159fa200-d3ee-5b94-9f35-76a03558c47b",
           "fieldName": "TeleportPriceGems",
           "label": "Warp price (gems)",
           "description": "Gems charged for each warp here. 0 = free.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "a2e42d32-f4ec-5035-8628-caac596d6eec",
+          "fieldGuid": "fe29147c-1d27-5864-a3e8-70c087ba816c",
           "fieldName": "TeleportRequiresDiscovery",
           "label": "Only after discovery",
           "description": "Only players who have discovered this gate may warp here.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "8c5c8051-4e31-51cd-911a-68c9c2287455",
+          "fieldGuid": "c323bf2e-ab3a-5fff-8131-207e7c4e131a",
           "fieldName": "NavigationDefaultOverride",
           "label": "/navigate leads to",
           "description": "Spawn or Region: where /navigate <gate> takes players. Empty = the default for gates.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "4746d5e8-16e1-5c81-8131-aad7d73b743b",
+          "fieldGuid": "76206e4c-8af3-53fc-98a7-53362a3bbb21",
           "fieldName": "RoadAccessOverride",
           "label": "Road access",
           "description": "Applies or Ignored: whether the entry rule keeps routes off the roads in this region. Empty = the default for gates.",
@@ -191,33 +191,33 @@
       ]
     },
     {
-      "sectionGuid": "b448860c-a5cf-5108-bc41-d362fd445044",
+      "sectionGuid": "d435e5a5-4185-5015-abd9-24e6a5ed812e",
       "sectionName": "Siege behaviour",
       "description": "How the gate behaves when a siege match uses it.",
       "fields": [
         {
-          "fieldGuid": "4cccf988-9199-5631-9e61-a8e721d6e2fe",
+          "fieldGuid": "ac641ff5-231b-5a71-94e3-85610e25ba42",
           "fieldName": "AnimateDuringSiege",
           "label": "Animate during a siege",
           "description": "Doors open and close with their animation during a match. Off switches them instantly.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "683cbedf-6b72-51ee-a174-546f2d1ed472",
+          "fieldGuid": "0d53a66b-c007-5729-8c51-8668474edfa1",
           "fieldName": "IsOverridable",
           "label": "Siege may take over",
           "description": "A siege match may take control of this gate's doors. Off keeps the gate out of every siege.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "21dbfe64-fb4d-5e85-a40e-58a911fe4ad2",
+          "fieldGuid": "fb719d4c-3317-527c-adb0-e82ec3faf051",
           "fieldName": "CurrentSiegeId",
           "label": "Locked by siege match",
           "description": "Number of the siege match that has the gate locked down right now. Empty when none. Set by the server.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "d20e3810-1180-51d2-a02d-88e19aee26ea",
+          "fieldGuid": "f3632284-50dc-5620-8e40-3455ebc16fe4",
           "fieldName": "IsSiegeObjective",
           "label": "Siege objective",
           "description": "On while a running match uses this gate as an objective. Set and cleared by the siege plugin.",
@@ -226,61 +226,61 @@
       ]
     },
     {
-      "sectionGuid": "f2ef5479-9e3e-53b6-a524-1bd0f4419b08",
+      "sectionGuid": "38019c69-34a3-53f6-aac4-d0875c4d941e",
       "sectionName": "Door overrides",
       "description": "Values forced on every door of this gate at once. \"-\" means no override: each door uses its own setting. Overrides are not changed with Edit.",
       "fields": [
         {
-          "fieldGuid": "24ed99a3-8571-5d7d-b26a-c94953b3deb7",
+          "fieldGuid": "c166494e-7793-5444-9970-a8031913e98d",
           "fieldName": "IsActiveOverride",
           "label": "Active",
           "description": "Forces all doors active (loaded and usable) or inactive.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "53f404a8-4824-5f59-bc59-891b6e9cb207",
+          "fieldGuid": "228cebcc-e743-5409-ad39-bce8c5997dcd",
           "fieldName": "OpenedStateOverride",
           "label": "Open state",
           "description": "Forces all doors open or closed.",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "87f8f899-f170-55f8-8684-9df7d6fe1d0d",
+          "fieldGuid": "ce6cfbe7-06ee-51d7-96b7-2c46faae6a17",
           "fieldName": "IsInvincibleOverride",
           "label": "Invincible",
           "description": "Forces whether the doors can be damaged.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "bbba8f79-a0f5-5686-96f0-fad7bfc84f11",
+          "fieldGuid": "50b6db8d-52ba-5cdf-bf97-60f5799c03b0",
           "fieldName": "IsDestroyedOverride",
           "label": "Destroyed",
           "description": "Forces all doors destroyed or intact.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "cc371598-46cb-5aee-b2d7-5b5c899a64f7",
+          "fieldGuid": "b19953c2-8991-569b-ba6e-db012b00534c",
           "fieldName": "CanRespawnOverride",
           "label": "Respawns",
           "description": "Forces whether destroyed doors rebuild themselves.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "e550a5fb-8b7c-59c4-b6c4-222af74a209e",
+          "fieldGuid": "f6986a21-fa50-5e6f-b170-5f332dd002ee",
           "fieldName": "AllowPassThroughOverride",
           "label": "Pass-through",
           "description": "Forces whether players may be let through closed doors.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "922af2b4-ebf1-5730-a88d-437fc3a3bf4f",
+          "fieldGuid": "b07a0c1b-530d-5706-98f8-93a8cdc3061a",
           "fieldName": "PassThroughDurationSecondsOverride",
           "label": "Pass-through time (seconds)",
           "description": "Forces how long a door stays open for a pass-through.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "82c2b714-7fac-50b8-a4a1-6778f065a667",
+          "fieldGuid": "6ba7e019-1d60-547b-9e81-ec60e0066ced",
           "fieldName": "ShowHealthDisplayOverride",
           "label": "Show health",
           "description": "Forces the health line in the doors' floating text.",
@@ -289,7 +289,7 @@
       ]
     },
     {
-      "sectionGuid": "b68341b6-d110-5c57-b346-e87f71637aa5",
+      "sectionGuid": "3430615b-8734-57d4-a855-b6e104948721",
       "sectionName": "Doors",
       "description": "Every door of the gate with its type, state and health. Edit opens the door's own form; add doors by editing the gate.",
       "relatedEntityPropertyName": "GateDoors",
@@ -298,46 +298,71 @@
       "actionButtonsConfigJson": "{\"showEditButton\":true}",
       "fields": [
         {
-          "fieldGuid": "7ea51199-94e5-562e-9518-82b2756fad07",
+          "fieldGuid": "909e0198-582d-5640-a748-fc7f904add43",
           "fieldName": "Name",
           "label": "Door",
           "description": "Unique within the gate; /gatedoor commands use it.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "4530aacb-c513-5dd1-ba1d-0f4c31876115",
+          "fieldGuid": "861ddc59-5831-5db5-9be6-fc83718e26dc",
           "fieldName": "GateType",
           "label": "Type",
           "description": "Sliding, trap, drawbridge or double doors.",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "214a78f1-b65c-53d2-95b0-2d3054b19894",
+          "fieldGuid": "ea383a2a-5978-5c8e-88f9-4825ca415d03",
           "fieldName": "OpenedState",
           "label": "State",
           "description": "Whether the door is open or closed right now.",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "ccc7926c-7b34-557d-8b26-a8fd385fa718",
+          "fieldGuid": "2b8d92eb-dbb8-5d56-a644-dd44088d62f8",
           "label": "Health",
           "description": "Current health / maximum health.",
           "templateText": "${healthCurrent} / ${healthMax}",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "fad8b798-eb9d-579c-8873-2628299f25f9",
+          "fieldGuid": "d5ea0ad2-6000-5a7a-89f5-c0809e91a2df",
           "fieldName": "IsActive",
           "label": "Active",
           "description": "Loaded and usable in game.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "ab94dd17-9432-5485-b067-ff67f563b4a2",
+          "fieldGuid": "0c50eb41-10fd-535b-8318-77a75d6f3bb7",
           "fieldName": "IsDestroyed",
           "label": "Destroyed",
           "description": "Broken down; rebuilds after its respawn time if it respawns.",
           "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "bc60ce65-db58-518d-af58-027ba7d29aec",
+      "sectionName": "Sub-regions",
+      "description": "The gate's extra WorldGuard regions (KNG-254), each a copy of its main region. Edit opens a sub-region's form; add them by editing the gate.",
+      "relatedEntityPropertyName": "SubRegions",
+      "relatedEntityTypeName": "DomainSubRegion",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showEditButton\":true}",
+      "fields": [
+        {
+          "fieldGuid": "c5b9f9d9-06ad-5b34-94c1-ed69f2361ea4",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The sub-region's label, e.g. 'Tower'.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "9e2c9ece-c3ca-5c92-9462-cfc7ff207306",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "Its WorldGuard region, domain_<id>_sub_<n> once saved.",
+          "fieldType": "String"
         }
       ]
     }
