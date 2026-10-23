@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Text.Json.Serialization;
 using knkwebapi_v2.Json;
@@ -12,6 +13,10 @@ namespace knkwebapi_v2.Dtos
     // 5.0-B) live here as nullable fields alongside the embedded GateDoors list.
     public class GateStructureDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
     {
+        // KNG-254: the domain's sub-regions, read-only here (edited through api/DomainSubRegions, the form's owned list).
+        [JsonPropertyName("subRegions")]
+        public List<DomainSubRegionDto>? SubRegions { get; set; }
+
         [JsonPropertyName("id")]
         [JsonConverter(typeof(NullableIntConverter))]
         public int? Id { get; set; }

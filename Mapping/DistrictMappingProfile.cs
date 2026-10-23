@@ -10,6 +10,8 @@ namespace knkwebapi_v2.Mapping
         public DistrictMappingProfile()
         {
             CreateMap<District, DistrictDto>()
+                // KNG-254: read-only list; sub-regions are saved through api/DomainSubRegions.
+                .ForMember(dest => dest.SubRegions, opt => opt.MapFrom(src => src.SubRegions.OrderBy(r => r.Id)))
                 .ForMember(dest => dest.Id, src => src.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Name, src => src.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Description, src => src.MapFrom(src => src.Description))
@@ -51,6 +53,7 @@ namespace knkwebapi_v2.Mapping
                 }).ToList()));
 
             CreateMap<DistrictDto, District>()
+                .ForMember(dest => dest.SubRegions, opt => opt.Ignore())
                 .ForMember(dest => dest.Id, src => src.MapFrom(src => src.Id ?? 0))
                 .ForMember(dest => dest.Name, src => src.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Description, src => src.MapFrom(src => src.Description))

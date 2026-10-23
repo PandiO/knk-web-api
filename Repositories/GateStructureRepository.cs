@@ -22,6 +22,7 @@ namespace knkwebapi_v2.Repositories
         public async Task<GateStructure?> GetByIdAsync(int id)
         {
             return await BuildGateQuery()
+                .Include(gs => gs.SubRegions)
                 .FirstOrDefaultAsync(gs => gs.Id == id);
         }
 

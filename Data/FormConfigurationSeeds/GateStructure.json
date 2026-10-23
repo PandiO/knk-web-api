@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "554683bb-f5e6-503e-bd21-dfb76eb99dc1",
+  "configurationGuid": "9b5addff-1f6c-53d9-baca-5b4598ac4337",
   "entityTypeName": "GateStructure",
-  "name": "GateStructure - Default (seed v2)",
+  "name": "GateStructure - Default (seed v3)",
   "description": "A gate: its name, address, WorldGuard region, spawn point, warp destination and siege behaviour. Its doors are their own records, added on the last step once the gate is saved. Seed v2 (KNG-229): /navigate default, entry rule on roads and the warp destination step, as on the Structure form.",
   "steps": [
     {
-      "stepGuid": "e89e9071-77e3-537a-87cb-fd6865ec29f7",
+      "stepGuid": "9ad34c67-50cf-5876-82ef-f26a1e0c7df0",
       "stepName": "General information",
       "description": "Name the gate. The name is shown in game and is how /gate commands find it.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "0374b0d0-9f7f-5b8d-a768-c085861804a9",
+          "fieldGuid": "a416a75f-7557-5789-9b65-a8a00ce7d0d3",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in game and used by /gate commands, so keep it short. 'here' is reserved and refused.",
@@ -21,7 +21,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "b57eb328-9645-58f9-b664-140ee5db1eb2",
+          "fieldGuid": "5663477e-2261-53dd-b02c-a99b34acccfa",
           "fieldName": "Description",
           "label": "Description",
           "description": "One line for admins and the web app, e.g. what the gate guards.",
@@ -30,7 +30,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "e672fe4c-c736-53ca-a775-f0a84a1246a8",
+          "fieldGuid": "414db7be-1dd3-5ed3-82d1-96296973cf50",
           "fieldName": "IconMaterialRefId",
           "label": "Icon",
           "description": "Item shown for this gate in menus. Leave empty for the default icon.",
@@ -41,13 +41,13 @@
       ]
     },
     {
-      "stepGuid": "6c95ff5e-0166-5de1-9f0c-35c913ab8663",
+      "stepGuid": "121ace18-1d9e-5c3e-afba-c296f8349a6b",
       "stepName": "Address",
       "description": "Where the gate stands. Pick the district first; create the street here if it doesn't exist yet.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "13db2192-e418-5154-be80-175ed2d083ff",
+          "fieldGuid": "879c40fa-c9e6-511e-8277-055ddd7b7712",
           "fieldName": "DistrictId",
           "label": "District",
           "description": "The district the gate belongs to. Its region is checked against the district's region on the next step.",
@@ -57,7 +57,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "95201d9d-5649-5453-9748-d1893ca69017",
+          "fieldGuid": "54f60284-3c51-53af-990d-e872eeeaae43",
           "fieldName": "StreetId",
           "label": "Street",
           "description": "The street the gate is on. Use Create New if the street isn't there yet.",
@@ -69,13 +69,13 @@
       ]
     },
     {
-      "stepGuid": "2c6de257-5ec9-5433-a233-9ff6ded39d36",
+      "stepGuid": "c29c8e4f-a53c-554a-a73b-6e87b788184b",
       "stepName": "Region and access",
       "description": "The WorldGuard region around the whole gate, and whether players may walk in and out of it. Use Send to Minecraft and select the region in game with WorldEdit, or type an existing region's name.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "d0747d9c-eeda-55cb-b536-4d18feff3c82",
+          "fieldGuid": "07d7df54-1125-5f8f-8a06-acea7d7c5174",
           "fieldName": "WgRegionId",
           "label": "Region",
           "description": "The WorldGuard region that encloses the gate and all its doors. Door points are checked against it, and it should lie inside the district's region.",
@@ -85,7 +85,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
         },
         {
-          "fieldGuid": "cfe547ff-120a-5325-8ca9-965c4f1809d4",
+          "fieldGuid": "923b6663-7e09-592d-b60f-68b46550ea8b",
           "fieldName": "AllowEntry",
           "label": "Allow entry",
           "description": "Players may walk into the gate's region. Off keeps everyone out except admins.",
@@ -95,7 +95,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "131c2142-be21-52a2-a37d-3e9736aba230",
+          "fieldGuid": "d7896f73-8aa7-5fb6-8793-f1d7d010da48",
           "fieldName": "AllowExit",
           "label": "Allow exit",
           "description": "Players inside the gate's region may walk out of it.",
@@ -105,7 +105,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "07946d86-699a-5565-be28-902e665bc698",
+          "fieldGuid": "653e1dba-af2b-5439-978a-6077d31dad14",
           "fieldName": "RoadAccessOverride",
           "label": "Entry rule on roads",
           "description": "Applies: when players may not enter, /navigate routes avoid the roads through this gate's region. Ignored: routes may use them, e.g. for a gate that spans a public road; the rule still holds at the border and for teleports. Empty = the setting for all gates on the Roads page.",
@@ -118,13 +118,13 @@
       ]
     },
     {
-      "stepGuid": "bff3bd87-a094-5cc6-a087-628e7621efaa",
+      "stepGuid": "d48c1fd4-48e1-53e7-9ebc-b04fcc09d255",
       "stepName": "Spawn point",
       "description": "Where /gate tp, /warp and /navigate <gate> put players. Stand on the spot in game, facing the gate, and use Send to Minecraft.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "68a3bf95-2e00-5a79-88c5-2b0e43e16aa2",
+          "fieldGuid": "92f0a6fb-be7c-53d5-8559-7036608f310a",
           "fieldName": "LocationId",
           "label": "Spawn point",
           "description": "Optional, but a warp destination needs one. Without it, /gate tp puts players next to the gate's first door.",
@@ -135,7 +135,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "c8502f05-85e4-55b0-8801-b5a199bb2bf5",
+          "fieldGuid": "9dc2392a-07f9-5ca9-a2f5-8a2f5f3166f8",
           "fieldName": "NavigationDefaultOverride",
           "label": "Navigate to",
           "description": "Where /navigate <gate> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the gate's region. Leave empty to follow the setting for all gates on the Roads page.",
@@ -148,13 +148,13 @@
       ]
     },
     {
-      "stepGuid": "afc93ffa-ab9e-5713-8d12-61402c9b2479",
+      "stepGuid": "e11e7b5b-52e0-58e8-97e8-0a30a13dabad",
       "stepName": "Warp destination",
       "description": "Whether players can /warp to the gate's spawn point, and what that requires. Requirements are checked in this order: title, premium tier, discovery, price.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "81adf8c8-9f22-5986-a0f5-656cd7e6be4e",
+          "fieldGuid": "23d4e520-d1c6-5df6-a5b6-3d18f984c76a",
           "fieldName": "TeleportEnabled",
           "label": "Warp destination",
           "description": "Lists the gate in /warp and the teleport menu. It also needs a spawn point and Allow entry on. Off keeps the settings below but doesn't use them.",
@@ -164,7 +164,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "23753c3f-8272-5f18-bc0b-857c166210e1",
+          "fieldGuid": "6c0f7aec-c5c9-5b5f-b9a1-7f501b786d1e",
           "fieldName": "TeleportPriceGems",
           "label": "Price (gems)",
           "description": "Gems charged per warp, after the warmup. 0 = free. A permission group's /warp price setting can replace or multiply it.",
@@ -174,7 +174,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "1f84299c-f5d4-53bc-af32-01acf8938748",
+          "fieldGuid": "540d8bd1-d232-5742-9611-7665e1142fda",
           "fieldName": "TeleportMinTitleBracketId",
           "label": "Minimum title",
           "description": "Players whose experience is below this title can't warp here. Empty = no title needed.",
@@ -184,7 +184,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "cbe72726-f377-5340-a782-a008d8624214",
+          "fieldGuid": "a8326537-cd53-5051-9703-85955bb3f377",
           "fieldName": "TeleportMinPremiumGroupId",
           "label": "Minimum premium tier",
           "description": "Only players whose highest premium tier has at least this group's weight may warp here. Only premium-tier groups can be picked. Empty = everyone.",
@@ -195,7 +195,7 @@
           "settingsJson": "{\"pickerFilters\": {\"isPremiumTier\": \"true\"}}"
         },
         {
-          "fieldGuid": "4e03cfec-41f9-5186-96d6-5ac27d81df44",
+          "fieldGuid": "0c23d245-aa4b-51b6-af23-1ac2d54532bf",
           "fieldName": "TeleportRequiresDiscovery",
           "label": "Discovered gates only",
           "description": "Only players who have discovered the gate (entered its region at least once) may warp here. Gate discovery is on by default; if it is switched off for gates on the discovery page, nobody new can discover the gate.",
@@ -207,13 +207,13 @@
       ]
     },
     {
-      "stepGuid": "a8909da6-ae6d-5981-9be6-7c7dfbe3766a",
+      "stepGuid": "2302b833-3cf1-5ea4-b307-5fa453eaf558",
       "stepName": "Siege behaviour",
       "description": "How the gate behaves while a siege match has it locked down.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "f26dba4d-0e5c-52af-8dce-c752ac645ce4",
+          "fieldGuid": "af78ed9a-5337-5ccf-999c-656817853d5e",
           "fieldName": "AnimateDuringSiege",
           "label": "Animate during a siege",
           "description": "Doors open and close with their animation during a match. Off switches them instantly.",
@@ -223,7 +223,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "8e27d4fd-ff39-5910-a4c6-362daff07ad7",
+          "fieldGuid": "00af15dc-ae5d-52d0-81fd-9674f62a9a55",
           "fieldName": "IsOverridable",
           "label": "Siege may take over",
           "description": "A siege match may take control of this gate's doors (open, close, destroy). Off keeps the gate out of every siege.",
@@ -235,13 +235,13 @@
       ]
     },
     {
-      "stepGuid": "5bd3190f-b112-5ea4-832a-ae3378bfa671",
+      "stepGuid": "af09fc4a-64fa-5af2-bf51-9a8a533fe96f",
       "stepName": "Gate doors",
       "description": "The doors that open and close. Save the gate first (Submit), then Edit it to add doors; each door has its own form and is saved when you finish it.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "6f3095a2-21a2-58e2-b34c-83ae18582d53",
+          "fieldGuid": "64fcc6a2-3701-5c93-949f-44478fe0507e",
           "fieldName": "GateDoors",
           "label": "Doors",
           "description": "One entry per door. Create New opens the door form with this gate already filled in.",
@@ -253,14 +253,34 @@
           "settingsJson": "{\"ownedChildCollection\": true}"
         }
       ]
+    },
+    {
+      "stepGuid": "0fdefd66-1fb0-5fc2-bd6a-bd7978387b98",
+      "stepName": "Sub-regions",
+      "description": "Extra WorldGuard regions of the gate besides its main region, for a shape one region can't hold (a round tower next to a square house). The gate is the union of its regions. Save the gate first (Submit), then Edit it to add sub-regions; each one is drawn in game and saved when its form completes.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "dbb1cb36-11dd-526d-8aa4-b5c5d7dce25b",
+          "fieldName": "SubRegions",
+          "label": "Sub-regions",
+          "description": "One entry per extra region. Each gets the main region's flags, owners, members and priority from the game server, so set flags on the main region only. A removed sub-region's WorldGuard region is deleted 14 days later.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "DomainSubRegion",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
     }
   ],
   "validationRules": [
     {
-      "fieldGuid": "d0747d9c-eeda-55cb-b536-4d18feff3c82",
+      "fieldGuid": "07d7df54-1125-5f8f-8a06-acea7d7c5174",
       "validationType": "RegionContainment",
       "dependsOn": {
-        "fieldGuid": "13db2192-e418-5154-be80-175ed2d083ff"
+        "fieldGuid": "879c40fa-c9e6-511e-8277-055ddd7b7712"
       },
       "dependencyPath": "District.WgRegionId",
       "configJson": "{\"parentRegionPath\": \"WgRegionId\", \"requireFullContainment\": true}",

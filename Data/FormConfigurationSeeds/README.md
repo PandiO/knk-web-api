@@ -50,6 +50,16 @@ change of the same issue: before it, `GateStructureService` ignored the warp set
 step (the plugin, v1) keeps its settings. GUIDs: configuration uuid5(v1 configuration GUID, "seed-v2"), every kept
 step/field uuid5(v1 configuration GUID, its v1 GUID), new ones uuid5(v2 configuration GUID, "step:"/"field:" + name).
 
+**Domain sub-regions (KNG-254, 2026-10-23):** new seed `DomainSubRegion` (seed v1: the domain, a name and the region
+world task) and new versions of `Town`, `District`, `Structure` (seed v2) and `GateStructure` (seed v3) with a last
+"Sub-regions" step: an owned `SubRegions` list of `DomainSubRegion`, usable once the domain is saved (like Gate doors).
+Each has a new `configurationGuid` and name, so it imports next to the previous version; import `DomainSubRegion`
+first, then make the new versions the defaults. GUIDs: configuration uuid5(previous configuration GUID, "seed-v<n>"),
+every kept step/field uuid5(previous configuration GUID, its previous GUID), the new step and field uuid5(new
+configuration GUID, "step:Sub-regions"/"field:SubRegions"); `DomainSubRegion` uses uuid5(URL namespace,
+"knk-formconfig:DomainSubRegion:seed-v1") and uuid5(that, "step:"/"field:" + name). Design: knk-workspace
+`docs/specs/domain-subregions/DESIGN.md` §4.3.
+
 ## Priority 2 and 3 (KNG-139, 2026-10-19)
 
 Converted from the dev DB's own configurations (the `knk_uiux_seed` dump of 2026-10-07; the alpha DB had the same
