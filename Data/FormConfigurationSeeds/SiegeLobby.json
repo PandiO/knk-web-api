@@ -49,6 +49,17 @@
           "isRequired": true,
           "isReadOnly": false,
           "settingsJson": "{\"enumValues\": [\"Continuous\"], \"enumValuesSubset\": true}"
+        },
+        {
+          "fieldGuid": "64965ad3-ef1e-58e2-8d4b-2b9b2bdb13c5",
+          "fieldName": "NavigationItem",
+          "label": "Navigation compass",
+          "description": "Whether players of this lobby get the navigation compass when they are teleported to the hub, before the match; it is removed with the inventory restore afterwards. Inherit: follow the scenario being played, then the global Siege configuration. Give / DoNotGive: decide for this lobby, whatever the scenario says.",
+          "fieldType": "Enum",
+          "defaultValue": "Inherit",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Inherit\", \"Give\", \"DoNotGive\"]}"
         }
       ]
     },

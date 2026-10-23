@@ -45,3 +45,11 @@ The gate seeds were written from the docs and the models; no export of the dev D
 available. The siege seeds convert `siege-minigame/PHASE_3_FORMCONFIGS.md` (configurations 23-33). What changed
 against those forms, and what was left off on purpose: knk-workspace
 `docs/reports/2026-10-11-form-wizard-chain.md`, link 7.
+
+**NavigationItem field (KNG-234, 2026-10-23):** `SiegeScenario.json` (step "Hub and entry") and `SiegeLobby.json` (step
+"General") each gained the optional-by-default Enum field `NavigationItem` ("Navigation compass": `Inherit`, `Give`,
+`DoNotGive`; default `Inherit`) in place, without a new `configurationGuid`, because other seeds refer to the scenario
+configuration by GUID. A fresh import has the field; a database that imported these seeds earlier gets it by adding the
+same field in the form designer (import never overwrites). Field GUIDs: uuid5 of the configuration GUID and
+`<step>/NavigationItem`.
+
