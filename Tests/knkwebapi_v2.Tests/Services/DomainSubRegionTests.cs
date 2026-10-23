@@ -274,4 +274,40 @@ public class DomainSubRegionTests : IDisposable
 
     private static (string Old, string New, string? Replace) Pick((string Old, string New, string? Type, string MainRegion, string? World, string? Replace) r) =>
         (r.Old, r.New, r.Replace);
+
+    // ===== KNG-259 smoke test 2026-10-23: the edit form showed no sub-regions on a gate =====
+
+    private static AutoMapper.IMapper AllProfiles() => new AutoMapper.MapperConfiguration(cfg =>
+        cfg.AddMaps(typeof(knkwebapi_v2.Mapping.DomainMappingProfile).Assembly)).CreateMapper();
+
+    [Fact]
+    public async Task EveryDomainTypesEditReadCarriesItsSubRegions()
+    {
+        await SeedAsync();
+        _context.Streets.Add(new Street { Id = 1, Name = "Main" });
+        _context.Structures.Add(new Structure { Id = 12, Name = "House", Description = "s", WgRegionId = "domain_12", DistrictId = 10, StreetId = 1, HouseNumber = 1 });
+        foreach (var (id, domainId) in new[] { (1, 1), (2, 10), (3, 11), (4, 11), (5, 12) })
+        {
+            _context.DomainSubRegions.Add(new DomainSubRegion { Id = id, DomainId = domainId, WgRegionId = $"domain_{domainId}_sub_{id}" });
+        }
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+        var mapper = AllProfiles();
+
+        var town = mapper.Map<TownDto>(await new TownRepository(_context).GetByIdAsync(1));
+        var district = mapper.Map<DistrictDto>(await new DistrictRepository(_context).GetByIdAsync(10));
+        var structure = mapper.Map<StructureDto>(await new StructureRepository(_context).GetByIdAsync(12));
+        var gates = new GateStructureRepository(_context);
+        // The web app's edit form loads a gate with includeSnapshots=true (GateStructureClient.getById(id, true)).
+        var gate = mapper.Map<GateStructureDto>(await gates.GetByIdWithSnapshotsAsync(11));
+        var gatePlain = mapper.Map<GateStructureDto>(await gates.GetByIdAsync(11));
+
+        Assert.Equal(new[] { "domain_1_sub_1" }, town.SubRegions!.Select(r => r.WgRegionId));
+        Assert.Equal(new[] { "domain_10_sub_2" }, district.SubRegions!.Select(r => r.WgRegionId));
+        Assert.Equal(new[] { "domain_12_sub_5" }, structure.SubRegions!.Select(r => r.WgRegionId));
+        Assert.Equal(new[] { "domain_11_sub_3", "domain_11_sub_4" }, gate.SubRegions!.Select(r => r.WgRegionId));
+        Assert.Equal(new[] { 3, 4 }, gatePlain.SubRegions!.Select(r => r.Id!.Value));
+        Assert.All(gate.SubRegions!, r => Assert.Equal(11, r.DomainId));
+    }
 }
+
