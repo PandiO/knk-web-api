@@ -56,6 +56,13 @@ namespace knkwebapi_v2.Models
         /// - "Please enter a valid email address."
         /// </summary>
         public string? ErrorMessage { get; set; }
+
+        /// <summary>
+        /// False switches the validation off without deleting it; the wizard then skips it. Until
+        /// 2026-10-23 (KNG-186) this existed on the DTO only and the API always sent false. Existing
+        /// rows are active.
+        /// </summary>
+        public bool IsActive { get; set; } = true;
         
         // Foreign key to FormField
         public int FormFieldId { get; set; }

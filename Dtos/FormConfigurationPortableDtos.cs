@@ -132,6 +132,9 @@ namespace knkwebapi_v2.Dtos
         public string? ConditionJson { get; set; }
         [JsonPropertyName("errorMessage")]
         public string? ErrorMessage { get; set; }
+        /// <summary>Absent (the default, written for an active condition) = active; false = switched off (KNG-186).</summary>
+        [JsonPropertyName("isActive")]
+        public bool? IsActive { get; set; }
     }
 
     public class PortableFieldValidationDto
@@ -142,6 +145,9 @@ namespace knkwebapi_v2.Dtos
         public string? ParametersJson { get; set; }
         [JsonPropertyName("errorMessage")]
         public string? ErrorMessage { get; set; }
+        /// <summary>Absent (the default, written for an active validation) = active; false = switched off (KNG-186).</summary>
+        [JsonPropertyName("isActive")]
+        public bool? IsActive { get; set; }
     }
 
     /// <summary>Array order = group order.</summary>

@@ -1339,6 +1339,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("FormFieldId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("ParametersJson")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -5575,6 +5578,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<int>("FormStepId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("Id");
 
