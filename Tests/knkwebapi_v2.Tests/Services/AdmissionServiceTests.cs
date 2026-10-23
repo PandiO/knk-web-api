@@ -175,6 +175,26 @@ public class AdmissionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AReusedClaimCode_AndTheClaimCheck_SendTheExpiryAsUtc_EvenWhenTheRowHasNoKind()
+    {
+        // A row read back from MySQL has Kind == Unspecified; serialized as-is it loses the trailing Z and
+        // the plugin's Instant parser throws, which it treats as "API unreachable" (smoke test 2026-10-23).
+        var unspecified = DateTime.SpecifyKind(DateTime.UtcNow.AddMinutes(10), DateTimeKind.Unspecified);
+        _t.Db.LinkCodes.Add(new LinkCode { Code = "K0QHM1XA", Purpose = LinkCodePurpose.Claim, MinecraftUuid = Lower, MinecraftName = "Steve",
+            CreatedAt = DateTime.UtcNow, ExpiresAt = unspecified, Status = LinkCodeStatus.Active });
+        await _t.Db.SaveChangesAsync();
+
+        var gate = await Service().CheckAsync(Uuid, "Steve");
+        var claim = await Service().CheckClaimAsync("K0QH-M1XA");
+
+        Assert.Equal("K0QH-M1XA", gate.Code);
+        Assert.Equal(DateTimeKind.Utc, gate.ExpiresAt!.Value.Kind);
+        Assert.Equal(unspecified, gate.ExpiresAt.Value);
+        Assert.Equal(DateTimeKind.Utc, claim.ExpiresAt!.Value.Kind);
+        Assert.EndsWith("Z", System.Text.Json.JsonSerializer.Serialize(gate.ExpiresAt).Trim('"'));
+    }
+
+    [Fact]
     public async Task ClaimCheck_FoldsCrockfordLookAlikes()
     {
         _t.Db.LinkCodes.Add(new LinkCode { Code = "K0QHM1XA", Purpose = LinkCodePurpose.Claim, MinecraftUuid = Lower, MinecraftName = "Steve",

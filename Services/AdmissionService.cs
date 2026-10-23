@@ -119,9 +119,18 @@ namespace knkwebapi_v2.Services
                 Admitted = false,
                 Reason = AdmissionReasons.NotAdmitted,
                 Code = LinkCodeService.FormatClaimCode(code.Code),
-                ExpiresAt = code.ExpiresAt
+                ExpiresAt = AsUtc(code.ExpiresAt)
             };
         }
+
+        /// <summary>
+        /// A claim code read back from MySQL has an Unspecified kind, which serializes without the
+        /// trailing Z; the plugin parses expiresAt as an Instant and refuses a timestamp without an
+        /// offset (found in the 2026-10-23 smoke test: the second join of a stranger fell to the
+        /// offline store). Stored times are UTC, so say so.
+        /// </summary>
+        private static DateTime AsUtc(DateTime value) =>
+            value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
         /// <summary>
         /// The account's name follows the Mojang name, as on join today. A name another account
@@ -154,7 +163,7 @@ namespace knkwebapi_v2.Services
             {
                 return new ClaimCheckResponseDto { Valid = false };
             }
-            return new ClaimCheckResponseDto { Valid = true, MinecraftName = linkCode.MinecraftName, ExpiresAt = linkCode.ExpiresAt };
+            return new ClaimCheckResponseDto { Valid = true, MinecraftName = linkCode.MinecraftName, ExpiresAt = AsUtc(linkCode.ExpiresAt) };
         }
 
         public async Task<int> QueueFinishLinkingRemindersAsync(CancellationToken ct = default)
