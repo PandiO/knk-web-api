@@ -36,6 +36,10 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// Only Towns, Districts, Structures and GateStructures are returned.</summary>
         Task<List<DiscoveryDomainNode>> FindByWgRegionIdsAsync(IReadOnlyCollection<string> wgRegionIds);
 
+        /// <summary>KNG-256: the domain of each of <paramref name="wgRegionIds"/> that is a domain sub-region
+        /// (KNG-254), ignoring case: a sub-region is discovered as its domain.</summary>
+        Task<List<(string RegionId, int DomainId)>> FindSubRegionDomainsAsync(IReadOnlyCollection<string> wgRegionIds);
+
         Task<List<DiscoveryDomainNode>> GetDomainNodesAsync(IReadOnlyCollection<int> domainIds);
 
         Task<List<DiscoveryDomainNode>> GetAllDomainNodesAsync();

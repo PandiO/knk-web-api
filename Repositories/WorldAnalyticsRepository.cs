@@ -78,6 +78,16 @@ namespace knkwebapi_v2.Repositories
             {
                 result.TryAdd(row.WgRegionId, row.Id);
             }
+            // KNG-256: a domain's sub-region counts for the domain.
+            var subRegions = await _context.DomainSubRegions.AsNoTracking()
+                .Where(s => lowered.Contains(s.WgRegionId.ToLower()))
+                .OrderBy(s => s.Id)
+                .Select(s => new { s.WgRegionId, s.DomainId })
+                .ToListAsync(ct);
+            foreach (var row in subRegions)
+            {
+                result.TryAdd(row.WgRegionId, row.DomainId);
+            }
             return result;
         }
 

@@ -63,6 +63,22 @@ namespace knkwebapi_v2.Repositories
             return await GetDomainNodesAsync(ids);
         }
 
+        public async Task<List<(string RegionId, int DomainId)>> FindSubRegionDomainsAsync(IReadOnlyCollection<string> wgRegionIds)
+        {
+            var lowered = wgRegionIds
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim().ToLower())
+                .Distinct()
+                .ToList();
+            if (lowered.Count == 0) return new List<(string RegionId, int DomainId)>();
+
+            var rows = await _context.DomainSubRegions.AsNoTracking()
+                .Where(s => lowered.Contains(s.WgRegionId.ToLower()))
+                .Select(s => new { s.WgRegionId, s.DomainId })
+                .ToListAsync();
+            return rows.Select(r => (r.WgRegionId, r.DomainId)).ToList();
+        }
+
         public Task<List<DiscoveryDomainNode>> GetDomainNodesAsync(IReadOnlyCollection<int> domainIds)
         {
             var ids = domainIds.Distinct().ToList();
