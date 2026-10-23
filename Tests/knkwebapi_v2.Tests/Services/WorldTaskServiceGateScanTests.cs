@@ -93,4 +93,97 @@ public class WorldTaskServiceGateScanTests
 
         Assert.Equal("Completed", task.Status);
     }
+
+    // KNG-268: a scan the plugin can't run is refused when the task is created.
+    private static WorldTaskCreateDto ScanRequest(string taskType, int gateDoorId) => new()
+    {
+        WorkflowSessionId = 1,
+        StepNumber = 0,
+        StepKey = "block-scan",
+        FieldName = taskType == WorldTaskTypes.GateOpenedBlockScan ? "OpenedBlockSnapshots" : "BlockSnapshots",
+        TaskType = taskType,
+        InputJson = $"{{\"gateDoorId\":{gateDoorId}}}"
+    };
+
+    private void GivenDoor(GateDoorDto door)
+    {
+        _gateDoorService.Setup(s => s.GetByIdAsync(door.Id ?? 0)).ReturnsAsync(door);
+        _mapper.Setup(m => m.Map<WorldTask>(It.IsAny<WorldTaskCreateDto>())).Returns(new WorldTask());
+    }
+
+    [Theory]
+    [InlineData(true, "opened", "/gatedoor capture 17 opened")]
+    [InlineData(false, "closed", "/gatedoor capture 17 closed")]
+    public async Task CreateAsync_RegionDoorWithoutItsRegion_IsRefusedWithTheCaptureCommand(bool openScan, string slot, string command)
+    {
+        GivenDoor(new GateDoorDto { Id = 17, Name = "Main gate", GeometryDefinitionMode = GeometryDefinitionMode.REGION, AnchorPointId = 104 });
+        var taskType = openScan ? WorldTaskTypes.GateOpenedBlockScan : WorldTaskTypes.GateBlockScan;
+
+        var ex = await Assert.ThrowsAsync<GateScanNotReadyException>(() => _service.CreateAsync(ScanRequest(taskType, 17)));
+
+        Assert.Contains($"no {slot} region", ex.Message);
+        Assert.Contains(command, ex.Message);
+        _taskRepo.Verify(r => r.AddAsync(It.IsAny<WorldTask>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_FloodFillOpenScan_IsRefused()
+    {
+        GivenDoor(new GateDoorDto { Id = 18, Name = "Postern", GeometryDefinitionMode = GeometryDefinitionMode.FLOOD_FILL });
+
+        var ex = await Assert.ThrowsAsync<GateScanNotReadyException>(
+            () => _service.CreateAsync(ScanRequest(WorldTaskTypes.GateOpenedBlockScan, 18)));
+
+        Assert.Contains("flood fill", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_PlaneGridDoorWithoutAnchor_IsRefused()
+    {
+        GivenDoor(new GateDoorDto { Id = 19, Name = "New door", GeometryDefinitionMode = GeometryDefinitionMode.PLANE_GRID });
+
+        var ex = await Assert.ThrowsAsync<GateScanNotReadyException>(
+            () => _service.CreateAsync(ScanRequest(WorldTaskTypes.GateBlockScan, 19)));
+
+        Assert.Contains("no anchor", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_PlaneGridOpenScanWithoutOpenDoorAnchor_IsCreated()
+    {
+        // KNG-270: an empty open-door anchor means the open scan starts at the anchor.
+        GivenDoor(new GateDoorDto { Id = 17, Name = "Main gate", GeometryDefinitionMode = GeometryDefinitionMode.PLANE_GRID, AnchorPointId = 104 });
+
+        await _service.CreateAsync(ScanRequest(WorldTaskTypes.GateOpenedBlockScan, 17));
+
+        _taskRepo.Verify(r => r.AddAsync(It.IsAny<WorldTask>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_RegionDoorWithItsOpenedRegion_IsCreated()
+    {
+        GivenDoor(new GateDoorDto
+        {
+            Id = 17, Name = "Main gate", GeometryDefinitionMode = GeometryDefinitionMode.REGION, AnchorPointId = 104,
+            OpenedRegionData = "{\"type\":\"CUBOID\"}"
+        });
+
+        await _service.CreateAsync(ScanRequest(WorldTaskTypes.GateOpenedBlockScan, 17));
+
+        _taskRepo.Verify(r => r.AddAsync(It.IsAny<WorldTask>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_OtherTaskTypes_DontLookUpADoor()
+    {
+        _mapper.Setup(m => m.Map<WorldTask>(It.IsAny<WorldTaskCreateDto>())).Returns(new WorldTask());
+
+        await _service.CreateAsync(new WorldTaskCreateDto
+        {
+            WorkflowSessionId = 1, StepKey = "anchor", FieldName = "AnchorPointId", TaskType = "LocationSelection",
+            InputJson = "{\"gateDoorId\":17}"
+        });
+
+        _gateDoorService.Verify(s => s.GetByIdAsync(It.IsAny<int>()), Times.Never);
+    }
 }

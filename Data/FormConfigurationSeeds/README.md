@@ -19,7 +19,7 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 | Seed | Configuration | Import after |
 |---|---|---|
 | `GateStructure` | GateStructure - Default (seed v2) | — |
-| `GateDoor` | GateDoor - Default (seed v2) | — (its rules read its own Gate field) |
+| `GateDoor` | GateDoor - Default (seed v3) | — (its rules read its own Gate field) |
 | `SiegeScenarioDistrict.join` | SiegeScenarioDistrict - Join Entry (seed v1) | — |
 | `SiegeScenarioGate.join` | SiegeScenarioGate - Join Entry (seed v1) | — |
 | `SiegeLobbyScenario.join` | SiegeLobbyScenario - Join Entry (seed v1) | — |
@@ -40,6 +40,14 @@ decision D2); a new optional "Door materials" field (`ScanMaterialWhitelist`) on
 to capture an arched door with `//sel convex` without the wall inside the selection (D8); "Shape from" says the plane
 grid is for rectangular doors only. Every step and field GUID of v2 is derived from its v1 GUID (uuid5, namespace =
 the v1 configuration GUID), so the two never share one.
+
+**GateDoor seed v3 (KNG-268/KNG-270, 2026-10-23):** a new `configurationGuid` and name, so it imports next to the
+imported v2; make it the default and delete or keep v2 by hand. Changes: "Open-door anchor" may stay empty when the
+opened door stays inside the door box (the open-door scan then starts at the anchor, plugin and API of the same
+issues); "Open-door scan" is shown for plane grid and region doors (not only once the open-door anchor is set) and
+explains when a scan is needed, that a door which only rises and loses decoration needs none, and that a region door
+needs `/gatedoor capture <door> opened` first; "Closed-door scan" names the closed capture. GUIDs: configuration
+uuid5(v2 configuration GUID, "seed-v3"), every step/field uuid5(v2 configuration GUID, its v2 GUID).
 
 **GateStructure seed v2 (KNG-229, 2026-10-21):** a new `configurationGuid` and name, so it imports next to the
 imported v1; make it the default and delete or keep v1 by hand. Adds the domain settings the Structure form has:
