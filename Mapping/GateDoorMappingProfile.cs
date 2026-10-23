@@ -86,6 +86,10 @@ namespace knkwebapi_v2.Mapping
             // GateDoor -> GateDoorNavDto
             CreateMap<GateDoor, GateDoorNavDto>();
 
+            // KNG-273: search rows (POST /api/GateDoors/search)
+            CreateMap<GateDoor, GateDoorListDto>()
+                .ForMember(dest => dest.GateStructureName, opt => opt.MapFrom(src => src.GateStructure == null ? null : src.GateStructure.Name));
+
             // GateDoorDto -> GateDoor (create/update)
             CreateMap<GateDoorDto, GateDoor>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id ?? 0))

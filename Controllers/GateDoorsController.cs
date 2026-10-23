@@ -53,6 +53,16 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        // KNG-273: the flat, paged door list for the web app's GateDoor dashboard and pickers.
+        [RequireServiceOrLoggedIn] // a read sent as POST, like GateStructures/search
+        [HttpPost("GateDoors/search")]
+        public async Task<ActionResult<PagedResultDto<GateDoorListDto>>> Search([FromBody] PagedQueryDto query)
+        {
+            if (query == null) return BadRequest("A query is required.");
+            var result = await _service.SearchAsync(query);
+            return Ok(result);
+        }
+
         [HttpPost("GateStructures/{gateStructureId:int}/doors")]
         public async Task<IActionResult> Create(int gateStructureId, [FromBody] GateDoorDto gateDoorDto)
         {
