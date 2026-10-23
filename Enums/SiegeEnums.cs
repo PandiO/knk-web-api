@@ -18,6 +18,16 @@ public enum SiegeLobbyMode
     Scheduled
 }
 
+// Whether a siege gives its players the navigation compass at the hub (KNG-234). A lobby's value overrides
+// its scenario's, which overrides the global SiegeConfiguration.GiveNavigationItem; Inherit defers to the next
+// level up. The item is the one the navigation compass settings describe, and it goes with the inventory restore.
+public enum SiegeNavigationItemMode
+{
+    Inherit,
+    Give,
+    DoNotGive
+}
+
 public enum SiegeMatchStatus
 {
     Created,

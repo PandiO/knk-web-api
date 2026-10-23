@@ -53,6 +53,7 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         config.EnchantLevelMin = dto.EnchantLevelMin ?? config.EnchantLevelMin;
         config.EnchantLevelMax = dto.EnchantLevelMax ?? config.EnchantLevelMax;
         config.MaxBooksAlive = dto.MaxBooksAlive ?? config.MaxBooksAlive;
+        config.GiveNavigationItem = dto.GiveNavigationItem ?? config.GiveNavigationItem;
 
         if (dto.NonMemberGateView.HasValue)
         {
@@ -187,6 +188,7 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         EnchantLevelMax = c.EnchantLevelMax,
         MaxBooksAlive = c.MaxBooksAlive,
         NonMemberGateView = c.NonMemberGateView,
+        GiveNavigationItem = c.GiveNavigationItem,
         UpdatedAt = DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc)
     };
 }

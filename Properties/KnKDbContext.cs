@@ -126,6 +126,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<DomainDiscoveryOverride> DomainDiscoveryOverrides { get; set; } = null!;
     // Navigation default per domain type (KNG-73, docs/specs/navigation/DESIGN.md §6.1)
     public virtual DbSet<DomainNavigationDefault> DomainNavigationDefaults { get; set; } = null!;
+    public virtual DbSet<NavigationCompassSettings> NavigationCompassSettingsRows { get; set; } = null!;
 
     // Road navigation Phase 1 (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
     public virtual DbSet<RoadProfile> RoadProfiles { get; set; } = null!;
@@ -407,6 +408,8 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_scenarios");
 
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
+
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(1000);
 
@@ -483,6 +486,8 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_lobbies");
+
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
 
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Key).IsRequired().HasMaxLength(64);
@@ -2261,6 +2266,20 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.DomainType).HasMaxLength(32);
             entity.Property(e => e.DefaultMode).HasConversion<string>().HasMaxLength(16);
             entity.Property(e => e.RoadAccess).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+        });
+
+        // The navigation compass item rule (KNG-234): a single row, created by the first save.
+        modelBuilder.Entity<NavigationCompassSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("navigation_compass_settings");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Material).IsRequired().HasMaxLength(NavigationCompassSettings.MaxMaterialLength);
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(NavigationCompassSettings.MaxDisplayNameLength);
+            entity.Property(e => e.NameMatch).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.GeneralTargets).IsRequired().HasMaxLength(NavigationCompassSettings.MaxTargetsLength);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 

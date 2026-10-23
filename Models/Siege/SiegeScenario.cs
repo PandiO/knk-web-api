@@ -1,4 +1,5 @@
 using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Enums;
 
 namespace knkwebapi_v2.Models;
 
@@ -63,6 +64,9 @@ public class SiegeScenario
     // stay in the area). Kept to avoid a migration; remove with the next siege schema change.
     public bool LockdownScenarioArea { get; set; } = true;
     public bool AllowRecapture { get; set; } = false;        // §7.3, D5
+
+    // KNG-234: Inherit follows the global SiegeConfiguration.GiveNavigationItem; a lobby's own value wins over this one.
+    public SiegeNavigationItemMode NavigationItem { get; set; } = SiegeNavigationItemMode.Inherit;
     public bool EnchantDropsEnabled { get; set; } = true;    // §9.4, D7
 
     // Owned children - cascade from the scenario.
