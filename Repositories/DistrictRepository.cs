@@ -28,6 +28,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(d => d.Town)
                 .Include(d => d.Streets)
                 .Include(d => d.Structures)
+                .Include(d => d.SubRegions)
                 .FirstOrDefaultAsync(d => d.Id == id);
         }
 

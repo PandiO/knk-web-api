@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "4c72e655-7f57-5fde-80d3-9529b4221c70",
+  "configurationGuid": "0b749453-ff60-557d-826b-2d6eb8938126",
   "entityTypeName": "Town",
-  "name": "Town - Default (seed v1)",
+  "name": "Town - Default (seed v2)",
   "description": "A town, the top of the domain tree (town, districts, structures): its WorldGuard region, entry rules, spawn point and /warp settings. Districts are added on their own form by picking this town.",
   "steps": [
     {
-      "stepGuid": "2ac4ba75-cd22-5f89-acfd-af2f3ae06389",
+      "stepGuid": "3187a7aa-28d2-5523-8f61-89548187819a",
       "stepName": "General information",
       "description": "Name the town. The name is what players see in game and what /warp and /navigate look for.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "63f7ff03-bf09-5dab-a1d9-feb5877f5369",
+          "fieldGuid": "7eb1bc5e-90cb-589f-8eb0-75b2664069d4",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in game (entry messages, /warp, /navigate, menus) and in the web app. Commands find the town by this name, so keep it short and unique.",
@@ -21,7 +21,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "2a089724-7c3a-517e-9482-519f359899ed",
+          "fieldGuid": "08b1f5c2-59f7-5f7f-bd68-93bbb6b4d196",
           "fieldName": "Description",
           "label": "Description",
           "description": "A line or two about the town for admins and the web app, e.g. its role in the world.",
@@ -32,13 +32,13 @@
       ]
     },
     {
-      "stepGuid": "3b84515b-ce27-5712-a886-27b3a719a910",
+      "stepGuid": "95f78f15-5a92-594e-bc94-f8a5648ae168",
       "stepName": "Region and access",
       "description": "The WorldGuard region that covers the whole town, and whether players may walk in and out of it. Use Send to Minecraft and select the area in game with WorldEdit, or type the name of an existing region.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "49eb74dd-ec9a-5906-b4cf-b43158ea4f66",
+          "fieldGuid": "3f6cec6c-e398-5996-813f-e8ab565fc77e",
           "fieldName": "WgRegionId",
           "label": "Region",
           "description": "The town's WorldGuard region. Districts are checked against it and discovery, entry rules and navigation use it. A region drawn here is renamed domain_<id> and set up (parent, priority, flags) when the town is saved; its world becomes the town's world.",
@@ -48,7 +48,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
         },
         {
-          "fieldGuid": "d8e2c913-f2c4-55b6-a85b-5b07802b0693",
+          "fieldGuid": "841478bd-a703-5d0e-8aa8-5ad66dff8a9d",
           "fieldName": "AllowEntry",
           "label": "Allow entry",
           "description": "Players may walk into the town's region. Off keeps everyone out except staff with the region bypass permission, and the town is no /warp destination.",
@@ -58,7 +58,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "144987e9-ec33-5aac-9fcb-aa3fc3712070",
+          "fieldGuid": "7911ec5a-c376-5043-9a44-145a586bf133",
           "fieldName": "AllowExit",
           "label": "Allow exit",
           "description": "Players inside the town's region may walk out of it. Off keeps them inside until staff let them out.",
@@ -68,7 +68,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "a5f0e744-62b3-53c2-8401-e905158c7475",
+          "fieldGuid": "93112204-8f28-59e8-a15b-6e3a53271d68",
           "fieldName": "RoadAccessOverride",
           "label": "Entry rule on roads",
           "description": "Applies: when players may not enter, /navigate routes avoid the roads through this region. Ignored: routes may use them (for places along a public street); the rule still holds at the border and for teleports. Empty = the setting for all towns on the Roads page.",
@@ -81,13 +81,13 @@
       ]
     },
     {
-      "stepGuid": "451c2cb4-abcb-5259-b096-256152ce7af8",
+      "stepGuid": "812655a2-bfbd-5aac-bab0-9dd538a76531",
       "stepName": "Spawn point",
       "description": "Where players arrive when they teleport or navigate to the town. Stand on the spot in game, facing the way arrivals should look, and use Send to Minecraft; the spot must be inside the town's region.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "cde4713f-ea3b-5f1b-9f8a-53a23a9a9c5c",
+          "fieldGuid": "75edd8ae-df53-5f56-89d4-4f9451cdee87",
           "fieldName": "Location",
           "label": "Spawn point",
           "description": "The arrival point for /warp and /navigate <town> spawn. Capture it in game, or pick an existing Location.",
@@ -98,7 +98,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "4ff05483-0bfe-52a2-a9ac-7d0ab182305e",
+          "fieldGuid": "906516df-8ce6-5455-8bc6-6d8356c01a79",
           "fieldName": "NavigationDefaultOverride",
           "label": "Navigate to",
           "description": "Where /navigate <town> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the town's region. Leave empty to follow the setting for all towns on the Roads page.",
@@ -111,13 +111,13 @@
       ]
     },
     {
-      "stepGuid": "26d3edea-01f9-55df-a8ce-8e672cf7594c",
+      "stepGuid": "e4361e48-4957-592d-9797-8378503a7839",
       "stepName": "Warp destination",
       "description": "Whether players can /warp to the town's spawn point, and what that requires. Requirements are checked in this order: title, premium tier, discovery, price.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "15549e16-cd99-5099-b671-dba30f7afa97",
+          "fieldGuid": "631ec589-6213-5621-8d40-33c8155765b3",
           "fieldName": "TeleportEnabled",
           "label": "Warp destination",
           "description": "Lists the town in /warp and the teleport menu. It also needs a spawn point and Allow entry on. Off keeps the settings below but doesn't use them.",
@@ -127,7 +127,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "175dbd00-02fc-510e-9ba5-dbe8220d14cc",
+          "fieldGuid": "71df5c1e-d4b0-5fb9-8369-62ef749470ac",
           "fieldName": "TeleportPriceGems",
           "label": "Price (gems)",
           "description": "Gems charged per warp, after the warmup. 0 = free. A permission group's /warp price setting can replace or multiply it.",
@@ -137,7 +137,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "a1adca7c-8280-5fa6-9873-1432e837c4c7",
+          "fieldGuid": "112c6a8a-1e7d-50fe-95c2-3a7888e87cac",
           "fieldName": "TeleportMinTitleBracket",
           "label": "Minimum title",
           "description": "Players whose experience is below this title can't warp here. Empty = no title needed.",
@@ -147,7 +147,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "e4a1634b-3a49-54b9-8cab-6e9e9f74a6e5",
+          "fieldGuid": "01546313-3b83-561d-a734-25eda1bfc83f",
           "fieldName": "TeleportMinPremiumGroup",
           "label": "Minimum premium tier",
           "description": "Only players whose highest premium tier has at least this group's weight may warp here. Only premium-tier groups can be picked. Empty = everyone.",
@@ -158,7 +158,7 @@
           "settingsJson": "{\"pickerFilters\": {\"isPremiumTier\": \"true\"}}"
         },
         {
-          "fieldGuid": "87713d64-ffb7-5939-a7be-8ff8052440c3",
+          "fieldGuid": "ad2d7fa5-e209-558c-a388-5bdb6e9032e3",
           "fieldName": "TeleportRequiresDiscovery",
           "label": "Discovered towns only",
           "description": "Only players who have discovered the town (entered its region at least once) may warp here.",
@@ -168,14 +168,34 @@
           "isReadOnly": false
         }
       ]
+    },
+    {
+      "stepGuid": "6c0283f7-19ae-57bf-88b4-8619f256c8bb",
+      "stepName": "Sub-regions",
+      "description": "Extra WorldGuard regions of the town besides its main region, for a shape one region can't hold (a round tower next to a square house). The town is the union of its regions. Save the town first (Submit), then Edit it to add sub-regions; each one is drawn in game and saved when its form completes.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "67fd22a8-5d01-5675-b91b-8a2442134c0f",
+          "fieldName": "SubRegions",
+          "label": "Sub-regions",
+          "description": "One entry per extra region. Each gets the main region's flags, owners, members and priority from the game server, so set flags on the main region only. A removed sub-region's WorldGuard region is deleted 14 days later.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "DomainSubRegion",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
     }
   ],
   "validationRules": [
     {
-      "fieldGuid": "cde4713f-ea3b-5f1b-9f8a-53a23a9a9c5c",
+      "fieldGuid": "75edd8ae-df53-5f56-89d4-4f9451cdee87",
       "validationType": "LocationInsideRegion",
       "dependsOn": {
-        "fieldGuid": "49eb74dd-ec9a-5906-b4cf-b43158ea4f66",
+        "fieldGuid": "3f6cec6c-e398-5996-813f-e8ab565fc77e",
         "fieldName": "WgRegionId"
       },
       "dependencyPath": "WgRegionId",

@@ -300,3 +300,7 @@ What the importer (`DisplayConfigurationPortabilityService`) settled where §3/�
 - **Not added:** a unique index on `DisplayConfiguration.ConfigurationGuid` (forms have one). I1 checks before
   writing; two simultaneous imports of the same file could still both get in. Needs a migration if wanted.
 - The entity name is stored with the metadata's spelling, whatever casing the file used.
+
+**KNG-254 (2026-10-23):** `Structure` and `GateStructure` seed v2 add a last "Sub-regions" collection section (the
+domain's `SubRegions`, Edit opens a sub-region's form). New `configurationGuid` and name per §5, so each imports next to
+its v1; make it the default by hand.

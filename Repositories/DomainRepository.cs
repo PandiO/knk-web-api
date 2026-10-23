@@ -28,7 +28,10 @@ namespace knkwebapi_v2.Repositories
 
         public Task<Domain?> GetByWgRegionNameAsync(string regionName) => GetByWgRegionNameAsync(regionName, null);
 
-        public async Task<Domain?> GetByWgRegionNameAsync(string regionName, string? worldName)
+        public async Task<Domain?> GetByWgRegionNameAsync(string regionName, string? worldName) =>
+            (await GetByAnyRegionAsync(regionName, worldName))?.Domain;
+
+        public async Task<DomainRegionMatch?> GetByAnyRegionAsync(string regionName, string? worldName)
         {
             if (string.IsNullOrWhiteSpace(regionName)) return null;
             var v = regionName.ToLower().Trim();
@@ -36,6 +39,7 @@ namespace knkwebapi_v2.Repositories
                 .Where(d => d.WgRegionId != null && d.WgRegionId.ToLower() == v);
 
             Domain? domain;
+            DomainSubRegion? matchedSubRegion = null;
             if (string.IsNullOrWhiteSpace(worldName))
             {
                 // World-blind (pre-KNG-111 callers): the lowest id, so duplicates resolve the same way every time.
@@ -55,7 +59,15 @@ namespace knkwebapi_v2.Repositories
                         .FirstOrDefaultAsync();
             }
 
+            if (domain == null)
+            {
+                // KNG-254: one of a domain's sub-regions (they live in their domain's world).
+                matchedSubRegion = await FindSubRegionAsync(v, worldName);
+                domain = matchedSubRegion?.Domain;
+            }
             if (domain == null) return null;
+
+            await _context.Entry(domain).Collection(d => d.SubRegions).LoadAsync();
 
             // Explicitly load the entire ParentDomain chain (unknown depth)
             Domain? current = domain;
@@ -78,7 +90,37 @@ namespace knkwebapi_v2.Repositories
                 break;
             }
 
-            return domain;
+            return new DomainRegionMatch(domain, matchedSubRegion?.Id);
+        }
+
+        public async Task<IReadOnlyDictionary<int, IReadOnlyList<string>>> GetSubRegionIdsByDomainAsync()
+        {
+            var rows = await _context.DomainSubRegions.AsNoTracking()
+                .OrderBy(s => s.Id)
+                .Select(s => new { s.DomainId, s.WgRegionId })
+                .ToListAsync();
+            return rows.GroupBy(r => r.DomainId)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(r => r.WgRegionId).ToList());
+        }
+
+        private async Task<DomainSubRegion?> FindSubRegionAsync(string loweredRegion, string? worldName)
+        {
+            var candidates = _context.DomainSubRegions
+                .Include(s => s.Domain)
+                .Where(s => s.WgRegionId.ToLower() == loweredRegion);
+            if (string.IsNullOrWhiteSpace(worldName))
+            {
+                return await candidates.OrderBy(s => s.Id).FirstOrDefaultAsync();
+            }
+            var w = worldName.ToLower().Trim();
+            return await candidates
+                .Where(s => s.Domain.WorldName != null && s.Domain.WorldName.ToLower() == w)
+                .OrderBy(s => s.Id)
+                .FirstOrDefaultAsync()
+                ?? await candidates
+                    .Where(s => s.Domain.WorldName == null || s.Domain.WorldName == "")
+                    .OrderBy(s => s.Id)
+                    .FirstOrDefaultAsync();
         }
 
         public async Task AddDomainAsync(Domain domain)

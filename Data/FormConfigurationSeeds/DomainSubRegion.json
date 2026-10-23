@@ -1,0 +1,47 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "ec552eff-408e-5f28-a780-9db5d6d6b3c5",
+  "entityTypeName": "DomainSubRegion",
+  "name": "DomainSubRegion - Default (seed v1)",
+  "description": "An extra WorldGuard region of a town, district, structure or gate (KNG-254). Opened from the domain's Sub-regions step, with the domain already filled in.",
+  "steps": [
+    {
+      "stepGuid": "4483d168-675c-52d4-a3b2-04cc9af6cd7c",
+      "stepName": "Sub-region",
+      "description": "Draw the extra region in game. It is renamed domain_<domain id>_sub_<id> when saved and becomes a copy of the domain's main region (flags, owners, members, priority).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "40836f66-b59a-5cc8-ab28-6f9d9cb905ad",
+          "fieldName": "DomainId",
+          "label": "Domain",
+          "description": "The domain this region belongs to. A sub-region can't move to another domain: remove it and add a new one there.",
+          "fieldType": "Object",
+          "objectType": "Domain",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8895637c-77bf-5da5-b43c-29dec35800a6",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Optional label shown in the web app and the server log, e.g. 'Tower' or 'House' (at most 64 characters).",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "00097dce-8fdd-5d67-a152-2ceae158b16e",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "Use Send to Minecraft and select the area with WorldEdit: //sel cuboid, //sel poly, or //sel cyl for a round tower (stored as a polygon along the circle). Type 'select <region>' in game to adopt an existing region instead; it is renamed too. Must be in the domain's world and used by no other domain.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

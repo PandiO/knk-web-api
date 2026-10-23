@@ -69,6 +69,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ILocationService, LocationService>();
             services.AddScoped<IDomainRepository, DomainRepository>();
             services.AddScoped<IDomainService, DomainService>();
+            services.AddScoped<IDomainSubRegionService, DomainSubRegionService>();
             services.AddScoped<IMinecraftMaterialRefRepository, MinecraftMaterialRefRepository>();
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();

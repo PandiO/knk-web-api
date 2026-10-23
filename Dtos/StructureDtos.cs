@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Text.Json.Serialization;
 
@@ -5,6 +6,10 @@ namespace knkwebapi_v2.Dtos
 {
     public class StructureDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
     {
+        // KNG-254: the domain's sub-regions, read-only here (edited through api/DomainSubRegions, the form's owned list).
+        [JsonPropertyName("subRegions")]
+        public List<DomainSubRegionDto>? SubRegions { get; set; }
+
         [JsonPropertyName("id")]
         public int? Id { get; set; }
 

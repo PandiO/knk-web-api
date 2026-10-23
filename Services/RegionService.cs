@@ -42,6 +42,13 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId);
 
         /// <summary>
+        /// KNG-254: renames a domain's sub-region. <paramref name="subRegionOf"/> is the domain's main region: the plugin
+        /// sets the sub-region up as a copy of it (priority, parent, flags, owners, members). The other parameters are as
+        /// for a main region; <paramref name="domainType"/> is the domain's type.
+        /// </summary>
+        Task<bool> RenameSubRegionAsync(string oldRegionId, string newRegionId, string? domainType, string subRegionOf, string? world, string? replaceRegionId);
+
+        /// <summary>
         /// Check whether a location (x,z) lies inside the specified region.
         /// </summary>
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
@@ -259,7 +266,22 @@ namespace knkwebapi_v2.Services
             return RenameRegionAsync(oldRegionId, newRegionId, domainType, parentWgRegionId, world, null);
         }
 
-        public async Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId)
+        public Task<bool> RenameRegionAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId)
+        {
+            return RenameAsync(oldRegionId, newRegionId, domainType, parentWgRegionId, world, replaceRegionId, null);
+        }
+
+        public Task<bool> RenameSubRegionAsync(string oldRegionId, string newRegionId, string? domainType, string subRegionOf, string? world, string? replaceRegionId)
+        {
+            if (string.IsNullOrWhiteSpace(subRegionOf))
+            {
+                throw new ArgumentException("The domain's main region is required.", nameof(subRegionOf));
+            }
+            // The sub-region hangs under the main region (DESIGN.md §5.2), so that is its parent too.
+            return RenameAsync(oldRegionId, newRegionId, domainType, subRegionOf, world, replaceRegionId, subRegionOf);
+        }
+
+        private async Task<bool> RenameAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId, string? subRegionOf)
         {
             Console.WriteLine("[VALIDATION_TRACE_BACKEND]     RegionService.RenameRegionAsync started");
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       oldRegionId: {oldRegionId}");
@@ -300,6 +322,10 @@ namespace knkwebapi_v2.Services
                     if (!string.IsNullOrWhiteSpace(replaceRegionId))
                     {
                         url += $"&replaceRegionId={Uri.EscapeDataString(replaceRegionId)}";
+                    }
+                    if (!string.IsNullOrWhiteSpace(subRegionOf))
+                    {
+                        url += $"&subRegionOf={Uri.EscapeDataString(subRegionOf)}";
                     }
                     Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       POST {url}");
                     var response = await client.PostAsync(url, new StringContent(""));

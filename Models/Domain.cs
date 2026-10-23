@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Enums;
 
@@ -79,4 +80,11 @@ public class Domain
     /// Part C, KNG-92, docs/specs/navigation/REV7_PROPOSAL.md §4): null follows the type's
     /// <see cref="DomainNavigationDefault.RoadAccess"/>, a value overrides it for this domain.</summary>
     public RoadAccessRule? RoadAccessOverride { get; set; }
+
+    // ===== Sub-regions (KNG-254, docs/specs/domain-subregions/DESIGN.md) =====
+
+    /// <summary>The domain's regions besides <see cref="WgRegionId"/>; deleted with the domain (their WorldGuard regions
+    /// then become orphans the game server removes after a grace period).</summary>
+    [RelatedEntityField(typeof(DomainSubRegion))]
+    public ICollection<DomainSubRegion> SubRegions { get; set; } = new List<DomainSubRegion>();
 }

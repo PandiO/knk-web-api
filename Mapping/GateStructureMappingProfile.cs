@@ -1,3 +1,4 @@
+using System.Linq;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
@@ -14,6 +15,8 @@ namespace knkwebapi_v2.Mapping
 
             // GateStructure -> GateStructureDto (full read with embedded navigations)
             CreateMap<GateStructure, GateStructureDto>()
+                // KNG-254: read-only list; sub-regions are saved through api/DomainSubRegions.
+                .ForMember(dest => dest.SubRegions, opt => opt.MapFrom(src => src.SubRegions.OrderBy(r => r.Id)))
                 // Base Structure/Domain fields
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
@@ -93,6 +96,7 @@ namespace knkwebapi_v2.Mapping
 
             // GateStructureDto -> GateStructure (create/update)
             CreateMap<GateStructureDto, GateStructure>()
+                .ForMember(dest => dest.SubRegions, opt => opt.Ignore())
                 // Base fields
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id ?? 0))
                 .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))

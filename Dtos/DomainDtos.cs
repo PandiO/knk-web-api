@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 
@@ -20,6 +21,10 @@ namespace knkwebapi_v2.Dtos
 
     public class DomainDto : IDomainTeleportSettingsDto
     {
+        // KNG-254: the domain's sub-regions, read-only here (edited through api/DomainSubRegions, the form's owned list).
+        [JsonPropertyName("subRegions")]
+        public List<DomainSubRegionDto>? SubRegions { get; set; }
+
         [JsonPropertyName("id")]
         public int? Id { get; set; }
         [JsonPropertyName("name")]
@@ -129,6 +134,13 @@ namespace knkwebapi_v2.Dtos
         public bool AllowExit { get; set; }
         [JsonPropertyName("domainType")]
         public string DomainType { get; set; } = null!;
+        // KNG-254: the domain's other WorldGuard regions, which count as the same domain.
+        [JsonPropertyName("subRegionIds")]
+        public List<string> SubRegionIds { get; set; } = new();
+
+        // KNG-254: set when the looked-up region is one of the domain's sub-regions (null: its main region).
+        [JsonPropertyName("matchedSubRegionId")]
+        public int? MatchedSubRegionId { get; set; }
         [JsonPropertyName("parentDomainDecisions")]
         public Collection<DomainRegionDecisionDto> ParentDomainDecisions { get; set; } = new Collection<DomainRegionDecisionDto>();
         [JsonPropertyName("childDomainDecisions")]
@@ -157,6 +169,11 @@ namespace knkwebapi_v2.Dtos
         public bool AllowExit { get; set; }
         [JsonPropertyName("domainType")]
         public string DomainType { get; set; } = null!;
+
+        // KNG-254: the domain's sub-regions. They carry the same rule, and every region the game server finds named
+        // domain_<id>_sub_<n> that no row lists is an orphan (docs/specs/domain-subregions/DESIGN.md §8).
+        [JsonPropertyName("subRegionIds")]
+        public List<string> SubRegionIds { get; set; } = new();
     }
 
     public class DomainRegionQueryDto

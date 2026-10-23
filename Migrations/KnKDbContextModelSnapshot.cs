@@ -1210,6 +1210,39 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("domain_navigation_defaults", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.DomainSubRegion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("WgRegionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("DomainId");
+
+                    b.HasIndex("WgRegionId");
+
+                    b.ToTable("domain_sub_regions", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
                 {
                     b.Property<int>("Id")
@@ -6851,6 +6884,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Domain");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.DomainSubRegion", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
+                        .WithMany("SubRegions")
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Domain");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.MinecraftEnchantmentRef", "BaseEnchantmentRef")
@@ -8317,6 +8361,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Fields");
 
                     b.Navigation("SubSections");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Domain", b =>
+                {
+                    b.Navigation("SubRegions");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>

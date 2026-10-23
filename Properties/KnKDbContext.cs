@@ -18,6 +18,7 @@ public partial class KnKDbContext : DbContext
     }
 
     public virtual DbSet<Domain> Domains { get; set; } = null!;
+    public virtual DbSet<DomainSubRegion> DomainSubRegions { get; set; } = null!;
     public virtual DbSet<User> Users { get; set; } = null!;
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
@@ -206,6 +207,20 @@ public partial class KnKDbContext : DbContext
             entity.Property(d => d.NavigationDefaultOverride).HasConversion<string>().HasMaxLength(16);
             // Rev. 7 Part C (KNG-92): null follows the type's DomainNavigationDefault.RoadAccess.
             entity.Property(d => d.RoadAccessOverride).HasConversion<string>().HasMaxLength(16);
+        });
+
+        // KNG-254: a domain's extra WorldGuard regions. Region ids are unique per world across domains.WgRegionId and
+        // this table, enforced by DomainRegionOwnership (the world is the domain's).
+        modelBuilder.Entity<DomainSubRegion>(entity =>
+        {
+            entity.ToTable("domain_sub_regions");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasIndex(e => e.DomainId);
+            entity.HasIndex(e => e.WgRegionId);
+            entity.HasOne(e => e.Domain)
+                .WithMany(d => d.SubRegions)
+                .HasForeignKey(e => e.DomainId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id

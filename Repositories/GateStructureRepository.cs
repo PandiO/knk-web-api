@@ -175,6 +175,8 @@ namespace knkwebapi_v2.Repositories
         private IQueryable<GateStructure> BuildGateQuery()
         {
             return _context.Set<GateStructure>()
+                // KNG-254: every read of a gate carries its sub-regions; the form's edit load uses the snapshot read
+                .Include(gs => gs.SubRegions)
                 .Include(gs => gs.Location)
                 .Include(gs => gs.Street)
                 .Include(gs => gs.District)
