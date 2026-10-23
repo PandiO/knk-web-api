@@ -223,6 +223,36 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
             && report.InvalidBlockStates.Count == 0
             && report.UnlinkedBlockRefs.Count == 0
             && report.NotCanonicalBlockRefs.Count == 0;
+        // KNG-250: enchantments the latest scan didn't see that definitions still use. Skipped while the KNG-250
+        // migration is pending, so the audit keeps working through the KNG-200 upgrade path (§8, §12.8).
+        if (await EnchantmentCatalogMigratedAsync(ct))
+        {
+            var enchantments = await _db.MinecraftEnchantmentRefs.AsNoTracking().OrderBy(e => e.Id).ToListAsync(ct);
+            report.EnchantmentCount = enchantments.Count;
+            report.UnverifiedEnchantmentCount = enchantments.Count(e => e.CatalogStatus == MinecraftCatalogStatus.Unverified);
+            var missingEnchantmentIds = enchantments.Where(e => e.CatalogStatus == MinecraftCatalogStatus.Missing).Select(e => e.Id).ToList();
+            if (missingEnchantmentIds.Count > 0)
+            {
+                var users = (await _db.EnchantmentDefinitions.AsNoTracking()
+                        .Where(d => d.MinecraftEnchantmentRefId != null && missingEnchantmentIds.Contains(d.MinecraftEnchantmentRefId.Value))
+                        .OrderBy(d => d.Id)
+                        .ToListAsync(ct))
+                    .ToLookup(d => d.MinecraftEnchantmentRefId!.Value);
+                report.MissingEnchantmentsReferenced = enchantments
+                    .Where(e => users.Contains(e.Id))
+                    .Select(e => new MinecraftCatalogAuditEnchantmentDto
+                    {
+                        Id = e.Id,
+                        NamespaceKey = e.NamespaceKey,
+                        DisplayName = e.DisplayName,
+                        IsCustom = e.IsCustom,
+                        CatalogStatus = e.CatalogStatus.ToString(),
+                        Definitions = users[e.Id].Select(d => new MinecraftCatalogAuditDefinitionDto { Id = d.Id, Key = d.Key, DisplayName = d.DisplayName }).ToList(),
+                    })
+                    .ToList();
+            }
+        }
+
         return report;
     }
 
@@ -292,5 +322,13 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
             }
         }
         return repointed;
+    }
+
+    /// <summary>False while migration <c>MinecraftEnchantmentCatalogFields</c> is pending on a relational database.</summary>
+    private async Task<bool> EnchantmentCatalogMigratedAsync(CancellationToken ct)
+    {
+        if (!_db.Database.IsRelational()) return true;
+        var applied = await _db.Database.GetAppliedMigrationsAsync(ct);
+        return applied.Any(m => m.EndsWith("_MinecraftEnchantmentCatalogFields", StringComparison.Ordinal));
     }
 }

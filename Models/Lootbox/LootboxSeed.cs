@@ -97,9 +97,12 @@ public static class LootboxSeed
         },
     };
 
+    /// <summary>Every enchantment level this seed uses (KNG-250: the seeded definitions' MaxLevel, see ItemBlueprintV1Seed.SeedMaxLevel).</summary>
+    internal static IEnumerable<(string Key, int Level)> SeededEnchantmentLevels =>
+        FlamingSamuraiEnchantments.Concat(EnchantRolls.Values.SelectMany(r => r).Select(r => (r.Key, r.MaxLevel)));
+
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftEnchantmentCatalogService? enchantmentCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -150,17 +153,15 @@ public static class LootboxSeed
                 continue;
             }
 
-            var catalogEntry = enchantmentCatalog?.GetByNamespaceKey(key);
+            // KNG-250: no static catalogue; the server scan fills in names and levels of the Unverified ref.
+            var maxLevel = ItemBlueprintV1Seed.SeedMaxLevel(key);
             if (!enchantmentRefs.TryGetValue(key, out var enchantmentRef))
             {
                 enchantmentRef = new MinecraftEnchantmentRef
                 {
                     NamespaceKey = key,
-                    LegacyName = catalogEntry?.LegacyName,
-                    Category = catalogEntry?.Category,
-                    IconUrl = catalogEntry?.IconUrl,
-                    MaxLevel = catalogEntry?.MaxLevel ?? 1,
-                    DisplayName = catalogEntry?.DisplayName ?? ToDisplayName(key),
+                    DisplayName = ToDisplayName(key),
+                    MaxLevel = maxLevel,
                     IsCustom = false,
                 };
                 context.MinecraftEnchantmentRefs.Add(enchantmentRef);
@@ -171,10 +172,10 @@ public static class LootboxSeed
             var definition = new EnchantmentDefinition
             {
                 Key = key,
-                DisplayName = catalogEntry?.DisplayName ?? ToDisplayName(key),
+                DisplayName = ToDisplayName(key),
                 Description = string.Empty,
                 IsCustom = false,
-                MaxLevel = catalogEntry?.MaxLevel ?? 1,
+                MaxLevel = maxLevel,
                 BaseEnchantmentRef = enchantmentRef,
             };
             context.EnchantmentDefinitions.Add(definition);

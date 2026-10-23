@@ -28,6 +28,12 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("isCustom")]
         public bool IsCustom { get; set; }
+
+        [JsonPropertyName("catalogStatus")]
+        public string? CatalogStatus { get; set; }
+
+        [JsonPropertyName("lastSeenVersion")]
+        public string? LastSeenVersion { get; set; }
     }
 
     public class MinecraftEnchantmentRefListDto
@@ -50,11 +56,18 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("maxLevel")]
         public int? MaxLevel { get; set; }
 
-        [JsonPropertyName("isPersisted")]
-        public bool IsPersisted { get; set; }
-
         [JsonPropertyName("displayName")]
         public string? DisplayName { get; set; }
+
+        [JsonPropertyName("isCustom")]
+        public bool IsCustom { get; set; }
+
+        /// <summary>Unverified, Active or Missing (KNG-250).</summary>
+        [JsonPropertyName("catalogStatus")]
+        public string? CatalogStatus { get; set; }
+
+        [JsonPropertyName("lastSeenVersion")]
+        public string? LastSeenVersion { get; set; }
     }
 
     public class MinecraftEnchantmentRefCreateDto

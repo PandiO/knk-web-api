@@ -20,16 +20,14 @@ public class LootboxSeedTests
     private KnKDbContext NewContext() =>
         new(new DbContextOptionsBuilder<KnKDbContext>().UseInMemoryDatabase(_dbName).Options);
 
-    private static readonly MinecraftEnchantmentCatalogService EnchantmentCatalog =
-        new(NullLogger<MinecraftEnchantmentCatalogService>.Instance);
 
     private async Task SeedAllAsync(bool abilities = true)
     {
         await using var context = NewContext();
         if (abilities) await AbilityDefinition.SeedCanonicalAsync(context);
-        await ItemBlueprintV1Seed.SeedCanonicalAsync(context, enchantmentCatalog: EnchantmentCatalog);
+        await ItemBlueprintV1Seed.SeedCanonicalAsync(context);
         await EnchantBookSeed.SeedCanonicalAsync(context);
-        await LootboxSeed.SeedCanonicalAsync(context, enchantmentCatalog: EnchantmentCatalog);
+        await LootboxSeed.SeedCanonicalAsync(context);
     }
 
     private static async Task<object> SnapshotAsync(KnKDbContext db) => new
@@ -85,7 +83,7 @@ public class LootboxSeedTests
     public async Task FlamingSamurai_IsCreatedOnce_WithItsFiveEnchantments_TaggedSpecialNotLegacy()
     {
         await SeedAllAsync();
-        await using (var again = NewContext()) await LootboxSeed.SeedCanonicalAsync(again, enchantmentCatalog: EnchantmentCatalog);
+        await using (var again = NewContext()) await LootboxSeed.SeedCanonicalAsync(again);
 
         await using var db = NewContext();
         var samurai = await db.ItemBlueprints
@@ -167,7 +165,7 @@ public class LootboxSeedTests
         object before;
         await using (var db = NewContext()) before = await SnapshotAsync(db);
 
-        await using (var again = NewContext()) await LootboxSeed.SeedCanonicalAsync(again, enchantmentCatalog: EnchantmentCatalog);
+        await using (var again = NewContext()) await LootboxSeed.SeedCanonicalAsync(again);
 
         await using var after = NewContext();
         (await SnapshotAsync(after)).Should().BeEquivalentTo(before);
@@ -184,7 +182,7 @@ public class LootboxSeedTests
             await db.SaveChangesAsync();
         }
 
-        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db, enchantmentCatalog: EnchantmentCatalog);
+        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db);
         await using (var read = NewContext())
         {
             (await read.ItemBlueprints.SingleAsync(b => b.Name == LootboxSeed.FlamingSamuraiName))
@@ -199,7 +197,7 @@ public class LootboxSeedTests
             await db.SaveChangesAsync();
         }
 
-        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db, enchantmentCatalog: EnchantmentCatalog);
+        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db);
         await using var finalRead = NewContext();
         (await finalRead.ItemBlueprints.SingleAsync(b => b.Name == LootboxSeed.FlamingSamuraiName))
             .DefaultDisplayDescription.Should().Be(adminDescription);
@@ -220,7 +218,7 @@ public class LootboxSeedTests
             await db.SaveChangesAsync();
         }
 
-        await using (var again = NewContext()) await LootboxSeed.SeedCanonicalAsync(again, enchantmentCatalog: EnchantmentCatalog);
+        await using (var again = NewContext()) await LootboxSeed.SeedCanonicalAsync(again);
 
         await using var read = NewContext();
         var type = await read.LootboxTypes.Include(t => t.EnchantRolls).SingleAsync(t => t.Category.Name == "Weapons");
@@ -286,7 +284,7 @@ public class LootboxSeedTests
         }
 
         await SeedAllAsync();
-        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db, enchantmentCatalog: EnchantmentCatalog);
+        await using (var db = NewContext()) await LootboxSeed.SeedCanonicalAsync(db);
 
         await using var read = NewContext();
         var grants = await read.PermissionGrants.OrderBy(g => g.Node).ToListAsync();

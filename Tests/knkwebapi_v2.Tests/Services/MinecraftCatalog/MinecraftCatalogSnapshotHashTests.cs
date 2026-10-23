@@ -36,4 +36,36 @@ public class MinecraftCatalogSnapshotHashTests
         renamed.DisplayName = "Stone Block";
         Assert.NotEqual(hash, MinecraftCatalogSnapshotHash.Compute(new[] { Apple(), renamed }));
     }
+
+    public static MinecraftCatalogEnchantmentDto Sharpness() => new()
+    {
+        Key = "minecraft:sharpness", IsCustom = false, MaxLevel = 5,
+        TranslationKey = "enchantment.minecraft.sharpness", DisplayName = "Sharpness", Category = null,
+    };
+
+    public static MinecraftCatalogEnchantmentDto FlashChaos() => new()
+    {
+        Key = "knk:flash_chaos", IsCustom = true, MaxLevel = 1, TranslationKey = null, DisplayName = "Flash Chaos", Category = "SUPPORT",
+    };
+
+    /// <summary>KNG-250 §12.2: schema 2 appends the enchantment lines; knk-plugin pins the same two vectors.</summary>
+    [Fact]
+    public void SharedTestVectors_SchemaTwo()
+    {
+        Assert.Equal("ab2c65626e6508eb4c169dabefda5ef7570f94c8d966f31adecc624dfe823154",
+            MinecraftCatalogSnapshotHash.Compute(new[] { Stone(), Apple() }, new[] { Sharpness(), FlashChaos() }));
+        Assert.Equal("9846ad62d84d42d5a05e0cbac900ab6f671bf3bb0dd7c1bb5961aa2316f63c3e",
+            MinecraftCatalogSnapshotHash.Compute(new[] { Stone(), Apple() }, Array.Empty<MinecraftCatalogEnchantmentDto>()));
+    }
+
+    [Fact]
+    public void SchemaTwo_EnchantmentOrderDoesNotMatter_ButEveryFieldDoes()
+    {
+        var hash = MinecraftCatalogSnapshotHash.Compute(new[] { Stone() }, new[] { FlashChaos(), Sharpness() });
+        Assert.Equal(MinecraftCatalogSnapshotHash.Compute(new[] { Stone() }, new[] { Sharpness(), FlashChaos() }), hash);
+
+        var stronger = FlashChaos();
+        stronger.MaxLevel = 2;
+        Assert.NotEqual(hash, MinecraftCatalogSnapshotHash.Compute(new[] { Stone() }, new[] { Sharpness(), stronger }));
+    }
 }
