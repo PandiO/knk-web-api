@@ -58,6 +58,8 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(dto.TaskType))
                 throw new ArgumentException("TaskType is required", nameof(dto.TaskType));
 
+            await EnsureGateScanCanStartAsync(dto.TaskType, payloadJson);
+
             var entity = _mapper.Map<WorldTask>(dto);
             entity.CreatedAt = DateTime.UtcNow;
             entity.FieldName = normalizedFieldName;
@@ -447,6 +449,25 @@ namespace knkwebapi_v2.Services
 
         // Reads "gateDoorId" from a scan task's InputJson (moved from "gateStructureId" by item
         // 5's multi-door support - a scan targets one door, not a whole structure).
+        /// <summary>
+        /// KNG-268: refuses a GateBlockScan/GateOpenedBlockScan the plugin can't run (a region door
+        /// without its captured region, a flood-fill open scan, no anchor) with a reason the form shows.
+        /// </summary>
+        private async Task EnsureGateScanCanStartAsync(string taskType, string? inputJson)
+        {
+            var openScan = taskType == WorldTaskTypes.GateOpenedBlockScan;
+            if (!openScan && taskType != WorldTaskTypes.GateBlockScan) return;
+
+            var gateDoorId = ExtractGateDoorId(inputJson);
+            if (gateDoorId is null || gateDoorId <= 0) return; // the plugin reports it
+
+            var door = await _gateDoorService.GetByIdAsync(gateDoorId.Value);
+            if (door == null) return;
+
+            var problem = GateScanReadiness.Problem(door, openScan);
+            if (problem != null) throw new GateScanNotReadyException(problem);
+        }
+
         private static int? ExtractGateDoorId(string? inputJson)
         {
             if (string.IsNullOrWhiteSpace(inputJson)) return null;

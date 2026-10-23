@@ -1,5 +1,6 @@
 using knkwebapi_v2.Attributes;
 using Microsoft.AspNetCore.Mvc;
+using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Dtos;
 
@@ -26,6 +27,11 @@ namespace KnKWebAPI.Controllers
             {
                 var created = await _service.CreateAsync(dto);
                 return CreatedAtRoute("GetWorldTaskById", new { id = created.Id }, created);
+            }
+            catch (GateScanNotReadyException ex)
+            {
+                // KNG-268: the form shows the message.
+                return Conflict(new { code = "GateScanNotReady", message = ex.Message });
             }
             catch (ArgumentException ex)
             {
@@ -65,6 +71,11 @@ namespace KnKWebAPI.Controllers
                     body.AssignedUserId);
 
                 return CreatedAtRoute("GetWorldTaskById", new { id = created.Id }, created);
+            }
+            catch (GateScanNotReadyException ex)
+            {
+                // KNG-268: the form shows the message.
+                return Conflict(new { code = "GateScanNotReady", message = ex.Message });
             }
             catch (ArgumentException ex)
             {
