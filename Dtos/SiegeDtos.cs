@@ -341,6 +341,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("maxBooksAlive")] public int MaxBooksAlive { get; set; }
         [JsonPropertyName("nonMemberGateView")] public SiegeNonMemberGateView NonMemberGateView { get; set; }
         [JsonPropertyName("giveNavigationItem")] public bool GiveNavigationItem { get; set; }
+        [JsonPropertyName("playerSkipMatchmakingSeconds")] public int PlayerSkipMatchmakingSeconds { get; set; }
+        [JsonPropertyName("adminSkipMatchmakingSeconds")] public int AdminSkipMatchmakingSeconds { get; set; }
         [JsonPropertyName("updatedAt")] public DateTime UpdatedAt { get; set; }
     }
 
@@ -371,6 +373,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("maxBooksAlive")] public int? MaxBooksAlive { get; set; }
         [JsonPropertyName("nonMemberGateView")] public SiegeNonMemberGateView? NonMemberGateView { get; set; }
         [JsonPropertyName("giveNavigationItem")] public bool? GiveNavigationItem { get; set; }
+        [JsonPropertyName("playerSkipMatchmakingSeconds")] public int? PlayerSkipMatchmakingSeconds { get; set; }
+        [JsonPropertyName("adminSkipMatchmakingSeconds")] public int? AdminSkipMatchmakingSeconds { get; set; }
     }
 
     // ---- Runtime config (GET /api/siege-lobbies/runtime-config, DESIGN §11.2) ----
