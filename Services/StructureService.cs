@@ -61,7 +61,7 @@ namespace knkwebapi_v2.Services
         public async Task<StructureDto> CreateAsync(StructureDto structureDto)
         {
             if (structureDto == null) throw new ArgumentNullException(nameof(structureDto));
-            if (string.IsNullOrWhiteSpace(structureDto.Name)) throw new ArgumentException("Structure name is required.", nameof(structureDto));
+            DomainNameRules.Normalize(structureDto, "Structure", nameof(structureDto));
             if (string.IsNullOrWhiteSpace(structureDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(structureDto));
             if (structureDto.StreetId <= 0) throw new ArgumentException("StreetId is required.", nameof(structureDto));
             if (structureDto.DistrictId <= 0) throw new ArgumentException("DistrictId is required.", nameof(structureDto));
@@ -95,7 +95,7 @@ namespace knkwebapi_v2.Services
         {
             if (structureDto == null) throw new ArgumentNullException(nameof(structureDto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
-            if (string.IsNullOrWhiteSpace(structureDto.Name)) throw new ArgumentException("Structure name is required.", nameof(structureDto));
+            DomainNameRules.Normalize(structureDto, "Structure", nameof(structureDto));
             if (string.IsNullOrWhiteSpace(structureDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(structureDto));
             if (structureDto.StreetId <= 0) throw new ArgumentException("StreetId is required.", nameof(structureDto));
             if (structureDto.DistrictId <= 0) throw new ArgumentException("DistrictId is required.", nameof(structureDto));

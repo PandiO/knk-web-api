@@ -72,8 +72,7 @@ namespace knkwebapi_v2.Services
         {
             if (gateStructureDto == null)
                 throw new ArgumentNullException(nameof(gateStructureDto));
-            if (string.IsNullOrWhiteSpace(gateStructureDto.Name))
-                throw new ArgumentException("GateStructure name is required.", nameof(gateStructureDto));
+            DomainNameRules.Normalize(gateStructureDto, "GateStructure", nameof(gateStructureDto));
             GateNameRules.EnsureNotReserved(gateStructureDto.Name, "gate structure", "/gate", nameof(gateStructureDto));
             if (gateStructureDto.StreetId <= 0)
                 throw new ArgumentException("Valid StreetId is required.", nameof(gateStructureDto));
@@ -102,8 +101,7 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentNullException(nameof(gateStructureDto));
             if (id <= 0)
                 throw new ArgumentException("Invalid id.", nameof(id));
-            if (string.IsNullOrWhiteSpace(gateStructureDto.Name))
-                throw new ArgumentException("GateStructure name is required.", nameof(gateStructureDto));
+            DomainNameRules.Normalize(gateStructureDto, "GateStructure", nameof(gateStructureDto));
             GateNameRules.EnsureNotReserved(gateStructureDto.Name, "gate structure", "/gate", nameof(gateStructureDto));
 
             var existing = await _repo.GetByIdAsync(id);

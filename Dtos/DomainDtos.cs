@@ -19,7 +19,17 @@ namespace knkwebapi_v2.Dtos
         bool? TeleportRequiresDiscovery { get; set; }
     }
 
-    public class DomainDto : IDomainTeleportSettingsDto
+    /// <summary>
+    /// The name and description every domain DTO carries; <see cref="Services.DomainNameRules"/> trims them on
+    /// create and update and refuses a name that is empty after trimming.
+    /// </summary>
+    public interface IDomainNameDto
+    {
+        string Name { get; set; }
+        string Description { get; set; }
+    }
+
+    public class DomainDto : IDomainTeleportSettingsDto, IDomainNameDto
     {
         // KNG-254: the domain's sub-regions, read-only here (edited through api/DomainSubRegions, the form's owned list).
         [JsonPropertyName("subRegions")]

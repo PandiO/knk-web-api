@@ -11,7 +11,7 @@ namespace knkwebapi_v2.Dtos
     // multi-door support - see docs/features/gate-structure-animation/
     // GATESTRUCTURE_QOL_IMPLEMENTATION_PLAN.md. Structure-level cascading overrides (decision
     // 5.0-B) live here as nullable fields alongside the embedded GateDoors list.
-    public class GateStructureDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
+    public class GateStructureDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto, IDomainNameDto
     {
         // KNG-254: the domain's sub-regions, read-only here (edited through api/DomainSubRegions, the form's owned list).
         [JsonPropertyName("subRegions")]
