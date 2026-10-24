@@ -16,6 +16,43 @@ namespace knkwebapi_v2.DependencyInjection
     public static class ServiceCollectionExtensions
     {
         /// <summary>
+        /// KNG-216: the named "cloudflare" HttpClient (base address, bearer token, 10 s timeout,
+        /// the optional forward proxy), the Zero Trust email list, the sync singleton and its
+        /// reconcile loop. Settings are read when the client is built, so tests can configure them.
+        /// </summary>
+        public static IServiceCollection AddCloudflareAccessSync(this IServiceCollection services)
+        {
+            services.AddOptions<knkwebapi_v2.Configuration.CloudflareAccessSettings>();
+            services.AddHttpClient(knkwebapi_v2.Configuration.CloudflareAccessSettings.HttpClientName, (sp, client) =>
+                {
+                    var cf = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<knkwebapi_v2.Configuration.CloudflareAccessSettings>>().Value;
+                    client.BaseAddress = new System.Uri(cf.BaseUrl);
+                    client.Timeout = System.TimeSpan.FromSeconds(System.Math.Clamp(cf.RequestTimeoutSeconds, 1, 60));
+                    if (!string.IsNullOrWhiteSpace(cf.ApiToken))
+                    {
+                        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", cf.ApiToken);
+                    }
+                })
+                .ConfigurePrimaryHttpMessageHandler(sp =>
+                {
+                    var cf = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<knkwebapi_v2.Configuration.CloudflareAccessSettings>>().Value;
+                    var handler = new System.Net.Http.HttpClientHandler();
+                    if (!string.IsNullOrWhiteSpace(cf.ProxyUrl) && System.Uri.TryCreate(cf.ProxyUrl, System.UriKind.Absolute, out var proxy))
+                    {
+                        handler.Proxy = new System.Net.WebProxy(proxy);
+                        handler.UseProxy = true;
+                    }
+                    return handler;
+                });
+            services.AddSingleton<knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessList, knkwebapi_v2.Services.CloudflareAccess.ZeroTrustEmailList>();
+            services.AddScoped<knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessDesiredSet, knkwebapi_v2.Services.CloudflareAccess.CloudflareAccessDesiredSet>();
+            services.AddSingleton<knkwebapi_v2.Services.CloudflareAccess.CloudflareAccessSync>();
+            services.AddSingleton<knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync>(sp => sp.GetRequiredService<knkwebapi_v2.Services.CloudflareAccess.CloudflareAccessSync>());
+            services.AddHostedService<knkwebapi_v2.Services.CloudflareAccess.CloudflareAccessSyncService>();
+            return services;
+        }
+
+        /// <summary>
         /// Centralized registration for application services and repositories.
         /// - Add explicit registrations for special cases.
         /// - Use simple convention scanning to auto-register IThing -> Thing for types named *Repository or *Service.
@@ -37,31 +74,75 @@ namespace knkwebapi_v2.DependencyInjection
             // Closed-alpha WP4: per-user session state (TokenVersion, active) cached for the
             // per-request token check; one instance so a revocation invalidates it for everyone.
             services.AddSingleton<IUserSessionStateCache, UserSessionStateCache>();
-            // Closed-alpha WP6: per-account login lockout and the background account-mail queue.
+            // Closed-alpha WP6: per-account login lockout.
             services.AddSingleton<ILoginAttemptLimiter, LoginAttemptLimiter>();
-            services.AddSingleton<IAccountMailQueue, AccountMailQueue>();
-            services.AddHostedService<AccountMailSender>();
+            // KNG-208: failed link/claim codes per account, and hourly linkcodes housekeeping.
+            services.AddSingleton<ILinkAttemptLimiter, LinkAttemptLimiter>();
+            services.AddHostedService<LinkCodeCleanupService>();
             // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
             services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
+            // KNG-212: invitations and invite-based registration (Security:Registration:Mode).
+            services.AddScoped<IInvitationRepository, InvitationRepository>();
+            services.AddScoped<knkwebapi_v2.Services.Invitations.IInvitationService, knkwebapi_v2.Services.Invitations.InvitationService>();
+            // KNG-214: the game server's admission gate (claim codes) and the FinishLinking reminder.
+            services.AddScoped<IAdmissionService, AdmissionService>();
+            var admissionSection = configuration?.GetSection(knkwebapi_v2.Configuration.AdmissionSettings.SectionName);
+            if (admissionSection != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.AdmissionSettings>(admissionSection);
+            }
+            var invitationsSection = configuration?.GetSection(knkwebapi_v2.Configuration.InvitationSettings.SectionName);
+            if (invitationsSection != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.InvitationSettings>(invitationsSection);
+            }
 
-            var emailSection = configuration?.GetSection("Email");
+            // KNG-216: the Cloudflare Access sync (DESIGN § 5.8). Off by default: with
+            // CloudflareAccess:SyncEnabled=false nothing calls Cloudflare.
+            var cloudflareSection = configuration?.GetSection(knkwebapi_v2.Configuration.CloudflareAccessSettings.SectionName);
+            if (cloudflareSection != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.CloudflareAccessSettings>(cloudflareSection);
+            }
+            services.AddCloudflareAccessSync();
+
+            var emailSection = configuration?.GetSection(knkwebapi_v2.Configuration.EmailSettings.SectionName);
             if (emailSection != null)
             {
                 services.Configure<knkwebapi_v2.Configuration.EmailSettings>(emailSection);
+            }
+            var appSection = configuration?.GetSection(knkwebapi_v2.Configuration.AppSettings.SectionName);
+            if (appSection != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.AppSettings>(appSection);
+            }
+            // KNG-206: the mail engine. Callers queue through IEmailComposer into email_outbox (same
+            // DbContext, same transaction); EmailDispatcher sends with the transport Email:Transport
+            // names (Email:Provider as the fallback; Log by default).
+            services.AddSingleton<knkwebapi_v2.Services.Email.EmailDispatchSignal>();
+            services.AddSingleton<knkwebapi_v2.Services.Email.IEmailTemplateRenderer, knkwebapi_v2.Services.Email.EmailTemplateRenderer>();
+            services.AddScoped<knkwebapi_v2.Services.Email.IEmailThrottle, knkwebapi_v2.Services.Email.EmailThrottle>();
+            services.AddScoped<knkwebapi_v2.Services.Email.IEmailComposer, knkwebapi_v2.Services.Email.EmailComposer>();
+            services.AddHostedService<knkwebapi_v2.Services.Email.EmailDispatcher>();
+            services.AddScoped<knkwebapi_v2.Services.Email.IEmailOutboxAdminService, knkwebapi_v2.Services.Email.EmailOutboxAdminService>();
+            var emailTransport = (emailSection?.Get<knkwebapi_v2.Configuration.EmailSettings>() ?? new knkwebapi_v2.Configuration.EmailSettings())
+                .EffectiveTransport();
+            switch (emailTransport)
+            {
+                case knkwebapi_v2.Configuration.EmailSettings.SmtpTransport:
+                    services.AddScoped<knkwebapi_v2.Services.Email.IEmailTransport, knkwebapi_v2.Services.Email.SmtpEmailTransport>();
+                    break;
+                case knkwebapi_v2.Configuration.EmailSettings.PickupTransport:
+                    services.AddScoped<knkwebapi_v2.Services.Email.IEmailTransport, knkwebapi_v2.Services.Email.PickupEmailTransport>();
+                    break;
+                default:
+                    services.AddScoped<knkwebapi_v2.Services.Email.IEmailTransport, knkwebapi_v2.Services.Email.LogEmailTransport>();
+                    break;
             }
             var discoverySection = configuration?.GetSection(knkwebapi_v2.Configuration.DiscoveryOptions.SectionName);
             if (discoverySection != null)
             {
                 services.Configure<knkwebapi_v2.Configuration.DiscoveryOptions>(discoverySection);
-            }
-            var emailProvider = emailSection?["Provider"];
-            if (string.Equals(emailProvider, "Smtp", System.StringComparison.OrdinalIgnoreCase))
-            {
-                services.AddScoped<IPasswordResetDeliveryService, SmtpPasswordResetDeliveryService>();
-            }
-            else
-            {
-                services.AddScoped<IPasswordResetDeliveryService, PasswordResetDeliveryService>();
             }
             services.AddScoped<ILinkCodeRepository, LinkCodeRepository>();
             services.AddScoped<ILinkCodeService, LinkCodeService>();
@@ -285,14 +366,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddHostedService<knkwebapi_v2.Services.Telemetry.TelemetryRetentionService>();
             services.AddScoped<IPrivacyRepository, PrivacyRepository>();
             services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyDeletionService, knkwebapi_v2.Services.Privacy.PrivacyDeletionService>();
-            if (string.Equals(emailProvider, "Smtp", System.StringComparison.OrdinalIgnoreCase))
-            {
-                services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyEmailService, knkwebapi_v2.Services.Privacy.SmtpPrivacyEmailService>();
-            }
-            else
-            {
-                services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyEmailService, knkwebapi_v2.Services.Privacy.LogPrivacyEmailService>();
-            }
+            services.AddScoped<knkwebapi_v2.Services.Privacy.IPrivacyEmailService, knkwebapi_v2.Services.Privacy.PrivacyEmailService>();
             services.AddHostedService<knkwebapi_v2.Services.Privacy.PrivacyDeletionDueService>();
 
             // World analytics (KNG-34 link 7, IMPLEMENTATION_PLAN.md §4): anonymous daily aggregates from the

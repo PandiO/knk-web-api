@@ -236,6 +236,26 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(KnKWebAPI.Controllers.PermissionGrantsController), "RevokeByNode", "knk.admin.user.perm"),
         R(typeof(KnKWebAPI.Controllers.UserPermissionGroupsController), "Upsert", "knk.admin.user.group"),
         R(typeof(KnKWebAPI.Controllers.UserPermissionGroupsController), "Delete", "knk.admin.user.group"),
+        // Mail log (KNG-206): staff only, the plugin never calls it (RequirePermission)
+        R(typeof(EmailOutboxController), nameof(EmailOutboxController.List), "knk.admin.config"),
+        R(typeof(EmailOutboxController), nameof(EmailOutboxController.SendTest), "knk.admin.config"),
+        R(typeof(EmailOutboxController), nameof(EmailOutboxController.Retry), "knk.admin.config"),
+        // Invitations (KNG-212): staff only (RequirePermission); the check is anonymous
+        R(typeof(InvitationsController), nameof(InvitationsController.List), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.GetOptions), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.CreatePersonal), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.CreateShared), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Resend), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Rotate), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Pause), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Resume), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.Revoke), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.GetRedemptions), "knk.admin.invites"),
+        R(typeof(InvitationsController), nameof(InvitationsController.GetAccessSyncStatus), "knk.admin.invites"), // KNG-216
+        // Admission (KNG-214): the gate is the game server's; Admit / Detach are staff only
+        R(typeof(AdmissionController), nameof(AdmissionController.Check), null),
+        R(typeof(UsersController), nameof(UsersController.Admit), "knk.admin.user.manage"),
+        R(typeof(UsersController), nameof(UsersController.DetachWebLogin), "knk.admin.user.manage"),
     };
 
     /// <summary>node null = plugin-only (RequirePluginService).</summary>
@@ -252,7 +272,9 @@ public class RequireServiceOrPermissionAttributeTests
         }
         else
         {
-            var gates = method.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node).ToList();
+            var gates = method.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node)
+                .Concat(method.GetCustomAttributes<RequirePermissionAttribute>().Select(a => (string)a.Arguments![0]))
+                .ToList();
             Assert.Equal(new[] { node }, gates);
         }
     }

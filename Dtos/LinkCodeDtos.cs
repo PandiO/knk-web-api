@@ -120,5 +120,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("linkCode")]
         public string LinkCode { get; set; } = null!;
     }
-}
 
+    /// <summary>
+    /// What IUserService.LinkMinecraftAccountAsync did (invitations DESIGN § 5.4). <see cref="User"/>
+    /// is the surviving account; <see cref="Merged"/> says the caller's web account was folded into
+    /// it (case B), so its id differs from the caller's and the caller needs a new session.
+    /// </summary>
+    public sealed record LinkMinecraftAccountResult(UserDto User, bool Merged);
+}

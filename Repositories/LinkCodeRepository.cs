@@ -121,7 +121,7 @@ namespace knkwebapi_v2.Repositories
                     lc.Status == LinkCodeStatus.Active &&
                     lc.ExpiresAt > now &&
                     lc.UserId != null &&
-                    lc.Code.Length == 64);
+                    lc.Purpose == LinkCodePurpose.PasswordReset);
         }
 
         public async Task InvalidateActivePasswordResetTokensAsync(int userId, int? excludeLinkCodeId = null)
@@ -131,7 +131,7 @@ namespace knkwebapi_v2.Repositories
                 lc.UserId == userId &&
                 lc.Status == LinkCodeStatus.Active &&
                 lc.ExpiresAt > now &&
-                lc.Code.Length == 64);
+                lc.Purpose == LinkCodePurpose.PasswordReset);
 
             if (excludeLinkCodeId.HasValue)
             {
@@ -151,6 +151,36 @@ namespace knkwebapi_v2.Repositories
 
             _context.LinkCodes.UpdateRange(activeTokens);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<LinkCode?> GetActiveClaimCodeByUuidAsync(string minecraftUuid)
+        {
+            var now = DateTime.UtcNow;
+            return await _context.LinkCodes
+                .Where(lc => lc.Purpose == LinkCodePurpose.Claim &&
+                             lc.MinecraftUuid == minecraftUuid &&
+                             lc.Status == LinkCodeStatus.Active &&
+                             lc.ExpiresAt > now)
+                .OrderByDescending(lc => lc.ExpiresAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<int> DeleteFinishedBeforeAsync(DateTime before)
+        {
+            var finished = _context.LinkCodes.Where(lc =>
+                lc.Status != LinkCodeStatus.Active &&
+                (lc.UsedAt ?? lc.ExpiresAt) < before);
+
+            if (_context.Database.IsRelational())
+            {
+                return await finished.ExecuteDeleteAsync();
+            }
+
+            // EF InMemory (tests) has no ExecuteDelete.
+            var rows = await finished.ToListAsync();
+            _context.LinkCodes.RemoveRange(rows);
+            await _context.SaveChangesAsync();
+            return rows.Count;
         }
     }
 }

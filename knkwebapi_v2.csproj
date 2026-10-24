@@ -26,6 +26,7 @@
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="MailKit" Version="4.18.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -42,6 +43,11 @@
     <!-- Prerelease only (no stable Prometheus exporter exists); versioned with OpenTelemetry above. -->
     <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.19.1-beta.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
+  </ItemGroup>
+
+  <!-- KNG-206: mail templates, read by EmailTemplateRenderer as "EmailTemplates/<file>". -->
+  <ItemGroup>
+    <EmbeddedResource Include="Services/Email/Templates/*.html;Services/Email/Templates/*.txt" LogicalName="EmailTemplates/%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

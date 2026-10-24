@@ -296,6 +296,14 @@ namespace knkwebapi_v2.Repositories
 
         // ===== NEW METHODS: UNIQUE CONSTRAINT CHECKS =====
 
+        public Task<List<User>> GetUnlinkedInvitedUsersAsync(DateTime createdAfter, DateTime createdBefore) =>
+            _context.Users
+                .Where(u => u.InvitedViaInvitationId != null && u.Uuid == null && u.Email != null
+                    && u.IsActive && u.DeletedAt == null
+                    && u.CreatedAt > createdAfter && u.CreatedAt <= createdBefore)
+                .OrderBy(u => u.Id)
+                .ToListAsync();
+
         public async Task<bool> IsUsernameTakenAsync(string username, int? excludeUserId = null)
         {
             var query = _context.Users.Where(u => u.Username.ToLower() == username.ToLower());

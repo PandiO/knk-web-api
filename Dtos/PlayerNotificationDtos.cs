@@ -52,6 +52,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("locationOrphanDigest")]
         public LocationOrphanDigestNotificationDto? LocationOrphanDigest { get; set; }
 
+        /// <summary>Set when Type is AccountLinked.</summary>
+        [JsonPropertyName("accountLinked")]
+        public AccountLinkedNotificationDto? AccountLinked { get; set; }
+
         [JsonPropertyName("createdAt")]
         public DateTime CreatedAt { get; set; }
     }
@@ -113,6 +117,23 @@ namespace knkwebapi_v2.Dtos
         /// items themselves stay in the web panel and /knk location orphans until decided.
         /// </summary>
         public const string LocationOrphanDigest = "LocationOrphanDigest";
+
+        /// <summary>
+        /// This player's Minecraft account was just linked to a web account (KNG-214, invitations
+        /// DESIGN § 5.5): with a claim code from the admission gate, or a /account link code. The
+        /// plugin tells the player on their next join (within the queue's 24 h window) which web
+        /// account it is, masked, so a code given away under social engineering is noticed.
+        /// Payload in AccountLinked.
+        /// </summary>
+        public const string AccountLinked = "AccountLinked";
+    }
+
+    /// <summary>Payload of an AccountLinked notification.</summary>
+    public class AccountLinkedNotificationDto
+    {
+        /// <summary>The web account's email, masked (EmailMask: "jo***@example.com").</summary>
+        [JsonPropertyName("maskedEmail")]
+        public string MaskedEmail { get; set; } = "***";
     }
 
     /// <summary>Payload of a LocationOrphanDigest notification.</summary>

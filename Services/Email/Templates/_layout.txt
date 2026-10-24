@@ -1,0 +1,9 @@
+KNIGHTS & KINGS
+===============
+
+{{content}}
+
+--
+You get this mail because {{reason}}
+{{support}}
+Knights & Kings - {{baseUrl}}
