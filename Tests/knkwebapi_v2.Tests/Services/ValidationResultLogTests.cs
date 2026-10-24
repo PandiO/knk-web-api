@@ -228,6 +228,25 @@ public class ValidationResultLogTests : IDisposable
         VerifyRuns(4);
     }
 
+    // The log is an optimisation. Seen live 2026-10-24: with the migration not applied, every rule
+    // failed with "Table 'FieldValidationRunLogs' doesn't exist" and the form could not be left.
+    [Fact]
+    public async Task AnUnavailableLog_NeverBreaksValidation()
+    {
+        var broken = new Mock<IValidationResultLog>();
+        broken.Setup(l => l.FindAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<long>())).ThrowsAsync(new InvalidOperationException("Table 'FieldValidationRunLogs' doesn't exist"));
+        broken.Setup(l => l.StoreAsync(It.IsAny<FieldValidationRunLog>())).ThrowsAsync(new InvalidOperationException("Table 'FieldValidationRunLogs' doesn't exist"));
+        var service = new ValidationService(_rules.Object, new[] { _validator.Object }, _placeholders.Object, broken.Object, Options.Create(_options));
+
+        var result = await service.ValidateFieldAsync(10, 1000, null, Context(), District17);
+
+        VerifyRuns(1);
+        Assert.True(result.IsValid);
+        Assert.Equal("Inside", result.Message);
+        Assert.False(result.Metadata!.FromCache);
+        broken.Verify(l => l.StoreAsync(It.IsAny<FieldValidationRunLog>()), Times.Once);
+    }
+
     // ------------------------------------------------------------------ request DTOs and batch
 
     [Fact]
