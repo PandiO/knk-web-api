@@ -42,7 +42,7 @@ namespace knkwebapi_v2.Services
         public async Task<Domain> CreateAsync(Domain domain)
         {
             if (domain == null) throw new ArgumentNullException(nameof(domain));
-            if (string.IsNullOrWhiteSpace(domain.Name)) throw new ArgumentException("Domain name is required.", nameof(domain));
+            DomainNameRules.Normalize(domain, nameof(domain));
             domain.WorldName = await _worlds.ResolveAsync(new DomainWorldRequest
             {
                 RequestedWorld = domain.WorldName,
@@ -62,7 +62,7 @@ namespace knkwebapi_v2.Services
         {
             if (domain == null) throw new ArgumentNullException(nameof(domain));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
-            if (string.IsNullOrWhiteSpace(domain.Name)) throw new ArgumentException("Domain name is required.", nameof(domain));
+            DomainNameRules.Normalize(domain, nameof(domain));
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Domain with id {id} not found.");

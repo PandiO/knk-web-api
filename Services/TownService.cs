@@ -54,7 +54,7 @@ namespace knkwebapi_v2.Services
         public async Task<TownDto> CreateAsync(TownDto townDto)
         {
             if (townDto == null) throw new ArgumentNullException(nameof(townDto));
-            if (string.IsNullOrWhiteSpace(townDto.Name)) throw new ArgumentException("Town name is required.", nameof(townDto));
+            DomainNameRules.Normalize(townDto, "Town", nameof(townDto));
             if (string.IsNullOrWhiteSpace(townDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(townDto));
             await _teleportDestinations.ValidateSettingsAsync(townDto);
             // KNG-111: before the Location is saved, so a rejected world leaves nothing behind.
@@ -78,7 +78,7 @@ namespace knkwebapi_v2.Services
         {
             if (townDto == null) throw new ArgumentNullException(nameof(townDto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
-            if (string.IsNullOrWhiteSpace(townDto.Name)) throw new ArgumentException("Town name is required.", nameof(townDto));
+            DomainNameRules.Normalize(townDto, "Town", nameof(townDto));
             if (string.IsNullOrWhiteSpace(townDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(townDto));
 
             var existing = await _repo.GetByIdAsync(id);
