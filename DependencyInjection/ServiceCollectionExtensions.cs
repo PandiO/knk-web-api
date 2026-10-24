@@ -150,14 +150,19 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ILocationService, LocationService>();
             services.AddScoped<IDomainRepository, DomainRepository>();
             services.AddScoped<IDomainService, DomainService>();
+            services.AddScoped<IDomainSubRegionService, DomainSubRegionService>();
             services.AddScoped<IMinecraftMaterialRefRepository, MinecraftMaterialRefRepository>();
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();
             services.AddScoped<IMinecraftBlockRefService, MinecraftBlockRefService>();
+            services.AddScoped<IMinecraftCatalogMaintenanceService, knkwebapi_v2.Services.MinecraftCatalog.MinecraftCatalogMaintenanceService>();
+            services.AddScoped<IMinecraftCatalogScanService, knkwebapi_v2.Services.MinecraftCatalog.MinecraftCatalogScanService>();
+            services.AddSingleton(sp => sp.GetRequiredService<IConfiguration>()
+                .GetSection(knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconOptions.SectionName)
+                .Get<knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconOptions>() ?? new knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconOptions());
+            services.AddScoped<knkwebapi_v2.Services.MinecraftCatalog.IMinecraftIconResolver, knkwebapi_v2.Services.MinecraftCatalog.MinecraftIconResolver>();
             services.AddScoped<IMinecraftEnchantmentRefRepository, MinecraftEnchantmentRefRepository>();
             services.AddScoped<IMinecraftEnchantmentRefService, MinecraftEnchantmentRefService>();
-            services.AddSingleton<IMinecraftMaterialCatalogService, MinecraftMaterialCatalogService>();
-            services.AddSingleton<IMinecraftEnchantmentCatalogService, MinecraftEnchantmentCatalogService>();
             services.AddScoped<IFormConfigurationRepository, FormConfigurationRepository>();
             services.AddScoped<IFormConfigurationService, FormConfigurationService>();
             // KNG-138: bundled FormConfiguration seed files, imported on request (no startup seeder).
@@ -216,6 +221,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();
             services.AddScoped<IRoadNetworkService, RoadNetworkService>();
             services.AddScoped<IDomainNavigationSettingsService, DomainNavigationSettingsService>();
+            services.AddScoped<INavigationCompassSettingsService, NavigationCompassSettingsService>();
             // Workflow + WorldTasks
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowService, WorkflowService>();
@@ -231,6 +237,12 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IDisplayConfigurationService, DisplayConfigurationService>();
             services.AddScoped<IDisplaySectionService, DisplaySectionService>();
             services.AddScoped<IDisplayFieldService, DisplayFieldService>();
+            // knk-displayconfig/1: bundled DisplayConfiguration seed files, imported on request (no startup seeder).
+            services.AddSingleton(sp => new DisplayConfigurationSeedOptions
+            {
+                Directory = Path.Combine(sp.GetRequiredService<IHostEnvironment>().ContentRootPath, "Data", "DisplayConfigurationSeeds")
+            });
+            services.AddScoped<IDisplayConfigurationPortabilityService, DisplayConfigurationPortabilityService>();
 
             // InventoryMenu (docs/specs/inventory-menu/IMPLEMENTATION_PLAN.md Phase 1)
             services.AddScoped<IMenuTemplateRepository, MenuTemplateRepository>();

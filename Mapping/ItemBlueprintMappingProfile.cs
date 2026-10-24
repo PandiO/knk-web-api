@@ -49,6 +49,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.DefaultDisplayName, opt => opt.MapFrom(src => src.DefaultDisplayName))
                 .ForMember(dest => dest.IconMaterialRefId, opt => opt.MapFrom(src => src.IconMaterialRefId))
                 .ForMember(dest => dest.IconNamespaceKey, opt => opt.MapFrom(src => src.IconMaterial != null ? src.IconMaterial.NamespaceKey : null))
+                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconMaterial != null ? src.IconMaterial.IconUrlOverride ?? src.IconMaterial.IconUrl : null))
                 .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null))
                 .ForMember(dest => dest.GradeId, opt => opt.MapFrom(src => src.GradeId))

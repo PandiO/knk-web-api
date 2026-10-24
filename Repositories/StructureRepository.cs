@@ -30,6 +30,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(s => s.Street)
                 .Include(s => s.District)
                     .ThenInclude(d => d.Town)
+                .Include(s => s.SubRegions)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
 

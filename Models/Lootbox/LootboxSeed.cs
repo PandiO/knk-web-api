@@ -2,6 +2,7 @@ using knkwebapi_v2.Properties;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Models;
 
@@ -96,10 +97,12 @@ public static class LootboxSeed
         },
     };
 
+    /// <summary>Every enchantment level this seed uses (KNG-250: the seeded definitions' MaxLevel, see ItemBlueprintV1Seed.SeedMaxLevel).</summary>
+    internal static IEnumerable<(string Key, int Level)> SeededEnchantmentLevels =>
+        FlamingSamuraiEnchantments.Concat(EnchantRolls.Values.SelectMany(r => r).Select(r => (r.Key, r.MaxLevel)));
+
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog = null,
-        IMinecraftEnchantmentCatalogService? enchantmentCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -150,17 +153,15 @@ public static class LootboxSeed
                 continue;
             }
 
-            var catalogEntry = enchantmentCatalog?.GetByNamespaceKey(key);
+            // KNG-250: no static catalogue; the server scan fills in names and levels of the Unverified ref.
+            var maxLevel = ItemBlueprintV1Seed.SeedMaxLevel(key);
             if (!enchantmentRefs.TryGetValue(key, out var enchantmentRef))
             {
                 enchantmentRef = new MinecraftEnchantmentRef
                 {
                     NamespaceKey = key,
-                    LegacyName = catalogEntry?.LegacyName,
-                    Category = catalogEntry?.Category,
-                    IconUrl = catalogEntry?.IconUrl,
-                    MaxLevel = catalogEntry?.MaxLevel ?? 1,
-                    DisplayName = catalogEntry?.DisplayName ?? ToDisplayName(key),
+                    DisplayName = ToDisplayName(key),
+                    MaxLevel = maxLevel,
                     IsCustom = false,
                 };
                 context.MinecraftEnchantmentRefs.Add(enchantmentRef);
@@ -171,10 +172,10 @@ public static class LootboxSeed
             var definition = new EnchantmentDefinition
             {
                 Key = key,
-                DisplayName = catalogEntry?.DisplayName ?? ToDisplayName(key),
+                DisplayName = ToDisplayName(key),
                 Description = string.Empty,
                 IsCustom = false,
-                MaxLevel = catalogEntry?.MaxLevel ?? 1,
+                MaxLevel = maxLevel,
                 BaseEnchantmentRef = enchantmentRef,
             };
             context.EnchantmentDefinitions.Add(definition);
@@ -245,7 +246,7 @@ public static class LootboxSeed
                     DefaultDisplayName = "&cFlaming Samurai",
                     DefaultDisplayDescription = FlamingSamuraiDescription,
                     Description = "New v3 lootbox special (2026-09-26). Not a v1 port.",
-                    IconMaterial = await MaterialAsync(context, materialCatalog, FlamingSamuraiIconKey, Count, cancellationToken),
+                    IconMaterial = await MaterialAsync(context, FlamingSamuraiIconKey, Count, cancellationToken),
                     Category = weapons,
                     Grade = grades[5],
                     DefaultQuantity = 1,
@@ -383,7 +384,6 @@ public static class LootboxSeed
 
     private static async Task<MinecraftMaterialRef> MaterialAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog,
         string key,
         Action<string> count,
         CancellationToken cancellationToken)
@@ -394,15 +394,7 @@ public static class LootboxSeed
             .FirstOrDefaultAsync(cancellationToken);
         if (material != null) return material;
 
-        var entry = materialCatalog?.GetAll()
-            .FirstOrDefault(e => string.Equals(e.NamespaceKey, key, StringComparison.OrdinalIgnoreCase));
-        material = new MinecraftMaterialRef
-        {
-            NamespaceKey = key,
-            Category = entry?.Category ?? "ITEM",
-            LegacyName = entry?.LegacyName,
-            IconUrl = entry?.IconUrl,
-        };
+        material = MinecraftMaterialRefFactory.NewUnverified(key, "ITEM");
         context.MinecraftMaterialRefs.Add(material);
         count(nameof(MinecraftMaterialRef));
         return material;

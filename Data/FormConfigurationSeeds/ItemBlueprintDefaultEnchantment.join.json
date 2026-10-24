@@ -1,0 +1,38 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "5c710b7f-8944-5625-b090-c4b22f5d4a02",
+  "entityTypeName": "ItemBlueprintDefaultEnchantment",
+  "name": "ItemBlueprintDefaultEnchantment - Join Entry (seed v1)",
+  "description": "One default enchantment of an item blueprint, with its level. Opened by Create New Join Entry on the item blueprint form's Default enchantments step.",
+  "steps": [
+    {
+      "stepGuid": "02b64463-a6ca-5ad2-9a19-62e66d2b395b",
+      "stepName": "Enchantment",
+      "description": "Pick the enchantment and the level the item starts with. The blueprint is the one you are editing.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "09bb8055-1388-5593-b025-fc444a18f9f3",
+          "fieldName": "EnchantmentDefinitionId",
+          "label": "Enchantment",
+          "description": "A vanilla or custom enchantment; each can be on a blueprint once. Create a missing one on the enchantment form first.",
+          "fieldType": "Object",
+          "objectType": "EnchantmentDefinition",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a6bb3de6-54da-59f9-a556-10e838499a62",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "Level the item starts with; for an enchantment book, the level the book teaches. Keep it between 1 and the enchantment's max level: higher levels are applied as given.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

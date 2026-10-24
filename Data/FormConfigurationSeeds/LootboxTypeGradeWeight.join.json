@@ -1,0 +1,37 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "7573a006-3d99-5a2d-9421-9cd07ba770fa",
+  "entityTypeName": "LootboxTypeGradeWeight",
+  "name": "LootboxTypeGradeWeight - Join Entry (seed v1)",
+  "description": "A box-grade weight for one lootbox type: how often boxes of that type spawn at one grade. Created from the type's Grade weights step (Create New Join Entry).",
+  "steps": [
+    {
+      "stepGuid": "922b6802-efbc-50a0-bd34-2d95937a8d00",
+      "stepName": "Grade weight",
+      "description": "Replaces one grade's own drop chance in this type's box-grade roll. Grades without an entry keep their drop chance.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "55e7f0b1-b530-5993-ab01-271eee39232b",
+          "fieldName": "GradeId",
+          "label": "Box grade",
+          "description": "Only grades between the type's minimum and maximum box grade are rolled; an entry outside that range has no effect. One entry per grade.",
+          "fieldType": "Object",
+          "objectType": "Grade",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4315e8da-c46c-5352-927b-2dfe72775534",
+          "fieldName": "Weight",
+          "label": "Weight",
+          "description": "Relative weight (0 or more) against the other grades' weights or drop chances, e.g. Legendary's default is 15. 0 = this type never spawns at this grade.",
+          "fieldType": "Decimal",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -302,6 +302,8 @@ namespace knkwebapi_v2.Services
             // ExperiencePoints and the personal multipliers. Those change only through
             // PUT {id}/balances and PUT {id}/multipliers, which lock, validate and audit them
             // (docs/specs/currency-payments/DESIGN.md §1.4 A1).
+            // Since KNG-195 it also leaves freeze state, EmailVerified and AccountCreatedVia alone,
+            // and writes Gender, IsActive and GatePassThroughMethodDefault only when sent.
             _mapper.Map(userDto, existing);
 
             // CreatedAt is an immutable audit field: a generic edit form that doesn't include

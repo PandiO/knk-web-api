@@ -28,6 +28,19 @@ public class SiegeConfigurationServiceTests
     }
 
     [Fact]
+    public async Task TheNavigationCompassIsOffByDefaultAndCanBeSwitchedOn()
+    {
+        Assert.False((await _service.GetAsync()).GiveNavigationItem);
+
+        var updated = await _service.UpdateAsync(new UpdateSiegeConfigurationDto { GiveNavigationItem = true });
+        Assert.True(updated.GiveNavigationItem);
+
+        // a partial update that does not mention it leaves it
+        var other = await _service.UpdateAsync(new UpdateSiegeConfigurationDto { MaxBooksAlive = 11 });
+        Assert.True(other.GiveNavigationItem);
+    }
+
+    [Fact]
     public async Task FirstRead_SeedsTheLegacyDefaults()
     {
         var dto = await _service.GetAsync();

@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "cf75a25a-1a93-559c-895c-0dddffe781ca",
+  "configurationGuid": "9b5addff-1f6c-53d9-baca-5b4598ac4337",
   "entityTypeName": "GateStructure",
-  "name": "GateStructure - Default (seed v1)",
-  "description": "A gate: its name, address, WorldGuard region, spawn point and siege behaviour. Its doors are their own records, added on the last step once the gate is saved.",
+  "name": "GateStructure - Default (seed v3)",
+  "description": "A gate: its name, address, WorldGuard region, spawn point, warp destination and siege behaviour. Its doors are their own records, added on the last step once the gate is saved. Seed v2 (KNG-229): /navigate default, entry rule on roads and the warp destination step, as on the Structure form.",
   "steps": [
     {
-      "stepGuid": "78e493ee-2313-5177-95a0-358c2164d424",
+      "stepGuid": "9ad34c67-50cf-5876-82ef-f26a1e0c7df0",
       "stepName": "General information",
       "description": "Name the gate. The name is shown in game and is how /gate commands find it.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "0775f3cc-3f5e-5082-bc03-34fd25e8671b",
+          "fieldGuid": "a416a75f-7557-5789-9b65-a8a00ce7d0d3",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in game and used by /gate commands, so keep it short. 'here' is reserved and refused.",
@@ -21,7 +21,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "6204d233-da0f-5071-b33f-fd564abe2ae4",
+          "fieldGuid": "5663477e-2261-53dd-b02c-a99b34acccfa",
           "fieldName": "Description",
           "label": "Description",
           "description": "One line for admins and the web app, e.g. what the gate guards.",
@@ -30,7 +30,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "e3f936dc-0210-52ab-8cc6-c62779df20a5",
+          "fieldGuid": "414db7be-1dd3-5ed3-82d1-96296973cf50",
           "fieldName": "IconMaterialRefId",
           "label": "Icon",
           "description": "Item shown for this gate in menus. Leave empty for the default icon.",
@@ -41,13 +41,13 @@
       ]
     },
     {
-      "stepGuid": "78269495-64cd-53b3-8f80-3ffd6e8d7164",
+      "stepGuid": "121ace18-1d9e-5c3e-afba-c296f8349a6b",
       "stepName": "Address",
       "description": "Where the gate stands. Pick the district first; create the street here if it doesn't exist yet.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "afdb105d-316b-5b97-a184-b5c2c7301a01",
+          "fieldGuid": "879c40fa-c9e6-511e-8277-055ddd7b7712",
           "fieldName": "DistrictId",
           "label": "District",
           "description": "The district the gate belongs to. Its region is checked against the district's region on the next step.",
@@ -57,7 +57,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "055db0ba-6c8f-5502-a1c2-ef5214514fa1",
+          "fieldGuid": "54f60284-3c51-53af-990d-e872eeeaae43",
           "fieldName": "StreetId",
           "label": "Street",
           "description": "The street the gate is on. Use Create New if the street isn't there yet.",
@@ -69,13 +69,13 @@
       ]
     },
     {
-      "stepGuid": "9366d25a-0fa7-518c-9443-0ab1c2d19336",
+      "stepGuid": "c29c8e4f-a53c-554a-a73b-6e87b788184b",
       "stepName": "Region and access",
       "description": "The WorldGuard region around the whole gate, and whether players may walk in and out of it. Use Send to Minecraft and select the region in game with WorldEdit, or type an existing region's name.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "6887b19f-1ee2-54ef-ba42-2417cc29c9e3",
+          "fieldGuid": "07d7df54-1125-5f8f-8a06-acea7d7c5174",
           "fieldName": "WgRegionId",
           "label": "Region",
           "description": "The WorldGuard region that encloses the gate and all its doors. Door points are checked against it, and it should lie inside the district's region.",
@@ -85,7 +85,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
         },
         {
-          "fieldGuid": "79139c6c-0eb9-5613-b509-2a8745e31772",
+          "fieldGuid": "923b6663-7e09-592d-b60f-68b46550ea8b",
           "fieldName": "AllowEntry",
           "label": "Allow entry",
           "description": "Players may walk into the gate's region. Off keeps everyone out except admins.",
@@ -95,10 +95,110 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "763e2bab-e822-57fe-93f1-3cbf99afb382",
+          "fieldGuid": "d7896f73-8aa7-5fb6-8793-f1d7d010da48",
           "fieldName": "AllowExit",
           "label": "Allow exit",
           "description": "Players inside the gate's region may walk out of it.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "653e1dba-af2b-5439-978a-6077d31dad14",
+          "fieldName": "RoadAccessOverride",
+          "label": "Entry rule on roads",
+          "description": "Applies: when players may not enter, /navigate routes avoid the roads through this gate's region. Ignored: routes may use them, e.g. for a gate that spans a public road; the rule still holds at the border and for teleports. Empty = the setting for all gates on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "RoadAccessRule",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Applies\", \"Ignored\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "d48c1fd4-48e1-53e7-9ebc-b04fcc09d255",
+      "stepName": "Spawn point",
+      "description": "Where /gate tp, /warp and /navigate <gate> put players. Stand on the spot in game, facing the gate, and use Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "92f0a6fb-be7c-53d5-8559-7036608f310a",
+          "fieldName": "LocationId",
+          "label": "Spawn point",
+          "description": "Optional, but a warp destination needs one. Without it, /gate tp puts players next to the gate's first door.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "9dc2392a-07f9-5ca9-a2f5-8a2f5f3166f8",
+          "fieldName": "NavigationDefaultOverride",
+          "label": "Navigate to",
+          "description": "Where /navigate <gate> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the gate's region. Leave empty to follow the setting for all gates on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "NavigationDestinationMode",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Spawn\", \"Region\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "e11e7b5b-52e0-58e8-97e8-0a30a13dabad",
+      "stepName": "Warp destination",
+      "description": "Whether players can /warp to the gate's spawn point, and what that requires. Requirements are checked in this order: title, premium tier, discovery, price.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "23d4e520-d1c6-5df6-a5b6-3d18f984c76a",
+          "fieldName": "TeleportEnabled",
+          "label": "Warp destination",
+          "description": "Lists the gate in /warp and the teleport menu. It also needs a spawn point and Allow entry on. Off keeps the settings below but doesn't use them.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6c0f7aec-c5c9-5b5f-b9a1-7f501b786d1e",
+          "fieldName": "TeleportPriceGems",
+          "label": "Price (gems)",
+          "description": "Gems charged per warp, after the warmup. 0 = free. A permission group's /warp price setting can replace or multiply it.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "540d8bd1-d232-5742-9611-7665e1142fda",
+          "fieldName": "TeleportMinTitleBracketId",
+          "label": "Minimum title",
+          "description": "Players whose experience is below this title can't warp here. Empty = no title needed.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a8326537-cd53-5051-9703-85955bb3f377",
+          "fieldName": "TeleportMinPremiumGroupId",
+          "label": "Minimum premium tier",
+          "description": "Only players whose highest premium tier has at least this group's weight may warp here. Only premium-tier groups can be picked. Empty = everyone.",
+          "fieldType": "Object",
+          "objectType": "PermissionGroup",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"isPremiumTier\": \"true\"}}"
+        },
+        {
+          "fieldGuid": "0c23d245-aa4b-51b6-af23-1ac2d54532bf",
+          "fieldName": "TeleportRequiresDiscovery",
+          "label": "Discovered gates only",
+          "description": "Only players who have discovered the gate (entered its region at least once) may warp here. Gate discovery is on by default; if it is switched off for gates on the discovery page, nobody new can discover the gate.",
           "fieldType": "Boolean",
           "defaultValue": "true",
           "isRequired": false,
@@ -107,32 +207,13 @@
       ]
     },
     {
-      "stepGuid": "d8361647-dbab-574e-a6c0-818d07a8f987",
-      "stepName": "Spawn point",
-      "description": "Where /gate tp, /warp and /navigate <gate> spawn put players. Stand on the spot in game, facing the gate, and use Send to Minecraft.",
-      "isManyToManyRelationship": false,
-      "fields": [
-        {
-          "fieldGuid": "751d3b92-2b22-5537-9378-67880bfa8dd0",
-          "fieldName": "LocationId",
-          "label": "Spawn point",
-          "description": "Optional. Without it, /gate tp puts players next to the gate's first door.",
-          "fieldType": "Object",
-          "objectType": "Location",
-          "isRequired": false,
-          "isReadOnly": false,
-          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
-        }
-      ]
-    },
-    {
-      "stepGuid": "5d81b916-ec81-5ff3-a4eb-fa0b07c3e665",
+      "stepGuid": "2302b833-3cf1-5ea4-b307-5fa453eaf558",
       "stepName": "Siege behaviour",
       "description": "How the gate behaves while a siege match has it locked down.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "eb3a12e2-1122-5fd6-a144-5c570ab1d94e",
+          "fieldGuid": "af78ed9a-5337-5ccf-999c-656817853d5e",
           "fieldName": "AnimateDuringSiege",
           "label": "Animate during a siege",
           "description": "Doors open and close with their animation during a match. Off switches them instantly.",
@@ -142,7 +223,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "0c51ee7e-1f58-5e68-bd26-0cea1b9165d2",
+          "fieldGuid": "00af15dc-ae5d-52d0-81fd-9674f62a9a55",
           "fieldName": "IsOverridable",
           "label": "Siege may take over",
           "description": "A siege match may take control of this gate's doors (open, close, destroy). Off keeps the gate out of every siege.",
@@ -154,13 +235,13 @@
       ]
     },
     {
-      "stepGuid": "b9e7a365-9218-50b1-93c4-78759ee7dfa2",
+      "stepGuid": "af09fc4a-64fa-5af2-bf51-9a8a533fe96f",
       "stepName": "Gate doors",
       "description": "The doors that open and close. Save the gate first (Submit), then Edit it to add doors; each door has its own form and is saved when you finish it.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "68cb8e67-2d9b-5b2d-aaf7-5c8bdaceb2a9",
+          "fieldGuid": "64fcc6a2-3701-5c93-949f-44478fe0507e",
           "fieldName": "GateDoors",
           "label": "Doors",
           "description": "One entry per door. Create New opens the door form with this gate already filled in.",
@@ -172,14 +253,34 @@
           "settingsJson": "{\"ownedChildCollection\": true}"
         }
       ]
+    },
+    {
+      "stepGuid": "0fdefd66-1fb0-5fc2-bd6a-bd7978387b98",
+      "stepName": "Sub-regions",
+      "description": "Extra WorldGuard regions of the gate besides its main region, for a shape one region can't hold (a round tower next to a square house). The gate is the union of its regions. Save the gate first (Submit), then Edit it to add sub-regions; each one is drawn in game and saved when its form completes.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "dbb1cb36-11dd-526d-8aa4-b5c5d7dce25b",
+          "fieldName": "SubRegions",
+          "label": "Sub-regions",
+          "description": "One entry per extra region. Each gets the main region's flags, owners, members and priority from the game server, so set flags on the main region only. A removed sub-region's WorldGuard region is deleted 14 days later.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "DomainSubRegion",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
     }
   ],
   "validationRules": [
     {
-      "fieldGuid": "6887b19f-1ee2-54ef-ba42-2417cc29c9e3",
+      "fieldGuid": "07d7df54-1125-5f8f-8a06-acea7d7c5174",
       "validationType": "RegionContainment",
       "dependsOn": {
-        "fieldGuid": "afdb105d-316b-5b97-a184-b5c2c7301a01"
+        "fieldGuid": "879c40fa-c9e6-511e-8277-055ddd7b7712"
       },
       "dependencyPath": "District.WgRegionId",
       "configJson": "{\"parentRegionPath\": \"WgRegionId\", \"requireFullContainment\": true}",

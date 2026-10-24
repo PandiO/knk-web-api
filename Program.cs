@@ -32,6 +32,9 @@ builder.Services.AddControllers(options =>
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
+        // KNG-195: "" for a nullable enum (an Enum field's empty option) reads as null instead of failing
+        // the whole request. Must come before JsonStringEnumConverter, which it delegates to.
+        options.JsonSerializerOptions.Converters.Add(new knkwebapi_v2.Json.NullableEnumConverterFactory());
         // Add converter for enums to be serialized/deserialized as strings
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     })
@@ -60,8 +63,13 @@ var startupWarnings = knkwebapi_v2.Configuration.StartupSecurity.ApplySecretChec
 string? connectionString = builder.Configuration.GetConnectionString("MySqlDbConnection");
 // Once per process, not per DbContext: Database:MySqlServerVersion, else one AutoDetect on first use.
 var mySqlServerVersion = new knkwebapi_v2.Configuration.MySqlServerVersionResolver(builder.Configuration, connectionString);
-builder.Services.AddDbContext<KnKDbContext>(options =>
-    options.UseMySql(connectionString, mySqlServerVersion.Version));
+// KNG-232: database command durations (meter Knk.Db) through an EF Core interceptor.
+builder.Services.AddSingleton<knkwebapi_v2.Services.Telemetry.DbCommandMetrics>();
+builder.Services.AddSingleton<knkwebapi_v2.Services.Telemetry.DbCommandMetricsInterceptor>();
+builder.Services.AddSingleton<knkwebapi_v2.Services.Telemetry.ProcessMetrics>();
+builder.Services.AddDbContext<KnKDbContext>((serviceProvider, options) =>
+    options.UseMySql(connectionString, mySqlServerVersion.Version)
+        .AddInterceptors(serviceProvider.GetRequiredService<knkwebapi_v2.Services.Telemetry.DbCommandMetricsInterceptor>()));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 
@@ -137,12 +145,35 @@ builder.Services.AddSingleton<knkwebapi_v2.Services.Interfaces.IClientActivitySt
 var telemetryOptions = builder.Configuration.GetSection(knkwebapi_v2.Configuration.TelemetryOptions.SectionName)
     .Get<knkwebapi_v2.Configuration.TelemetryOptions>() ?? new knkwebapi_v2.Configuration.TelemetryOptions();
 
+// KNG-232: the Prometheus scrape endpoint is off by default and needs a bearer token outside Development.
+var prometheusProblem = knkwebapi_v2.Services.Telemetry.MetricsEndpoint.Problem(
+    telemetryOptions.Prometheus, builder.Environment.IsDevelopment());
+if (telemetryOptions.Enabled && prometheusProblem != null)
+{
+    throw new InvalidOperationException("Refusing to start: " + prometheusProblem + ".");
+}
+var prometheusEnabled = telemetryOptions.Enabled && telemetryOptions.Prometheus.Enabled;
+
 if (telemetryOptions.Enabled)
 {
     builder.Services.AddOpenTelemetry()
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation();
+            // KNG-232: .NET runtime (GC, heap, thread pool), outbound HttpClient, process/cgroup and DB command metrics.
+            metrics.AddRuntimeInstrumentation();
+            metrics.AddHttpClientInstrumentation();
+            metrics.AddMeter(knkwebapi_v2.Services.Telemetry.ProcessMetrics.MeterName);
+            metrics.AddMeter(knkwebapi_v2.Services.Telemetry.DbCommandMetrics.MeterName);
+            metrics.AddView(knkwebapi_v2.Services.Telemetry.DbCommandMetrics.DurationName,
+                new OpenTelemetry.Metrics.ExplicitBucketHistogramConfiguration
+                {
+                    Boundaries = knkwebapi_v2.Services.Telemetry.DbCommandMetrics.BucketBoundaries
+                });
+            if (prometheusEnabled)
+            {
+                metrics.AddPrometheusExporter();
+            }
             metrics.AddMeter(knkwebapi_v2.Services.Lootbox.LootboxMetrics.MeterName);
             // Currency ledger counters and lock-wait histogram (currency-payments Phase 5).
             metrics.AddMeter(knkwebapi_v2.Services.CurrencyMetrics.MeterName);
@@ -272,9 +303,15 @@ if (hasHttpsListener)
     app.UseHttpsRedirection();
 }
 
-// TODO: Prometheus exporter endpoint can be added with OpenTelemetry Prometheus AspNetCore package
-
 app.MapControllers();
+
+// KNG-232: Prometheus scrape endpoint (own bearer-token gate, not an MVC action). Never route it through the ingress.
+if (prometheusEnabled)
+{
+    knkwebapi_v2.Services.Telemetry.MetricsEndpoint.MapKnkMetrics(app, telemetryOptions.Prometheus);
+}
+// Instruments are only observed while this singleton lives.
+app.Services.GetRequiredService<knkwebapi_v2.Services.Telemetry.ProcessMetrics>();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -289,23 +326,25 @@ using (var scope = app.Services.CreateScope())
     var menuSeedLogger = loggerFactory.CreateLogger("MenuTemplateSeed");
     await knkwebapi_v2.Models.MenuTemplateSeed.SeedCanonicalAsync(dbContext, menuSeedLogger);
 
+    // KNG-200 phase 2: normalise material keys, fill display names and link block refs to their material
+    // before the item seeds look materials up by key. Idempotent; GET api/MinecraftCatalog/audit lists what it left.
+    await scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftCatalogMaintenanceService>().BackfillAsync();
+
     var kitSeedLogger = loggerFactory.CreateLogger("KitSeed");
-    var materialCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftMaterialCatalogService>();
-    await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, materialCatalog, kitSeedLogger);
+    await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, kitSeedLogger);
 
     // After KitSeed, so on a fresh DB the kit's own "Iron Sword"/"Arrow" rows win the shared names.
     var v1BlueprintSeedLogger = loggerFactory.CreateLogger("ItemBlueprintV1Seed");
-    var enchantmentCatalog = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftEnchantmentCatalogService>();
-    await knkwebapi_v2.Models.ItemBlueprintV1Seed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, v1BlueprintSeedLogger);
+    await knkwebapi_v2.Models.ItemBlueprintV1Seed.SeedCanonicalAsync(dbContext, v1BlueprintSeedLogger);
 
     // After the ability (custom) and V1 (vanilla) seeds: permanent enchantment books reuse their EnchantmentDefinitions (KNG-5).
     var enchantBookSeedLogger = loggerFactory.CreateLogger("EnchantBookSeed");
-    await knkwebapi_v2.Models.EnchantBookSeed.SeedCanonicalAsync(dbContext, materialCatalog, enchantBookSeedLogger);
+    await knkwebapi_v2.Models.EnchantBookSeed.SeedCanonicalAsync(dbContext, enchantBookSeedLogger);
 
     // After every item seed: one disabled lootbox type per category, the specials (incl. the Flaming Samurai), enchant
     // rolls and the lootbox settings (docs/specs/lootboxes/DESIGN.md §3.5).
     var lootboxSeedLogger = loggerFactory.CreateLogger("LootboxSeed");
-    await knkwebapi_v2.Models.LootboxSeed.SeedCanonicalAsync(dbContext, materialCatalog, enchantmentCatalog, lootboxSeedLogger);
+    await knkwebapi_v2.Models.LootboxSeed.SeedCanonicalAsync(dbContext, lootboxSeedLogger);
 
     // Siege Phase 9: one disabled example lobby (create-only by key).
     var siegeLobbySeedLogger = loggerFactory.CreateLogger("SiegeLobbySeed");

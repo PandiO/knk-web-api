@@ -8,6 +8,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Services
 {
@@ -15,20 +16,17 @@ namespace knkwebapi_v2.Services
     {
         private readonly ICategoryRepository _repo;
         private readonly IMinecraftMaterialRefRepository _materialRepo;
-        private readonly IMinecraftMaterialCatalogService _catalog;
         private readonly ITagRepository _tagRepo;
         private readonly IMapper _mapper;
 
         public CategoryService(
             ICategoryRepository repo,
             IMinecraftMaterialRefRepository materialRepo,
-            IMinecraftMaterialCatalogService catalog,
             ITagRepository tagRepo,
             IMapper mapper)
         {
             _repo = repo;
             _materialRepo = materialRepo;
-            _catalog = catalog;
             _tagRepo = tagRepo;
             _mapper = mapper;
         }
@@ -178,7 +176,8 @@ namespace knkwebapi_v2.Services
                 return currentIconId;
             }
 
-            var namespaceKey = categoryDto.IconNamespaceKey.Trim();
+            // KNG-200 §3: one normalisation, so "STONE" finds minecraft:stone instead of creating a duplicate.
+            var namespaceKey = MinecraftNamespaceKey.Normalize(categoryDto.IconNamespaceKey);
 
             // Check if a material already exists for this namespace key
             var existing = await _materialRepo.GetByNamespaceKeyAsync(namespaceKey);
@@ -187,19 +186,8 @@ namespace knkwebapi_v2.Services
                 return existing.Id;
             }
 
-            // Look up catalog info to seed category/legacy
-            var catalogEntry = _catalog.Search(namespaceKey, null)
-                .FirstOrDefault(c => c.NamespaceKey.Equals(namespaceKey, StringComparison.OrdinalIgnoreCase));
-
-            var materialCategory = catalogEntry?.Category ?? "Uncategorized";
-            var legacyName = catalogEntry?.LegacyName;
-
-            var newMaterial = new MinecraftMaterialRef
-            {
-                NamespaceKey = namespaceKey,
-                Category = materialCategory,
-                LegacyName = legacyName
-            };
+            // Unverified until a server scan sees the key (KNG-200).
+            var newMaterial = MinecraftMaterialRefFactory.NewUnverified(namespaceKey, "Uncategorized");
 
             await _materialRepo.AddAsync(newMaterial);
 

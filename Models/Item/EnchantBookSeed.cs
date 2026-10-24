@@ -2,6 +2,7 @@ using knkwebapi_v2.Properties;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Models;
 
@@ -54,7 +55,6 @@ public static class EnchantBookSeed
 
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -68,15 +68,7 @@ public static class EnchantBookSeed
             .FirstOrDefaultAsync(cancellationToken);
         if (material == null)
         {
-            var entry = materialCatalog?.GetAll()
-                .FirstOrDefault(e => string.Equals(e.NamespaceKey, BookMaterialKey, StringComparison.OrdinalIgnoreCase));
-            material = new MinecraftMaterialRef
-            {
-                NamespaceKey = BookMaterialKey,
-                Category = entry?.Category ?? "ITEM",
-                LegacyName = entry?.LegacyName,
-                IconUrl = entry?.IconUrl,
-            };
+            material = MinecraftMaterialRefFactory.NewUnverified(BookMaterialKey, "ITEM");
             context.MinecraftMaterialRefs.Add(material);
             Count(nameof(MinecraftMaterialRef));
         }

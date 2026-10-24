@@ -19,24 +19,10 @@ public class KitSeedTests
     private KnKDbContext NewContext() =>
         new(new DbContextOptionsBuilder<KnKDbContext>().UseInMemoryDatabase(_dbName).Options);
 
-    private static IMinecraftMaterialCatalogService Catalog()
-    {
-        var catalog = new Mock<IMinecraftMaterialCatalogService>();
-        catalog.Setup(c => c.GetAll()).Returns(new[]
-        {
-            new MinecraftMaterialCatalogEntry
-            {
-                NamespaceKey = "minecraft:iron_sword", DisplayName = "Iron Sword", Category = "ITEM",
-                TexturePath = "items/iron_sword", IconUrl = "https://example.test/iron_sword.png",
-            },
-        });
-        return catalog.Object;
-    }
-
     private async Task SeedAsync()
     {
         await using var context = NewContext();
-        await KitSeed.SeedCanonicalAsync(context, Catalog());
+        await KitSeed.SeedCanonicalAsync(context);
     }
 
     [Fact]
@@ -68,7 +54,10 @@ public class KitSeedTests
         var sword = blueprints["Iron Sword"];
         sword.DefaultDisplayName.Should().Be("§7Iron Sword");
         sword.IconMaterial!.NamespaceKey.Should().Be("minecraft:iron_sword");
-        sword.IconMaterial.IconUrl.Should().Be("https://example.test/iron_sword.png");
+        // KNG-200: a seeded material is Unverified with a name from its key; the server scan sets its icon.
+        sword.IconMaterial.IconUrl.Should().BeNull();
+        sword.IconMaterial.DisplayName.Should().Be("Iron Sword");
+        sword.IconMaterial.CatalogStatus.Should().Be(knkwebapi_v2.Enums.MinecraftCatalogStatus.Unverified);
         sword.Category!.Name.Should().Be("Weapons");
         sword.Grade!.Name.Should().Be("Common");
         blueprints["Iron Axe"].Grade!.Name.Should().Be("Uncommon");

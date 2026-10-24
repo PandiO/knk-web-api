@@ -153,6 +153,22 @@ namespace knkwebapi_v2.Services
                     .Select(g => (g.Key, Node: PickForWorld(g, worldName)))
                     .Where(p => p.Node != null)
                     .ToDictionary(p => p.Key, p => p.Node!, StringComparer.OrdinalIgnoreCase);
+                // KNG-256: a domain's sub-region is discovered as the domain (a garrison entered through its tower).
+                var unmatched = regionIds.Where(r => !byRegion.ContainsKey(r)).ToList();
+                if (unmatched.Count > 0)
+                {
+                    var subRegions = await _repo.FindSubRegionDomainsAsync(unmatched);
+                    if (subRegions.Count > 0)
+                    {
+                        var subNodes = (await _repo.GetDomainNodesAsync(subRegions.Select(s => s.DomainId).ToList()))
+                            .ToDictionary(n => n.Id);
+                        foreach (var group in subRegions.GroupBy(s => s.RegionId.Trim(), StringComparer.OrdinalIgnoreCase))
+                        {
+                            var node = PickForWorld(group.Where(s => subNodes.ContainsKey(s.DomainId)).Select(s => subNodes[s.DomainId]), worldName);
+                            if (node != null) byRegion[group.Key] = node;
+                        }
+                    }
+                }
                 foreach (var regionId in regionIds)
                 {
                     if (byRegion.TryGetValue(regionId, out var node))

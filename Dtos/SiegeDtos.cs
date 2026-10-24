@@ -41,6 +41,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lockdownScenarioArea")] public bool LockdownScenarioArea { get; set; }
         [JsonPropertyName("allowRecapture")] public bool AllowRecapture { get; set; }
         [JsonPropertyName("enchantDropsEnabled")] public bool EnchantDropsEnabled { get; set; }
+        [JsonPropertyName("navigationItem")] public SiegeNavigationItemMode NavigationItem { get; set; }
 
         // Owned children, ordered by (SortOrder, Id).
         [JsonPropertyName("teams")] public List<SiegeTeamReadDto> Teams { get; set; } = new();
@@ -75,6 +76,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lockdownScenarioArea")] public bool LockdownScenarioArea { get; set; } = true;
         [JsonPropertyName("allowRecapture")] public bool AllowRecapture { get; set; }
         [JsonPropertyName("enchantDropsEnabled")] public bool EnchantDropsEnabled { get; set; } = true;
+        [JsonPropertyName("navigationItem")] public SiegeNavigationItemMode NavigationItem { get; set; } = SiegeNavigationItemMode.Inherit;
         [JsonPropertyName("gates")] public List<SiegeScenarioGateUpsertDto>? Gates { get; set; }
     }
 
@@ -266,6 +268,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("cooldownSeconds")] public int CooldownSeconds { get; set; }
         [JsonPropertyName("voteCandidateCount")] public int VoteCandidateCount { get; set; }
         [JsonPropertyName("allowRandomVote")] public bool AllowRandomVote { get; set; }
+        [JsonPropertyName("navigationItem")] public SiegeNavigationItemMode NavigationItem { get; set; }
         [JsonPropertyName("scheduleJson")] public string? ScheduleJson { get; set; }
         [JsonPropertyName("rotation")] public List<SiegeLobbyScenarioDto> Rotation { get; set; } = new();
     }
@@ -281,6 +284,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("cooldownSeconds")] public int CooldownSeconds { get; set; } = 900;
         [JsonPropertyName("voteCandidateCount")] public int VoteCandidateCount { get; set; } = 2;
         [JsonPropertyName("allowRandomVote")] public bool AllowRandomVote { get; set; } = true;
+        [JsonPropertyName("navigationItem")] public SiegeNavigationItemMode NavigationItem { get; set; } = SiegeNavigationItemMode.Inherit;
         [JsonPropertyName("scheduleJson")] public string? ScheduleJson { get; set; }
         [JsonPropertyName("rotation")] public List<SiegeLobbyScenarioUpsertDto>? Rotation { get; set; }
     }
@@ -336,6 +340,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("enchantLevelMax")] public int EnchantLevelMax { get; set; }
         [JsonPropertyName("maxBooksAlive")] public int MaxBooksAlive { get; set; }
         [JsonPropertyName("nonMemberGateView")] public SiegeNonMemberGateView NonMemberGateView { get; set; }
+        [JsonPropertyName("giveNavigationItem")] public bool GiveNavigationItem { get; set; }
         [JsonPropertyName("updatedAt")] public DateTime UpdatedAt { get; set; }
     }
 
@@ -365,6 +370,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("enchantLevelMax")] public int? EnchantLevelMax { get; set; }
         [JsonPropertyName("maxBooksAlive")] public int? MaxBooksAlive { get; set; }
         [JsonPropertyName("nonMemberGateView")] public SiegeNonMemberGateView? NonMemberGateView { get; set; }
+        [JsonPropertyName("giveNavigationItem")] public bool? GiveNavigationItem { get; set; }
     }
 
     // ---- Runtime config (GET /api/siege-lobbies/runtime-config, DESIGN §11.2) ----
@@ -390,6 +396,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("cooldownSeconds")] public int CooldownSeconds { get; set; }
         [JsonPropertyName("voteCandidateCount")] public int VoteCandidateCount { get; set; }
         [JsonPropertyName("allowRandomVote")] public bool AllowRandomVote { get; set; }
+        [JsonPropertyName("navigationItem")] public SiegeNavigationItemMode NavigationItem { get; set; }
         [JsonPropertyName("rotation")] public List<SiegeRuntimeRotationEntryDto> Rotation { get; set; } = new();
         [JsonPropertyName("skippedScenarios")] public List<SiegeRuntimeSkippedScenarioDto> SkippedScenarios { get; set; } = new();
     }
@@ -435,6 +442,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lockdownScenarioArea")] public bool LockdownScenarioArea { get; set; }
         [JsonPropertyName("allowRecapture")] public bool AllowRecapture { get; set; }
         [JsonPropertyName("enchantDropsEnabled")] public bool EnchantDropsEnabled { get; set; }
+        [JsonPropertyName("navigationItem")] public SiegeNavigationItemMode NavigationItem { get; set; }
         [JsonPropertyName("teams")] public List<SiegeRuntimeTeamDto> Teams { get; set; } = new();
         [JsonPropertyName("objectives")] public List<SiegeRuntimeObjectiveDto> Objectives { get; set; } = new();
         [JsonPropertyName("gates")] public List<SiegeRuntimeGateDto> Gates { get; set; } = new();

@@ -1,6 +1,7 @@
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.MinecraftCatalog;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KnKWebAPI.Controllers;
@@ -23,16 +24,6 @@ public class MinecraftEnchantmentRefsController : ControllerBase
     {
         var items = await _service.GetAllAsync();
         return Ok(items);
-    }
-
-    [HttpGet("hybrid")]
-    public async Task<ActionResult<IEnumerable<MinecraftHybridEnchantmentOptionDto>>> GetHybrid(
-        [FromQuery] string? search = null,
-        [FromQuery] string? category = null,
-        [FromQuery] int? take = null)
-    {
-        var result = await _service.GetHybridAsync(search, category, take);
-        return Ok(result);
     }
 
     [HttpGet("{id:int}", Name = "GetMinecraftEnchantmentRefById")]
@@ -115,10 +106,10 @@ public class MinecraftEnchantmentRefsController : ControllerBase
     {
         query ??= new PagedQueryDto();
 
-        if (query.Filters != null && query.Filters.TryGetValue("SearchHybrid", out var hybridValue) && hybridValue?.ToString()?.ToLower() == "true")
+        // KNG-250: pickers send Picker=true; the database (filled by the server scan) is the catalogue.
+        if (MinecraftPickerFilters.IsPickerSearch(query.Filters))
         {
-            var hybridResult = await _service.SearchHybridAsync(query);
-            return Ok(hybridResult);
+            return Ok(await _service.SearchPickerAsync(query));
         }
 
         var result = await _service.SearchAsync(query);

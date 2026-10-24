@@ -10,4 +10,5 @@ public interface IMinecraftEnchantmentRefRepository
     Task AddAsync(MinecraftEnchantmentRef entity);
     Task UpdateAsync(MinecraftEnchantmentRef entity);
     Task DeleteAsync(MinecraftEnchantmentRef entity);
+    Task<PagedResult<MinecraftEnchantmentRef>> SearchAsync(PagedQuery query);
 }

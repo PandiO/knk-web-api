@@ -72,6 +72,11 @@ public class SiegeConfiguration
     // ---- Non-member gate view (§8.5, D6) ----
     public SiegeNonMemberGateView NonMemberGateView { get; set; } = SiegeNonMemberGateView.PreLockdownView;
 
+    // ---- Navigation compass (KNG-234) ----
+    // Siege players get the navigation compass at the hub unless a scenario or lobby says otherwise.
+    // Off by default, so deploying the feature changes nothing until an admin turns it on.
+    public bool GiveNavigationItem { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

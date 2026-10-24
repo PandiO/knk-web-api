@@ -18,6 +18,7 @@ public partial class KnKDbContext : DbContext
     }
 
     public virtual DbSet<Domain> Domains { get; set; } = null!;
+    public virtual DbSet<DomainSubRegion> DomainSubRegions { get; set; } = null!;
     public virtual DbSet<User> Users { get; set; } = null!;
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
@@ -61,6 +62,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<ItemBlueprint> ItemBlueprints { get; set; } = null!;
     public virtual DbSet<MinecraftMaterialRef> MinecraftMaterialRefs { get; set; } = null!;
     public virtual DbSet<MinecraftBlockRef> MinecraftBlockRefs { get; set; } = null!;
+    public virtual DbSet<MinecraftCatalogScan> MinecraftCatalogScans { get; set; } = null!;
     public virtual DbSet<MinecraftEnchantmentRef> MinecraftEnchantmentRefs { get; set; } = null!;
     public virtual DbSet<EnchantmentDefinition> EnchantmentDefinitions { get; set; } = null!;
     public virtual DbSet<AbilityDefinition> AbilityDefinitions { get; set; } = null!;
@@ -127,6 +129,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<DomainDiscoveryOverride> DomainDiscoveryOverrides { get; set; } = null!;
     // Navigation default per domain type (KNG-73, docs/specs/navigation/DESIGN.md §6.1)
     public virtual DbSet<DomainNavigationDefault> DomainNavigationDefaults { get; set; } = null!;
+    public virtual DbSet<NavigationCompassSettings> NavigationCompassSettingsRows { get; set; } = null!;
 
     // Road navigation Phase 1 (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
     public virtual DbSet<RoadProfile> RoadProfiles { get; set; } = null!;
@@ -208,6 +211,20 @@ public partial class KnKDbContext : DbContext
             entity.Property(d => d.NavigationDefaultOverride).HasConversion<string>().HasMaxLength(16);
             // Rev. 7 Part C (KNG-92): null follows the type's DomainNavigationDefault.RoadAccess.
             entity.Property(d => d.RoadAccessOverride).HasConversion<string>().HasMaxLength(16);
+        });
+
+        // KNG-254: a domain's extra WorldGuard regions. Region ids are unique per world across domains.WgRegionId and
+        // this table, enforced by DomainRegionOwnership (the world is the domain's).
+        modelBuilder.Entity<DomainSubRegion>(entity =>
+        {
+            entity.ToTable("domain_sub_regions");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasIndex(e => e.DomainId);
+            entity.HasIndex(e => e.WgRegionId);
+            entity.HasOne(e => e.Domain)
+                .WithMany(d => d.SubRegions)
+                .HasForeignKey(e => e.DomainId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id
@@ -394,6 +411,8 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_scenarios");
 
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
+
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(1000);
 
@@ -470,6 +489,8 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_lobbies");
+
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
 
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Key).IsRequired().HasMaxLength(64);
@@ -1770,6 +1791,14 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => e.NamespaceKey).IsUnique();
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
             entity.Property(e => e.Category).IsRequired();
+            // KNG-200 catalogue fields (docs/specs/minecraft-catalog/IMPLEMENTATION_PLAN.md §2.1).
+            entity.Property(e => e.DisplayName).HasMaxLength(191);
+            entity.Property(e => e.CatalogStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.FirstSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.LastSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.IconSource).HasMaxLength(64);
+            entity.Property(e => e.IconStatus).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.CatalogStatus);
         });
 
         modelBuilder.Entity<MinecraftBlockRef>(entity =>
@@ -1777,6 +1806,27 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("minecraftblockrefs");
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
+            // KNG-200 §2.2: a block state belongs to its material, and StateKey is its identity (unique since
+            // migration MinecraftCatalogConstraints, applied after a clean audit).
+            entity.HasOne(e => e.MaterialRef)
+                .WithMany()
+                .HasForeignKey(e => e.MaterialRefId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.Property(e => e.StateKey).HasMaxLength(64).IsFixedLength();
+            entity.HasIndex(e => e.StateKey).IsUnique();
+        });
+
+        modelBuilder.Entity<MinecraftCatalogScan>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("minecraft_catalog_scans");
+            // Concurrency token: a status read and written by a request (e.g. "the plugin failed its task")
+            // must not overwrite an ingest that completed the scan meanwhile.
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsConcurrencyToken();
+            entity.Property(e => e.MinecraftVersion).HasMaxLength(32);
+            entity.Property(e => e.ServerVersion).HasMaxLength(191);
+            entity.Property(e => e.ContentHash).HasMaxLength(64);
+            entity.HasIndex(e => e.Status);
         });
 
         modelBuilder.Entity<MinecraftEnchantmentRef>(entity =>
@@ -1785,6 +1835,11 @@ public partial class KnKDbContext : DbContext
             entity.ToTable("minecraftenchantmentrefs");
             entity.HasIndex(e => e.NamespaceKey).IsUnique();
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
+            // KNG-250 catalogue fields (docs/specs/minecraft-catalog/IMPLEMENTATION_PLAN.md §12).
+            entity.Property(e => e.CatalogStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.FirstSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.LastSeenVersion).HasMaxLength(32);
+            entity.HasIndex(e => e.CatalogStatus);
         });
 
         modelBuilder.Entity<AbilityDefinition>(entity =>
@@ -2278,6 +2333,20 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.DomainType).HasMaxLength(32);
             entity.Property(e => e.DefaultMode).HasConversion<string>().HasMaxLength(16);
             entity.Property(e => e.RoadAccess).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+        });
+
+        // The navigation compass item rule (KNG-234): a single row, created by the first save.
+        modelBuilder.Entity<NavigationCompassSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("navigation_compass_settings");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Material).IsRequired().HasMaxLength(NavigationCompassSettings.MaxMaterialLength);
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(NavigationCompassSettings.MaxDisplayNameLength);
+            entity.Property(e => e.NameMatch).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.GeneralTargets).IsRequired().HasMaxLength(NavigationCompassSettings.MaxTargetsLength);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 

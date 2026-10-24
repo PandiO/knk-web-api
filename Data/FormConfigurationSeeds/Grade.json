@@ -1,0 +1,54 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "01bddb8a-63b8-5548-9d26-82d9ce4017c5",
+  "entityTypeName": "Grade",
+  "name": "Grade - Default (seed v1)",
+  "description": "An item rarity level (1-10 stars): its name, how often lootboxes pick it, and how far enchantment books may raise items of this grade. Item blueprints pick a grade.",
+  "steps": [
+    {
+      "stepGuid": "f35d3c0f-636f-59b0-8227-96d444847505",
+      "stepName": "Grade",
+      "description": "Name the grade and set its stars, lootbox odds and enchantment cap. Changes reach the game server within about 10 minutes, also for items that already exist.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "687ceb43-fc1c-5f4a-bc9f-ffb401a8c8cf",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown to players wherever the grade is named, e.g. in enchantment-book messages (\"Its grade is Common\"). Renaming is safe: nothing in code depends on the name.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c0a7bfea-aa23-5269-809d-593680bed106",
+          "fieldName": "Stars",
+          "label": "Stars",
+          "description": "The grade's rank, 1 (Common) to 10. Items carry their grade as this number and show it as a star line in their lore, so give every grade a different number. Lootboxes use grades 1-5 only.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6ef2be9a-531d-5cd0-8e8b-7d0579710a59",
+          "fieldName": "DropChance",
+          "label": "Drop chance (%)",
+          "description": "Relative weight, 0-100, with which lootboxes pick this grade for a box and for the item inside (a lootbox type can override it). Higher means more common; decimals like 0.05 are allowed. Empty counts as 0: never picked.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7d13a4fd-6889-5c38-963a-37842bab6889",
+          "fieldName": "EnchantLevelCapDivisor",
+          "label": "Enchantment cap divisor",
+          "description": "An enchantment book can raise an item of this grade only up to the enchantment's max level divided by this number, rounded down (Sharpness V on divisor 2: up to II). At least 1; 1 allows the full max level. Leave empty for no cap at all (grades 6-10). Custom enchantments are not capped.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

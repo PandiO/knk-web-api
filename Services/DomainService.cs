@@ -111,16 +111,23 @@ namespace knkwebapi_v2.Services
         public async Task<DomainRegionDecisionDto?> GetByWgRegionNameAsync(string regionName, string? worldName = null)
         {
             if (string.IsNullOrWhiteSpace(regionName)) return null;
-            var domain = await FindByRegionAsync(regionName, worldName);
-            if (domain == null) return null;
-            return _mapper.Map<DomainRegionDecisionDto>(domain);
+            var match = await _repo.GetByAnyRegionAsync(regionName, string.IsNullOrWhiteSpace(worldName) ? null : worldName);
+            if (match == null) return null;
+            var dto = _mapper.Map<DomainRegionDecisionDto>(match.Domain);
+            dto.MatchedSubRegionId = match.MatchedSubRegionId;
+            return dto;
         }
 
         /// <summary>KNG-111: world-qualified when the caller names the world, the old world-blind lookup otherwise.</summary>
-        private Task<Domain?> FindByRegionAsync(string regionId, string? worldName) =>
-            string.IsNullOrWhiteSpace(worldName)
-                ? _repo.GetByWgRegionNameAsync(regionId)
-                : _repo.GetByWgRegionNameAsync(regionId, worldName);
+        private async Task<DomainRegionDecisionDto?> FindDecisionByRegionAsync(string regionId, string? worldName)
+        {
+            // KNG-254: a sub-region resolves to its domain.
+            var match = await _repo.GetByAnyRegionAsync(regionId, string.IsNullOrWhiteSpace(worldName) ? null : worldName);
+            if (match == null) return null;
+            var dto = _mapper.Map<DomainRegionDecisionDto>(match.Domain);
+            dto.MatchedSubRegionId = match.MatchedSubRegionId;
+            return dto;
+        }
 
         public async Task<PagedResultDto<DomainListDto>> SearchAsync(PagedQueryDto queryDto)
         {
@@ -156,6 +163,7 @@ namespace knkwebapi_v2.Services
         public async Task<IReadOnlyList<DomainAccessRuleDto>> GetAccessRulesAsync()
         {
             var domains = await _repo.GetAllAsync();
+            var subRegions = await _repo.GetSubRegionIdsByDomainAsync();
             return domains
                 .Where(d => !string.IsNullOrWhiteSpace(d.WgRegionId))
                 .OrderBy(d => d.Id)
@@ -167,7 +175,8 @@ namespace knkwebapi_v2.Services
                     WorldName = d.WorldName,
                     AllowEntry = d.AllowEntry,
                     AllowExit = d.AllowExit,
-                    DomainType = d.GetType().Name
+                    DomainType = d.GetType().Name,
+                    SubRegionIds = subRegions.TryGetValue(d.Id, out var ids) ? ids.ToList() : new List<string>()
                 })
                 .ToList();
         }
@@ -193,10 +202,10 @@ namespace knkwebapi_v2.Services
             var domainDecisions = new List<DomainRegionDecisionDto>();
             foreach (var regionId in queryDto.WgRegionIds)
             {
-                var domain = await FindByRegionAsync(regionId, queryDto.WorldName);
-                if (domain != null)
+                var decision = await FindDecisionByRegionAsync(regionId, queryDto.WorldName);
+                if (decision != null)
                 {
-                    domainDecisions.Add(_mapper.Map<DomainRegionDecisionDto>(domain));
+                    domainDecisions.Add(decision);
                 }
             }
 

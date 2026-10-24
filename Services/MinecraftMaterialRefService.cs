@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
-using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
-using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Services
 {
@@ -15,16 +15,11 @@ namespace knkwebapi_v2.Services
     {
         private readonly IMinecraftMaterialRefRepository _repo;
         private readonly IMapper _mapper;
-        private readonly IMinecraftMaterialCatalogService _catalog;
 
-        public MinecraftMaterialRefService(
-            IMinecraftMaterialRefRepository repo,
-            IMapper mapper,
-            IMinecraftMaterialCatalogService catalog)
+        public MinecraftMaterialRefService(IMinecraftMaterialRefRepository repo, IMapper mapper)
         {
             _repo = repo;
             _mapper = mapper;
-            _catalog = catalog;
         }
 
         public async Task<IEnumerable<MinecraftMaterialRefDto>> GetAllAsync()
@@ -46,7 +41,14 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(dto.NamespaceKey)) throw new ArgumentException("NamespaceKey is required.", nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.Category)) throw new ArgumentException("Category is required.", nameof(dto));
 
+            // KNG-200 phase 1: one row per normalised key; a second one is a 409 that names the existing row.
+            var key = MinecraftNamespaceKey.Normalize(dto.NamespaceKey);
+            var existing = await _repo.GetByNamespaceKeyAsync(key);
+            if (existing != null) throw new MinecraftMaterialRefConflictException(key, existing.Id);
+
             var entity = _mapper.Map<MinecraftMaterialRef>(dto);
+            entity.NamespaceKey = key;
+            entity.DisplayName ??= MinecraftNamespaceKey.DisplayNameFromKey(key);
             await _repo.AddAsync(entity);
             return _mapper.Map<MinecraftMaterialRefDto>(entity);
         }
@@ -56,25 +58,29 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(namespaceKey)) throw new ArgumentException("NamespaceKey is required.", nameof(namespaceKey));
             if (string.IsNullOrWhiteSpace(category)) throw new ArgumentException("Category is required.", nameof(category));
 
-            var existing = await _repo.GetByNamespaceKeyAsync(namespaceKey);
+            // KNG-200 §3: one normalisation, so "STONE" finds minecraft:stone instead of creating a duplicate.
+            var key = MinecraftNamespaceKey.Normalize(namespaceKey);
+            var existing = await _repo.GetByNamespaceKeyAsync(key);
             if (existing != null)
             {
                 return _mapper.Map<MinecraftMaterialRefDto>(existing);
             }
 
-            // Fetch iconUrl from catalog if available
-            var catalogEntry = _catalog.Search(null, null)
-                .FirstOrDefault(x => x.NamespaceKey.Equals(namespaceKey, StringComparison.OrdinalIgnoreCase));
+            var entity = MinecraftMaterialRefFactory.NewUnverified(key, category);
+            entity.LegacyName = legacyName;
 
-            var entity = new MinecraftMaterialRef
+            try
             {
-                NamespaceKey = namespaceKey,
-                Category = category,
-                LegacyName = legacyName,
-                IconUrl = catalogEntry?.IconUrl
-            };
-
-            await _repo.AddAsync(entity);
+                await _repo.AddAsync(entity);
+            }
+            catch (DbUpdateException)
+            {
+                // Two requests created the same key at once: the unique index kept the other one.
+                _repo.Detach(entity);
+                var winner = await _repo.GetByNamespaceKeyAsync(key);
+                if (winner == null) throw;
+                return _mapper.Map<MinecraftMaterialRefDto>(winner);
+            }
             return _mapper.Map<MinecraftMaterialRefDto>(entity);
         }
 
@@ -88,7 +94,11 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"MinecraftMaterialRef with id {id} not found.");
 
-            existing.NamespaceKey = dto.NamespaceKey;
+            var key = MinecraftNamespaceKey.Normalize(dto.NamespaceKey);
+            var other = await _repo.GetByNamespaceKeyAsync(key);
+            if (other != null && other.Id != id) throw new MinecraftMaterialRefConflictException(key, other.Id);
+
+            existing.NamespaceKey = key;
             existing.LegacyName = dto.LegacyName;
             existing.Category = dto.Category;
             existing.IconUrl = dto.IconUrl;
@@ -105,106 +115,25 @@ namespace knkwebapi_v2.Services
             await _repo.DeleteAsync(id);
         }
 
-        public async Task<IEnumerable<MinecraftHybridMaterialOptionDto>> GetHybridAsync(string? search = null, string? category = null, int? take = null)
-        {
-            var dbItems = await _repo.GetAllAsync();
-            var dbByKey = dbItems.ToDictionary(x => x.NamespaceKey, StringComparer.OrdinalIgnoreCase);
-
-            var catalogItems = _catalog.Search(search, category);
-
-            var merged = new List<MinecraftHybridMaterialOptionDto>();
-
-            foreach (var cat in catalogItems)
-            {
-                dbByKey.TryGetValue(cat.NamespaceKey, out var match);
-
-                merged.Add(new MinecraftHybridMaterialOptionDto
-                {
-                    Id = match?.Id,
-                    NamespaceKey = cat.NamespaceKey,
-                    Category = cat.Category ?? match?.Category ?? string.Empty,
-                    LegacyName = match?.LegacyName ?? cat.LegacyName,
-                    DisplayName = cat.DisplayName ?? match?.NamespaceKey ?? cat.NamespaceKey,
-                    IsPersisted = match != null,
-                    // Use persisted IconUrl if available, otherwise use catalog IconUrl
-                    IconUrl = match?.IconUrl ?? cat.IconUrl
-                });
-            }
-
-            // Include any DB entries not present in catalog (edge cases)
-            foreach (var db in dbItems)
-            {
-                if (!merged.Any(x => x.NamespaceKey.Equals(db.NamespaceKey, StringComparison.OrdinalIgnoreCase)))
-                {
-                    merged.Add(new MinecraftHybridMaterialOptionDto
-                    {
-                        Id = db.Id,
-                        NamespaceKey = db.NamespaceKey,
-                        Category = db.Category,
-                        LegacyName = db.LegacyName,
-                        DisplayName = db.NamespaceKey,
-                        IsPersisted = true,
-                        IconUrl = db.IconUrl
-                    });
-                }
-            }
-
-            var ordered = merged
-                .OrderByDescending(x => x.IsPersisted)
-                .ThenBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .AsEnumerable();
-
-            if (take.HasValue && take.Value > 0)
-            {
-                ordered = ordered.Take(take.Value);
-            }
-
-            return ordered.ToList();
-        }
-
         public async Task<PagedResultDto<MinecraftMaterialRefListDto>> SearchAsync(PagedQueryDto queryDto)
         {
             if (queryDto == null) throw new ArgumentNullException(nameof(queryDto));
-
             var query = _mapper.Map<PagedQuery>(queryDto);
             var result = await _repo.SearchAsync(query);
             return _mapper.Map<PagedResultDto<MinecraftMaterialRefListDto>>(result);
         }
 
-        public async Task<PagedResultDto<MinecraftMaterialRefListDto>> SearchHybridAsync(PagedQueryDto queryDto)
+        public async Task<PagedResultDto<MinecraftMaterialRefListDto>> SearchPickerAsync(PagedQueryDto queryDto)
         {
             if (queryDto == null) throw new ArgumentNullException(nameof(queryDto));
 
-            var search = queryDto.SearchTerm;
-            var category = queryDto.Filters?.TryGetValue("category", out var cat) == true ? cat?.ToString() : null;
-            
-            // Get ALL hybrid results (unfiltered) to calculate total count
-            var allHybridResults = (await GetHybridAsync(search, category, null)).ToList();
-            var totalCount = allHybridResults.Count;
-            
-            // Apply pagination
-            var skip = (queryDto.PageNumber - 1) * queryDto.PageSize;
-            var pagedResults = allHybridResults
-                .Skip(skip)
-                .Take(queryDto.PageSize)
-                .ToList();
-
-            return new PagedResultDto<MinecraftMaterialRefListDto>
-            {
-                Items = pagedResults.Select(h => new MinecraftMaterialRefListDto
-                {
-                    Id = h.Id ?? 0,
-                    NamespaceKey = h.NamespaceKey,
-                    Category = h.Category,
-                    LegacyName = h.LegacyName,
-                    DisplayName = h.DisplayName,
-                    IsPersisted = h.IsPersisted,
-                    IconUrl = h.IconUrl
-                }).ToList(),
-                TotalCount = totalCount,
-                PageNumber = queryDto.PageNumber,
-                PageSize = pagedResults.Count
-            };
+            // KNG-200: the database is the whole catalogue (the server scan fills it) - kind filter, legacy
+            // categoryFilter values mapped to a kind, Missing rows hidden, sorted by display name by default.
+            var query = _mapper.Map<PagedQuery>(queryDto);
+            query.Filters = MinecraftPickerFilters.ForDatabase(query.Filters);
+            if (string.IsNullOrWhiteSpace(query.SortBy)) query.SortBy = "displayName";
+            var result = await _repo.SearchAsync(query);
+            return _mapper.Map<PagedResultDto<MinecraftMaterialRefListDto>>(result);
         }
     }
 }

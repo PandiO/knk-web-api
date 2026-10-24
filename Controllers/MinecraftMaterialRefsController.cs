@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.MinecraftCatalog;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KnKWebAPI.Controllers
@@ -29,16 +30,6 @@ namespace KnKWebAPI.Controllers
             return Ok(items);
         }
 
-        [HttpGet("hybrid")]
-        public async Task<ActionResult<IEnumerable<MinecraftHybridMaterialOptionDto>>> GetHybrid(
-            [FromQuery] string? search = null,
-            [FromQuery] string? category = null,
-            [FromQuery] int? take = null)
-        {
-            var result = await _service.GetHybridAsync(search, category, take);
-            return Ok(result);
-        }
-
         [HttpGet("{id:int}", Name = "GetMinecraftMaterialRefById")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -55,6 +46,11 @@ namespace KnKWebAPI.Controllers
             {
                 var created = await _service.CreateAsync(dto);
                 return CreatedAtRoute("GetMinecraftMaterialRefById", new { id = created.Id }, created);
+            }
+            catch (MinecraftMaterialRefConflictException ex)
+            {
+                // KNG-200 phase 1: the key exists; the body names the row to use instead.
+                return Conflict(new { message = ex.Message, id = ex.ExistingId });
             }
             catch (ArgumentException ex)
             {
@@ -85,6 +81,10 @@ namespace KnKWebAPI.Controllers
             {
                 await _service.UpdateAsync(id, dto);
                 return NoContent();
+            }
+            catch (MinecraftMaterialRefConflictException ex)
+            {
+                return Conflict(new { message = ex.Message, id = ex.ExistingId });
             }
             catch (KeyNotFoundException)
             {
@@ -119,14 +119,12 @@ namespace KnKWebAPI.Controllers
         {
             query ??= new PagedQueryDto();
 
-            // Check if hybrid mode is requested via filter
-            if (query.Filters != null && query.Filters.TryGetValue("SearchHybrid", out var hybridValue) && hybridValue?.ToString()?.ToLower() == "true")
+            // KNG-200: pickers send Picker=true (SearchHybrid=true before KNG-200); the database is the catalogue.
+            if (MinecraftPickerFilters.IsPickerSearch(query.Filters))
             {
-                var hybridResult = await _service.SearchHybridAsync(query);
-                return Ok(hybridResult);
+                return Ok(await _service.SearchPickerAsync(query));
             }
 
-            // Default: normal paged search
             var result = await _service.SearchAsync(query);
             return Ok(result);
         }

@@ -1,0 +1,232 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "7175d815-8e24-58bf-972f-aba0e6b0cd57",
+  "entityTypeName": "User",
+  "name": "User - Default (seed v1)",
+  "description": "A player account: Minecraft identity, web login, progress, currencies and groups. Currencies, experience and multipliers change only on the Player profile page.",
+  "sections": [
+    {
+      "sectionGuid": "01bcd36a-7039-526f-a4f2-c3f882e6dcdf",
+      "sectionName": "Account",
+      "description": "Who the player is in Minecraft and on the web app.",
+      "fields": [
+        {
+          "fieldGuid": "36804675-ec7e-589e-823d-e9cab3016ad3",
+          "fieldName": "Username",
+          "label": "Username",
+          "description": "The player's name, shown in game and on the web app.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "3b9779ff-8720-5a77-81bb-d59679073508",
+          "fieldName": "Uuid",
+          "label": "Minecraft UUID",
+          "description": "The player's permanent Minecraft account id. Empty for a web account not linked to Minecraft yet.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "78652b00-4add-59d8-a04d-4ce8a9a322b9",
+          "fieldName": "Email",
+          "label": "Email",
+          "description": "Used to log in to the web app. Empty for players who only play in game.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b95989b6-faa8-5bc7-bdc3-448a54162781",
+          "fieldName": "EmailVerified",
+          "label": "Email verified",
+          "description": "The player confirmed the email address.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "3204673b-d8a2-5021-950a-d869c25759a5",
+          "fieldName": "IsFullAccount",
+          "label": "Web account",
+          "description": "On when the account has an email and a password, so the player can log in to the web app.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "765fd680-2455-5c00-8725-379d80bb27a6",
+          "fieldName": "AccountCreatedVia",
+          "label": "Created via",
+          "description": "WebApp or MinecraftServer: where the account was first made.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "f7e76e39-79f6-5089-9b4d-8182c96d55f6",
+          "fieldName": "CreatedAt",
+          "label": "Created",
+          "description": "When the account was made.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "b6f0e273-e999-5a29-9313-2686c3e22170",
+          "fieldName": "IsActive",
+          "label": "Active",
+          "description": "Off for a deactivated (soft-deleted) account: the player can't log in.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "6fa8f1c5-f06a-589c-b08c-d719effa3c2c",
+      "sectionName": "Progress and currencies",
+      "description": "Read-only here: balances and experience change only with Adjust balance on the Player profile page, which checks and logs every change.",
+      "fields": [
+        {
+          "fieldGuid": "215f71e1-e7c6-5eaf-9a11-c9efb9059d6a",
+          "fieldName": "Coins",
+          "label": "Coins",
+          "description": "The player's coin balance, earned by playing and salary.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c93fa5cf-8884-58d3-8a90-9418657ce550",
+          "fieldName": "Gems",
+          "label": "Gems",
+          "description": "The player's gem balance; gems pay for warps and other extras.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "0ee61d14-5866-53d1-a585-7afafcbdbcd5",
+          "fieldName": "ExperiencePoints",
+          "label": "Experience",
+          "description": "Total experience points. They decide the player's title.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "ba3b3fb4-76c9-5aca-b8ed-a883194b7055",
+          "fieldName": "TitleName",
+          "label": "Title",
+          "description": "The title bracket the experience reaches, worked out from the experience; not stored.",
+          "fieldType": "String",
+          "metadataCheck": "warn"
+        },
+        {
+          "fieldGuid": "27ba1b4e-7489-5a8f-a932-cce20b762d6c",
+          "fieldName": "PrestigeExperience",
+          "label": "Prestige experience",
+          "description": "Experience above the top title's minimum. 0 until the player holds the top title.",
+          "fieldType": "Integer",
+          "metadataCheck": "warn"
+        },
+        {
+          "fieldGuid": "5c39f954-31b5-5126-ada5-124c68f7d7fc",
+          "fieldName": "PersonalSalaryMultiplier",
+          "label": "Salary multiplier",
+          "description": "Personal factor on the player's salary. 1 = normal.",
+          "fieldType": "Decimal"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "f1d475b0-dad0-5452-a3f3-f7b6e935ab79",
+      "sectionName": "Premium tier",
+      "description": "The player's premium tier, from the premium permission groups they are in.",
+      "fields": [
+        {
+          "fieldGuid": "4be82dc3-3b04-5cb5-99fa-9a9e57b41619",
+          "fieldName": "PremiumTierName",
+          "label": "Premium tier",
+          "description": "The highest premium group the player holds. Empty without one.",
+          "fieldType": "String",
+          "metadataCheck": "warn"
+        },
+        {
+          "fieldGuid": "d287f976-44d6-56ab-a0b5-5e2e258c2c56",
+          "fieldName": "PremiumTierExpiresAt",
+          "label": "Premium until",
+          "description": "When that membership ends. Empty for a permanent tier or no tier.",
+          "fieldType": "DateTime",
+          "metadataCheck": "warn"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "3ec88355-2ed7-52c2-8a69-f070e64aef3a",
+      "sectionName": "Permission groups",
+      "description": "The groups the player is in, including inherited ones, highest precedence first. Edit opens the group itself, not the membership.",
+      "relatedEntityPropertyName": "PermissionGroups",
+      "relatedEntityTypeName": "PermissionGroup",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showEditButton\":true}",
+      "metadataCheck": "warn",
+      "fields": [
+        {
+          "fieldGuid": "163843c2-80dd-5056-a194-89d06d405267",
+          "fieldName": "Name",
+          "label": "Group",
+          "description": "Name of the permission group.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "38b0d50f-d119-5b69-b5da-0d82e237d1f1",
+      "sectionName": "Settings",
+      "description": "Preferences the player sets in game.",
+      "fields": [
+        {
+          "fieldGuid": "fc92a23b-7443-5fb8-8a9b-c1f81f3f48a1",
+          "fieldName": "GatePassThroughMethodDefault",
+          "label": "Gate pass-through",
+          "description": "How the player passes a closed gate that allows it: Default (the door opens briefly), InstantOpen (only the blocks in the way vanish) or Teleport (to the other side). Set in game with /knk gate passthrough.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "dcbe18af-f4d4-5433-b23e-e61aa33b7b34",
+          "fieldName": "ActiveMode",
+          "label": "Staff mode",
+          "description": "None, Staff or Owner, set in game with /staffmode or /ownermode. Any mode but None hides the player from others.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "adefe11e-6e11-5fc2-8fa6-56adea02eca3",
+          "fieldName": "Gender",
+          "label": "Gender",
+          "description": "Picks the male or female form of title names. Empty = the default form.",
+          "fieldType": "Enum"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "d4933a7d-e54c-5495-b7b2-7bfbf1006915",
+      "sectionName": "Presence and moderation",
+      "description": "Whether the player is online, and whether staff froze them.",
+      "fields": [
+        {
+          "fieldGuid": "344cff16-ca9c-5b40-89bf-3f71da9ef91e",
+          "fieldName": "IsOnline",
+          "label": "Online",
+          "description": "The player is on the server right now. Reported by the server.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "49728a93-e995-54f0-86b0-0550350aae62",
+          "fieldName": "LastSeenAt",
+          "label": "Last seen",
+          "description": "When the player was last online.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "99be4369-5b38-541d-991a-5da2c5f1460f",
+          "fieldName": "IsFrozen",
+          "label": "Frozen",
+          "description": "Staff froze the player: they can't move or act until unfrozen.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "714b27e3-de25-573c-b537-8760a1f859d6",
+          "fieldName": "FrozenReason",
+          "label": "Freeze reason",
+          "description": "Why staff froze the player.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "TitleName, PrestigeExperience, PremiumTierName, PremiumTierExpiresAt are computed on the read DTO; PermissionGroups is the DTO list of effective groups (model: PermissionGroupMemberships of UserPermissionGroup), hence metadataCheck \"warn\".",
+    "Nothing is hot-editable: the generic update ignores Coins/Gems/ExperiencePoints (KNG-22) and requires an email, so editing Username of an in-game-only player fails."
+  ]
+}

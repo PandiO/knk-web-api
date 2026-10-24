@@ -4,6 +4,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Services
 {
@@ -11,7 +12,6 @@ namespace knkwebapi_v2.Services
     {
         private readonly IItemBlueprintRepository _repo;
         private readonly IMinecraftMaterialRefRepository _materialRepo;
-        private readonly IMinecraftMaterialCatalogService _materialCatalog;
         private readonly IEnchantmentDefinitionRepository _enchantmentRepo;
         private readonly ICategoryRepository _categoryRepo;
         private readonly IGradeRepository _gradeRepo;
@@ -22,7 +22,6 @@ namespace knkwebapi_v2.Services
         public ItemBlueprintService(
             IItemBlueprintRepository repo,
             IMinecraftMaterialRefRepository materialRepo,
-            IMinecraftMaterialCatalogService materialCatalog,
             IEnchantmentDefinitionRepository enchantmentRepo,
             ICategoryRepository categoryRepo,
             IGradeRepository gradeRepo,
@@ -32,7 +31,6 @@ namespace knkwebapi_v2.Services
         {
             _repo = repo;
             _materialRepo = materialRepo;
-            _materialCatalog = materialCatalog;
             _enchantmentRepo = enchantmentRepo;
             _categoryRepo = categoryRepo;
             _gradeRepo = gradeRepo;
@@ -256,24 +254,16 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(namespaceKey))
                 return currentId;
 
-            var key = namespaceKey.Trim();
+            // KNG-200 §3: one normalisation, so "STONE" finds minecraft:stone instead of creating a duplicate.
+            var key = MinecraftNamespaceKey.Normalize(namespaceKey);
 
             // Check if material already exists
             var existing = await _materialRepo.GetByNamespaceKeyAsync(key);
             if (existing != null)
                 return existing.Id;
 
-            // Look up catalog info
-            var catalogEntry = _materialCatalog.Search(key, null)
-                .FirstOrDefault(c => c.NamespaceKey.Equals(key, StringComparison.OrdinalIgnoreCase));
-
-            var newMaterial = new MinecraftMaterialRef
-            {
-                NamespaceKey = key,
-                Category = catalogEntry?.Category ?? "Uncategorized",
-                LegacyName = catalogEntry?.LegacyName,
-                IconUrl = catalogEntry?.IconUrl
-            };
+            // Unverified until a server scan sees the key (KNG-200).
+            var newMaterial = MinecraftMaterialRefFactory.NewUnverified(key, "Uncategorized");
 
             await _materialRepo.AddAsync(newMaterial);
             return newMaterial.Id;

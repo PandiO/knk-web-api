@@ -56,6 +56,21 @@ namespace knkwebapi_v2.Services
             return _mapper.Map<GateDoorDto>(door);
         }
 
+        public async Task<PagedResultDto<GateDoorListDto>> SearchAsync(PagedQueryDto query)
+        {
+            if (query == null)
+                throw new ArgumentNullException(nameof(query));
+
+            var result = await _repo.SearchAsync(_mapper.Map<PagedQuery>(query));
+            return new PagedResultDto<GateDoorListDto>
+            {
+                Items = _mapper.Map<List<GateDoorListDto>>(result.Items),
+                TotalCount = result.TotalCount,
+                PageNumber = result.PageNumber,
+                PageSize = result.PageSize
+            };
+        }
+
         public async Task<GateDoorDto> CreateAsync(int gateStructureId, GateDoorDto gateDoorDto)
         {
             if (gateDoorDto == null)

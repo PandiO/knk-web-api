@@ -38,14 +38,11 @@ public class LootboxConfigServicesTests
 
     private async Task SeedAllAsync()
     {
-        // The real enchantment catalog (Data/, copied to the test output) gives vanilla definitions their true max
-        // levels, as at startup.
-        var enchantmentCatalog = new MinecraftEnchantmentCatalogService(NullLogger<MinecraftEnchantmentCatalogService>.Instance);
         await using var context = NewContext();
         await AbilityDefinition.SeedCanonicalAsync(context);
-        await ItemBlueprintV1Seed.SeedCanonicalAsync(context, enchantmentCatalog: enchantmentCatalog);
+        await ItemBlueprintV1Seed.SeedCanonicalAsync(context);
         await EnchantBookSeed.SeedCanonicalAsync(context);
-        await LootboxSeed.SeedCanonicalAsync(context, enchantmentCatalog: enchantmentCatalog);
+        await LootboxSeed.SeedCanonicalAsync(context);
     }
 
     private static LootboxTypeService TypeService(KnKDbContext db) => new(new LootboxTypeRepository(db), Mapper());

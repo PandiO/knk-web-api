@@ -1,0 +1,522 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "a2672bb6-6dfb-596b-809c-1c09a8da1acc",
+  "entityTypeName": "PermissionGroup",
+  "name": "PermissionGroup - Default (seed v1)",
+  "description": "A permission group: a rank (Default and the premium ranks) or a staff role. Members get the group's permission grants and its chat colours, salary and bonus multipliers and teleport fees. Players join groups from their admin page or in game; add the group's permission nodes with the Permission grant form.",
+  "steps": [
+    {
+      "stepGuid": "9594a210-3d6d-5584-b902-33fdb197945e",
+      "stepName": "Group",
+      "description": "Name the group, place it in the inheritance chain and say whether it is a premium rank.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4572f3e9-f7b0-5f62-aaea-8a40660f0e1e",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in the Player manager, on admin pages and in the {group} placeholder. The group named Default is special: every new account joins it and players without a premium rank use its colours, so don't rename it.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2ee22435-74ff-5194-91f1-44e935aaca0f",
+          "fieldName": "Weight",
+          "label": "Weight",
+          "description": "Priority among a player's groups: higher weight is checked first for permissions, teleport fees and game-setting overrides, and the highest-weight premium rank is the one shown. The current ranks use 0 (Default) to 40 (Staff).",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b08190a3-928b-5568-8648-921ae3e1e7ee",
+          "fieldName": "ParentGroupId",
+          "label": "Inherits from",
+          "description": "Members also get every grant of this group and of its own parents, checked after this group's own. One parent only, and never this group itself or one of its children. Premium ranks inherit from Default.",
+          "fieldType": "Object",
+          "objectType": "PermissionGroup",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "665301dd-2e40-5597-82f5-19c7482390d1",
+          "fieldName": "IsPremiumTier",
+          "label": "Premium rank",
+          "description": "A paid rank such as Noble or Royal. A player holds one rank at a time, Default or one premium rank: giving one replaces the other, and removing it puts the player back on Default. Also shows the title bonus multipliers under Salary and bonuses.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "3e603b39-8d77-5f65-b4a3-d259300affee",
+      "stepName": "Chat and tab list",
+      "description": "How members look in chat and the tab list. Used for a player's premium rank, or the Default group's for players without one; owner and staff use fixed colours. Enter Minecraft & codes only, such as &e or &6&l.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "5732c905-c832-5145-9e44-e32fa7eaf070",
+          "fieldName": "ChatPrimaryColor",
+          "label": "Chat colour",
+          "placeholder": "&e",
+          "description": "Colours the title, the rank name and the player's name in the chat line. Empty = the Default group's colour, then the plugin's own default.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"minecraft-text-color\": {\"enabled\": true}}"
+        },
+        {
+          "fieldGuid": "c47ea378-4542-5f01-a350-5f6563fbb071",
+          "fieldName": "ChatSecondaryColor",
+          "label": "Chat bracket colour",
+          "placeholder": "&6",
+          "description": "Colours the -{ }- brackets around the title in the chat line. Empty = the Default group's colour, then the plugin's own default.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"minecraft-text-color\": {\"enabled\": true}}"
+        },
+        {
+          "fieldGuid": "ebe2289e-27d8-5a07-b728-9d7b8a848884",
+          "fieldName": "NameColor",
+          "label": "Tab-list colour",
+          "placeholder": "&e",
+          "description": "Colour of the player's name in the tab list and above their head. Only the 16 named colours work there: a hex colour becomes the nearest one, and bold or italic is ignored.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"minecraft-text-color\": {\"enabled\": true}}"
+        },
+        {
+          "fieldGuid": "b4188366-5bca-5251-9088-d457cfa2adc9",
+          "fieldName": "ChatPrefix",
+          "label": "Chat prefix",
+          "description": "Text meant to appear before members' names in chat. Stored but not shown in game yet: the chat line is built from the title and the colours above.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ecb99129-0735-5568-9bf7-bb4cbfac72d8",
+          "fieldName": "ChatSuffix",
+          "label": "Chat suffix",
+          "description": "Text meant to appear after members' names in chat. Stored but not shown in game yet.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "7f3894f0-2f76-5323-b90c-a261e773d23e",
+      "stepName": "Salary and bonuses",
+      "description": "Multipliers on what members earn. Each is multiplied over all of a player's active groups and their personal multiplier, so 1 means no change.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "2cdc854d-1e6a-5147-9b0a-894c918cfeb4",
+          "fieldName": "SalaryMultiplier",
+          "label": "Salary multiplier",
+          "description": "Scales members' hourly salary (their title's salary) and the coin bonus for reaching a new title. 1.1 = 10% more. Can't be negative.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a1c6324c-9404-5bc3-83bd-8dfa1c6ac058",
+          "fieldName": "GemBonusMultiplier",
+          "label": "Title gem bonus multiplier",
+          "description": "Scales the one-time gem bonus a member gets on reaching a new title. 1 = unchanged; can't be negative. Only shown for premium ranks.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "665301dd-2e40-5597-82f5-19c7482390d1",
+                  "operator": "Equals",
+                  "valueJson": "true"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "43dcce09-7e20-50b9-8e1d-051748dfb52c",
+          "fieldName": "ExpBonusMultiplier",
+          "label": "Title XP bonus multiplier",
+          "description": "Scales the one-time XP bonus a member gets on reaching a new title; the extra XP can carry them into the next title. 1 = unchanged; can't be negative. Only shown for premium ranks.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "665301dd-2e40-5597-82f5-19c7482390d1",
+                  "operator": "Equals",
+                  "valueJson": "true"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stepGuid": "e577af53-c48b-515f-9179-c598077775b5",
+      "stepName": "Teleport requests",
+      "description": "Fee and cooldown for /tpa and /tpahere, paid by the player who asks. A player's groups are checked in order (a group before the groups it inherits from, otherwise highest weight first); the first group that sets a price wins, and the cooldown is looked up the same way on its own. Set nowhere = the server's defaults.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ce1b0f09-5e95-5e58-9a19-49c06a1f444a",
+          "fieldName": "TeleportRequestPriceMode",
+          "label": "Price",
+          "description": "None = this group sets no price (the server's request fee applies, 0 by default, unless another group sets one). Fixed = the amounts below. Multiplier = the server's request fee times the multiplier.",
+          "fieldType": "Enum",
+          "enumType": "TeleportPriceMode",
+          "defaultValue": "None",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"None\", \"Fixed\", \"Multiplier\"]}"
+        },
+        {
+          "fieldGuid": "6f54c798-645f-5f9b-8161-5d7e295ee26e",
+          "fieldName": "TeleportRequestPriceMultiplier",
+          "label": "Price multiplier",
+          "description": "Factor on the server's request fee: 0.5 = half, 0 = free. 0 to 1000, rounded to whole coins.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "ce1b0f09-5e95-5e58-9a19-49c06a1f444a",
+                  "operator": "Equals",
+                  "valueJson": "\"Multiplier\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "e4f73144-c843-5aa2-b407-1e7d284aafed",
+          "fieldName": "TeleportRequestPriceCoins",
+          "label": "Coins",
+          "description": "Fixed price in coins. Empty = 0.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "ce1b0f09-5e95-5e58-9a19-49c06a1f444a",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "d04d1c29-516c-5d85-8f12-2b238e54c97a",
+          "fieldName": "TeleportRequestPriceGems",
+          "label": "Gems",
+          "description": "Fixed price in gems. Empty = 0.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "ce1b0f09-5e95-5e58-9a19-49c06a1f444a",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "03bc7e1c-fe5e-5d30-ac5a-1ee63abf3265",
+          "fieldName": "TeleportRequestPriceExperience",
+          "label": "XP",
+          "description": "Fixed price in experience points. Empty = 0. Paying XP can lower the player's title.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "ce1b0f09-5e95-5e58-9a19-49c06a1f444a",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "340b212c-dfbe-55a8-a056-4ab9aaef4314",
+          "fieldName": "TeleportRequestCooldownSeconds",
+          "label": "Cooldown (seconds)",
+          "description": "How long the player must wait after a request teleport (applies to the player who moved) before teleporting again; replaces the server's teleport cooldown (30 s in the default config). 0 to 86400. Empty = this group sets none.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "f42d217e-5597-5cd4-b322-49101908f5bd",
+      "stepName": "Warp teleports",
+      "description": "Fee and cooldown for /warp and the teleport menu. A player's groups are checked in order (a group before the groups it inherits from, otherwise highest weight first); the first group that sets a price wins, and the cooldown is looked up the same way on its own.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "70d0f517-3c0d-5b0b-be85-2ca1f936a6f7",
+          "fieldName": "TeleportWarpPriceMode",
+          "label": "Price",
+          "description": "None = this group sets no price (the destination's own gem price applies unless another group sets one). Fixed = the amounts below instead. Multiplier = the destination's gem price times the multiplier.",
+          "fieldType": "Enum",
+          "enumType": "TeleportPriceMode",
+          "defaultValue": "None",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"None\", \"Fixed\", \"Multiplier\"]}"
+        },
+        {
+          "fieldGuid": "5b1b184f-55a4-5ddd-bbff-9a742b817396",
+          "fieldName": "TeleportWarpPriceMultiplier",
+          "label": "Price multiplier",
+          "description": "Factor on the destination's gem price: 0.5 = half, 0 = free. 0 to 1000, rounded half up.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "70d0f517-3c0d-5b0b-be85-2ca1f936a6f7",
+                  "operator": "Equals",
+                  "valueJson": "\"Multiplier\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "06d2dc6d-ca23-5cd8-b6fa-a184d284077a",
+          "fieldName": "TeleportWarpPriceCoins",
+          "label": "Coins",
+          "description": "Fixed price in coins, replacing the destination's price. Empty = 0.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "70d0f517-3c0d-5b0b-be85-2ca1f936a6f7",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "0a8276cd-7cbe-546f-a12e-3c33c496d0ed",
+          "fieldName": "TeleportWarpPriceGems",
+          "label": "Gems",
+          "description": "Fixed price in gems, replacing the destination's price. Empty = 0.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "70d0f517-3c0d-5b0b-be85-2ca1f936a6f7",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "dffd7aee-5ab5-5af9-b670-ab109b002167",
+          "fieldName": "TeleportWarpPriceExperience",
+          "label": "XP",
+          "description": "Fixed price in experience points, replacing the destination's price. Empty = 0. Paying XP can lower the player's title.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "70d0f517-3c0d-5b0b-be85-2ca1f936a6f7",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "9281e5e2-e3de-5960-9fdc-eace7a96aa13",
+          "fieldName": "TeleportWarpCooldownSeconds",
+          "label": "Cooldown (seconds)",
+          "description": "How long the player must wait after a warp before teleporting again; replaces the server's teleport cooldown (30 s in the default config). 0 to 86400. Empty = this group sets none.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "fb7229ff-55d3-55d1-8e57-b5f30e0fd248",
+      "stepName": "Spawn teleport",
+      "description": "Fee and cooldown for /spawn, which is free unless a group sets a price. A player's groups are checked in order (a group before the groups it inherits from, otherwise highest weight first); the first group that sets a price wins, and the cooldown is looked up the same way on its own.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b69dad5a-d4dd-5ad0-98bf-5cbf42479f12",
+          "fieldName": "TeleportSpawnPriceMode",
+          "label": "Price",
+          "description": "None = this group sets no price (free unless another group sets one). Fixed = the amounts below. There is no multiplier: /spawn has no default price to multiply.",
+          "fieldType": "Enum",
+          "enumType": "TeleportPriceMode",
+          "defaultValue": "None",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"None\", \"Fixed\"], \"enumValuesSubset\": true}"
+        },
+        {
+          "fieldGuid": "f6d55aa3-d4d0-55c5-8fd1-3ee3425276a5",
+          "fieldName": "TeleportSpawnPriceCoins",
+          "label": "Coins",
+          "description": "Fixed price in coins. Empty = 0.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "b69dad5a-d4dd-5ad0-98bf-5cbf42479f12",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "a4b6d7e7-fcdd-5d19-94ff-6e2ad5ef3f7e",
+          "fieldName": "TeleportSpawnPriceGems",
+          "label": "Gems",
+          "description": "Fixed price in gems. Empty = 0.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "b69dad5a-d4dd-5ad0-98bf-5cbf42479f12",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "c653c54e-c68a-5a4f-aa17-697af758083b",
+          "fieldName": "TeleportSpawnPriceExperience",
+          "label": "XP",
+          "description": "Fixed price in experience points. Empty = 0. Paying XP can lower the player's title.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "displayConditionGroups": [
+            {
+              "innerLogic": "And",
+              "combineWithPreviousLogic": "And",
+              "isActive": true,
+              "conditions": [
+                {
+                  "sourceFieldGuid": "b69dad5a-d4dd-5ad0-98bf-5cbf42479f12",
+                  "operator": "Equals",
+                  "valueJson": "\"Fixed\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldGuid": "bd50f207-52d3-5856-acdd-d2e04f59a57d",
+          "fieldName": "TeleportSpawnCooldownSeconds",
+          "label": "Cooldown (seconds)",
+          "description": "How long the player must wait after a /spawn before teleporting again; replaces the server's teleport cooldown (30 s in the default config). 0 to 86400. Empty = this group sets none.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}
