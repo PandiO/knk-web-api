@@ -132,6 +132,7 @@ builder.Services.AddHealthChecks()
 // Options binding for telemetry and client activity
 builder.Services.Configure<knkwebapi_v2.Configuration.TelemetryOptions>(builder.Configuration.GetSection(knkwebapi_v2.Configuration.TelemetryOptions.SectionName));
 builder.Services.Configure<knkwebapi_v2.Configuration.ClientActivityOptions>(builder.Configuration.GetSection(knkwebapi_v2.Configuration.ClientActivityOptions.SectionName));
+builder.Services.Configure<knkwebapi_v2.Configuration.ValidationResultLogOptions>(builder.Configuration.GetSection(knkwebapi_v2.Configuration.ValidationResultLogOptions.SectionName));
 
 // Register in-memory client activity store
 builder.Services.AddSingleton<knkwebapi_v2.Services.Interfaces.IClientActivityStore>(sp =>
