@@ -10,6 +10,9 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Services.ValidationMethods;
+using knkwebapi_v2.Services.ValidationResultLog;
+using knkwebapi_v2.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace knkwebapi_v2.Services
 {
@@ -22,22 +25,46 @@ namespace knkwebapi_v2.Services
         private readonly IFieldValidationRuleRepository _ruleRepository;
         private readonly IEnumerable<IValidationMethod> _validationMethods;
         private readonly IPlaceholderResolutionService _placeholderService;
+        private readonly IValidationResultLog? _resultLog;
+        private readonly ValidationResultLogOptions _logOptions;
 
         public ValidationService(
             IFieldValidationRuleRepository ruleRepository,
             IEnumerable<IValidationMethod> validationMethods,
             IPlaceholderResolutionService placeholderService)
+            : this(ruleRepository, validationMethods, placeholderService, null, null)
+        {
+        }
+
+        /// <param name="resultLog">KNG-269: null runs every rule every time (as before the log existed).</param>
+        public ValidationService(
+            IFieldValidationRuleRepository ruleRepository,
+            IEnumerable<IValidationMethod> validationMethods,
+            IPlaceholderResolutionService placeholderService,
+            IValidationResultLog? resultLog,
+            IOptions<ValidationResultLogOptions>? logOptions)
         {
             _ruleRepository = ruleRepository;
             _validationMethods = validationMethods;
             _placeholderService = placeholderService;
+            _resultLog = resultLog;
+            _logOptions = logOptions?.Value ?? new ValidationResultLogOptions();
         }
+
+        public Task<ValidationResultDto> ValidateFieldAsync(
+            int fieldId,
+            object? fieldValue,
+            object? dependencyValue,
+            Dictionary<string, object>? formContextData)
+            => ValidateFieldAsync(fieldId, fieldValue, dependencyValue, formContextData, null);
 
         public async Task<ValidationResultDto> ValidateFieldAsync(
             int fieldId,
             object? fieldValue,
             object? dependencyValue,
-            Dictionary<string, object>? formContextData)
+            Dictionary<string, object>? formContextData,
+            ValidationSubject? subject,
+            bool force = false)
         {
             // Get all validation rules for this field
             var rules = await _ruleRepository.GetByFormFieldIdAsync(fieldId);
@@ -79,8 +106,8 @@ namespace knkwebapi_v2.Services
                 // Resolve placeholders for this rule if needed
                 var resolvedPlaceholders = await ResolvePlaceholdersForRuleAsync(rule, formContextData);
                 
-                var result = await ExecuteValidationRuleAsync(rule, fieldValue, dependencyValue, formContextData, resolvedPlaceholders);
-                Console.WriteLine($"[VALIDATION_TRACE_BACKEND]   Rule {rule.Id} result: isValid={result.IsValid}, isBlocking={result.IsBlocking}");
+                var result = await ExecuteValidationRuleAsync(rule, fieldValue, dependencyValue, formContextData, resolvedPlaceholders, subject, force);
+                Console.WriteLine($"[VALIDATION_TRACE_BACKEND]   Rule {rule.Id} result: isValid={result.IsValid}, isBlocking={result.IsBlocking}, fromCache={result.Metadata?.FromCache ?? false}");
                 
                 // Aggregate placeholders from this rule
                 if (result.Placeholders != null)
@@ -119,7 +146,25 @@ namespace knkwebapi_v2.Services
                 IsValid = true,
                 IsBlocking = false,
                 Message = successMessages.Any() ? string.Join("; ", successMessages) : "Validation passed",
-                Placeholders = aggregatedPlaceholders.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString() ?? "")
+                Placeholders = aggregatedPlaceholders.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString() ?? ""),
+                Metadata = CombinedMetadata(results)
+            };
+        }
+
+        /// <summary>
+        /// KNG-269: a field whose rules all passed is "from cache" only when every rule was; its time is
+        /// the oldest stored run, which is what "checked … ago" must show.
+        /// </summary>
+        private static ValidationMetadataDto? CombinedMetadata(List<ValidationResultDto> results)
+        {
+            var withMetadata = results.Where(r => r.Metadata != null).Select(r => r.Metadata!).ToList();
+            if (withMetadata.Count == 0) return null;
+            var oldest = withMetadata.OrderBy(m => m.ExecutedAt, StringComparer.Ordinal).First();
+            return new ValidationMetadataDto
+            {
+                ValidationType = string.Join(";", withMetadata.Select(m => m.ValidationType).Distinct()),
+                ExecutedAt = oldest.ExecutedAt,
+                FromCache = withMetadata.All(m => m.FromCache)
             };
         }
 
@@ -130,7 +175,23 @@ namespace knkwebapi_v2.Services
                 request.FieldId,
                 request.FieldValue,
                 request.DependencyValue,
-                request.FormContextData);
+                request.FormContextData,
+                ValidationSubject.From(request.SubjectType, request.SubjectId),
+                request.Force);
+        }
+
+        public async Task<ValidateFieldsBatchResultDto> ValidateFieldsAsync(ValidateFieldsBatchRequestDto request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            var subject = ValidationSubject.From(request.SubjectType, request.SubjectId);
+            var batch = new ValidateFieldsBatchResultDto();
+            // Sequential on purpose: one scoped DbContext serves the whole request.
+            foreach (var item in request.Fields)
+            {
+                batch.Results[item.FieldId] = await ValidateFieldAsync(
+                    item.FieldId, item.FieldValue, item.DependencyValue, request.FormContextData, subject, request.Force);
+            }
+            return batch;
         }
 
         public async Task<Dictionary<int, ValidationResultDto>> ValidateMultipleFieldsAsync(
@@ -334,7 +395,9 @@ namespace knkwebapi_v2.Services
             object? fieldValue,
             object? dependencyValue,
             Dictionary<string, object>? formContextData,
-            Dictionary<string, object>? resolvedPlaceholders = null)
+            Dictionary<string, object>? resolvedPlaceholders,
+            ValidationSubject? subject,
+            bool force)
         {
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]     Rule execution started:");
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       DependsOnFieldId: {rule.DependsOnFieldId}");
@@ -394,6 +457,27 @@ namespace knkwebapi_v2.Services
                 };
             }
 
+            // KNG-269: answer from the log of the last run for this subject while the rule and the inputs
+            // the validator reads are unchanged. The dependency record was loaded above either way (one
+            // DB read); what is skipped is the validator itself, for the region rules a plugin round trip.
+            string? ruleHash = null, inputHash = null;
+            var log = subject != null && _logOptions.Enabled ? _resultLog : null;
+            if (log != null)
+            {
+                ruleHash = ValidationInputHasher.RuleHash(rule);
+                inputHash = ValidationInputHasher.InputHash(fieldValue,
+                    ValidationInputHasher.ReduceDependency(dependencyValue, validationMethod.DependencyPropertiesRead(rule.ConfigJson)));
+                if (!force)
+                {
+                    var stored = await FindInLogAsync(log, rule, subject!);
+                    if (stored != null && stored.RuleHash == ruleHash && stored.InputHash == inputHash && !Expired(stored, validationMethod))
+                    {
+                        Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Answered from the result log (run of {stored.ExecutedAt:o})");
+                        return FromLog(stored, rule, formDependencyValue);
+                    }
+                }
+            }
+
             // Execute the validation
             try
             {
@@ -432,6 +516,25 @@ namespace knkwebapi_v2.Services
                 };
 
                 Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Validation method returned: isValid={dto.IsValid}, placeholders={dto.Placeholders?.Count ?? 0}");
+
+                // Only a genuine verdict is worth remembering; "couldn't check" must be tried again.
+                if (log != null && failureReason == null)
+                {
+                    await StoreInLogAsync(log, new FieldValidationRunLog
+                    {
+                        RuleId = rule.Id,
+                        RuleHash = ruleHash!,
+                        SubjectType = subject!.Type,
+                        SubjectId = subject.Id,
+                        InputHash = inputHash!,
+                        DependencyKey = ValidationInputHasher.DependencyKey(rule, formDependencyValue),
+                        IsValid = dto.IsValid,
+                        IsBlocking = dto.IsBlocking,
+                        Message = dto.Message,
+                        PlaceholdersJson = dto.Placeholders == null ? null : JsonSerializer.Serialize(dto.Placeholders),
+                        ExecutedAt = DateTime.UtcNow
+                    });
+                }
                 return dto;
             }
             catch (RegionServiceUnavailableException ex)
@@ -466,5 +569,57 @@ namespace knkwebapi_v2.Services
                 };
             }
         }
+
+        /// <summary>
+        /// The log is an optimisation: when it can't be read (the table is missing because the migration
+        /// wasn't applied, the database hiccups) the rule simply runs, as it did before the log existed.
+        /// </summary>
+        private static async Task<FieldValidationRunLog?> FindInLogAsync(IValidationResultLog log, FieldValidationRule rule, ValidationSubject subject)
+        {
+            try
+            {
+                return await log.FindAsync(rule.Id, subject.Type, subject.Id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Result log unavailable, running the rule: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>As <see cref="FindInLogAsync"/>: a result that can't be stored is still returned.</summary>
+        private static async Task StoreInLogAsync(IValidationResultLog log, FieldValidationRunLog entry)
+        {
+            try
+            {
+                await log.StoreAsync(entry);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Result log unavailable, result not stored: {ex.Message}");
+            }
+        }
+
+        /// <summary>KNG-269: a stored result of a validator that reads external state is current only within the TTL.</summary>
+        private bool Expired(FieldValidationRunLog stored, IValidationMethod validationMethod) =>
+            validationMethod.ReadsExternalState
+            && _logOptions.ExternalStateTtlHours > 0
+            && stored.ExecutedAt < DateTime.UtcNow.AddHours(-_logOptions.ExternalStateTtlHours);
+
+        private static ValidationResultDto FromLog(FieldValidationRunLog stored, FieldValidationRule rule, object? formDependencyValue) => new()
+        {
+            IsValid = stored.IsValid,
+            IsBlocking = stored.IsBlocking,
+            Message = stored.Message,
+            Placeholders = stored.PlaceholdersJson == null ? null : JsonSerializer.Deserialize<Dictionary<string, string>>(stored.PlaceholdersJson),
+            Metadata = new ValidationMetadataDto
+            {
+                ValidationType = rule.ValidationType,
+                ExecutedAt = DateTime.SpecifyKind(stored.ExecutedAt, DateTimeKind.Utc).ToString("o"),
+                DependencyFieldName = rule.DependsOnField?.FieldName,
+                DependencyValue = formDependencyValue,
+                FromCache = true
+            }
+        };
     }
 }

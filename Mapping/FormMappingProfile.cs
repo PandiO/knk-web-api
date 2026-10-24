@@ -19,8 +19,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.Type, o => o.MapFrom(s => s.ValidationType))
                 .ForMember(d => d.ParametersJson, o => o.MapFrom(s => string.IsNullOrWhiteSpace(s.ParametersJson) ? "{}" : s.ParametersJson))
                 .ForMember(d => d.ErrorMessage, o => o.MapFrom(s => s.ErrorMessage))
-                // Ignore IsActive in domain for now
-                ;
+                .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive));
 
             CreateMap<FieldValidation, FieldValidationDto>()
                 .ForMember(d => d.Id, o => o.MapFrom(s => s.Id.ToString()))
@@ -28,7 +27,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.ValidationType, o => o.MapFrom(s => s.Type))
                 .ForMember(d => d.ParametersJson, o => o.MapFrom(s => s.ParametersJson))
                 .ForMember(d => d.ErrorMessage, o => o.MapFrom(s => s.ErrorMessage))
-                .ForMember(d => d.IsActive, o => o.Ignore());
+                .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive));
 
             // StepCondition
             CreateMap<StepConditionDto, StepCondition>()
@@ -36,7 +35,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.FormStepId, o => o.MapFrom(s => ToInt(s.FormStepId)))
                 .ForMember(d => d.ConditionType, o => o.MapFrom(s => s.ConditionType == "Completion" ? "CompletionCondition" : "StartCondition"))
                 .ForMember(d => d.ConditionLogicJson, o => o.MapFrom(s => string.IsNullOrWhiteSpace(s.ConditionJson) ? "{}" : s.ConditionJson))
-                .ForMember(d => d.ErrorMessage, o => o.MapFrom(s => s.ErrorMessage));
+                .ForMember(d => d.ErrorMessage, o => o.MapFrom(s => s.ErrorMessage))
+                .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive));
 
             CreateMap<StepCondition, StepConditionDto>()
                 .ForMember(d => d.Id, o => o.MapFrom(s => s.Id.ToString()))
@@ -44,7 +44,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.ConditionType, o => o.MapFrom(s => s.ConditionType == "CompletionCondition" ? "Completion" : "Entry"))
                 .ForMember(d => d.ConditionJson, o => o.MapFrom(s => s.ConditionLogicJson))
                 .ForMember(d => d.ErrorMessage, o => o.MapFrom(s => s.ErrorMessage))
-                .ForMember(d => d.IsActive, o => o.Ignore());
+                .ForMember(d => d.IsActive, o => o.MapFrom(s => s.IsActive));
 
             // DisplayCondition
             CreateMap<DisplayConditionDto, DisplayCondition>()
@@ -242,7 +242,6 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.Description, o => o.MapFrom(s => s.Description))
                 .ForMember(d => d.IsDefault, o => o.MapFrom(s => s.IsDefault))
                 .ForMember(d => d.StepOrderJson, o => o.MapFrom(s => s.StepOrderJson))
-                .ForMember(d => d.IsActive, o => o.Ignore())
                 .ForMember(d => d.CreatedAt, o => o.MapFrom(s => s.CreatedAt.ToString("O")))
                 .ForMember(d => d.UpdatedAt, o => o.MapFrom(s => s.UpdatedAt.HasValue ? s.UpdatedAt.Value.ToString("O") : null))
                 .ForMember(d => d.Steps, o => o.MapFrom(s => OrderSteps(s.Steps, s.StepOrderJson)));

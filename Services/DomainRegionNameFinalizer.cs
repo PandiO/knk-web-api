@@ -66,6 +66,31 @@ namespace knkwebapi_v2.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// KNG-269: the domain's region is a new shape now, so every stored validation result that was
+        /// about this domain, or read it as a dependency (a Location checked against its region), is
+        /// stale. The rows are dropped; the next form run checks again. Never fails the finalize.
+        /// </summary>
+        private async Task ForgetValidationResultsAsync(Domain domain)
+        {
+            try
+            {
+                var types = new[] { DomainTypeOf(domain) ?? nameof(Domain), nameof(Domain) }.Distinct().ToList();
+                var keys = types.Select(t => $"{t}:{domain.Id}").ToList();
+                var rows = await _context.FieldValidationRunLogs
+                    .Where(r => (types.Contains(r.SubjectType) && r.SubjectId == domain.Id) || (r.DependencyKey != null && keys.Contains(r.DependencyKey)))
+                    .ToListAsync();
+                if (rows.Count == 0) return;
+                _context.FieldValidationRunLogs.RemoveRange(rows);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Dropped {Count} stored validation results about Domain {DomainId} after its region changed", rows.Count, domain.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not drop the stored validation results about Domain {DomainId}", domain.Id);
+            }
+        }
+
         public static bool IsTemporary(string? regionId) =>
             !string.IsNullOrWhiteSpace(regionId) && regionId.StartsWith(TempRegionPrefix, StringComparison.OrdinalIgnoreCase);
 
@@ -125,6 +150,7 @@ namespace knkwebapi_v2.Services
                 await StoreRegionIdAsync(domain, finalName);
                 _logger.LogInformation("Finalized region name for Domain {DomainId}: {FinalName}{Replaced}", domain.Id, finalName,
                     replaceRegionId != null ? $" (replaced {replaceRegionId})" : string.Empty);
+                await ForgetValidationResultsAsync(domain);
                 return true;
             }
             catch (Exception ex)
@@ -300,6 +326,7 @@ namespace knkwebapi_v2.Services
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Finalized sub-region {SubRegionId} of Domain {DomainId}: {FinalName}{Replaced}", subRegion.Id, domain.Id,
                     finalName, replaceRegionId != null ? $" (replaced {replaceRegionId})" : string.Empty);
+                await ForgetValidationResultsAsync(domain);
                 return true;
             }
             catch (Exception storeError)

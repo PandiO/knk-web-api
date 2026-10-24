@@ -239,6 +239,54 @@ namespace knkwebapi_v2.Dtos
         
         [JsonPropertyName("formContextData")]
         public Dictionary<string, object>? FormContextData { get; set; }
+
+        /// <summary>
+        /// KNG-269: what the form is about, so the run can be answered from the result log: the entity
+        /// type name and id in edit mode ("District", 17), or "FormSubmissionProgress" and the draft id.
+        /// Without a subject every rule runs and nothing is stored.
+        /// </summary>
+        [JsonPropertyName("subjectType")]
+        public string? SubjectType { get; set; }
+        [JsonPropertyName("subjectId")]
+        public long? SubjectId { get; set; }
+
+        /// <summary>KNG-269: true runs every rule even when the log holds a matching result (Re-check).</summary>
+        [JsonPropertyName("force")]
+        public bool Force { get; set; }
+    }
+
+    /// <summary>
+    /// KNG-269: one request for every rule-bearing field of a step. Same subject and force flag for all;
+    /// the result is keyed by field id.
+    /// </summary>
+    public class ValidateFieldsBatchRequestDto
+    {
+        [JsonPropertyName("fields")]
+        public List<ValidateFieldsBatchItemDto> Fields { get; set; } = new();
+        [JsonPropertyName("formContextData")]
+        public Dictionary<string, object>? FormContextData { get; set; }
+        [JsonPropertyName("subjectType")]
+        public string? SubjectType { get; set; }
+        [JsonPropertyName("subjectId")]
+        public long? SubjectId { get; set; }
+        [JsonPropertyName("force")]
+        public bool Force { get; set; }
+    }
+
+    public class ValidateFieldsBatchItemDto
+    {
+        [JsonPropertyName("fieldId")]
+        public int FieldId { get; set; }
+        [JsonPropertyName("fieldValue")]
+        public object? FieldValue { get; set; }
+        [JsonPropertyName("dependencyValue")]
+        public object? DependencyValue { get; set; }
+    }
+
+    public class ValidateFieldsBatchResultDto
+    {
+        [JsonPropertyName("results")]
+        public Dictionary<int, ValidationResultDto> Results { get; set; } = new();
     }
 
     /// <summary>
@@ -307,6 +355,13 @@ namespace knkwebapi_v2.Dtos
         /// </summary>
         [JsonPropertyName("failureReason")]
         public string? FailureReason { get; set; }
+
+        /// <summary>
+        /// KNG-269: true when the result was answered from the log of an earlier run instead of running
+        /// the rule; <see cref="ExecutedAt"/> is then that run's time.
+        /// </summary>
+        [JsonPropertyName("fromCache")]
+        public bool FromCache { get; set; }
     }
     
     /// <summary>

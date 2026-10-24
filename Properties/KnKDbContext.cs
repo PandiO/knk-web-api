@@ -31,6 +31,7 @@ public partial class KnKDbContext : DbContext
     public DbSet<FormField> FormFields { get; set; }
     public DbSet<FieldValidation> FieldValidations { get; set; }
     public DbSet<FieldValidationRule> FieldValidationRules { get; set; }
+    public DbSet<FieldValidationRunLog> FieldValidationRunLogs { get; set; }
     public DbSet<StepCondition> StepConditions { get; set; }
     public DbSet<DisplayConditionGroup> DisplayConditionGroups { get; set; }
     public DbSet<DisplayCondition> DisplayConditions { get; set; }
@@ -1344,6 +1345,23 @@ public partial class KnKDbContext : DbContext
             .HasForeignKey(s => s.FormConfigurationId)
             .OnDelete(DeleteBehavior.Cascade);
         
+        // KNG-269: most recent validation rule run per (rule, subject)
+        modelBuilder.Entity<FieldValidationRunLog>(entity =>
+        {
+            entity.ToTable("FieldValidationRunLogs");
+            entity.Property(e => e.RuleHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.InputHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.SubjectType).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.DependencyKey).HasMaxLength(192);
+            entity.HasIndex(e => new { e.RuleId, e.SubjectType, e.SubjectId }).IsUnique();
+            entity.HasIndex(e => e.DependencyKey);
+            entity.HasIndex(e => e.ExecutedAt);
+            entity.HasOne(e => e.Rule)
+                .WithMany()
+                .HasForeignKey(e => e.RuleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // FormStep relationships
         modelBuilder.Entity<FormStep>()
             .HasMany(s => s.Fields)

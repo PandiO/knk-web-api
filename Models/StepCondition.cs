@@ -46,6 +46,13 @@ namespace knkwebapi_v2.Models
         /// Example: "You must agree to the terms and conditions before proceeding."
         /// </summary>
         public string? ErrorMessage { get; set; }
+
+        /// <summary>
+        /// False switches the condition off without deleting it; the wizard then skips it. Until
+        /// 2026-10-23 (KNG-186) this existed on the DTO only and the API always sent false, so no
+        /// completion condition ever ran. Existing rows are active.
+        /// </summary>
+        public bool IsActive { get; set; } = true;
         
         // Foreign key to FormStep
         public int FormStepId { get; set; }
