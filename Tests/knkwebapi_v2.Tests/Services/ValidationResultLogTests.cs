@@ -289,6 +289,32 @@ public class ValidationResultLogTests : IDisposable
         Assert.Equal(2, await _context.FieldValidationRunLogs.CountAsync());
     }
 
+    // The API serialises with PropertyNamingPolicy = null: every property the web app reads needs its
+    // camelCase JsonPropertyName. Seen live 2026-10-24: "Results" and "FromCache" came out capitalised,
+    // the wizard found no results and reported every field as "failed to execute".
+    [Fact]
+    public async Task TheBatchResultAndTheCacheFlag_SerialiseInCamelCase_AsTheWebAppReadsThem()
+    {
+        var service = Service();
+        await service.ValidateFieldAsync(10, 1000, null, Context(), District17);
+        var batch = await service.ValidateFieldsAsync(new ValidateFieldsBatchRequestDto
+        {
+            Fields = { new() { FieldId = 10, FieldValue = 1000 } }, FormContextData = Context(), SubjectType = "District", SubjectId = 17
+        });
+
+        var json = JsonSerializer.Serialize(batch, new JsonSerializerOptions { PropertyNamingPolicy = null });
+
+        Assert.Contains("\"results\":{\"10\":{", json);
+        Assert.Contains("\"fromCache\":true", json);
+        Assert.DoesNotContain("\"Results\"", json);
+        Assert.DoesNotContain("\"FromCache\"", json);
+
+        var request = JsonSerializer.Deserialize<ValidateFieldsBatchRequestDto>(
+            """{ "fields": [{ "fieldId": 10, "fieldValue": "x" }], "subjectType": "District", "subjectId": 17, "force": true }""",
+            new JsonSerializerOptions { PropertyNamingPolicy = null })!;
+        Assert.Equal((10, "District", 17L, true), (request.Fields[0].FieldId, request.SubjectType, request.SubjectId, request.Force));
+    }
+
     // ------------------------------------------------------------------ invalidation and hashing
 
     [Fact]
