@@ -10,8 +10,15 @@ using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.Email;
 using AutoMapper;
+using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Dtos;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace knkwebapi_v2.Controllers
 {
@@ -27,6 +34,11 @@ namespace knkwebapi_v2.Controllers
         private readonly IUserPermissionGroupService _membershipService;
         private readonly IPermissionGrantService _grantService;
         private readonly IPermissionEscalationGuard _escalationGuard;
+        private readonly IAuthService? _authService;
+        private readonly IWebHostEnvironment? _environment;
+        private readonly SecuritySettings _security;
+        private readonly IEmailComposer? _emailComposer;
+        private readonly ILogger _logger;
 
         public UsersController(
             IUserService service,
@@ -36,8 +48,21 @@ namespace knkwebapi_v2.Controllers
             IUserProfileSummaryService profileSummaryService,
             IUserPermissionGroupService membershipService,
             IPermissionGrantService grantService,
-            IPermissionEscalationGuard escalationGuard)
+            IPermissionEscalationGuard escalationGuard,
+            IAuthService? authService = null,
+            IWebHostEnvironment? environment = null,
+            IOptions<SecuritySettings>? security = null,
+            IEmailComposer? emailComposer = null,
+            ILogger<UsersController>? logger = null)
         {
+            // KNG-206: the old address hears of a staff email change; optional like the three above.
+            _emailComposer = emailComposer;
+            _logger = logger ?? (ILogger)NullLogger.Instance;
+            // The last three only serve link-minecraft-account case B (a session for the account the
+            // caller was folded into, KNG-207); optional so the many existing test constructions stand.
+            _authService = authService;
+            _environment = environment;
+            _security = security?.Value ?? new SecuritySettings();
             _escalationGuard = escalationGuard;
             _service = service;
             _mapper = mapper;
@@ -418,6 +443,15 @@ namespace knkwebapi_v2.Controllers
             if (!string.IsNullOrEmpty(user.Uuid) && HttpContext?.GetKnkCaller().IsPluginService != true)
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new { error = "Forbidden", message = "Only the game server can create or link an account by Minecraft UUID." });
+            }
+
+            // KNG-214 (defense in depth): in Security:Registration:Mode=Invite the game server's
+            // admission gate stops strangers before they get here, so a UUID without an admitted
+            // account is refused instead of becoming a new, unadmitted account.
+            if (!string.IsNullOrEmpty(user.Uuid) && _security.Registration.Mode == RegistrationMode.Invite
+                && !await _service.IsUuidAdmittedAsync(user.Uuid))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "NotAdmitted", message = "This Minecraft account isn't admitted. It needs an invitation (claim code) or staff Admit." });
             }
 
             // Closed-alpha WP5.3: a web-only account (no UUID) can no longer be attached to the
@@ -1150,6 +1184,13 @@ namespace knkwebapi_v2.Controllers
                 }
 
                 await _service.UpdateEmailAsync(id, request.NewEmail, request.CurrentPassword);
+
+                // KNG-206 (verification report finding L101): tell the old address, like Auth/update does.
+                if (_emailComposer != null && !string.IsNullOrWhiteSpace(user.Email)
+                    && !string.Equals(user.Email.Trim(), request.NewEmail?.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    await AuthService.QueueEmailChangedNoticeAsync(_emailComposer, _logger, id, user.Username, user.Email, request.NewEmail!);
+                }
                 return NoContent();
             }
             catch (UnauthorizedAccessException ex)
@@ -1369,24 +1410,24 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Link an authenticated web app account to a Minecraft account using a link code
+        /// Link the logged-in web account to a Minecraft account with a link code from /account link
+        /// (and, from KNG-214, a claim code from the disconnect screen).
         /// </summary>
         /// <remarks>
-        /// Used in the web-app-first flow where user already has email/password set.
-        /// Requires authentication (JWT token in Authorization header).
-        /// Requires a valid link code generated from Minecraft (/account link command).
-        /// 
-        /// If the link code points to an existing Minecraft account (with UUID), 
-        /// the system will automatically merge the accounts (keep web app account as primary);
-        /// the web app account keeps the higher of the two balances of each currency, as for
-        /// POST merge.
+        /// Invitations DESIGN § 5.4 (decision I7, KNG-207): when the code's Minecraft account exists
+        /// and has no web login, the web account is folded into it, the Minecraft account survives
+        /// with the web login, and the response carries a new <c>accessToken</c> (and refresh cookie)
+        /// for it because the caller's own account is now soft-deleted and signed out. Otherwise the
+        /// web account simply gets the UUID and <c>accessToken</c> is absent.
         /// </remarks>
         /// <param name="request">Link request with link code only</param>
-        /// <returns>Updated user account with linked Minecraft UUID</returns>
-        /// <response code="200">Account linked successfully</response>
-        /// <response code="400">Invalid link code, or validation failed</response>
+        /// <response code="200"><c>{user, message}</c>, plus <c>{accessToken, expiresIn}</c> after a fold</response>
+        /// <response code="400">Invalid or expired code, or validation failed</response>
         /// <response code="401">User not authenticated</response>
         /// <response code="404">User not found</response>
+        /// <response code="403"><c>InviteRequired</c>: a claim code on a web account that was never admitted (KNG-214)</response>
+        /// <response code="409"><c>AlreadyRegistered</c>: that Minecraft account has a web login; <c>AlreadyLinked</c>: this web account is linked to another Minecraft account</response>
+        /// <response code="429"><c>TooManyAttempts</c>: too many wrong codes for this account (Security:LinkAttempts)</response>
         [Authorize]
         [HttpPost("link-minecraft-account")]
         [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
@@ -1408,14 +1449,53 @@ namespace knkwebapi_v2.Controllers
                     return NotFound(new { error = "UserNotFound", message = $"User with ID {userId.Value} not found" });
                 }
 
-                // Link the account
-                var linkedUser = await _service.LinkMinecraftAccountAsync(userId.Value, request.LinkCode);
+                var result = await _service.LinkMinecraftAccountAsync(userId.Value, request.LinkCode);
+                if (!result.Merged || result.User.Id == userId.Value)
+                {
+                    return Ok(new
+                    {
+                        user = result.User,
+                        message = "Minecraft account successfully linked to your web app account"
+                    });
+                }
 
+                // Case B: the caller's account was folded into the Minecraft account. Log them into it.
+                var session = _authService == null
+                    ? null
+                    : await _authService.StartSessionAsync(result.User.Id,
+                        HttpContext?.Connection.RemoteIpAddress?.ToString(), HttpContext?.Request.Headers.UserAgent.ToString());
+                if (session == null)
+                {
+                    return Ok(new
+                    {
+                        user = result.User,
+                        merged = true,
+                        message = "Your web login now belongs to your Minecraft account. Please log in again."
+                    });
+                }
+
+                RefreshTokenCookie.Set(Response, session.Session, _environment?.IsDevelopment() ?? false, _security);
                 return Ok(new
                 {
-                    user = linkedUser,
-                    message = "Minecraft account successfully linked to your web app account"
+                    user = result.User,
+                    merged = true,
+                    accessToken = session.AccessToken,
+                    expiresIn = session.ExpiresIn,
+                    message = "Your web login now belongs to your Minecraft account"
                 });
+            }
+            catch (LinkAttemptsExceededException ex)
+            {
+                Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(ex.Remaining.TotalSeconds)).ToString();
+                return StatusCode(StatusCodes.Status429TooManyRequests, new { error = "TooManyAttempts", message = ex.Message });
+            }
+            catch (LinkConflictException ex)
+            {
+                return Conflict(new { error = ex.Code, message = ex.Message });
+            }
+            catch (LinkForbiddenException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Code, message = ex.Message });
             }
             catch (ArgumentException ex)
             {
@@ -1428,6 +1508,55 @@ namespace knkwebapi_v2.Controllers
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { error = "NotFound", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Staff "Admit" (KNG-214, DESIGN § 5.3): lets an existing account through the admission gate
+        /// without an invitation (a tester who can't use the web, a reactivated account, L3-9).
+        /// Sets AdmittedAt and audits PlayerAdmitted; an admitted account is returned unchanged.
+        /// </summary>
+        /// <response code="200"><c>{user, changed}</c></response>
+        /// <response code="404">Unknown or deleted account</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
+        [HttpPost("{id:int}/admit")]
+        public async Task<IActionResult> Admit(int id)
+        {
+            try
+            {
+                var (user, changed) = await _service.AdmitAsync(id, GetActorUserId());
+                return Ok(new { user, changed });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+        }
+
+        /// <summary>
+        /// Staff "Detach web login" (KNG-214, DESIGN § 5.5): the remedy for a claim or link code given
+        /// away under social engineering. Clears the email, password and verification, revokes the
+        /// sessions and audits MinecraftUnlinked; the Minecraft account and its data stay, and the
+        /// owner can register again with /account link.
+        /// </summary>
+        /// <response code="200">The account without its web login</response>
+        /// <response code="404">Unknown or deleted account</response>
+        /// <response code="409"><c>NotLinked</c>: a web-only account; <c>NoWebLogin</c>: nothing to detach</response>
+        [RequirePermission(StaffPermissions.ManageUsers)]
+        [HttpPost("{id:int}/detach-web-login")]
+        public async Task<IActionResult> DetachWebLogin(int id)
+        {
+            try
+            {
+                return Ok(await _service.DetachWebLoginAsync(id, GetActorUserId()));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "UserNotFound", message = $"User with ID {id} not found" });
+            }
+            catch (LinkConflictException ex)
+            {
+                return Conflict(new { error = ex.Code, message = ex.Message });
             }
         }
 

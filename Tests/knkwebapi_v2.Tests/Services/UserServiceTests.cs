@@ -709,10 +709,11 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task LinkMinecraftAccountAsync_MergingTheMinecraftAccount_KeepsTheHigherBalances()
+    public async Task LinkMinecraftAccountAsync_FoldingIntoTheMinecraftAccount_KeepsTheHigherBalances()
     {
-        // The Minecraft-account link merge takes the same path as POST merge (KNG-21).
-        var web = new User { Id = 1, Username = "web", Coins = 10, Gems = 60 };
+        // The link merge takes the same ledger path as POST merge (KNG-21); since KNG-207 the
+        // Minecraft account is the primary (invitations DESIGN § 5.4, decision I7).
+        var web = new User { Id = 1, Username = "web-1", Email = "w@example.com", PasswordHash = "hash", Coins = 10, Gems = 60 };
         var minecraft = new User { Id = 2, Username = "mc", Uuid = "uuid-2", Coins = 900, Gems = 1 };
         _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(web);
         _mockUserRepository.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(minecraft);
@@ -721,12 +722,14 @@ public class UserServiceTests
         _mockLinkCodeService.Setup(l => l.ValidateLinkCodeAsync("ABC123")).ReturnsAsync((true, code, (string?)null));
         _mockLinkCodeService.Setup(l => l.ConsumeLinkCodeAsync("ABC123")).ReturnsAsync((true, code, (string?)null));
 
-        await _userService.LinkMinecraftAccountAsync(1, "ABC123");
+        var result = await _userService.LinkMinecraftAccountAsync(1, "ABC123");
 
-        Assert.Equal((900, 60), (web.Coins, web.Gems));
-        Assert.Equal((0, 0), (minecraft.Coins, minecraft.Gems));
+        Assert.True(result.Merged);
+        Assert.Equal(2, result.User.Id);
+        Assert.Equal((900, 60), (minecraft.Coins, minecraft.Gems));
+        Assert.Equal((0, 0), (web.Coins, web.Gems));
         Assert.Equal(new[] { CurrencyReasons.MergeForfeit, CurrencyReasons.MergeCarryover }, _currency.Postings.Select(p => p.Ctx.ReasonCode));
-        _mockUserRepository.Verify(r => r.MergeUsersAsync(1, 2), Times.Once);
+        _mockUserRepository.Verify(r => r.MergeUsersAsync(2, 1), Times.Once);
     }
 
     [Fact]
@@ -1188,6 +1191,49 @@ public class UserServiceTests
         Assert.Equal(CurrencyIdempotencyScopes.System, signup.Ctx.IdempotencyScope);
         Assert.Equal((250, 50, 0), (user.Coins, user.Gems, user.ExperiencePoints));
         _mockUserRepository.Verify(r => r.RunWithUsersLockedAsync(It.Is<IEnumerable<int>>(ids => !ids.Any()), It.IsAny<Func<Task>>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(knkwebapi_v2.Configuration.RegistrationMode.LinkCode, true)]
+    [InlineData(knkwebapi_v2.Configuration.RegistrationMode.Open, true)]
+    [InlineData(knkwebapi_v2.Configuration.RegistrationMode.Invite, false)]
+    public async Task CreateAsync_AdmitsThePlayer_UnlessRegistrationIsInviteOnly(knkwebapi_v2.Configuration.RegistrationMode mode, bool admitted)
+    {
+        // KNG-212: players the plugin creates before the switch to Mode=Invite are admitted, so the
+        // admission gate (KNG-214) never stops them later.
+        var security = new knkwebapi_v2.Configuration.SecuritySettings();
+        security.Registration.Mode = mode;
+        var service = new UserService(_mockUserRepository.Object, _mockMapper.Object, _mockPasswordService.Object,
+            _mockLinkCodeService.Object, _mockTitleService.Object, _mockMembershipService.Object, _mockAuditLogService.Object,
+            _mockPermissionGroupRepository.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance,
+            _currency, _titleProgression, security: Microsoft.Extensions.Options.Options.Create(security));
+        var user = new User { Username = "newbie" };
+        _mockMapper.Setup(m => m.Map<User>(It.IsAny<UserCreateDto>())).Returns(user);
+        _mockUserRepository.Setup(r => r.AddUserAsync(user)).Callback(() => user.Id = 9).Returns(Task.CompletedTask);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(9)).ReturnsAsync(user);
+        _mockMapper.Setup(m => m.Map<UserDto>(user)).Returns(new UserDto { Id = 9, Username = "newbie" });
+
+        await service.CreateAsync(new UserCreateDto { Username = "newbie", Uuid = "uuid-9" });
+
+        Assert.Equal(admitted, user.AdmittedAt.HasValue);
+        if (admitted)
+        {
+            Assert.Equal(user.CreatedAt, user.AdmittedAt);
+        }
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutSecuritySettings_Admits()
+    {
+        var user = new User { Username = "newbie" };
+        _mockMapper.Setup(m => m.Map<User>(It.IsAny<UserCreateDto>())).Returns(user);
+        _mockUserRepository.Setup(r => r.AddUserAsync(user)).Callback(() => user.Id = 10).Returns(Task.CompletedTask);
+        _mockUserRepository.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(user);
+        _mockMapper.Setup(m => m.Map<UserDto>(user)).Returns(new UserDto { Id = 10, Username = "newbie" });
+
+        await _userService.CreateAsync(new UserCreateDto { Username = "newbie" });
+
+        Assert.NotNull(user.AdmittedAt);
     }
 
     [Fact]

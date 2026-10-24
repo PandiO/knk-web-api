@@ -53,6 +53,23 @@ namespace knkwebapi_v2.Dtos
         /// <summary>The refresh token for the cookie; not part of the JSON.</summary>
         [JsonIgnore]
         public IssuedRefreshToken? Session { get; set; }
+
+        /// <summary>Register with a claim code (KNG-214): true when the new login was linked to the
+        /// Minecraft account in the same step. Absent otherwise.</summary>
+        [JsonPropertyName("linked")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? Linked { get; set; }
+
+        /// <summary>With <see cref="Linked"/>: the Mojang-verified name the account now has.</summary>
+        [JsonPropertyName("minecraftName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MinecraftName { get; set; }
+
+        /// <summary>Register only (KNG-216): true when the Cloudflare Access sync is on, so the web
+        /// app tells the new player that Cloudflare emails them a one-time PIN next. Absent otherwise.</summary>
+        [JsonPropertyName("accessGate")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? AccessGate { get; set; }
     }
 
     /// <summary>
@@ -72,12 +89,38 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("passwordConfirmation")]
         public string? PasswordConfirmation { get; set; }
+
+        /// <summary>A personal invite's token from /invite/:token (KNG-212; Mode=Invite only).</summary>
+        [JsonPropertyName("inviteToken")]
+        public string? InviteToken { get; set; }
+
+        /// <summary>A shared code (KNK-XXXXX-XXXXX) from /join (KNG-212; Mode=Invite only).</summary>
+        [JsonPropertyName("inviteCode")]
+        public string? InviteCode { get; set; }
+
+        /// <summary>The claim code from the server's disconnect screen (KNG-214, game-first sign-up):
+        /// only together with an invite; the new account is linked in the same step.</summary>
+        [JsonPropertyName("claimCode")]
+        public string? ClaimCode { get; set; }
     }
 
     /// <summary>The result of AuthService.RegisterAsync: a login response, or an error code.</summary>
     public sealed class AuthRegisterOutcome
     {
         public const string RegistrationNeedsCode = "RegistrationNeedsCode";
+
+        // KNG-212 (Security:Registration:Mode).
+        public const string InviteRequired = "InviteRequired";
+        public const string InvalidInvite = "InvalidInvite";
+        public const string InvitesDisabled = "InvitesDisabled";
+        public const string InviteEmailMismatch = "InviteEmailMismatch";
+        public const string NotSupportedYet = "NotSupportedYet";
+
+        // KNG-214: register with a claim code.
+        public const string InvalidClaimCode = "InvalidClaimCode";
+
+        /// <summary>Internal: a step went through and the caller goes on (never returned to a client).</summary>
+        internal static AuthRegisterOutcome Pending { get; } = new() { Ok = true };
 
         public bool Ok { get; private init; }
         public AuthLoginResponseDto? Result { get; private init; }

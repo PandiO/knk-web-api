@@ -1243,6 +1243,90 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("domain_sub_regions", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.EmailOutboxMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DedupeKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("HtmlBody")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("TextBody")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ToAddress")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("ToName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DedupeKey")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "NextAttemptAt");
+
+                    b.HasIndex("ToAddress", "CreatedAt");
+
+                    b.ToTable("email_outbox", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
                 {
                     b.Property<int>("Id")
@@ -2179,6 +2263,120 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("grades", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<string>("CodeHint")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("char(4)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("GrantGroupId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<DateTime?>("LastSentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("MaxUses")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("PausedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ResendWindowStartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ResendsInWindow")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("RevokedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SendCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UseCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("GrantGroupId");
+
+                    b.HasIndex("Kind", "ExpiresAt");
+
+                    b.ToTable("invitations", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.InvitationRedemption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("InvitationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RedeemedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("InvitationId");
+
+                    b.ToTable("invitation_redemptions", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
                 {
                     b.Property<int>("Id")
@@ -2617,6 +2815,19 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("MinecraftName")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("MinecraftUuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<int>("Purpose")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -2635,6 +2846,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("ExpiresAt");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("Purpose", "Status", "ExpiresAt");
 
                     b.ToTable("linkcodes", (string)null);
                 });
@@ -3973,6 +4186,49 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("minecraftmaterialrefs", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.NavigationCompassSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("GeneralEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("GeneralTargets")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<string>("Material")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("NameMatch")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<bool>("SiegeEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("navigation_compass_settings", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>
                 {
                     b.Property<int>("Id")
@@ -5023,6 +5279,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("EnchantLevelMin")
                         .HasColumnType("int");
 
+                    b.Property<bool>("GiveNavigationItem")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<double>("HeadshotMultiplier")
                         .HasColumnType("double");
 
@@ -5104,6 +5363,11 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("NavigationItem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<string>("ScheduleJson")
                         .HasColumnType("longtext");
@@ -5430,6 +5694,11 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("NavigationItem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<int>("PlayersMax")
                         .HasColumnType("int");
@@ -6475,6 +6744,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("ActiveMode")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("AdmittedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime?>("ArchiveUntil")
                         .HasColumnType("datetime(6)");
 
@@ -6497,6 +6769,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<bool>("EmailVerified")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("ExperiencePoints")
                         .ValueGeneratedOnAdd()
@@ -6524,6 +6799,12 @@ namespace knkwebapi_v2.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<int?>("Gender")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InvitedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InvitedViaInvitationId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
@@ -7179,6 +7460,27 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("GateDoor");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "GrantGroup")
+                        .WithMany()
+                        .HasForeignKey("GrantGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("GrantGroup");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.InvitationRedemption", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Invitation", "Invitation")
+                        .WithMany("Redemptions")
+                        .HasForeignKey("InvitationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invitation");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
@@ -8491,6 +8793,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("BlockSnapshots");
 
                     b.Navigation("OpenedBlockSnapshots");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.Navigation("Redemptions");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>

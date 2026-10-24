@@ -1,0 +1,5 @@
+Hi {{username}},
+
+Your Knights & Kings account isn't linked to a Minecraft account yet, so you can't join the server. It takes a minute:
+
+{{linkUrl}}

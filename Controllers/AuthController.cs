@@ -21,10 +21,10 @@ namespace knkwebapi_v2.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        public const string RefreshTokenCookieName = "refreshToken";
+        public const string RefreshTokenCookieName = RefreshTokenCookie.Name;
 
         /// <summary>The refresh cookie is only sent to the auth endpoints (closed-alpha WP4).</summary>
-        public const string RefreshCookiePath = "/api/Auth";
+        public const string RefreshCookiePath = RefreshTokenCookie.Path;
 
         private readonly IAuthService _authService;
         private readonly ITokenService _tokenService;
@@ -87,6 +87,14 @@ namespace knkwebapi_v2.Controllers
         /// /account link in game, enters the code here with an email and password, and is logged
         /// in (no "remember me"). 400 for a bad code, email or password, 409 AlreadyRegistered or
         /// DuplicateEmail, 403 RegistrationNeedsCode without a code.
+        /// KNG-212: with Security:Registration:Mode=Invite an inviteToken or inviteCode creates a web
+        /// account (400 InvalidInvite / InviteEmailMismatch), and 403 InviteRequired answers a missing
+        /// invite or a link code of an account that isn't admitted. Under Mode=LinkCode invites answer
+        /// 403 InvitesDisabled.
+        /// KNG-214: a claimCode (game-first) needs an invite as well (403 InviteRequired, or 403
+        /// InvitesDisabled under Mode=LinkCode) and links the new account in the same step: the answer
+        /// then holds <c>linked: true</c> and <c>minecraftName</c>. 400 InvalidClaimCode for a wrong,
+        /// spent or expired code, 409 AlreadyRegistered when that Minecraft account has a web login.
         /// </summary>
         [HttpPost("register")]
         [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
@@ -100,8 +108,9 @@ namespace knkwebapi_v2.Controllers
                 var body = new { error = outcome.Error, message = outcome.Message };
                 return outcome.Error switch
                 {
-                    "AlreadyRegistered" or "DuplicateEmail" => Conflict(body),
-                    AuthRegisterOutcome.RegistrationNeedsCode => StatusCode(StatusCodes.Status403Forbidden, body),
+                    "AlreadyRegistered" or "AlreadyLinked" or "DuplicateEmail" => Conflict(body),
+                    AuthRegisterOutcome.RegistrationNeedsCode or AuthRegisterOutcome.InviteRequired or AuthRegisterOutcome.InvitesDisabled
+                        => StatusCode(StatusCodes.Status403Forbidden, body),
                     _ => BadRequest(body)
                 };
             }
@@ -294,58 +303,12 @@ namespace knkwebapi_v2.Controllers
                 : null;
         }
 
-        /// <summary>
-        /// HttpOnly, Secure outside Development, SameSite from Security:RefreshCookie:SameSite,
-        /// Path /api/Auth. Without "remember me" it is a session cookie (no Expires); the server
-        /// still ends it after Security:Jwt:SessionRefreshHours.
-        /// </summary>
-        private void SetRefreshTokenCookie(IssuedRefreshToken? session)
-        {
-            if (session == null)
-            {
-                return;
-            }
+        /// <summary>See <see cref="RefreshTokenCookie"/>.</summary>
+        private void SetRefreshTokenCookie(IssuedRefreshToken? session) =>
+            RefreshTokenCookie.Set(Response, session, _environment.IsDevelopment(), _security);
 
-            var options = BuildRefreshCookieOptions();
-            if (session.RememberMe)
-            {
-                options.Expires = session.ExpiresAt;
-            }
-
-            DeleteLegacyRootCookie();
-            Response.Cookies.Append(RefreshTokenCookieName, session.Token, options);
-        }
-
-        private void ClearRefreshTokenCookie()
-        {
-            Response.Cookies.Delete(RefreshTokenCookieName, BuildRefreshCookieOptions());
-            DeleteLegacyRootCookie();
-        }
-
-        /// <summary>Before closed-alpha WP4 the cookie lived at Path=/ and held a refresh JWT.</summary>
-        private void DeleteLegacyRootCookie()
-        {
-            var legacy = BuildRefreshCookieOptions();
-            legacy.Path = "/";
-            Response.Cookies.Delete(RefreshTokenCookieName, legacy);
-        }
-
-        private CookieOptions BuildRefreshCookieOptions()
-        {
-            return new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = !_environment.IsDevelopment(),
-                SameSite = ParseSameSite(_security.RefreshCookie.SameSite),
-                Path = RefreshCookiePath,
-                IsEssential = true
-            };
-        }
-
-        private static SameSiteMode ParseSameSite(string? value) =>
-            Enum.TryParse<SameSiteMode>(value, ignoreCase: true, out var mode) && mode != SameSiteMode.Unspecified
-                ? mode
-                : SameSiteMode.Lax;
+        private void ClearRefreshTokenCookie() =>
+            RefreshTokenCookie.Clear(Response, _environment.IsDevelopment(), _security);
 
         private int? GetUserIdFromClaims(ClaimsPrincipal principal)
         {

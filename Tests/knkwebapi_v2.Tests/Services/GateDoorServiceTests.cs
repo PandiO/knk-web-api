@@ -149,4 +149,33 @@ public class GateDoorServiceTests
         _mapper.Verify(m => m.Map(dto, existing), Times.Once);
         _repo.Verify(r => r.UpdateAsync(existing), Times.Once);
     }
+
+    // KNG-273: POST /api/GateDoors/search
+    [Fact]
+    public async Task SearchAsync_WithNullQuery_ThrowsArgumentNullException()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() => _service.SearchAsync(null!));
+    }
+
+    [Fact]
+    public async Task SearchAsync_MapsTheRepositoryPageToListRows()
+    {
+        var queryDto = new PagedQueryDto { PageNumber = 2, PageSize = 10, SearchTerm = "main" };
+        var query = new PagedQuery { PageNumber = 2, PageSize = 10, SearchTerm = "main" };
+        var doors = new System.Collections.Generic.List<GateDoor> { new() { Id = 17, Name = "Main gate" } };
+        var rows = new System.Collections.Generic.List<GateDoorListDto> { new() { Id = 17, Name = "Main gate" } };
+        _mapper.Setup(m => m.Map<PagedQuery>(queryDto)).Returns(query);
+        _repo.Setup(r => r.SearchAsync(query)).ReturnsAsync(new PagedResult<GateDoor>
+        {
+            Items = doors, TotalCount = 11, PageNumber = 2, PageSize = 10
+        });
+        _mapper.Setup(m => m.Map<System.Collections.Generic.List<GateDoorListDto>>(doors)).Returns(rows);
+
+        var result = await _service.SearchAsync(queryDto);
+
+        Assert.Same(rows, result.Items);
+        Assert.Equal(11, result.TotalCount);
+        Assert.Equal(2, result.PageNumber);
+        Assert.Equal(10, result.PageSize);
+    }
 }

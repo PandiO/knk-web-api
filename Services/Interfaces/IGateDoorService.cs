@@ -10,6 +10,7 @@ namespace knkwebapi_v2.Services
         Task<IEnumerable<GateDoorDto>> GetByStructureIdAsync(int gateStructureId);
         Task<GateDoorDto?> GetByIdAsync(int id);
         Task<GateDoorDto?> GetByIdWithSnapshotsAsync(int id);
+        Task<PagedResultDto<GateDoorListDto>> SearchAsync(PagedQueryDto query);
         Task<GateDoorDto> CreateAsync(int gateStructureId, GateDoorDto gateDoorDto);
         Task UpdateAsync(int id, GateDoorDto gateDoorDto);
         Task DeleteAsync(int id);

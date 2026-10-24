@@ -30,7 +30,7 @@ repo root:
 dotnet user-secrets set "ConnectionStrings:MySqlDbConnection" "Server=localhost;Database=knightsandkings_dev_v2;User=<user>;Password=<password>;Allow User Variables=True"
 dotnet user-secrets set "Security:Jwt:Secret" "<output of: openssl rand -base64 48>"
 dotnet user-secrets set "Security:PluginApiKey" "<output of: openssl rand -hex 32, same as the plugin's api.auth.api-key>"
-dotnet user-secrets set "Email:SmtpPassword" "<smtp app password, only with Email:Provider=Smtp>"
+dotnet user-secrets set "Email:SmtpPassword" "<smtp app password, only with Email:Transport=Smtp and Email:SmtpUsername set>"
 ```
 
 Environment variables (`ConnectionStrings__MySqlDbConnection`, `Security__Jwt__Secret`, …)

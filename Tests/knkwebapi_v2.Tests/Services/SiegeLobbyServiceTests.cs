@@ -53,6 +53,62 @@ public class SiegeLobbyServiceTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await _context.DisposeAsync();
 
+    // ---- Navigation compass (KNG-234) ----
+
+    [Fact]
+    public async Task RuntimeConfig_CarriesTheRawNavigationItemChoiceOfLobbyAndScenario()
+    {
+        // The plugin resolves lobby > scenario > global, so the payload keeps each level's own value.
+        var lobbyRow = await _context.SiegeLobbies.FindAsync(1);
+        lobbyRow!.NavigationItem = SiegeNavigationItemMode.DoNotGive;
+        var scenarioRow = await _context.SiegeScenarios.FindAsync(100);
+        scenarioRow!.NavigationItem = SiegeNavigationItemMode.Give;
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+
+        var config = await _service.GetRuntimeConfigAsync();
+
+        var lobby = Assert.Single(config.Lobbies);
+        Assert.Equal(SiegeNavigationItemMode.DoNotGive, lobby.NavigationItem);
+        Assert.Equal(SiegeNavigationItemMode.Give, Assert.Single(lobby.Rotation).Scenario.NavigationItem);
+        Assert.False(config.Configuration.GiveNavigationItem);
+    }
+
+    [Fact]
+    public async Task RuntimeConfig_NavigationItemDefaultsToInheritAndGlobalOff()
+    {
+        var config = await _service.GetRuntimeConfigAsync();
+
+        var lobby = Assert.Single(config.Lobbies);
+        Assert.Equal(SiegeNavigationItemMode.Inherit, lobby.NavigationItem);
+        Assert.Equal(SiegeNavigationItemMode.Inherit, Assert.Single(lobby.Rotation).Scenario.NavigationItem);
+        Assert.False(config.Configuration.GiveNavigationItem);
+    }
+
+    [Fact]
+    public async Task ALobbyUpdateStoresTheNavigationItemChoice()
+    {
+        var upsert = new SiegeLobbyUpsertDto
+        {
+            Name = "Siege — Cinix", Key = "cinix", IsEnabled = true, NavigationItem = SiegeNavigationItemMode.Give
+        };
+
+        await _service.UpdateAsync(1, upsert);
+
+        Assert.Equal(SiegeNavigationItemMode.Give, (await _service.GetByIdAsync(1))!.NavigationItem);
+    }
+
+    [Fact]
+    public async Task AnUndefinedNavigationItemChoiceIsRefused()
+    {
+        var upsert = new SiegeLobbyUpsertDto
+        {
+            Name = "Siege — Cinix", Key = "cinix", IsEnabled = true, NavigationItem = (SiegeNavigationItemMode)42
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(1, upsert));
+    }
+
     // ---- Runtime config ----
 
     [Fact]

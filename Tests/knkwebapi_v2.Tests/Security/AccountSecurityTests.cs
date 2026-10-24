@@ -17,6 +17,7 @@ using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Controllers;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Email;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Tests.Api;
 using Xunit;
@@ -241,9 +242,9 @@ public class AccountSecurityTests : IDisposable
         Assert.NotNull(await _h.BearerProblemAsync(login!.AccessToken));
         Assert.Null(await _h.BearerProblemAsync(result!.AccessToken!));
         var notice = Assert.Single(_h.Mail);
-        Assert.Equal(AccountMailKind.EmailChangedNotice, notice.Kind);
+        Assert.Equal(EmailKind.EmailChanged, notice.Kind);
         Assert.Equal("steve@example.com", notice.To);
-        Assert.Equal("st***@example.com", notice.Payload);
+        Assert.Equal("st***@example.com", notice.Values["newEmailHint"]);
     }
 
     [Theory]
@@ -271,21 +272,12 @@ public class AccountSecurityTests : IDisposable
         Assert.Equal(known.Message, unknown.Message);
         Assert.Null(known.DebugResetToken);
         var mail = Assert.Single(_h.Mail);
-        Assert.Equal(AccountMailKind.PasswordReset, mail.Kind);
-        _h.Delivery.Verify(d => d.SendPasswordResetAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task MailSender_LogsSmtpFailures_InsteadOfThrowing()
-    {
-        var delivery = new Mock<IPasswordResetDeliveryService>();
-        delivery.Setup(d => d.SendPasswordResetAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("smtp down"));
-        var services = new ServiceCollection().AddSingleton(delivery.Object).BuildServiceProvider();
-        var sender = new AccountMailSender(new AccountMailQueue(NullLogger<AccountMailQueue>.Instance),
-            services.GetRequiredService<IServiceScopeFactory>(), NullLogger<AccountMailSender>.Instance);
-
-        await sender.SendOneAsync(new AccountMail(AccountMailKind.PasswordReset, "a@b.c", "Steve", "http://x"));
-        delivery.Verify(d => d.SendPasswordResetAsync("a@b.c", "Steve", "http://x"), Times.Once);
+        Assert.Equal(EmailKind.PasswordReset, mail.Kind);
+        // KNG-206: the outbox row expires with the token and is keyed on the token row, not the token.
+        var token = Assert.Single(_h.Db.LinkCodes.Where(c => c.Purpose == knkwebapi_v2.Models.LinkCodePurpose.PasswordReset));
+        Assert.Equal($"reset:{token.Id}", mail.DedupeKey);
+        Assert.Equal(token.ExpiresAt, mail.ExpiresAt);
+        Assert.StartsWith("http://localhost:3000/auth/reset-password?token=", mail.Values["resetUrl"]);
     }
 
     [Theory]

@@ -82,5 +82,14 @@ namespace knkwebapi_v2.Repositories
         /// Optionally keeps a single token active.
         /// </summary>
         Task InvalidateActivePasswordResetTokensAsync(int userId, int? excludeLinkCodeId = null);
+
+        /// <summary>The unexpired, unused claim code bound to a Minecraft UUID (KNG-214), or null.</summary>
+        Task<LinkCode?> GetActiveClaimCodeByUuidAsync(string minecraftUuid);
+
+        /// <summary>
+        /// Deletes codes that are Used or Expired and were finished (UsedAt, else ExpiresAt) before
+        /// <paramref name="before"/>. Never deletes an Active row. Returns the number deleted.
+        /// </summary>
+        Task<int> DeleteFinishedBeforeAsync(DateTime before);
     }
 }

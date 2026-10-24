@@ -5,14 +5,15 @@ namespace knkwebapi_v2.Models;
 /// <summary>
 /// Represents a temporary link code used to connect web app and Minecraft server accounts.
 /// 
-/// Link codes enable several account flows:
-/// 1. Web app first: Generate code during signup → user enters code in Minecraft
-/// 2. Server first: Generate code via /account link command → user uses code in web app
-/// 3. Account merging: Validate code before merging conflicting accounts
+/// One row per code, told apart by <see cref="Purpose"/> (KNG-208):
+/// 1. Link: /account link in game → the player enters the code on the website (register, or the
+///    Account page of an existing web login). 8 characters from A-Z0-9, 20 minutes.
+/// 2. PasswordReset: the SHA-256 hash of a reset token (64 hex characters), AuthService.
+/// 3. Claim: the admission gate's claim code shown on the disconnect screen (KNG-214): 8 Crockford
+///    base32 characters bound to a Mojang-verified <see cref="MinecraftUuid"/>, no user yet.
 /// 
 /// CRITICAL PROPERTIES:
-/// - Code: 8 alphanumeric characters (e.g., ABC12XYZ)
-/// - ExpiresAt: 20 minutes from creation
+/// - ExpiresAt: from creation plus the purpose's lifetime
 /// - Status: Active, Used, or Expired
 /// - Uniqueness: Code is globally unique and must not be reused
 /// </summary>
@@ -38,10 +39,23 @@ public class LinkCode
     /// Display format (with hyphen): ABC-12XYZ
     /// 
     /// CRITICAL: Must be globally unique. No code can be reused.
-    /// Entropy: ~218 trillion combinations (52^8).
-    /// Generated using cryptographically secure random.
+    /// Entropy: 36^8, about 2.8 trillion combinations for a link code (32^8, about 1.1 trillion,
+    /// for a claim code); 256 bits for a reset-token hash.
+    /// Generated with RandomNumberGenerator.GetInt32, so no character is favoured (KNG-208).
     /// </summary>
     public string Code { get; set; } = null!;
+
+    /// <summary>What the code is for (KNG-208). Decides which lookups see it and how it is used.</summary>
+    public LinkCodePurpose Purpose { get; set; } = LinkCodePurpose.Link;
+
+    /// <summary>
+    /// Claim codes only (KNG-214): the Mojang-verified UUID of the player the admission gate
+    /// stopped, written by the plugin's pre-login check. Null for link codes and reset tokens.
+    /// </summary>
+    public string? MinecraftUuid { get; set; }
+
+    /// <summary>Claim codes only: the player's name at the time, for "Verified: Minecraft account Steve".</summary>
+    public string? MinecraftName { get; set; }
 
     /// <summary>
     /// Timestamp when the code was created.
@@ -78,6 +92,19 @@ public class LinkCode
     /// Null for web app-first flow until consumption.
     /// </summary>
     public User? User { get; set; }
+}
+
+/// <summary>What a <see cref="LinkCode"/> row is for (KNG-208). Stored as an int; don't renumber.</summary>
+public enum LinkCodePurpose
+{
+    /// <summary>/account link in game, entered on the website. 8 characters, A-Z0-9.</summary>
+    Link = 0,
+
+    /// <summary>A password-reset token's SHA-256 hash (64 hex characters), AuthService.</summary>
+    PasswordReset = 1,
+
+    /// <summary>An admission claim code bound to a Minecraft UUID (KNG-214). 8 Crockford base32 characters.</summary>
+    Claim = 2
 }
 
 /// <summary>

@@ -295,6 +295,48 @@ namespace knkwebapi_v2.Dtos
         public double HealthCurrent { get; set; }
     }
 
+    // KNG-273: one row of POST /api/GateDoors/search (the web app's GateDoor dashboard and
+    // pickers) - the door's identity, its gate's name, and the columns the list shows.
+    public class GateDoorListDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("gateStructureId")]
+        public int GateStructureId { get; set; }
+
+        [JsonPropertyName("gateStructureName")]
+        public string? GateStructureName { get; set; }
+
+        [JsonPropertyName("gateType")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public GateType GateType { get; set; }
+
+        [JsonPropertyName("motionType")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public MotionType MotionType { get; set; }
+
+        [JsonPropertyName("geometryDefinitionMode")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public GeometryDefinitionMode GeometryDefinitionMode { get; set; }
+
+        [JsonPropertyName("openedState")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public GateDoorOpenState OpenedState { get; set; }
+
+        [JsonPropertyName("isActive")]
+        public bool IsActive { get; set; }
+
+        [JsonPropertyName("healthCurrent")]
+        public double HealthCurrent { get; set; }
+
+        [JsonPropertyName("healthMax")]
+        public double HealthMax { get; set; }
+    }
+
     // Replaces GateStateUpdateDto (moved from GateStructure - IsOpened/IsJammed are now the
     // single GateDoorOpenState enum on GateDoor, decision 5.0-C).
     public class GateDoorStateUpdateDto

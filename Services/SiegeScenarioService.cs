@@ -400,6 +400,8 @@ namespace knkwebapi_v2.Services
                 if (foreign != null) throw new ArgumentException($"District '{foreign.Name}' doesn't belong to town '{town.Name}'.");
             }
 
+            if (!Enum.IsDefined(dto.NavigationItem)) throw new ArgumentException("navigationItem must be Inherit, Give or DoNotGive.");
+
             // Gates (replace-set; null = unchanged). Must exist, be in the scenario area, start in a
             // resting state, and name an owner team of this scenario (a new scenario has none yet).
             List<SiegeScenarioGateUpsertDto>? gateDtos = null;
@@ -447,6 +449,7 @@ namespace knkwebapi_v2.Services
             target.LockdownScenarioArea = dto.LockdownScenarioArea;
             target.AllowRecapture = dto.AllowRecapture;
             target.EnchantDropsEnabled = dto.EnchantDropsEnabled;
+            target.NavigationItem = dto.NavigationItem;
 
             if (dto.Districts != null) SyncDistricts(target, districtIds);
             if (gateDtos != null) SyncGates(target, gateDtos);

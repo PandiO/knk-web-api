@@ -22,6 +22,9 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<User> Users { get; set; } = null!;
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public virtual DbSet<EmailOutboxMessage> EmailOutbox { get; set; } = null!;
+    public virtual DbSet<Invitation> Invitations { get; set; } = null!;
+    public virtual DbSet<InvitationRedemption> InvitationRedemptions { get; set; } = null!;
     public virtual DbSet<Category> Categories { get; set; } = null!;
     public DbSet<FormConfiguration> FormConfigurations { get; set; }
     public DbSet<FormStep> FormSteps { get; set; }
@@ -127,6 +130,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<DomainDiscoveryOverride> DomainDiscoveryOverrides { get; set; } = null!;
     // Navigation default per domain type (KNG-73, docs/specs/navigation/DESIGN.md §6.1)
     public virtual DbSet<DomainNavigationDefault> DomainNavigationDefaults { get; set; } = null!;
+    public virtual DbSet<NavigationCompassSettings> NavigationCompassSettingsRows { get; set; } = null!;
 
     // Road navigation Phase 1 (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
     public virtual DbSet<RoadProfile> RoadProfiles { get; set; } = null!;
@@ -408,6 +412,8 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_scenarios");
 
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
+
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(1000);
 
@@ -484,6 +490,8 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_lobbies");
+
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
 
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Key).IsRequired().HasMaxLength(64);
@@ -573,6 +581,64 @@ public partial class KnKDbContext : DbContext
 
         // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
         // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.
+        // KNG-206: the persistent mail outbox (EmailComposer / EmailDispatcher).
+        modelBuilder.Entity<EmailOutboxMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("email_outbox");
+
+            entity.Property(e => e.Kind).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.ToAddress).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.ToName).HasMaxLength(256);
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.TextBody).HasColumnType("longtext");
+            entity.Property(e => e.HtmlBody).HasColumnType("longtext");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.LastError).HasMaxLength(1000);
+            entity.Property(e => e.ProviderMessageId).HasMaxLength(255);
+            entity.Property(e => e.DedupeKey).IsRequired().HasMaxLength(120);
+
+            entity.HasIndex(e => e.DedupeKey).IsUnique();
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt });
+            entity.HasIndex(e => new { e.ToAddress, e.CreatedAt });
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // KNG-212: invitations (personal invites and shared codes) and who redeemed them.
+        modelBuilder.Entity<Invitation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("invitations");
+
+            entity.Property(e => e.CodeHash).IsRequired().HasMaxLength(64).IsFixedLength();
+            entity.Property(e => e.CodeHint).IsRequired().HasMaxLength(4).IsFixedLength();
+            entity.Property(e => e.Email).HasMaxLength(256);
+            entity.Property(e => e.Label).HasMaxLength(120);
+            entity.Property(e => e.Note).HasMaxLength(500);
+
+            entity.HasIndex(e => e.CodeHash).IsUnique();
+            entity.HasIndex(e => new { e.Kind, e.ExpiresAt });
+            entity.HasIndex(e => e.Email);
+
+            entity.HasOne(e => e.GrantGroup)
+                .WithMany()
+                .HasForeignKey(e => e.GrantGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<InvitationRedemption>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("invitation_redemptions");
+
+            entity.HasIndex(e => e.InvitationId);
+
+            entity.HasOne(e => e.Invitation)
+                .WithMany(i => i.Redemptions)
+                .HasForeignKey(e => e.InvitationId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
@@ -604,6 +670,12 @@ public partial class KnKDbContext : DbContext
             
             // Index on ExpiresAt for efficient cleanup queries
             entity.HasIndex(e => e.ExpiresAt);
+
+            // KNG-208: what the row is for, and the claim code's Mojang identity (KNG-214).
+            entity.Property(e => e.Purpose).HasDefaultValue(LinkCodePurpose.Link);
+            entity.Property(e => e.MinecraftUuid).HasMaxLength(36);
+            entity.Property(e => e.MinecraftName).HasMaxLength(16);
+            entity.HasIndex(e => new { e.Purpose, e.Status, e.ExpiresAt });
             
             // FK to User (no cascade - handled at application level)
             entity.HasOne(e => e.User)
@@ -2279,6 +2351,20 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.DomainType).HasMaxLength(32);
             entity.Property(e => e.DefaultMode).HasConversion<string>().HasMaxLength(16);
             entity.Property(e => e.RoadAccess).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+        });
+
+        // The navigation compass item rule (KNG-234): a single row, created by the first save.
+        modelBuilder.Entity<NavigationCompassSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("navigation_compass_settings");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Material).IsRequired().HasMaxLength(NavigationCompassSettings.MaxMaterialLength);
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(NavigationCompassSettings.MaxDisplayNameLength);
+            entity.Property(e => e.NameMatch).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.GeneralTargets).IsRequired().HasMaxLength(NavigationCompassSettings.MaxTargetsLength);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 

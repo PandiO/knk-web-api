@@ -72,6 +72,13 @@ namespace knkwebapi_v2.Repositories
         Task<bool> IsUsernameTakenAsync(string username, int? excludeUserId = null);
 
         /// <summary>
+        /// Active accounts created with an invitation between <paramref name="createdAfter"/> and
+        /// <paramref name="createdBefore"/> that still have no Minecraft UUID but do have an email
+        /// (KNG-214: the FinishLinking reminder).
+        /// </summary>
+        Task<List<User>> GetUnlinkedInvitedUsersAsync(DateTime createdAfter, DateTime createdBefore);
+
+        /// <summary>
         /// Check if an email is already taken (case-insensitive).
         /// </summary>
         /// <param name="email">Email to check</param>

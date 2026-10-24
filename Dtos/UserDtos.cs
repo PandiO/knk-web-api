@@ -87,8 +87,20 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("experiencePoints")]
         public int ExperiencePoints { get; set; }
 
+        /// <summary>True once the address was proven (EmailVerifiedAt; a personal invite's link, KNG-212).</summary>
         [JsonPropertyName("emailVerified")]
         public bool EmailVerified { get; set; }
+
+        /// <summary>True when the account has a Minecraft UUID (KNG-212); a web shell from an invite has none
+        /// until it links (KNG-214).</summary>
+        [JsonPropertyName("minecraftLinked")]
+        public bool MinecraftLinked { get; set; }
+
+        /// <summary>True when the account may pass the game server's admission gate (AdmittedAt set:
+        /// grandfathered, invited, claim-linked or staff Admit, KNG-214). Read-only: the name doesn't
+        /// match User.AdmittedAt on purpose, so the generic edit can never write it.</summary>
+        [JsonPropertyName("admitted")]
+        public bool Admitted { get; set; }
 
         [JsonPropertyName("accountCreatedVia")]
         public AccountCreationMethod AccountCreatedVia { get; set; }
