@@ -9,7 +9,19 @@ namespace knkwebapi_v2.Models;
 public class Domain
 {
     public int Id { get; set; }
-    public string Name { get; set; } = null!;
+
+    private string _name = null!;
+
+    /// <summary>
+    /// Trimmed on every write: a name saved with a trailing newline ("Residential District\n") reached the game server,
+    /// which drew the newline as a missing-glyph box in the region entry message. EF Core reads and writes the backing
+    /// field, so stored values pass through untouched; migration TrimDomainNames cleaned the rows saved before this.
+    /// </summary>
+    public string Name
+    {
+        get => _name;
+        set => _name = value is null ? null! : value.Trim();
+    }
 
     public string Description { get; set; } = null!;
 

@@ -7,8 +7,9 @@ using knkwebapi_v2.Models;
 namespace knkwebapi_v2.Tests.MySql;
 
 /// <summary>
-/// The TrimDomainNames statements on a real MySQL: REGEXP_REPLACE with the POSIX class strips spaces, tabs and
-/// both line-break characters at either end, keeps the inside of a value, and skips clean rows.
+/// The TrimDomainNames statement on a real MySQL: REGEXP_REPLACE with the POSIX class strips spaces, tabs and
+/// both line-break characters at either end of domains.Name, keeps the inside of a value, leaves Description and
+/// clean rows alone.
 /// </summary>
 [Trait("Category", "requires-mysql")]
 public class TrimDomainNamesMySqlTests : IClassFixture<MySqlTestDatabase>
@@ -21,20 +22,22 @@ public class TrimDomainNamesMySqlTests : IClassFixture<MySqlTestDatabase>
     }
 
     [MySqlFact]
-    public async Task Up_TrimsTheStoredNamesAndDescriptions()
+    public async Task Up_TrimsTheStoredNames()
     {
         int dirtyTown, dirtyDistrict, cleanTown;
         await using (var ctx = _db.NewContext())
         {
-            // Straight through the DbContext, as the rows were stored before DomainNameRules existed.
-            var town = new Town { Name = " Cinix\r\n", Description = "\tThe capital \n", WgRegionId = "domain_t", WorldName = "world" };
+            // Domain.Name trims in its setter now, so the rows are stored the way the old API stored them: raw SQL.
+            var town = new Town { Name = "Cinix", Description = "\tThe capital \n", WgRegionId = "domain_t", WorldName = "world" };
             var clean = new Town { Name = "Oakhaven", Description = "keep\ninner newline", WgRegionId = "domain_c", WorldName = "world" };
             ctx.Towns.AddRange(town, clean);
             await ctx.SaveChangesAsync();
-            var district = new District { Name = "Residential District\n", Description = "", TownId = town.Id, WgRegionId = "domain_d", WorldName = "world" };
+            var district = new District { Name = "Residential District", Description = "", TownId = town.Id, WgRegionId = "domain_d", WorldName = "world" };
             ctx.Districts.Add(district);
             await ctx.SaveChangesAsync();
             (dirtyTown, dirtyDistrict, cleanTown) = (town.Id, district.Id, clean.Id);
+            await ctx.Database.ExecuteSqlInterpolatedAsync($"UPDATE domains SET Name = {" Cinix\r\n"} WHERE Id = {dirtyTown}");
+            await ctx.Database.ExecuteSqlInterpolatedAsync($"UPDATE domains SET Name = {"Residential District\n"} WHERE Id = {dirtyDistrict}");
 
             foreach (var op in new TrimDomainNames().UpOperations.Cast<SqlOperation>())
             {
@@ -49,7 +52,7 @@ public class TrimDomainNamesMySqlTests : IClassFixture<MySqlTestDatabase>
                 .ToDictionaryAsync(d => d.Id);
 
             Assert.Equal("Cinix", rows[dirtyTown].Name);
-            Assert.Equal("The capital", rows[dirtyTown].Description);
+            Assert.Equal("\tThe capital \n", rows[dirtyTown].Description);
             Assert.Equal("Residential District", rows[dirtyDistrict].Name);
             Assert.Equal("", rows[dirtyDistrict].Description);
             Assert.Equal("Oakhaven", rows[cleanTown].Name);

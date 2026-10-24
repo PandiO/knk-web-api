@@ -13,8 +13,9 @@ namespace knkwebapi_v2.Services
     /// textarea, so Enter added a newline the API stored as is, and the action bar rendered it as a missing glyph
     /// (<c>You are now entering Residential District []</c>). The plugin strips names defensively since; this is
     /// the fix at the source. Every create/update path calls <see cref="Normalize(IDomainNameDto, string, string)"/>
-    /// or <see cref="Normalize(Domain, string)"/> before any other rule reads the name, and the
-    /// <c>TrimDomainNames</c> migration cleaned the rows that were already stored.
+    /// or <see cref="Normalize(Domain, string)"/> before any other rule reads the name; <see cref="Domain.Name"/>'s
+    /// setter trims as well (master <c>09cf7e4</c>), so an entity built on any other path never holds an untrimmed
+    /// name, and the <c>TrimDomainNames</c> migration cleaned the rows that were already stored.
     /// </remarks>
     public static class DomainNameRules
     {
