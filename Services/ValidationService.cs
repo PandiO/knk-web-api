@@ -469,7 +469,7 @@ namespace knkwebapi_v2.Services
                     ValidationInputHasher.ReduceDependency(dependencyValue, validationMethod.DependencyPropertiesRead(rule.ConfigJson)));
                 if (!force)
                 {
-                    var stored = await log.FindAsync(rule.Id, subject!.Type, subject.Id);
+                    var stored = await FindInLogAsync(log, rule, subject!);
                     if (stored != null && stored.RuleHash == ruleHash && stored.InputHash == inputHash && !Expired(stored, validationMethod))
                     {
                         Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Answered from the result log (run of {stored.ExecutedAt:o})");
@@ -520,7 +520,7 @@ namespace knkwebapi_v2.Services
                 // Only a genuine verdict is worth remembering; "couldn't check" must be tried again.
                 if (log != null && failureReason == null)
                 {
-                    await log.StoreAsync(new FieldValidationRunLog
+                    await StoreInLogAsync(log, new FieldValidationRunLog
                     {
                         RuleId = rule.Id,
                         RuleHash = ruleHash!,
@@ -567,6 +567,36 @@ namespace knkwebapi_v2.Services
                         ExecutedAt = DateTime.UtcNow.ToString("o")
                     }
                 };
+            }
+        }
+
+        /// <summary>
+        /// The log is an optimisation: when it can't be read (the table is missing because the migration
+        /// wasn't applied, the database hiccups) the rule simply runs, as it did before the log existed.
+        /// </summary>
+        private static async Task<FieldValidationRunLog?> FindInLogAsync(IValidationResultLog log, FieldValidationRule rule, ValidationSubject subject)
+        {
+            try
+            {
+                return await log.FindAsync(rule.Id, subject.Type, subject.Id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Result log unavailable, running the rule: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>As <see cref="FindInLogAsync"/>: a result that can't be stored is still returned.</summary>
+        private static async Task StoreInLogAsync(IValidationResultLog log, FieldValidationRunLog entry)
+        {
+            try
+            {
+                await log.StoreAsync(entry);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       Result log unavailable, result not stored: {ex.Message}");
             }
         }
 
