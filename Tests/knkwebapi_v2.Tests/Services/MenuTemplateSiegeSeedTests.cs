@@ -129,6 +129,69 @@ public class MenuTemplateSiegeSeedTests
         Assert.Equal("siege.lobbies-empty", Assert.Single(empty.Conditions).ConditionTypeId);
     }
 
+    [Fact]
+    public async Task Information_LetsAMemberChangeTheirSpawnFromTheTeamSplitOn()
+    {
+        // Playtest 2026-10-24: the spawn picker opens at the team split (HUB), so the button shows from then on.
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var info = seeded.Single(t => t.Key == MenuTemplateSeed.SiegeInformationMenuKey);
+
+        var changeSpawn = info.Sections.Single(s => s.Name == "Header").Items.Single(i => i.SlotOverride == 2);
+        var open = Assert.Single(changeSpawn.Actions);
+        Assert.Contains(MenuTemplateSeed.SiegeSpawnpointMenuKey, open.ParamsJson);
+        var phase = Assert.Single(changeSpawn.Conditions, c => c.ConditionTypeId == "siege.phase");
+        Assert.Contains("\"phases\":\"HUB,IN_PROGRESS\"", phase.ParamsJson);
+    }
+
+    [Fact]
+    public async Task Spawnpoint_ShrinksToItsOptions()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var spawnpoint = seeded.Single(t => t.Key == MenuTemplateSeed.SiegeSpawnpointMenuKey);
+
+        Assert.Equal((MenuGrowthMode.Dynamic, 2, 3), (spawnpoint.Growth, spawnpoint.MinHeight, spawnpoint.Height));
+    }
+
+    [Fact]
+    public async Task Seed_RepairsTheLayoutOfSiegeMenusSeededBeforeTheFixes_AndNothingElse()
+    {
+        // A database seeded before 2026-09-26 / 2026-10-24 holds static menus and an IN_PROGRESS-only spawn button
+        // (seeding is create-only). The repair updates those fields in place and leaves admin edits alone.
+        var context = new KnKDbContext(new DbContextOptionsBuilder<KnKDbContext>()
+            .UseInMemoryDatabase($"MenuSiegeRepair_{Guid.NewGuid()}").Options);
+        await using var _ = context;
+        await MenuTemplateSeed.SeedCanonicalAsync(context);
+        var info = await context.MenuTemplates.Include(t => t.Sections).ThenInclude(s => s.Items).ThenInclude(i => i.Conditions)
+            .SingleAsync(t => t.Key == MenuTemplateSeed.SiegeInformationMenuKey);
+        var spawnpoint = await context.MenuTemplates.SingleAsync(t => t.Key == MenuTemplateSeed.SiegeSpawnpointMenuKey);
+        info.Growth = MenuGrowthMode.Static;
+        info.MinHeight = null;
+        info.Name = "&8My renamed siege";
+        var button = info.Sections.Single(s => s.Name == "Header").Items.Single(i => i.SlotOverride == 2);
+        var phase = button.Conditions.Single(c => c.ConditionTypeId == "siege.phase");
+        phase.ParamsJson = "{\"lobbyId\":\"$ctx.lobbyId$\",\"phases\":\"IN_PROGRESS\"}";
+        spawnpoint.Growth = MenuGrowthMode.Static;
+        spawnpoint.MinHeight = null;
+        await context.SaveChangesAsync();
+
+        Assert.Equal(2, await MenuTemplateSeed.RepairSiegeLayoutAsync(context));
+
+        var repaired = await context.MenuTemplates.Include(t => t.Sections).ThenInclude(s => s.Items).ThenInclude(i => i.Conditions)
+            .SingleAsync(t => t.Key == MenuTemplateSeed.SiegeInformationMenuKey);
+        Assert.Equal((MenuGrowthMode.Dynamic, 3), (repaired.Growth, repaired.MinHeight));
+        Assert.Equal("&8My renamed siege", repaired.Name);
+        var repairedPhase = repaired.Sections.Single(s => s.Name == "Header").Items.Single(i => i.SlotOverride == 2)
+            .Conditions.Single(c => c.ConditionTypeId == "siege.phase");
+        Assert.Equal("{\"lobbyId\":\"$ctx.lobbyId$\",\"phases\":\"HUB,IN_PROGRESS\"}", repairedPhase.ParamsJson);
+        var repairedSpawnpoint = await context.MenuTemplates.SingleAsync(t => t.Key == MenuTemplateSeed.SiegeSpawnpointMenuKey);
+        Assert.Equal((MenuGrowthMode.Dynamic, 2), (repairedSpawnpoint.Growth, repairedSpawnpoint.MinHeight));
+
+        // Already up to date: nothing changes on the next run (and SeedCanonicalAsync runs it every start).
+        Assert.Equal(0, await MenuTemplateSeed.RepairSiegeLayoutAsync(context));
+    }
+
     /// <summary>
     /// Writes the siege templates as <c>GET /api/MenuTemplates/by-key/{key}</c> returns them (the
     /// fixture of knk-api-client's <c>SiegeMenuSeedContractTest</c>). Always checks the round trip;

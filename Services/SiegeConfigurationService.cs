@@ -54,6 +54,8 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         config.EnchantLevelMax = dto.EnchantLevelMax ?? config.EnchantLevelMax;
         config.MaxBooksAlive = dto.MaxBooksAlive ?? config.MaxBooksAlive;
         config.GiveNavigationItem = dto.GiveNavigationItem ?? config.GiveNavigationItem;
+        config.PlayerSkipMatchmakingSeconds = dto.PlayerSkipMatchmakingSeconds ?? config.PlayerSkipMatchmakingSeconds;
+        config.AdminSkipMatchmakingSeconds = dto.AdminSkipMatchmakingSeconds ?? config.AdminSkipMatchmakingSeconds;
 
         if (dto.NonMemberGateView.HasValue)
         {
@@ -102,6 +104,12 @@ public class SiegeConfigurationService : ISiegeConfigurationService
             || c.VoteCloseSecondsBeforeStart < c.DrawSecondsBeforeStart)
             throw new ArgumentException(
                 "Timeline offsets must satisfy voteClose ≥ draw ≥ hub ≥ teamSplit ≥ 1 (seconds before the match starts).");
+
+        // The plugin floors both at voteClose + 1 at runtime; here only nonsense is refused.
+        if (c.PlayerSkipMatchmakingSeconds < 1 || c.PlayerSkipMatchmakingSeconds > 86400)
+            throw new ArgumentException("playerSkipMatchmakingSeconds must be between 1 and 86400 seconds.");
+        if (c.AdminSkipMatchmakingSeconds < 1 || c.AdminSkipMatchmakingSeconds > 86400)
+            throw new ArgumentException("adminSkipMatchmakingSeconds must be between 1 and 86400 seconds.");
 
         if (c.KillStreakAnnounceAbove < 0) throw new ArgumentException("killStreakAnnounceAbove can't be negative.");
         if (c.HeadshotMultiplier is < 1 or > 10) throw new ArgumentException("headshotMultiplier must be between 1.0 (off) and 10.");
@@ -189,6 +197,8 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         MaxBooksAlive = c.MaxBooksAlive,
         NonMemberGateView = c.NonMemberGateView,
         GiveNavigationItem = c.GiveNavigationItem,
+        PlayerSkipMatchmakingSeconds = c.PlayerSkipMatchmakingSeconds,
+        AdminSkipMatchmakingSeconds = c.AdminSkipMatchmakingSeconds,
         UpdatedAt = DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc)
     };
 }

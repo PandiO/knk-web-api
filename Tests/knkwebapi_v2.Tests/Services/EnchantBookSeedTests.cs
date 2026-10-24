@@ -14,7 +14,7 @@ namespace knkwebapi_v2.Tests.Services;
 public class EnchantBookSeedTests
 {
     // 12 custom (24 books) + 5 vanilla (22 books).
-    private const int ExpectedBooks = 46;
+    private const int ExpectedBooks = 50;
 
     private readonly string _dbName = $"EnchantBookSeedTestDb_{Guid.NewGuid()}";
 
@@ -108,7 +108,7 @@ public class EnchantBookSeedTests
         }
 
         await using var db = NewContext();
-        (await Books(db).CountAsync()).Should().Be(24);
+        (await Books(db).CountAsync()).Should().Be(28);   // the 13 custom enchantments' levels (cleaving I-IV included)
         (await db.EnchantmentDefinitions.CountAsync(e => !e.IsCustom)).Should().Be(0);
     }
 
@@ -127,6 +127,6 @@ public class EnchantBookSeedTests
         var own = await db.ItemBlueprints.Include(b => b.DefaultEnchantments).SingleAsync(b => b.Name == "Enchanted Book (Poison I)");
         own.DefaultDisplayName.Should().Be("Admin's own");
         own.DefaultEnchantments.Should().BeEmpty();
-        (await Books(db).CountAsync()).Should().Be(23);
+        (await Books(db).CountAsync()).Should().Be(27);
     }
 }

@@ -1,4 +1,7 @@
 using knkwebapi_v2.Enums;
+using knkwebapi_v2.Properties;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace knkwebapi_v2.Models;
 
@@ -26,6 +29,58 @@ public static partial class MenuTemplateSeed
         yield return SiegeOverviewTemplate();
         yield return SiegeInformationTemplate();
         yield return SiegeSpawnpointTemplate();
+    }
+
+    /// <summary>
+    /// Seeding is create-only, so a database seeded before a layout fix keeps the old layout for good unless
+    /// the row is deleted. This brings the three siege menus' <em>layout</em> fields (growth, minimum height)
+    /// and the Information menu's "Change spawnpoint" phases up to the current seed, in place, without
+    /// touching anything an admin may have edited (names, lore, slots, the other conditions). Idempotent:
+    /// returns how many templates changed. Playtest 2026-10-24.
+    /// </summary>
+    public static async Task<int> RepairSiegeLayoutAsync(KnKDbContext context, ILogger? logger = null, CancellationToken cancellationToken = default)
+    {
+        var changed = 0;
+        var wanted = SiegeTemplates().ToDictionary(t => t.Key);
+        var existing = await context.MenuTemplates
+            .Include(t => t.Sections).ThenInclude(s => s.Items).ThenInclude(i => i.Actions)
+            .Include(t => t.Sections).ThenInclude(s => s.Items).ThenInclude(i => i.Conditions)
+            .Where(t => t.Key == SiegeOverviewMenuKey || t.Key == SiegeInformationMenuKey || t.Key == SiegeSpawnpointMenuKey)
+            .ToListAsync(cancellationToken);
+
+        foreach (var template in existing)
+        {
+            if (!wanted.TryGetValue(template.Key, out var seed)) continue;
+            var touched = false;
+            if (template.Growth != seed.Growth || template.MinHeight != seed.MinHeight)
+            {
+                template.Growth = seed.Growth;
+                template.MinHeight = seed.MinHeight;
+                touched = true;
+            }
+            if (template.Key == SiegeInformationMenuKey)
+            {
+                // The "Change spawnpoint" button: the item whose menu.open action opens siege.spawnpoint.
+                var phaseConditions = template.Sections
+                    .SelectMany(s => s.Items)
+                    .Where(i => i.Actions.Any(a => a.ActionTypeId == "menu.open"
+                        && a.ParamsJson != null && a.ParamsJson.Contains("\"" + SiegeSpawnpointMenuKey + "\"")))
+                    .SelectMany(i => i.Conditions)
+                    .Where(c => c.ConditionTypeId == "siege.phase" && c.ParamsJson != null
+                        && c.ParamsJson.Contains("\"phases\":\"IN_PROGRESS\""));
+                foreach (var condition in phaseConditions)
+                {
+                    condition.ParamsJson = condition.ParamsJson!.Replace("\"phases\":\"IN_PROGRESS\"", "\"phases\":\"HUB,IN_PROGRESS\"");
+                    touched = true;
+                }
+            }
+            if (touched) changed++;
+        }
+
+        if (changed > 0)
+            await context.SaveChangesAsync(cancellationToken);
+        logger?.LogInformation("Siege menu layout repair complete. Templates updated: {Changed}", changed);
+        return changed;
     }
 
     private const string LobbyParam = "{\"lobbyId\":\"$ctx.lobbyId$\"}";
@@ -161,7 +216,8 @@ public static partial class MenuTemplateSeed
             ParamsJson = "{\"key\":\"" + SiegeSpawnpointMenuKey + "\"}",
             SortOrder = 0,
         });
-        changeSpawn.Conditions.Add(RenderCondition("siege.phase", "{\"lobbyId\":\"$ctx.lobbyId$\",\"phases\":\"IN_PROGRESS\"}"));
+        // Playtest 2026-10-24: the spawn picker opens at the team split (HUB), so the choice is changeable from then on.
+        changeSpawn.Conditions.Add(RenderCondition("siege.phase", "{\"lobbyId\":\"$ctx.lobbyId$\",\"phases\":\"HUB,IN_PROGRESS\"}"));
         changeSpawn.Conditions.Add(RenderCondition("siege.participating", "{\"lobbyId\":\"$ctx.lobbyId$\",\"expected\":\"true\"}"));
 
         var status = DemoItem(4, 1,
@@ -424,9 +480,11 @@ public static partial class MenuTemplateSeed
         {
             Key = SiegeSpawnpointMenuKey,
             Name = "&8Choose a spawnpoint",
-            Description = "The viewer's respawn options in their running siege. Siege Phase 8b, MENU_TEMPLATES.md C.4.",
+            Description = "The viewer's spawn options in their siege, from the team split on. Siege Phase 8b, MENU_TEMPLATES.md C.4.",
             Height = 3,
-            Growth = MenuGrowthMode.Static,
+            // Playtest 2026-10-24: shrinks to its options (header + the option rows in use).
+            Growth = MenuGrowthMode.Dynamic,
+            MinHeight = 2,
             AutoRefreshTicks = 20,
             Sections =
             {
@@ -445,7 +503,8 @@ public static partial class MenuTemplateSeed
                             Bind("Material", "COMPASS", VariableRefreshPolicy.Static),
                             Bind("Name", "&aChoose a place to spawn", VariableRefreshPolicy.Static),
                             Bind("Lore", "&7Current: &a$siegeViewer.getCurrentSpawnName$", VariableRefreshPolicy.Ttl, 0, 20),
-                            Lore(1, "&7Close this menu to keep it.")),
+                            Lore(1, "&7Close this menu to keep it."),
+                            Lore(2, "&7Change it later from the siege menu.")),
                         close,
                     },
                 },

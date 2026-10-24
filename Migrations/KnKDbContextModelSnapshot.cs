@@ -5236,6 +5236,9 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
+                    b.Property<int>("AdminSkipMatchmakingSeconds")
+                        .HasColumnType("int");
+
                     b.Property<string>("AllowedCommands")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -5308,6 +5311,9 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("varchar(30)");
+
+                    b.Property<int>("PlayerSkipMatchmakingSeconds")
+                        .HasColumnType("int");
 
                     b.Property<double>("SideCaptureReduction")
                         .HasColumnType("double");

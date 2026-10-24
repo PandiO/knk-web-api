@@ -40,6 +40,7 @@ public static class EnchantBookSeed
         ("armor_repair", 1),
         ("resistance", 2),
         ("invisibility", 1),
+        ("cleaving", 4),
         ("minecraft:sharpness", 5),
         ("minecraft:protection", 4),
         ("minecraft:efficiency", 5),
