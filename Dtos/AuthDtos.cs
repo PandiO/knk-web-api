@@ -104,6 +104,18 @@ namespace knkwebapi_v2.Dtos
         public string? ClaimCode { get; set; }
     }
 
+    /// <summary>
+    /// GET api/Auth/registration-info (anonymous): how accounts are created on this server, so the
+    /// sign-up and login pages can send a newcomer down a path that works. Only the mode; the
+    /// invitable groups and limits stay on the staff-only GET api/Invitations/options.
+    /// </summary>
+    public class RegistrationInfoDto
+    {
+        /// <summary>LinkCode, Invite or Open (<see cref="Configuration.RegistrationMode"/>).</summary>
+        [JsonPropertyName("mode")]
+        public string Mode { get; set; } = null!;
+    }
+
     /// <summary>The result of AuthService.RegisterAsync: a login response, or an error code.</summary>
     public sealed class AuthRegisterOutcome
     {

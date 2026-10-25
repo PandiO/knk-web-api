@@ -120,6 +120,19 @@ namespace knkwebapi_v2.Controllers
             return Ok(outcome.Result);
         }
 
+        /// <summary>
+        /// Security:Registration:Mode for the sign-up and login pages, so a newcomer under Mode=Invite
+        /// is sent to /join or /link instead of the link-code form that can't succeed there (found on
+        /// the alpha 2026-10-25). Nothing but the mode; per-IP lookup rate limit. Not in the Cloudflare
+        /// Access sign-up bypass: the pages that ask are behind Access like the rest of /auth.
+        /// </summary>
+        [HttpGet("registration-info")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(RegistrationInfoDto), StatusCodes.Status200OK)]
+        public IActionResult RegistrationInfo() =>
+            Ok(new RegistrationInfoDto { Mode = _security.Registration.Mode.ToString() });
+
         [HttpPost("refresh")]
         [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
         [AllowAnonymous]

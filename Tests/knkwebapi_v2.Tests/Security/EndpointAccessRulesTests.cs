@@ -33,6 +33,8 @@ public class EndpointAccessRulesTests
         "AuthController.ForgotPassword",
         "AuthController.ResetPassword",
         "AuthController.ValidateToken",
+        // The sign-up and login pages ask which registration mode is on (2026-10-25); lookup rate limit.
+        "AuthController.RegistrationInfo",
         "HealthController.GetHealth",
         "HealthCheckController.GetLiveness",
         "HealthCheckController.GetReadiness",
