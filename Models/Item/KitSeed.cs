@@ -44,7 +44,10 @@ public static class KitSeed
         ("Food", "minecraft:bread", new[] { "Open Beta" }),
     };
 
-    private static readonly string[] Tags = { "Open Beta", "Test", "Melee", "Protection" };
+    private static readonly string[] Tags = { "Open Beta", ExampleTag, "Melee", "Protection" };
+
+    /// <summary>A tag no seeded category or blueprint uses; skipped with Seeding:IncludeExamples false.</summary>
+    public const string ExampleTag = "Test";
 
     // MaxStackSize is not in SEED_DATA.md; it is set to the vanilla stack size rather than
     // ItemBlueprint's default of 64, since KitGrantPlacer caps each placed stack by it.
@@ -86,9 +89,11 @@ public static class KitSeed
             new[] { (9, "Wooden Bow", 1), (10, "Arrow", 64) }),
     };
 
+    /// <param name="includeExamples">Seeding:IncludeExamples. False skips <see cref="ExampleTag"/>; the kits are real.</param>
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
         ILogger? logger = null,
+        bool includeExamples = true,
         CancellationToken cancellationToken = default)
     {
         var created = new Dictionary<string, int>();
@@ -115,7 +120,7 @@ public static class KitSeed
         var tags = ByKey(await context.Tags.ToListAsync(cancellationToken), t => t.Name, t => t.Id);
         foreach (var name in Tags)
         {
-            if (tags.ContainsKey(name)) continue;
+            if (tags.ContainsKey(name) || (!includeExamples && name == ExampleTag)) continue;
             var tag = new Tag { Name = name };
             context.Tags.Add(tag);
             tags[name] = tag;

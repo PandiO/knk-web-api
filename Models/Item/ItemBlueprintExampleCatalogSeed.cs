@@ -52,8 +52,18 @@ public static class ItemBlueprintExampleCatalogSeed
         ("Sack of Flour", "A sack of finely milled flour."),
     };
 
-    public static async Task SeedCanonicalAsync(KnKDbContext context, ILogger? logger = null, CancellationToken cancellationToken = default)
+    /// <summary>The 18 trade-good names, the natural keys of every row this seed creates.</summary>
+    public static IReadOnlyList<string> Names { get; } = CanonicalCatalog.Select(c => c.Name).ToArray();
+
+    /// <param name="includeExamples">Seeding:IncludeExamples. Every row here is an example, so false seeds nothing.</param>
+    public static async Task SeedCanonicalAsync(KnKDbContext context, ILogger? logger = null, bool includeExamples = true, CancellationToken cancellationToken = default)
     {
+        if (!includeExamples)
+        {
+            logger?.LogInformation("ItemBlueprint example catalog seed skipped (Seeding:IncludeExamples is false)");
+            return;
+        }
+
         var existingNames = await context.ItemBlueprints
             .Select(b => b.Name)
             .ToListAsync(cancellationToken);
