@@ -318,21 +318,23 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<KnKDbContext>();
     var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+    // Seeding:IncludeExamples=false (the closed alpha) skips the example menus, lobby, trade goods and Test tag.
+    var includeExamples = knkwebapi_v2.Configuration.SeedingOptions.From(app.Configuration).IncludeExamples;
     var seedLogger = loggerFactory.CreateLogger("AbilityDefinitionCanonicalSeed");
     await knkwebapi_v2.Models.AbilityDefinition.SeedCanonicalAsync(dbContext, seedLogger);
 
     var itemBlueprintCatalogSeedLogger = loggerFactory.CreateLogger("ItemBlueprintExampleCatalogSeed");
-    await knkwebapi_v2.Models.ItemBlueprintExampleCatalogSeed.SeedCanonicalAsync(dbContext, itemBlueprintCatalogSeedLogger);
+    await knkwebapi_v2.Models.ItemBlueprintExampleCatalogSeed.SeedCanonicalAsync(dbContext, itemBlueprintCatalogSeedLogger, includeExamples);
 
     var menuSeedLogger = loggerFactory.CreateLogger("MenuTemplateSeed");
-    await knkwebapi_v2.Models.MenuTemplateSeed.SeedCanonicalAsync(dbContext, menuSeedLogger);
+    await knkwebapi_v2.Models.MenuTemplateSeed.SeedCanonicalAsync(dbContext, menuSeedLogger, includeExamples);
 
     // KNG-200 phase 2: normalise material keys, fill display names and link block refs to their material
     // before the item seeds look materials up by key. Idempotent; GET api/MinecraftCatalog/audit lists what it left.
     await scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Interfaces.IMinecraftCatalogMaintenanceService>().BackfillAsync();
 
     var kitSeedLogger = loggerFactory.CreateLogger("KitSeed");
-    await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, kitSeedLogger);
+    await knkwebapi_v2.Models.KitSeed.SeedCanonicalAsync(dbContext, kitSeedLogger, includeExamples);
 
     // After KitSeed, so on a fresh DB the kit's own "Iron Sword"/"Arrow" rows win the shared names.
     var v1BlueprintSeedLogger = loggerFactory.CreateLogger("ItemBlueprintV1Seed");
@@ -349,7 +351,7 @@ using (var scope = app.Services.CreateScope())
 
     // Siege Phase 9: one disabled example lobby (create-only by key).
     var siegeLobbySeedLogger = loggerFactory.CreateLogger("SiegeLobbySeed");
-    await knkwebapi_v2.Models.SiegeLobbySeed.SeedCanonicalAsync(dbContext, siegeLobbySeedLogger);
+    await knkwebapi_v2.Models.SiegeLobbySeed.SeedCanonicalAsync(dbContext, siegeLobbySeedLogger, includeExamples);
 }
 
 app.Run();

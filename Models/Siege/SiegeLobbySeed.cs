@@ -16,8 +16,15 @@ public static class SiegeLobbySeed
 {
     public const string ExampleKey = "example";
 
-    public static async Task SeedCanonicalAsync(KnKDbContext context, ILogger? logger = null, CancellationToken cancellationToken = default)
+    /// <param name="includeExamples">Seeding:IncludeExamples. The lobby is an example, so false seeds nothing.</param>
+    public static async Task SeedCanonicalAsync(KnKDbContext context, ILogger? logger = null, bool includeExamples = true, CancellationToken cancellationToken = default)
     {
+        if (!includeExamples)
+        {
+            logger?.LogInformation("SiegeLobby seed skipped (Seeding:IncludeExamples is false)");
+            return;
+        }
+
         if (await context.SiegeLobbies.AnyAsync(l => l.Key == ExampleKey, cancellationToken))
         {
             return;

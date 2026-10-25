@@ -20,12 +20,20 @@ namespace knkwebapi_v2.Models;
 /// </summary>
 public static partial class MenuTemplateSeed
 {
-    public static async Task SeedCanonicalAsync(KnKDbContext context, ILogger? logger = null, CancellationToken cancellationToken = default)
+    /// <summary>Key prefix of the demo templates (smoke tests of the menu engine, not game content).</summary>
+    public const string ExampleKeyPrefix = "example.";
+
+    public static bool IsExampleKey(string key) => key.StartsWith(ExampleKeyPrefix, StringComparison.Ordinal);
+
+    /// <param name="includeExamples">Seeding:IncludeExamples. False skips the <see cref="ExampleKeyPrefix"/> templates.</param>
+    public static async Task SeedCanonicalAsync(KnKDbContext context, ILogger? logger = null, bool includeExamples = true, CancellationToken cancellationToken = default)
     {
         var created = 0;
 
         foreach (var template in CanonicalTemplates())
         {
+            if (!includeExamples && IsExampleKey(template.Key)) continue;
+
             var exists = await context.MenuTemplates.AnyAsync(m => m.Key == template.Key, cancellationToken);
             if (exists) continue;
 
