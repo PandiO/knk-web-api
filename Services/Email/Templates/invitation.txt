@@ -6,4 +6,10 @@ Create your account with this link:
 
 {{inviteUrl}}
 
+What happens next:
+1. Choose a password on that page. Your account is created right away.
+{{#accessGate}}2. The site is protected by Cloudflare. On the next screen Cloudflare asks for your email: enter this address, and Cloudflare emails you a 6-digit code (sender: Cloudflare, not Knights & Kings; check spam). Enter it and you're in on that device for 30 days.
+3. Join the Minecraft server (Java or Bedrock). It shows you a code on screen; enter that code on the website to link your Minecraft account, then join again.
+{{/accessGate}}{{^accessGate}}2. Join the Minecraft server (Java or Bedrock). It shows you a code on screen; enter that code on the website to link your Minecraft account, then join again.
+{{/accessGate}}
 The invitation is valid until {{expiresAt}}. If you weren't expecting it, you can ignore this email.

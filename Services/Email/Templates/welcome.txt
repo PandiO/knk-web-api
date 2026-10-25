@@ -1,7 +1,9 @@
 Hi {{username}},
 
 Welcome to Knights & Kings! Your account is ready.
-
+{{#accessGate}}
+Opening the site for the first time on a device: Cloudflare asks for your email and emails you a 6-digit code (sender: Cloudflare, not Knights & Kings; check spam). Enter it and you're in for 30 days.
+{{/accessGate}}
 One step left: link your Minecraft account so you can join the server. Follow the steps here:
 
 {{linkUrl}}

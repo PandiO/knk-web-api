@@ -2,4 +2,10 @@
 <p>{{inviterName}} invited you to Knights &amp; Kings, a medieval Minecraft server.</p>
 <p style="margin:24px 0;"><a href="{{inviteUrl}}" style="display:inline-block;padding:10px 20px;background:#8b2e1f;color:#ffffff;text-decoration:none;border-radius:4px;">Create my account</a></p>
 <p style="font-size:13px;color:#7a6a58;">Or open this link: <a href="{{inviteUrl}}" style="color:#8b2e1f;word-break:break-all;">{{inviteUrl}}</a></p>
+<p><strong>What happens next</strong></p>
+<ol style="padding-left:20px;">
+<li>Choose a password on that page. Your account is created right away.</li>
+{{#accessGate}}<li>The site is protected by <strong>Cloudflare</strong>. On the next screen Cloudflare asks for your email: enter this address, and Cloudflare emails you a <strong>6-digit code</strong> (sender: Cloudflare, not Knights &amp; Kings; check spam). Enter it and you're in on that device for 30 days.</li>
+{{/accessGate}}<li>Join the Minecraft server (Java or Bedrock). It shows you a code on screen; enter that code on the website to link your Minecraft account, then join again.</li>
+</ol>
 <p>The invitation is valid until {{expiresAt}}. If you weren't expecting it, you can ignore this email.</p>

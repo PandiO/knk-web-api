@@ -138,6 +138,53 @@ public class EmailTemplateRendererTests
     }
 
     [Fact]
+    public void Sections_KeepOrDropTheirBlock_ByTheValue()
+    {
+        var r = Renderer(strict: true);
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["on"] = "True", ["off"] = "false", ["zero"] = "0", ["url"] = "https://x" };
+
+        Assert.Equal("a[yes]b", r.Fill("a{{#on}}[yes]{{/on}}b", values, false, "t"));
+        Assert.Equal("ab", r.Fill("a{{#off}}[yes]{{/off}}b", values, false, "t"));
+        Assert.Equal("a[no]b", r.Fill("a{{^off}}[no]{{/off}}b", values, false, "t"));
+        Assert.Equal("ab", r.Fill("a{{#zero}}[yes]{{/zero}}b", values, false, "t"));
+        Assert.Equal("a[https://x]b", r.Fill("a{{#url}}[{{url}}]{{/url}}b", values, false, "t"));
+        // A placeholder inside a dropped block is never looked up, so it needs no value.
+        Assert.Equal("ab", r.Fill("a{{#off}}{{missing}}{{/off}}b", values, false, "t"));
+        Assert.Equal("a\n[x]\nb", r.Fill("a\n{{#on}}[x]\n{{/on}}b", values, false, "t"));
+        Assert.Throws<EmailTemplateException>(() => r.Fill("{{#unknown}}x{{/unknown}}", values, false, "t"));
+        Assert.Equal("", Renderer(strict: false).Fill("{{#unknown}}x{{/unknown}}", values, false, "t"));
+    }
+
+    [Theory]
+    [InlineData(EmailKind.Invitation)]
+    [InlineData(EmailKind.Welcome)]
+    [InlineData(EmailKind.FinishLinking)]
+    [InlineData(EmailKind.PasswordReset)]
+    public void OnboardingMails_ExplainTheCloudflareStep_OnlyWithTheAccessGate(EmailKind kind)
+    {
+        var model = EmailTestDb.SampleModel(kind);
+
+        var off = new EmailTemplateRenderer(new EmailSettings(), "https://knk.example", strict: true).Render(kind, model);
+        var on = new EmailTemplateRenderer(new EmailSettings(), "https://knk.example", strict: true, accessGate: true).Render(kind, model);
+
+        Assert.DoesNotContain("Cloudflare", off.TextBody);
+        Assert.DoesNotContain("Cloudflare", off.HtmlBody);
+        Assert.Contains("Cloudflare", on.TextBody);
+        Assert.Contains("6-digit code", on.TextBody);
+        Assert.Contains("Cloudflare", on.HtmlBody);
+        Assert.DoesNotContain("{{", on.TextBody);
+        Assert.DoesNotContain("{{", off.HtmlBody);
+    }
+
+    [Fact]
+    public void AccessGate_FromTheModel_WinsOverTheSetting()
+    {
+        var model = new { username = "Steve", linkUrl = "https://knk.example/account/link", accessGate = true };
+        var mail = new EmailTemplateRenderer(new EmailSettings(), "https://knk.example", strict: true, accessGate: false).Render(EmailKind.Welcome, model);
+        Assert.Contains("Cloudflare", mail.TextBody);
+    }
+
+    [Fact]
     public void EveryKind_HasBothTemplates_AndRendersItsModel()
     {
         foreach (var kind in EmailKinds.Every)

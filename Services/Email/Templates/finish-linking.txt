@@ -3,3 +3,6 @@ Hi {{username}},
 Your Knights & Kings account isn't linked to a Minecraft account yet, so you can't join the server. It takes a minute:
 
 {{linkUrl}}
+{{#accessGate}}
+If the site asks for your email first, that's Cloudflare: it emails you a 6-digit code (sender: Cloudflare, not Knights & Kings; check spam). Enter it and you're in for 30 days.
+{{/accessGate}}
