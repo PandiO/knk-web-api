@@ -10,38 +10,6 @@ namespace knkwebapi_v2.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "CreatedEntitiesJson",
-                table: "FormSubmissionProgresses",
-                type: "longtext",
-                nullable: true,
-                collation: "utf8mb4_general_ci")
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.AddColumn<bool>(
-                name: "CanCreate",
-                table: "FormFields",
-                type: "tinyint(1)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "IncrementValue",
-                table: "FormFields",
-                type: "int",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "MaxSelection",
-                table: "FormFields",
-                type: "int",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "MinSelection",
-                table: "FormFields",
-                type: "int",
-                nullable: true);
-
             migrationBuilder.CreateTable(
                 name: "arenas",
                 columns: table => new
@@ -286,26 +254,6 @@ VALUES
 
             migrationBuilder.DropTable(
                 name: "arenas");
-
-            migrationBuilder.DropColumn(
-                name: "CreatedEntitiesJson",
-                table: "FormSubmissionProgresses");
-
-            migrationBuilder.DropColumn(
-                name: "CanCreate",
-                table: "FormFields");
-
-            migrationBuilder.DropColumn(
-                name: "IncrementValue",
-                table: "FormFields");
-
-            migrationBuilder.DropColumn(
-                name: "MaxSelection",
-                table: "FormFields");
-
-            migrationBuilder.DropColumn(
-                name: "MinSelection",
-                table: "FormFields");
         }
     }
 }
