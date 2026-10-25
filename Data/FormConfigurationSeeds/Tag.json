@@ -1,0 +1,27 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "f32c27f8-6b5f-521d-a692-0157bdaf0ed2",
+  "entityTypeName": "Tag",
+  "name": "Tag - Default (seed v1)",
+  "description": "A label for item blueprints and categories (e.g. Melee, Legacy v1). Picked on the Tags step of the item blueprint and category forms.",
+  "steps": [
+    {
+      "stepGuid": "eef56774-92f4-529e-8941-5fb1a3387b80",
+      "stepName": "Tag",
+      "description": "Name the label. Most tags only help admins group and find items; the tag \"Lootbox Special\" also changes how lootboxes treat an item.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a9c032d1-3db4-5b4a-882b-c0097ee07994",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Keep names unique. Items tagged \"Lootbox Special\" are left out of normal lootbox pools and drop only through a lootbox special entry, so don't rename that tag.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

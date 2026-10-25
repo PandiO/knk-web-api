@@ -175,7 +175,8 @@ namespace knkwebapi_v2.Services
                 {
                     ConditionType = c.ConditionType == "CompletionCondition" ? "Completion" : "Entry",
                     ConditionJson = c.ConditionLogicJson,
-                    ErrorMessage = c.ErrorMessage
+                    ErrorMessage = c.ErrorMessage,
+                    IsActive = c.IsActive ? null : false
                 }).ToList(),
                 DisplayConditionGroups = ExportGroups(step.DisplayConditionGroups),
                 Fields = FormOrdering.OrderFields(step).Select(f => ExportField(f, step, refsById, notes)).ToList(),
@@ -218,7 +219,8 @@ namespace knkwebapi_v2.Services
                 {
                     ValidationType = v.Type,
                     ParametersJson = v.ParametersJson,
-                    ErrorMessage = v.ErrorMessage
+                    ErrorMessage = v.ErrorMessage,
+                    IsActive = v.IsActive ? null : false
                 }).ToList(),
                 DisplayConditionGroups = ExportGroups(field.DisplayConditionGroups)
             };
@@ -472,7 +474,8 @@ namespace knkwebapi_v2.Services
                 {
                     ConditionType = type == "Completion" ? "CompletionCondition" : "StartCondition",
                     ConditionLogicJson = string.IsNullOrWhiteSpace(condition.ConditionJson) ? "{}" : condition.ConditionJson!,
-                    ErrorMessage = BlankToNull(condition.ErrorMessage)
+                    ErrorMessage = BlankToNull(condition.ErrorMessage),
+                    IsActive = condition.IsActive ?? true
                 });
             }
 
@@ -538,7 +541,8 @@ namespace knkwebapi_v2.Services
                 {
                     Type = validation.ValidationType,
                     ParametersJson = string.IsNullOrWhiteSpace(validation.ParametersJson) ? "{}" : validation.ParametersJson!,
-                    ErrorMessage = BlankToNull(validation.ErrorMessage)
+                    ErrorMessage = BlankToNull(validation.ErrorMessage),
+                    IsActive = validation.IsActive ?? true
                 });
             }
 

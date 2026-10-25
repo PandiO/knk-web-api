@@ -29,6 +29,10 @@ public class SiegeLobby
     public int VoteCandidateCount { get; set; } = 2;
     public bool AllowRandomVote { get; set; } = true;
 
+    // KNG-234: whether this lobby's players get the navigation compass at the hub. Inherit follows the
+    // scenario being played, then the global SiegeConfiguration.GiveNavigationItem.
+    public SiegeNavigationItemMode NavigationItem { get; set; } = SiegeNavigationItemMode.Inherit;
+
     // Reserved for Scheduled mode (Phase 10); null for Continuous.
     public string? ScheduleJson { get; set; }
 

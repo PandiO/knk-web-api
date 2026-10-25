@@ -64,6 +64,18 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("enchantmentNamespaceKey")]
         public string? EnchantmentNamespaceKey { get; set; }
 
+        // KNG-195: the web app's hybrid enchantment picker (and an Object picker on MinecraftEnchantmentRef)
+        // names the key after the form field (MinecraftEnchantmentRefId -> MinecraftEnchantmentRefNamespaceKey).
+        // Write-only alias of enchantmentNamespaceKey, so a catalog enchantment that isn't saved yet (sent
+        // with id 0) is linked instead of dropped.
+        [JsonPropertyName("minecraftEnchantmentRefNamespaceKey")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MinecraftEnchantmentRefNamespaceKey
+        {
+            get => null;
+            set { if (!string.IsNullOrWhiteSpace(value)) EnchantmentNamespaceKey = value; }
+        }
+
         [JsonPropertyName("abilityDefinition")]
         public AbilityDefinitionUpsertDto? AbilityDefinition { get; set; }
     }
@@ -98,8 +110,33 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("enchantmentNamespaceKey")]
         public string? EnchantmentNamespaceKey { get; set; }
 
+        // KNG-195: the web app's hybrid enchantment picker (and an Object picker on MinecraftEnchantmentRef)
+        // names the key after the form field (MinecraftEnchantmentRefId -> MinecraftEnchantmentRefNamespaceKey).
+        // Write-only alias of enchantmentNamespaceKey, so a catalog enchantment that isn't saved yet (sent
+        // with id 0) is linked instead of dropped.
+        [JsonPropertyName("minecraftEnchantmentRefNamespaceKey")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MinecraftEnchantmentRefNamespaceKey
+        {
+            get => null;
+            set { if (!string.IsNullOrWhiteSpace(value)) EnchantmentNamespaceKey = value; }
+        }
+
+        // KNG-195: the web form never sends abilityDefinition, and treating "absent" as null deleted a
+        // custom enchantment's ability on every save. The service now only writes it when the request
+        // contained it (explicit null still removes it): System.Text.Json calls a setter only for
+        // properties present in the JSON. Same pattern as GradeUpdateDto.
+        private AbilityDefinitionUpsertDto? _abilityDefinition;
+
         [JsonPropertyName("abilityDefinition")]
-        public AbilityDefinitionUpsertDto? AbilityDefinition { get; set; }
+        public AbilityDefinitionUpsertDto? AbilityDefinition
+        {
+            get => _abilityDefinition;
+            set { _abilityDefinition = value; HasAbilityDefinition = true; }
+        }
+
+        [JsonIgnore]
+        public bool HasAbilityDefinition { get; private set; }
     }
 
     // List DTO - For search/list views

@@ -1,0 +1,9 @@
+Hi,
+
+{{inviterName}} invited you to Knights & Kings, a medieval Minecraft server.
+
+Create your account with this link:
+
+{{inviteUrl}}
+
+The invitation is valid until {{expiresAt}}. If you weren't expecting it, you can ignore this email.

@@ -17,8 +17,9 @@ namespace knkwebapi_v2.Dtos
         public string? ParametersJson { get; set; }
         [JsonPropertyName("errorMessage")]
         public string? ErrorMessage { get; set; }
+        /// <summary>Absent in the request = active (KNG-186).</summary>
         [JsonPropertyName("isActive")]
-        public bool IsActive { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 
     public class StepConditionDto
@@ -34,8 +35,9 @@ namespace knkwebapi_v2.Dtos
         public string ConditionJson { get; set; } = "{}";
         [JsonPropertyName("errorMessage")]
         public string? ErrorMessage { get; set; }
+        /// <summary>Absent in the request = active (KNG-186).</summary>
         [JsonPropertyName("isActive")]
-        public bool IsActive { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 
     public class FormFieldDto
@@ -160,8 +162,6 @@ namespace knkwebapi_v2.Dtos
         public bool IsDefault { get; set; }
         [JsonPropertyName("stepOrderJson")]
         public string? StepOrderJson { get; set; }
-        [JsonPropertyName("isActive")]
-        public bool IsActive { get; set; }
         [JsonPropertyName("createdAt")]
         public string? CreatedAt { get; set; }
         [JsonPropertyName("updatedAt")]

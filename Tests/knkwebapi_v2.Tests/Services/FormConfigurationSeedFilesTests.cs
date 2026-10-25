@@ -129,6 +129,15 @@ public class FormConfigurationSeedFilesTests
         ["SiegeScenarioGate"] = new() { ["SiegeScenarioId"] = "set by the scenario's Gates step (join entry)" },
         ["SiegeLobbyScenario"] = new() { ["SiegeLobbyId"] = "set by the lobby's Rotation step (join entry)" },
         ["ArenaKit"] = new() { ["ArenaId"] = "set by the arena's Eligible kits step (join entry)" },
+        ["CategoryTag"] = new() { ["CategoryId"] = "set by the category's Tags step (join entry)" },
+        ["ItemBlueprintDefaultEnchantment"] = new() { ["ItemBlueprintId"] = "set by the blueprint's Default enchantments step (join entry)" },
+        ["ItemBlueprintOrigin"] = new() { ["ItemBlueprintId"] = "set by the blueprint's Origins step (join entry)" },
+        ["ItemBlueprintTag"] = new() { ["ItemBlueprintId"] = "set by the blueprint's Tags step (join entry)" },
+        ["KitContent"] = new() { ["KitId"] = "set by the kit's Contents step (join entry)" },
+        ["LootboxTypeGradeWeight"] = new() { ["LootboxTypeId"] = "set by the box type's Box grades step (join entry)" },
+        ["LootboxPoolEntry"] = new() { ["LootboxTypeId"] = "set by the box type's Pool step (join entry)" },
+        ["LootboxEnchantRoll"] = new() { ["LootboxTypeId"] = "set by the box type's Enchant rolls step (join entry)" },
+        ["LootboxSpawnAreaType"] = new() { ["LootboxSpawnAreaId"] = "set by the spawn area's Allowed types step (join entry)" },
         // GateDoorMappingProfile maps a missing value to "" for this one; a form field would have to be required
         // (FormTemplateValidationService doesn't see the "= string.Empty" initialiser), and empty is the normal value.
         // ScanMaterialWhitelist/ScanMaterialBlacklist carry [DefaultValue("")] since KNG-193, so the whitelist is an

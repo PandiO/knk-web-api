@@ -53,6 +53,18 @@ public class AbilityDefinition
             },
             new()
             {
+                EnchantmentKey = "cleaving",
+                AbilityKey = "cleaving",
+                MaxLevel = 4,
+                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"GATE_HIT\",\"gateDamageBonusPerLevel\":0.25,\"chargedHitMultiplierPerLevel\":[5,6,7,8],\"chargedCooldownSecondsPerLevel\":[60,50,40,30]}",
+                FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
+                AdminUsage = "Attach to custom EnchantmentDefinition entries for a gate-breaking weapon (siege playtest 2026-10-24). The numbers live in knk-plugin's config.yml (gates.cleaving).",
+                PlayerUsage = "Hit a gate door for extra damage; right-click a gate door for a charged strike, then wait for the cooldown.",
+                EffectSummary = "Gate hits x1.25/x1.5/x1.75/x2 by level; charged right-click strike of 5/6/7/8 such hits (netherite sword: 50/72/98/128 of a 500 HP gate). Cooldown: 60/50/40/30s.",
+                MatchAliases = new[] { "cleaving", "knk:cleaving" }
+            },
+            new()
+            {
                 EnchantmentKey = "confusion",
                 AbilityKey = "confusion",
                 MaxLevel = 3,
@@ -319,26 +331,31 @@ public class AbilityDefinition
         AbilityCatalogEntry entry)
     {
         var aliases = BuildAliasSet(entry);
-        return customEnchantments.FirstOrDefault(e => aliases.Contains(NormalizeKey(e.Key)));
+        return customEnchantments.FirstOrDefault(e => aliases.Contains(MatchKey(e.Key)));
     }
 
     private static HashSet<string> BuildAliasSet(AbilityCatalogEntry entry)
     {
         var aliases = new HashSet<string>(StringComparer.Ordinal)
         {
-            NormalizeKey(entry.EnchantmentKey),
-            NormalizeKey(entry.AbilityKey)
+            MatchKey(entry.EnchantmentKey),
+            MatchKey(entry.AbilityKey)
         };
 
         foreach (var alias in entry.MatchAliases)
         {
-            aliases.Add(NormalizeKey(alias));
+            aliases.Add(MatchKey(alias));
         }
 
         return aliases;
     }
 
-    private static string NormalizeKey(string value)
+    /// <summary>
+    /// The form custom-enchantment keys are compared in: no namespace, lower-case letters and digits only
+    /// (<c>knk:flash_chaos</c>, <c>flash_chaos</c> and <c>flashchaos</c> are equal). Also used by the
+    /// Minecraft catalogue scan to match old custom refs and definitions to scanned <c>knk:</c> keys (KNG-250).
+    /// </summary>
+    public static string MatchKey(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {

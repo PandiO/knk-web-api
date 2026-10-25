@@ -87,14 +87,38 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("experiencePoints")]
         public int ExperiencePoints { get; set; }
 
+        /// <summary>True once the address was proven (EmailVerifiedAt; a personal invite's link, KNG-212).</summary>
         [JsonPropertyName("emailVerified")]
         public bool EmailVerified { get; set; }
+
+        /// <summary>True when the account has a Minecraft UUID (KNG-212); a web shell from an invite has none
+        /// until it links (KNG-214).</summary>
+        [JsonPropertyName("minecraftLinked")]
+        public bool MinecraftLinked { get; set; }
+
+        /// <summary>True when the account may pass the game server's admission gate (AdmittedAt set:
+        /// grandfathered, invited, claim-linked or staff Admit, KNG-214). Read-only: the name doesn't
+        /// match User.AdmittedAt on purpose, so the generic edit can never write it.</summary>
+        [JsonPropertyName("admitted")]
+        public bool Admitted { get; set; }
 
         [JsonPropertyName("accountCreatedVia")]
         public AccountCreationMethod AccountCreatedVia { get; set; }
 
+        // KNG-195: like Gender and IsActive below, only written by PUT /api/users/{id} when the request
+        // contains it (System.Text.Json calls a setter only for properties present in the JSON), so a form
+        // without the field keeps the stored value instead of resetting it to the enum default.
+        private GatePassThroughMethod _gatePassThroughMethodDefault;
+
         [JsonPropertyName("gatePassThroughMethodDefault")]
-        public GatePassThroughMethod GatePassThroughMethodDefault { get; set; }
+        public GatePassThroughMethod GatePassThroughMethodDefault
+        {
+            get => _gatePassThroughMethodDefault;
+            set { _gatePassThroughMethodDefault = value; HasGatePassThroughMethodDefault = true; }
+        }
+
+        [JsonIgnore]
+        public bool HasGatePassThroughMethodDefault { get; private set; }
 
         [JsonPropertyName("activeMode")]
         public ActiveMode ActiveMode { get; set; }
@@ -186,9 +210,23 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lastSeenAt")]
         public DateTime? LastSeenAt { get; set; }
 
-        [JsonPropertyName("gender")]
-        public Gender? Gender { get; set; }
+        // Written on update only when sent (KNG-195); an explicit null still clears it.
+        private Gender? _gender;
 
+        [JsonPropertyName("gender")]
+        public Gender? Gender
+        {
+            get => _gender;
+            set { _gender = value; HasGender = true; }
+        }
+
+        [JsonIgnore]
+        public bool HasGender { get; private set; }
+
+        /// <summary>
+        /// Read-only here: set only through PUT /api/users/{id}/freeze and .../unfreeze (audited). The
+        /// generic update ignores both (KNG-195).
+        /// </summary>
         [JsonPropertyName("isFrozen")]
         public bool IsFrozen { get; set; }
 
@@ -201,8 +239,19 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("createdAt")]
         public string CreatedAt { get; set; } = DateTime.UtcNow.ToString("O");
 
+        // Written on update only when sent (KNG-195): a form without it must not deactivate the account
+        // (and end the player's sessions).
+        private bool _isActive;
+
         [JsonPropertyName("isActive")]
-        public bool IsActive { get; set; }
+        public bool IsActive
+        {
+            get => _isActive;
+            set { _isActive = value; HasIsActive = true; }
+        }
+
+        [JsonIgnore]
+        public bool HasIsActive { get; private set; }
     }
 
     /// <summary>

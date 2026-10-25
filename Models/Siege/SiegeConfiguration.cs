@@ -42,6 +42,12 @@ public class SiegeConfiguration
     // Seconds-remaining marks at which matchmaking is announced.
     public string MatchmakingAnnouncementMarks { get; set; } = "290,60,30,15";
 
+    // Playtest 2026-10-24 (DESIGN §11.1): seconds of matchmaking left after /siege skip (players with
+    // knk.siege.skip) and after /siege admin skip. The plugin never goes below VoteCloseSecondsBeforeStart + 1,
+    // so voting keeps its last second (the admin default is the legacy T-31).
+    public int PlayerSkipMatchmakingSeconds { get; set; } = 60;
+    public int AdminSkipMatchmakingSeconds { get; set; } = 31;
+
     // ---- Combat (§6.6–6.7) ----
     // Kill counts announced to the killer's team, and the streak above which streaks are announced.
     public string KillAnnouncementThresholds { get; set; } = "5,10,15";
@@ -71,6 +77,11 @@ public class SiegeConfiguration
 
     // ---- Non-member gate view (§8.5, D6) ----
     public SiegeNonMemberGateView NonMemberGateView { get; set; } = SiegeNonMemberGateView.PreLockdownView;
+
+    // ---- Navigation compass (KNG-234) ----
+    // Siege players get the navigation compass at the hub unless a scenario or lobby says otherwise.
+    // Off by default, so deploying the feature changes nothing until an admin turns it on.
+    public bool GiveNavigationItem { get; set; } = false;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

@@ -1,0 +1,133 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "faa805d4-3e0e-5fd2-87b7-5b2ff1c82759",
+  "entityTypeName": "User",
+  "name": "User - Default (seed v1)",
+  "description": "A player account (Minecraft, web or both). Accounts are created by the game when a player first joins, or by web sign-up; this form is for staff corrections such as deactivating an account. Balances, ranks, permissions, multipliers, freezes and staff modes have their own actions on the player's admin page.",
+  "steps": [
+    {
+      "stepGuid": "6e56593a-1cd2-5f83-a382-9fc8d4691ba7",
+      "stepName": "Account",
+      "description": "Who the account belongs to. The username and Minecraft UUID come from the game; change them only to correct a mistake.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "9e852d09-61b5-5536-b5af-70800270ec7e",
+          "fieldName": "Username",
+          "label": "Username",
+          "description": "The player's Minecraft name, shown in game and on the site. Must be unique across all accounts.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "48048511-d12a-59a1-9dfa-1ebf7f199c05",
+          "fieldName": "Uuid",
+          "label": "Minecraft UUID",
+          "description": "Set by the game server when the player first joins, and fixed after that. Empty for a web account whose player hasn't joined yet.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "b28928f2-33ca-5b57-8b14-d0b288709425",
+          "fieldName": "Email",
+          "label": "Email",
+          "placeholder": "player@example.com",
+          "description": "The web login address; empty for a Minecraft-only account. Saving an edit needs one (the API refuses an edit without it), and changing it signs the player out of the web app everywhere.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "57cc2f1b-b406-5272-a9a5-a4cd75a5eee8",
+          "fieldName": "IsActive",
+          "label": "Account active",
+          "description": "Untick to deactivate the account: the player can't log in to the web app, every session ends, they can't send or receive payments and they drop off leaderboards. Tick again to restore it.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "be0f4e79-b6e7-56de-8576-252d0ce132d5",
+      "stepName": "Game preferences",
+      "description": "Choices that change how the game treats this player. The player can also change the gate method in game.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "6d584b0d-5201-588d-b87f-470e685c86e7",
+          "fieldName": "Gender",
+          "label": "Gender",
+          "description": "Picks the male or female name of the player's title in chat and menus. Empty = the male name.",
+          "fieldType": "Enum",
+          "enumType": "Gender",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Male\", \"Female\"]}"
+        },
+        {
+          "fieldGuid": "268887aa-ef58-5535-976a-474531d42077",
+          "fieldName": "GatePassThroughMethodDefault",
+          "label": "Gate pass-through",
+          "description": "What happens when the player right-clicks a closed gate that allows passing through: Default opens the gate for its pass-through time, InstantOpen removes only the blocks in their way (needs knk.gate.passthrough.instant), Teleport puts them on the other side. In game: /knk gate passthrough.",
+          "fieldType": "Enum",
+          "enumType": "GatePassThroughMethod",
+          "defaultValue": "Default",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Default\", \"InstantOpen\", \"Teleport\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "48e2dede-d1ad-548d-8f7b-9a57bd0a9533",
+      "stepName": "Account status",
+      "description": "For reference only: these are kept as they are when you save. Freeze or unfreeze a player from their admin page or with /freeze in game, which records who did it and why.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "02a47f66-49ae-5d7f-b1d8-9996dbedd849",
+          "fieldName": "AccountCreatedVia",
+          "label": "Created via",
+          "description": "Where the account was first created: web sign-up or the player's first join on the Minecraft server. Used for statistics and account recovery.",
+          "fieldType": "Enum",
+          "enumType": "AccountCreationMethod",
+          "isRequired": false,
+          "isReadOnly": true,
+          "settingsJson": "{\"enumValues\": [\"WebApp\", \"MinecraftServer\"]}"
+        },
+        {
+          "fieldGuid": "81bfc3b7-2d8e-571d-9b3f-ec60848b5f57",
+          "fieldName": "EmailVerified",
+          "label": "Email verified",
+          "description": "Whether the player has confirmed their email address. Email verification isn't built yet, so this is normally off.",
+          "fieldType": "Boolean",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "f2ba377a-13db-5d9d-8d02-e1bea3bc9d1e",
+          "fieldName": "IsFrozen",
+          "label": "Frozen",
+          "description": "A frozen player can't move, chat, use commands or take damage in game until staff unfreeze them, and can't send payments.",
+          "fieldType": "Boolean",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "b4ac04f2-29ca-5b66-8303-a5b07cc1c7b8",
+          "fieldName": "FrozenReason",
+          "label": "Freeze reason",
+          "description": "The reason staff gave when freezing the player. Empty when the player isn't frozen.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -1,3 +1,4 @@
+using knkwebapi_v2.Models;
 using System.Reflection;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
@@ -123,6 +124,21 @@ public class WorldAnalyticsIngestionServiceTests : IDisposable
         Assert.Equal(1, result.Accepted);
         Assert.Equal(new[] { (1, "UnknownRegion"), (2, "MissingDomain") }, result.Rejected.Select(r => (r.Index, r.Code)));
         Assert.All(result.Rejected, r => Assert.Equal(WorldAnalyticsIngestionService.DomainSection, r.Section));
+        Assert.Equal(8, _db.NewContext().DomainInteractionDailies.Single().DomainId);
+    }
+
+    [Fact]
+    public async Task ASubRegionsInteractionsCountForItsDomain()
+    {
+        // KNG-256: a domain's sub-region (KNG-254) is the domain.
+        _db.Context.DomainSubRegions.Add(new DomainSubRegion { Id = 1, DomainId = 8, WgRegionId = "domain_8_sub_1" });
+        _db.Context.SaveChanges();
+        var batch = WorldAnalyticsTestDb.Batch();
+        batch.DomainInteractions!.Add(WorldAnalyticsTestDb.Domain("enter", 2, 1, regionId: "Domain_8_Sub_1"));
+
+        var result = await _db.Ingestion().IngestAsync(batch);
+
+        Assert.Equal(1, result.Accepted);
         Assert.Equal(8, _db.NewContext().DomainInteractionDailies.Single().DomainId);
     }
 

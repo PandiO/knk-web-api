@@ -30,7 +30,7 @@ repo root:
 dotnet user-secrets set "ConnectionStrings:MySqlDbConnection" "Server=localhost;Database=knightsandkings_dev_v2;User=<user>;Password=<password>;Allow User Variables=True"
 dotnet user-secrets set "Security:Jwt:Secret" "<output of: openssl rand -base64 48>"
 dotnet user-secrets set "Security:PluginApiKey" "<output of: openssl rand -hex 32, same as the plugin's api.auth.api-key>"
-dotnet user-secrets set "Email:SmtpPassword" "<smtp app password, only with Email:Provider=Smtp>"
+dotnet user-secrets set "Email:SmtpPassword" "<smtp app password, only with Email:Transport=Smtp and Email:SmtpUsername set>"
 ```
 
 Environment variables (`ConnectionStrings__MySqlDbConnection`, `Security__Jwt__Secret`, …)
@@ -100,8 +100,9 @@ the closed-alpha plan § 7 in knk-workspace for every key.
   set `ForwardedHeaders:Enabled` or every player shares one budget.
 - No API versioning in place — routes follow the plain `api/[controller]`
   convention; no `Asp.Versioning`/`[ApiVersion]` usage found
-- Observability: OpenTelemetry is wired in (see `OBSERVABILITY.md`),
-  Prometheus metrics exposed at `/metrics`
+- Observability: OpenTelemetry is wired in (see `OBSERVABILITY.md`). A Prometheus
+  `/metrics` endpoint exists since KNG-232 but is **off by default** and needs
+  `Telemetry__Prometheus__Enabled` + a bearer token (`Telemetry__Prometheus__BearerToken`)
 
 **Talks to:** `knk-web-app` (browser clients with JWT bearer tokens) and
 `knk-plugin` (REST through `knk-api-client`; protected service routes use

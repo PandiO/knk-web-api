@@ -4,8 +4,12 @@ using System.Text.Json.Serialization;
 
 namespace knkwebapi_v2.Dtos
 {
-    public class DistrictDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
+    public class DistrictDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto, IDomainNameDto
     {
+        // KNG-254: the domain's sub-regions, read-only here (edited through api/DomainSubRegions, the form's owned list).
+        [JsonPropertyName("subRegions")]
+        public List<DomainSubRegionDto>? SubRegions { get; set; }
+
         [JsonPropertyName("id")]
         public int? Id { get; set; }
 

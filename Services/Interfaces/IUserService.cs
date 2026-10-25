@@ -174,14 +174,40 @@ namespace knkwebapi_v2.Services
         Task<UserDto> MergeAccountsAsync(int primaryUserId, int secondaryUserId);
 
         /// <summary>
-        /// Link an authenticated web app user to a Minecraft account using a link code.
-        /// Used in the web-app-first flow where user already has email/password.
-        /// Handles duplicate detection and optional merge if account already exists.
+        /// Links the logged-in web account to the Minecraft account a link code (or, from KNG-214,
+        /// a claim code) stands for; invitations DESIGN § 5.4 (decision I7, KNG-207):
+        /// <list type="bullet">
+        /// <item>case A, no account has the UUID: the web account gets the UUID and name;</item>
+        /// <item>case B, a Minecraft account has the UUID: the web account is folded into it
+        /// (credentials move, the shell is soft-deleted and signed out) and the Minecraft account
+        /// is the survivor, so <see cref="LinkMinecraftAccountResult.User"/> is a different id than
+        /// <paramref name="userId"/> and the caller needs a new session;</item>
+        /// <item>refused with <see cref="LinkConflictException"/> when that account already has a
+        /// web login (AlreadyRegistered) or the caller is linked to another UUID (AlreadyLinked);</item>
+        /// <item>refused with <see cref="LinkAttemptsExceededException"/> after too many wrong codes.</item>
+        /// </list>
+        /// A wrong code throws <see cref="InvalidOperationException"/> and counts against the limiter.
         /// </summary>
         /// <param name="userId">Authenticated user ID (from JWT)</param>
         /// <param name="linkCode">Link code from Minecraft</param>
-        /// <returns>Updated user with linked UUID</returns>
-        Task<UserDto> LinkMinecraftAccountAsync(int userId, string linkCode);
+        Task<LinkMinecraftAccountResult> LinkMinecraftAccountAsync(int userId, string linkCode);
+
+        /// <summary>True when an active, non-deleted account with this UUID is admitted (KNG-214).</summary>
+        Task<bool> IsUuidAdmittedAsync(string uuid);
+
+        /// <summary>
+        /// Staff "Admit" (KNG-214): sets AdmittedAt and audits PlayerAdmitted. Already admitted →
+        /// unchanged (Changed false, no audit entry). Unknown or deleted → KeyNotFoundException.
+        /// </summary>
+        Task<(UserDto User, bool Changed)> AdmitAsync(int userId, int? actorUserId);
+
+        /// <summary>
+        /// Staff "Detach web login" (KNG-214, DESIGN § 5.5): clears Email, PasswordHash and the
+        /// verification and password-change stamps, revokes the sessions and audits
+        /// MinecraftUnlinked. The Minecraft account and its data stay; the owner can register again
+        /// with /account link. LinkConflictException NotLinked (no UUID) or NoWebLogin.
+        /// </summary>
+        Task<UserDto> DetachWebLoginAsync(int userId, int? actorUserId);
 
         /// <summary>
         /// Closed-alpha hardening WP5.3: when a web-only account (no Minecraft UUID) holds

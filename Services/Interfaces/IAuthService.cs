@@ -46,6 +46,13 @@ namespace knkwebapi_v2.Services
         Task<AuthRegisterOutcome> RegisterAsync(AuthRegisterRequestDto request, string? clientIp = null, string? userAgent = null);
 
         /// <summary>
+        /// A fresh login session (no "remember me") for an account the caller was just folded into
+        /// (link-minecraft-account case B, KNG-207): the same tokens Register issues. Null when
+        /// the account doesn't exist or can't log in.
+        /// </summary>
+        Task<AuthLoginResponseDto?> StartSessionAsync(int userId, string? clientIp = null, string? userAgent = null);
+
+        /// <summary>
         /// Get the current authenticated user by ID.
         /// </summary>
         /// <param name="userId">Authenticated user ID</param>

@@ -38,6 +38,15 @@ namespace knkwebapi_v2.Services
         /// their type, or whose rename failed). Parents go first, so a child's region is set up under its parent's final name.
         /// </summary>
         Task<TempRegionFinalizeResult> FinalizeAllAsync();
+
+        /// <summary>
+        /// KNG-254: gives a domain sub-region its final name <c>domain_&lt;domainId&gt;_sub_&lt;id&gt;</c> after it is saved,
+        /// as <see cref="FinalizeAsync(Domain, string?)"/> does for the main region: a temp-named region drawn through its
+        /// world task, or an existing region adopted with "select", is renamed and set up by the plugin as a copy of the
+        /// domain's main region. <paramref name="previousRegionId"/> is the sub-region's WgRegionId before this save, for
+        /// a re-run of its world task (replaced like KNG-103). Never throws.
+        /// </summary>
+        Task<bool> FinalizeSubRegionAsync(DomainSubRegion subRegion, string? previousRegionId);
     }
 
     public sealed record TempRegionFinalizeResult(int Found, int Renamed, IReadOnlyList<string> Failed);
@@ -57,10 +66,38 @@ namespace knkwebapi_v2.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// KNG-269: the domain's region is a new shape now, so every stored validation result that was
+        /// about this domain, or read it as a dependency (a Location checked against its region), is
+        /// stale. The rows are dropped; the next form run checks again. Never fails the finalize.
+        /// </summary>
+        private async Task ForgetValidationResultsAsync(Domain domain)
+        {
+            try
+            {
+                var types = new[] { DomainTypeOf(domain) ?? nameof(Domain), nameof(Domain) }.Distinct().ToList();
+                var keys = types.Select(t => $"{t}:{domain.Id}").ToList();
+                var rows = await _context.FieldValidationRunLogs
+                    .Where(r => (types.Contains(r.SubjectType) && r.SubjectId == domain.Id) || (r.DependencyKey != null && keys.Contains(r.DependencyKey)))
+                    .ToListAsync();
+                if (rows.Count == 0) return;
+                _context.FieldValidationRunLogs.RemoveRange(rows);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Dropped {Count} stored validation results about Domain {DomainId} after its region changed", rows.Count, domain.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not drop the stored validation results about Domain {DomainId}", domain.Id);
+            }
+        }
+
         public static bool IsTemporary(string? regionId) =>
             !string.IsNullOrWhiteSpace(regionId) && regionId.StartsWith(TempRegionPrefix, StringComparison.OrdinalIgnoreCase);
 
         public static string FinalNameFor(int domainId) => $"domain_{domainId}";
+
+        /// <summary>KNG-254: the final name of a domain's sub-region.</summary>
+        public static string FinalSubRegionNameFor(int domainId, int subRegionId) => $"domain_{domainId}_sub_{subRegionId}";
 
         /// <summary>The concrete type name the plugin's managed-region policy understands; null for a bare Domain.</summary>
         public static string? DomainTypeOf(Domain domain) => domain switch
@@ -116,6 +153,7 @@ namespace knkwebapi_v2.Services
                 await StoreRegionIdAsync(domain, finalName);
                 _logger.LogInformation("Finalized region name for Domain {DomainId}: {FinalName}{Replaced}", domain.Id, finalName,
                     replaceRegionId != null ? $" (replaced {replaceRegionId})" : string.Empty);
+                await ForgetValidationResultsAsync(domain);
                 return true;
             }
             catch (Exception ex)
@@ -212,9 +250,138 @@ namespace knkwebapi_v2.Services
                 }
             }
 
+            // KNG-254: then the sub-regions not yet on their final name (temp-named, or adopted and not renamed yet), so
+            // each is set up under its domain's final main region.
+            var subRegions = (await _context.DomainSubRegions.ToListAsync())
+                .Where(s => !s.WgRegionId.Equals(FinalSubRegionNameFor(s.DomainId, s.Id), StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s.Id)
+                .ToList();
+            foreach (var subRegion in subRegions)
+            {
+                string currentName = subRegion.WgRegionId;
+                if (await FinalizeSubRegionAsync(subRegion, null))
+                {
+                    renamed++;
+                }
+                else
+                {
+                    failed.Add($"Sub-region {subRegion.Id} of Domain {subRegion.DomainId} ({currentName})");
+                }
+            }
+
+            int found = domains.Count + subRegions.Count;
             _logger.LogInformation("Temp region finalize pass: found {Found}, renamed {Renamed}, failed {Failed}",
-                domains.Count, renamed, failed.Count);
-            return new TempRegionFinalizeResult(domains.Count, renamed, failed);
+                found, renamed, failed.Count);
+            return new TempRegionFinalizeResult(found, renamed, failed);
+        }
+
+        public async Task<bool> FinalizeSubRegionAsync(DomainSubRegion subRegion, string? previousRegionId)
+        {
+            if (subRegion == null || subRegion.Id <= 0 || subRegion.DomainId <= 0 || string.IsNullOrWhiteSpace(subRegion.WgRegionId))
+            {
+                return false;
+            }
+            string finalName = FinalSubRegionNameFor(subRegion.DomainId, subRegion.Id);
+            string currentName = subRegion.WgRegionId;
+            if (currentName.Equals(finalName, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var domain = await _context.Domains.AsNoTracking().FirstOrDefaultAsync(d => d.Id == subRegion.DomainId);
+            if (domain == null || string.IsNullOrWhiteSpace(domain.WgRegionId))
+            {
+                _logger.LogWarning("Sub-region {SubRegionId} keeps {RegionId}: its domain {DomainId} has no main region to copy",
+                    subRegion.Id, currentName, subRegion.DomainId);
+                return false;
+            }
+
+            string? replaceRegionId = null;
+            try
+            {
+                string? domainType = DomainTypeOf(domain);
+                replaceRegionId = await ReplaceableSubRegionAsync(subRegion, previousRegionId, finalName, domain.WorldName);
+                _logger.LogInformation("Finalizing sub-region {SubRegionId} of {DomainType} {DomainId}: {CurrentName} -> {FinalName} (copy of {MainRegion}, world {World}, replacing {ReplaceRegionId})",
+                    subRegion.Id, domainType ?? nameof(Domain), domain.Id, currentName, finalName, domain.WgRegionId, domain.WorldName, replaceRegionId ?? "nothing");
+
+                if (!await _regionService.RenameSubRegionAsync(currentName, finalName, domainType, domain.WgRegionId, domain.WorldName, replaceRegionId))
+                {
+                    _logger.LogWarning("Failed to finalize sub-region {SubRegionId}: the plugin did not rename {CurrentName} (see the plugin log)",
+                        subRegion.Id, currentName);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finalizing sub-region {SubRegionId} ({CurrentName})", subRegion.Id, currentName);
+                return false;
+            }
+
+            try
+            {
+                subRegion.WgRegionId = finalName;
+                if (_context.Entry(subRegion).State == EntityState.Detached)
+                {
+                    var tracked = await _context.DomainSubRegions.FirstOrDefaultAsync(s => s.Id == subRegion.Id)
+                        ?? throw new InvalidOperationException($"Sub-region {subRegion.Id} not found.");
+                    tracked.WgRegionId = finalName;
+                }
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Finalized sub-region {SubRegionId} of Domain {DomainId}: {FinalName}{Replaced}", subRegion.Id, domain.Id,
+                    finalName, replaceRegionId != null ? $" (replaced {replaceRegionId})" : string.Empty);
+                await ForgetValidationResultsAsync(domain);
+                return true;
+            }
+            catch (Exception storeError)
+            {
+                subRegion.WgRegionId = currentName;
+                try
+                {
+                    if (await _regionService.RenameRegionAsync(finalName, currentName, null, null, domain.WorldName))
+                    {
+                        _logger.LogError(storeError, "Sub-region {SubRegionId} could not be updated after its region was renamed to {FinalName}; renamed back to {CurrentName}",
+                            subRegion.Id, finalName, currentName);
+                        return false;
+                    }
+                }
+                catch (Exception renameBackError)
+                {
+                    _logger.LogError(renameBackError, "Renaming {FinalName} back to {CurrentName} failed", finalName, currentName);
+                }
+                _logger.LogError(storeError, "Region {CurrentName} was renamed to {FinalName} but sub-region {SubRegionId} could not be updated; set its WgRegionId to {FinalName} by hand",
+                    currentName, finalName, subRegion.Id, finalName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// KNG-254: as <see cref="ReplaceableRegionAsync"/> for a sub-region whose world task was run again: only its own
+        /// final name or a temp-named region qualify, and only when no other domain or sub-region in the world uses it.
+        /// </summary>
+        public async Task<string?> ReplaceableSubRegionAsync(DomainSubRegion subRegion, string? previousRegionId, string finalName, string? world)
+        {
+            if (string.IsNullOrWhiteSpace(previousRegionId))
+            {
+                return null;
+            }
+            string previous = previousRegionId.Trim();
+            if (previous.Equals(subRegion.WgRegionId, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            if (!previous.Equals(finalName, StringComparison.OrdinalIgnoreCase) && !IsTemporary(previous))
+            {
+                _logger.LogInformation("Sub-region {SubRegionId}'s previous region {PreviousRegionId} is not one the API creates; it is kept",
+                    subRegion.Id, previous);
+                return null;
+            }
+            string? takenBy = await DomainRegionOwnership.TakenByAsync(_context, previous, world, exceptSubRegionId: subRegion.Id);
+            if (takenBy != null)
+            {
+                _logger.LogWarning("Sub-region {SubRegionId}'s previous region {PreviousRegionId} is kept: {TakenBy}", subRegion.Id, previous, takenBy);
+                return null;
+            }
+            return previous;
         }
 
         private static int HierarchyLevel(Domain domain) => domain switch

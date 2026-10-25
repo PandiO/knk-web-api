@@ -13,7 +13,6 @@ public class EnchantmentDefinitionServiceTests
 {
     private readonly Mock<IEnchantmentDefinitionRepository> _enchantmentRepo;
     private readonly Mock<IMinecraftEnchantmentRefRepository> _enchantmentRefRepo;
-    private readonly Mock<IMinecraftEnchantmentCatalogService> _catalogService;
     private readonly Mock<IMapper> _mapper;
     private readonly EnchantmentDefinitionService _service;
 
@@ -21,13 +20,11 @@ public class EnchantmentDefinitionServiceTests
     {
         _enchantmentRepo = new Mock<IEnchantmentDefinitionRepository>();
         _enchantmentRefRepo = new Mock<IMinecraftEnchantmentRefRepository>();
-        _catalogService = new Mock<IMinecraftEnchantmentCatalogService>();
         _mapper = new Mock<IMapper>();
 
         _service = new EnchantmentDefinitionService(
             _enchantmentRepo.Object,
             _enchantmentRefRepo.Object,
-            _catalogService.Object,
             _mapper.Object);
     }
 
@@ -137,5 +134,79 @@ public class EnchantmentDefinitionServiceTests
         Assert.NotNull(result.AbilityDefinition);
         Assert.Equal("combat.lifesteal", result.AbilityDefinition!.AbilityKey);
         _enchantmentRepo.Verify(r => r.AddAsync(It.Is<EnchantmentDefinition>(e => e.AbilityDefinition != null)), Times.Once);
+    }
+
+    // KNG-195: the web form never sends abilityDefinition; saving a custom enchantment must keep it.
+    private EnchantmentDefinition CustomWithAbility() => new()
+    {
+        Id = 3,
+        Key = "knk:frost",
+        DisplayName = "Frost",
+        IsCustom = true,
+        AbilityDefinition = new AbilityDefinition { AbilityKey = "combat.frost", RuntimeConfigJson = "{}" }
+    };
+
+    [Fact]
+    public async Task UpdateAsync_CustomWithoutAbilityDefinitionInRequest_KeepsTheAbility()
+    {
+        var existing = CustomWithAbility();
+        _enchantmentRepo.Setup(r => r.GetByIdAsync(3)).ReturnsAsync(existing);
+        var dto = new EnchantmentDefinitionUpdateDto { Id = 3, Key = "knk:frost", DisplayName = "Frost bite", IsCustom = true };
+
+        await _service.UpdateAsync(3, dto);
+
+        Assert.NotNull(existing.AbilityDefinition);
+        Assert.Equal("combat.frost", existing.AbilityDefinition!.AbilityKey);
+        Assert.Equal("Frost bite", existing.DisplayName);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_CustomWithExplicitNullAbilityDefinition_RemovesTheAbility()
+    {
+        var existing = CustomWithAbility();
+        _enchantmentRepo.Setup(r => r.GetByIdAsync(3)).ReturnsAsync(existing);
+        var dto = new EnchantmentDefinitionUpdateDto { Id = 3, Key = "knk:frost", DisplayName = "Frost", IsCustom = true, AbilityDefinition = null };
+
+        await _service.UpdateAsync(3, dto);
+
+        Assert.Null(existing.AbilityDefinition);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_MadeVanilla_StillRemovesTheAbility()
+    {
+        var existing = CustomWithAbility();
+        _enchantmentRepo.Setup(r => r.GetByIdAsync(3)).ReturnsAsync(existing);
+        var dto = new EnchantmentDefinitionUpdateDto { Id = 3, Key = "knk:frost", DisplayName = "Frost", IsCustom = false };
+
+        await _service.UpdateAsync(3, dto);
+
+        Assert.Null(existing.AbilityDefinition);
+    }
+
+    // KNG-195: a catalog-only enchantment picked on the form arrives with id 0 and its key under the
+    // field-named alias; it is now created and linked instead of dropped.
+    [Fact]
+    public async Task UpdateAsync_UnsavedCatalogEnchantmentByFieldNamedKey_IsCreatedAndLinked()
+    {
+        var existing = new EnchantmentDefinition { Id = 4, Key = "minecraft:sharpness", DisplayName = "Sharpness" };
+        _enchantmentRepo.Setup(r => r.GetByIdAsync(4)).ReturnsAsync(existing);
+        _enchantmentRefRepo
+            .Setup(r => r.AddAsync(It.IsAny<MinecraftEnchantmentRef>()))
+            .Callback<MinecraftEnchantmentRef>(added => added.Id = 55)
+            .Returns(Task.CompletedTask);
+        var dto = new EnchantmentDefinitionUpdateDto
+        {
+            Id = 4,
+            Key = "minecraft:sharpness",
+            DisplayName = "Sharpness",
+            MinecraftEnchantmentRefId = 0,
+            MinecraftEnchantmentRefNamespaceKey = "minecraft:sharpness"
+        };
+
+        await _service.UpdateAsync(4, dto);
+
+        Assert.Equal(55, existing.MinecraftEnchantmentRefId);
+        _enchantmentRefRepo.Verify(r => r.AddAsync(It.Is<MinecraftEnchantmentRef>(e => e.NamespaceKey == "minecraft:sharpness")), Times.Once);
     }
 }

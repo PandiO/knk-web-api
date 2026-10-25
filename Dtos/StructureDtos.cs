@@ -1,10 +1,15 @@
+using System.Collections.Generic;
 using System;
 using System.Text.Json.Serialization;
 
 namespace knkwebapi_v2.Dtos
 {
-    public class StructureDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
+    public class StructureDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto, IDomainNameDto
     {
+        // KNG-254: the domain's sub-regions, read-only here (edited through api/DomainSubRegions, the form's owned list).
+        [JsonPropertyName("subRegions")]
+        public List<DomainSubRegionDto>? SubRegions { get; set; }
+
         [JsonPropertyName("id")]
         public int? Id { get; set; }
 
@@ -32,6 +37,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("locationId")]
         public int? LocationId { get; set; }
+
+        // KNG-195: embedded Location, like Town/District/GateStructure. A spawn point captured in game or
+        // created on the form arrives here (no id = create, id = update); a plain pick sends locationId.
+        [JsonPropertyName("location")]
+        public LocationDto? Location { get; set; }
 
         // Warp destination settings (teleport DESIGN.md §3.7.1). On create/update a null
         // teleportEnabled means "not on this form": all five are left as they are.

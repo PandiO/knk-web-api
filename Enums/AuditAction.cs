@@ -79,6 +79,28 @@ public enum AuditAction
     /// </summary>
     UsernameReleased = 35,
 
+    // Invitations, Minecraft linking and admission (knk-workspace docs/specs/invitations/DESIGN.md § 6,
+    // KNG-212/KNG-214); values 37-42 are allocated to this feature (36 stays unused).
+
+    /// <summary>Staff created an invitation. Target = the actor (no account exists yet); Details name
+    /// the invitation, never its code.</summary>
+    InvitationCreated = 37,
+
+    /// <summary>Staff revoked an invitation. Target = the actor.</summary>
+    InvitationRevoked = 38,
+
+    /// <summary>An account was created with an invitation. Target and actor = the new account.</summary>
+    InvitationRedeemed = 39,
+
+    /// <summary>A web account was linked to a Minecraft account (KNG-214).</summary>
+    MinecraftLinked = 40,
+
+    /// <summary>Staff unlinked a Minecraft account from a web login (KNG-214).</summary>
+    MinecraftUnlinked = 41,
+
+    /// <summary>Staff admitted a player without an invitation (KNG-214).</summary>
+    PlayerAdmitted = 42,
+
     // Arena duels staff tools (KNG-213, knk-workspace docs/specs/arena-duels/DESIGN.md §10.3); values
     // 50–59 are reserved for arena duels. Target = the match's winner (review actions), the restricted
     // player (restrictions), or the staff member (policy). Details carry the match id and reason.
@@ -92,7 +114,7 @@ public enum AuditAction
     /// <summary>A paid duel result was reverted: the payout reversed (as far as the coins are still there), the loser refunded first.</summary>
     DuelResultReverted = 52,
 
-    /// <summary>A paid duel result was confiscated: the payout reversed into the SYS_FEES sink.</summary>
+    /// <summary>A paid duel result was confiscated: the payout reversed into SYS_CONFISCATED.</summary>
     DuelResultConfiscated = 53,
 
     /// <summary>A stakes-only duel restriction was placed on the target player (or a pair including them).</summary>

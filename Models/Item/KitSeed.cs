@@ -2,6 +2,7 @@ using knkwebapi_v2.Properties;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Models;
 
@@ -22,8 +23,8 @@ namespace knkwebapi_v2.Models;
 /// <para>
 /// Unlike the example catalog seed, icons are resolved (<see cref="MinecraftMaterialRef"/>
 /// get-or-create by namespace key, same semantics as
-/// <c>MinecraftMaterialRefService.GetOrCreateAsync</c>, with Category/LegacyName/IconUrl taken
-/// from the static material catalog when it has the key) - these are real, grantable kit items.
+/// <c>MinecraftMaterialRefService.GetOrCreateAsync</c>; a missing key is created Unverified and the
+/// server scan fills in its name, flags and icon, KNG-200) - these are real, grantable kit items.
 /// </para>
 /// <para>
 /// This is dev/example content, not final balance (SEED_DATA.md's own framing), and it runs in
@@ -33,8 +34,7 @@ namespace knkwebapi_v2.Models;
 /// </summary>
 public static class KitSeed
 {
-    // Fallback MinecraftMaterialRef.Category when the static catalog doesn't know the key - every
-    // material below is an item, and the catalog itself files them all under "ITEM".
+    // MinecraftMaterialRef.Category for a material this seed creates - every material below is an item.
     private const string FallbackMaterialCategory = "ITEM";
 
     private static readonly (string Name, string IconKey, string[] Tags)[] Categories =
@@ -88,7 +88,6 @@ public static class KitSeed
 
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -103,21 +102,10 @@ public static class KitSeed
         var materials = ByKey(
             await context.MinecraftMaterialRefs.Where(m => iconKeys.Contains(m.NamespaceKey)).ToListAsync(cancellationToken),
             m => m.NamespaceKey, m => m.Id);
-        var catalogByKey = materialCatalog?.GetAll()
-            .GroupBy(e => e.NamespaceKey, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase)
-            ?? new Dictionary<string, MinecraftMaterialCatalogEntry>(StringComparer.OrdinalIgnoreCase);
         foreach (var key in iconKeys)
         {
             if (materials.ContainsKey(key)) continue;
-            catalogByKey.TryGetValue(key, out var entry);
-            var material = new MinecraftMaterialRef
-            {
-                NamespaceKey = key,
-                Category = entry?.Category ?? FallbackMaterialCategory,
-                LegacyName = entry?.LegacyName,
-                IconUrl = entry?.IconUrl,
-            };
+            var material = MinecraftMaterialRefFactory.NewUnverified(key, FallbackMaterialCategory);
             context.MinecraftMaterialRefs.Add(material);
             materials[key] = material;
             Count(nameof(MinecraftMaterialRef));

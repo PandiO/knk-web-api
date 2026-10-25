@@ -118,7 +118,8 @@ namespace knkwebapi_v2.Services
                     MatchmakingSeconds = lobby.MatchmakingSeconds,
                     CooldownSeconds = lobby.CooldownSeconds,
                     VoteCandidateCount = lobby.VoteCandidateCount,
-                    AllowRandomVote = lobby.AllowRandomVote
+                    AllowRandomVote = lobby.AllowRandomVote,
+                    NavigationItem = lobby.NavigationItem
                 };
 
                 foreach (var entry in lobby.Rotation.OrderBy(r => r.SiegeScenarioId))
@@ -196,6 +197,7 @@ namespace knkwebapi_v2.Services
                 LockdownScenarioArea = scenario.LockdownScenarioArea,
                 AllowRecapture = scenario.AllowRecapture,
                 EnchantDropsEnabled = scenario.EnchantDropsEnabled,
+                NavigationItem = scenario.NavigationItem,
                 Teams = teams.Select(t => new SiegeRuntimeTeamDto
                 {
                     Id = t.Id,
@@ -271,6 +273,7 @@ namespace knkwebapi_v2.Services
             if (dto.MatchmakingSeconds < 60) throw new ArgumentException("matchmakingSeconds must be at least 60.");
             if (dto.CooldownSeconds < 0) throw new ArgumentException("cooldownSeconds can't be negative.");
             if (dto.VoteCandidateCount is < 1 or > 3) throw new ArgumentException("voteCandidateCount must be 1, 2 or 3.");
+            if (!Enum.IsDefined(dto.NavigationItem)) throw new ArgumentException("navigationItem must be Inherit, Give or DoNotGive.");
 
             var current = await _repo.GetByKeyAsync(key);
             if (current != null && current.Id != existingId)
@@ -300,6 +303,7 @@ namespace knkwebapi_v2.Services
             target.CooldownSeconds = dto.CooldownSeconds;
             target.VoteCandidateCount = dto.VoteCandidateCount;
             target.AllowRandomVote = dto.AllowRandomVote;
+            target.NavigationItem = dto.NavigationItem;
             target.ScheduleJson = string.IsNullOrWhiteSpace(dto.ScheduleJson) ? null : dto.ScheduleJson;
 
             if (rotation != null) SyncRotation(target, rotation);

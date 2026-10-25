@@ -161,6 +161,15 @@ namespace knkwebapi_v2.Services
                 {
                     return Conflict(DomainWorldException.WorldConflict, childConflict);
                 }
+
+                // KNG-254: sub-regions were drawn in the domain's world and have no world of their own.
+                string? savedWorld = Normalize(existing?.WorldName);
+                if (savedWorld != null && !SameWorld(savedWorld, world)
+                    && await _context.DomainSubRegions.AsNoTracking().AnyAsync(s => s.DomainId == id))
+                {
+                    return Conflict(DomainWorldException.WorldConflict,
+                        $"The domain can't move to world '{world}': its sub-regions are in world '{savedWorld}'. Remove them first.");
+                }
             }
 
             string? regionId = Normalize(request.WgRegionId);
@@ -271,22 +280,9 @@ namespace knkwebapi_v2.Services
             return $"The domain can't move to world '{world}': its children are in another world: {listed}.";
         }
 
-        private async Task<string?> RegionTakenAsync(int? domainId, string regionId, string world)
-        {
-            string loweredRegion = regionId.ToLower();
-            string loweredWorld = world.ToLower();
-            int self = domainId ?? 0;
-            var other = await _context.Domains.AsNoTracking()
-                .Where(d => d.Id != self
-                    && d.WgRegionId != null && d.WgRegionId.ToLower() == loweredRegion
-                    && d.WorldName != null && d.WorldName.ToLower() == loweredWorld)
-                .OrderBy(d => d.Id)
-                .Select(d => new { d.Id, d.Name })
-                .FirstOrDefaultAsync();
-            return other == null
-                ? null
-                : $"Region '{regionId}' in world '{world}' already belongs to {other.Name} (#{other.Id}).";
-        }
+        // KNG-254: a sub-region of any domain counts too.
+        private Task<string?> RegionTakenAsync(int? domainId, string regionId, string world) =>
+            DomainRegionOwnership.TakenByAsync(_context, regionId, world, exceptDomainId: domainId);
 
         private static void AddSource(List<(string Source, string World)> sources, string source, string? world)
         {

@@ -227,6 +227,7 @@ public class AuthSessionTests : IDisposable
         {
             UserId = user.Id,
             Code = knkwebapi_v2.Services.TokenService.Sha256Hex("reset-token"),
+            Purpose = knkwebapi_v2.Models.LinkCodePurpose.PasswordReset, // as AuthService writes it, and the KNG-208 backfill sets it
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddMinutes(30),
             Status = knkwebapi_v2.Models.LinkCodeStatus.Active

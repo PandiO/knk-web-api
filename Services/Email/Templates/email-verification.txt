@@ -1,0 +1,7 @@
+Hi {{username}},
+
+Please confirm that this is your email address for Knights & Kings:
+
+{{verifyUrl}}
+
+The link works until {{expiresAt}}. If you didn't enter this address, ignore this email.

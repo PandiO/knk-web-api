@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.ObjectModel;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
@@ -9,8 +10,12 @@ public class DomainMappingProfile : Profile
 {
     public DomainMappingProfile()
     {
-        CreateMap<Domain, DomainDto>();
-        CreateMap<DomainDto, Domain>();
+        CreateMap<Domain, DomainDto>()
+            .ForMember(dest => dest.SubRegions, opt => opt.MapFrom(src => src.SubRegions.OrderBy(r => r.Id)));
+        CreateMap<DomainDto, Domain>()
+            // KNG-254: sub-regions are saved through api/DomainSubRegions.
+            .ForMember(dest => dest.SubRegions, opt => opt.Ignore());
+        CreateMap<DomainSubRegion, DomainSubRegionDto>();
 
         CreateMap<Domain, DomainListDto>()
             .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name))
@@ -20,7 +25,10 @@ public class DomainMappingProfile : Profile
 
         CreateMap<Domain, DomainRegionDecisionDto>()
             .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name))
-            .ForMember(dest => dest.ParentDomainDecisions, opt => opt.MapFrom(src => GetParentDomainDecisions(src)));
+            .ForMember(dest => dest.ParentDomainDecisions, opt => opt.MapFrom(src => GetParentDomainDecisions(src)))
+            // KNG-254: loaded by DomainRepository's region lookups.
+            .ForMember(dest => dest.SubRegionIds, opt => opt.MapFrom(src => src.SubRegions.OrderBy(s => s.Id).Select(s => s.WgRegionId).ToList()))
+            .ForMember(dest => dest.MatchedSubRegionId, opt => opt.Ignore());
     }
 
     private static Collection<DomainRegionDecisionDto> GetParentDomainDecisions(Domain domain)
@@ -98,7 +106,7 @@ public class DomainMappingProfile : Profile
 
 /// <summary>
 /// The Domain warp settings (teleport DESIGN.md §3.7.1) are never mapped from a Town/District/
-/// Structure DTO: services apply them through DomainTeleportSettings.Apply after validation, so a
+/// Structure/GateStructure DTO: services apply them through DomainTeleportSettings.Apply after validation, so a
 /// form without the teleport fields leaves them untouched.
 /// </summary>
 public static class DomainTeleportSettingsMapping

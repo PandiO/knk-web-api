@@ -175,6 +175,7 @@ namespace knkwebapi_v2.Repositories
                             ConditionType = cond.ConditionType,
                             ConditionLogicJson = cond.ConditionLogicJson,
                             ErrorMessage = cond.ErrorMessage,
+                            IsActive = cond.IsActive,
                             FormStepId = match.Id
                         });
                     }
@@ -183,6 +184,7 @@ namespace knkwebapi_v2.Repositories
                         condMatch.ConditionType = cond.ConditionType;
                         condMatch.ConditionLogicJson = cond.ConditionLogicJson;
                         condMatch.ErrorMessage = cond.ErrorMessage;
+                        condMatch.IsActive = cond.IsActive;
                     }
                 }
 
@@ -270,6 +272,7 @@ namespace knkwebapi_v2.Repositories
                                 Type = val.Type,
                                 ParametersJson = val.ParametersJson,
                                 ErrorMessage = val.ErrorMessage,
+                                IsActive = val.IsActive,
                                 FormFieldId = fieldMatch.Id
                             });
                         }
@@ -278,6 +281,7 @@ namespace knkwebapi_v2.Repositories
                             valMatch.Type = val.Type;
                             valMatch.ParametersJson = val.ParametersJson;
                             valMatch.ErrorMessage = val.ErrorMessage;
+                            valMatch.IsActive = val.IsActive;
                         }
                     }
                 }
@@ -405,6 +409,7 @@ namespace knkwebapi_v2.Repositories
                                     Type = val.Type,
                                     ParametersJson = val.ParametersJson,
                                     ErrorMessage = val.ErrorMessage,
+                                    IsActive = val.IsActive,
                                     FormFieldId = fieldMatch.Id
                                 });
                             }
@@ -413,6 +418,7 @@ namespace knkwebapi_v2.Repositories
                                 valMatch.Type = val.Type;
                                 valMatch.ParametersJson = val.ParametersJson;
                                 valMatch.ErrorMessage = val.ErrorMessage;
+                                valMatch.IsActive = val.IsActive;
                             }
                         }
                     }

@@ -99,6 +99,19 @@ public class DiscoveryServiceTests : IDisposable
     private List<AuditLogEntry> Audit() => _db.AuditLogEntries.AsNoTracking().Where(a => a.TargetUserId == UserId).OrderBy(a => a.Id).ToList();
 
     [Fact]
+    public async Task ASubRegionIsDiscoveredAsItsDomain()
+    {
+        // KNG-256: the North Gate garrison entered through its tower, a sub-region (KNG-254).
+        _db.DomainSubRegions.Add(new DomainSubRegion { Id = 1, DomainId = NorthGate, WgRegionId = "domain_4_sub_1" });
+        _db.SaveChanges();
+
+        var result = await Service().DiscoverAsync(UserId, new DiscoveryGrantRequestDto { WgRegionIds = new() { "DOMAIN_4_SUB_1" }, Source = "RegionEnter" });
+
+        Assert.Contains(result.Granted, g => g.DomainId == NorthGate);
+        Assert.Empty(result.Skipped);
+    }
+
+    [Fact]
     public async Task FirstGrant_WritesTheRowAndCreditsTheBalanceThroughOneLedgerPosting()
     {
         var result = await Service().DiscoverAsync(UserId, new DiscoveryGrantRequestDto { WgRegionIds = new() { "town_kardenna" }, Source = "RegionEnter" });

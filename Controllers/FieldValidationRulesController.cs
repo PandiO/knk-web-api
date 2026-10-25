@@ -127,6 +127,23 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        /// <summary>KNG-269: validate every rule-bearing field of a step in one request; results by field id.</summary>
+        [HttpPost("validate-batch")]
+        public async Task<IActionResult> ValidateFields([FromBody] ValidateFieldsBatchRequestDto request)
+        {
+            if (request == null) return BadRequest();
+            try
+            {
+                var result = await _validationService.ValidateFieldsAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Batch validation execution failed");
+                return StatusCode(500, new { message = "Validation execution failed", error = "An unexpected error occurred." });
+            }
+        }
+
         /// <summary>
         /// Resolve placeholder values for a validation rule or explicit placeholder list.
         /// </summary>

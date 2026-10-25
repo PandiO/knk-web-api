@@ -18,15 +18,20 @@ public partial class KnKDbContext : DbContext
     }
 
     public virtual DbSet<Domain> Domains { get; set; } = null!;
+    public virtual DbSet<DomainSubRegion> DomainSubRegions { get; set; } = null!;
     public virtual DbSet<User> Users { get; set; } = null!;
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public virtual DbSet<EmailOutboxMessage> EmailOutbox { get; set; } = null!;
+    public virtual DbSet<Invitation> Invitations { get; set; } = null!;
+    public virtual DbSet<InvitationRedemption> InvitationRedemptions { get; set; } = null!;
     public virtual DbSet<Category> Categories { get; set; } = null!;
     public DbSet<FormConfiguration> FormConfigurations { get; set; }
     public DbSet<FormStep> FormSteps { get; set; }
     public DbSet<FormField> FormFields { get; set; }
     public DbSet<FieldValidation> FieldValidations { get; set; }
     public DbSet<FieldValidationRule> FieldValidationRules { get; set; }
+    public DbSet<FieldValidationRunLog> FieldValidationRunLogs { get; set; }
     public DbSet<StepCondition> StepConditions { get; set; }
     public DbSet<DisplayConditionGroup> DisplayConditionGroups { get; set; }
     public DbSet<DisplayCondition> DisplayConditions { get; set; }
@@ -63,6 +68,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<ItemBlueprint> ItemBlueprints { get; set; } = null!;
     public virtual DbSet<MinecraftMaterialRef> MinecraftMaterialRefs { get; set; } = null!;
     public virtual DbSet<MinecraftBlockRef> MinecraftBlockRefs { get; set; } = null!;
+    public virtual DbSet<MinecraftCatalogScan> MinecraftCatalogScans { get; set; } = null!;
     public virtual DbSet<MinecraftEnchantmentRef> MinecraftEnchantmentRefs { get; set; } = null!;
     public virtual DbSet<EnchantmentDefinition> EnchantmentDefinitions { get; set; } = null!;
     public virtual DbSet<AbilityDefinition> AbilityDefinitions { get; set; } = null!;
@@ -129,6 +135,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<DomainDiscoveryOverride> DomainDiscoveryOverrides { get; set; } = null!;
     // Navigation default per domain type (KNG-73, docs/specs/navigation/DESIGN.md §6.1)
     public virtual DbSet<DomainNavigationDefault> DomainNavigationDefaults { get; set; } = null!;
+    public virtual DbSet<NavigationCompassSettings> NavigationCompassSettingsRows { get; set; } = null!;
 
     // Road navigation Phase 1 (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
     public virtual DbSet<RoadProfile> RoadProfiles { get; set; } = null!;
@@ -210,6 +217,20 @@ public partial class KnKDbContext : DbContext
             entity.Property(d => d.NavigationDefaultOverride).HasConversion<string>().HasMaxLength(16);
             // Rev. 7 Part C (KNG-92): null follows the type's DomainNavigationDefault.RoadAccess.
             entity.Property(d => d.RoadAccessOverride).HasConversion<string>().HasMaxLength(16);
+        });
+
+        // KNG-254: a domain's extra WorldGuard regions. Region ids are unique per world across domains.WgRegionId and
+        // this table, enforced by DomainRegionOwnership (the world is the domain's).
+        modelBuilder.Entity<DomainSubRegion>(entity =>
+        {
+            entity.ToTable("domain_sub_regions");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasIndex(e => e.DomainId);
+            entity.HasIndex(e => e.WgRegionId);
+            entity.HasOne(e => e.Domain)
+                .WithMany(d => d.SubRegions)
+                .HasForeignKey(e => e.DomainId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id
@@ -396,6 +417,8 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_scenarios");
 
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
+
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(1000);
 
@@ -472,6 +495,8 @@ public partial class KnKDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("siege_lobbies");
+
+            entity.Property(e => e.NavigationItem).HasConversion<string>().HasMaxLength(20);
 
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Key).IsRequired().HasMaxLength(64);
@@ -561,6 +586,64 @@ public partial class KnKDbContext : DbContext
 
         // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
         // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.
+        // KNG-206: the persistent mail outbox (EmailComposer / EmailDispatcher).
+        modelBuilder.Entity<EmailOutboxMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("email_outbox");
+
+            entity.Property(e => e.Kind).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.ToAddress).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.ToName).HasMaxLength(256);
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.TextBody).HasColumnType("longtext");
+            entity.Property(e => e.HtmlBody).HasColumnType("longtext");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.LastError).HasMaxLength(1000);
+            entity.Property(e => e.ProviderMessageId).HasMaxLength(255);
+            entity.Property(e => e.DedupeKey).IsRequired().HasMaxLength(120);
+
+            entity.HasIndex(e => e.DedupeKey).IsUnique();
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt });
+            entity.HasIndex(e => new { e.ToAddress, e.CreatedAt });
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // KNG-212: invitations (personal invites and shared codes) and who redeemed them.
+        modelBuilder.Entity<Invitation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("invitations");
+
+            entity.Property(e => e.CodeHash).IsRequired().HasMaxLength(64).IsFixedLength();
+            entity.Property(e => e.CodeHint).IsRequired().HasMaxLength(4).IsFixedLength();
+            entity.Property(e => e.Email).HasMaxLength(256);
+            entity.Property(e => e.Label).HasMaxLength(120);
+            entity.Property(e => e.Note).HasMaxLength(500);
+
+            entity.HasIndex(e => e.CodeHash).IsUnique();
+            entity.HasIndex(e => new { e.Kind, e.ExpiresAt });
+            entity.HasIndex(e => e.Email);
+
+            entity.HasOne(e => e.GrantGroup)
+                .WithMany()
+                .HasForeignKey(e => e.GrantGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<InvitationRedemption>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("invitation_redemptions");
+
+            entity.HasIndex(e => e.InvitationId);
+
+            entity.HasOne(e => e.Invitation)
+                .WithMany(i => i.Redemptions)
+                .HasForeignKey(e => e.InvitationId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
@@ -592,6 +675,12 @@ public partial class KnKDbContext : DbContext
             
             // Index on ExpiresAt for efficient cleanup queries
             entity.HasIndex(e => e.ExpiresAt);
+
+            // KNG-208: what the row is for, and the claim code's Mojang identity (KNG-214).
+            entity.Property(e => e.Purpose).HasDefaultValue(LinkCodePurpose.Link);
+            entity.Property(e => e.MinecraftUuid).HasMaxLength(36);
+            entity.Property(e => e.MinecraftName).HasMaxLength(16);
+            entity.HasIndex(e => new { e.Purpose, e.Status, e.ExpiresAt });
             
             // FK to User (no cascade - handled at application level)
             entity.HasOne(e => e.User)
@@ -1261,6 +1350,23 @@ public partial class KnKDbContext : DbContext
             .HasForeignKey(s => s.FormConfigurationId)
             .OnDelete(DeleteBehavior.Cascade);
         
+        // KNG-269: most recent validation rule run per (rule, subject)
+        modelBuilder.Entity<FieldValidationRunLog>(entity =>
+        {
+            entity.ToTable("FieldValidationRunLogs");
+            entity.Property(e => e.RuleHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.InputHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.SubjectType).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.DependencyKey).HasMaxLength(192);
+            entity.HasIndex(e => new { e.RuleId, e.SubjectType, e.SubjectId }).IsUnique();
+            entity.HasIndex(e => e.DependencyKey);
+            entity.HasIndex(e => e.ExecutedAt);
+            entity.HasOne(e => e.Rule)
+                .WithMany()
+                .HasForeignKey(e => e.RuleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // FormStep relationships
         modelBuilder.Entity<FormStep>()
             .HasMany(s => s.Fields)
@@ -1757,6 +1863,14 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => e.NamespaceKey).IsUnique();
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
             entity.Property(e => e.Category).IsRequired();
+            // KNG-200 catalogue fields (docs/specs/minecraft-catalog/IMPLEMENTATION_PLAN.md §2.1).
+            entity.Property(e => e.DisplayName).HasMaxLength(191);
+            entity.Property(e => e.CatalogStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.FirstSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.LastSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.IconSource).HasMaxLength(64);
+            entity.Property(e => e.IconStatus).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.CatalogStatus);
         });
 
         modelBuilder.Entity<MinecraftBlockRef>(entity =>
@@ -1764,6 +1878,27 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("minecraftblockrefs");
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
+            // KNG-200 §2.2: a block state belongs to its material, and StateKey is its identity (unique since
+            // migration MinecraftCatalogConstraints, applied after a clean audit).
+            entity.HasOne(e => e.MaterialRef)
+                .WithMany()
+                .HasForeignKey(e => e.MaterialRefId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.Property(e => e.StateKey).HasMaxLength(64).IsFixedLength();
+            entity.HasIndex(e => e.StateKey).IsUnique();
+        });
+
+        modelBuilder.Entity<MinecraftCatalogScan>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("minecraft_catalog_scans");
+            // Concurrency token: a status read and written by a request (e.g. "the plugin failed its task")
+            // must not overwrite an ingest that completed the scan meanwhile.
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsConcurrencyToken();
+            entity.Property(e => e.MinecraftVersion).HasMaxLength(32);
+            entity.Property(e => e.ServerVersion).HasMaxLength(191);
+            entity.Property(e => e.ContentHash).HasMaxLength(64);
+            entity.HasIndex(e => e.Status);
         });
 
         modelBuilder.Entity<MinecraftEnchantmentRef>(entity =>
@@ -1772,6 +1907,11 @@ public partial class KnKDbContext : DbContext
             entity.ToTable("minecraftenchantmentrefs");
             entity.HasIndex(e => e.NamespaceKey).IsUnique();
             entity.Property(e => e.NamespaceKey).IsRequired().HasMaxLength(191);
+            // KNG-250 catalogue fields (docs/specs/minecraft-catalog/IMPLEMENTATION_PLAN.md §12).
+            entity.Property(e => e.CatalogStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.FirstSeenVersion).HasMaxLength(32);
+            entity.Property(e => e.LastSeenVersion).HasMaxLength(32);
+            entity.HasIndex(e => e.CatalogStatus);
         });
 
         modelBuilder.Entity<AbilityDefinition>(entity =>
@@ -2265,6 +2405,20 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.DomainType).HasMaxLength(32);
             entity.Property(e => e.DefaultMode).HasConversion<string>().HasMaxLength(16);
             entity.Property(e => e.RoadAccess).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+        });
+
+        // The navigation compass item rule (KNG-234): a single row, created by the first save.
+        modelBuilder.Entity<NavigationCompassSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("navigation_compass_settings");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Material).IsRequired().HasMaxLength(NavigationCompassSettings.MaxMaterialLength);
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(NavigationCompassSettings.MaxDisplayNameLength);
+            entity.Property(e => e.NameMatch).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.GeneralTargets).IsRequired().HasMaxLength(NavigationCompassSettings.MaxTargetsLength);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 

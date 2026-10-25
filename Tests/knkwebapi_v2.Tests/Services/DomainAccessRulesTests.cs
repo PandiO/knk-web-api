@@ -20,6 +20,8 @@ public class DomainAccessRulesTests
     {
         _service = new DomainService(_repo.Object, new Mock<IMapper>().Object,
             new Mock<IDomainRegionNameFinalizer>().Object, NullLogger<DomainService>.Instance, FixedWorldResolver.Instance);
+        _repo.Setup(r => r.GetSubRegionIdsByDomainAsync())
+            .ReturnsAsync(new Dictionary<int, IReadOnlyList<string>>());
     }
 
     [Fact]
@@ -55,5 +57,26 @@ public class DomainAccessRulesTests
         var rules = await _service.GetAccessRulesAsync();
 
         Assert.Equal(2, Assert.Single(rules).Id);
+    }
+
+    [Fact]
+    public async Task ADomainListsItsSubRegions_OthersAnEmptyList()
+    {
+        // KNG-254: the sub-regions carry the same rule, and a domain_<id>_sub_<n> region no row lists is an orphan.
+        _repo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Domain>
+        {
+            new GateStructure { Id = 9, Name = "Garrison", WgRegionId = "domain_9", AllowExit = false },
+            new Town { Id = 3, Name = "Oakhaven", WgRegionId = "domain_3" },
+        });
+        _repo.Setup(r => r.GetSubRegionIdsByDomainAsync()).ReturnsAsync(new Dictionary<int, IReadOnlyList<string>>
+        {
+            [9] = new[] { "domain_9_sub_1", "domain_9_sub_2" }
+        });
+
+        var rules = await _service.GetAccessRulesAsync();
+
+        Assert.Empty(rules[0].SubRegionIds);
+        Assert.Equal(new[] { "domain_9_sub_1", "domain_9_sub_2" }, rules[1].SubRegionIds);
+        Assert.False(rules[1].AllowExit);
     }
 }

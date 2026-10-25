@@ -17,7 +17,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Coins, src => src.MapFrom(src => src.Coins))
                 .ForMember(dest => dest.Gems, src => src.MapFrom(src => src.Gems))
                 .ForMember(dest => dest.ExperiencePoints, src => src.MapFrom(src => src.ExperiencePoints))
-                .ForMember(dest => dest.EmailVerified, src => src.MapFrom(src => src.EmailVerified))
+                .ForMember(dest => dest.EmailVerified, src => src.MapFrom(src => src.EmailVerified || src.EmailVerifiedAt != null))
+                .ForMember(dest => dest.MinecraftLinked, src => src.MapFrom(src => !string.IsNullOrEmpty(src.Uuid)))
+                .ForMember(dest => dest.Admitted, src => src.MapFrom(src => src.AdmittedAt != null))
                 .ForMember(dest => dest.AccountCreatedVia, src => src.MapFrom(src => src.AccountCreatedVia))
                 .ForMember(dest => dest.GatePassThroughMethodDefault, src => src.MapFrom(src => src.GatePassThroughMethodDefault))
                 .ForMember(dest => dest.ActiveMode, src => src.MapFrom(src => src.ActiveMode))
@@ -45,7 +47,10 @@ namespace knkwebapi_v2.Mapping
                 // "Z" (same fix UserPermissionGroupService.ToDto already applied for ExpiresAt).
                 .ForMember(dest => dest.LastSalaryPayoutAt, src => src.MapFrom(src => DateTime.SpecifyKind(src.LastSalaryPayoutAt, DateTimeKind.Utc)))
                 .ForMember(dest => dest.IsOnline, src => src.MapFrom(src => src.IsOnline))
-                .ForMember(dest => dest.LastSeenAt, src => src.MapFrom(src => src.LastSeenAt.HasValue ? DateTime.SpecifyKind(src.LastSeenAt.Value, DateTimeKind.Utc) : (DateTime?)null));
+                .ForMember(dest => dest.LastSeenAt, src => src.MapFrom(src => src.LastSeenAt.HasValue ? DateTime.SpecifyKind(src.LastSeenAt.Value, DateTimeKind.Utc) : (DateTime?)null))
+                .ForMember(dest => dest.HasGender, opt => opt.Ignore())
+                .ForMember(dest => dest.HasIsActive, opt => opt.Ignore())
+                .ForMember(dest => dest.HasGatePassThroughMethodDefault, opt => opt.Ignore());
 
             // ===== UserDto → User =====
             // CRITICAL: Ignore PasswordHash to prevent exposure
@@ -64,13 +69,35 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PersonalSalaryMultiplier, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalGemBonusMultiplier, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalExpBonusMultiplier, opt => opt.Ignore())
-                .ForMember(dest => dest.EmailVerified, src => src.MapFrom(src => src.EmailVerified))
-                .ForMember(dest => dest.AccountCreatedVia, src => src.MapFrom(src => src.AccountCreatedVia))
-                .ForMember(dest => dest.GatePassThroughMethodDefault, src => src.MapFrom(src => src.GatePassThroughMethodDefault))
+                // Staff/system-owned (KNG-195): email verification is the auth flow's, the creation
+                // channel is fixed at sign-up, and freeze state changes only through the audited
+                // PUT {id}/freeze and {id}/unfreeze. A form that omits them used to reset them,
+                // unfreezing a frozen player without an audit entry.
+                .ForMember(dest => dest.EmailVerified, opt => opt.Ignore())
+                .ForMember(dest => dest.AccountCreatedVia, opt => opt.Ignore())
+                .ForMember(dest => dest.IsFrozen, opt => opt.Ignore())
+                .ForMember(dest => dest.FrozenReason, opt => opt.Ignore())
+                .ForMember(dest => dest.FrozenByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.FrozenAt, opt => opt.Ignore())
+                // Editable, but only written when the request contains them (KNG-195).
+                .ForMember(dest => dest.GatePassThroughMethodDefault, opt =>
+                {
+                    opt.PreCondition(src => src.HasGatePassThroughMethodDefault);
+                    opt.MapFrom(src => src.GatePassThroughMethodDefault);
+                })
+                .ForMember(dest => dest.Gender, opt =>
+                {
+                    opt.PreCondition(src => src.HasGender);
+                    opt.MapFrom(src => src.Gender);
+                })
                 // Only writable via PUT /api/users/{id}/active-mode - a generic user update
                 // that omits it must not silently reset a vanished player to visible.
                 .ForMember(dest => dest.ActiveMode, opt => opt.Ignore())
-                .ForMember(dest => dest.IsActive, src => src.MapFrom(src => src.IsActive))
+                .ForMember(dest => dest.IsActive, opt =>
+                {
+                    opt.PreCondition(src => src.HasIsActive);
+                    opt.MapFrom(src => src.IsActive);
+                })
                 .ForMember(dest => dest.CreatedAt, src => src.MapFrom(src => DateTime.Parse(src.CreatedAt)))
                 // Service-managed only (SalaryService.PayOutAsync) — same convention as ActiveMode:
                 // a generic edit that omits it must not reset a user's payout clock.

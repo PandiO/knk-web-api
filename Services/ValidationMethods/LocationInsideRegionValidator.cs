@@ -36,6 +36,36 @@ namespace knkwebapi_v2.Services.ValidationMethods
 
         public string ValidationType => "LocationInsideRegion";
 
+
+        /// <summary>KNG-269: the verdict is about WorldGuard's current regions, so a stored result expires.</summary>
+
+        public bool ReadsExternalState => true;
+
+
+        /// <summary>KNG-269: the region id the rule names in its config, plus what the messages show.</summary>
+
+        public IReadOnlyCollection<string>? DependencyPropertiesRead(string? configJson)
+
+        {
+
+            string path = "WgRegionId";
+
+            try
+
+            {
+
+                if (!string.IsNullOrWhiteSpace(configJson))
+
+                    path = JsonSerializer.Deserialize<LocationInsideRegionConfig>(configJson)?.RegionPropertyPath ?? path;
+
+            }
+
+            catch (JsonException) { }
+
+            return new[] { "Id", path, "Name", "WorldName" };
+
+        }
+
         public async Task<ValidationMethodResult> ValidateAsync(
             object? fieldValue,
             object? dependencyValue,

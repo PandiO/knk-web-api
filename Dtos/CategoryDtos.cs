@@ -16,6 +16,17 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("iconNamespaceKey")]
         public string? IconNamespaceKey { get; set; }
 
+        // KNG-195: the web app's hybrid material picker names the key after the form field
+        // (IconMaterialRefId -> IconMaterialRefNamespaceKey). Write-only alias of iconNamespaceKey, so a
+        // catalog material that isn't saved yet (sent with id 0) is no longer dropped.
+        [JsonPropertyName("iconMaterialRefNamespaceKey")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? IconMaterialRefNamespaceKey
+        {
+            get => null;
+            set { if (!string.IsNullOrWhiteSpace(value)) IconNamespaceKey = value; }
+        }
+
         [JsonPropertyName("parentCategoryId")]
         public int? ParentCategoryId { get; set; }
         [JsonPropertyName("parentCategory")]

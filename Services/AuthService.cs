@@ -7,6 +7,8 @@ using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
+using knkwebapi_v2.Services.Email;
+using knkwebapi_v2.Services.Invitations;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,7 +25,8 @@ namespace knkwebapi_v2.Services
         private readonly IPasswordService _passwordService;
         private readonly IMapper _mapper;
         private readonly ILinkCodeRepository _linkCodeRepository;
-        private readonly IAccountMailQueue _mailQueue;
+        private readonly IEmailComposer _email;
+        private readonly string _publicBaseUrl;
         private readonly ILoginAttemptLimiter _loginLimiter;
         private readonly IMemoryCache _memoryCache;
         private readonly SecuritySettings _securitySettings;
@@ -31,6 +34,9 @@ namespace knkwebapi_v2.Services
         private readonly IRefreshTokenRepository _refreshTokens;
         private readonly ISessionRevocationService _sessionRevocation;
         private readonly ILinkCodeService _linkCodeService;
+        private readonly IInvitationService? _invitations;
+        private readonly IUserService? _users;
+        private readonly knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? _accessSync;
 
         public AuthService(
             IUserRepository userRepository,
@@ -38,15 +44,24 @@ namespace knkwebapi_v2.Services
             IPasswordService passwordService,
             IMapper mapper,
             ILinkCodeRepository linkCodeRepository,
-            IAccountMailQueue mailQueue,
+            IEmailComposer email,
             IMemoryCache memoryCache,
             IOptions<SecuritySettings> securitySettings,
             ILogger<AuthService> logger,
             IRefreshTokenRepository refreshTokens,
             ISessionRevocationService sessionRevocation,
             ILinkCodeService linkCodeService,
-            ILoginAttemptLimiter loginLimiter)
+            ILoginAttemptLimiter loginLimiter,
+            IOptions<AppSettings>? app = null,
+            IInvitationService? invitations = null,
+            IUserService? users = null,
+            knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null)
         {
+            // KNG-216: the inline Cloudflare Access add after a registration commits.
+            _accessSync = accessSync;
+            // KNG-214: register with a claim code links through IUserService (case A / B).
+            _users = users;
+            _invitations = invitations;
             _loginLimiter = loginLimiter;
             _linkCodeService = linkCodeService;
             _refreshTokens = refreshTokens;
@@ -56,10 +71,12 @@ namespace knkwebapi_v2.Services
             _passwordService = passwordService;
             _mapper = mapper;
             _linkCodeRepository = linkCodeRepository;
-            _mailQueue = mailQueue;
+            _email = email;
             _memoryCache = memoryCache;
             _securitySettings = securitySettings.Value;
             _logger = logger;
+            // KNG-206: App:PublicBaseUrl, with the reset-specific setting as the fallback.
+            _publicBaseUrl = AppSettings.ResolveBaseUrl(app?.Value.PublicBaseUrl, _securitySettings.PasswordResetFrontendBaseUrl);
         }
 
         /// <summary>Same text for every failed login (closed-alpha WP6.1): unknown name, wrong password,
@@ -248,14 +265,66 @@ namespace knkwebapi_v2.Services
         /// <inheritdoc/>
         public async Task<AuthRegisterOutcome> RegisterAsync(AuthRegisterRequestDto request, string? clientIp = null, string? userAgent = null)
         {
+            var outcome = await RegisterCoreAsync(request, clientIp, userAgent);
+            if (outcome.Ok && outcome.Result != null && _accessSync is { Enabled: true })
+            {
+                // KNG-216 (DESIGN § 5.8): the account is committed; put its email on the Cloudflare
+                // Access list now, so the player is usually let in before the "Done" page. A failure
+                // or timeout is swallowed (TryAddNowAsync never throws); the reconcile adds it.
+                await _accessSync.TryAddNowAsync(outcome.Result.User?.Email, _accessSync.InlineAddTimeout);
+                outcome.Result.AccessGate = true;
+            }
+            return outcome;
+        }
+
+        private async Task<AuthRegisterOutcome> RegisterCoreAsync(AuthRegisterRequestDto request, string? clientIp, string? userAgent)
+        {
             if (request == null)
             {
                 return AuthRegisterOutcome.Fail("InvalidRequest", "Registration payload is required.");
             }
 
+            var hasInvite = !string.IsNullOrWhiteSpace(request.InviteToken) || !string.IsNullOrWhiteSpace(request.InviteCode);
+            var inviteMode = _securitySettings.Registration.Mode != RegistrationMode.LinkCode;
+
+            // KNG-214 (game-first, DESIGN § 5.3): a claim code from the disconnect screen comes with an
+            // invitation; the account is created and linked in one step.
+            if (!string.IsNullOrWhiteSpace(request.ClaimCode))
+            {
+                if (!string.IsNullOrWhiteSpace(request.LinkCode))
+                {
+                    return AuthRegisterOutcome.Fail("InvalidRequest", "Use either a claim code or a link code, not both.");
+                }
+                if (!inviteMode)
+                {
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvitesDisabled, "Sign-up with an invitation isn't open yet. Join the server and run /account link to get your registration code.");
+                }
+                if (!hasInvite)
+                {
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InviteRequired, "You need an invitation to create an account.");
+                }
+            }
+            if (hasInvite)
+            {
+                if (!inviteMode)
+                {
+                    // Mode=LinkCode (today's alpha): invites don't exist for sign-up yet.
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvitesDisabled, "Sign-up with an invitation isn't open yet. Join the server and run /account link to get your registration code.");
+                }
+                if (!string.IsNullOrWhiteSpace(request.LinkCode))
+                {
+                    return AuthRegisterOutcome.Fail("InvalidRequest", "Use either an invitation or a link code, not both.");
+                }
+                return await RegisterWithInviteAsync(request, clientIp, userAgent);
+            }
+
             // D1/D2: a code from the game server (/account link) is the only way in during the alpha.
             if (string.IsNullOrWhiteSpace(request.LinkCode))
             {
+                if (inviteMode)
+                {
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InviteRequired, "You need an invitation to create an account.");
+                }
                 return _securitySettings.Registration.AllowWebFirst
                     ? AuthRegisterOutcome.Fail("WebFirstUnavailable", "Web-only sign-up isn't available yet. Join the server and run /account link to get your registration code.")
                     : AuthRegisterOutcome.Fail(AuthRegisterOutcome.RegistrationNeedsCode, "Join the server and run /account link to get your registration code.");
@@ -277,6 +346,13 @@ namespace knkwebapi_v2.Services
             if (!string.IsNullOrEmpty(user.PasswordHash))
             {
                 return AuthRegisterOutcome.Fail("AlreadyRegistered", "This Minecraft account already has a web login. Log in or reset your password.");
+            }
+
+            // Mode=Invite: a link code alone only works for an account that is already admitted
+            // (grandfathered, or admitted by staff), so it can't be used to sign up without an invite.
+            if (inviteMode && !user.AdmittedAt.HasValue)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InviteRequired, "You need an invitation to create an account.");
             }
 
             var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
@@ -322,6 +398,178 @@ namespace knkwebapi_v2.Services
                 User = _mapper.Map<UserDto>(user),
                 Session = session
             });
+        }
+
+        /// <summary>
+        /// Mode=Invite with an invite (KNG-212, plan § 5.1): check the invite, the email (a personal
+        /// invite's address must match and is then verified), the password and duplicates, then take the
+        /// use and create the web shell account in one transaction (InvitationService.RedeemAsync) and
+        /// log it in.
+        /// </summary>
+        private async Task<AuthRegisterOutcome> RegisterWithInviteAsync(AuthRegisterRequestDto request, string? clientIp, string? userAgent)
+        {
+            const string invalidInvite = "This invitation is invalid or has expired. Ask whoever invited you for a new one.";
+            if (_invitations == null)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvitesDisabled, "Sign-up with an invitation isn't available.");
+            }
+
+            // A token is a personal invite, a code a shared one; the other field is ignored.
+            var invitation = !string.IsNullOrWhiteSpace(request.InviteToken)
+                ? await _invitations.FindUsableAsync(request.InviteToken, null)
+                : await _invitations.FindUsableAsync(null, request.InviteCode);
+            if (invitation == null)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidInvite, invalidInvite);
+            }
+
+            var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+            var personal = invitation.Kind == Models.InvitationKind.Personal;
+            if (personal && !string.Equals(email, invitation.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InviteEmailMismatch, "This invitation was sent to a different email address. Use the address it was sent to.");
+            }
+            if (!IsValidEmail(email))
+            {
+                return AuthRegisterOutcome.Fail("InvalidEmail", "Enter a valid email address.");
+            }
+
+            if (request.Password != request.PasswordConfirmation)
+            {
+                return AuthRegisterOutcome.Fail("PasswordMismatch", "Password and confirmation do not match.");
+            }
+            var (passwordValid, passwordError) = await _passwordService.ValidatePasswordAsync(request.Password ?? string.Empty);
+            if (!passwordValid)
+            {
+                return AuthRegisterOutcome.Fail("InvalidPassword", passwordError ?? "Password does not meet the requirements.");
+            }
+            if (await _userRepository.IsEmailTakenAsync(email))
+            {
+                return AuthRegisterOutcome.Fail("DuplicateEmail", "This email is already in use by another account.");
+            }
+
+            var passwordHash = await _passwordService.HashPasswordAsync(request.Password!);
+            var signup = new InviteSignup(invitation, email, passwordHash, EmailVerified: personal);
+            if (!string.IsNullOrWhiteSpace(request.ClaimCode))
+            {
+                return await RegisterWithInviteAndClaimAsync(signup, request.ClaimCode!, clientIp, userAgent);
+            }
+
+            var user = await _invitations.RedeemAsync(signup);
+            if (user == null)
+            {
+                // Another sign-up took the last use, or the invite was paused or revoked meanwhile.
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidInvite, invalidInvite);
+            }
+
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
+            return AuthRegisterOutcome.Success(new AuthLoginResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = null,
+                ExpiresIn = expiresIn,
+                User = _mapper.Map<UserDto>(user),
+                Session = session
+            });
+        }
+
+        private const string InvalidClaimMessage = "This code from the server is invalid or has expired. Join the server again for a new one.";
+
+        /// <summary>
+        /// Game-first sign-up (KNG-214, plan § 6.1): the claim code is checked before the invite's use
+        /// is taken, then the shell account is created (InvitationService.RedeemAsync) and linked
+        /// (UserService.LinkMinecraftAccountAsync: case A, or the fold of case B) in one transaction.
+        /// Any failure rolls all of it back, so there is never a new account without its Minecraft
+        /// identity, nor a used invite without an account.
+        /// </summary>
+        private async Task<AuthRegisterOutcome> RegisterWithInviteAndClaimAsync(InviteSignup signup, string claimCode, string? clientIp, string? userAgent)
+        {
+            if (_users == null)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+            }
+
+            var (valid, code, _) = await _linkCodeService.ValidateLinkCodeAsync(claimCode);
+            if (!valid || code == null || code.Purpose != LinkCodePurpose.Claim || string.IsNullOrWhiteSpace(code.MinecraftUuid))
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+            }
+            var holder = await _userRepository.GetByUuidAsync(code.MinecraftUuid);
+            if (holder != null && (!holder.IsActive || holder.DeletedAt.HasValue))
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+            }
+            if (holder != null && !string.IsNullOrEmpty(holder.PasswordHash))
+            {
+                return AuthRegisterOutcome.Fail("AlreadyRegistered", "This Minecraft account already has a web account. Log in with it, or use Forgot password.");
+            }
+
+            LinkMinecraftAccountResult? link = null;
+            var outcome = await _userRepository.RunInTransactionAsync(async () =>
+            {
+                var shell = await _invitations!.RedeemAsync(signup);
+                if (shell == null)
+                {
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidInvite, "This invitation is invalid or has expired. Ask whoever invited you for a new one.");
+                }
+                try
+                {
+                    link = await _users.LinkMinecraftAccountAsync(shell.Id, claimCode);
+                }
+                catch (LinkConflictException ex)
+                {
+                    return AuthRegisterOutcome.Fail(ex.Code, ex.Message);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Spent or expired between the check above and the link.
+                    return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+                }
+                return AuthRegisterOutcome.Pending;
+            }, result => result.Ok);
+            if (!outcome.Ok || link == null)
+            {
+                return outcome.Ok ? AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage) : outcome;
+            }
+
+            // The account the login now belongs to: the shell itself (case A) or the Minecraft account it was folded into (case B).
+            var user = await _userRepository.GetByIdAsync(link.User.Id);
+            if (user == null)
+            {
+                return AuthRegisterOutcome.Fail(AuthRegisterOutcome.InvalidClaimCode, InvalidClaimMessage);
+            }
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
+            _logger.LogInformation("Web account {UserId} created with an invitation and linked to Minecraft {Username} (merged: {Merged})", user.Id, user.Username, link.Merged);
+            return AuthRegisterOutcome.Success(new AuthLoginResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = null,
+                ExpiresIn = expiresIn,
+                User = _mapper.Map<UserDto>(user),
+                Session = session,
+                Linked = true,
+                MinecraftName = user.Username
+            });
+        }
+
+        /// <inheritdoc/>
+        public async Task<AuthLoginResponseDto?> StartSessionAsync(int userId, string? clientIp = null, string? userAgent = null)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null || !user.IsActive || user.DeletedAt.HasValue)
+            {
+                return null;
+            }
+
+            var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
+            return new AuthLoginResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = null,
+                ExpiresIn = expiresIn,
+                User = _mapper.Map<UserDto>(user),
+                Session = session
+            };
         }
 
         private static bool IsValidEmail(string email)
@@ -446,6 +694,11 @@ namespace knkwebapi_v2.Services
             }
 
             await _userRepository.UpdateUserAsync(user);
+            if (newEmail != null)
+            {
+                // KNG-216: the new address goes on the Cloudflare Access list, the old one off.
+                _accessSync?.RequestSync();
+            }
 
             // A password or email change ends every session (closed-alpha WP4); this tab gets a
             // fresh one so it stays logged in, keeping its "remember me" choice.
@@ -456,10 +709,10 @@ namespace knkwebapi_v2.Services
             await RevokeAllSessionsAsync(user.Id, hasPasswordUpdate ? "password changed" : "email changed");
             var (accessToken, expiresIn, session) = await IssueSessionAsync(user, rememberMe, null, clientIp, userAgent);
 
-            // WP6.5: tell the old address, best effort (queued; logged when it fails).
+            // WP6.5: tell the old address, best effort (outbox, KNG-206; logged when it fails).
             if (newEmail != null && !string.IsNullOrWhiteSpace(previousEmail))
             {
-                _mailQueue.Enqueue(new AccountMail(AccountMailKind.EmailChangedNotice, previousEmail, user.Username, MaskEmail(newEmail)));
+                await QueueEmailChangedNoticeAsync(user.Id, user.Username, previousEmail, newEmail);
             }
 
             return (true, new AuthUpdateResponseDto
@@ -473,13 +726,31 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>"st***@example.com": enough for the old owner to recognise, not a full address.</summary>
-        public static string MaskEmail(string email)
+        public static string MaskEmail(string email) => EmailMask.Mask(email);
+
+        /// <summary>
+        /// Queues the "your email was changed" notice to <paramref name="previousEmail"/>. Used by
+        /// Auth/update and by staff update-email (KNG-206). Never throws: the change itself is done.
+        /// </summary>
+        public static async Task QueueEmailChangedNoticeAsync(IEmailComposer email, ILogger logger, int userId, string? username,
+            string previousEmail, string newEmail)
         {
-            var at = email.IndexOf('@');
-            if (at <= 0) return "***";
-            var local = email[..at];
-            return (local.Length <= 2 ? local[..1] : local[..2]) + "***" + email[at..];
+            try
+            {
+                await email.QueueAsync(EmailKind.EmailChanged, previousEmail,
+                    new { username = GreetingName(username), newEmailHint = MaskEmail(newEmail) },
+                    $"email-changed:{userId}:{DateTime.UtcNow.Ticks}", userId: userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Could not queue the email-changed notice for user {UserId}", userId);
+            }
         }
+
+        private Task QueueEmailChangedNoticeAsync(int userId, string? username, string previousEmail, string newEmail) =>
+            QueueEmailChangedNoticeAsync(_email, _logger, userId, username, previousEmail, newEmail);
+
+        private static string GreetingName(string? username) => string.IsNullOrWhiteSpace(username) ? "there" : username;
 
         /// <inheritdoc/>
         public async Task<AuthForgotPasswordResponseDto> RequestPasswordResetAsync(string email, string? clientIp, string? userAgent, bool allowDebugPayload)
@@ -511,10 +782,11 @@ namespace knkwebapi_v2.Services
             var tokenHash = HashToken(rawToken);
             var expiresAt = DateTime.UtcNow.AddMinutes(_securitySettings.PasswordResetTokenExpirationMinutes);
 
-            await _linkCodeRepository.CreateAsync(new LinkCode
+            var token = await _linkCodeRepository.CreateAsync(new LinkCode
             {
                 UserId = user.Id,
                 Code = tokenHash,
+                Purpose = LinkCodePurpose.PasswordReset,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = expiresAt,
                 Status = LinkCodeStatus.Active
@@ -523,8 +795,17 @@ namespace knkwebapi_v2.Services
             var resetUrl = BuildResetUrl(rawToken);
             // Closed-alpha WP6.7 (SEC-13): queued, so the answer is the same whether or not SMTP
             // works (a 500 only for existing accounts told an attacker which emails exist).
-            // AccountMailSender logs a delivery failure.
-            _mailQueue.Enqueue(new AccountMail(AccountMailKind.PasswordReset, user.Email!, user.Username, resetUrl));
+            // KNG-206: the outbox row expires with the token; EmailDispatcher logs delivery failures.
+            try
+            {
+                await _email.QueueAsync(EmailKind.PasswordReset, user.Email!,
+                    new { username = GreetingName(user.Username), resetUrl, expiresAt },
+                    $"reset:{token.Id}", expiresAt, user.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not queue the password reset mail for user {UserId}", user.Id);
+            }
 
             _logger.LogInformation(
                 "Password reset token issued for user {UserId} from {Ip} ({UserAgent})",
@@ -666,11 +947,7 @@ namespace knkwebapi_v2.Services
 
         private string BuildResetUrl(string rawToken)
         {
-            var baseUrl = string.IsNullOrWhiteSpace(_securitySettings.PasswordResetFrontendBaseUrl)
-                ? "http://localhost:3000"
-                : _securitySettings.PasswordResetFrontendBaseUrl.TrimEnd('/');
-
-            return $"{baseUrl}/auth/reset-password?token={Uri.EscapeDataString(rawToken)}";
+            return $"{_publicBaseUrl}/auth/reset-password?token={Uri.EscapeDataString(rawToken)}";
         }
 
         private static string GenerateRawResetToken()

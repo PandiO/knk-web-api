@@ -2,6 +2,7 @@ using knkwebapi_v2.Properties;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using knkwebapi_v2.Services.MinecraftCatalog;
 
 namespace knkwebapi_v2.Models;
 
@@ -32,7 +33,7 @@ public static class ItemBlueprintV1Seed
 {
     public const string LegacyTag = "Legacy v1";
 
-    // Fallback MinecraftMaterialRef.Category when the static catalog doesn't know the key.
+    // MinecraftMaterialRef.Category for a material this seed creates (the server scan sets the real flags).
     private const string FallbackMaterialCategory = "ITEM";
 
     private static readonly (string Name, string IconKey)[] Categories =
@@ -142,8 +143,6 @@ public static class ItemBlueprintV1Seed
 
     public static async Task SeedCanonicalAsync(
         KnKDbContext context,
-        IMinecraftMaterialCatalogService? materialCatalog = null,
-        IMinecraftEnchantmentCatalogService? enchantmentCatalog = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -158,21 +157,10 @@ public static class ItemBlueprintV1Seed
         var materials = ByKey(
             await context.MinecraftMaterialRefs.Where(m => iconKeys.Contains(m.NamespaceKey)).ToListAsync(cancellationToken),
             m => m.NamespaceKey, m => m.Id);
-        var materialCatalogByKey = materialCatalog?.GetAll()
-            .GroupBy(e => e.NamespaceKey, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase)
-            ?? new Dictionary<string, MinecraftMaterialCatalogEntry>(StringComparer.OrdinalIgnoreCase);
         foreach (var key in iconKeys)
         {
             if (materials.ContainsKey(key)) continue;
-            materialCatalogByKey.TryGetValue(key, out var entry);
-            var material = new MinecraftMaterialRef
-            {
-                NamespaceKey = key,
-                Category = entry?.Category ?? FallbackMaterialCategory,
-                LegacyName = entry?.LegacyName,
-                IconUrl = entry?.IconUrl,
-            };
+            var material = MinecraftMaterialRefFactory.NewUnverified(key, FallbackMaterialCategory);
             context.MinecraftMaterialRefs.Add(material);
             materials[key] = material;
             Count(nameof(MinecraftMaterialRef));
@@ -225,17 +213,15 @@ public static class ItemBlueprintV1Seed
                 continue;
             }
 
-            var catalogEntry = enchantmentCatalog?.GetByNamespaceKey(key);
+            // KNG-250: no static catalogue; the server scan fills in names and levels of the Unverified ref.
+            var maxLevel = ItemBlueprintV1Seed.SeedMaxLevel(key);
             if (!enchantmentRefs.TryGetValue(key, out var enchantmentRef))
             {
                 enchantmentRef = new MinecraftEnchantmentRef
                 {
                     NamespaceKey = key,
-                    LegacyName = catalogEntry?.LegacyName,
-                    Category = catalogEntry?.Category,
-                    IconUrl = catalogEntry?.IconUrl,
-                    MaxLevel = catalogEntry?.MaxLevel ?? 1,
-                    DisplayName = catalogEntry?.DisplayName ?? ToDisplayName(key),
+                    DisplayName = ToDisplayName(key),
+                    MaxLevel = maxLevel,
                     IsCustom = false,
                 };
                 context.MinecraftEnchantmentRefs.Add(enchantmentRef);
@@ -246,10 +232,10 @@ public static class ItemBlueprintV1Seed
             var definition = new EnchantmentDefinition
             {
                 Key = key,
-                DisplayName = catalogEntry?.DisplayName ?? ToDisplayName(key),
+                DisplayName = ToDisplayName(key),
                 Description = string.Empty,
                 IsCustom = false,
-                MaxLevel = catalogEntry?.MaxLevel ?? 1,
+                MaxLevel = maxLevel,
                 BaseEnchantmentRef = enchantmentRef,
             };
             context.EnchantmentDefinitions.Add(definition);
@@ -314,6 +300,19 @@ public static class ItemBlueprintV1Seed
             created.Count == 0 ? "nothing" : string.Join(", ", created.Select(kv => $"{kv.Value} {kv.Key}")),
             reused.Count == 0 ? "none" : string.Join(", ", reused));
     }
+
+    /// <summary>
+    /// The level a seeded vanilla EnchantmentDefinition (and its Unverified ref) starts with: the highest level the
+    /// lootbox seed rolls or gives for the key, at least 1, so seeded enchant rolls stay valid without a catalogue.
+    /// Blueprint levels may exceed it, as before. The server scan then raises it to the vanilla maximum, because
+    /// the definition still has its ref's level (KNG-250 §12.4).
+    /// </summary>
+    internal static int SeedMaxLevel(string key) =>
+        LootboxSeed.SeededEnchantmentLevels
+            .Where(e => string.Equals(e.Key, key, StringComparison.OrdinalIgnoreCase))
+            .Select(e => e.Level)
+            .DefaultIfEmpty(1)
+            .Max();
 
     // Vanilla keys match as-is ("minecraft:sharpness"); custom keys match the way the plugin's
     // EnchantmentDefinitionBukkitMapper resolves them ("blindness", "knk:blindness" and

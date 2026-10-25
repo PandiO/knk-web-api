@@ -1,0 +1,7 @@
+Hi {{username}},
+
+Welcome to Knights & Kings! Your account is ready.
+
+One step left: link your Minecraft account so you can join the server. Follow the steps here:
+
+{{linkUrl}}

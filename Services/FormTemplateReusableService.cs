@@ -181,7 +181,8 @@ namespace knkwebapi_v2.Services
                     FormStepId = clonedStep.Id,
                     ConditionType = condition.ConditionType,
                     ConditionLogicJson = condition.ConditionLogicJson,
-                    ErrorMessage = condition.ErrorMessage
+                    ErrorMessage = condition.ErrorMessage,
+                    IsActive = condition.IsActive
                 });
             }
 
@@ -251,7 +252,8 @@ namespace knkwebapi_v2.Services
                     FormFieldId = clonedField.Id,
                     Type = validation.Type,
                     ParametersJson = validation.ParametersJson,
-                    ErrorMessage = validation.ErrorMessage
+                    ErrorMessage = validation.ErrorMessage,
+                    IsActive = validation.IsActive
                 });
             }
 

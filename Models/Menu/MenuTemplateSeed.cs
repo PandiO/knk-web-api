@@ -37,6 +37,9 @@ public static partial class MenuTemplateSeed
             await context.SaveChangesAsync(cancellationToken);
 
         logger?.LogInformation("MenuTemplate seed complete. Templates created: {Created}", created);
+
+        // Siege menus seeded before a layout fix are brought up to date in place (see RepairSiegeLayoutAsync).
+        await RepairSiegeLayoutAsync(context, logger, cancellationToken);
     }
 
     private static IEnumerable<MenuTemplate> CanonicalTemplates()

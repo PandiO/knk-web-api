@@ -10,7 +10,6 @@ public interface IMinecraftEnchantmentRefService
     Task<MinecraftEnchantmentRefDto> GetOrCreateAsync(string namespaceKey, string? category = null, string? legacyName = null);
     Task UpdateAsync(int id, MinecraftEnchantmentRefUpdateDto dto);
     Task DeleteAsync(int id);
-    Task<List<MinecraftHybridEnchantmentOptionDto>> GetHybridAsync(string? search = null, string? category = null, int? take = null);
     Task<PagedResultDto<MinecraftEnchantmentRefListDto>> SearchAsync(PagedQueryDto query);
-    Task<PagedResultDto<MinecraftEnchantmentRefListDto>> SearchHybridAsync(PagedQueryDto query);
+    Task<PagedResultDto<MinecraftEnchantmentRefListDto>> SearchPickerAsync(PagedQueryDto query);
 }

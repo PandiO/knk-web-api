@@ -19,6 +19,20 @@ namespace knkwebapi_v2.Services.Interfaces
         /// - "ConditionalRequired"
         /// </summary>
         string ValidationType { get; }
+
+        /// <summary>
+        /// KNG-269: true when the verdict depends on state outside the inputs (the region validators ask
+        /// WorldGuard through the plugin), so a stored result expires after the configured TTL. A pure
+        /// validator's stored result holds as long as the rule and its inputs are unchanged.
+        /// </summary>
+        bool ReadsExternalState => false;
+
+        /// <summary>
+        /// KNG-269: the properties of the (resolved) dependency record the verdict and message read, as
+        /// dotted paths; the stored result is keyed on those values only. Null = the whole dependency
+        /// value, which for a loaded entity includes its navigation collections.
+        /// </summary>
+        IReadOnlyCollection<string>? DependencyPropertiesRead(string? configJson) => null;
         
         /// <summary>
         /// Execute the validation logic.

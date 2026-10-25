@@ -150,7 +150,7 @@ public class ItemInstanceServiceTests
         (await repo.FindDeleteBlockerAsync(bread.Id)).Should().BeNull();
 
         var service = new ItemBlueprintService(repo,
-            Mock.Of<IMinecraftMaterialRefRepository>(), Mock.Of<IMinecraftMaterialCatalogService>(),
+            Mock.Of<IMinecraftMaterialRefRepository>(),
             Mock.Of<IEnchantmentDefinitionRepository>(), Mock.Of<ICategoryRepository>(), Mock.Of<IGradeRepository>(),
             Mock.Of<ITagRepository>(), Mock.Of<IDomainRepository>(), Mapper());
         var act = () => service.DeleteAsync(sword.Id);

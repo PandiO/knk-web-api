@@ -24,6 +24,11 @@ namespace knkwebapi_v2.Repositories
             return await _context.MinecraftBlockRefs.FirstOrDefaultAsync(x => x.Id == id);
         }
 
+        public async Task<MinecraftBlockRef?> GetByStateKeyAsync(string stateKey)
+        {
+            return await _context.MinecraftBlockRefs.OrderBy(x => x.Id).FirstOrDefaultAsync(x => x.StateKey == stateKey);
+        }
+
         public async Task AddAsync(MinecraftBlockRef entity)
         {
             await _context.MinecraftBlockRefs.AddAsync(entity);
@@ -48,7 +53,7 @@ namespace knkwebapi_v2.Repositories
 
         public async Task<PagedResult<MinecraftBlockRef>> SearchAsync(PagedQuery query)
         {
-            var queryable = _context.MinecraftBlockRefs.AsQueryable();
+            var queryable = _context.MinecraftBlockRefs.Include(x => x.MaterialRef).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
             {

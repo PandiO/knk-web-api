@@ -1,0 +1,58 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "912ad61f-c45e-5124-944d-a6c6a0d9fd6f",
+  "entityTypeName": "LootboxPoolEntry",
+  "name": "LootboxPoolEntry - Join Entry (seed v1)",
+  "description": "An adjustment of one lootbox type's item pool: add an item from elsewhere, change an item's weight, or leave one out. Created from the type's Item pool step (Create New Join Entry).",
+  "steps": [
+    {
+      "stepGuid": "62fab974-5911-50be-84d0-ddc7e8d31b1a",
+      "stepName": "Pool entry",
+      "description": "The pool starts as every graded item of the type's category that isn't a lootbox special. Each entry changes one item.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "01bbfa96-a233-566e-a041-d1272f996661",
+          "fieldName": "ItemBlueprintId",
+          "label": "Item",
+          "description": "The item to add, re-weight or leave out. Each item can have one entry per type.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "37477594-d428-5adf-8d46-edeb898f6ac4",
+          "fieldName": "Mode",
+          "label": "Mode",
+          "description": "Include adds the item (from any category) or keeps it with the weight and grade below; Exclude removes an item the category would otherwise give.",
+          "fieldType": "Enum",
+          "defaultValue": "Include",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Include\", \"Exclude\"]}"
+        },
+        {
+          "fieldGuid": "f1f7017f-cb4e-58fa-b550-16f97d4bbe41",
+          "fieldName": "WeightOverride",
+          "label": "Weight",
+          "description": "Relative weight (0 or more) among the pool items of the same grade. Empty = 1. Ignored for Exclude.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "efe6ff86-c0ef-5f95-97a4-3f4548926a37",
+          "fieldName": "GradeIdOverride",
+          "label": "Drop grade",
+          "description": "The grade the item drops as. Needed to include an item without a grade of its own; otherwise empty keeps the item's grade. Ignored for Exclude.",
+          "fieldType": "Object",
+          "objectType": "Grade",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

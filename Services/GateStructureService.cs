@@ -17,6 +17,7 @@ namespace knkwebapi_v2.Services
         private readonly ILocationRepository _locationRepo;
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
+        private readonly ITeleportDestinationService _teleportDestinations;
         private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly IDomainWorldResolver _worlds;
 
@@ -25,6 +26,7 @@ namespace knkwebapi_v2.Services
             ILocationRepository locationRepo,
             ILocationService locationService,
             IMapper mapper,
+            ITeleportDestinationService teleportDestinations,
             IDomainRegionNameFinalizer regionNames,
             IDomainWorldResolver worlds)
         {
@@ -32,6 +34,7 @@ namespace knkwebapi_v2.Services
             _locationRepo = locationRepo;
             _locationService = locationService;
             _mapper = mapper;
+            _teleportDestinations = teleportDestinations;
             _regionNames = regionNames;
             _worlds = worlds;
         }
@@ -69,18 +72,19 @@ namespace knkwebapi_v2.Services
         {
             if (gateStructureDto == null)
                 throw new ArgumentNullException(nameof(gateStructureDto));
-            if (string.IsNullOrWhiteSpace(gateStructureDto.Name))
-                throw new ArgumentException("GateStructure name is required.", nameof(gateStructureDto));
+            DomainNameRules.Normalize(gateStructureDto, "GateStructure", nameof(gateStructureDto));
             GateNameRules.EnsureNotReserved(gateStructureDto.Name, "gate structure", "/gate", nameof(gateStructureDto));
             if (gateStructureDto.StreetId <= 0)
                 throw new ArgumentException("Valid StreetId is required.", nameof(gateStructureDto));
             if (gateStructureDto.DistrictId <= 0)
                 throw new ArgumentException("Valid DistrictId is required.", nameof(gateStructureDto));
+            await _teleportDestinations.ValidateSettingsAsync(gateStructureDto);
 
             var gateStructure = _mapper.Map<GateStructure>(gateStructureDto);
             // KNG-111: resolved before any Location is saved, so a rejected world leaves nothing behind.
             gateStructure.WorldName = await _worlds.ResolveAsync(WorldRequest(gateStructure, gateStructureDto, null));
             await EnsureGuardSpawnsInWorldAsync(gateStructureDto, gateStructure.WorldName);
+            DomainTeleportSettings.Apply(gateStructure, gateStructureDto);
             DomainNavigationDefaults.Apply(gateStructure, gateStructureDto);
             await ApplyLocationReferencesAsync(gateStructure, gateStructureDto, isCreate: true);
             await _repo.AddGateStructureAsync(gateStructure);
@@ -97,8 +101,7 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentNullException(nameof(gateStructureDto));
             if (id <= 0)
                 throw new ArgumentException("Invalid id.", nameof(id));
-            if (string.IsNullOrWhiteSpace(gateStructureDto.Name))
-                throw new ArgumentException("GateStructure name is required.", nameof(gateStructureDto));
+            DomainNameRules.Normalize(gateStructureDto, "GateStructure", nameof(gateStructureDto));
             GateNameRules.EnsureNotReserved(gateStructureDto.Name, "gate structure", "/gate", nameof(gateStructureDto));
 
             var existing = await _repo.GetByIdAsync(id);
@@ -106,10 +109,12 @@ namespace knkwebapi_v2.Services
                 throw new KeyNotFoundException($"GateStructure with id {id} not found.");
             // KNG-103: the region this save replaces when the region step was run again
             string previousRegionId = existing.WgRegionId;
+            await _teleportDestinations.ValidateSettingsAsync(gateStructureDto);
 
             _mapper.Map(gateStructureDto, existing);
             existing.WorldName = await _worlds.ResolveAsync(WorldRequest(existing, gateStructureDto, id));
             await EnsureGuardSpawnsInWorldAsync(gateStructureDto, existing.WorldName);
+            DomainTeleportSettings.Apply(existing, gateStructureDto);
             DomainNavigationDefaults.Apply(existing, gateStructureDto);
             await ApplyLocationReferencesAsync(existing, gateStructureDto);
             await _repo.UpdateGateStructureAsync(existing);

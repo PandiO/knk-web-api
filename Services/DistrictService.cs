@@ -106,7 +106,7 @@ namespace knkwebapi_v2.Services
         public async Task<DistrictDto> CreateAsync(DistrictDto districtDto)
         {
             if (districtDto == null) throw new ArgumentNullException(nameof(districtDto));
-            if (string.IsNullOrWhiteSpace(districtDto.Name)) throw new ArgumentException("District name is required.", nameof(districtDto));
+            DomainNameRules.Normalize(districtDto, "District", nameof(districtDto));
             if (string.IsNullOrWhiteSpace(districtDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(districtDto));
             if (districtDto.TownId <= 0) throw new ArgumentException("TownId is required.", nameof(districtDto));
 
@@ -191,7 +191,7 @@ namespace knkwebapi_v2.Services
         {
             if (districtDto == null) throw new ArgumentNullException(nameof(districtDto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
-            if (string.IsNullOrWhiteSpace(districtDto.Name)) throw new ArgumentException("District name is required.", nameof(districtDto));
+            DomainNameRules.Normalize(districtDto, "District", nameof(districtDto));
             if (string.IsNullOrWhiteSpace(districtDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(districtDto));
             if (districtDto.TownId <= 0) throw new ArgumentException("TownId is required.", nameof(districtDto));
             

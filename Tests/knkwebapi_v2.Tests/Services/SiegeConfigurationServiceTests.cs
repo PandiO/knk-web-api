@@ -28,6 +28,33 @@ public class SiegeConfigurationServiceTests
     }
 
     [Fact]
+    public async Task TheNavigationCompassIsOffByDefaultAndCanBeSwitchedOn()
+    {
+        Assert.False((await _service.GetAsync()).GiveNavigationItem);
+
+        var updated = await _service.UpdateAsync(new UpdateSiegeConfigurationDto { GiveNavigationItem = true });
+        Assert.True(updated.GiveNavigationItem);
+
+        // a partial update that does not mention it leaves it
+        var other = await _service.UpdateAsync(new UpdateSiegeConfigurationDto { MaxBooksAlive = 11 });
+        Assert.True(other.GiveNavigationItem);
+    }
+
+    [Fact]
+    public async Task TheSkipSecondsAreEditableAndMustBeAtLeastOne()
+    {
+        var updated = await _service.UpdateAsync(new UpdateSiegeConfigurationDto { PlayerSkipMatchmakingSeconds = 90, AdminSkipMatchmakingSeconds = 45 });
+        Assert.Equal((90, 45), (updated.PlayerSkipMatchmakingSeconds, updated.AdminSkipMatchmakingSeconds));
+
+        // a partial update that does not mention them leaves them
+        var other = await _service.UpdateAsync(new UpdateSiegeConfigurationDto { MaxBooksAlive = 11 });
+        Assert.Equal((90, 45), (other.PlayerSkipMatchmakingSeconds, other.AdminSkipMatchmakingSeconds));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(new UpdateSiegeConfigurationDto { PlayerSkipMatchmakingSeconds = 0 }));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(new UpdateSiegeConfigurationDto { AdminSkipMatchmakingSeconds = -5 }));
+    }
+
+    [Fact]
     public async Task FirstRead_SeedsTheLegacyDefaults()
     {
         var dto = await _service.GetAsync();
@@ -46,6 +73,7 @@ public class SiegeConfigurationServiceTests
         Assert.Equal(1.5, dto.HeadshotMultiplier);
         Assert.Equal(new[] { "/siege", "/msg", "/r", "/staffchat", "/menu" }, dto.AllowedCommands);
         Assert.Equal(20, dto.SpawnPickerDelayTicks);
+        Assert.Equal((60, 31), (dto.PlayerSkipMatchmakingSeconds, dto.AdminSkipMatchmakingSeconds));
         Assert.Equal(30, dto.EnchantDropChancePerMille);
         Assert.Contains("minecraft:sharpness", dto.AllowedEnchantmentKeys);
         Assert.DoesNotContain("minecraft:mending", dto.AllowedEnchantmentKeys);
