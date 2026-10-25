@@ -23,6 +23,12 @@ namespace knkwebapi_v2.Repositories
         public Task<Domain?> GetByIdAsync(int domainId) =>
             WithRequirements().FirstOrDefaultAsync(d => d.Id == domainId);
 
+        public Task<ArenaArea?> GetArenaAreaAsync(int areaId) =>
+            _context.ArenaAreas.AsNoTracking()
+                .Include(a => a.Arena)
+                .Include(a => a.TeleportMinTitleBracket)
+                .FirstOrDefaultAsync(a => a.Id == areaId);
+
         public Task<bool> IsFeeKeyVoidAsync(string idempotencyKey) =>
             _context.TeleportFeeVoids.AsNoTracking().AnyAsync(v => v.IdempotencyKey == idempotencyKey);
 

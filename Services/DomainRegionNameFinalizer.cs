@@ -11,8 +11,8 @@ namespace knkwebapi_v2.Services
 {
     /// <summary>
     /// Gives a domain's WorldGuard region its final name once the domain exists. A region drawn through a WgRegionId world
-    /// task is called <c>tempregion_worldtask_&lt;taskId&gt;</c>; after the Town, District, Structure, GateStructure, Arena,
-    /// ArenaBattleground, ArenaSpectatorArea or Domain is saved, the region is renamed to <c>domain_&lt;id&gt;</c> (all share Domain's id sequence) and the plugin
+    /// task is called <c>tempregion_worldtask_&lt;taskId&gt;</c>; after the Town, District, Structure, GateStructure, Arena
+    /// or Domain is saved, the region is renamed to <c>domain_&lt;id&gt;</c> (all share Domain's id sequence) and the plugin
     /// sets it up as that type: parent region, priority and flags. See knk-workspace
     /// <c>docs/architecture/managed-worldguard-regions.md</c> §7 (KNG-43).
     /// </summary>
@@ -47,6 +47,15 @@ namespace knkwebapi_v2.Services
         /// a re-run of its world task (replaced like KNG-103). Never throws.
         /// </summary>
         Task<bool> FinalizeSubRegionAsync(DomainSubRegion subRegion, string? previousRegionId);
+
+        /// <summary>
+        /// Arena duels rev. 6: gives an arena area's region its final name <c>arena_&lt;arenaId&gt;_&lt;kind&gt;_&lt;id&gt;</c>
+        /// after it is saved (a temp-named region from its world task, or an existing region adopted with "select"). The
+        /// plugin sets it up as its managed kind (BATTLEGROUND, SPECTATOR_AREA, LOBBY) under the arena's region.
+        /// <paramref name="previousRegionId"/> is the region's WgRegionId before this save, for a re-run of its world task
+        /// (replaced like KNG-103). Never throws.
+        /// </summary>
+        Task<bool> FinalizeArenaAreaRegionAsync(ArenaAreaRegion region, string? previousRegionId);
     }
 
     public sealed record TempRegionFinalizeResult(int Found, int Renamed, IReadOnlyList<string> Failed);
@@ -96,6 +105,18 @@ namespace knkwebapi_v2.Services
 
         public static string FinalNameFor(int domainId) => $"domain_{domainId}";
 
+        /// <summary>Arena duels rev. 6: the final name of an arena area's region.</summary>
+        public static string FinalAreaRegionNameFor(int arenaId, ArenaAreaKind kind, int regionId) =>
+            $"arena_{arenaId}_{kind.ToString().ToLowerInvariant()}_{regionId}";
+
+        /// <summary>Arena duels rev. 6: the <c>domainType</c> the plugin's managed-region policy maps to the area's kind.</summary>
+        public static string AreaRegionTypeOf(ArenaAreaKind kind) => kind switch
+        {
+            ArenaAreaKind.BATTLEGROUND => "ArenaBattleground",
+            ArenaAreaKind.SPECTATOR => "ArenaSpectatorArea",
+            _ => "ArenaLobby"
+        };
+
         /// <summary>KNG-254: the final name of a domain's sub-region.</summary>
         public static string FinalSubRegionNameFor(int domainId, int subRegionId) => $"domain_{domainId}_sub_{subRegionId}";
 
@@ -105,8 +126,6 @@ namespace knkwebapi_v2.Services
             GateStructure => nameof(GateStructure),
             Arena => nameof(Arena),
             Structure => nameof(Structure),
-            ArenaBattleground => nameof(ArenaBattleground),
-            ArenaSpectatorArea => nameof(ArenaSpectatorArea),
             District => nameof(District),
             Town => nameof(Town),
             _ => null
@@ -269,7 +288,26 @@ namespace knkwebapi_v2.Services
                 }
             }
 
-            int found = domains.Count + subRegions.Count;
+            // Arena duels rev. 6: then the arena area regions not on their final name, under their arena's final region.
+            var areaRegions = (await _context.ArenaAreaRegions.Include(r => r.ArenaArea).ToListAsync())
+                .Where(r => r.ArenaArea != null
+                    && !r.WgRegionId.Equals(FinalAreaRegionNameFor(r.ArenaArea.ArenaId, r.ArenaArea.Kind, r.Id), StringComparison.OrdinalIgnoreCase))
+                .OrderBy(r => r.Id)
+                .ToList();
+            foreach (var areaRegion in areaRegions)
+            {
+                string currentName = areaRegion.WgRegionId;
+                if (await FinalizeArenaAreaRegionAsync(areaRegion, null))
+                {
+                    renamed++;
+                }
+                else
+                {
+                    failed.Add($"Region {areaRegion.Id} of arena area {areaRegion.ArenaAreaId} ({currentName})");
+                }
+            }
+
+            int found = domains.Count + subRegions.Count + areaRegions.Count;
             _logger.LogInformation("Temp region finalize pass: found {Found}, renamed {Renamed}, failed {Failed}",
                 found, renamed, failed.Count);
             return new TempRegionFinalizeResult(found, renamed, failed);
@@ -354,6 +392,115 @@ namespace knkwebapi_v2.Services
             }
         }
 
+        public async Task<bool> FinalizeArenaAreaRegionAsync(ArenaAreaRegion region, string? previousRegionId)
+        {
+            if (region == null || region.Id <= 0 || region.ArenaAreaId <= 0 || string.IsNullOrWhiteSpace(region.WgRegionId))
+            {
+                return false;
+            }
+            var area = await _context.ArenaAreas.AsNoTracking().Include(a => a.Arena).FirstOrDefaultAsync(a => a.Id == region.ArenaAreaId);
+            if (area?.Arena == null)
+            {
+                return false;
+            }
+            string finalName = FinalAreaRegionNameFor(area.ArenaId, area.Kind, region.Id);
+            string currentName = region.WgRegionId;
+            if (currentName.Equals(finalName, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            string world = region.WorldName;
+            string? parentRegionId = string.IsNullOrWhiteSpace(area.Arena.WgRegionId) ? null : area.Arena.WgRegionId;
+            string domainType = AreaRegionTypeOf(area.Kind);
+
+            string? replaceRegionId = null;
+            try
+            {
+                replaceRegionId = await ReplaceableAreaRegionAsync(region, previousRegionId, finalName, world);
+                _logger.LogInformation("Finalizing region {RegionRowId} of arena area {AreaId} ({Kind}, arena {ArenaId}): {CurrentName} -> {FinalName} (parent {Parent}, world {World}, replacing {ReplaceRegionId})",
+                    region.Id, area.Id, area.Kind, area.ArenaId, currentName, finalName, parentRegionId, world, replaceRegionId ?? "nothing");
+                bool renamed = replaceRegionId == null
+                    ? await _regionService.RenameRegionAsync(currentName, finalName, domainType, parentRegionId, world)
+                    : await _regionService.RenameRegionAsync(currentName, finalName, domainType, parentRegionId, world, replaceRegionId);
+                if (!renamed)
+                {
+                    _logger.LogWarning("Failed to finalize arena area region {RegionRowId}: the plugin did not rename {CurrentName} (see the plugin log)",
+                        region.Id, currentName);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finalizing arena area region {RegionRowId} ({CurrentName})", region.Id, currentName);
+                return false;
+            }
+
+            try
+            {
+                region.WgRegionId = finalName;
+                if (_context.Entry(region).State == EntityState.Detached)
+                {
+                    var tracked = await _context.ArenaAreaRegions.FirstOrDefaultAsync(r => r.Id == region.Id)
+                        ?? throw new InvalidOperationException($"Arena area region {region.Id} not found.");
+                    tracked.WgRegionId = finalName;
+                }
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Finalized arena area region {RegionRowId}: {FinalName}{Replaced}", region.Id, finalName,
+                    replaceRegionId != null ? $" (replaced {replaceRegionId})" : string.Empty);
+                return true;
+            }
+            catch (Exception storeError)
+            {
+                region.WgRegionId = currentName;
+                try
+                {
+                    if (await _regionService.RenameRegionAsync(finalName, currentName, null, null, world))
+                    {
+                        _logger.LogError(storeError, "Arena area region {RegionRowId} could not be updated after its region was renamed to {FinalName}; renamed back to {CurrentName}",
+                            region.Id, finalName, currentName);
+                        return false;
+                    }
+                }
+                catch (Exception renameBackError)
+                {
+                    _logger.LogError(renameBackError, "Renaming {FinalName} back to {CurrentName} failed", finalName, currentName);
+                }
+                _logger.LogError(storeError, "Region {CurrentName} was renamed to {FinalName} but arena area region {RegionRowId} could not be updated; set its WgRegionId to {FinalName} by hand",
+                    currentName, finalName, region.Id, finalName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Arena duels rev. 6: as <see cref="ReplaceableSubRegionAsync"/> for an arena area region whose world task was run
+        /// again: only its own final name or a temp-named region qualify, and only when nothing else in the world uses it.
+        /// </summary>
+        public async Task<string?> ReplaceableAreaRegionAsync(ArenaAreaRegion region, string? previousRegionId, string finalName, string? world)
+        {
+            if (string.IsNullOrWhiteSpace(previousRegionId))
+            {
+                return null;
+            }
+            string previous = previousRegionId.Trim();
+            if (previous.Equals(region.WgRegionId, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            if (!previous.Equals(finalName, StringComparison.OrdinalIgnoreCase) && !IsTemporary(previous))
+            {
+                _logger.LogInformation("Arena area region {RegionRowId}'s previous region {PreviousRegionId} is not one the API creates; it is kept",
+                    region.Id, previous);
+                return null;
+            }
+            string? takenBy = await DomainRegionOwnership.TakenByAsync(_context, previous, world, exceptAreaRegionId: region.Id);
+            if (takenBy != null)
+            {
+                _logger.LogWarning("Arena area region {RegionRowId}'s previous region {PreviousRegionId} is kept: {TakenBy}", region.Id, previous, takenBy);
+                return null;
+            }
+            return previous;
+        }
+
         /// <summary>
         /// KNG-254: as <see cref="ReplaceableRegionAsync"/> for a sub-region whose world task was run again: only its own
         /// final name or a temp-named region qualify, and only when no other domain or sub-region in the world uses it.
@@ -389,8 +536,6 @@ namespace knkwebapi_v2.Services
             Town => 0,
             District => 1,
             Structure => 2,
-            // KNG-210: an arena's battlegrounds and spectator areas after the arena (a Structure).
-            ArenaBattleground or ArenaSpectatorArea => 3,
             _ => 4
         };
 
@@ -400,9 +545,6 @@ namespace knkwebapi_v2.Services
             {
                 District district => district.TownId,
                 Structure structure => structure.DistrictId,
-                // KNG-210: District -> Arena -> its battlegrounds and spectator areas.
-                ArenaBattleground battleground => battleground.ArenaId,
-                ArenaSpectatorArea spectatorArea => spectatorArea.ArenaId,
                 _ => 0
             };
             if (parentId <= 0)

@@ -2,7 +2,7 @@ using knkwebapi_v2.Models;
 
 namespace knkwebapi_v2.Repositories
 {
-    /// <summary>Arena duels (KNG-210): arenas, their battlegrounds, spectator areas and eligible kits.</summary>
+    /// <summary>Arena duels (KNG-210): arenas, their areas (rev. 6) and their regions, and eligible kits.</summary>
     public interface IArenaRepository
     {
         Task<List<Arena>> GetAllAsync();
@@ -11,14 +11,17 @@ namespace knkwebapi_v2.Repositories
         Task<bool> KeyTakenAsync(string key, int? excludeId);
         Task<PagedResult<Arena>> SearchAsync(PagedQuery query);
 
-        Task<List<ArenaBattleground>> GetBattlegroundsAsync(int? arenaId);
-        Task<ArenaBattleground?> GetBattlegroundAsync(int id);
-        Task<bool> BattlegroundKeyTakenAsync(int arenaId, string key, int? excludeId);
-        Task<PagedResult<ArenaBattleground>> SearchBattlegroundsAsync(PagedQuery query);
+        Task<List<ArenaArea>> GetAreasAsync(int? arenaId);
+        Task<ArenaArea?> GetAreaAsync(int id);
+        Task<bool> AreaKeyTakenAsync(int arenaId, string key, int? excludeId);
+        Task<bool> OtherLobbyExistsAsync(int arenaId, int? excludeId);
+        Task<PagedResult<ArenaArea>> SearchAreasAsync(PagedQuery query);
 
-        Task<List<ArenaSpectatorArea>> GetSpectatorAreasAsync(int? arenaId);
-        Task<ArenaSpectatorArea?> GetSpectatorAreaAsync(int id);
-        Task<PagedResult<ArenaSpectatorArea>> SearchSpectatorAreasAsync(PagedQuery query);
+        Task<List<ArenaAreaRegion>> GetAreaRegionsAsync(int? areaId);
+        Task<ArenaAreaRegion?> GetAreaRegionAsync(int id);
+        /// <summary>The area region with this WorldGuard id in <paramref name="world"/> (null: any world).</summary>
+        Task<ArenaAreaRegion?> FindAreaRegionAsync(string regionId, string? world);
+        Task<PagedResult<ArenaAreaRegion>> SearchAreaRegionsAsync(PagedQuery query);
 
         Task<List<int>> ExistingKitIdsAsync(IEnumerable<int> kitIds);
         Task<Location?> GetLocationAsync(int id);
@@ -28,9 +31,9 @@ namespace knkwebapi_v2.Repositories
 
         Task AddAsync(object entity);
         Task SaveChangesAsync();
-        /// <summary>Deletes the arena with its battlegrounds, spectator areas and kit rows, all through EF, so the
-        /// children's TPT base rows in <c>domains</c> go too (a database cascade would only clear the subtype tables).</summary>
+        /// <summary>Deletes the arena with its areas, their regions and its kit rows. The areas' WorldGuard regions become
+        /// orphans the game server deletes after the retention period.</summary>
         Task DeleteArenaAsync(Arena arena);
-        Task DeleteDomainAsync(Domain domain);
+        Task RemoveAsync(object entity);
     }
 }

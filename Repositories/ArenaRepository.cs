@@ -15,29 +15,36 @@ namespace knkwebapi_v2.Repositories
 
         private IQueryable<Arena> Arenas() => _context.Arenas
             .Include(a => a.Location)
-            .Include(a => a.LobbyLocation)
             .Include(a => a.ExitLocation)
             .Include(a => a.Street)
             .Include(a => a.District)
                 .ThenInclude(d => d.Town)
             .Include(a => a.EligibleKits)
                 .ThenInclude(k => k.Kit)
-            .Include(a => a.Battlegrounds)
+            .Include(a => a.SubRegions)
+            .Include(a => a.Areas)
                 .ThenInclude(b => b.SpawnALocation)
-            .Include(a => a.Battlegrounds)
+            .Include(a => a.Areas)
                 .ThenInclude(b => b.SpawnBLocation)
-            .Include(a => a.SpectatorAreas)
-                .ThenInclude(s => s.Location)
+            .Include(a => a.Areas)
+                .ThenInclude(b => b.ArrivalLocation)
+            .Include(a => a.Areas)
+                .ThenInclude(b => b.TeleportMinTitleBracket)
+            .Include(a => a.Areas)
+                .ThenInclude(b => b.Regions)
             .AsSplitQuery();
 
-        private IQueryable<ArenaBattleground> Battlegrounds() => _context.ArenaBattlegrounds
-            .Include(b => b.Arena)
-            .Include(b => b.SpawnALocation)
-            .Include(b => b.SpawnBLocation);
-
-        private IQueryable<ArenaSpectatorArea> SpectatorAreas() => _context.ArenaSpectatorAreas
+        private IQueryable<ArenaArea> Areas() => _context.ArenaAreas
             .Include(a => a.Arena)
-            .Include(a => a.Location);
+            .Include(a => a.SpawnALocation)
+            .Include(a => a.SpawnBLocation)
+            .Include(a => a.ArrivalLocation)
+            .Include(a => a.TeleportMinTitleBracket)
+            .Include(a => a.Regions)
+            .AsSplitQuery();
+
+        private IQueryable<ArenaAreaRegion> AreaRegions() => _context.ArenaAreaRegions
+            .Include(r => r.ArenaArea);
 
         public Task<List<Arena>> GetAllAsync() => Arenas().OrderBy(a => a.Name).ToListAsync();
 
@@ -76,58 +83,79 @@ namespace knkwebapi_v2.Repositories
             };
             return await PageAsync(queryable
                 .Include(a => a.District).ThenInclude(d => d.Town)
-                .Include(a => a.Battlegrounds), query);
+                .Include(a => a.Areas), query);
         }
 
-        public Task<List<ArenaBattleground>> GetBattlegroundsAsync(int? arenaId) => Battlegrounds()
-            .Where(b => arenaId == null || b.ArenaId == arenaId)
-            .OrderBy(b => b.ArenaId).ThenBy(b => b.SortOrder).ThenBy(b => b.Id)
+        public Task<List<ArenaArea>> GetAreasAsync(int? arenaId) => Areas()
+            .Where(a => arenaId == null || a.ArenaId == arenaId)
+            .OrderBy(a => a.ArenaId).ThenBy(a => a.Kind).ThenBy(a => a.SortOrder).ThenBy(a => a.Id)
             .ToListAsync();
 
-        public Task<ArenaBattleground?> GetBattlegroundAsync(int id) => Battlegrounds().FirstOrDefaultAsync(b => b.Id == id);
+        public Task<ArenaArea?> GetAreaAsync(int id) => Areas().FirstOrDefaultAsync(a => a.Id == id);
 
-        public Task<bool> BattlegroundKeyTakenAsync(int arenaId, string key, int? excludeId)
+        public Task<bool> AreaKeyTakenAsync(int arenaId, string key, int? excludeId)
         {
             var lowered = key.Trim().ToLower();
             int self = excludeId ?? 0;
-            return _context.ArenaBattlegrounds.AnyAsync(b => b.Id != self && b.ArenaId == arenaId && b.Key.ToLower() == lowered);
+            return _context.ArenaAreas.AnyAsync(a => a.Id != self && a.ArenaId == arenaId && a.Key.ToLower() == lowered);
         }
 
-        public async Task<PagedResult<ArenaBattleground>> SearchBattlegroundsAsync(PagedQuery query)
+        public Task<bool> OtherLobbyExistsAsync(int arenaId, int? excludeId)
         {
-            var queryable = Battlegrounds();
+            int self = excludeId ?? 0;
+            return _context.ArenaAreas.AnyAsync(a => a.Id != self && a.ArenaId == arenaId && a.Kind == ArenaAreaKind.LOBBY);
+        }
+
+        public async Task<PagedResult<ArenaArea>> SearchAreasAsync(PagedQuery query)
+        {
+            var queryable = Areas();
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
             {
                 var term = query.SearchTerm.ToLower();
-                queryable = queryable.Where(b => b.Name.ToLower().Contains(term) || b.Key.ToLower().Contains(term));
-            }
-            if (TryFilter(query, "arenaId", out int arenaId))
-            {
-                queryable = queryable.Where(b => b.ArenaId == arenaId);
-            }
-            return await PageAsync(queryable.OrderBy(b => b.ArenaId).ThenBy(b => b.SortOrder).ThenBy(b => b.Id), query);
-        }
-
-        public Task<List<ArenaSpectatorArea>> GetSpectatorAreasAsync(int? arenaId) => SpectatorAreas()
-            .Where(a => arenaId == null || a.ArenaId == arenaId)
-            .OrderBy(a => a.ArenaId).ThenBy(a => a.Id)
-            .ToListAsync();
-
-        public Task<ArenaSpectatorArea?> GetSpectatorAreaAsync(int id) => SpectatorAreas().FirstOrDefaultAsync(a => a.Id == id);
-
-        public async Task<PagedResult<ArenaSpectatorArea>> SearchSpectatorAreasAsync(PagedQuery query)
-        {
-            var queryable = SpectatorAreas();
-            if (!string.IsNullOrWhiteSpace(query.SearchTerm))
-            {
-                var term = query.SearchTerm.ToLower();
-                queryable = queryable.Where(a => a.Name.ToLower().Contains(term));
+                queryable = queryable.Where(a => a.Key.ToLower().Contains(term) || (a.Name != null && a.Name.ToLower().Contains(term)));
             }
             if (TryFilter(query, "arenaId", out int arenaId))
             {
                 queryable = queryable.Where(a => a.ArenaId == arenaId);
             }
-            return await PageAsync(queryable.OrderBy(a => a.ArenaId).ThenBy(a => a.Id), query);
+            if (query.Filters != null && query.Filters.TryGetValue("kind", out var rawKind)
+                && Enum.TryParse<ArenaAreaKind>(rawKind, ignoreCase: true, out var kind))
+            {
+                queryable = queryable.Where(a => a.Kind == kind);
+            }
+            return await PageAsync(queryable.OrderBy(a => a.ArenaId).ThenBy(a => a.Kind).ThenBy(a => a.SortOrder).ThenBy(a => a.Id), query);
+        }
+
+        public Task<List<ArenaAreaRegion>> GetAreaRegionsAsync(int? areaId) => AreaRegions()
+            .Where(r => areaId == null || r.ArenaAreaId == areaId)
+            .OrderBy(r => r.ArenaAreaId).ThenBy(r => r.Id)
+            .ToListAsync();
+
+        public Task<ArenaAreaRegion?> GetAreaRegionAsync(int id) => AreaRegions().FirstOrDefaultAsync(r => r.Id == id);
+
+        public Task<ArenaAreaRegion?> FindAreaRegionAsync(string regionId, string? world)
+        {
+            var loweredRegion = regionId.Trim().ToLower();
+            var loweredWorld = string.IsNullOrWhiteSpace(world) ? null : world.Trim().ToLower();
+            return AreaRegions()
+                .Where(r => r.WgRegionId.ToLower() == loweredRegion && (loweredWorld == null || r.WorldName.ToLower() == loweredWorld))
+                .OrderBy(r => r.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<PagedResult<ArenaAreaRegion>> SearchAreaRegionsAsync(PagedQuery query)
+        {
+            var queryable = AreaRegions();
+            if (!string.IsNullOrWhiteSpace(query.SearchTerm))
+            {
+                var term = query.SearchTerm.ToLower();
+                queryable = queryable.Where(r => r.WgRegionId.ToLower().Contains(term));
+            }
+            if (TryFilter(query, "arenaAreaId", out int areaId))
+            {
+                queryable = queryable.Where(r => r.ArenaAreaId == areaId);
+            }
+            return await PageAsync(queryable.OrderBy(r => r.ArenaAreaId).ThenBy(r => r.Id), query);
         }
 
         public Task<List<int>> ExistingKitIdsAsync(IEnumerable<int> kitIds)
@@ -152,15 +180,15 @@ namespace knkwebapi_v2.Repositories
         public async Task DeleteArenaAsync(Arena arena)
         {
             _context.ArenaKits.RemoveRange(arena.EligibleKits);
-            _context.ArenaBattlegrounds.RemoveRange(arena.Battlegrounds);
-            _context.ArenaSpectatorAreas.RemoveRange(arena.SpectatorAreas);
+            foreach (var area in arena.Areas) _context.ArenaAreaRegions.RemoveRange(area.Regions);
+            _context.ArenaAreas.RemoveRange(arena.Areas);
             _context.Arenas.Remove(arena);
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteDomainAsync(Domain domain)
+        public async Task RemoveAsync(object entity)
         {
-            _context.Domains.Remove(domain);
+            _context.Remove(entity);
             await _context.SaveChangesAsync();
         }
 

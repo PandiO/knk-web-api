@@ -458,7 +458,7 @@ namespace knkwebapi_v2.Services.Duel
             var groundIds = matches.Where(m => m.BattlegroundId.HasValue).Select(m => m.BattlegroundId!.Value).Distinct().ToList();
             var grounds = groundIds.Count == 0
                 ? new Dictionary<int, string>()
-                : await _context.ArenaBattlegrounds.AsNoTracking().Where(b => groundIds.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Key, ct);
+                : await _context.ArenaAreas.AsNoTracking().Where(b => groundIds.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Key, ct);
 
             return matches.Select(m => new DuelMatchDto
             {

@@ -3,7 +3,7 @@
   "configurationGuid": "32b90fa9-b6d1-5809-8029-f3abe57b672b",
   "entityTypeName": "Arena",
   "name": "Arena - Default (seed v1)",
-  "description": "A duel arena: its place, region and locations, and the duel settings players negotiate within. Every setting starts at the design default, so a new arena works untouched. Battlegrounds and spectator areas are their own records, added on the last step once the arena is saved.",
+  "description": "A duel arena: its place, region and exit, and the duel settings players negotiate within. Every setting starts at the design default. Its battlegrounds, spectator areas and lobby are its own areas (not domains), added on the last step once the arena is saved.",
   "steps": [
     {
       "stepGuid": "2950d4cf-dc47-57b1-b473-751310378d46",
@@ -62,7 +62,7 @@
           "fieldGuid": "b2c37103-8c81-5260-ba72-06d90ea1578f",
           "fieldName": "WgRegionId",
           "label": "Region",
-          "description": "The WorldGuard region around the whole arena (lobby, battlegrounds and spectator areas inside it). Use Send to Minecraft, or type an existing region's name such as arena_2.",
+          "description": "The WorldGuard region around the whole arena (its lobby, battlegrounds and spectator areas inside it). Use Send to Minecraft, or type an existing region's name such as arena_2.",
           "fieldType": "String",
           "isRequired": true,
           "isReadOnly": false,
@@ -100,17 +100,6 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "4c0ce47e-1c01-5977-af19-198195464de9",
-          "fieldName": "LobbyLocationId",
-          "label": "Lobby location",
-          "description": "Where both duelists arrive for the warmup. Required before duels can be turned on.",
-          "fieldType": "Object",
-          "objectType": "Location",
-          "isRequired": false,
-          "isReadOnly": false,
-          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
-        },
-        {
           "fieldGuid": "5ba48f19-3716-5e16-a8af-799df7b20239",
           "fieldName": "ExitLocationId",
           "label": "Exit location",
@@ -125,9 +114,9 @@
           "fieldGuid": "c8fa35f8-7aa0-5cad-bdd4-904b4a5b54f9",
           "fieldName": "IsDuelEnabled",
           "label": "Duels enabled",
-          "description": "Players can challenge each other here. Needs the lobby location.",
+          "description": "Players can challenge each other here. Needs an enabled lobby area with an arrival location: save the arena with this off, add the lobby on the last step, then turn it on.",
           "fieldType": "Boolean",
-          "defaultValue": "true",
+          "defaultValue": "false",
           "isRequired": false,
           "isReadOnly": false
         }
@@ -460,30 +449,30 @@
     },
     {
       "stepGuid": "146ecb9e-0be6-50e7-b2ac-e439fb293ab6",
-      "stepName": "Battlegrounds and spectator areas",
-      "description": "The fighting areas and where players watch. Save the arena first (Submit), then Edit it to add them; each has its own form.",
+      "stepName": "Battlegrounds, spectator areas and lobby",
+      "description": "The arena's areas (rev. 6: its own sub-structure, not domains) and the arena's own extra regions. Save the arena first (Submit), then Edit it to add them; each area has its own form with its regions.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "e9c1570b-a554-5bad-a531-4a6373092457",
-          "fieldName": "Battlegrounds",
-          "label": "Battlegrounds",
-          "description": "One per fighting area; a match takes one free battleground.",
+          "fieldGuid": "93857259-8715-542e-8630-9ea52d8a522f",
+          "fieldName": "Areas",
+          "label": "Areas",
+          "description": "Battlegrounds (one match each), spectator areas and the lobby (one per arena), each with its regions.",
           "fieldType": "List",
           "elementType": "Object",
-          "objectType": "ArenaBattleground",
+          "objectType": "ArenaArea",
           "isRequired": false,
           "isReadOnly": false,
           "settingsJson": "{\"ownedChildCollection\": true}"
         },
         {
-          "fieldGuid": "0ffbedc3-7811-5205-8d35-e42a2c17f15d",
-          "fieldName": "SpectatorAreas",
-          "label": "Spectator areas",
-          "description": "Usually one. Reached on foot, by /warp and from the arena menu.",
+          "fieldGuid": "f878c89d-d6b8-5244-b574-ca706e566ceb",
+          "fieldName": "SubRegions",
+          "label": "Sub-regions",
+          "description": "KNG-253: extra regions of the arena itself (the arena is their union with its main region), copies of the main region.",
           "fieldType": "List",
           "elementType": "Object",
-          "objectType": "ArenaSpectatorArea",
+          "objectType": "DomainSubRegion",
           "isRequired": false,
           "isReadOnly": false,
           "settingsJson": "{\"ownedChildCollection\": true}"

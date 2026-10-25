@@ -137,6 +137,108 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("menu_action_bindings", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaArea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ArenaId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ArrivalLocationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SpawnALocationId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SpawnBLocationId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportMinTitleBracketId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeleportPriceGems")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArrivalLocationId");
+
+                    b.HasIndex("SpawnALocationId");
+
+                    b.HasIndex("SpawnBLocationId");
+
+                    b.HasIndex("TeleportMinTitleBracketId");
+
+                    b.HasIndex("ArenaId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("arena_areas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_arena_areas_TeleportPriceGems_NonNegative", "`TeleportPriceGems` IS NULL OR `TeleportPriceGems` >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaAreaRegion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ArenaAreaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("WgRegionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("WorldName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArenaAreaId");
+
+                    b.HasIndex("WorldName", "WgRegionId")
+                        .IsUnique();
+
+                    b.ToTable("arena_area_regions", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ArenaKit", b =>
                 {
                     b.Property<int>("ArenaId")
@@ -1228,6 +1330,39 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("domain_navigation_defaults", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.DomainSubRegion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("WgRegionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("DomainId");
+
+                    b.HasIndex("WgRegionId");
+
+                    b.ToTable("domain_sub_regions", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.DuelMatch", b =>
                 {
                     b.Property<int>("Id")
@@ -1540,6 +1675,90 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("duel_restrictions", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.EmailOutboxMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DedupeKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("HtmlBody")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("TextBody")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ToAddress")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("ToName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DedupeKey")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "NextAttemptAt");
+
+                    b.HasIndex("ToAddress", "CreatedAt");
+
+                    b.ToTable("email_outbox", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
                 {
                     b.Property<int>("Id")
@@ -1636,6 +1855,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("FormFieldId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("ParametersJson")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -1698,6 +1920,67 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("FormFieldId");
 
                     b.ToTable("FieldValidationRules");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.FieldValidationRunLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DependencyKey")
+                        .HasMaxLength(192)
+                        .HasColumnType("varchar(192)");
+
+                    b.Property<DateTime>("ExecutedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("InputHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<bool>("IsBlocking")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsValid")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("PlaceholdersJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("RuleHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("RuleId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("SubjectId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DependencyKey");
+
+                    b.HasIndex("ExecutedAt");
+
+                    b.HasIndex("RuleId", "SubjectType", "SubjectId")
+                        .IsUnique();
+
+                    b.ToTable("FieldValidationRunLogs", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.FormConfiguration", b =>
@@ -2412,6 +2695,120 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("grades", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<string>("CodeHint")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("char(4)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("GrantGroupId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<DateTime?>("LastSentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("MaxUses")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("PausedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ResendWindowStartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ResendsInWindow")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("RevokedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SendCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UseCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("GrantGroupId");
+
+                    b.HasIndex("Kind", "ExpiresAt");
+
+                    b.ToTable("invitations", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.InvitationRedemption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("InvitationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RedeemedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("InvitationId");
+
+                    b.ToTable("invitation_redemptions", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
                 {
                     b.Property<int>("Id")
@@ -2850,6 +3247,19 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("MinecraftName")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("MinecraftUuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<int>("Purpose")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -2868,6 +3278,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("ExpiresAt");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("Purpose", "Status", "ExpiresAt");
 
                     b.ToTable("linkcodes", (string)null);
                 });
@@ -3938,18 +4350,137 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("IconUrl")
                         .HasColumnType("longtext");
 
+                    b.Property<bool?>("IsPartial")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("LogicalType")
                         .HasColumnType("longtext");
+
+                    b.Property<int>("MaterialRefId")
+                        .HasColumnType("int");
 
                     b.Property<string>("NamespaceKey")
                         .IsRequired()
                         .HasMaxLength(191)
                         .HasColumnType("varchar(191)");
 
+                    b.Property<string>("StateKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
+                    b.HasIndex("MaterialRefId");
+
+                    b.HasIndex("StateKey")
+                        .IsUnique();
+
                     b.ToTable("minecraftblockrefs", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.MinecraftCatalogScan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Deleted")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EnchantmentCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentDefinitionsCreated")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentDefinitionsLinked")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsDeleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsInserted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsMarkedMissing")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsMerged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsUnchanged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnchantmentsUpdated")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EntryCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("IconsMissing")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Inserted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MarkedMissing")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Merged")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MinecraftVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int?>("RequestedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SchemaVersion")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ServerVersion")
+                        .HasMaxLength(191)
+                        .HasColumnType("varchar(191)");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("Unchanged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Updated")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WorldTaskId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("minecraft_catalog_scans", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.MinecraftEnchantmentRef", b =>
@@ -3960,17 +4491,33 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CatalogStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<string>("Category")
                         .HasColumnType("longtext");
 
                     b.Property<string>("DisplayName")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("FirstSeenVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
                     b.Property<string>("IconUrl")
                         .HasColumnType("longtext");
 
                     b.Property<bool>("IsCustom")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("LastScanId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastSeenVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<string>("LegacyName")
                         .HasColumnType("longtext");
@@ -3986,6 +4533,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
+                    b.HasIndex("CatalogStatus");
+
                     b.HasIndex("NamespaceKey")
                         .IsUnique();
 
@@ -4000,15 +4549,58 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CatalogStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("DefaultBlockState")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(191)
+                        .HasColumnType("varchar(191)");
+
+                    b.Property<string>("FirstSeenVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("IconSource")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("IconStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<string>("IconUrl")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("IconUrlOverride")
+                        .HasColumnType("longtext");
+
+                    b.Property<bool?>("IsBlock")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool?>("IsItem")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("LastScanId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastSeenVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
                     b.Property<string>("LegacyName")
                         .HasColumnType("longtext");
+
+                    b.Property<int?>("MaxStackSize")
+                        .HasColumnType("int");
 
                     b.Property<string>("NamespaceKey")
                         .IsRequired()
@@ -4018,10 +4610,55 @@ namespace knkwebapi_v2.Migrations
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
+                    b.HasIndex("CatalogStatus");
+
                     b.HasIndex("NamespaceKey")
                         .IsUnique();
 
                     b.ToTable("minecraftmaterialrefs", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.NavigationCompassSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("GeneralEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("GeneralTargets")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<string>("Material")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("NameMatch")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<bool>("SiegeEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.ToTable("navigation_compass_settings", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>
@@ -5031,6 +5668,9 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
+                    b.Property<int>("AdminSkipMatchmakingSeconds")
+                        .HasColumnType("int");
+
                     b.Property<string>("AllowedCommands")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -5074,6 +5714,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("EnchantLevelMin")
                         .HasColumnType("int");
 
+                    b.Property<bool>("GiveNavigationItem")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<double>("HeadshotMultiplier")
                         .HasColumnType("double");
 
@@ -5100,6 +5743,9 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("varchar(30)");
+
+                    b.Property<int>("PlayerSkipMatchmakingSeconds")
+                        .HasColumnType("int");
 
                     b.Property<double>("SideCaptureReduction")
                         .HasColumnType("double");
@@ -5155,6 +5801,11 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("NavigationItem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<string>("ScheduleJson")
                         .HasColumnType("longtext");
@@ -5482,6 +6133,11 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<string>("NavigationItem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<int>("PlayersMax")
                         .HasColumnType("int");
 
@@ -5690,6 +6346,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<int>("FormStepId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("Id");
 
@@ -6366,58 +7025,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("world_tasks", (string)null);
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.ArenaBattleground", b =>
-                {
-                    b.HasBaseType("knkwebapi_v2.Models.Domain");
-
-                    b.Property<int>("ArenaId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("SpawnALocationId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("SpawnBLocationId")
-                        .HasColumnType("int");
-
-                    b.HasIndex("SpawnALocationId");
-
-                    b.HasIndex("SpawnBLocationId");
-
-                    b.HasIndex("ArenaId", "Key")
-                        .IsUnique();
-
-                    b.ToTable("arena_battlegrounds", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
-                        });
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ArenaSpectatorArea", b =>
-                {
-                    b.HasBaseType("knkwebapi_v2.Models.Domain");
-
-                    b.Property<int>("ArenaId")
-                        .HasColumnType("int");
-
-                    b.HasIndex("ArenaId");
-
-                    b.ToTable("arena_spectator_areas", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
-                        });
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.District", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
@@ -6575,6 +7182,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("ActiveMode")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("AdmittedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime?>("ArchiveUntil")
                         .HasColumnType("datetime(6)");
 
@@ -6597,6 +7207,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<bool>("EmailVerified")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("ExperiencePoints")
                         .ValueGeneratedOnAdd()
@@ -6624,6 +7237,12 @@ namespace knkwebapi_v2.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<int?>("Gender")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InvitedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InvitedViaInvitationId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
@@ -6753,9 +7372,6 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
-                    b.Property<int?>("LobbyLocationId")
-                        .HasColumnType("int");
-
                     b.Property<int>("MaxCoinStake")
                         .HasColumnType("int");
 
@@ -6799,8 +7415,6 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("Key")
                         .IsUnique();
-
-                    b.HasIndex("LobbyLocationId");
 
                     b.HasIndex("StakeMinTitleBracketId");
 
@@ -6964,6 +7578,56 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("MenuItemTemplate");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaArea", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Arena", "Arena")
+                        .WithMany("Areas")
+                        .HasForeignKey("ArenaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Location", "ArrivalLocation")
+                        .WithMany()
+                        .HasForeignKey("ArrivalLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Location", "SpawnALocation")
+                        .WithMany()
+                        .HasForeignKey("SpawnALocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Location", "SpawnBLocation")
+                        .WithMany()
+                        .HasForeignKey("SpawnBLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.TitleBracket", "TeleportMinTitleBracket")
+                        .WithMany()
+                        .HasForeignKey("TeleportMinTitleBracketId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Arena");
+
+                    b.Navigation("ArrivalLocation");
+
+                    b.Navigation("SpawnALocation");
+
+                    b.Navigation("SpawnBLocation");
+
+                    b.Navigation("TeleportMinTitleBracket");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaAreaRegion", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ArenaArea", "ArenaArea")
+                        .WithMany("Regions")
+                        .HasForeignKey("ArenaAreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ArenaArea");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ArenaKit", b =>
@@ -7191,6 +7855,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Domain");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.DomainSubRegion", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
+                        .WithMany("SubRegions")
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Domain");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.DuelMatch", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Arena", "Arena")
@@ -7199,7 +7874,7 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("knkwebapi_v2.Models.ArenaBattleground", "Battleground")
+                    b.HasOne("knkwebapi_v2.Models.ArenaArea", "Battleground")
                         .WithMany()
                         .HasForeignKey("BattlegroundId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -7294,6 +7969,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("DependsOnField");
 
                     b.Navigation("FormField");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.FieldValidationRunLog", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.FieldValidationRule", "Rule")
+                        .WithMany()
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rule");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.FormField", b =>
@@ -7464,6 +8150,27 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("GateDoor");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.PermissionGroup", "GrantGroup")
+                        .WithMany()
+                        .HasForeignKey("GrantGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("GrantGroup");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.InvitationRedemption", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Invitation", "Invitation")
+                        .WithMany("Redemptions")
+                        .HasForeignKey("InvitationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invitation");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
@@ -8071,6 +8778,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("BackgroundMaterialRef");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.MinecraftBlockRef", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "MaterialRef")
+                        .WithMany()
+                        .HasForeignKey("MaterialRefId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MaterialRef");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionGrant", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.PermissionHolder", "Holder")
@@ -8577,54 +9295,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("WorkflowSession");
                 });
 
-            modelBuilder.Entity("knkwebapi_v2.Models.ArenaBattleground", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.Arena", "Arena")
-                        .WithMany("Battlegrounds")
-                        .HasForeignKey("ArenaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.Domain", null)
-                        .WithOne()
-                        .HasForeignKey("knkwebapi_v2.Models.ArenaBattleground", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.Location", "SpawnALocation")
-                        .WithMany()
-                        .HasForeignKey("SpawnALocationId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("knkwebapi_v2.Models.Location", "SpawnBLocation")
-                        .WithMany()
-                        .HasForeignKey("SpawnBLocationId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Arena");
-
-                    b.Navigation("SpawnALocation");
-
-                    b.Navigation("SpawnBLocation");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.ArenaSpectatorArea", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.Arena", "Arena")
-                        .WithMany("SpectatorAreas")
-                        .HasForeignKey("ArenaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.Domain", null)
-                        .WithOne()
-                        .HasForeignKey("knkwebapi_v2.Models.ArenaSpectatorArea", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Arena");
-                });
-
             modelBuilder.Entity("knkwebapi_v2.Models.District", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Domain", null)
@@ -8714,19 +9384,12 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("knkwebapi_v2.Models.Location", "LobbyLocation")
-                        .WithMany()
-                        .HasForeignKey("LobbyLocationId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("knkwebapi_v2.Models.TitleBracket", "StakeMinTitleBracket")
                         .WithMany()
                         .HasForeignKey("StakeMinTitleBracketId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ExitLocation");
-
-                    b.Navigation("LobbyLocation");
 
                     b.Navigation("StakeMinTitleBracket");
                 });
@@ -8755,6 +9418,11 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.ActionBinding", b =>
                 {
                     b.Navigation("Conditions");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ArenaArea", b =>
+                {
+                    b.Navigation("Regions");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.BannerDesign", b =>
@@ -8791,6 +9459,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Fields");
 
                     b.Navigation("SubSections");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Domain", b =>
+                {
+                    b.Navigation("SubRegions");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.EnchantmentDefinition", b =>
@@ -8838,6 +9511,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("BlockSnapshots");
 
                     b.Navigation("OpenedBlockSnapshots");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
+                {
+                    b.Navigation("Redemptions");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprint", b =>
@@ -8986,11 +9664,9 @@ namespace knkwebapi_v2.Migrations
 
             modelBuilder.Entity("knkwebapi_v2.Models.Arena", b =>
                 {
-                    b.Navigation("Battlegrounds");
+                    b.Navigation("Areas");
 
                     b.Navigation("EligibleKits");
-
-                    b.Navigation("SpectatorAreas");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>

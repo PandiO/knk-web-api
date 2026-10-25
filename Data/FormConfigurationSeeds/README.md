@@ -30,12 +30,12 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 | `SiegeLobby` | SiegeLobby - Default (seed v1) | `SiegeLobbyScenario.join` |
 | `ArenaKit.join` | ArenaKit - Join Entry (seed v1) | — |
 | `Arena` | Arena - Default (seed v1) | `ArenaKit.join` |
-| `ArenaBattleground` | ArenaBattleground - Default (seed v1) | — |
-| `ArenaSpectatorArea` | ArenaSpectatorArea - Default (seed v1) | — |
+| `ArenaAreaRegion` | ArenaAreaRegion - Default (seed v1) | — |
+| `ArenaArea` | ArenaArea - Default (seed v1) | — |
 
 So one working order is: the three `.join` seeds, `SiegeScenario`, `SiegeTeam`, `SiegeSpawnpoint`,
 `SiegeObjective`, `SiegeLobby`, then `GateStructure` and `GateDoor`, then `ArenaKit.join` and `Arena`,
-`ArenaBattleground`, `ArenaSpectatorArea`. The dry run names the missing seed if the
+`ArenaAreaRegion`, `ArenaArea`. The dry run names the missing seed if the
 order is wrong.
 
 **GateDoor seed v2 (KNG-193, 2026-10-19):** a new `configurationGuid` and name, so it imports next to an already
@@ -132,5 +132,14 @@ Eligibility & abuse limits, Gear & kits, Timing & queue, Announcements) plus two
 (owned child lists, added once the arena is saved, like a gate's doors). Every setting carries the design default
 (knk-workspace `docs/specs/arena-duels/DESIGN.md` §4.2). Step and field GUIDs are uuid5 of the entity, "step"/"field"
 and the name under the namespace `6f1d1c3e-8a4b-5b1e-9c7d-a2d0e0a1b210`. The arena form needs the web app's Arena,
-ArenaBattleground and ArenaSpectatorArea clients (knk-web-app `claude/arena-duels`).
+ArenaArea and ArenaAreaRegion clients (knk-web-app `claude/arena-duels`).
+
+**Arena areas (arena duels rev. 6, 2026-10-25):** battlegrounds, spectator areas and the lobby are no longer child
+domains. The `ArenaBattleground` and `ArenaSpectatorArea` seeds are gone; the new `ArenaArea` seed (General with the
+kind, Battleground spawns, Arrival and spectating, then an owned `Regions` list) and `ArenaAreaRegion` (the area and a
+`ReagionCreate` world task) replace them. `Arena` (same `configurationGuid`, edited in place: the branch was never
+imported outside test runs) loses its lobby field, starts with duels off, and its last step "Battlegrounds, spectator
+areas and lobby" lists the owned `Areas` and the arena's KNG-253 `SubRegions`. `ArenaAreaRegion` has no containment
+rule yet (the arena's region is two hops away from the region's form; same gap as KNG-261 for sub-regions). The
+`configurationGuid` of the two new seeds is uuid5 of `<Entity>/configuration` under the same namespace.
 

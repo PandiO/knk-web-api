@@ -1,0 +1,165 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "90836c2e-131b-5a8d-bd41-3c940d4c14f8",
+  "entityTypeName": "ArenaArea",
+  "name": "ArenaArea - Default (seed v1)",
+  "description": "A battleground, spectator area or lobby of an arena (arena duels rev. 6): the arena's own sub-structure, not a domain, so it has no enter/leave message, discovery or /navigate. Opened from the arena's last step with the arena filled in. Save it, then Edit it to add its regions.",
+  "steps": [
+    {
+      "stepGuid": "d578bdee-f991-5c21-957e-4fbf21ed77c2",
+      "stepName": "General",
+      "description": "What the area is for. A battleground hosts one match at a time; the spectator area is where players watch; the lobby is where the two duelists warm up (one per arena).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "eae168d4-b198-51fd-93e4-4a683897b277",
+          "fieldName": "ArenaId",
+          "label": "Arena",
+          "description": "The arena this area belongs to. An area can't move to another arena.",
+          "fieldType": "Object",
+          "objectType": "Arena",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6079641b-824e-5e71-b81a-43a7c8e0a919",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "BATTLEGROUND, SPECTATOR or LOBBY. Fields of another kind are cleared on save; the kind can't change while the area has regions.",
+          "fieldType": "Enum",
+          "defaultValue": "BATTLEGROUND",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"BATTLEGROUND\", \"SPECTATOR\", \"LOBBY\"]}"
+        },
+        {
+          "fieldGuid": "dcec5c19-62fd-5051-9741-93583b381a7a",
+          "fieldName": "Key",
+          "label": "Key",
+          "description": "Unique within the arena, e.g. bg1, stands, lobby.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9865d293-91f7-5fe5-bb30-2e829d2136a3",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Optional label for menus and the boss bar, e.g. 'North pit' (at most 64 characters). Empty = the key.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "88cd2fb6-f41a-575e-b962-91bb762297f2",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Battlegrounds are allocated in this order; the first enabled spectator area is where [Spectate] teleports to.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "069f61be-5cd6-549a-9a9c-e3e03aaa1b0d",
+          "fieldName": "IsEnabled",
+          "label": "Enabled",
+          "description": "Off = not used. A battleground can only be enabled with both spawns and at least one region (add the regions after the first save); the lobby of an arena open for duels must stay enabled.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "6c38e7b8-292e-543f-ac03-079704f07c8b",
+      "stepName": "Battleground spawns",
+      "description": "Battlegrounds only: where the two duelists start the countdown. Stand on each spot in game, facing the opponent's spawn, and use Send to Minecraft. Must be in the world of one of the area's regions.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e6d908c4-c9ff-5e4f-a6e6-7d8a712dedba",
+          "fieldName": "SpawnALocationId",
+          "label": "Spawn A",
+          "description": "The inviter's start.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "f07b9f85-16b5-5600-9e5e-ca7db023d4ba",
+          "fieldName": "SpawnBLocationId",
+          "label": "Spawn B",
+          "description": "The invitee's start.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "699addc7-a0fc-521e-97f2-854422406f1c",
+      "stepName": "Arrival and spectating",
+      "description": "Spectator areas and the lobby: where a teleport lands. The lobby's arrival is where both duelists warm up (needed before duels can be turned on); a spectator area's is where [Spectate] lands (without one the stands are reached on foot only). The title and gem price apply to the spectate teleport only, never to walking in.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "54cc77a6-6e87-5531-94a3-a7dfdeae675d",
+          "fieldName": "ArrivalLocationId",
+          "label": "Arrival location",
+          "description": "Where the lobby teleport or the spectate teleport lands.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "81924c86-7f1f-51df-940d-145acb492942",
+          "fieldName": "TeleportMinTitleBracketId",
+          "label": "Minimum title to spectate",
+          "description": "Spectator areas only. Optional: the title a player needs for the spectate teleport.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7a76efb4-1493-5548-b577-0e3038fd5a49",
+          "fieldName": "TeleportPriceGems",
+          "label": "Spectate price (gems)",
+          "description": "Spectator areas only. Optional: gems charged once the spectate teleport's warmup succeeded (refunded if it doesn't happen).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "8ab4e403-a18e-5cbf-a46f-c279def1f025",
+      "stepName": "Regions",
+      "description": "The area's WorldGuard regions; the area is their union, so a duelist can cross between two parts of one battleground. Save the area first (Submit), then Edit it to add them. Each is renamed arena_<arena id>_<kind>_<id> when saved.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "0707701d-a939-5e4d-bd8c-e64486258f4d",
+          "fieldName": "Regions",
+          "label": "Regions",
+          "description": "One entry per region; draw each in game.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "ArenaAreaRegion",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

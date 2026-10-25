@@ -15,9 +15,10 @@ using Xunit;
 namespace knkwebapi_v2.Tests.Services;
 
 /// <summary>
-/// Arena duels Phase 1 (KNG-210, docs/specs/arena-duels/DESIGN.md §4.1–4.2): arena, battleground and spectator-area
-/// CRUD with the design defaults, the settings validation, eligible kits in order, the region finalizer's parents
-/// (District → Arena → children), the model's delete rules, discovery types and the arena_2 seed.
+/// Arena duels Phase 1 (KNG-210, docs/specs/arena-duels/DESIGN.md §4.1–4.2) and Phase 9 (rev. 6): arena CRUD with the
+/// design defaults, the settings validation, eligible kits in order, the arena areas (battleground, spectator area,
+/// lobby) and their regions with their validation, the region names on save, the model's delete rules, and no
+/// discovery or navigation for areas.
 /// </summary>
 public class ArenaServiceTests : IDisposable
 {
@@ -44,7 +45,8 @@ public class ArenaServiceTests : IDisposable
             mapper,
             new Mock<ITeleportDestinationService>().Object,
             new DomainRegionNameFinalizer(_context, _regions.Object, NullLogger<DomainRegionNameFinalizer>.Instance),
-            new DomainWorldResolver(_context));
+            new DomainWorldResolver(_context),
+            _context);
         SeedWorld();
     }
 
@@ -75,8 +77,7 @@ public class ArenaServiceTests : IDisposable
             Description = "the arena",
             WgRegionId = "arena_2",
             DistrictId = 10,
-            StreetId = 5,
-            LobbyLocationId = 100
+            StreetId = 5
         };
         change?.Invoke(dto);
         return dto;
@@ -91,7 +92,9 @@ public class ArenaServiceTests : IDisposable
 
         var arena = await _context.Arenas.SingleAsync();
         Assert.Equal(created.Id, arena.Id);
-        Assert.True(arena.IsDuelEnabled);
+        // Rev. 6: a new arena starts closed (its lobby is an area added afterwards); the model default stays true.
+        Assert.False(arena.IsDuelEnabled);
+        Assert.True(new Arena().IsDuelEnabled);
         Assert.Equal(3, arena.MaxQueuedMatches);
         Assert.Equal(3, arena.MaxOffers);
         Assert.Equal(60, arena.OfferSeconds);
@@ -135,17 +138,19 @@ public class ArenaServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetByKey_IsCaseInsensitive_AndCarriesTheChildren()
+    public async Task GetByKey_IsCaseInsensitive_AndCarriesTheAreasWithTheirRegions()
     {
         var created = await _service.CreateAsync(NewArena());
-        await _service.CreateBattlegroundAsync(NewBattleground(created.Id!.Value, "bg1"));
-        await _service.CreateSpectatorAreaAsync(new ArenaSpectatorAreaDto { ArenaId = created.Id, Name = "Stands", WgRegionId = "stands" });
+        var bg = await _service.CreateAreaAsync(NewArea(created.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        var region = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "pit_a" });
+        await _service.CreateAreaAsync(NewArea(created.Id.Value, ArenaAreaKind.SPECTATOR, "stands"));
 
         var read = await _service.GetByKeyAsync("ARENA_2");
 
         Assert.NotNull(read);
-        Assert.Single(read!.Battlegrounds!);
-        Assert.Single(read.SpectatorAreas!);
+        Assert.Equal(new[] { "BATTLEGROUND", "SPECTATOR" }, read!.Areas!.Select(a => a.Kind));
+        // Adopted with "select" and renamed on save (KNG-253 Q-select).
+        Assert.Equal($"arena_{created.Id}_battleground_{region.Id}", Assert.Single(read.Areas![0].Regions!).WgRegionId);
         Assert.Single(await _service.GetAllAsync());
     }
 
@@ -158,17 +163,19 @@ public class ArenaServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Delete_RemovesTheArenaAndItsChildrenFromDomainsToo()
+    public async Task Delete_RemovesTheArenaWithItsAreasAndRegions()
     {
         var created = await _service.CreateAsync(NewArena(d => { d.AllowFixedKit = true; d.EligibleKits = new() { new ArenaKitDto { KitId = 7 } }; }));
-        var bg = await _service.CreateBattlegroundAsync(NewBattleground(created.Id!.Value, "bg1"));
-        var stands = await _service.CreateSpectatorAreaAsync(new ArenaSpectatorAreaDto { ArenaId = created.Id, Name = "Stands", WgRegionId = "stands" });
+        var bg = await _service.CreateAreaAsync(NewArea(created.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "pit_a" });
 
         await _service.DeleteAsync(created.Id.Value);
 
         Assert.Empty(_context.Arenas);
         Assert.Empty(_context.ArenaKits);
-        Assert.False(await _context.Domains.AnyAsync(d => d.Id == bg.Id || d.Id == stands.Id || d.Id == created.Id));
+        Assert.Empty(_context.ArenaAreas);
+        Assert.Empty(_context.ArenaAreaRegions);
+        Assert.False(await _context.Domains.AnyAsync(d => d.Id == created.Id));
         Assert.True(await _context.Kits.AnyAsync(k => k.Id == 7));
         Assert.True(await _context.Locations.AnyAsync(l => l.Id == 100));
     }
@@ -253,18 +260,40 @@ public class ArenaServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DuelsEnabled_NeedTheLobby_ButAnArenaWithDuelsOffDoesNot()
+    public async Task DuelsEnabled_NeedAnEnabledLobbyAreaWithAnArrival()
     {
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(NewArena(d => d.LobbyLocationId = null)));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(NewArena(d => d.IsDuelEnabled = true)));
         Assert.Contains("lobby", ex.Message);
+        var arena = await _service.CreateAsync(NewArena());
 
-        await _service.CreateAsync(NewArena(d => { d.LobbyLocationId = null; d.IsDuelEnabled = false; }));
+        // A lobby without an arrival, or disabled, doesn't count.
+        var lobby = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.LOBBY, "lobby", d => d.ArrivalLocationId = null));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(arena.Id.Value, NewArena(d => d.IsDuelEnabled = true)));
+        await _service.UpdateAreaAsync(lobby.Id!.Value, NewArea(arena.Id.Value, ArenaAreaKind.LOBBY, "lobby", d => d.IsEnabled = false));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(arena.Id.Value, NewArena(d => d.IsDuelEnabled = true)));
+
+        await _service.UpdateAreaAsync(lobby.Id.Value, NewArea(arena.Id.Value, ArenaAreaKind.LOBBY, "lobby"));
+        await _service.UpdateAsync(arena.Id.Value, NewArena(d => d.IsDuelEnabled = true));
+        Assert.True((await _context.Arenas.AsNoTracking().SingleAsync()).IsDuelEnabled);
+
+        // While duels are on, the lobby stays usable: not disabled, emptied, turned into another kind or deleted.
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.UpdateAreaAsync(lobby.Id.Value, NewArea(arena.Id.Value, ArenaAreaKind.LOBBY, "lobby", d => d.IsEnabled = false)));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.UpdateAreaAsync(lobby.Id.Value, NewArea(arena.Id.Value, ArenaAreaKind.LOBBY, "lobby", d => d.ArrivalLocationId = null)));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.UpdateAreaAsync(lobby.Id.Value, NewArea(arena.Id.Value, ArenaAreaKind.SPECTATOR, "lobby")));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.DeleteAreaAsync(lobby.Id.Value));
+
+        await _service.UpdateAsync(arena.Id.Value, NewArena(d => d.IsDuelEnabled = false));
+        await _service.DeleteAreaAsync(lobby.Id.Value);
+        Assert.Empty(_context.ArenaAreas);
     }
 
     [Fact]
-    public async Task ALobbyInAnotherWorld_IsRefused()
+    public async Task AnExitInAnotherWorld_IsRefused()
     {
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(NewArena(d => d.LobbyLocationId = 104)));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(NewArena(d => d.ExitLocationId = 104)));
         Assert.Contains("world", ex.Message);
     }
 
@@ -323,145 +352,280 @@ public class ArenaServiceTests : IDisposable
         })));
     }
 
-    // ===== Battlegrounds and spectator areas =====
+    // ===== Areas and their regions (rev. 6) =====
 
-    private static ArenaBattlegroundDto NewBattleground(int arenaId, string key, Action<ArenaBattlegroundDto>? change = null)
+    private static ArenaAreaDto NewArea(int arenaId, ArenaAreaKind kind, string key, Action<ArenaAreaDto>? change = null)
     {
-        var dto = new ArenaBattlegroundDto
+        var dto = new ArenaAreaDto
         {
             ArenaId = arenaId,
-            Name = "Pit " + key,
+            Kind = kind.ToString(),
             Key = key,
-            WgRegionId = "arena_2," + key + "-battleground",
+            Name = "Area " + key,
+            IsEnabled = kind != ArenaAreaKind.BATTLEGROUND,
             SpawnALocationId = 102,
-            SpawnBLocationId = 103
+            SpawnBLocationId = 103,
+            ArrivalLocationId = 100,
+            TeleportMinTitleBracketId = 3,
+            TeleportPriceGems = 10
         };
         change?.Invoke(dto);
         return dto;
     }
 
     [Fact]
-    public async Task Battleground_DefaultsToNoEntry_AndTakesTheArenasWorld()
+    public async Task AnArea_KeepsOnlyTheFieldsOfItsKind()
     {
         var arena = await _service.CreateAsync(NewArena());
-        var bg = await _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1"));
 
-        var stored = await _context.ArenaBattlegrounds.AsNoTracking().SingleAsync();
-        Assert.False(stored.AllowEntry);
-        Assert.True(stored.AllowExit);
-        Assert.True(stored.IsEnabled);
-        Assert.Equal("world", stored.WorldName);
+        var bg = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        var stands = await _service.CreateAreaAsync(NewArea(arena.Id.Value, ArenaAreaKind.SPECTATOR, "stands"));
+        var lobby = await _service.CreateAreaAsync(NewArea(arena.Id.Value, ArenaAreaKind.LOBBY, "lobby"));
+
+        Assert.Equal((102, 103, (int?)null, (int?)null, (int?)null), (bg.SpawnALocationId!.Value, bg.SpawnBLocationId!.Value, bg.ArrivalLocationId, bg.TeleportMinTitleBracketId, bg.TeleportPriceGems));
+        Assert.Equal(((int?)null, (int?)null, 100, 3, 10), (stands.SpawnALocationId, stands.SpawnBLocationId, stands.ArrivalLocationId!.Value, stands.TeleportMinTitleBracketId!.Value, stands.TeleportPriceGems!.Value));
+        Assert.Equal("Peasant", stands.TeleportMinTitleBracketName);
+        Assert.Equal(((int?)null, (int?)null, 100, (int?)null, (int?)null), (lobby.SpawnALocationId, lobby.SpawnBLocationId, lobby.ArrivalLocationId!.Value, lobby.TeleportMinTitleBracketId, lobby.TeleportPriceGems));
         Assert.Equal("Arena", bg.ArenaName);
-        Assert.False(new ArenaBattleground().AllowEntry);
+        Assert.Equal("arena_2", bg.ArenaWgRegionId);
+        Assert.False(new ArenaArea().IsEnabled);
     }
 
     [Fact]
-    public async Task Battleground_KeyIsUniquePerArena()
+    public async Task AnArea_NeedsAKindAKeyUniqueInTheArena_AndAnExistingArena()
     {
         var arena = await _service.CreateAsync(NewArena());
-        await _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1"));
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.CreateBattlegroundAsync(NewBattleground(arena.Id.Value, "BG1", d => d.WgRegionId = "other")));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.SPECTATOR, "a", d => d.Kind = null)));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.SPECTATOR, "a", d => d.Kind = "ARENA")));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAreaAsync(NewArea(999, ArenaAreaKind.SPECTATOR, "a")));
+        await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.SPECTATOR, "a"));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAreaAsync(NewArea(arena.Id.Value, ArenaAreaKind.BATTLEGROUND, "A")));
     }
 
     [Fact]
-    public async Task Battleground_SpawnsMustBeInItsOwnWorld()
+    public async Task AnArenaHasAtMostOneLobby()
+    {
+        var arena = await _service.CreateAsync(NewArena());
+        await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.LOBBY, "lobby"));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAreaAsync(NewArea(arena.Id.Value, ArenaAreaKind.LOBBY, "lobby2")));
+        Assert.Contains("lobby", ex.Message);
+    }
+
+    [Fact]
+    public async Task AnEnabledBattleground_NeedsBothSpawnsAndARegion()
+    {
+        var arena = await _service.CreateAsync(NewArena());
+        // No region yet: only disabled.
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1", d => d.IsEnabled = true)));
+        Assert.Contains("region", ex.Message);
+        var bg = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "pit_a" });
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.UpdateAreaAsync(bg.Id!.Value, NewArea(arena.Id.Value, ArenaAreaKind.BATTLEGROUND, "bg1", d => { d.IsEnabled = true; d.SpawnBLocationId = null; })));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.UpdateAreaAsync(bg.Id!.Value, NewArea(arena.Id.Value, ArenaAreaKind.BATTLEGROUND, "bg1", d => { d.IsEnabled = true; d.SpawnBLocationId = 102; })));
+        await _service.UpdateAreaAsync(bg.Id!.Value, NewArea(arena.Id.Value, ArenaAreaKind.BATTLEGROUND, "bg1", d => d.IsEnabled = true));
+        Assert.True((await _context.ArenaAreas.AsNoTracking().SingleAsync()).IsEnabled);
+
+        // Its last region can't go while it is enabled.
+        var region = Assert.Single(await _service.GetAreaRegionsAsync(bg.Id));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.DeleteAreaRegionAsync(region.Id!.Value));
+        await _service.UpdateAreaAsync(bg.Id!.Value, NewArea(arena.Id.Value, ArenaAreaKind.BATTLEGROUND, "bg1", d => d.IsEnabled = false));
+        await _service.DeleteAreaRegionAsync(region.Id!.Value);
+        Assert.Empty(_context.ArenaAreaRegions);
+    }
+
+    [Fact]
+    public async Task SpawnsAndArrivals_MustBeInTheWorldOfTheAreasRegions()
     {
         var arena = await _service.CreateAsync(NewArena());
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1", d => d.SpawnBLocationId = 104)));
+            _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1", d => d.SpawnBLocationId = 104)));
+        Assert.Contains("world", ex.Message);
+        ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.SPECTATOR, "stands", d => d.ArrivalLocationId = 104)));
         Assert.Contains("world", ex.Message);
     }
 
     [Fact]
-    public async Task Battleground_EnabledNeedsBothSpawns_DisabledDoesNot()
+    public async Task AnAreasKind_CantChangeWhileItHasRegions()
     {
         var arena = await _service.CreateAsync(NewArena());
+        var area = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.SPECTATOR, "stands"));
+        await _service.UpdateAreaAsync(area.Id!.Value, NewArea(arena.Id.Value, ArenaAreaKind.BATTLEGROUND, "stands", d => d.IsEnabled = false));
+        await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = area.Id, WgRegionId = "stands_1" });
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1", d => d.SpawnBLocationId = null)));
+            _service.UpdateAreaAsync(area.Id.Value, NewArea(arena.Id.Value, ArenaAreaKind.SPECTATOR, "stands")));
+    }
+
+    [Fact]
+    public async Task AnAreaRegion_IsInTheArenasWorld_AndUsedByNothingElse()
+    {
+        var arena = await _service.CreateAsync(NewArena());
+        var bg = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        var stands = await _service.CreateAreaAsync(NewArea(arena.Id.Value, ArenaAreaKind.SPECTATOR, "stands"));
+
+        var region = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "pit_a" });
+        Assert.Equal(("world", (int?)arena.Id, "BATTLEGROUND", "bg1"), (region.WorldName, region.ArenaId, region.AreaKind, region.AreaKey));
+
+        // Another area's region, the arena's own region, a domain's region, another world.
+        string taken = region.WgRegionId;
+        await Assert.ThrowsAsync<DomainWorldException>(() => _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = stands.Id, WgRegionId = taken.ToUpperInvariant() }));
+        await Assert.ThrowsAsync<DomainWorldException>(() => _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = stands.Id, WgRegionId = "arena_2" }));
+        await Assert.ThrowsAsync<DomainWorldException>(() => _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = stands.Id, WgRegionId = "domain_10" }));
+        await Assert.ThrowsAsync<DomainWorldException>(() =>
+            _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = stands.Id, WgRegionId = "ring", WorldName = "world_nether" }));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = 999, WgRegionId = "x" }));
+
+        // And a domain can't take an area region's id either.
+        var owner = await DomainRegionOwnership.TakenByAsync(_context, taken, "world");
+        Assert.Contains("bg1", owner);
+
+        // A region can't move to another area.
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1", d => d.SpawnBLocationId = 102)));
-        await _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1", d => { d.SpawnBLocationId = null; d.IsEnabled = false; }));
+            _service.UpdateAreaRegionAsync(region.Id!.Value, new ArenaAreaRegionDto { ArenaAreaId = stands.Id, WgRegionId = taken }));
     }
 
     [Fact]
-    public async Task Battleground_NeedsAnExistingArena()
+    public async Task AreaRegions_AreRenamedOnSave_WithTheirKindAndTheArenaAsParent()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateBattlegroundAsync(NewBattleground(999, "bg1")));
+        var arena = await _service.CreateAsync(NewArena(d => d.WgRegionId = "tempregion_worldtask_1"));
+        var bg = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        var stands = await _service.CreateAreaAsync(NewArea(arena.Id.Value, ArenaAreaKind.SPECTATOR, "stands"));
+        var lobby = await _service.CreateAreaAsync(NewArea(arena.Id.Value, ArenaAreaKind.LOBBY, "lobby"));
+
+        var part1 = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "tempregion_worldtask_2" });
+        // An adopted v1 region is renamed too (KNG-253 Q-select).
+        var part2 = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "arena_2,a-battleground" });
+        var ring = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = stands.Id, WgRegionId = "tempregion_worldtask_3" });
+        var hall = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = lobby.Id, WgRegionId = "tempregion_worldtask_4" });
+
+        string parent = $"domain_{arena.Id}";
+        Assert.Equal(new[]
+        {
+            ("tempregion_worldtask_1", parent, (string?)"Arena", (string?)"domain_10"),
+            ("tempregion_worldtask_2", $"arena_{arena.Id}_battleground_{part1.Id}", "ArenaBattleground", parent),
+            ("arena_2,a-battleground", $"arena_{arena.Id}_battleground_{part2.Id}", "ArenaBattleground", parent),
+            ("tempregion_worldtask_3", $"arena_{arena.Id}_spectator_{ring.Id}", "ArenaSpectatorArea", parent),
+            ("tempregion_worldtask_4", $"arena_{arena.Id}_lobby_{hall.Id}", "ArenaLobby", parent)
+        }, _renames);
+        Assert.Equal($"arena_{arena.Id}_battleground_{part1.Id}", part1.WgRegionId);
+        Assert.Equal($"arena_{arena.Id}_lobby_{hall.Id}", (await _context.ArenaAreaRegions.AsNoTracking().SingleAsync(r => r.Id == hall.Id)).WgRegionId);
+
+        // A failed rename keeps the drawn name (the finalize pass retries it).
+        _regions.Setup(r => r.RenameRegionAsync("tempregion_worldtask_5", It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .ReturnsAsync(false);
+        var kept = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = stands.Id, WgRegionId = "tempregion_worldtask_5" });
+        Assert.Equal("tempregion_worldtask_5", kept.WgRegionId);
     }
 
     [Fact]
-    public async Task Battleground_UpdateAndDelete()
+    public async Task ARerunOfARegionsWorldTask_ReplacesItsOwnFinalRegion()
+    {
+        var replaced = new List<(string Old, string New, string? Replace)>();
+        _regions.Setup(r => r.RenameRegionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Callback<string, string, string?, string?, string?, string?>((o, n, _, _, _, rep) => replaced.Add((o, n, rep)))
+            .ReturnsAsync(true);
+        var arena = await _service.CreateAsync(NewArena());
+        var bg = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        var part = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "tempregion_worldtask_2" });
+        string finalName = $"arena_{arena.Id}_battleground_{part.Id}";
+        Assert.Equal(finalName, part.WgRegionId);
+
+        await _service.UpdateAreaRegionAsync(part.Id!.Value, new ArenaAreaRegionDto { WgRegionId = "tempregion_worldtask_9" });
+
+        Assert.Equal(("tempregion_worldtask_9", finalName, (string?)finalName), Assert.Single(replaced));
+    }
+
+    [Fact]
+    public async Task FinalizeAll_RenamesAreaRegionsLeftOnATempName()
+    {
+        _regions.Setup(r => r.RenameRegionAsync("tempregion_worldtask_7", It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .ReturnsAsync(false);
+        var arena = await _service.CreateAsync(NewArena());
+        var stands = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.SPECTATOR, "stands"));
+        var ring = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = stands.Id, WgRegionId = "tempregion_worldtask_7" });
+        _regions.Setup(r => r.RenameRegionAsync("tempregion_worldtask_7", It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .ReturnsAsync(true);
+
+        var result = await new DomainRegionNameFinalizer(_context, _regions.Object, NullLogger<DomainRegionNameFinalizer>.Instance).FinalizeAllAsync();
+
+        Assert.Equal(1, result.Renamed);
+        Assert.Equal($"arena_{arena.Id}_spectator_{ring.Id}", (await _context.ArenaAreaRegions.AsNoTracking().SingleAsync()).WgRegionId);
+    }
+
+    [Fact]
+    public async Task ByRegion_FindsTheAreaRegion_ForTheOrphanCheck()
     {
         var arena = await _service.CreateAsync(NewArena());
-        var bg = await _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1"));
+        var bg = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        var part = await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "pit_a" });
 
-        await _service.UpdateBattlegroundAsync(bg.Id!.Value, NewBattleground(arena.Id.Value, "bg1", d => { d.SortOrder = 4; d.IsEnabled = false; }));
-        var stored = await _context.ArenaBattlegrounds.AsNoTracking().SingleAsync();
-        Assert.Equal(4, stored.SortOrder);
-        Assert.False(stored.IsEnabled);
-        Assert.False(stored.AllowEntry);
-
-        await _service.DeleteBattlegroundAsync(bg.Id.Value);
-        Assert.False(await _context.Domains.AnyAsync(d => d.Id == bg.Id));
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.DeleteBattlegroundAsync(bg.Id.Value));
+        string name = part.WgRegionId;
+        Assert.Equal(part.Id, (await _service.FindAreaRegionAsync(name.ToUpperInvariant(), "world"))!.Id);
+        Assert.Equal(part.Id, (await _service.FindAreaRegionAsync(name, null))!.Id);
+        Assert.Null(await _service.FindAreaRegionAsync(name, "world_nether"));
+        Assert.Null(await _service.FindAreaRegionAsync("pit_a", "world"));
     }
 
     [Fact]
-    public async Task SpectatorArea_IsAnOrdinaryDomain_ZeroOrMorePerArena()
+    public async Task DeletingAnArea_RemovesItsRegions()
     {
         var arena = await _service.CreateAsync(NewArena());
-        Assert.Empty(await _service.GetSpectatorAreasAsync(arena.Id));
+        var bg = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        await _service.CreateAreaRegionAsync(new ArenaAreaRegionDto { ArenaAreaId = bg.Id, WgRegionId = "pit_a" });
 
-        await _service.CreateSpectatorAreaAsync(new ArenaSpectatorAreaDto { ArenaId = arena.Id, Name = "North stands", WgRegionId = "n", LocationId = 101 });
-        await _service.CreateSpectatorAreaAsync(new ArenaSpectatorAreaDto { ArenaId = arena.Id, Name = "South stands", WgRegionId = "s" });
+        await _service.DeleteAreaAsync(bg.Id!.Value);
 
-        var areas = await _service.GetSpectatorAreasAsync(arena.Id);
-        Assert.Equal(2, areas.Count);
-        Assert.All(areas, a => Assert.True(a.AllowEntry));
-        Assert.Equal(101, areas[0].LocationId);
-        Assert.Equal("exit", areas[0].Location!.Name);
+        Assert.Empty(_context.ArenaAreas);
+        Assert.Empty(_context.ArenaAreaRegions);
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.DeleteAreaAsync(bg.Id.Value));
     }
 
     [Fact]
     public async Task TheArenaReadCarriesItsLocationsForThePlugin()
     {
         var created = await _service.CreateAsync(NewArena(d => { d.LocationId = 101; d.ExitLocationId = 101; }));
-        await _service.CreateBattlegroundAsync(NewBattleground(created.Id!.Value, "bg1"));
+        await _service.CreateAreaAsync(NewArea(created.Id!.Value, ArenaAreaKind.BATTLEGROUND, "bg1"));
+        await _service.CreateAreaAsync(NewArea(created.Id.Value, ArenaAreaKind.LOBBY, "lobby"));
 
         var read = Assert.Single(await _service.GetAllAsync());
 
         Assert.Equal("exit", read.Location!.Name);
-        Assert.Equal("lobby", read.LobbyLocation!.Name);
         Assert.Equal("exit", read.ExitLocation!.Name);
-        Assert.Equal("spawn A", read.Battlegrounds![0].SpawnALocation!.Name);
-        Assert.Equal("spawn B", read.Battlegrounds![0].SpawnBLocation!.Name);
+        var bg = read.Areas!.Single(a => a.Kind == "BATTLEGROUND");
+        Assert.Equal("spawn A", bg.SpawnALocation!.Name);
+        Assert.Equal("spawn B", bg.SpawnBLocation!.Name);
+        Assert.Equal("lobby", read.Areas!.Single(a => a.Kind == "LOBBY").ArrivalLocation!.Name);
+        Assert.Empty(read.SubRegions!);
     }
 
-    // ===== Region finalizer: District → Arena → children =====
+    [Fact]
+    public async Task ADuelMatch_StartsOnlyOnABattlegroundAreaOfItsArena()
+    {
+        var arena = await _service.CreateAsync(NewArena());
+        var stands = await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.SPECTATOR, "stands"));
+        Assert.Equal(ArenaAreaKind.SPECTATOR, (await _context.ArenaAreas.AsNoTracking().SingleAsync(a => a.Id == stands.Id)).Kind);
+        Assert.Equal("ArenaLobby", DomainRegionNameFinalizer.AreaRegionTypeOf(ArenaAreaKind.LOBBY));
+        Assert.Equal("arena_4_spectator_9", DomainRegionNameFinalizer.FinalAreaRegionNameFor(4, ArenaAreaKind.SPECTATOR, 9));
+    }
+
+    // ===== Region finalizer: District → Arena =====
 
     [Fact]
-    public async Task TempRegions_AreRenamedWithTheirTypeAndParent()
+    public async Task TheArenasTempRegion_IsRenamedWithItsTypeAndParent()
     {
         var arena = await _service.CreateAsync(NewArena(d => d.WgRegionId = "tempregion_worldtask_1"));
-        var bg = await _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1", d => d.WgRegionId = "tempregion_worldtask_2"));
-        var stands = await _service.CreateSpectatorAreaAsync(new ArenaSpectatorAreaDto { ArenaId = arena.Id, Name = "Stands", WgRegionId = "tempregion_worldtask_3" });
 
-        Assert.Equal(new[]
-        {
-            ("tempregion_worldtask_1", $"domain_{arena.Id}", (string?)"Arena", (string?)"domain_10"),
-            ("tempregion_worldtask_2", $"domain_{bg.Id}", "ArenaBattleground", $"domain_{arena.Id}"),
-            ("tempregion_worldtask_3", $"domain_{stands.Id}", "ArenaSpectatorArea", $"domain_{arena.Id}")
-        }, _renames);
-        Assert.Equal($"domain_{bg.Id}", (await _context.ArenaBattlegrounds.AsNoTracking().SingleAsync()).WgRegionId);
+        Assert.Equal(new[] { ("tempregion_worldtask_1", $"domain_{arena.Id}", (string?)"Arena", (string?)"domain_10") }, _renames);
     }
 
     [Fact]
-    public void Finalizer_NamesTheArenaTypes()
+    public void Finalizer_NamesTheArenaType()
     {
         Assert.Equal("Arena", DomainRegionNameFinalizer.DomainTypeOf(new Arena()));
-        Assert.Equal("ArenaBattleground", DomainRegionNameFinalizer.DomainTypeOf(new ArenaBattleground()));
-        Assert.Equal("ArenaSpectatorArea", DomainRegionNameFinalizer.DomainTypeOf(new ArenaSpectatorArea()));
     }
 
     [Fact]
@@ -478,15 +642,17 @@ public class ArenaServiceTests : IDisposable
 
     public static IEnumerable<object[]> ExpectedDeleteRules() => new List<object[]>
     {
-        new object[] { typeof(ArenaBattleground), nameof(ArenaBattleground.ArenaId), DeleteBehavior.Cascade },
-        new object[] { typeof(ArenaSpectatorArea), nameof(ArenaSpectatorArea.ArenaId), DeleteBehavior.Cascade },
+        new object[] { typeof(ArenaArea), nameof(ArenaArea.ArenaId), DeleteBehavior.Cascade },
+        new object[] { typeof(ArenaAreaRegion), nameof(ArenaAreaRegion.ArenaAreaId), DeleteBehavior.Cascade },
         new object[] { typeof(ArenaKit), nameof(ArenaKit.ArenaId), DeleteBehavior.Cascade },
         new object[] { typeof(ArenaKit), nameof(ArenaKit.KitId), DeleteBehavior.Restrict },
-        new object[] { typeof(Arena), nameof(Arena.LobbyLocationId), DeleteBehavior.Restrict },
         new object[] { typeof(Arena), nameof(Arena.ExitLocationId), DeleteBehavior.Restrict },
         new object[] { typeof(Arena), nameof(Arena.StakeMinTitleBracketId), DeleteBehavior.SetNull },
-        new object[] { typeof(ArenaBattleground), nameof(ArenaBattleground.SpawnALocationId), DeleteBehavior.Restrict },
-        new object[] { typeof(ArenaBattleground), nameof(ArenaBattleground.SpawnBLocationId), DeleteBehavior.Restrict },
+        new object[] { typeof(ArenaArea), nameof(ArenaArea.SpawnALocationId), DeleteBehavior.Restrict },
+        new object[] { typeof(ArenaArea), nameof(ArenaArea.SpawnBLocationId), DeleteBehavior.Restrict },
+        new object[] { typeof(ArenaArea), nameof(ArenaArea.ArrivalLocationId), DeleteBehavior.Restrict },
+        new object[] { typeof(ArenaArea), nameof(ArenaArea.TeleportMinTitleBracketId), DeleteBehavior.SetNull },
+        new object[] { typeof(DuelMatch), nameof(DuelMatch.BattlegroundId), DeleteBehavior.SetNull },
     };
 
     [Theory]
@@ -502,8 +668,10 @@ public class ArenaServiceTests : IDisposable
     public void TablesAndKeys_FollowTheDesign()
     {
         Assert.Equal("arenas", _context.Model.FindEntityType(typeof(Arena))!.GetTableName());
-        Assert.Equal("arena_battlegrounds", _context.Model.FindEntityType(typeof(ArenaBattleground))!.GetTableName());
-        Assert.Equal("arena_spectator_areas", _context.Model.FindEntityType(typeof(ArenaSpectatorArea))!.GetTableName());
+        Assert.Equal("arena_areas", _context.Model.FindEntityType(typeof(ArenaArea))!.GetTableName());
+        Assert.Equal("arena_area_regions", _context.Model.FindEntityType(typeof(ArenaAreaRegion))!.GetTableName());
+        // Rev. 6: areas are plain rows, not Domain subtypes.
+        Assert.Null(_context.Model.FindEntityType(typeof(ArenaArea))!.BaseType);
         var kit = _context.Model.FindEntityType(typeof(ArenaKit))!;
         Assert.Equal("arena_kits", kit.GetTableName());
         Assert.Equal(new[] { "ArenaId", "KitId" }, kit.FindPrimaryKey()!.Properties.Select(p => p.Name));
@@ -513,25 +681,22 @@ public class ArenaServiceTests : IDisposable
     // ===== Discovery and navigation types =====
 
     [Fact]
-    public async Task DiscoveryNodes_TypeArenasAndHangChildrenUnderTheirArena()
+    public async Task DiscoveryNodes_TypeTheArena_AndAreasAreNoDomains()
     {
         var arena = await _service.CreateAsync(NewArena());
-        var bg = await _service.CreateBattlegroundAsync(NewBattleground(arena.Id!.Value, "bg1"));
-        var stands = await _service.CreateSpectatorAreaAsync(new ArenaSpectatorAreaDto { ArenaId = arena.Id, Name = "Stands", WgRegionId = "stands" });
+        await _service.CreateAreaAsync(NewArea(arena.Id!.Value, ArenaAreaKind.SPECTATOR, "stands"));
 
         var nodes = (await new DiscoveryRepository(_context).GetAllDomainNodesAsync()).ToDictionary(n => n.Id);
 
         Assert.Equal(DiscoveryRewardRule.Arena, nodes[arena.Id.Value].DomainType);
         Assert.Equal(10, nodes[arena.Id.Value].ParentId);
-        Assert.Equal((DiscoveryRewardRule.ArenaBattleground, (int?)arena.Id), (nodes[bg.Id!.Value].DomainType, nodes[bg.Id.Value].ParentId));
-        Assert.Equal((DiscoveryRewardRule.ArenaSpectatorArea, (int?)arena.Id), (nodes[stands.Id!.Value].DomainType, nodes[stands.Id.Value].ParentId));
+        Assert.Equal(new[] { "Town", "District", "Structure", "GateStructure", "Arena" }, DiscoveryRewardRule.DomainTypes);
     }
 
     [Fact]
-    public void Battlegrounds_AreNotANavigableType()
+    public void Areas_AreNotANavigableType()
     {
         Assert.Contains(DomainNavigationDefault.Arena, DomainNavigationDefault.DomainTypes);
-        Assert.Contains(DomainNavigationDefault.ArenaSpectatorArea, DomainNavigationDefault.DomainTypes);
-        Assert.DoesNotContain(nameof(ArenaBattleground), DomainNavigationDefault.DomainTypes);
+        Assert.Equal(new[] { "Town", "District", "Structure", "GateStructure", "Arena" }, DomainNavigationDefault.DomainTypes);
     }
 }

@@ -59,8 +59,9 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
     // Arena duels (KNG-210, docs/specs/arena-duels/DESIGN.md §4.1)
     public virtual DbSet<Arena> Arenas { get; set; } = null!;
-    public virtual DbSet<ArenaBattleground> ArenaBattlegrounds { get; set; } = null!;
-    public virtual DbSet<ArenaSpectatorArea> ArenaSpectatorAreas { get; set; } = null!;
+    // Rev. 6 (2026-10-24): battlegrounds, spectator areas and the lobby are the arena's own areas, not domains.
+    public virtual DbSet<ArenaArea> ArenaAreas { get; set; } = null!;
+    public virtual DbSet<ArenaAreaRegion> ArenaAreaRegions { get; set; } = null!;
     public virtual DbSet<ArenaKit> ArenaKits { get; set; } = null!;
     public virtual DbSet<GateDoor> GateDoors { get; set; } = null!;
     public virtual DbSet<GateBlockSnapshot> GateBlockSnapshots { get; set; } = null!;
@@ -1649,9 +1650,9 @@ public partial class KnKDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Arena duels (KNG-210, docs/specs/arena-duels/DESIGN.md §4.1): Arena : Structure, and its battlegrounds and
-        // spectator areas as Domain subtypes, each with its own TPT table like GateStructure. The children's FKs cascade
-        // in the database; ArenaService deletes them through EF so their domains rows go too.
+        // Arena duels (KNG-210, docs/specs/arena-duels/DESIGN.md §4.1): Arena : Structure (TPT like GateStructure). Rev. 6
+        // (2026-10-24): its battlegrounds, spectator areas and lobby are plain owned rows (arena_areas) with their
+        // WorldGuard regions (arena_area_regions), not Domain subtypes; both cascade with the arena.
         modelBuilder.Entity<Arena>(entity =>
         {
             entity.ToTable("arenas", t =>
@@ -1666,27 +1667,40 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.DefaultGearMode).HasConversion<string>().HasMaxLength(32);
 
             // A Location an arena uses can't be deleted (KNG-118 D3, like Domain.Location).
-            entity.HasOne(e => e.LobbyLocation).WithMany().HasForeignKey(e => e.LobbyLocationId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.ExitLocation).WithMany().HasForeignKey(e => e.ExitLocationId).OnDelete(DeleteBehavior.Restrict);
             // Deleting the title bracket just drops the requirement (back to the /pay minimum).
             entity.HasOne(e => e.StakeMinTitleBracket).WithMany().HasForeignKey(e => e.StakeMinTitleBracketId).OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasMany(e => e.Battlegrounds).WithOne(b => b.Arena).HasForeignKey(b => b.ArenaId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasMany(e => e.SpectatorAreas).WithOne(a => a.Arena).HasForeignKey(a => a.ArenaId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Areas).WithOne(a => a.Arena).HasForeignKey(a => a.ArenaId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<ArenaBattleground>(entity =>
+        modelBuilder.Entity<ArenaArea>(entity =>
         {
-            entity.ToTable("arena_battlegrounds");
+            entity.ToTable("arena_areas", t =>
+            {
+                t.HasCheckConstraint("CK_arena_areas_TeleportPriceGems_NonNegative", "`TeleportPriceGems` IS NULL OR `TeleportPriceGems` >= 0");
+            });
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(32);
             entity.Property(e => e.Key).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(64);
             entity.HasIndex(e => new { e.ArenaId, e.Key }).IsUnique();
+            // A Location an area uses can't be deleted (KNG-118 D3); deleting the title bracket drops the requirement.
             entity.HasOne(e => e.SpawnALocation).WithMany().HasForeignKey(e => e.SpawnALocationId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.SpawnBLocation).WithMany().HasForeignKey(e => e.SpawnBLocationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ArrivalLocation).WithMany().HasForeignKey(e => e.ArrivalLocationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.TeleportMinTitleBracket).WithMany().HasForeignKey(e => e.TeleportMinTitleBracketId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasMany(e => e.Regions).WithOne(r => r.ArenaArea).HasForeignKey(r => r.ArenaAreaId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<ArenaSpectatorArea>(entity =>
+        modelBuilder.Entity<ArenaAreaRegion>(entity =>
         {
-            entity.ToTable("arena_spectator_areas");
+            entity.ToTable("arena_area_regions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.WgRegionId).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.WorldName).HasMaxLength(64).IsRequired();
+            entity.HasIndex(e => e.ArenaAreaId);
+            entity.HasIndex(e => new { e.WorldName, e.WgRegionId }).IsUnique();
         });
 
         modelBuilder.Entity<ArenaKit>(entity =>

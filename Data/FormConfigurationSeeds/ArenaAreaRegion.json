@@ -1,0 +1,38 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "67953b59-7cf8-5509-a749-c7454e5ac72e",
+  "entityTypeName": "ArenaAreaRegion",
+  "name": "ArenaAreaRegion - Default (seed v1)",
+  "description": "One WorldGuard region of an arena area (arena duels rev. 6). Opened from the area's Regions step, with the area already filled in.",
+  "steps": [
+    {
+      "stepGuid": "535f0c67-7751-5aef-b2b3-05aa8881c71b",
+      "stepName": "Region",
+      "description": "Draw the region in game. It is renamed arena_<arena id>_<kind>_<id> when saved; the game server gives it its parent (the arena's region), priority and flags (pvp allow on battlegrounds, entry allow everywhere: the duel runtime decides who may cross).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a469273c-f6c5-558a-8a43-471c063de644",
+          "fieldName": "ArenaAreaId",
+          "label": "Area",
+          "description": "The area this region belongs to. A region can't move to another area: remove it and add it there.",
+          "fieldType": "Object",
+          "objectType": "ArenaArea",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8154ea91-a134-523f-91bd-7983aa1b129d",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "Use Send to Minecraft and select the part with WorldEdit (//sel cuboid, //sel poly, or //sel cyl for a round part), or type 'select <region>' in game to adopt an existing region such as a v1 arena_2,<part>-battleground (it is renamed too). Must be in the arena's world and used by no domain or other area.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

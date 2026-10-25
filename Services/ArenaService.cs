@@ -4,18 +4,21 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Properties;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
 
 namespace knkwebapi_v2.Services
 {
     /// <summary>
-    /// Arenas, battlegrounds and spectator areas (arena duels KNG-210, docs/specs/arena-duels/DESIGN.md §4.1–4.2).
-    /// Validates the duel settings, keeps the eligible kits in order, resolves each domain's world and renames its
-    /// temp region like the other domain services (District → Arena → its battlegrounds and spectator areas).
+    /// Arenas and their areas (arena duels KNG-210, docs/specs/arena-duels/DESIGN.md §4.1–4.2, rev. 6). Validates the duel
+    /// settings, keeps the eligible kits in order, resolves the arena's world and renames its temp region like the other
+    /// domain services. Battlegrounds, spectator areas and the lobby are <see cref="ArenaArea"/>s with their own regions,
+    /// renamed on save to <c>arena_&lt;arenaId&gt;_&lt;kind&gt;_&lt;id&gt;</c>.
     /// Invalid input throws <see cref="ArgumentException"/> (400), a missing row <see cref="KeyNotFoundException"/>.
     /// </summary>
     public class ArenaService : IArenaService
@@ -31,19 +34,22 @@ namespace knkwebapi_v2.Services
         private readonly ITeleportDestinationService _teleportDestinations;
         private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly IDomainWorldResolver _worlds;
+        private readonly KnKDbContext _context;
 
         public ArenaService(
             IArenaRepository repo,
             IMapper mapper,
             ITeleportDestinationService teleportDestinations,
             IDomainRegionNameFinalizer regionNames,
-            IDomainWorldResolver worlds)
+            IDomainWorldResolver worlds,
+            KnKDbContext context)
         {
             _repo = repo;
             _mapper = mapper;
             _teleportDestinations = teleportDestinations;
             _regionNames = regionNames;
             _worlds = worlds;
+            _context = context;
         }
 
         // ===================================================================== Arenas
@@ -122,12 +128,14 @@ namespace knkwebapi_v2.Services
 
             await _teleportDestinations.ValidateSettingsAsync(dto);
             await EnsureLocationAsync(dto.LocationId, "LocationId");
-            var lobby = await EnsureLocationAsync(dto.LobbyLocationId, "LobbyLocationId");
             var exit = await EnsureLocationAsync(dto.ExitLocationId, "ExitLocationId");
 
             // The settings as they will be: a null DTO value keeps the current one (the default on create).
             var s = new ArenaSettings(arena);
             s.Overlay(dto);
+            // Rev. 6: the lobby is an area added after the arena exists, so a new arena starts closed for duels unless
+            // the caller says otherwise (and then the lobby check below refuses it).
+            if (isNew && dto.IsDuelEnabled == null) s.IsDuelEnabled = false;
             if (s.StakeMinTitleBracketId is int bracketId && !await _repo.TitleBracketExistsAsync(bracketId))
                 throw new ArgumentException($"Title bracket with id {bracketId} not found.", nameof(dto));
 
@@ -137,7 +145,7 @@ namespace knkwebapi_v2.Services
                 kits = await ResolveKitsAsync(dto.EligibleKits);
             }
             int eligibleKitCount = kits?.Count ?? arena.EligibleKits.Count;
-            ValidateSettings(s, eligibleKitCount, dto.LobbyLocationId);
+            ValidateSettings(s, eligibleKitCount, !isNew && HasUsableLobby(arena.Areas));
 
             string world = await _worlds.ResolveAsync(new DomainWorldRequest
             {
@@ -147,7 +155,6 @@ namespace knkwebapi_v2.Services
                 LocationId = dto.LocationId,
                 ParentDomainId = districtId
             });
-            EnsureSameWorld(world, lobby, "lobby location");
             EnsureSameWorld(world, exit, "exit location");
 
             // All checks passed: write.
@@ -162,7 +169,6 @@ namespace knkwebapi_v2.Services
             arena.DistrictId = districtId;
             arena.HouseNumber = houseNumber;
             arena.Key = key;
-            arena.LobbyLocationId = dto.LobbyLocationId;
             arena.ExitLocationId = dto.ExitLocationId;
             s.WriteTo(arena);
             DomainTeleportSettings.Apply(arena, dto);
@@ -171,8 +177,9 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>DESIGN.md §4.2 (and the plan's Phase 1 list): ranges, at least one gear mode, a kit mode needs an
-        /// eligible kit, the default mode must be allowed. An arena open for duels needs its lobby.</summary>
-        public static void ValidateSettings(ArenaSettings s, int eligibleKitCount, int? lobbyLocationId)
+        /// eligible kit, the default mode must be allowed. An arena open for duels needs its lobby: rev. 6, an enabled
+        /// LOBBY area with an arrival location (<paramref name="hasUsableLobby"/>).</summary>
+        public static void ValidateSettings(ArenaSettings s, int eligibleKitCount, bool hasUsableLobby)
         {
             var errors = new List<string>();
             if (s.MaxOffers < MinOffers || s.MaxOffers > MaxOffersLimit) errors.Add($"MaxOffers must be {MinOffers}-{MaxOffersLimit}.");
@@ -198,8 +205,8 @@ namespace knkwebapi_v2.Services
                 errors.Add("A kit mode (fixed kit or kit choice) needs at least one eligible kit.");
             if (!s.IsAllowed(s.DefaultGearMode))
                 errors.Add($"The default gear mode {s.DefaultGearMode} is not one of the allowed modes.");
-            if (s.IsDuelEnabled && lobbyLocationId is not > 0)
-                errors.Add("An arena open for duels needs a lobby location (or turn duels off until it is set).");
+            if (s.IsDuelEnabled && !hasUsableLobby)
+                errors.Add("An arena open for duels needs an enabled lobby area with an arrival location (save the arena with duels off, add the lobby in \"Battlegrounds, spectator areas and lobby\", then turn duels on).");
 
             if (errors.Count > 0) throw new ArgumentException(string.Join(" ", errors));
         }
@@ -240,185 +247,248 @@ namespace knkwebapi_v2.Services
             }
         }
 
-        // ===================================================================== Battlegrounds
+        // ===================================================================== Areas (rev. 6)
 
-        public async Task<List<ArenaBattlegroundDto>> GetBattlegroundsAsync(int? arenaId) =>
-            _mapper.Map<List<ArenaBattlegroundDto>>(await _repo.GetBattlegroundsAsync(arenaId));
+        /// <summary>An enabled LOBBY area with an arrival location: what an arena open for duels needs.</summary>
+        public static bool HasUsableLobby(IEnumerable<ArenaArea> areas) =>
+            areas.Any(a => a.Kind == ArenaAreaKind.LOBBY && a.IsEnabled && a.ArrivalLocationId is > 0);
 
-        public async Task<ArenaBattlegroundDto?> GetBattlegroundAsync(int id)
+        public async Task<List<ArenaAreaDto>> GetAreasAsync(int? arenaId) =>
+            _mapper.Map<List<ArenaAreaDto>>(await _repo.GetAreasAsync(arenaId));
+
+        public async Task<ArenaAreaDto?> GetAreaAsync(int id)
         {
-            var battleground = id > 0 ? await _repo.GetBattlegroundAsync(id) : null;
-            return battleground == null ? null : _mapper.Map<ArenaBattlegroundDto>(battleground);
+            var area = id > 0 ? await _repo.GetAreaAsync(id) : null;
+            return area == null ? null : _mapper.Map<ArenaAreaDto>(area);
         }
 
-        public async Task<ArenaBattlegroundDto> CreateBattlegroundAsync(ArenaBattlegroundDto dto)
+        public async Task<ArenaAreaDto> CreateAreaAsync(ArenaAreaDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            var battleground = new ArenaBattleground { CreatedAt = DateTime.UtcNow };
-            await ApplyBattlegroundAsync(battleground, dto, isNew: true);
-            await _repo.AddAsync(battleground);
-            await _regionNames.FinalizeAsync(battleground);
-            return _mapper.Map<ArenaBattlegroundDto>(await _repo.GetBattlegroundAsync(battleground.Id) ?? battleground);
-        }
-
-        public async Task UpdateBattlegroundAsync(int id, ArenaBattlegroundDto dto)
-        {
-            if (dto == null) throw new ArgumentNullException(nameof(dto));
-            var battleground = (id > 0 ? await _repo.GetBattlegroundAsync(id) : null)
-                ?? throw new KeyNotFoundException($"Battleground with id {id} not found.");
-            string previousRegionId = battleground.WgRegionId;
-            await ApplyBattlegroundAsync(battleground, dto, isNew: false);
-            await _repo.SaveChangesAsync();
-            await _regionNames.FinalizeAsync(battleground, previousRegionId);
-        }
-
-        public async Task DeleteBattlegroundAsync(int id)
-        {
-            var battleground = (id > 0 ? await _repo.GetBattlegroundAsync(id) : null)
-                ?? throw new KeyNotFoundException($"Battleground with id {id} not found.");
-            await _repo.DeleteDomainAsync(battleground);
-        }
-
-        public async Task<PagedResultDto<ArenaBattlegroundDto>> SearchBattlegroundsAsync(PagedQueryDto query)
-        {
-            if (query == null) throw new ArgumentNullException(nameof(query));
-            var result = await _repo.SearchBattlegroundsAsync(_mapper.Map<PagedQuery>(query));
-            return _mapper.Map<PagedResultDto<ArenaBattlegroundDto>>(result);
-        }
-
-        private async Task ApplyBattlegroundAsync(ArenaBattleground battleground, ArenaBattlegroundDto dto, bool isNew)
-        {
-            string name = Required(dto.Name, "Name");
-            string regionId = Required(dto.WgRegionId, "WgRegionId");
-            string key = NormalizeKey(dto.Key);
-            int arenaId = await EnsureArenaAsync(dto.ArenaId);
-            if (await _repo.BattlegroundKeyTakenAsync(arenaId, key, isNew ? null : battleground.Id))
-                throw new ArgumentException($"The arena already has a battleground with the key '{key}'.", nameof(dto));
-            int sortOrder = dto.SortOrder ?? (isNew ? 0 : battleground.SortOrder);
-            bool isEnabled = dto.IsEnabled ?? (isNew || battleground.IsEnabled);
-
-            await _teleportDestinations.ValidateSettingsAsync(dto);
-            await EnsureLocationAsync(dto.LocationId, "LocationId");
-            var spawnA = await EnsureLocationAsync(dto.SpawnALocationId, "SpawnALocationId");
-            var spawnB = await EnsureLocationAsync(dto.SpawnBLocationId, "SpawnBLocationId");
-            if (dto.SpawnALocationId is > 0 && dto.SpawnALocationId == dto.SpawnBLocationId)
-                throw new ArgumentException("Spawn A and spawn B must be two different locations.", nameof(dto));
-            if (isEnabled && (spawnA == null || spawnB == null))
-                throw new ArgumentException("An enabled battleground needs spawn A and spawn B (or leave it disabled until they are set).", nameof(dto));
-
-            string world = await _worlds.ResolveAsync(new DomainWorldRequest
-            {
-                DomainId = isNew ? null : battleground.Id,
-                RequestedWorld = dto.WorldName,
-                WgRegionId = regionId,
-                LocationId = dto.LocationId,
-                ParentDomainId = arenaId
-            });
-            EnsureSameWorld(world, spawnA, "spawn A");
-            EnsureSameWorld(world, spawnB, "spawn B");
-
-            battleground.Name = name;
-            battleground.Description = dto.Description ?? string.Empty;
-            battleground.WgRegionId = regionId;
-            battleground.WorldName = world;
-            // D16: entry off by default; the duel runtime's exemption lets the two duelists in.
-            battleground.AllowEntry = dto.AllowEntry ?? (!isNew && battleground.AllowEntry);
-            battleground.AllowExit = dto.AllowExit ?? (isNew || battleground.AllowExit);
-            battleground.LocationId = dto.LocationId;
-            battleground.ArenaId = arenaId;
-            battleground.Key = key;
-            battleground.SortOrder = sortOrder;
-            battleground.IsEnabled = isEnabled;
-            battleground.SpawnALocationId = dto.SpawnALocationId;
-            battleground.SpawnBLocationId = dto.SpawnBLocationId;
-            DomainTeleportSettings.Apply(battleground, dto);
-            DomainNavigationDefaults.Apply(battleground, dto);
-        }
-
-        // ===================================================================== Spectator areas
-
-        public async Task<List<ArenaSpectatorAreaDto>> GetSpectatorAreasAsync(int? arenaId) =>
-            _mapper.Map<List<ArenaSpectatorAreaDto>>(await _repo.GetSpectatorAreasAsync(arenaId));
-
-        public async Task<ArenaSpectatorAreaDto?> GetSpectatorAreaAsync(int id)
-        {
-            var area = id > 0 ? await _repo.GetSpectatorAreaAsync(id) : null;
-            return area == null ? null : _mapper.Map<ArenaSpectatorAreaDto>(area);
-        }
-
-        public async Task<ArenaSpectatorAreaDto> CreateSpectatorAreaAsync(ArenaSpectatorAreaDto dto)
-        {
-            if (dto == null) throw new ArgumentNullException(nameof(dto));
-            var area = new ArenaSpectatorArea { CreatedAt = DateTime.UtcNow };
-            await ApplySpectatorAreaAsync(area, dto, isNew: true);
+            var area = new ArenaArea { CreatedAt = DateTime.UtcNow };
+            await ApplyAreaAsync(area, dto, isNew: true);
             await _repo.AddAsync(area);
-            await _regionNames.FinalizeAsync(area);
-            return _mapper.Map<ArenaSpectatorAreaDto>(await _repo.GetSpectatorAreaAsync(area.Id) ?? area);
+            return _mapper.Map<ArenaAreaDto>(await _repo.GetAreaAsync(area.Id) ?? area);
         }
 
-        public async Task UpdateSpectatorAreaAsync(int id, ArenaSpectatorAreaDto dto)
+        public async Task<ArenaAreaDto> UpdateAreaAsync(int id, ArenaAreaDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            var area = (id > 0 ? await _repo.GetSpectatorAreaAsync(id) : null)
-                ?? throw new KeyNotFoundException($"Spectator area with id {id} not found.");
-            string previousRegionId = area.WgRegionId;
-            await ApplySpectatorAreaAsync(area, dto, isNew: false);
+            var area = (id > 0 ? await _repo.GetAreaAsync(id) : null)
+                ?? throw new KeyNotFoundException($"Arena area with id {id} not found.");
+            await ApplyAreaAsync(area, dto, isNew: false);
             await _repo.SaveChangesAsync();
-            await _regionNames.FinalizeAsync(area, previousRegionId);
+            return _mapper.Map<ArenaAreaDto>(await _repo.GetAreaAsync(area.Id) ?? area);
         }
 
-        public async Task DeleteSpectatorAreaAsync(int id)
+        public async Task DeleteAreaAsync(int id)
         {
-            var area = (id > 0 ? await _repo.GetSpectatorAreaAsync(id) : null)
-                ?? throw new KeyNotFoundException($"Spectator area with id {id} not found.");
-            await _repo.DeleteDomainAsync(area);
+            var area = (id > 0 ? await _repo.GetAreaAsync(id) : null)
+                ?? throw new KeyNotFoundException($"Arena area with id {id} not found.");
+            var arena = await _repo.GetByIdAsync(area.ArenaId);
+            if (arena != null && arena.IsDuelEnabled && area.Kind == ArenaAreaKind.LOBBY
+                && !HasUsableLobby(arena.Areas.Where(a => a.Id != area.Id)))
+                throw new ArgumentException($"{arena.Name} is open for duels and needs its lobby: turn duels off first.");
+            // The regions go with the area; their WorldGuard regions become orphans (DESIGN.md §4.1).
+            await _repo.RemoveAsync(area);
         }
 
-        public async Task<PagedResultDto<ArenaSpectatorAreaDto>> SearchSpectatorAreasAsync(PagedQueryDto query)
+        public async Task<PagedResultDto<ArenaAreaDto>> SearchAreasAsync(PagedQueryDto query)
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            var result = await _repo.SearchSpectatorAreasAsync(_mapper.Map<PagedQuery>(query));
-            return _mapper.Map<PagedResultDto<ArenaSpectatorAreaDto>>(result);
+            var result = await _repo.SearchAreasAsync(_mapper.Map<PagedQuery>(query));
+            return _mapper.Map<PagedResultDto<ArenaAreaDto>>(result);
         }
 
-        private async Task ApplySpectatorAreaAsync(ArenaSpectatorArea area, ArenaSpectatorAreaDto dto, bool isNew)
+        /// <summary>DESIGN.md §4.1: kind fields, unique key, one lobby, locations in a region's world, an enabled
+        /// battleground has both spawns and a region, the lobby of an arena open for duels stays usable.</summary>
+        private async Task ApplyAreaAsync(ArenaArea area, ArenaAreaDto dto, bool isNew)
         {
-            string name = Required(dto.Name, "Name");
-            string regionId = Required(dto.WgRegionId, "WgRegionId");
-            int arenaId = await EnsureArenaAsync(dto.ArenaId);
-            await _teleportDestinations.ValidateSettingsAsync(dto);
-            await EnsureLocationAsync(dto.LocationId, "LocationId");
+            int arenaId = isNew ? (dto.ArenaId ?? 0) : area.ArenaId;
+            if (!isNew && dto.ArenaId is > 0 && dto.ArenaId != area.ArenaId)
+                throw new ArgumentException("An area can't move to another arena: create it there instead.", nameof(dto));
+            if (arenaId <= 0) throw new ArgumentException("ArenaId is required.", nameof(dto));
+            var arena = await _repo.GetByIdAsync(arenaId) ?? throw new ArgumentException($"Arena with id {arenaId} not found.");
 
-            string world = await _worlds.ResolveAsync(new DomainWorldRequest
+            ArenaAreaKind kind = ParseAreaKind(dto.Kind) ?? (isNew
+                ? throw new ArgumentException($"Kind is required: one of {string.Join(", ", Enum.GetNames<ArenaAreaKind>())}.", nameof(dto))
+                : area.Kind);
+            if (!isNew && kind != area.Kind && area.Regions.Count > 0)
+                throw new ArgumentException("Remove the area's regions before changing its kind (their names carry the kind), or create a new area.", nameof(dto));
+            string key = NormalizeKey(dto.Key);
+            if (await _repo.AreaKeyTakenAsync(arenaId, key, isNew ? null : area.Id))
+                throw new ArgumentException($"{arena.Name} already has an area with the key '{key}'.", nameof(dto));
+            if (kind == ArenaAreaKind.LOBBY && await _repo.OtherLobbyExistsAsync(arenaId, isNew ? null : area.Id))
+                throw new ArgumentException($"{arena.Name} already has a lobby; an arena has at most one.", nameof(dto));
+            string? name = string.IsNullOrWhiteSpace(dto.Name) ? null : dto.Name.Trim();
+            if (name != null && name.Length > 64) throw new ArgumentException("Name is longer than 64 characters.", nameof(dto));
+            int sortOrder = dto.SortOrder ?? (isNew ? 0 : area.SortOrder);
+            bool isEnabled = dto.IsEnabled ?? (!isNew && area.IsEnabled);
+
+            // Fields of another kind are cleared (DESIGN.md §4.1).
+            bool battleground = kind == ArenaAreaKind.BATTLEGROUND;
+            bool spectator = kind == ArenaAreaKind.SPECTATOR;
+            int? spawnAId = battleground && dto.SpawnALocationId is > 0 ? dto.SpawnALocationId : null;
+            int? spawnBId = battleground && dto.SpawnBLocationId is > 0 ? dto.SpawnBLocationId : null;
+            int? arrivalId = !battleground && dto.ArrivalLocationId is > 0 ? dto.ArrivalLocationId : null;
+            int? titleId = spectator && dto.TeleportMinTitleBracketId is > 0 ? dto.TeleportMinTitleBracketId : null;
+            int? priceGems = spectator && dto.TeleportPriceGems is > 0 ? dto.TeleportPriceGems : null;
+            if (spectator && dto.TeleportPriceGems is < 0) throw new ArgumentException("TeleportPriceGems can't be negative.", nameof(dto));
+            if (titleId is int bracketId && !await _repo.TitleBracketExistsAsync(bracketId))
+                throw new ArgumentException($"Title bracket with id {bracketId} not found.", nameof(dto));
+
+            var spawnA = await EnsureLocationAsync(spawnAId, "SpawnALocationId");
+            var spawnB = await EnsureLocationAsync(spawnBId, "SpawnBLocationId");
+            var arrival = await EnsureLocationAsync(arrivalId, "ArrivalLocationId");
+            if (spawnAId != null && spawnAId == spawnBId)
+                throw new ArgumentException("Spawn A and spawn B must be two different locations.", nameof(dto));
+            int regionCount = isNew ? 0 : area.Regions.Count;
+            if (battleground && isEnabled && (spawnA == null || spawnB == null || regionCount == 0))
+                throw new ArgumentException("An enabled battleground needs spawn A, spawn B and at least one region (save it disabled, add its regions, then enable it).", nameof(dto));
+
+            // Locations lie in the world of one of the area's regions; the arena's world while it has none.
+            var worlds = isNew || area.Regions.Count == 0
+                ? new[] { arena.WorldName }.Where(w => !string.IsNullOrWhiteSpace(w)).Select(w => w!.Trim()).ToList()
+                : area.Regions.Select(r => r.WorldName).Where(w => !string.IsNullOrWhiteSpace(w)).Select(w => w.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            EnsureInWorlds(worlds, spawnA, "spawn A");
+            EnsureInWorlds(worlds, spawnB, "spawn B");
+            EnsureInWorlds(worlds, arrival, "arrival location");
+
+            if (arena.IsDuelEnabled)
             {
-                DomainId = isNew ? null : area.Id,
-                RequestedWorld = dto.WorldName,
-                WgRegionId = regionId,
-                LocationId = dto.LocationId,
-                ParentDomainId = arenaId
-            });
+                var after = arena.Areas.Where(a => a.Id != area.Id).Append(new ArenaArea
+                {
+                    Kind = kind, IsEnabled = isEnabled, ArrivalLocationId = arrivalId
+                });
+                if (!HasUsableLobby(after))
+                    throw new ArgumentException($"{arena.Name} is open for duels and needs an enabled lobby with an arrival location: turn duels off first.", nameof(dto));
+            }
 
-            area.Name = name;
-            area.Description = dto.Description ?? string.Empty;
-            area.WgRegionId = regionId;
-            area.WorldName = world;
-            area.AllowEntry = dto.AllowEntry ?? (isNew || area.AllowEntry);
-            area.AllowExit = dto.AllowExit ?? (isNew || area.AllowExit);
-            area.LocationId = dto.LocationId;
             area.ArenaId = arenaId;
-            DomainTeleportSettings.Apply(area, dto);
-            DomainNavigationDefaults.Apply(area, dto);
+            area.Kind = kind;
+            area.Key = key;
+            area.Name = name;
+            area.SortOrder = sortOrder;
+            area.IsEnabled = isEnabled;
+            area.SpawnALocationId = spawnAId;
+            area.SpawnBLocationId = spawnBId;
+            area.ArrivalLocationId = arrivalId;
+            area.TeleportMinTitleBracketId = titleId;
+            area.TeleportPriceGems = priceGems;
+        }
+
+        public static ArenaAreaKind? ParseAreaKind(string? value) =>
+            Enum.TryParse<ArenaAreaKind>(value?.Trim(), ignoreCase: true, out var kind) && Enum.IsDefined(kind) ? kind : null;
+
+        // ===================================================================== Area regions (rev. 6)
+
+        public async Task<List<ArenaAreaRegionDto>> GetAreaRegionsAsync(int? areaId) =>
+            _mapper.Map<List<ArenaAreaRegionDto>>(await _repo.GetAreaRegionsAsync(areaId));
+
+        public async Task<ArenaAreaRegionDto?> GetAreaRegionAsync(int id)
+        {
+            var region = id > 0 ? await _repo.GetAreaRegionAsync(id) : null;
+            return region == null ? null : _mapper.Map<ArenaAreaRegionDto>(region);
+        }
+
+        public async Task<ArenaAreaRegionDto?> FindAreaRegionAsync(string regionId, string? world)
+        {
+            if (string.IsNullOrWhiteSpace(regionId)) return null;
+            var region = await _repo.FindAreaRegionAsync(regionId, world);
+            return region == null ? null : _mapper.Map<ArenaAreaRegionDto>(region);
+        }
+
+        public async Task<ArenaAreaRegionDto> CreateAreaRegionAsync(ArenaAreaRegionDto dto)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+            int areaId = dto.ArenaAreaId ?? 0;
+            if (areaId <= 0) throw new ArgumentException("ArenaAreaId is required.", nameof(dto));
+            var area = await _repo.GetAreaAsync(areaId) ?? throw new KeyNotFoundException($"Arena area with id {areaId} not found.");
+            var region = new ArenaAreaRegion { ArenaAreaId = area.Id, CreatedAt = DateTime.UtcNow };
+            await ApplyAreaRegionAsync(region, area, dto, null);
+            await _repo.AddAsync(region);
+            await _regionNames.FinalizeArenaAreaRegionAsync(region, null);
+            return _mapper.Map<ArenaAreaRegionDto>(await _repo.GetAreaRegionAsync(region.Id) ?? region);
+        }
+
+        public async Task<ArenaAreaRegionDto> UpdateAreaRegionAsync(int id, ArenaAreaRegionDto dto)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+            var region = (id > 0 ? await _repo.GetAreaRegionAsync(id) : null)
+                ?? throw new KeyNotFoundException($"Arena area region with id {id} not found.");
+            if (dto.ArenaAreaId is > 0 && dto.ArenaAreaId != region.ArenaAreaId)
+                throw new ArgumentException("A region can't move to another area: remove it and add it there.", nameof(dto));
+            var area = await _repo.GetAreaAsync(region.ArenaAreaId) ?? throw new KeyNotFoundException($"Arena area with id {region.ArenaAreaId} not found.");
+            string previousRegionId = region.WgRegionId;
+            await ApplyAreaRegionAsync(region, area, dto, region.Id);
+            await _repo.SaveChangesAsync();
+            // A re-run of its world task (KNG-103): the new region replaces the old one under the final name.
+            await _regionNames.FinalizeArenaAreaRegionAsync(region, previousRegionId);
+            return _mapper.Map<ArenaAreaRegionDto>(await _repo.GetAreaRegionAsync(region.Id) ?? region);
+        }
+
+        public async Task DeleteAreaRegionAsync(int id)
+        {
+            var region = (id > 0 ? await _repo.GetAreaRegionAsync(id) : null)
+                ?? throw new KeyNotFoundException($"Arena area region with id {id} not found.");
+            var area = await _repo.GetAreaAsync(region.ArenaAreaId);
+            if (area != null && area.Kind == ArenaAreaKind.BATTLEGROUND && area.IsEnabled && area.Regions.Count(r => r.Id != region.Id) == 0)
+                throw new ArgumentException("This is the last region of an enabled battleground: disable the battleground first.");
+            // The WorldGuard region stays: the game server takes it for an orphan and deletes it after the retention
+            // period (DESIGN.md §4.1); until then it can be adopted again with "select".
+            await _repo.RemoveAsync(region);
+        }
+
+        public async Task<PagedResultDto<ArenaAreaRegionDto>> SearchAreaRegionsAsync(PagedQueryDto query)
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            var result = await _repo.SearchAreaRegionsAsync(_mapper.Map<PagedQuery>(query));
+            return _mapper.Map<PagedResultDto<ArenaAreaRegionDto>>(result);
+        }
+
+        /// <summary>The region lies in the arena's world (a world task's region was drawn there) and no domain, domain
+        /// sub-region or other area region in that world uses its id.</summary>
+        private async Task ApplyAreaRegionAsync(ArenaAreaRegion region, ArenaArea area, ArenaAreaRegionDto dto, int? selfId)
+        {
+            string regionId = Required(dto.WgRegionId, "WgRegionId");
+            if (regionId.Length > 128) throw new ArgumentException("The region id is longer than 128 characters.", nameof(dto));
+            var arena = area.Arena ?? await _repo.GetByIdAsync(area.ArenaId) ?? throw new ArgumentException($"Arena with id {area.ArenaId} not found.");
+            string? arenaWorld = string.IsNullOrWhiteSpace(arena.WorldName) ? null : arena.WorldName.Trim();
+            string? requested = string.IsNullOrWhiteSpace(dto.WorldName) ? null : dto.WorldName.Trim();
+            string? drawnIn = await RegionTaskWorldAsync(regionId);
+            string? world = arenaWorld ?? drawnIn ?? requested;
+            if (world == null)
+                throw new DomainWorldException(DomainWorldException.WorldRequired, "The region's world is unknown: give the arena its world first.");
+            foreach (var other in new[] { drawnIn, requested })
+            {
+                if (other != null && !other.Equals(world, StringComparison.OrdinalIgnoreCase))
+                    throw new DomainWorldException(DomainWorldException.WorldConflict,
+                        $"The region is in world '{other}', but {arena.Name} is in world '{world}': an area's regions are in the arena's world.");
+            }
+            if (regionId.Equals(arena.WgRegionId, StringComparison.OrdinalIgnoreCase))
+                throw new DomainWorldException(DomainWorldException.RegionTaken, $"Region '{regionId}' is the arena's own region.");
+            bool changed = !regionId.Equals(region.WgRegionId ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+            if (changed)
+            {
+                string? takenBy = await DomainRegionOwnership.TakenByAsync(_context, regionId, world, exceptAreaRegionId: selfId);
+                if (takenBy != null) throw new DomainWorldException(DomainWorldException.RegionTaken, takenBy);
+            }
+            region.WgRegionId = regionId;
+            region.WorldName = world;
+        }
+
+        private async Task<string?> RegionTaskWorldAsync(string regionId)
+        {
+            if (!DomainRegionNameFinalizer.IsTemporary(regionId)) return null;
+            if (!int.TryParse(regionId.Substring(DomainRegionNameFinalizer.TempRegionPrefix.Length), out int taskId) || taskId <= 0) return null;
+            string? output = await _context.WorldTasks.AsNoTracking()
+                .Where(t => t.Id == taskId)
+                .Select(t => t.OutputJson)
+                .FirstOrDefaultAsync();
+            return DomainWorldResolver.WorldNameFromTaskOutput(output);
         }
 
         // ===================================================================== Helpers
-
-        private async Task<int> EnsureArenaAsync(int? arenaId)
-        {
-            if (arenaId is not > 0) throw new ArgumentException("ArenaId is required.");
-            if (await _repo.GetByIdAsync(arenaId.Value) == null)
-                throw new ArgumentException($"Arena with id {arenaId} not found.");
-            return arenaId.Value;
-        }
 
         private async Task<Location?> EnsureLocationAsync(int? locationId, string field)
         {
@@ -432,6 +502,13 @@ namespace knkwebapi_v2.Services
             if (location == null || string.IsNullOrWhiteSpace(location.World)) return;
             if (!location.World.Trim().Equals(world, StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException($"The {what} is in world '{location.World}', not in the domain's world '{world}'.");
+        }
+
+        private static void EnsureInWorlds(IReadOnlyList<string> worlds, Location? location, string what)
+        {
+            if (location == null || string.IsNullOrWhiteSpace(location.World) || worlds.Count == 0) return;
+            if (!worlds.Any(w => w.Equals(location.World.Trim(), StringComparison.OrdinalIgnoreCase)))
+                throw new ArgumentException($"The {what} is in world '{location.World}', not in the world of the area's regions ({string.Join(", ", worlds)}).");
         }
 
         private static string Required(string? value, string field)

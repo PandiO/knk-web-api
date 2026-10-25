@@ -20,7 +20,7 @@ public class DuelMatch
 
     /// <summary>Null until the fight starts on one.</summary>
     public int? BattlegroundId { get; set; }
-    public ArenaBattleground? Battleground { get; set; }
+    public ArenaArea? Battleground { get; set; }
 
     /// <summary>The inviter.</summary>
     public int ChallengerUserId { get; set; }

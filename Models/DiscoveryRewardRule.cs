@@ -14,13 +14,12 @@ public class DiscoveryRewardRule
     public const string District = nameof(Models.District);
     public const string Structure = nameof(Models.Structure);
     public const string GateStructure = nameof(Models.GateStructure);
-    // Arena duels (KNG-210): seeded by the AddArenas migration; battlegrounds are off (DESIGN.md §4.1).
+    // Arena duels (KNG-210): seeded by the AddArenas migration. Rev. 6: battlegrounds and spectator areas are arena
+    // areas, not domains, and have no discovery (their rule rows are removed by ReplaceArenaChildDomainsWithAreas).
     public const string Arena = nameof(Models.Arena);
-    public const string ArenaSpectatorArea = nameof(Models.ArenaSpectatorArea);
-    public const string ArenaBattleground = nameof(Models.ArenaBattleground);
 
     /// <summary>Every discoverable domain type, top-down: the order grants are made and messaged in.</summary>
-    public static readonly string[] DomainTypes = { Town, District, Structure, GateStructure, Arena, ArenaSpectatorArea, ArenaBattleground };
+    public static readonly string[] DomainTypes = { Town, District, Structure, GateStructure, Arena };
 
     public string DomainType { get; set; } = null!;
 

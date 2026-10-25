@@ -114,8 +114,8 @@ public class EndpointAccessRulesTests
         Assert.DoesNotContain(typeof(UsersController).Assembly.GetTypes(), t => t.Name == name);
     }
 
-    /// <summary>Arena duels (KNG-210): arena, battleground and spectator-area writes need knk.admin.world or the game
-    /// server; reads (GET and POST search) only need a caller.</summary>
+    /// <summary>Arena duels (KNG-210; rev. 6 areas and their regions): arena, area and area-region writes need
+    /// knk.admin.world or the game server; reads (GET and POST search) only need a caller.</summary>
     [Fact]
     public void ArenaWrites_NeedManageWorld_AndReadsOnlyACaller()
     {
@@ -136,6 +136,25 @@ public class EndpointAccessRulesTests
                 Assert.True(rule?.Node == StaffPermissions.ManageWorld, $"{endpoint.Name} must need {StaffPermissions.ManageWorld}");
             }
         }
+    }
+
+    /// <summary>Arena duels rev. 6: the area and region routes exist with the world rule, and the spectate teleport's
+    /// charge is the game server's only, like the other teleport fees.</summary>
+    [Fact]
+    public void ArenaAreaRoutes_AndTheSpectateFee_HaveTheirRules()
+    {
+        var arenaWrites = Endpoints().Where(e => e.Controller == typeof(ArenasController)
+            && e.Verbs.Any(v => !DefaultCallerRequiredFilter.IsRead(v)) && !e.Action.Name.StartsWith("Search", StringComparison.Ordinal))
+            .Select(e => e.Action.Name).ToHashSet();
+        foreach (var name in new[] { "CreateAreaOfArena", "CreateArea", "UpdateArea", "DeleteArea",
+                     "CreateRegionOfArea", "CreateAreaRegion", "UpdateAreaRegion", "DeleteAreaRegion" })
+        {
+            Assert.Contains(name, arenaWrites);
+        }
+        Assert.DoesNotContain(Endpoints(), e => e.Controller == typeof(ArenasController) && e.Action.Name.Contains("Battleground"));
+
+        var spectate = Endpoints().Single(e => e.Controller == typeof(TeleportDestinationsController) && e.Action.Name == "SpectateFee");
+        Assert.Contains(spectate.Metadata, m => m is RequirePluginServiceAttribute);
     }
 
     /// <summary>Arena duels (KNG-213): the match lifecycle is the game server's only; staff actions, the policy edit and

@@ -800,4 +800,97 @@ public class TeleportDestinationServiceTests
         Assert.Null(town.TeleportMinTitleBracketId);
         Assert.False(town.TeleportRequiresDiscovery);
     }
+
+    // ===== Arena duels rev. 6: the spectate teleport (DESIGN.md §9.3) =====
+
+    private async Task<int> SpectatorAreaAsync(int? titleId = null, int? priceGems = null, ArenaAreaKind kind = ArenaAreaKind.SPECTATOR,
+        bool enabled = true, bool withArrival = true)
+    {
+        await using var ctx = NewContext();
+        var arena = new Arena { Name = "The Arena", Key = "arena_" + Guid.NewGuid().ToString("N")[..6], Description = "", WgRegionId = "arena" };
+        var area = new ArenaArea
+        {
+            Arena = arena, Kind = kind, Key = "stands", IsEnabled = enabled, TeleportMinTitleBracketId = titleId, TeleportPriceGems = priceGems,
+            ArrivalLocation = withArrival ? new Location { World = "world", X = 1, Y = 64, Z = 1 } : null
+        };
+        ctx.ArenaAreas.Add(area);
+        await ctx.SaveChangesAsync();
+        return area.Id;
+    }
+
+    private async Task<TeleportChargeResultDto> SpectateAsync(int areaId, int userId, string key = "spectate:1",
+        bool bypassRequirements = false, bool bypassCost = false)
+    {
+        await using var ctx = NewContext();
+        return await Service(ctx).ChargeSpectateFeeAsync(new TeleportSpectateFeeDto
+        {
+            UserId = userId, ArenaAreaId = areaId, IdempotencyKey = key, BypassRequirements = bypassRequirements, BypassCost = bypassCost
+        });
+    }
+
+    [Fact]
+    public async Task SpectateFee_ChargesTheAreasGemsOnce_AndRefunds()
+    {
+        var user = await UserAsync(gems: 25);
+        var area = await SpectatorAreaAsync(priceGems: 10);
+
+        var result = await SpectateAsync(area, user, "spectate:a");
+        var again = await SpectateAsync(area, user, "spectate:a");
+
+        Assert.Equal(("Gems", 10, 15), (result.Currency, result.Charged, result.NewBalance));
+        Assert.True(again.Replayed);
+        Assert.Equal(15, (await ReloadAsync(user)).Gems);
+        var tx = Assert.Single(await LedgerAsync());
+        Assert.Equal((CurrencyReasons.TeleportFee, TeleportDestinationService.SpectateSourceType, area.ToString()), (tx.ReasonCode, tx.SourceType, tx.SourceRef));
+
+        var refund = await RefundAsync(user, "spectate:a");
+        Assert.True(refund.Refunded);
+        Assert.Equal(25, (await ReloadAsync(user)).Gems);
+    }
+
+    [Fact]
+    public async Task SpectateFee_IsFreeWithoutAPrice_AndForBypassCost()
+    {
+        var user = await UserAsync(gems: 0);
+        var free = await SpectatorAreaAsync();
+        var paid = await SpectatorAreaAsync(priceGems: 10);
+
+        Assert.Equal(0, (await SpectateAsync(free, user, "spectate:f")).Charged);
+        Assert.Equal(0, (await SpectateAsync(paid, user, "spectate:b", bypassCost: true)).Charged);
+        Assert.Empty(await LedgerAsync());
+        var short_ = await Assert.ThrowsAsync<TeleportDestinationException>(() => SpectateAsync(paid, user, "spectate:s"));
+        Assert.Equal(TeleportDestinationException.InsufficientGems, short_.Code);
+    }
+
+    [Fact]
+    public async Task SpectateFee_ChecksTheAreasTitle_AndChargesNothingWhenRefused()
+    {
+        var bracket = await BracketAsync("Knight", "Dame", 1_000);
+        var novice = await UserAsync(gems: 25, xp: 10, gender: Gender.Female);
+        var veteran = await UserAsync(gems: 25, xp: 5_000);
+        var area = await SpectatorAreaAsync(titleId: bracket, priceGems: 5);
+
+        var refused = await Assert.ThrowsAsync<TeleportDestinationException>(() => SpectateAsync(area, novice, "spectate:n"));
+        Assert.Equal(TeleportDestinationException.TitleTooLow, refused.Code);
+        Assert.Contains("Dame", refused.Message);
+        Assert.Equal(25, (await ReloadAsync(novice)).Gems);
+
+        Assert.Equal(5, (await SpectateAsync(area, veteran, "spectate:v")).Charged);
+        Assert.Equal(5, (await SpectateAsync(area, novice, "spectate:staff", bypassRequirements: true)).Charged);
+    }
+
+    [Theory]
+    [InlineData(ArenaAreaKind.BATTLEGROUND, true, true)]
+    [InlineData(ArenaAreaKind.LOBBY, true, true)]
+    [InlineData(ArenaAreaKind.SPECTATOR, false, true)]
+    [InlineData(ArenaAreaKind.SPECTATOR, true, false)]
+    public async Task SpectateFee_OnlyForAnEnabledSpectatorAreaWithAnArrival(ArenaAreaKind kind, bool enabled, bool withArrival)
+    {
+        var user = await UserAsync();
+        var area = await SpectatorAreaAsync(kind: kind, enabled: enabled, withArrival: withArrival);
+
+        var refused = await Assert.ThrowsAsync<TeleportDestinationException>(() => SpectateAsync(area, user));
+        Assert.Equal(TeleportDestinationException.NotAvailable, refused.Code);
+        await Assert.ThrowsAsync<TeleportDestinationException>(() => SpectateAsync(999_999, user, "spectate:x"));
+    }
 }

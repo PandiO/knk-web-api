@@ -24,7 +24,7 @@ namespace knkwebapi_v2.Tests.Services;
 public class DuelMatchServiceTests : IDisposable
 {
     private const int Alice = 1, Bob = 2, Carol = 3, Dave = 4, Young = 5, Staff = 900;
-    private const int ArenaId = 50, OtherArenaId = 51, GroundId = 60, OtherGroundId = 61, KnightKit = 7, ArcherKit = 8;
+    private const int ArenaId = 50, OtherArenaId = 51, GroundId = 60, OtherGroundId = 61, StandsId = 62, KnightKit = 7, ArcherKit = 8;
 
     private readonly KnKDbContext _context;
     private readonly TestClock _clock = new();
@@ -79,9 +79,11 @@ public class DuelMatchServiceTests : IDisposable
                 EligibleKits = new List<ArenaKit> { new() { KitId = KnightKit, SequenceNumber = 0 } }
             },
             new Arena { Id = OtherArenaId, Name = "Pit", Key = "pit", Description = "p", WgRegionId = "pit", DistrictId = 10, StreetId = 5 });
-        _context.ArenaBattlegrounds.AddRange(
-            new ArenaBattleground { Id = GroundId, ArenaId = ArenaId, Key = "north", Name = "north", Description = "n", WgRegionId = "bg_north" },
-            new ArenaBattleground { Id = OtherGroundId, ArenaId = OtherArenaId, Key = "pit1", Name = "pit1", Description = "p", WgRegionId = "bg_pit" });
+        // Rev. 6: battlegrounds are arena areas of kind BATTLEGROUND; a spectator area is no battleground.
+        _context.ArenaAreas.AddRange(
+            new ArenaArea { Id = GroundId, ArenaId = ArenaId, Kind = ArenaAreaKind.BATTLEGROUND, Key = "north", IsEnabled = true },
+            new ArenaArea { Id = OtherGroundId, ArenaId = OtherArenaId, Kind = ArenaAreaKind.BATTLEGROUND, Key = "pit1", IsEnabled = true },
+            new ArenaArea { Id = StandsId, ArenaId = ArenaId, Kind = ArenaAreaKind.SPECTATOR, Key = "stands", IsEnabled = true });
         _context.SaveChanges();
     }
 
@@ -534,6 +536,9 @@ public class DuelMatchServiceTests : IDisposable
         var kitMatch = await LockAsync(Duel(mode: DuelGearMode.KIT_CHOICE));
         Assert.Equal(DuelErrorCode.InvalidRequest, await RefusalAsync(() =>
             _service.StartFightAsync(kitMatch.Id, new DuelStartFightDto { BattlegroundId = OtherGroundId })));
+        // Rev. 6: an area of another kind is no battleground.
+        Assert.Equal(DuelErrorCode.InvalidRequest, await RefusalAsync(() =>
+            _service.StartFightAsync(kitMatch.Id, new DuelStartFightDto { BattlegroundId = StandsId })));
         Assert.Equal(DuelErrorCode.KitNotEligible, await RefusalAsync(() =>
             _service.StartFightAsync(kitMatch.Id, new DuelStartFightDto { BattlegroundId = GroundId, ChallengerKitId = ArcherKit })));
 

@@ -42,6 +42,8 @@ namespace knkwebapi_v2.Services
         public const string RequestSourceType = "TeleportRequest";
         public const string BackSourceType = "TeleportBack";
         public const string SpawnSourceType = "TeleportSpawn";
+        /// <summary>Arena duels rev. 6: the spectate teleport to an arena's spectator area (SourceRef = the area id).</summary>
+        public const string SpectateSourceType = "ArenaSpectate";
 
         /// <summary>The kinds of place a /back returns to (plugin BackKind config keys, KNG-42).</summary>
         public static readonly IReadOnlySet<string> BackKinds = new HashSet<string> { "death", "warps", "teleport", "spawn" };
@@ -51,12 +53,13 @@ namespace knkwebapi_v2.Services
 
         private static readonly Regex KeyPattern = new("^[A-Za-z0-9:_.\\-]{1,100}$", RegexOptions.Compiled);
 
-        private static readonly string[] TypeOrder = { "Town", "District", "Structure", "GateStructure", "Arena", "ArenaSpectatorArea", "ArenaBattleground" };
+        private static readonly string[] TypeOrder = { "Town", "District", "Structure", "GateStructure", "Arena" };
 
         private const string WarpPurpose = "to teleport to this location";
         private const string RequestPurpose = "to send this teleport request";
         private const string BackPurpose = "to teleport back";
         private const string SpawnPurpose = "to teleport to spawn";
+        private const string SpectatePurpose = "to teleport to the spectator area";
 
         private readonly ITeleportDestinationRepository _repo;
         private readonly IUserRepository _users;
@@ -254,6 +257,39 @@ namespace knkwebapi_v2.Services
             return ChargeFeeAsync(request.UserId, request.IdempotencyKey, Currency.Coins, BackSourceType, kind,
                 "Teleport back (/back)", BackPurpose,
                 _ => Task.FromResult<(IReadOnlyList<TeleportPriceLeg>, object)>((price, new { backKind = kind })));
+        }
+
+        public async Task<TeleportChargeResultDto> ChargeSpectateFeeAsync(TeleportSpectateFeeDto request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            var area = request.ArenaAreaId > 0 ? await _repo.GetArenaAreaAsync(request.ArenaAreaId) : null;
+            if (area == null || area.Kind != ArenaAreaKind.SPECTATOR || !area.IsEnabled || area.ArrivalLocationId is not > 0)
+            {
+                throw new TeleportDestinationException(TeleportDestinationException.NotAvailable,
+                    "That spectator area can't be reached by teleport.");
+            }
+            string label = area.Arena != null ? $"Spectate at {area.Arena.Name}" : "Spectate";
+            return await ChargeFeeAsync(request.UserId, request.IdempotencyKey, Currency.Gems, SpectateSourceType, area.Id.ToString(),
+                label, SpectatePurpose,
+                user =>
+                {
+                    var bracket = area.TeleportMinTitleBracket;
+                    if (!request.BypassRequirements && bracket != null && user.ExperiencePoints < bracket.MinExperience)
+                    {
+                        throw new TeleportDestinationException(TeleportDestinationException.TitleTooLow,
+                            $"Reach title {bracket.NameFor(user.Gender)} to teleport to the spectator area.");
+                    }
+                    IReadOnlyList<TeleportPriceLeg> price = request.BypassCost || area.TeleportPriceGems is not > 0
+                        ? Array.Empty<TeleportPriceLeg>()
+                        : new[] { new TeleportPriceLeg(Currency.Gems, area.TeleportPriceGems.Value) };
+                    return Task.FromResult<(IReadOnlyList<TeleportPriceLeg>, object)>((price, new
+                    {
+                        arenaAreaId = area.Id,
+                        arenaId = area.ArenaId,
+                        bypassRequirements = request.BypassRequirements,
+                        bypassCost = request.BypassCost
+                    }));
+                });
         }
 
         /// <summary>
@@ -511,8 +547,6 @@ namespace knkwebapi_v2.Services
             GateStructure => "GateStructure",
             Arena => "Arena",
             Structure => "Structure",
-            ArenaSpectatorArea => "ArenaSpectatorArea",
-            ArenaBattleground => "ArenaBattleground",
             District => "District",
             Town => "Town",
             _ => "Domain"

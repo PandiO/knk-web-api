@@ -41,9 +41,6 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("key")]
         public string Key { get; set; } = null!;
 
-        [JsonPropertyName("lobbyLocationId")]
-        public int? LobbyLocationId { get; set; }
-
         [JsonPropertyName("exitLocationId")]
         public int? ExitLocationId { get; set; }
 
@@ -96,10 +93,12 @@ namespace knkwebapi_v2.Dtos
 
         // ===== Read-only =====
         [JsonPropertyName("location")] public LocationDto? Location { get; set; }
-        [JsonPropertyName("lobbyLocation")] public LocationDto? LobbyLocation { get; set; }
         [JsonPropertyName("exitLocation")] public LocationDto? ExitLocation { get; set; }
-        [JsonPropertyName("battlegrounds")] public List<ArenaBattlegroundDto>? Battlegrounds { get; set; }
-        [JsonPropertyName("spectatorAreas")] public List<ArenaSpectatorAreaDto>? SpectatorAreas { get; set; }
+        /// <summary>Rev. 6: battlegrounds, spectator areas and the lobby with their regions (edited through
+        /// <c>api/Arenas/areas</c>, the form's owned list), in kind then <c>sortOrder</c> order.</summary>
+        [JsonPropertyName("areas")] public List<ArenaAreaDto>? Areas { get; set; }
+        /// <summary>KNG-254: the arena domain's own sub-regions (the arena is their union with its main region).</summary>
+        [JsonPropertyName("subRegions")] public List<DomainSubRegionDto>? SubRegions { get; set; }
     }
 
     public class ArenaKitDto
@@ -124,68 +123,56 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("districtName")] public string? DistrictName { get; set; }
         [JsonPropertyName("townName")] public string? TownName { get; set; }
         [JsonPropertyName("battlegroundCount")] public int BattlegroundCount { get; set; }
+        [JsonPropertyName("areaCount")] public int AreaCount { get; set; }
     }
 
-    /// <summary>A battleground (DESIGN.md §4.1). AllowEntry defaults to false on create.</summary>
-    public class ArenaBattlegroundDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
+    /// <summary>
+    /// A battleground, spectator area or lobby (DESIGN.md §4.1, rev. 6): read and write shape of <c>api/Arenas/areas</c>.
+    /// Fields of another kind are cleared on save. <c>regions</c> is read-only (edited through
+    /// <c>api/Arenas/areas/regions</c>, the area form's owned list).
+    /// </summary>
+    public class ArenaAreaDto
     {
         [JsonPropertyName("id")] [JsonConverter(typeof(NullableIntConverter))] public int? Id { get; set; }
-        [JsonPropertyName("name")] public string Name { get; set; } = null!;
-        [JsonPropertyName("description")] public string? Description { get; set; }
-        [JsonPropertyName("createdAt")] public DateTime? CreatedAt { get; set; }
-        [JsonPropertyName("allowEntry")] [JsonConverter(typeof(NullableBoolConverter))] public bool? AllowEntry { get; set; }
-        [JsonPropertyName("allowExit")] [JsonConverter(typeof(NullableBoolConverter))] public bool? AllowExit { get; set; }
-        [JsonPropertyName("wgRegionId")] public string WgRegionId { get; set; } = null!;
-        [JsonPropertyName("worldName")] public string? WorldName { get; set; }
-        [JsonPropertyName("locationId")] [JsonConverter(typeof(NullableIntConverter))] public int? LocationId { get; set; }
-
         [JsonPropertyName("arenaId")] [JsonConverter(typeof(NullableIntConverter))] public int? ArenaId { get; set; }
+        /// <summary>BATTLEGROUND, SPECTATOR or LOBBY.</summary>
+        [JsonPropertyName("kind")] public string? Kind { get; set; }
         [JsonPropertyName("key")] public string Key { get; set; } = null!;
+        [JsonPropertyName("name")] public string? Name { get; set; }
         [JsonPropertyName("sortOrder")] [JsonConverter(typeof(NullableIntConverter))] public int? SortOrder { get; set; }
         [JsonPropertyName("isEnabled")] [JsonConverter(typeof(NullableBoolConverter))] public bool? IsEnabled { get; set; }
         [JsonPropertyName("spawnALocationId")] [JsonConverter(typeof(NullableIntConverter))] public int? SpawnALocationId { get; set; }
         [JsonPropertyName("spawnBLocationId")] [JsonConverter(typeof(NullableIntConverter))] public int? SpawnBLocationId { get; set; }
-
-        // Domain warp and navigation fields: a battleground is no warp target, but the shared domain code reads them.
-        [JsonPropertyName("teleportEnabled")] [JsonConverter(typeof(NullableBoolConverter))] public bool? TeleportEnabled { get; set; }
-        [JsonPropertyName("teleportPriceGems")] [JsonConverter(typeof(NullableIntConverter))] public int? TeleportPriceGems { get; set; }
+        [JsonPropertyName("arrivalLocationId")] [JsonConverter(typeof(NullableIntConverter))] public int? ArrivalLocationId { get; set; }
         [JsonPropertyName("teleportMinTitleBracketId")] [JsonConverter(typeof(NullableIntConverter))] public int? TeleportMinTitleBracketId { get; set; }
-        [JsonPropertyName("teleportMinPremiumGroupId")] [JsonConverter(typeof(NullableIntConverter))] public int? TeleportMinPremiumGroupId { get; set; }
-        [JsonPropertyName("teleportRequiresDiscovery")] [JsonConverter(typeof(NullableBoolConverter))] public bool? TeleportRequiresDiscovery { get; set; }
-        [JsonPropertyName("navigationDefaultOverride")] public string? NavigationDefaultOverride { get; set; }
-        [JsonPropertyName("roadAccessOverride")] public string? RoadAccessOverride { get; set; }
+        [JsonPropertyName("teleportPriceGems")] [JsonConverter(typeof(NullableIntConverter))] public int? TeleportPriceGems { get; set; }
+        [JsonPropertyName("createdAt")] public DateTime? CreatedAt { get; set; }
 
         // ===== Read-only =====
         [JsonPropertyName("arenaName")] public string? ArenaName { get; set; }
+        [JsonPropertyName("arenaWgRegionId")] public string? ArenaWgRegionId { get; set; }
         [JsonPropertyName("spawnALocation")] public LocationDto? SpawnALocation { get; set; }
         [JsonPropertyName("spawnBLocation")] public LocationDto? SpawnBLocation { get; set; }
+        [JsonPropertyName("arrivalLocation")] public LocationDto? ArrivalLocation { get; set; }
+        [JsonPropertyName("teleportMinTitleBracketName")] public string? TeleportMinTitleBracketName { get; set; }
+        [JsonPropertyName("regions")] public List<ArenaAreaRegionDto>? Regions { get; set; }
     }
 
-    /// <summary>A spectator area (DESIGN.md §4.1, §9.3): an ordinary warpable domain.</summary>
-    public class ArenaSpectatorAreaDto : IDomainTeleportSettingsDto, IDomainNavigationDefaultDto
+    /// <summary>One region of an arena area (DESIGN.md §4.1, rev. 6): read and write shape of <c>api/Arenas/areas/regions</c>.</summary>
+    public class ArenaAreaRegionDto
     {
         [JsonPropertyName("id")] [JsonConverter(typeof(NullableIntConverter))] public int? Id { get; set; }
-        [JsonPropertyName("name")] public string Name { get; set; } = null!;
-        [JsonPropertyName("description")] public string? Description { get; set; }
-        [JsonPropertyName("createdAt")] public DateTime? CreatedAt { get; set; }
-        [JsonPropertyName("allowEntry")] [JsonConverter(typeof(NullableBoolConverter))] public bool? AllowEntry { get; set; }
-        [JsonPropertyName("allowExit")] [JsonConverter(typeof(NullableBoolConverter))] public bool? AllowExit { get; set; }
+        [JsonPropertyName("arenaAreaId")] [JsonConverter(typeof(NullableIntConverter))] public int? ArenaAreaId { get; set; }
+        /// <summary><c>tempregion_worldtask_&lt;n&gt;</c> from its world task, or an existing region adopted with "select";
+        /// <c>arena_&lt;arenaId&gt;_&lt;kind&gt;_&lt;id&gt;</c> once saved.</summary>
         [JsonPropertyName("wgRegionId")] public string WgRegionId { get; set; } = null!;
+        /// <summary>Optional on write: the arena's world (a world task's region must be drawn there).</summary>
         [JsonPropertyName("worldName")] public string? WorldName { get; set; }
-        [JsonPropertyName("locationId")] [JsonConverter(typeof(NullableIntConverter))] public int? LocationId { get; set; }
-
-        [JsonPropertyName("arenaId")] [JsonConverter(typeof(NullableIntConverter))] public int? ArenaId { get; set; }
-
-        [JsonPropertyName("teleportEnabled")] [JsonConverter(typeof(NullableBoolConverter))] public bool? TeleportEnabled { get; set; }
-        [JsonPropertyName("teleportPriceGems")] [JsonConverter(typeof(NullableIntConverter))] public int? TeleportPriceGems { get; set; }
-        [JsonPropertyName("teleportMinTitleBracketId")] [JsonConverter(typeof(NullableIntConverter))] public int? TeleportMinTitleBracketId { get; set; }
-        [JsonPropertyName("teleportMinPremiumGroupId")] [JsonConverter(typeof(NullableIntConverter))] public int? TeleportMinPremiumGroupId { get; set; }
-        [JsonPropertyName("teleportRequiresDiscovery")] [JsonConverter(typeof(NullableBoolConverter))] public bool? TeleportRequiresDiscovery { get; set; }
-        [JsonPropertyName("navigationDefaultOverride")] public string? NavigationDefaultOverride { get; set; }
-        [JsonPropertyName("roadAccessOverride")] public string? RoadAccessOverride { get; set; }
+        [JsonPropertyName("createdAt")] public DateTime? CreatedAt { get; set; }
 
         // ===== Read-only =====
-        [JsonPropertyName("arenaName")] public string? ArenaName { get; set; }
-        [JsonPropertyName("location")] public LocationDto? Location { get; set; }
+        [JsonPropertyName("arenaId")] [JsonConverter(typeof(NullableIntConverter))] public int? ArenaId { get; set; }
+        [JsonPropertyName("areaKind")] public string? AreaKind { get; set; }
+        [JsonPropertyName("areaKey")] public string? AreaKey { get; set; }
     }
 }

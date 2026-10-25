@@ -9,7 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace knkwebapi_v2.Controllers
 {
     /// <summary>
-    /// Arenas, battlegrounds and spectator areas (arena duels KNG-210, docs/specs/arena-duels/DESIGN.md §4.1–4.2).
+    /// Arenas and their areas (battlegrounds, spectator areas, the lobby) with their regions (arena duels KNG-210,
+    /// docs/specs/arena-duels/DESIGN.md §4.1–4.2, rev. 6).
     /// Reads are open to the plugin and logged-in users (the default-deny filter); writes need knk.admin.world or the
     /// game server. POST search is a read and only needs a caller.
     /// </summary>
@@ -26,7 +27,7 @@ namespace knkwebapi_v2.Controllers
 
         // ===================================================================== Arenas
 
-        /// <summary>Every arena with its settings, battlegrounds, spectator areas and eligible kits (the plugin's
+        /// <summary>Every arena with its settings, areas (with their regions), sub-regions and eligible kits (the plugin's
         /// cache-first gateway loads this).</summary>
         [HttpGet]
         public async Task<ActionResult<List<ArenaDto>>> GetAll() => Ok(await _service.GetAllAsync());
@@ -77,101 +78,127 @@ namespace knkwebapi_v2.Controllers
                 return NoContent();
             });
 
-        // ===================================================================== Battlegrounds
+        // ===================================================================== Areas (rev. 6)
 
-        [HttpGet("{arenaId:int}/battlegrounds")]
-        public async Task<ActionResult<List<ArenaBattlegroundDto>>> GetBattlegroundsOfArena(int arenaId) =>
-            Ok(await _service.GetBattlegroundsAsync(arenaId));
+        /// <summary>The arena's battlegrounds, spectator areas and lobby, with their regions.</summary>
+        [HttpGet("{arenaId:int}/areas")]
+        public async Task<ActionResult<List<ArenaAreaDto>>> GetAreasOfArena(int arenaId) =>
+            Ok(await _service.GetAreasAsync(arenaId));
 
-        [HttpGet("battlegrounds")]
-        public async Task<ActionResult<List<ArenaBattlegroundDto>>> GetBattlegrounds([FromQuery] int? arenaId) =>
-            Ok(await _service.GetBattlegroundsAsync(arenaId));
+        [HttpGet("areas")]
+        public async Task<ActionResult<List<ArenaAreaDto>>> GetAreas([FromQuery] int? arenaId) =>
+            Ok(await _service.GetAreasAsync(arenaId));
 
-        [HttpGet("battlegrounds/{id:int}", Name = nameof(GetBattlegroundById))]
-        public async Task<ActionResult<ArenaBattlegroundDto>> GetBattlegroundById(int id)
+        [HttpGet("areas/{id:int}", Name = nameof(GetAreaById))]
+        public async Task<ActionResult<ArenaAreaDto>> GetAreaById(int id)
         {
-            var battleground = await _service.GetBattlegroundAsync(id);
-            return battleground == null ? NotFound() : Ok(battleground);
-        }
-
-        [HttpPost("battlegrounds/search")]
-        [RequireServiceOrLoggedIn]
-        public async Task<ActionResult<PagedResultDto<ArenaBattlegroundDto>>> SearchBattlegrounds([FromBody] PagedQueryDto query) =>
-            Ok(await _service.SearchBattlegroundsAsync(query));
-
-        [HttpPost("battlegrounds")]
-        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
-        public Task<IActionResult> CreateBattleground([FromBody] ArenaBattlegroundDto dto) =>
-            Run(async () =>
-            {
-                var created = await _service.CreateBattlegroundAsync(dto);
-                return CreatedAtRoute(nameof(GetBattlegroundById), new { id = created.Id }, created);
-            }, dto != null);
-
-        [HttpPut("battlegrounds/{id:int}")]
-        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
-        public Task<IActionResult> UpdateBattleground(int id, [FromBody] ArenaBattlegroundDto dto) =>
-            Run(async () =>
-            {
-                await _service.UpdateBattlegroundAsync(id, dto);
-                return NoContent();
-            }, dto != null);
-
-        [HttpDelete("battlegrounds/{id:int}")]
-        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
-        public Task<IActionResult> DeleteBattleground(int id) =>
-            Run(async () =>
-            {
-                await _service.DeleteBattlegroundAsync(id);
-                return NoContent();
-            });
-
-        // ===================================================================== Spectator areas
-
-        [HttpGet("{arenaId:int}/spectator-areas")]
-        public async Task<ActionResult<List<ArenaSpectatorAreaDto>>> GetSpectatorAreasOfArena(int arenaId) =>
-            Ok(await _service.GetSpectatorAreasAsync(arenaId));
-
-        [HttpGet("spectator-areas")]
-        public async Task<ActionResult<List<ArenaSpectatorAreaDto>>> GetSpectatorAreas([FromQuery] int? arenaId) =>
-            Ok(await _service.GetSpectatorAreasAsync(arenaId));
-
-        [HttpGet("spectator-areas/{id:int}", Name = nameof(GetSpectatorAreaById))]
-        public async Task<ActionResult<ArenaSpectatorAreaDto>> GetSpectatorAreaById(int id)
-        {
-            var area = await _service.GetSpectatorAreaAsync(id);
+            var area = await _service.GetAreaAsync(id);
             return area == null ? NotFound() : Ok(area);
         }
 
-        [HttpPost("spectator-areas/search")]
+        [HttpPost("areas/search")]
         [RequireServiceOrLoggedIn]
-        public async Task<ActionResult<PagedResultDto<ArenaSpectatorAreaDto>>> SearchSpectatorAreas([FromBody] PagedQueryDto query) =>
-            Ok(await _service.SearchSpectatorAreasAsync(query));
+        public async Task<ActionResult<PagedResultDto<ArenaAreaDto>>> SearchAreas([FromBody] PagedQueryDto query) =>
+            Ok(await _service.SearchAreasAsync(query));
 
-        [HttpPost("spectator-areas")]
+        /// <summary>Creates an area of <paramref name="arenaId"/> (the body's arenaId is ignored).</summary>
+        [HttpPost("{arenaId:int}/areas")]
         [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
-        public Task<IActionResult> CreateSpectatorArea([FromBody] ArenaSpectatorAreaDto dto) =>
+        public Task<IActionResult> CreateAreaOfArena(int arenaId, [FromBody] ArenaAreaDto dto) =>
             Run(async () =>
             {
-                var created = await _service.CreateSpectatorAreaAsync(dto);
-                return CreatedAtRoute(nameof(GetSpectatorAreaById), new { id = created.Id }, created);
+                dto.ArenaId = arenaId;
+                var created = await _service.CreateAreaAsync(dto);
+                return CreatedAtRoute(nameof(GetAreaById), new { id = created.Id }, created);
             }, dto != null);
 
-        [HttpPut("spectator-areas/{id:int}")]
+        /// <summary>Creates an area of the body's arenaId (the FormWizard's owned-list create).</summary>
+        [HttpPost("areas")]
         [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
-        public Task<IActionResult> UpdateSpectatorArea(int id, [FromBody] ArenaSpectatorAreaDto dto) =>
+        public Task<IActionResult> CreateArea([FromBody] ArenaAreaDto dto) =>
             Run(async () =>
             {
-                await _service.UpdateSpectatorAreaAsync(id, dto);
+                var created = await _service.CreateAreaAsync(dto);
+                return CreatedAtRoute(nameof(GetAreaById), new { id = created.Id }, created);
+            }, dto != null);
+
+        [HttpPut("areas/{id:int}")]
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        public Task<IActionResult> UpdateArea(int id, [FromBody] ArenaAreaDto dto) =>
+            Run(async () => Ok(await _service.UpdateAreaAsync(id, dto)), dto != null);
+
+        [HttpDelete("areas/{id:int}")]
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        public Task<IActionResult> DeleteArea(int id) =>
+            Run(async () =>
+            {
+                await _service.DeleteAreaAsync(id);
                 return NoContent();
-            }, dto != null);
+            });
 
-        [HttpDelete("spectator-areas/{id:int}")]
+        // ===================================================================== Area regions (rev. 6)
+
+        [HttpGet("areas/{areaId:int}/regions")]
+        public async Task<ActionResult<List<ArenaAreaRegionDto>>> GetRegionsOfArea(int areaId) =>
+            Ok(await _service.GetAreaRegionsAsync(areaId));
+
+        [HttpGet("areas/regions")]
+        public async Task<ActionResult<List<ArenaAreaRegionDto>>> GetAreaRegions([FromQuery] int? arenaAreaId) =>
+            Ok(await _service.GetAreaRegionsAsync(arenaAreaId));
+
+        [HttpGet("areas/regions/{id:int}", Name = nameof(GetAreaRegionById))]
+        public async Task<ActionResult<ArenaAreaRegionDto>> GetAreaRegionById(int id)
+        {
+            var region = await _service.GetAreaRegionAsync(id);
+            return region == null ? NotFound() : Ok(region);
+        }
+
+        /// <summary>The area region using a WorldGuard region id (the game server's orphan check before it deletes an
+        /// <c>arena_&lt;a&gt;_&lt;kind&gt;_&lt;n&gt;</c> region no arena lists); 404 when none does.</summary>
+        [HttpGet("areas/by-region/{regionId}")]
+        public async Task<ActionResult<ArenaAreaRegionDto>> GetAreaRegionByRegionId(string regionId, [FromQuery] string? world)
+        {
+            var region = await _service.FindAreaRegionAsync(regionId, world);
+            return region == null ? NotFound() : Ok(region);
+        }
+
+        [HttpPost("areas/regions/search")]
+        [RequireServiceOrLoggedIn]
+        public async Task<ActionResult<PagedResultDto<ArenaAreaRegionDto>>> SearchAreaRegions([FromBody] PagedQueryDto query) =>
+            Ok(await _service.SearchAreaRegionsAsync(query));
+
+        /// <summary>Adds a region to <paramref name="areaId"/> and renames it to its final name.</summary>
+        [HttpPost("areas/{areaId:int}/regions")]
         [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
-        public Task<IActionResult> DeleteSpectatorArea(int id) =>
+        public Task<IActionResult> CreateRegionOfArea(int areaId, [FromBody] ArenaAreaRegionDto dto) =>
             Run(async () =>
             {
-                await _service.DeleteSpectatorAreaAsync(id);
+                dto.ArenaAreaId = areaId;
+                var created = await _service.CreateAreaRegionAsync(dto);
+                return CreatedAtRoute(nameof(GetAreaRegionById), new { id = created.Id }, created);
+            }, dto != null);
+
+        /// <summary>Adds a region to the body's arenaAreaId (the FormWizard's owned-list create).</summary>
+        [HttpPost("areas/regions")]
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        public Task<IActionResult> CreateAreaRegion([FromBody] ArenaAreaRegionDto dto) =>
+            Run(async () =>
+            {
+                var created = await _service.CreateAreaRegionAsync(dto);
+                return CreatedAtRoute(nameof(GetAreaRegionById), new { id = created.Id }, created);
+            }, dto != null);
+
+        [HttpPut("areas/regions/{id:int}")]
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        public Task<IActionResult> UpdateAreaRegion(int id, [FromBody] ArenaAreaRegionDto dto) =>
+            Run(async () => Ok(await _service.UpdateAreaRegionAsync(id, dto)), dto != null);
+
+        [HttpDelete("areas/regions/{id:int}")]
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        public Task<IActionResult> DeleteAreaRegion(int id) =>
+            Run(async () =>
+            {
+                await _service.DeleteAreaRegionAsync(id);
                 return NoContent();
             });
 

@@ -15,13 +15,11 @@ public class DomainNavigationDefault
     public const string District = nameof(Models.District);
     public const string Structure = nameof(Models.Structure);
     public const string GateStructure = nameof(Models.GateStructure);
-    // Arena duels (KNG-210): arenas and spectator areas are navigable; battlegrounds are not (DESIGN.md §4.1), so
-    // ArenaBattleground has no default here and the plugin's /navigate leaves the type out.
+    // Arena duels (KNG-210): arenas are navigable. Rev. 6: their areas are not domains and have no navigation.
     public const string Arena = nameof(Models.Arena);
-    public const string ArenaSpectatorArea = nameof(Models.ArenaSpectatorArea);
 
     /// <summary>Every navigable domain type, top-down.</summary>
-    public static readonly string[] DomainTypes = { Town, District, Structure, GateStructure, Arena, ArenaSpectatorArea };
+    public static readonly string[] DomainTypes = { Town, District, Structure, GateStructure, Arena };
 
     /// <summary>A type without a row, or a domain of another type, goes to its spawn Location (the behaviour before KNG-73).</summary>
     public const NavigationDestinationMode Fallback = NavigationDestinationMode.Spawn;

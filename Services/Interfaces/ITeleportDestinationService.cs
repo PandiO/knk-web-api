@@ -36,6 +36,10 @@ namespace knkwebapi_v2.Services.Interfaces
         /// <summary>The fee of a /spawn as the player's permission groups price it (KNG-41); free when none does.</summary>
         Task<TeleportChargeResultDto> ChargeSpawnFeeAsync(TeleportSpawnFeeDto request);
 
+        /// <summary>Arena duels rev. 6 (DESIGN.md §9.3): the spectate teleport to a SPECTATOR area: its minimum title,
+        /// then its gem price.</summary>
+        Task<TeleportChargeResultDto> ChargeSpectateFeeAsync(TeleportSpectateFeeDto request);
+
         /// <summary>The player's teleport fees and cooldowns from their permission groups (KNG-41).</summary>
         Task<TeleportPolicyDto> GetPolicyAsync(int userId);
 

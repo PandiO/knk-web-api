@@ -232,6 +232,31 @@ namespace knkwebapi_v2.Dtos
         public string IdempotencyKey { get; set; } = null!;
     }
 
+    /// <summary>
+    /// POST /api/teleport-destinations/spectate-fee (arena duels DESIGN.md §9.3, rev. 6): the spectate teleport to an
+    /// arena's SPECTATOR area, charged when the teleport commits: the area's minimum title is checked and its gem price
+    /// taken (free when it has none). Refunded through the normal refund route when the teleport doesn't happen.
+    /// </summary>
+    public class TeleportSpectateFeeDto
+    {
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("arenaAreaId")]
+        public int ArenaAreaId { get; set; }
+
+        [JsonPropertyName("idempotencyKey")]
+        public string IdempotencyKey { get; set; } = null!;
+
+        /// <summary>Staff with the warp requirement bypass node: the title isn't checked.</summary>
+        [JsonPropertyName("bypassRequirements")]
+        public bool BypassRequirements { get; set; }
+
+        /// <summary>Staff with the warp cost bypass node: nothing is charged.</summary>
+        [JsonPropertyName("bypassCost")]
+        public bool BypassCost { get; set; }
+    }
+
     /// <summary>One currency a teleport charge took (or a refund gave back).</summary>
     public class TeleportPaymentDto
     {

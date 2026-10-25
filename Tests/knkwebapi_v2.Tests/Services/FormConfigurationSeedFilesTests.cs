@@ -129,6 +129,7 @@ public class FormConfigurationSeedFilesTests
         ["SiegeScenarioGate"] = new() { ["SiegeScenarioId"] = "set by the scenario's Gates step (join entry)" },
         ["SiegeLobbyScenario"] = new() { ["SiegeLobbyId"] = "set by the lobby's Rotation step (join entry)" },
         ["ArenaKit"] = new() { ["ArenaId"] = "set by the arena's Eligible kits step (join entry)" },
+        ["ArenaAreaRegion"] = new() { ["WorldName"] = "set by ArenaService from the arena's world (arena duels rev. 6)" },
         ["CategoryTag"] = new() { ["CategoryId"] = "set by the category's Tags step (join entry)" },
         ["ItemBlueprintDefaultEnchantment"] = new() { ["ItemBlueprintId"] = "set by the blueprint's Default enchantments step (join entry)" },
         ["ItemBlueprintOrigin"] = new() { ["ItemBlueprintId"] = "set by the blueprint's Origins step (join entry)" },
@@ -226,8 +227,6 @@ public class FormConfigurationSeedFilesTests
                 ("GateDoor", "AnchorPointId", await FieldIdAsync("GateDoor", "GateStructureId")),
                 ("GateStructure", "WgRegionId", await FieldIdAsync("GateStructure", "DistrictId")),
                 ("Arena", "WgRegionId", await FieldIdAsync("Arena", "DistrictId")),
-                ("ArenaBattleground", "WgRegionId", await FieldIdAsync("ArenaBattleground", "ArenaId")),
-                ("ArenaSpectatorArea", "WgRegionId", await FieldIdAsync("ArenaSpectatorArea", "ArenaId")),
             })
             {
                 var fieldId = await FieldIdAsync(seed, field);

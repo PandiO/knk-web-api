@@ -245,8 +245,9 @@ namespace knkwebapi_v2.Services.Duel
                     throw WrongState($"Duel {id} is {match.Status}; only a Created match can start its fight.");
                 }
 
-                var battleground = await _context.ArenaBattlegrounds.AsNoTracking()
-                    .FirstOrDefaultAsync(b => b.Id == dto.BattlegroundId, ct);
+                // Rev. 6: a battleground is an arena area of kind BATTLEGROUND.
+                var battleground = await _context.ArenaAreas.AsNoTracking()
+                    .FirstOrDefaultAsync(b => b.Id == dto.BattlegroundId && b.Kind == ArenaAreaKind.BATTLEGROUND, ct);
                 if (battleground == null || battleground.ArenaId != match.ArenaId)
                 {
                     throw Invalid($"Battleground {dto.BattlegroundId} is not a battleground of arena {match.ArenaId}.");

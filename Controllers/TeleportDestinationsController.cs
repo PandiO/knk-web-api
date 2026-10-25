@@ -134,6 +134,24 @@ public class TeleportDestinationsController : ControllerBase
         Run(request?.UserId, () => _service.ChargeSpawnFeeAsync(request!));
 
     /// <summary>
+    /// Arena duels rev. 6 (DESIGN.md §9.3): charges the spectate teleport to an arena's spectator area when it commits:
+    /// the area's minimum title (unless bypassRequirements), then its gem price (unless bypassCost; free without one).
+    /// Idempotent per idempotencyKey; refunded through refund.
+    /// </summary>
+    /// <response code="200">Charged (or free)</response>
+    /// <response code="400">Bad key</response>
+    /// <response code="404">User not found</response>
+    /// <response code="409">NotAvailable, TitleTooLow, InsufficientGems, Refunded or IdempotencyKeyReuse</response>
+    [RequirePluginService]
+    [HttpPost("spectate-fee")]
+    [ProducesResponseType(typeof(TeleportChargeResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public Task<IActionResult> SpectateFee([FromBody] TeleportSpectateFeeDto request) =>
+        Run(request?.UserId, () => _service.ChargeSpectateFeeAsync(request!));
+
+    /// <summary>
     /// Charges the flat coin fee of a player's own /back (the plugin's teleport.back.price-coins) when
     /// the teleport commits (KNG-42). Idempotent per idempotencyKey.
     /// </summary>

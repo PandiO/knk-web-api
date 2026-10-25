@@ -656,8 +656,8 @@ public class DiscoveryServiceTests : IDisposable
 
         Assert.Equal(new[] { ("Town", 1, 2), ("District", 1, 2), ("Structure", 1, 1), ("GateStructure", 0, 1) },
             summary.ByType.Take(4).Select(t => (t.DomainType, t.Discovered, t.Total)));
-        // KNG-210: the arena types follow, empty here (no arenas, no rules seeded).
-        Assert.Equal(new[] { "Arena", "ArenaSpectatorArea", "ArenaBattleground" }, summary.ByType.Skip(4).Select(t => t.DomainType));
+        // KNG-210: the arena type follows, empty here (no arenas, no rules seeded). Rev. 6: its areas have no discovery.
+        Assert.Equal(new[] { "Arena" }, summary.ByType.Skip(4).Select(t => t.DomainType));
         Assert.All(summary.ByType.Skip(4), t => Assert.Equal(0, t.Total));
         Assert.Equal(3, summary.TotalDiscovered);
         Assert.Equal((first.TotalCoins, first.TotalGems, first.TotalExp), (summary.TotalCoins, summary.TotalGems, summary.TotalExp));

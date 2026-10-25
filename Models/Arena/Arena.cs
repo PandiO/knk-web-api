@@ -5,22 +5,16 @@ using knkwebapi_v2.Enums;
 namespace knkwebapi_v2.Models;
 
 /// <summary>
-/// A duel arena (arena duels DESIGN.md §4.1, D12): a Structure whose WgRegionId is the whole arena, with its
-/// battlegrounds, spectator areas and eligible kits as children. The duel settings (§4.2) carry the design's
-/// defaults, so a new arena works untouched. ArenaService validates them.
+/// A duel arena (arena duels DESIGN.md §4.1, D12): a Structure whose WgRegionId (and KNG-253 sub-regions) is the whole
+/// arena, a domain with normal domain behaviour. Its battlegrounds, spectator areas and lobby are its own
+/// <see cref="ArenaArea"/>s (rev. 6), not domains. The duel settings (§4.2) carry the design's defaults, so a new arena
+/// works untouched. ArenaService validates them.
 /// </summary>
 [FormConfigurableEntity("Arena")]
 public class Arena : Structure
 {
     /// <summary>Stable, unique name for commands and config (e.g. "arena_2").</summary>
     public string Key { get; set; } = null!;
-
-    /// <summary>Where duelists arrive for the warmup. Required while <see cref="IsDuelEnabled"/> is on.</summary>
-    [NavigationPair(nameof(LobbyLocation))]
-    [RelatedEntityField(typeof(Location))]
-    public int? LobbyLocationId { get; set; }
-    [RelatedEntityField(typeof(Location))]
-    public Location? LobbyLocation { get; set; }
 
     /// <summary>Where duelists go after the match; null = the domain's own Location.</summary>
     [NavigationPair(nameof(ExitLocation))]
@@ -30,6 +24,7 @@ public class Arena : Structure
     public Location? ExitLocation { get; set; }
 
     // ===== General =====
+    /// <summary>Needs an enabled LOBBY area with an arrival location (DESIGN §4.1).</summary>
     public bool IsDuelEnabled { get; set; } = true;
     /// <summary>Accepted matches not yet in a battleground (travelling, warmup, waiting).</summary>
     public int MaxQueuedMatches { get; set; } = 3;
@@ -92,11 +87,9 @@ public class Arena : Structure
     public bool AnnounceFriendly { get; set; } = true;
 
     // ===== Children =====
-    [RelatedEntityField(typeof(ArenaBattleground))]
-    public ICollection<ArenaBattleground> Battlegrounds { get; set; } = new List<ArenaBattleground>();
-
-    [RelatedEntityField(typeof(ArenaSpectatorArea))]
-    public ICollection<ArenaSpectatorArea> SpectatorAreas { get; set; } = new List<ArenaSpectatorArea>();
+    /// <summary>Battlegrounds, spectator areas and the lobby (rev. 6), each with its own regions.</summary>
+    [RelatedEntityField(typeof(ArenaArea))]
+    public ICollection<ArenaArea> Areas { get; set; } = new List<ArenaArea>();
 
     /// <summary>Ordered; the first is the default pick in KIT_CHOICE. Edited as a replace-set with the arena.</summary>
     [RelatedEntityField(typeof(ArenaKit))]

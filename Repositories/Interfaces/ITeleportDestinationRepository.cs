@@ -17,6 +17,9 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// <summary>One domain of any subtype, or null.</summary>
         Task<Domain?> GetByIdAsync(int domainId);
 
+        /// <summary>Arena duels rev. 6: an arena area with its arena and minimum title (the spectate fee).</summary>
+        Task<ArenaArea?> GetArenaAreaAsync(int areaId);
+
         /// <summary>Whether a refund voided this plugin-scope idempotency key.</summary>
         Task<bool> IsFeeKeyVoidAsync(string idempotencyKey);
 
