@@ -6,14 +6,14 @@ namespace knkwebapi_v2.Models;
 /// Arena duels Phase 6 (docs/specs/arena-duels/DESIGN.md §9.2-§9.3, KNG-220): the duel menus -
 /// <c>duel_matches</c> (<c>/duels</c>: live matches of every arena, two heads per match),
 /// <c>duel_match_detail</c> (one match, <c>ctx.token</c>: both duelists' cards with their statistics as
-/// the API shows them to the viewer, their kit, coins and real stake items, and the spectator-area
-/// warp), <c>arena_main</c> (<c>/arena</c>, <c>ctx.arena</c> = the arena id or empty for the arena the
+/// the API shows them to the viewer, their kit, coins and real stake items, and the spectate
+/// teleport), <c>arena_main</c> (<c>/arena</c>, <c>ctx.arena</c> = the arena id or empty for the arena the
 /// viewer stands in: info, rules, queue, live matches, [Spectate], [Challenge a player], [My claims])
 /// and its <c>duel_challenge</c> picker of online players. Create-only like every MenuTemplateSeed
 /// entry. The plugin side is knk-paper's <c>DuelMenuFeature</c> (roots <c>duelMatch</c>, <c>arena</c>,
 /// <c>duels</c>; row sources <c>duel.matches</c>, <c>duel.match-side</c>, <c>duel.stakes</c>,
-/// <c>duel.challenge-candidates</c>; actions <c>duel.spectate</c> - the spectator area's domain warp,
-/// so its title, premium, discovery and gem-price conditions apply - <c>duel.challenge</c> and
+/// <c>duel.challenge-candidates</c>; actions <c>duel.spectate</c> - arena duels rev. 6: an ARENA engine
+/// teleport to the spectator area, after its minimum title and gem price - <c>duel.challenge</c> and
 /// <c>duel.claim</c>; conditions <c>duel.matches-empty</c>, <c>duel.in-arena</c>), checked against the
 /// exported content-seeds.json.
 /// </summary>
@@ -224,9 +224,9 @@ public static partial class MenuTemplateSeed
                 Bind("Material", "ENDER_EYE", VariableRefreshPolicy.Static),
                 Bind("Name", "&aGo to the spectator area", VariableRefreshPolicy.Static),
                 Lore(0, "&7Teleports you to this arena's"),
-                Lore(1, "&7spectator area by its warp:"),
-                Lore(2, "&7its title, premium, discovery"),
-                Lore(3, "&7and gem price apply.")),
+                Lore(1, "&7spectator area: its minimum"),
+                Lore(2, "&7title and gem price apply"),
+                Lore(3, "&7(or walk in for free).")),
             RenderCondition("value-equals", "{\"value\":\"$duelMatch.getKnown$\",\"expected\":\"true\"}"));
         spectate.Actions.Add(new ActionBinding { ActionTypeId = "duel.spectate", ParamsJson = "{" + tokenParam + "}", SortOrder = 0 });
 
