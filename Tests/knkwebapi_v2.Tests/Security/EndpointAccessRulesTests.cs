@@ -33,8 +33,8 @@ public class EndpointAccessRulesTests
         "AuthController.ForgotPassword",
         "AuthController.ResetPassword",
         "AuthController.ValidateToken",
-        // The sign-up and login pages ask which registration mode is on (2026-10-25); lookup rate limit.
-        "AuthController.RegistrationInfo",
+        // The onboarding pages ask for the registration mode and the Cloudflare step (2026-10-25); auth rate limit.
+        "AuthController.OnboardingInfo",
         "HealthController.GetHealth",
         "HealthCheckController.GetLiveness",
         "HealthCheckController.GetReadiness",

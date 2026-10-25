@@ -32,6 +32,8 @@ namespace knkwebapi_v2.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly IUserSessionStateCache _sessionState;
         private readonly SecuritySettings _security;
+        private readonly CloudflareAccessSettings _cloudflare;
+        private readonly string _publicBaseUrl;
 
         public AuthController(
             IAuthService authService,
@@ -39,7 +41,9 @@ namespace knkwebapi_v2.Controllers
             IWebHostEnvironment environment,
             ILogger<AuthController> logger,
             IUserSessionStateCache sessionState,
-            IOptions<SecuritySettings> security)
+            IOptions<SecuritySettings> security,
+            IOptions<CloudflareAccessSettings>? cloudflare = null,
+            IOptions<AppSettings>? app = null)
         {
             _authService = authService;
             _tokenService = tokenService;
@@ -47,6 +51,8 @@ namespace knkwebapi_v2.Controllers
             _logger = logger;
             _sessionState = sessionState;
             _security = security.Value;
+            _cloudflare = cloudflare?.Value ?? new CloudflareAccessSettings();
+            _publicBaseUrl = AppSettings.ResolveBaseUrl(app?.Value.PublicBaseUrl, _security.PasswordResetFrontendBaseUrl);
         }
 
         private string? ClientIp => HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -121,17 +127,24 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Security:Registration:Mode for the sign-up and login pages, so a newcomer under Mode=Invite
-        /// is sent to /join or /link instead of the link-code form that can't succeed there (found on
-        /// the alpha 2026-10-25). Nothing but the mode; per-IP lookup rate limit. Not in the Cloudflare
-        /// Access sign-up bypass: the pages that ask are behind Access like the rest of /auth.
+        /// What the onboarding pages need to guide a newcomer (found on the alpha 2026-10-25): the
+        /// registration mode (under Invite the link-code form can't succeed, so the register and login
+        /// pages point at /join, /link or /invite), whether the Cloudflare Access sync is on (then every
+        /// flow explains the Cloudflare one-time code step and the app detects a missing Access session),
+        /// and the public base URL. Nothing else, no emails; auth rate limit. The Cloudflare bypass
+        /// application must list this path (alpha go-live § 6.1), since /invite, /join and /link call it.
         /// </summary>
-        [HttpGet("registration-info")]
-        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.LookupPolicy)]
+        [HttpGet("onboarding-info")]
+        [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(RegistrationInfoDto), StatusCodes.Status200OK)]
-        public IActionResult RegistrationInfo() =>
-            Ok(new RegistrationInfoDto { Mode = _security.Registration.Mode.ToString() });
+        [ProducesResponseType(typeof(OnboardingInfoDto), StatusCodes.Status200OK)]
+        public IActionResult OnboardingInfo() =>
+            Ok(new OnboardingInfoDto
+            {
+                RegistrationMode = _security.Registration.Mode.ToString(),
+                AccessGate = _cloudflare.SyncEnabled,
+                PublicBaseUrl = _publicBaseUrl,
+            });
 
         [HttpPost("refresh")]
         [EnableRateLimiting(knkwebapi_v2.Configuration.RateLimitingSetup.AuthPolicy)]

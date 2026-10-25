@@ -105,15 +105,24 @@ namespace knkwebapi_v2.Dtos
     }
 
     /// <summary>
-    /// GET api/Auth/registration-info (anonymous): how accounts are created on this server, so the
-    /// sign-up and login pages can send a newcomer down a path that works. Only the mode; the
-    /// invitable groups and limits stay on the staff-only GET api/Invitations/options.
+    /// GET api/Auth/onboarding-info (anonymous): what the sign-up, link and login pages need to guide
+    /// a newcomer. Only these three values; the invitable groups and limits stay on the staff-only
+    /// GET api/Invitations/options, and no email ever travels here.
     /// </summary>
-    public class RegistrationInfoDto
+    public class OnboardingInfoDto
     {
         /// <summary>LinkCode, Invite or Open (<see cref="Configuration.RegistrationMode"/>).</summary>
-        [JsonPropertyName("mode")]
-        public string Mode { get; set; } = null!;
+        [JsonPropertyName("registrationMode")]
+        public string RegistrationMode { get; set; } = null!;
+
+        /// <summary>CloudflareAccess:SyncEnabled: the site sits behind Cloudflare Access and a new
+        /// account gets its Cloudflare one-time code step after sign-up.</summary>
+        [JsonPropertyName("accessGate")]
+        public bool AccessGate { get; set; }
+
+        /// <summary>The web app's public address (App:PublicBaseUrl), as used in the mails.</summary>
+        [JsonPropertyName("publicBaseUrl")]
+        public string PublicBaseUrl { get; set; } = null!;
     }
 
     /// <summary>The result of AuthService.RegisterAsync: a login response, or an error code.</summary>

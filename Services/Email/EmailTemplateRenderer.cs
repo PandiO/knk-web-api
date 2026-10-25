@@ -30,39 +30,50 @@ namespace knkwebapi_v2.Services.Email
     /// from the model's properties (or dictionary keys), case-insensitive; every value is
     /// HTML-encoded in the .html part. Dates print as "yyyy-MM-dd HH:mm UTC". An unknown
     /// placeholder throws when <c>strict</c> (tests, Development) and renders empty otherwise.
+    /// A <c>{{#name}}…{{/name}}</c> block is kept only when the value is truthy (not empty, "false"
+    /// or "0"), <c>{{^name}}…{{/name}}</c> only when it isn't. Every model gets <c>accessGate</c>
+    /// (CloudflareAccess:SyncEnabled) unless it sets one itself, so the onboarding mails can explain
+    /// the Cloudflare one-time code step only when there is one (2026-10-25).
     /// </summary>
     public sealed class EmailTemplateRenderer : IEmailTemplateRenderer
     {
         public const string ResourcePrefix = "EmailTemplates/";
 
+        /// <summary>The model value that switches the Cloudflare blocks on.</summary>
+        public const string AccessGateKey = "accessGate";
+
         private static readonly Regex Placeholder = new(@"\{\{\s*([A-Za-z0-9_]+)\s*\}\}", RegexOptions.Compiled);
+        private static readonly Regex Section = new(@"\{\{\s*([#^])\s*([A-Za-z0-9_]+)\s*\}\}(.*?)\{\{\s*/\s*\2\s*\}\}", RegexOptions.Compiled | RegexOptions.Singleline);
         private static readonly ConcurrentDictionary<string, string> Cache = new();
 
         private readonly EmailSettings _email;
         private readonly string _baseUrl;
         private readonly bool _strict;
+        private readonly bool _accessGate;
         private readonly ILogger _logger;
 
         public EmailTemplateRenderer(IOptions<EmailSettings> email, IOptions<AppSettings>? app = null,
             IOptions<SecuritySettings>? security = null, IWebHostEnvironment? environment = null,
-            ILogger<EmailTemplateRenderer>? logger = null)
+            ILogger<EmailTemplateRenderer>? logger = null, IOptions<CloudflareAccessSettings>? cloudflare = null)
             : this(email.Value, AppSettings.ResolveBaseUrl(app?.Value.PublicBaseUrl, security?.Value.PasswordResetFrontendBaseUrl),
-                environment?.IsDevelopment() ?? false, logger)
+                environment?.IsDevelopment() ?? false, logger, cloudflare?.Value.SyncEnabled ?? false)
         {
         }
 
-        public EmailTemplateRenderer(EmailSettings email, string baseUrl, bool strict, ILogger? logger = null)
+        public EmailTemplateRenderer(EmailSettings email, string baseUrl, bool strict, ILogger? logger = null, bool accessGate = false)
         {
             _email = email;
             _baseUrl = baseUrl.TrimEnd('/');
             _strict = strict;
+            _accessGate = accessGate;
             _logger = logger ?? NullLogger.Instance;
         }
 
         public RenderedEmail Render(EmailKind kind, object model)
         {
             var info = EmailKinds.Info(kind);
-            var values = ToValues(model);
+            var values = new Dictionary<string, string>(ToValues(model), StringComparer.OrdinalIgnoreCase);
+            values.TryAdd(AccessGateKey, _accessGate ? "true" : "false");
 
             var subject = Fill(info.Subject, values, htmlEncode: false, $"{kind} subject");
             var text = Fill(Load(info.Template + ".txt"), values, htmlEncode: false, $"{info.Template}.txt");
@@ -95,7 +106,23 @@ namespace knkwebapi_v2.Services.Email
 
         public string Fill(string template, IReadOnlyDictionary<string, string> values, bool htmlEncode, string source, string? encodeExcept = null)
         {
-            return Placeholder.Replace(template, match =>
+            // Sections first, so a placeholder inside a dropped block is never asked for.
+            var withSections = Section.Replace(template, match =>
+            {
+                var name = match.Groups[2].Value;
+                if (!values.TryGetValue(name, out var value))
+                {
+                    if (_strict)
+                    {
+                        throw new EmailTemplateException($"Unknown section {{{{{match.Groups[1].Value}{name}}}}} in {source}.");
+                    }
+                    _logger.LogWarning("Unknown section {Section} in mail template {Source}; treated as false", name, source);
+                    value = string.Empty;
+                }
+                var keep = IsTruthy(value) == (match.Groups[1].Value == "#");
+                return keep ? match.Groups[3].Value : string.Empty;
+            });
+            return Placeholder.Replace(withSections, match =>
             {
                 var name = match.Groups[1].Value;
                 if (!values.TryGetValue(name, out var value))
@@ -111,6 +138,12 @@ namespace knkwebapi_v2.Services.Email
                 return encode ? WebUtility.HtmlEncode(value) : value;
             });
         }
+
+        /// <summary>"", "false" and "0" are false; anything else (a bool True, a URL, a name) is true.</summary>
+        public static bool IsTruthy(string? value) =>
+            !string.IsNullOrWhiteSpace(value)
+            && !value.Trim().Equals("false", StringComparison.OrdinalIgnoreCase)
+            && value.Trim() != "0";
 
         /// <summary>The model's public properties (or an IDictionary's entries) as strings.</summary>
         public static IReadOnlyDictionary<string, string> ToValues(object model)
