@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Realtime;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
@@ -37,16 +38,20 @@ namespace knkwebapi_v2.Services
         private readonly IPermissionResolutionService? _permissions;
         private readonly CurrencyMetrics? _metrics;
         private readonly CurrencyMonitorSignals? _signals;
+        private readonly IRealtimeEventSink? _realtime;
 
         /// <param name="permissions">Resolves knk.admin.currency.unlimited for the per-staff daily
         /// grant cap; without it (some tests) nobody is exempt.</param>
         /// <param name="metrics">OpenTelemetry counters (currency Phase 5); optional.</param>
         /// <param name="signals">Where a refusal at the balance cap is reported for alert R8
         /// (currency Phase 5); optional.</param>
+        /// <param name="realtime">Tells the game server each user's new balances after a posting commits
+        /// (UserBalancesChanged, PandiO/knk-workspace#179); optional.</param>
         public CurrencyService(ICurrencyRepository repo, IUserRepository users, ILogger<CurrencyService> logger,
             IPermissionResolutionService? permissions = null, CurrencyMetrics? metrics = null,
-            CurrencyMonitorSignals? signals = null)
+            CurrencyMonitorSignals? signals = null, IRealtimeEventSink? realtime = null)
         {
+            _realtime = realtime;
             _repo = repo;
             _users = users;
             _logger = logger;
@@ -439,6 +444,7 @@ namespace knkwebapi_v2.Services
             var requestHash = Sha256(canonicalRequest);
             PostingResult? result = null;
             CurrencyTransaction? pending = null;
+            Dictionary<int, string?>? uuids = null;
             var waiting = System.Diagnostics.Stopwatch.StartNew();
 
             try
@@ -460,6 +466,7 @@ namespace knkwebapi_v2.Services
                         throw new CurrencyException(CurrencyErrorCode.UserNotFound, $"User {string.Join(", ", missing)} doesn't exist.");
                     }
 
+                    uuids = users.ToDictionary(u => u.Key, u => u.Value.Uuid);
                     var draft = await build(users, ct);
                     pending = new CurrencyTransaction
                     {
@@ -529,8 +536,25 @@ namespace knkwebapi_v2.Services
                 _metrics?.RecordPosting(pending.ReasonCode, pending.Kind, pending.Entries
                     .Where(e => e.AccountKind == CurrencyAccountKind.User)
                     .Select(e => (e.Currency, e.Amount)));
+                PublishBalances(result, uuids, ctx);
             }
             return result!;
+        }
+
+        /// <summary>
+        /// UserBalancesChanged for every user the posting touched (DESIGN §6.1): the balances after it, so the game
+        /// server updates its cached user without a re-read. The sink holds them until an enclosing transaction (e.g.
+        /// UserService.AdjustBalancesAsync's) commits.
+        /// </summary>
+        private void PublishBalances(PostingResult result, Dictionary<int, string?>? uuids, CurrencyContext ctx)
+        {
+            if (_realtime == null || uuids == null) return;
+            var touched = result.Entries.Select(e => e.UserId).ToHashSet();
+            foreach (var balances in result.Balances.Values.Where(b => touched.Contains(b.UserId)))
+            {
+                _realtime.BalancesChanged(balances.UserId, uuids.GetValueOrDefault(balances.UserId),
+                    balances.Coins, balances.Gems, balances.ExperiencePoints, ctx.InitiatorUserId);
+            }
         }
 
         /// <summary>

@@ -3,6 +3,8 @@ using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Realtime;
+using knkwebapi_v2.Realtime.Contracts;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -14,9 +16,12 @@ namespace knkwebapi_v2.Services
         private readonly IMapper _mapper;
         private readonly IUserRepository _userRepo;
         private readonly IAuditLogService _auditLogService;
+        private readonly IRealtimeEventSink? _realtime;
 
-        public PermissionGrantService(IPermissionGrantRepository repo, IMapper mapper, IUserRepository userRepo, IAuditLogService auditLogService)
+        public PermissionGrantService(IPermissionGrantRepository repo, IMapper mapper, IUserRepository userRepo, IAuditLogService auditLogService,
+            IRealtimeEventSink? realtime = null)
         {
+            _realtime = realtime;
             _repo = repo;
             _mapper = mapper;
             _userRepo = userRepo;
@@ -31,6 +36,21 @@ namespace knkwebapi_v2.Services
         /// audited per-grant here — see this file's retrofit notes in ACTIVE_SESSIONS.md.
         /// </summary>
         private async Task<bool> IsUserHolderAsync(int holderId) => await _userRepo.GetByIdAsync(holderId) != null;
+
+        /// <summary>
+        /// Tells the game server after a grant write (PandiO/knk-workspace#179, DESIGN §6.1): a user holder gets
+        /// <c>UserPermissionsChanged</c>, a group holder <c>PermissionGroupChanged</c> (the server fans out to its
+        /// online members). Before, a grant made in the web app waited for the 30 s permission cache.
+        /// </summary>
+        private async Task NotifyHolderAsync(int holderId, int? actorUserId)
+        {
+            if (_realtime == null) return;
+            var user = await _userRepo.GetByIdAsync(holderId);
+            if (user != null)
+                _realtime.PermissionsChanged(user, UserPermissionsChangeReasons.GrantChanged, actorUserId);
+            else
+                _realtime.PermissionGroupChanged(holderId, PermissionGroupChangeOps.GrantsChanged, actorUserId);
+        }
 
         public async Task<IEnumerable<PermissionGrantDto>> GetAllAsync()
         {
@@ -81,6 +101,7 @@ namespace knkwebapi_v2.Services
                         $"Holder {dto.HolderId} already has a grant for node '{dto.Node}' (grant {taken.Id}).");
             }
 
+            var previousHolderId = existing.HolderId;
             var previousNode = existing.Node;
             var previousValue = existing.Value;
             var previousExpiresAt = existing.ExpiresAt;
@@ -101,6 +122,10 @@ namespace knkwebapi_v2.Services
                     to = new { node = dto.Node, value = dto.Value, expiresAt = dto.ExpiresAt }
                 }));
             }
+
+            await NotifyHolderAsync(dto.HolderId, actorUserId);
+            if (previousHolderId != dto.HolderId)
+                await NotifyHolderAsync(previousHolderId, actorUserId);
         }
 
         public async Task DeleteAsync(int id, int? actorUserId = null)
@@ -124,6 +149,8 @@ namespace knkwebapi_v2.Services
                     value
                 }));
             }
+
+            await NotifyHolderAsync(holderId, actorUserId);
         }
 
         public async Task<PagedResultDto<PermissionGrantListDto>> SearchAsync(PagedQueryDto queryDto)
@@ -183,6 +210,7 @@ namespace knkwebapi_v2.Services
                     }));
                 }
 
+                await NotifyHolderAsync(holderId, actorUserId);
                 return _mapper.Map<PermissionGrantDto>(existing);
             }
 
@@ -200,6 +228,7 @@ namespace knkwebapi_v2.Services
                 }));
             }
 
+            await NotifyHolderAsync(holderId, actorUserId);
             return _mapper.Map<PermissionGrantDto>(grant);
         }
 
@@ -232,6 +261,8 @@ namespace knkwebapi_v2.Services
                     }));
                 }
             }
+
+            await NotifyHolderAsync(holderId, actorUserId);
         }
     }
 }

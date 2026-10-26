@@ -1,6 +1,8 @@
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Realtime.Hubs;
 using knkwebapi_v2.Realtime.Presence;
+using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -43,6 +45,17 @@ public static class RealtimeSetup
         services.AddSingleton<PresenceRegistry>();
         services.AddScoped<IPresenceStore, PresenceStore>();
         services.AddHostedService<PresenceSweepService>();
+
+        // S2 (PandiO/knk-workspace#179): events sent after the database work commits (DESIGN §4.3 option A); the
+        // transaction interceptor is added to KnKDbContext in Program.cs.
+        services.AddHttpContextAccessor();
+        services.AddSingleton<RealtimeTransactionEvents>();
+        services.AddScoped<IRealtimeEventSink>(AfterCommitRealtimeEventSink.Create);
+        // The player notification queue pushes over the hub; the in-memory queue stays the store the REST poll reads.
+        services.TryAddSingleton<InMemoryPlayerNotificationQueue>();
+        services.AddSingleton<HubPlayerNotificationQueue>();
+        services.RemoveAll<IPlayerNotificationQueue>();
+        services.AddSingleton<IPlayerNotificationQueue>(sp => sp.GetRequiredService<HubPlayerNotificationQueue>());
 
         services.AddSingleton<IAuthorizationHandler, GameServerKeyHandler>();
         services.AddAuthorization(o =>

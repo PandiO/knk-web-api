@@ -7,6 +7,7 @@ using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Realtime;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Email;
 using knkwebapi_v2.Services.Interfaces;
@@ -38,6 +39,7 @@ namespace knkwebapi_v2.Services
         private readonly IInvitationRepository? _invitations;
         private readonly IEmailComposer? _email;
         private readonly knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? _accessSync;
+        private readonly IRealtimeEventSink? _realtime;
 
         public UserService(
             IUserRepository repo,
@@ -57,8 +59,11 @@ namespace knkwebapi_v2.Services
             IOptions<SecuritySettings>? security = null,
             IInvitationRepository? invitations = null,
             IEmailComposer? email = null,
-            knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null)
+            knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null,
+            IRealtimeEventSink? realtime = null)
         {
+            // PandiO/knk-workspace#179: user-state changes reach the game server over the realtime hub.
+            _realtime = realtime;
             // KNG-216: account changes that affect the Cloudflare Access list wake its sync.
             _accessSync = accessSync;
             // KNG-214: the MinecraftLinked mail; optional like the ones above.
@@ -393,6 +398,7 @@ namespace knkwebapi_v2.Services
                 previousPersonalExpBonusMultiplier = previousExpBonusMultiplier,
                 newPersonalExpBonusMultiplier = existing.PersonalExpBonusMultiplier
             }));
+            _realtime.UserChanged(existing, new[] { UserChangedFields.Multipliers }, actorUserId);
         }
 
         private static void ValidateMultiplier(decimal? value, string name)
@@ -409,7 +415,12 @@ namespace knkwebapi_v2.Services
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"User with id {id} not found.");
 
+            var previous = existing.GatePassThroughMethodDefault;
             await _repo.UpdateGatePassThroughMethodAsync(id, method);
+            if (previous != method)
+            {
+                _realtime.UserChanged(existing, new[] { UserChangedFields.GatePassThroughMethod });
+            }
         }
 
         public async Task UpdateActiveModeAsync(int id, ActiveMode mode, int? actorUserId = null)
@@ -426,6 +437,8 @@ namespace knkwebapi_v2.Services
             {
                 await _auditLogService.RecordAsync(actorUserId, id, AuditAction.VanishToggled,
                     $"{{\"from\":\"{previousMode}\",\"to\":\"{mode}\"}}");
+                // Before #179 a mode set in the web app only applied on the player's next join.
+                _realtime.ModeChanged(existing, mode, actorUserId);
             }
         }
 
@@ -459,6 +472,8 @@ namespace knkwebapi_v2.Services
 
             await _auditLogService.RecordAsync(actorUserId, userId, frozen ? AuditAction.PlayerFrozen : AuditAction.PlayerUnfrozen,
                 JsonSerializer.Serialize(new { reason }));
+            // Before #179 a freeze set in the web app only applied on the player's next join.
+            _realtime.FrozenChanged(user, actorUserId);
         }
 
         /// <summary>TeleportKind names the plugin may audit (docs/specs/teleport/DESIGN.md §3.4).</summary>
@@ -1187,6 +1202,7 @@ namespace knkwebapi_v2.Services
             {
                 _notificationQueue?.Enqueue(primaryUserId, primary.Uuid, primary.Username, PlayerNotificationTypes.TitleChanged, titleChange);
             }
+            _realtime.UserChanged(primary, new[] { UserChangedFields.Merge });
         }
 
         // ===== HELPER METHODS =====
@@ -1329,9 +1345,12 @@ namespace knkwebapi_v2.Services
 
         /// <summary>The in-game notice of a new link (AccountLinked), with the web login's address masked.
         /// Queued after the change is saved; the plugin shows it on the player's next join.</summary>
-        private void NotifyLinked(User account) =>
+        private void NotifyLinked(User account)
+        {
+            _realtime.UserChanged(account, new[] { UserChangedFields.Link }, account.Id);
             _notificationQueue?.EnqueueAccountLinked(account.Id, account.Uuid, account.Username,
                 new AccountLinkedNotificationDto { MaskedEmail = EmailMask.Mask(account.Email) });
+        }
 
         /// <inheritdoc/>
         public async Task<bool> IsUuidAdmittedAsync(string uuid)

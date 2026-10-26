@@ -69,7 +69,9 @@ builder.Services.AddSingleton<knkwebapi_v2.Services.Telemetry.DbCommandMetricsIn
 builder.Services.AddSingleton<knkwebapi_v2.Services.Telemetry.ProcessMetrics>();
 builder.Services.AddDbContext<KnKDbContext>((serviceProvider, options) =>
     options.UseMySql(connectionString, mySqlServerVersion.Version)
-        .AddInterceptors(serviceProvider.GetRequiredService<knkwebapi_v2.Services.Telemetry.DbCommandMetricsInterceptor>()));
+        .AddInterceptors(serviceProvider.GetRequiredService<knkwebapi_v2.Services.Telemetry.DbCommandMetricsInterceptor>(),
+            // Realtime S2 (#179): events raised inside a transaction are sent when it commits.
+            serviceProvider.GetRequiredService<knkwebapi_v2.Realtime.RealtimeTransactionEvents>()));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 

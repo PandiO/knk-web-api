@@ -316,4 +316,55 @@ public sealed class RealtimeHubTests : IAsyncLifetime
     {
         Assert.Equal(expected, GameServerHub.NormalizeServerId(raw));
     }
+
+    // ===== S2 (PandiO/knk-workspace#179) =====
+
+    [Fact]
+    public async Task PlayerJoined_PushesTheirWaitingNotification()
+    {
+        var queue = _app.Services.GetRequiredService<knkwebapi_v2.Services.Interfaces.IPlayerNotificationQueue>();
+        var id = queue.Enqueue(1, A, "a", knkwebapi_v2.Dtos.PlayerNotificationTypes.RankChanged, null);
+        await using var connection = GameConnection();
+        var pushed = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On<JsonElement>("PlayerNotification", e => pushed.TrySetResult(e));
+        await connection.StartAsync();
+
+        await connection.InvokeAsync("PlayerJoined", new { uuid = A, name = "a", world = "world" });
+        var envelope = await pushed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal("PlayerNotification", envelope.GetProperty("type").GetString());
+        var payload = envelope.GetProperty("payload");
+        Assert.Equal(id, payload.GetProperty("id").GetInt64());
+        Assert.Equal("RankChanged", payload.GetProperty("type").GetString());
+        Assert.Equal(A, payload.GetProperty("uuid").GetString());
+        // Still pending until the plugin acknowledges it over REST.
+        Assert.Single(queue.GetPending());
+    }
+
+    [Fact]
+    public async Task UserStateEvent_FromAServiceScope_ReachesTheGameServer()
+    {
+        await using var connection = GameConnection();
+        var received = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On<JsonElement>("UserFrozenChanged", e => received.TrySetResult(e));
+        await connection.StartAsync();
+        await Eventually(() => Task.FromResult(_app.Services.GetRequiredService<RealtimeConnections>().Count(RealtimeHubKind.Game) == 1),
+            "the connection");
+
+        using (var scope = _app.Services.CreateScope())
+        {
+            var sink = scope.ServiceProvider.GetRequiredService<IRealtimeEventSink>();
+            sink.FrozenChanged(new User { Id = 42, Uuid = A, IsFrozen = true, FrozenReason = "griefing", FrozenByUserId = 7 }, 7);
+        }
+        var envelope = await received.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(2, envelope.GetProperty("seq").GetInt64()); // after Welcome
+        Assert.Equal(7, envelope.GetProperty("actor").GetProperty("userId").GetInt32());
+        var payload = envelope.GetProperty("payload");
+        Assert.Equal(42, payload.GetProperty("userId").GetInt32());
+        Assert.Equal(A, payload.GetProperty("uuid").GetString());
+        Assert.True(payload.GetProperty("frozen").GetBoolean());
+        Assert.Equal("griefing", payload.GetProperty("reason").GetString());
+        Assert.Equal(7, payload.GetProperty("by").GetInt32());
+    }
 }

@@ -10,7 +10,8 @@ namespace knkwebapi_v2.Realtime.Hubs;
 /// <c>/api/hubs/game</c> (DESIGN §4.1): one connection per game server, authenticated with the plugin key
 /// (<c>X-API-Key</c> = <c>Security:PluginApiKey</c>, the <see cref="RealtimeSetup.GameServerPolicy"/> on the endpoint)
 /// and named by <c>X-Knk-Server-Id</c>. Groups <c>servers</c> and <c>server:{id}</c>. Client-to-server methods are
-/// presence only (DESIGN §6.4); nothing else is written over the hub (P1).
+/// presence only (DESIGN §6.4); nothing else is written over the hub (P1). A joining player's waiting notifications
+/// are pushed to their server (S2, #179).
 /// </summary>
 public sealed partial class GameServerHub : Hub
 {
@@ -24,10 +25,13 @@ public sealed partial class GameServerHub : Hub
     private readonly RealtimeOptions _options;
     private readonly ILogger<GameServerHub> _logger;
     private readonly TimeProvider _time;
+    private readonly HubPlayerNotificationQueue? _notifications;
 
     public GameServerHub(RealtimeConnections connections, PresenceRegistry presence, IPresenceStore store,
-        IRealtimePublisher publisher, IOptions<RealtimeOptions> options, ILogger<GameServerHub> logger, TimeProvider? time = null)
+        IRealtimePublisher publisher, IOptions<RealtimeOptions> options, ILogger<GameServerHub> logger, TimeProvider? time = null,
+        HubPlayerNotificationQueue? notifications = null)
     {
+        _notifications = notifications;
         _connections = connections;
         _presence = presence;
         _store = store;
@@ -110,6 +114,8 @@ public sealed partial class GameServerHub : Hub
         if (uuid.Length > 0)
         {
             await _store.SetOnlineAsync(new[] { uuid }, Now);
+            // S2 (#179): what waited for this player (and for the server) is shown now instead of on the next poll.
+            _notifications?.PushPendingTo(serverId, uuid);
         }
     }
 

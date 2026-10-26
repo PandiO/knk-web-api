@@ -29,7 +29,77 @@ public static class RealtimeEventTypes
     /// Payload <see cref="WelcomePayload"/>.
     /// </summary>
     public const string Welcome = "Welcome";
+
+    // ---- S2, user state (DESIGN §6.1, PandiO/knk-workspace#179). All to the game servers. ----
+
+    /// <summary>A user's memberships or direct grants changed. Payload <see cref="UserPermissionsChangedPayload"/>.</summary>
+    public const string UserPermissionsChanged = "UserPermissionsChanged";
+
+    /// <summary>A permission group, or its node grants, changed. Payload <see cref="PermissionGroupChangedPayload"/>.</summary>
+    public const string PermissionGroupChanged = "PermissionGroupChanged";
+
+    /// <summary>Coins, gems or experience changed. Payload <see cref="UserBalancesChangedPayload"/>.</summary>
+    public const string UserBalancesChanged = "UserBalancesChanged";
+
+    /// <summary>Frozen or unfrozen by staff. Payload <see cref="UserFrozenChangedPayload"/>.</summary>
+    public const string UserFrozenChanged = "UserFrozenChanged";
+
+    /// <summary>Owner/staff mode (vanish) changed. Payload <see cref="UserModeChangedPayload"/>.</summary>
+    public const string UserModeChanged = "UserModeChanged";
+
+    /// <summary>Other cached user fields changed (multipliers, gate method, link, merge). Payload <see cref="UserChangedPayload"/>.</summary>
+    public const string UserChanged = "UserChanged";
+
+    /// <summary>
+    /// One queued player notification (the hub-backed <c>IPlayerNotificationQueue</c>, DESIGN §4.3). Payload: the
+    /// same <c>PlayerNotificationDto</c> <c>GET api/PlayerNotifications/pending</c> returns; the plugin acknowledges it
+    /// over REST as before.
+    /// </summary>
+    public const string PlayerNotification = "PlayerNotification";
 }
+
+/// <summary>Why <see cref="RealtimeEventTypes.UserPermissionsChanged"/> was sent (informational; the handler is the same).</summary>
+public static class UserPermissionsChangeReasons
+{
+    public const string GroupAssigned = "GroupAssigned";
+    public const string GroupRemoved = "GroupRemoved";
+    public const string RankExpired = "RankExpired";
+    public const string GrantChanged = "GrantChanged";
+}
+
+/// <summary>What happened to the group in <see cref="PermissionGroupChangedPayload"/>.</summary>
+public static class PermissionGroupChangeOps
+{
+    public const string Created = "Created";
+    public const string Updated = "Updated";
+    public const string Deleted = "Deleted";
+    /// <summary>A node grant held by the group was added, changed or removed.</summary>
+    public const string GrantsChanged = "GrantsChanged";
+}
+
+/// <param name="UserId">The knk user.</param>
+/// <param name="Uuid">Their Minecraft UUID (events are only sent for users who have one).</param>
+/// <param name="Reason">See <see cref="UserPermissionsChangeReasons"/>.</param>
+public sealed record UserPermissionsChangedPayload(int UserId, string Uuid, string Reason);
+
+/// <param name="GroupId">The permission group.</param>
+/// <param name="Op">See <see cref="PermissionGroupChangeOps"/>.</param>
+public sealed record PermissionGroupChangedPayload(int GroupId, string Op);
+
+/// <summary>The balances after the change (committed values), so the receiver needs no re-read.</summary>
+public sealed record UserBalancesChangedPayload(int UserId, string Uuid, long Coins, long Gems, long Xp);
+
+/// <param name="Frozen">The new state.</param>
+/// <param name="Reason">The freeze reason (null on unfreeze).</param>
+/// <param name="By">The staff member's user id, when known.</param>
+public sealed record UserFrozenChangedPayload(int UserId, string Uuid, bool Frozen, string? Reason, int? By);
+
+/// <param name="Mode"><c>None</c>, <c>Staff</c> or <c>Owner</c> (the <c>ActiveMode</c> names).</param>
+public sealed record UserModeChangedPayload(int UserId, string Uuid, string Mode);
+
+/// <param name="Fields">Which fields changed, e.g. <c>multipliers</c>, <c>gatePassThroughMethod</c>, <c>link</c>,
+/// <c>merge</c>. The receiver drops its cached user and re-reads it.</param>
+public sealed record UserChangedPayload(int UserId, string Uuid, IReadOnlyList<string> Fields);
 
 /// <param name="ServerId">The id from the <c>X-Knk-Server-Id</c> header, as the API stored it.</param>
 /// <param name="PresenceGraceSeconds">How long the API keeps this server's players online after a disconnect.</param>
