@@ -35,6 +35,24 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("abilityDefinition")]
         public AbilityDefinitionReadDto? AbilityDefinition { get; set; }
+        // PandiO/knk-workspace#151: combat values of a custom enchantment; null = the plugin's built-in value.
+        [JsonPropertyName("procChancePercent")]
+        public double? ProcChancePercent { get; set; }
+
+        [JsonPropertyName("procChancePerLevelPercent")]
+        public double? ProcChancePerLevelPercent { get; set; }
+
+        [JsonPropertyName("cooldownEnabled")]
+        public bool? CooldownEnabled { get; set; }
+
+        [JsonPropertyName("cooldownSeconds")]
+        public int? CooldownSeconds { get; set; }
+
+        [JsonPropertyName("effectDurationSeconds")]
+        public double? EffectDurationSeconds { get; set; }
+
+        [JsonPropertyName("levelMultiplier")]
+        public double? LevelMultiplier { get; set; }
     }
 
     // Create DTO
@@ -78,6 +96,24 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("abilityDefinition")]
         public AbilityDefinitionUpsertDto? AbilityDefinition { get; set; }
+        // PandiO/knk-workspace#151: combat values of a custom enchantment; null = the plugin's built-in value.
+        [JsonPropertyName("procChancePercent")]
+        public double? ProcChancePercent { get; set; }
+
+        [JsonPropertyName("procChancePerLevelPercent")]
+        public double? ProcChancePerLevelPercent { get; set; }
+
+        [JsonPropertyName("cooldownEnabled")]
+        public bool? CooldownEnabled { get; set; }
+
+        [JsonPropertyName("cooldownSeconds")]
+        public int? CooldownSeconds { get; set; }
+
+        [JsonPropertyName("effectDurationSeconds")]
+        public double? EffectDurationSeconds { get; set; }
+
+        [JsonPropertyName("levelMultiplier")]
+        public double? LevelMultiplier { get; set; }
     }
 
     // Update DTO
@@ -137,6 +173,64 @@ namespace knkwebapi_v2.Dtos
 
         [JsonIgnore]
         public bool HasAbilityDefinition { get; private set; }
+        // PandiO/knk-workspace#151: combat values. Like abilityDefinition above, a value is only written when the
+        // request contained it (explicit null resets it to the plugin's built-in value), so a form configuration
+        // without these fields doesn't wipe them on every save.
+        private double? _procChancePercent;
+        private double? _procChancePerLevelPercent;
+        private bool? _cooldownEnabled;
+        private int? _cooldownSeconds;
+        private double? _effectDurationSeconds;
+        private double? _levelMultiplier;
+
+        [JsonPropertyName("procChancePercent")]
+        public double? ProcChancePercent
+        {
+            get => _procChancePercent;
+            set { _procChancePercent = value; HasProcChancePercent = true; }
+        }
+
+        [JsonPropertyName("procChancePerLevelPercent")]
+        public double? ProcChancePerLevelPercent
+        {
+            get => _procChancePerLevelPercent;
+            set { _procChancePerLevelPercent = value; HasProcChancePerLevelPercent = true; }
+        }
+
+        [JsonPropertyName("cooldownEnabled")]
+        public bool? CooldownEnabled
+        {
+            get => _cooldownEnabled;
+            set { _cooldownEnabled = value; HasCooldownEnabled = true; }
+        }
+
+        [JsonPropertyName("cooldownSeconds")]
+        public int? CooldownSeconds
+        {
+            get => _cooldownSeconds;
+            set { _cooldownSeconds = value; HasCooldownSeconds = true; }
+        }
+
+        [JsonPropertyName("effectDurationSeconds")]
+        public double? EffectDurationSeconds
+        {
+            get => _effectDurationSeconds;
+            set { _effectDurationSeconds = value; HasEffectDurationSeconds = true; }
+        }
+
+        [JsonPropertyName("levelMultiplier")]
+        public double? LevelMultiplier
+        {
+            get => _levelMultiplier;
+            set { _levelMultiplier = value; HasLevelMultiplier = true; }
+        }
+
+        [JsonIgnore] public bool HasProcChancePercent { get; private set; }
+        [JsonIgnore] public bool HasProcChancePerLevelPercent { get; private set; }
+        [JsonIgnore] public bool HasCooldownEnabled { get; private set; }
+        [JsonIgnore] public bool HasCooldownSeconds { get; private set; }
+        [JsonIgnore] public bool HasEffectDurationSeconds { get; private set; }
+        [JsonIgnore] public bool HasLevelMultiplier { get; private set; }
     }
 
     // List DTO - For search/list views

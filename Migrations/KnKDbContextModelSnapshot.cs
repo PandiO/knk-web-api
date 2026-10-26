@@ -1335,6 +1335,12 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool?>("CooldownEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("CooldownSeconds")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -1343,6 +1349,9 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<double?>("EffectDurationSeconds")
+                        .HasColumnType("double");
+
                     b.Property<bool>("IsCustom")
                         .HasColumnType("tinyint(1)");
 
@@ -1350,11 +1359,20 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<double?>("LevelMultiplier")
+                        .HasColumnType("double");
+
                     b.Property<int>("MaxLevel")
                         .HasColumnType("int");
 
                     b.Property<int?>("MinecraftEnchantmentRefId")
                         .HasColumnType("int");
+
+                    b.Property<double?>("ProcChancePerLevelPercent")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("ProcChancePercent")
+                        .HasColumnType("double");
 
                     b.HasKey("Id");
 
