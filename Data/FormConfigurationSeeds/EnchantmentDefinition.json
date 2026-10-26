@@ -88,7 +88,7 @@
     {
       "stepGuid": "409e61c5-0de7-5bb6-95ae-ac2596eaa8d0",
       "stepName": "Combat values",
-      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the plugin's built-in value. Cleaving ignores this step: its numbers are in the plugin's config.yml (gates.cleaving). At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration is the level-I duration x (1 + level multiplier x (n - 1)).",
+      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the default: the API fills it in again at its next start, the plugin uses its built-in value until then. Cleaving ignores this step: its numbers are in the plugin's config.yml (gates.cleaving). At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration is the level-I duration x (1 + level multiplier x (n - 1)).",
       "isManyToManyRelationship": false,
       "displayConditionGroups": [
         {

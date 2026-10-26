@@ -18,7 +18,9 @@ public class EnchantmentDefinition
     public int MaxLevel { get; set; } = 1;
 
     // PandiO/knk-workspace#151: admin-set combat values of a custom enchantment, read by the plugin's effect
-    // handlers. Null = the plugin's built-in value for that enchantment. Vanilla enchantments ignore them.
+    // handlers. Null = the plugin's built-in value for that enchantment; for the canonical custom enchantments the
+    // startup seed writes the defaults into null columns (#156, AbilityDefinition.FillCombatDefaults). Vanilla
+    // enchantments ignore them.
     // At level n: chance = ProcChancePercent + ProcChancePerLevelPercent x (n - 1), capped to 0-100;
     // duration = EffectDurationSeconds x (1 + LevelMultiplier x (n - 1)).
 

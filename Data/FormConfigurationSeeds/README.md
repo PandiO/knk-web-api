@@ -125,6 +125,7 @@ same field in the form designer (import never overwrites). Field GUIDs: uuid5 of
 **EnchantmentDefinition seed v2 (PandiO/knk-workspace#151, 2026-10-26):** a new `configurationGuid` and name, so it
 imports next to the imported v1; make it the default and delete or keep v1 by hand. Adds a last step "Combat values",
 shown for custom enchantments only: chance at level I and per extra level (percent), cooldown on/off and length
-(seconds), duration at level I (seconds) and the level multiplier. Empty = the plugin's built-in value. GUIDs:
+(seconds), duration at level I (seconds) and the level multiplier. Empty = the default (PandiO/knk-workspace#156: the
+API writes it into empty fields at startup). GUIDs:
 configuration uuid5(v1 configuration GUID, "seed-v2"), every kept step/field uuid5(v1 configuration GUID, its v1 GUID),
 the new step and fields uuid5(v2 configuration GUID, "step:Combat values"/"field:" + name).
