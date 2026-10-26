@@ -76,6 +76,9 @@ builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.
 // Register app services/repositories in one place
 builder.Services.AddApplicationServices(builder.Configuration);
 
+// Realtime channel (PandiO/knk-workspace#178): /api/hubs/game (plugin key) and /api/hubs/web (JWT), publisher, presence.
+knkwebapi_v2.Realtime.RealtimeSetup.AddKnkRealtime(builder.Services, builder.Configuration);
+
 // JWT bearer authentication configuration
 var jwtSection = builder.Configuration.GetSection("Security:Jwt");
 var jwtIssuer = jwtSection["Issuer"] ?? "knk-api";
@@ -106,6 +109,16 @@ builder.Services.AddAuthentication(options =>
     // IUserSessionStateCache keeps this to one DB read per user per 60 s.
     options.Events = new JwtBearerEvents
     {
+        // #178: the browser's WebSocket can't send headers; the web hub (only) takes ?access_token=.
+        OnMessageReceived = context =>
+        {
+            var hubToken = knkwebapi_v2.Realtime.RealtimeSetup.ReadHubAccessToken(context.Request);
+            if (hubToken != null)
+            {
+                context.Token = hubToken;
+            }
+            return Task.CompletedTask;
+        },
         OnTokenValidated = async context =>
         {
             var sessions = context.HttpContext.RequestServices.GetRequiredService<knkwebapi_v2.Services.IUserSessionStateCache>();
@@ -182,6 +195,8 @@ if (telemetryOptions.Enabled)
             metrics.AddMeter(knkwebapi_v2.Services.Statistics.StatisticsMetrics.MeterName);
             // Diagnostic telemetry pipeline (KNG-34 link 6).
             metrics.AddMeter(knkwebapi_v2.Services.Telemetry.TelemetryMetrics.MeterName);
+            // Realtime hubs: messages published/sent/dropped and open connections (#178).
+            metrics.AddMeter(knkwebapi_v2.Realtime.RealtimeMetrics.MeterName);
             if (string.Equals(telemetryOptions.Exporter, "otlp", StringComparison.OrdinalIgnoreCase)
                 && telemetryOptions.Otlp.EnableMetrics)
             {
@@ -305,6 +320,7 @@ if (hasHttpsListener)
 }
 
 app.MapControllers();
+knkwebapi_v2.Realtime.RealtimeSetup.MapKnkRealtimeHubs(app);
 
 // KNG-232: Prometheus scrape endpoint (own bearer-token gate, not an MVC action). Never route it through the ingress.
 if (prometheusEnabled)
