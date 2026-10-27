@@ -60,6 +60,20 @@ public class SiegeScenario
     public int CoinRewardCapture { get; set; } = 50;
     public int ExpRewardCapture { get; set; } = 5;
 
+    // Gate damage (alpha run 1, PandiO/knk-workspace#165): per full GateDamageRewardStep HP a participant took off
+    // the scenario's gates, CoinRewardGateDamage / ExpRewardGateDamage. The plugin reports each member's effective
+    // gate HP loss (direct hits, and fire per igniter).
+    public int GateDamageRewardStep { get; set; } = 100;
+    public int CoinRewardGateDamage { get; set; } = 10;
+    public int ExpRewardGateDamage { get; set; } = 1;
+
+    // Participation (PandiO/knk-workspace#166): paid to a participant present at the end who was active (not AFK) for
+    // at least ParticipationMinActivePercent of their time in the match (from first joining it to its end, rejoins
+    // included). The plugin reports the active and window seconds; the API decides.
+    public int CoinRewardParticipation { get; set; } = 25;
+    public int ExpRewardParticipation { get; set; } = 3;
+    public int ParticipationMinActivePercent { get; set; } = 75;
+
     // §8.5, D6. No effect since 2026-09-26: the plugin no longer locks the scenario area down (non-members
     // stay in the area). Kept to avoid a migration; remove with the next siege schema change.
     public bool LockdownScenarioArea { get; set; } = true;

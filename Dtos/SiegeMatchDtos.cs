@@ -46,6 +46,16 @@ namespace knkwebapi_v2.Dtos
         // stats. Their row keeps (or, when the "left" call was lost, gets) this LeftAt, so they are not
         // present at the end and get no reward. Omitted (null) for members present at the end.
         [JsonPropertyName("leftAt")] public DateTime? LeftAt { get; set; }
+        // Alpha run 1 (PandiO/knk-workspace#165): effective gate HP this member took off the scenario's gates
+        // (direct hits and their share of fire they lit). Pays CoinRewardGateDamage/ExpRewardGateDamage per full
+        // GateDamageRewardStep. Omitted (0) by older plugins.
+        [JsonPropertyName("gateDamage")] public double GateDamage { get; set; }
+        // #166: the member's active (not AFK) seconds in the match, and their match time window: from first joining
+        // the match to the end (or their leave), time away within the rejoin window included. The participation
+        // reward needs activeSeconds >= ParticipationMinActivePercent % of matchSeconds. Omitted (0) by older plugins:
+        // then only a 0 % requirement pays.
+        [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
+        [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
     }
 
     // One capture of an objective, or - with capturedByUserId/capturedAt null - its final holder when
@@ -96,6 +106,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("deaths")] public int Deaths { get; set; }
         [JsonPropertyName("highestKillStreak")] public int HighestKillStreak { get; set; }
         [JsonPropertyName("captures")] public int Captures { get; set; }
+        [JsonPropertyName("gateDamage")] public int GateDamage { get; set; }
+        [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
+        [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
         [JsonPropertyName("coinsAwarded")] public int CoinsAwarded { get; set; }
         [JsonPropertyName("expAwarded")] public int ExpAwarded { get; set; }
         [JsonPropertyName("gemsAwarded")] public int GemsAwarded { get; set; }
@@ -157,6 +170,13 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("holdingCount")] public int HoldingCount { get; set; }
         // Distinct objectives this player captured.
         [JsonPropertyName("captureCount")] public int CaptureCount { get; set; }
+        // #165: the gate HP this player took off the scenario's gates, and the full reward steps in it.
+        [JsonPropertyName("gateDamage")] public int GateDamage { get; set; }
+        [JsonPropertyName("gateDamageSteps")] public int GateDamageSteps { get; set; }
+        // #166: true when the participation reward was paid (active long enough); the seconds behind it.
+        [JsonPropertyName("participation")] public bool Participation { get; set; }
+        [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
+        [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
         // Granted coins: BaseCoins (DESIGN §7.6) times CoinMultiplier (personal salary multiplier x
         // rank/premium multiplier, smoke test 2026-09-26). A repeat call derives the multiplier from
         // the stored amount (rounded to 2 decimals).

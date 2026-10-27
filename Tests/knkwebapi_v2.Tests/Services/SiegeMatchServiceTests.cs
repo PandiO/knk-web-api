@@ -550,4 +550,106 @@ public class SiegeMatchServiceTests : IAsyncLifetime
 
         Assert.Empty(await _service.QueryAsync(null, 2, null, 10));
     }
+
+    // ---- gate damage (PandiO/knk-workspace#165) and participation (#166) ----
+
+    [Fact]
+    public async Task Complete_PaysGateDamageAndParticipation_StoresTheReportedFigures()
+    {
+        var id = await StartedMatchAsync((1, 201), (2, 201), (3, 202));
+        var dto = new SiegeMatchCompleteDto
+        {
+            EndReason = SiegeMatchEndReason.TimeExpired,
+            WinningAllianceGroup = 1,
+            Participants =
+            {
+                // Defender, active 80 %: win 100/10/1 + participation 25/3.
+                new SiegeMatchParticipantResultDto { UserId = 1, SiegeTeamId = 201, ActiveSeconds = 480, MatchSeconds = 600 },
+                // Defender, AFK most of the match: the win only.
+                new SiegeMatchParticipantResultDto { UserId = 2, SiegeTeamId = 201, ActiveSeconds = 120, MatchSeconds = 600 },
+                // Attacker who lost but hit the gate for 312.7 HP: 3 steps x 10/1 + participation 25/3.
+                new SiegeMatchParticipantResultDto { UserId = 3, SiegeTeamId = 202, GateDamage = 312.7, ActiveSeconds = 600, MatchSeconds = 600 }
+            },
+            Objectives =
+            {
+                new SiegeMatchObjectiveResultInputDto { SiegeObjectiveId = 501, FinalHolderTeamId = 201 },
+                new SiegeMatchObjectiveResultInputDto { SiegeObjectiveId = 502, FinalHolderTeamId = 201 }
+            }
+        };
+
+        var result = await _service.CompleteAsync(id, dto);
+
+        var r1 = result.Rewards.Single(r => r.UserId == 1);
+        Assert.Equal((true, true, 125, 13, 1), (r1.Won, r1.Participation, r1.Coins, r1.Experience, r1.Gems));
+        var r2 = result.Rewards.Single(r => r.UserId == 2);
+        Assert.Equal((false, 100, 10), (r2.Participation, r2.Coins, r2.Experience));
+        var r3 = result.Rewards.Single(r => r.UserId == 3);
+        Assert.Equal((312, 3, true), (r3.GateDamage, r3.GateDamageSteps, r3.Participation));
+        Assert.Equal((55, 6, 0), (r3.Coins, r3.Experience, r3.Gems));
+        Assert.Equal((600, 600), (r3.ActiveSeconds, r3.MatchSeconds));
+
+        var u3 = await UserAsync(3);
+        Assert.Equal((10 + 55, 6), (u3.Coins, u3.ExperiencePoints));
+
+        var stored = (await _service.GetByIdAsync(id))!.Participants.Single(p => p.UserId == 3);
+        Assert.Equal((312, 600, 600, 55, 6), (stored.GateDamage, stored.ActiveSeconds, stored.MatchSeconds, stored.CoinsAwarded, stored.ExpAwarded));
+
+        // A repeat call rebuilds the same breakdown from the stored rows and grants nothing.
+        _context.ChangeTracker.Clear();
+        var again = await _service.CompleteAsync(id, dto);
+        Assert.True(again.AlreadyCompleted);
+        var a3 = again.Rewards.Single(r => r.UserId == 3);
+        Assert.Equal((312, 3, true, 55, 6), (a3.GateDamage, a3.GateDamageSteps, a3.Participation, a3.Coins, a3.Experience));
+        Assert.False(again.Rewards.Single(r => r.UserId == 2).Participation);
+        Assert.Equal(10 + 55, (await UserAsync(3)).Coins);
+    }
+
+    [Fact]
+    public async Task Complete_LeaverWithGateDamageAndActivity_GetsNothing()
+    {
+        var id = await StartedMatchAsync((1, 201), (3, 202));
+        var leftAt = DateTime.UtcNow.AddMinutes(-1);
+
+        var result = await _service.CompleteAsync(id, new SiegeMatchCompleteDto
+        {
+            EndReason = SiegeMatchEndReason.TimeExpired,
+            Participants =
+            {
+                new SiegeMatchParticipantResultDto { UserId = 1, SiegeTeamId = 201, ActiveSeconds = 600, MatchSeconds = 600 },
+                new SiegeMatchParticipantResultDto { UserId = 3, SiegeTeamId = 202, GateDamage = 900, ActiveSeconds = 300, MatchSeconds = 300, LeftAt = leftAt }
+            }
+        });
+
+        var r3 = result.Rewards.Single(r => r.UserId == 3);
+        Assert.Equal((false, 0, 0, false, 0), (r3.PresentAtEnd, r3.Coins, r3.Experience, r3.Participation, r3.GateDamageSteps));
+        Assert.Equal(900, r3.GateDamage); // the stats are still kept
+        Assert.Equal(25, result.Rewards.Single(r => r.UserId == 1).Coins);
+    }
+
+    [Fact]
+    public async Task Complete_ActiveAboveMatchSeconds_IsClamped_NegativeFiguresAreRejected()
+    {
+        var id = await StartedMatchAsync((1, 201));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CompleteAsync(id, new SiegeMatchCompleteDto
+        {
+            EndReason = SiegeMatchEndReason.TimeExpired,
+            Participants = { new SiegeMatchParticipantResultDto { UserId = 1, SiegeTeamId = 201, GateDamage = -1 } }
+        }));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CompleteAsync(id, new SiegeMatchCompleteDto
+        {
+            EndReason = SiegeMatchEndReason.TimeExpired,
+            Participants = { new SiegeMatchParticipantResultDto { UserId = 1, SiegeTeamId = 201, ActiveSeconds = -5, MatchSeconds = 10 } }
+        }));
+        _context.ChangeTracker.Clear();
+
+        var result = await _service.CompleteAsync(id, new SiegeMatchCompleteDto
+        {
+            EndReason = SiegeMatchEndReason.TimeExpired,
+            Participants = { new SiegeMatchParticipantResultDto { UserId = 1, SiegeTeamId = 201, ActiveSeconds = 700, MatchSeconds = 600 } }
+        });
+
+        var r1 = result.Rewards.Single();
+        Assert.Equal((600, 600, true), (r1.ActiveSeconds, r1.MatchSeconds, r1.Participation));
+    }
 }

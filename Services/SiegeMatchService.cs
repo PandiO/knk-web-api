@@ -222,6 +222,10 @@ namespace knkwebapi_v2.Services
                     row.Deaths = r.Deaths;
                     row.HighestKillStreak = r.HighestKillStreak;
                     row.Captures = r.Captures;
+                    row.GateDamage = WholeHp(r.GateDamage);
+                    // Clock skew can't make a member more active than present (a 400 here would lose every reward).
+                    row.ActiveSeconds = Math.Min(r.ActiveSeconds, r.MatchSeconds);
+                    row.MatchSeconds = r.MatchSeconds;
                     // A reported leaver (KNG-34): the first left marker wins, as in ParticipantLeftAsync. It is
                     // kept strictly before the end so the member is never counted as present at the end.
                     if (r.LeftAt.HasValue && row.LeftAt == null)
@@ -258,7 +262,7 @@ namespace knkwebapi_v2.Services
                     new SiegeRewardCalculator.ObjectiveEntry(o.SiegeObjectiveId, o.FinalHolderTeamId, o.CapturedByUserId)));
                 var rewards = match.Participants
                     .Select(p => (Row: p, Reward: SiegeRewardCalculator.For(
-                        new SiegeRewardCalculator.ParticipantInput(p.UserId, p.SiegeTeamId, p.LeftAt == null),
+                        Input(p),
                         scenario, dto.WinningAllianceGroup, outcomes)))
                     .ToList();
 
@@ -321,7 +325,7 @@ namespace knkwebapi_v2.Services
                     EndReason = match.EndReason,
                     WinningAllianceGroup = match.WinningAllianceGroup,
                     AlreadyCompleted = false,
-                    Rewards = rewards.Select(x => ToRewardDto(x.Reward, titleChangeByUser.GetValueOrDefault(x.Row.UserId),
+                    Rewards = rewards.Select(x => ToRewardDto(x.Reward, x.Row, titleChangeByUser.GetValueOrDefault(x.Row.UserId),
                         coinsByUser.TryGetValue(x.Row.UserId, out var granted) ? granted : (x.Reward.Coins, 1.0m, new List<RewardMultiplierDto>()))).ToList()
                 };
             });
@@ -416,9 +420,18 @@ namespace knkwebapi_v2.Services
             if (unknown.Count > 0)
                 throw new ArgumentException($"SiegeObjective(s) {string.Join(", ", unknown)} are not objectives of SiegeScenario {scenario.Id}.");
 
-            if (participants.Any(p => p.Kills < 0 || p.Deaths < 0 || p.HighestKillStreak < 0 || p.Captures < 0))
+            if (participants.Any(p => p.Kills < 0 || p.Deaths < 0 || p.HighestKillStreak < 0 || p.Captures < 0
+                                      || p.ActiveSeconds < 0 || p.MatchSeconds < 0
+                                      || double.IsNaN(p.GateDamage) || double.IsInfinity(p.GateDamage) || p.GateDamage < 0))
                 throw new ArgumentException("Participant stats can't be negative.");
         }
+
+        /// <summary>Reported gate HP as whole HP (rounded down; capped at int.MaxValue).</summary>
+        private static int WholeHp(double gateDamage) =>
+            gateDamage <= 0 ? 0 : gateDamage >= int.MaxValue ? int.MaxValue : (int)Math.Floor(gateDamage);
+
+        private static SiegeRewardCalculator.ParticipantInput Input(SiegeMatchParticipant p) =>
+            new(p.UserId, p.SiegeTeamId, p.LeftAt == null, p.GateDamage, p.ActiveSeconds, p.MatchSeconds);
 
         private async Task RequireUsersExistAsync(IEnumerable<int> userIds)
         {
@@ -450,7 +463,7 @@ namespace knkwebapi_v2.Services
                 Rewards = match.Participants.OrderBy(p => p.Id).Select(p =>
                 {
                     var computed = SiegeRewardCalculator.For(
-                        new SiegeRewardCalculator.ParticipantInput(p.UserId, p.SiegeTeamId, p.LeftAt == null),
+                        Input(p),
                         scenario, match.WinningAllianceGroup, outcomes);
                     return new SiegeMatchRewardDto
                     {
@@ -460,6 +473,11 @@ namespace knkwebapi_v2.Services
                         Won = computed.Won,
                         HoldingCount = computed.HoldingCount,
                         CaptureCount = computed.CaptureCount,
+                        GateDamage = p.GateDamage,
+                        GateDamageSteps = computed.GateDamageSteps,
+                        Participation = computed.Participation,
+                        ActiveSeconds = p.ActiveSeconds,
+                        MatchSeconds = p.MatchSeconds,
                         Coins = p.CoinsAwarded,
                         BaseCoins = computed.Coins,
                         CoinMultiplier = computed.Coins > 0 ? Math.Round((decimal)p.CoinsAwarded / computed.Coins, 2) : 1.0m,
@@ -470,8 +488,8 @@ namespace knkwebapi_v2.Services
             };
         }
 
-        private static SiegeMatchRewardDto ToRewardDto(SiegeRewardCalculator.Reward reward, TitleChangeResultDto? titleChange,
-            (int Coins, decimal Multiplier, List<RewardMultiplierDto> Breakdown) granted) => new()
+        private static SiegeMatchRewardDto ToRewardDto(SiegeRewardCalculator.Reward reward, SiegeMatchParticipant row,
+            TitleChangeResultDto? titleChange, (int Coins, decimal Multiplier, List<RewardMultiplierDto> Breakdown) granted) => new()
         {
             UserId = reward.UserId,
             SiegeTeamId = reward.TeamId,
@@ -479,6 +497,11 @@ namespace knkwebapi_v2.Services
             Won = reward.Won,
             HoldingCount = reward.HoldingCount,
             CaptureCount = reward.CaptureCount,
+            GateDamage = row.GateDamage,
+            GateDamageSteps = reward.GateDamageSteps,
+            Participation = reward.Participation,
+            ActiveSeconds = row.ActiveSeconds,
+            MatchSeconds = row.MatchSeconds,
             Coins = granted.Coins,
             BaseCoins = reward.Coins,
             CoinMultiplier = granted.Multiplier,
@@ -522,6 +545,9 @@ namespace knkwebapi_v2.Services
             Deaths = p.Deaths,
             HighestKillStreak = p.HighestKillStreak,
             Captures = p.Captures,
+            GateDamage = p.GateDamage,
+            ActiveSeconds = p.ActiveSeconds,
+            MatchSeconds = p.MatchSeconds,
             CoinsAwarded = p.CoinsAwarded,
             ExpAwarded = p.ExpAwarded,
             GemsAwarded = p.GemsAwarded

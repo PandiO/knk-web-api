@@ -76,8 +76,8 @@
       "fieldGuid": "605b3c5e-3328-57f1-ad4f-e016118dc7ae",
       "validationType": "LocationInsideRegion",
       "dependsOn": {
-        "fieldGuid": "1e6f66e3-4d1c-5ba4-8568-7c4542fa244b",
-        "configurationGuid": "4daa6694-8c31-53d8-beea-0bbdb053efc5"
+        "fieldGuid": "08d77fe4-c2d4-5c8a-a36b-8f3132a5be3b",
+        "configurationGuid": "e8fb39ed-63b0-518b-89ac-329b47766a2d"
       },
       "dependencyPath": "Town.WgRegionId",
       "configJson": "{\"regionPropertyPath\": \"WgRegionId\", \"allowBoundary\": false}",

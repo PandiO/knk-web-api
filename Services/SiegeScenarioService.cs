@@ -379,8 +379,13 @@ namespace knkwebapi_v2.Services
             if (dto.MatchDurationMinSeconds > dto.MatchDurationMaxSeconds)
                 throw new ArgumentException("matchDurationMinSeconds can't be above matchDurationMaxSeconds.");
             if (new[] { dto.CoinRewardWin, dto.ExpRewardWin, dto.GemRewardWin, dto.CoinRewardHolding,
-                        dto.ExpRewardHolding, dto.CoinRewardCapture, dto.ExpRewardCapture }.Any(r => r < 0))
+                        dto.ExpRewardHolding, dto.CoinRewardCapture, dto.ExpRewardCapture, dto.CoinRewardGateDamage,
+                        dto.ExpRewardGateDamage, dto.CoinRewardParticipation, dto.ExpRewardParticipation }.Any(r => r < 0))
                 throw new ArgumentException("Rewards can't be negative.");
+            if (dto.GateDamageRewardStep < 1)
+                throw new ArgumentException("gateDamageRewardStep must be at least 1 (HP of gate damage per reward).");
+            if (dto.ParticipationMinActivePercent is < 0 or > 100)
+                throw new ArgumentException("participationMinActivePercent must be between 0 and 100.");
 
             // The wizard can send 0 for an empty optional picker - treat it as "none".
             int? minTitleBracketId = dto.MinTitleBracketId is > 0 ? dto.MinTitleBracketId : null;
@@ -446,6 +451,12 @@ namespace knkwebapi_v2.Services
             target.ExpRewardHolding = dto.ExpRewardHolding;
             target.CoinRewardCapture = dto.CoinRewardCapture;
             target.ExpRewardCapture = dto.ExpRewardCapture;
+            target.GateDamageRewardStep = dto.GateDamageRewardStep;
+            target.CoinRewardGateDamage = dto.CoinRewardGateDamage;
+            target.ExpRewardGateDamage = dto.ExpRewardGateDamage;
+            target.CoinRewardParticipation = dto.CoinRewardParticipation;
+            target.ExpRewardParticipation = dto.ExpRewardParticipation;
+            target.ParticipationMinActivePercent = dto.ParticipationMinActivePercent;
             target.LockdownScenarioArea = dto.LockdownScenarioArea;
             target.AllowRecapture = dto.AllowRecapture;
             target.EnchantDropsEnabled = dto.EnchantDropsEnabled;

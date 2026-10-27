@@ -38,6 +38,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("expRewardHolding")] public int ExpRewardHolding { get; set; }
         [JsonPropertyName("coinRewardCapture")] public int CoinRewardCapture { get; set; }
         [JsonPropertyName("expRewardCapture")] public int ExpRewardCapture { get; set; }
+        [JsonPropertyName("gateDamageRewardStep")] public int GateDamageRewardStep { get; set; }
+        [JsonPropertyName("coinRewardGateDamage")] public int CoinRewardGateDamage { get; set; }
+        [JsonPropertyName("expRewardGateDamage")] public int ExpRewardGateDamage { get; set; }
+        [JsonPropertyName("coinRewardParticipation")] public int CoinRewardParticipation { get; set; }
+        [JsonPropertyName("expRewardParticipation")] public int ExpRewardParticipation { get; set; }
+        [JsonPropertyName("participationMinActivePercent")] public int ParticipationMinActivePercent { get; set; }
         [JsonPropertyName("lockdownScenarioArea")] public bool LockdownScenarioArea { get; set; }
         [JsonPropertyName("allowRecapture")] public bool AllowRecapture { get; set; }
         [JsonPropertyName("enchantDropsEnabled")] public bool EnchantDropsEnabled { get; set; }
@@ -73,6 +79,14 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("expRewardHolding")] public int ExpRewardHolding { get; set; } = 5;
         [JsonPropertyName("coinRewardCapture")] public int CoinRewardCapture { get; set; } = 50;
         [JsonPropertyName("expRewardCapture")] public int ExpRewardCapture { get; set; } = 5;
+        // PandiO/knk-workspace#165: per full GateDamageRewardStep HP of gate damage.
+        [JsonPropertyName("gateDamageRewardStep")] public int GateDamageRewardStep { get; set; } = 100;
+        [JsonPropertyName("coinRewardGateDamage")] public int CoinRewardGateDamage { get; set; } = 10;
+        [JsonPropertyName("expRewardGateDamage")] public int ExpRewardGateDamage { get; set; } = 1;
+        // PandiO/knk-workspace#166: for a member active at least ParticipationMinActivePercent of their match time.
+        [JsonPropertyName("coinRewardParticipation")] public int CoinRewardParticipation { get; set; } = 25;
+        [JsonPropertyName("expRewardParticipation")] public int ExpRewardParticipation { get; set; } = 3;
+        [JsonPropertyName("participationMinActivePercent")] public int ParticipationMinActivePercent { get; set; } = 75;
         [JsonPropertyName("lockdownScenarioArea")] public bool LockdownScenarioArea { get; set; } = true;
         [JsonPropertyName("allowRecapture")] public bool AllowRecapture { get; set; }
         [JsonPropertyName("enchantDropsEnabled")] public bool EnchantDropsEnabled { get; set; } = true;
@@ -443,6 +457,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("expRewardHolding")] public int ExpRewardHolding { get; set; }
         [JsonPropertyName("coinRewardCapture")] public int CoinRewardCapture { get; set; }
         [JsonPropertyName("expRewardCapture")] public int ExpRewardCapture { get; set; }
+        [JsonPropertyName("gateDamageRewardStep")] public int GateDamageRewardStep { get; set; }
+        [JsonPropertyName("coinRewardGateDamage")] public int CoinRewardGateDamage { get; set; }
+        [JsonPropertyName("expRewardGateDamage")] public int ExpRewardGateDamage { get; set; }
+        [JsonPropertyName("coinRewardParticipation")] public int CoinRewardParticipation { get; set; }
+        [JsonPropertyName("expRewardParticipation")] public int ExpRewardParticipation { get; set; }
+        [JsonPropertyName("participationMinActivePercent")] public int ParticipationMinActivePercent { get; set; }
         [JsonPropertyName("lockdownScenarioArea")] public bool LockdownScenarioArea { get; set; }
         [JsonPropertyName("allowRecapture")] public bool AllowRecapture { get; set; }
         [JsonPropertyName("enchantDropsEnabled")] public bool EnchantDropsEnabled { get; set; }

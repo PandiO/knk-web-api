@@ -179,6 +179,43 @@ public class SiegeScenarioServiceTests
     }
 
     [Fact]
+    public async Task CreateScenario_StoresTheGateDamageAndParticipationRewards_DefaultsWhenOmitted()
+    {
+        await _service.CreateAsync(ScenarioDto());
+        Assert.Equal((100, 10, 1, 25, 3, 75), (_addedScenario!.GateDamageRewardStep, _addedScenario.CoinRewardGateDamage,
+            _addedScenario.ExpRewardGateDamage, _addedScenario.CoinRewardParticipation, _addedScenario.ExpRewardParticipation,
+            _addedScenario.ParticipationMinActivePercent));
+
+        var dto = ScenarioDto();
+        dto.GateDamageRewardStep = 50;
+        dto.CoinRewardGateDamage = 7;
+        dto.ExpRewardGateDamage = 0;
+        dto.CoinRewardParticipation = 40;
+        dto.ExpRewardParticipation = 4;
+        dto.ParticipationMinActivePercent = 60;
+        await _service.CreateAsync(dto);
+        Assert.Equal((50, 7, 0, 40, 4, 60), (_addedScenario!.GateDamageRewardStep, _addedScenario.CoinRewardGateDamage,
+            _addedScenario.ExpRewardGateDamage, _addedScenario.CoinRewardParticipation, _addedScenario.ExpRewardParticipation,
+            _addedScenario.ParticipationMinActivePercent));
+    }
+
+    [Theory]
+    [InlineData(0, 10, 25, 75)]     // step below 1
+    [InlineData(100, -1, 25, 75)]   // negative amount
+    [InlineData(100, 10, -1, 75)]
+    [InlineData(100, 10, 25, 101)]  // percent above 100
+    [InlineData(100, 10, 25, -1)]
+    public async Task CreateScenario_RejectsInvalidContributionRewards(int step, int coinGate, int coinParticipation, int percent)
+    {
+        var dto = ScenarioDto();
+        dto.GateDamageRewardStep = step;
+        dto.CoinRewardGateDamage = coinGate;
+        dto.CoinRewardParticipation = coinParticipation;
+        dto.ParticipationMinActivePercent = percent;
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateAsync(dto));
+    }
+
+    [Fact]
     public async Task UpdateScenario_AssignsGateOwnerFromItsOwnTeams_AndLeavesTeamsAlone()
     {
         var scenario = StoredScenario();
