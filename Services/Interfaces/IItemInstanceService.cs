@@ -29,5 +29,20 @@ namespace knkwebapi_v2.Services.Interfaces
             string? originRef = null);
 
         Task<ItemInstanceDto?> GetAsync(long id);
+
+        /// <summary>
+        /// <c>/knk item more</c> (PandiO/knk-workspace#175): mints <paramref name="count"/> new instances copied from
+        /// instance <paramref name="sourceId"/> - same blueprint, grade (frozen at the source's mint), enchantments,
+        /// custom display name and flags - with <c>Origin = Admin</c>, <c>OriginRef = "clone:&lt;sourceId&gt;"</c>,
+        /// <c>OwnerCount = 1</c> and a new CreatedAt. The owner is <paramref name="ownerUserId"/> when given, else the
+        /// source's owner. Saved together (all or none) and audited as <see cref="Enums.AuditAction.ItemInstanceCloned"/>.
+        /// Throws <see cref="KeyNotFoundException"/> for an unknown source or owner, <see cref="ArgumentException"/>
+        /// for a count outside 1..<see cref="MaxCloneCount"/>, <see cref="InvalidOperationException"/> when the
+        /// source's blueprint has become stackable (stackable items get no instance).
+        /// </summary>
+        Task<ItemInstanceCloneResultDto> CloneAsync(long sourceId, int count, int? ownerUserId, int? actorUserId);
+
+        /// <summary>The most instances one clone call mints (a full stack of a stackable item).</summary>
+        public const int MaxCloneCount = 64;
     }
 }

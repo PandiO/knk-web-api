@@ -46,7 +46,8 @@ public class LootboxControllersAuthTests
                 action.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node)
                     .Should().Equal(new[] { StaffPermissions.ManageLootboxes }, name);
             }
-            else if (action.Name is nameof(LootboxSpawnAreasController.CreateInGame) or nameof(LootboxSpawnAreasController.DeleteInGame))
+            else if (action.Name is nameof(LootboxSpawnAreasController.CreateInGame) or nameof(LootboxSpawnAreasController.DeleteInGame)
+                     or nameof(ItemInstancesController.Clone)) // /knk item more (PandiO/knk-workspace#175)
             {
                 action.GetCustomAttribute<RequirePluginServiceAttribute>().Should().NotBeNull(name);
             }
