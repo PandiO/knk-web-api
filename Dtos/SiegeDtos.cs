@@ -357,6 +357,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("giveNavigationItem")] public bool GiveNavigationItem { get; set; }
         [JsonPropertyName("playerSkipMatchmakingSeconds")] public int PlayerSkipMatchmakingSeconds { get; set; }
         [JsonPropertyName("adminSkipMatchmakingSeconds")] public int AdminSkipMatchmakingSeconds { get; set; }
+        [JsonPropertyName("postMatchSeconds")] public int PostMatchSeconds { get; set; }
         [JsonPropertyName("updatedAt")] public DateTime UpdatedAt { get; set; }
     }
 
@@ -389,6 +390,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("giveNavigationItem")] public bool? GiveNavigationItem { get; set; }
         [JsonPropertyName("playerSkipMatchmakingSeconds")] public int? PlayerSkipMatchmakingSeconds { get; set; }
         [JsonPropertyName("adminSkipMatchmakingSeconds")] public int? AdminSkipMatchmakingSeconds { get; set; }
+        [JsonPropertyName("postMatchSeconds")] public int? PostMatchSeconds { get; set; }
     }
 
     // ---- Runtime config (GET /api/siege-lobbies/runtime-config, DESIGN §11.2) ----

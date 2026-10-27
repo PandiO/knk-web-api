@@ -26,6 +26,16 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// <summary>Newest first; each filter is optional. Includes lobby, scenario and participants.</summary>
         Task<List<SiegeMatch>> QueryAsync(int? userId, int? siegeLobbyId, SiegeMatchStatus? status, int limit);
 
+        /// <summary>
+        /// Alpha run 1 (PandiO/knk-workspace#174): a finished (Completed or Aborted) match for the public match page, with
+        /// its lobby, scenario teams (and their clans), objectives, participants (with users) and objective results
+        /// (with the capturers); untracked. Null when missing or not finished.
+        /// </summary>
+        Task<SiegeMatch?> GetFinishedAsync(int id);
+
+        /// <summary>#174: the user's finished matches, newest first, loaded like <see cref="GetFinishedAsync"/>; untracked.</summary>
+        Task<List<SiegeMatch>> GetFinishedForUserAsync(int userId, int limit);
+
         /// <summary>Ids of matches still Created or InProgress.</summary>
         Task<List<int>> GetUnfinishedIdsAsync();
 

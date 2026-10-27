@@ -54,6 +54,20 @@ public class SiegeConfigurationServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(new UpdateSiegeConfigurationDto { AdminSkipMatchmakingSeconds = -5 }));
     }
 
+    /// <summary>Alpha run 1 (PandiO/knk-workspace#198): the post-match wait at the hub, default 30 s, 0-600.</summary>
+    [Fact]
+    public async Task ThePostMatchSecondsDefaultTo30AndAreEditableFrom0To600()
+    {
+        Assert.Equal(30, (await _service.GetAsync()).PostMatchSeconds);
+
+        Assert.Equal(0, (await _service.UpdateAsync(new UpdateSiegeConfigurationDto { PostMatchSeconds = 0 })).PostMatchSeconds);
+        Assert.Equal(45, (await _service.UpdateAsync(new UpdateSiegeConfigurationDto { PostMatchSeconds = 45 })).PostMatchSeconds);
+        Assert.Equal(45, (await _service.UpdateAsync(new UpdateSiegeConfigurationDto { MaxBooksAlive = 12 })).PostMatchSeconds);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(new UpdateSiegeConfigurationDto { PostMatchSeconds = -1 }));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(new UpdateSiegeConfigurationDto { PostMatchSeconds = 601 }));
+    }
+
     [Fact]
     public async Task FirstRead_SeedsTheLegacyDefaults()
     {

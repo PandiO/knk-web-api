@@ -52,6 +52,9 @@ public class EndpointAccessRulesTests
         "StatisticsController.GetTitleHistory",
         "StatisticsController.GetDiscoveries",
         "PlayersController.GetByName",
+        // Public siege results log, viewer-filtered like the statistics (alpha run 1, PandiO/knk-workspace#174).
+        "SiegeMatchesController.PublicPlayerMatches",
+        "SiegeMatchesController.PublicMatch",
         // The sign-up pages check an invitation before login (KNG-212); auth rate limit.
         "InvitationsController.Check",
         // /link checks a claim code before login (KNG-214); lookup rate limit.

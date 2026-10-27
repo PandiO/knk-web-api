@@ -77,6 +77,32 @@ namespace knkwebapi_v2.Repositories
                 .ToListAsync();
         }
 
+        public async Task<SiegeMatch?> GetFinishedAsync(int id)
+        {
+            return await FinishedQuery().FirstOrDefaultAsync(m => m.Id == id);
+        }
+
+        public async Task<List<SiegeMatch>> GetFinishedForUserAsync(int userId, int limit)
+        {
+            return await FinishedQuery()
+                .Where(m => m.Participants.Any(p => p.UserId == userId))
+                .OrderByDescending(m => m.EndedAt ?? m.CreatedAt).ThenByDescending(m => m.Id)
+                .Take(limit)
+                .ToListAsync();
+        }
+
+        // #174: what the public match pages show.
+        private IQueryable<SiegeMatch> FinishedQuery() =>
+            _context.SiegeMatches
+                .Where(m => m.Status == SiegeMatchStatus.Completed || m.Status == SiegeMatchStatus.Aborted)
+                .Include(m => m.SiegeLobby)
+                .Include(m => m.SiegeScenario).ThenInclude(s => s.Teams).ThenInclude(t => t.Clan)
+                .Include(m => m.SiegeScenario).ThenInclude(s => s.Objectives)
+                .Include(m => m.Participants).ThenInclude(p => p.User)
+                .Include(m => m.ObjectiveResults).ThenInclude(r => r.CapturedByUser)
+                .AsSplitQuery()
+                .AsNoTracking();
+
         public async Task<List<int>> GetUnfinishedIdsAsync()
         {
             return await _context.SiegeMatches

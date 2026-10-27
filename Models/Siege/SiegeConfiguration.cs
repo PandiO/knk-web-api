@@ -48,6 +48,10 @@ public class SiegeConfiguration
     public int PlayerSkipMatchmakingSeconds { get; set; } = 60;
     public int AdminSkipMatchmakingSeconds { get; set; } = 31;
 
+    // Alpha run 1 (PandiO/knk-workspace#198): after a match that ended normally the members wait this long at the
+    // scenario hub with the result before they are restored (0 = restored at once, the behaviour before).
+    public int PostMatchSeconds { get; set; } = 30;
+
     // ---- Combat (§6.6–6.7) ----
     // Kill counts announced to the killer's team, and the streak above which streaks are announced.
     public string KillAnnouncementThresholds { get; set; } = "5,10,15";

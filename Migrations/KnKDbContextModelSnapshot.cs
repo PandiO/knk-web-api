@@ -5333,6 +5333,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("PlayerSkipMatchmakingSeconds")
                         .HasColumnType("int");
 
+                    b.Property<int>("PostMatchSeconds")
+                        .HasColumnType("int");
+
                     b.Property<double>("SideCaptureReduction")
                         .HasColumnType("double");
 
