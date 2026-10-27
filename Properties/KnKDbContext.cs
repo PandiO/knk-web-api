@@ -1610,6 +1610,7 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.HealthDisplayModeOverride).HasConversion<string>().HasMaxLength(50);
             entity.Property(e => e.GateNameDisplayModeOverride).HasConversion<string>().HasMaxLength(50);
             entity.Property(e => e.StatusDisplayModeOverride).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.DefaultPassThroughMethodOverride).HasConversion<string>().HasMaxLength(20);
 
             // Foreign key relationships
             entity.HasOne(g => g.IconMaterial)
@@ -1658,6 +1659,8 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.HealthDisplayMode).HasConversion<string>().HasMaxLength(50);
             entity.Property(e => e.OpenedState).HasConversion<string>().HasMaxLength(50);
             entity.Property(e => e.FaceDirection).HasConversion<string>().HasMaxLength(50);
+            // PandiO/knk-workspace#167
+            entity.Property(e => e.DefaultPassThroughMethod).HasConversion<string>().HasMaxLength(20);
             // GateNameDisplayMode/StatusDisplayMode intentionally NOT string-converted here,
             // matching the original GateStructure config (which never applied .HasConversion
             // <string>() to these two, unlike its other enums) - the migration's data backfill

@@ -177,6 +177,12 @@ namespace knkwebapi_v2.Services
             ApplyOverride(overridesDto.ClearOpenedStateOverride, overridesDto.OpenedStateOverride, v => existing.OpenedStateOverride = v);
             ApplyOverride(overridesDto.ClearAllowPassThroughOverride, overridesDto.AllowPassThroughOverride, v => existing.AllowPassThroughOverride = v);
             ApplyOverride(overridesDto.ClearPassThroughDurationSecondsOverride, overridesDto.PassThroughDurationSecondsOverride, v => existing.PassThroughDurationSecondsOverride = v);
+            // PandiO/knk-workspace#167: pass-through styles.
+            ApplyOverride(overridesDto.ClearAllowAnimatedPassThroughOverride, overridesDto.AllowAnimatedPassThroughOverride, v => existing.AllowAnimatedPassThroughOverride = v);
+            ApplyOverride(overridesDto.ClearAllowSnapPassThroughOverride, overridesDto.AllowSnapPassThroughOverride, v => existing.AllowSnapPassThroughOverride = v);
+            ApplyOverride(overridesDto.ClearAllowWalkPathPassThroughOverride, overridesDto.AllowWalkPathPassThroughOverride, v => existing.AllowWalkPathPassThroughOverride = v);
+            ApplyOverride(overridesDto.ClearAllowTeleportPassThroughOverride, overridesDto.AllowTeleportPassThroughOverride, v => existing.AllowTeleportPassThroughOverride = v);
+            ApplyOverride(overridesDto.ClearDefaultPassThroughMethodOverride, overridesDto.DefaultPassThroughMethodOverride, v => existing.DefaultPassThroughMethodOverride = v);
             ApplyOverride(overridesDto.ClearShowHealthDisplayOverride, overridesDto.ShowHealthDisplayOverride, v => existing.ShowHealthDisplayOverride = v);
             ApplyOverride(overridesDto.ClearHealthDisplayModeOverride, overridesDto.HealthDisplayModeOverride, v => existing.HealthDisplayModeOverride = v);
             ApplyOverride(overridesDto.ClearHealthDisplayYOffsetOverride, overridesDto.HealthDisplayYOffsetOverride, v => existing.HealthDisplayYOffsetOverride = v);

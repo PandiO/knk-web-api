@@ -46,6 +46,12 @@ public class GateStructure : Structure
     public GateDoorOpenState? OpenedStateOverride { get; set; }
     public bool? AllowPassThroughOverride { get; set; }
     public int? PassThroughDurationSecondsOverride { get; set; }
+    // PandiO/knk-workspace#167: per-style and default-style overrides of the doors' pass-through styles.
+    public bool? AllowAnimatedPassThroughOverride { get; set; }
+    public bool? AllowSnapPassThroughOverride { get; set; }
+    public bool? AllowWalkPathPassThroughOverride { get; set; }
+    public bool? AllowTeleportPassThroughOverride { get; set; }
+    public GatePassThroughMethod? DefaultPassThroughMethodOverride { get; set; }
     public bool? ShowHealthDisplayOverride { get; set; }
     public HealthDisplayMode? HealthDisplayModeOverride { get; set; }
     public int? HealthDisplayYOffsetOverride { get; set; }
