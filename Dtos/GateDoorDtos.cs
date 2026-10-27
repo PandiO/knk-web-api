@@ -215,6 +215,26 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("passThroughConditionsJson")]
         public string PassThroughConditionsJson { get; set; } = string.Empty;
 
+        // PandiO/knk-workspace#167: styles offered and the door's default style (null on write = the model default).
+        [JsonPropertyName("allowAnimatedPassThrough")]
+        [JsonConverter(typeof(NullableBoolConverter))]
+        public bool? AllowAnimatedPassThrough { get; set; }
+
+        [JsonPropertyName("allowSnapPassThrough")]
+        [JsonConverter(typeof(NullableBoolConverter))]
+        public bool? AllowSnapPassThrough { get; set; }
+
+        [JsonPropertyName("allowWalkPathPassThrough")]
+        [JsonConverter(typeof(NullableBoolConverter))]
+        public bool? AllowWalkPathPassThrough { get; set; }
+
+        [JsonPropertyName("allowTeleportPassThrough")]
+        [JsonConverter(typeof(NullableBoolConverter))]
+        public bool? AllowTeleportPassThrough { get; set; }
+
+        [JsonPropertyName("defaultPassThroughMethod")]
+        public GatePassThroughMethod? DefaultPassThroughMethod { get; set; }
+
         // === Display Position ===
         [JsonPropertyName("infoDisplayLocationId")]
         [JsonConverter(typeof(NullableIntConverter))]

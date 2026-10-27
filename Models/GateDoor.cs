@@ -172,6 +172,15 @@ public class GateDoor
     public bool AllowPassThrough { get; set; } = false;
     public int PassThroughDurationSeconds { get; set; } = 4;
 
+    // PandiO/knk-workspace#167: the pass-through styles this door offers and the one it uses when the player's own
+    // preference (User.GatePassThroughMethodDefault) isn't offered. Defaults = the styles players could pick before
+    // #167 (animated, walk-path, teleport), so existing doors behave as before; snap is new and off.
+    public bool AllowAnimatedPassThrough { get; set; } = true;
+    public bool AllowSnapPassThrough { get; set; } = false;
+    public bool AllowWalkPathPassThrough { get; set; } = true;
+    public bool AllowTeleportPassThrough { get; set; } = true;
+    public GatePassThroughMethod DefaultPassThroughMethod { get; set; } = GatePassThroughMethod.Default;
+
     [MaxLength(2000)]
     public string PassThroughConditionsJson { get; set; } = string.Empty;  // Complex conditions
 

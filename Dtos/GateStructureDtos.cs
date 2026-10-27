@@ -158,6 +158,22 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("passThroughDurationSecondsOverride")]
         public int? PassThroughDurationSecondsOverride { get; set; }
 
+        // PandiO/knk-workspace#167
+        [JsonPropertyName("allowAnimatedPassThroughOverride")]
+        public bool? AllowAnimatedPassThroughOverride { get; set; }
+
+        [JsonPropertyName("allowSnapPassThroughOverride")]
+        public bool? AllowSnapPassThroughOverride { get; set; }
+
+        [JsonPropertyName("allowWalkPathPassThroughOverride")]
+        public bool? AllowWalkPathPassThroughOverride { get; set; }
+
+        [JsonPropertyName("allowTeleportPassThroughOverride")]
+        public bool? AllowTeleportPassThroughOverride { get; set; }
+
+        [JsonPropertyName("defaultPassThroughMethodOverride")]
+        public GatePassThroughMethod? DefaultPassThroughMethodOverride { get; set; }
+
         [JsonPropertyName("showHealthDisplayOverride")]
         public bool? ShowHealthDisplayOverride { get; set; }
 
@@ -236,6 +252,32 @@ namespace knkwebapi_v2.Dtos
         public int? PassThroughDurationSecondsOverride { get; set; }
         [JsonPropertyName("clearPassThroughDurationSecondsOverride")]
         public bool ClearPassThroughDurationSecondsOverride { get; set; }
+
+        // PandiO/knk-workspace#167
+        [JsonPropertyName("allowAnimatedPassThroughOverride")]
+        public bool? AllowAnimatedPassThroughOverride { get; set; }
+        [JsonPropertyName("clearAllowAnimatedPassThroughOverride")]
+        public bool ClearAllowAnimatedPassThroughOverride { get; set; }
+
+        [JsonPropertyName("allowSnapPassThroughOverride")]
+        public bool? AllowSnapPassThroughOverride { get; set; }
+        [JsonPropertyName("clearAllowSnapPassThroughOverride")]
+        public bool ClearAllowSnapPassThroughOverride { get; set; }
+
+        [JsonPropertyName("allowWalkPathPassThroughOverride")]
+        public bool? AllowWalkPathPassThroughOverride { get; set; }
+        [JsonPropertyName("clearAllowWalkPathPassThroughOverride")]
+        public bool ClearAllowWalkPathPassThroughOverride { get; set; }
+
+        [JsonPropertyName("allowTeleportPassThroughOverride")]
+        public bool? AllowTeleportPassThroughOverride { get; set; }
+        [JsonPropertyName("clearAllowTeleportPassThroughOverride")]
+        public bool ClearAllowTeleportPassThroughOverride { get; set; }
+
+        [JsonPropertyName("defaultPassThroughMethodOverride")]
+        public GatePassThroughMethod? DefaultPassThroughMethodOverride { get; set; }
+        [JsonPropertyName("clearDefaultPassThroughMethodOverride")]
+        public bool ClearDefaultPassThroughMethodOverride { get; set; }
 
         [JsonPropertyName("showHealthDisplayOverride")]
         public bool? ShowHealthDisplayOverride { get; set; }
