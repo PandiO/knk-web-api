@@ -178,4 +178,81 @@ public class ItemInstanceServiceTests
         On(enchantment, nameof(ItemInstanceEnchantment.EnchantmentDefinitionId)).Should().Be(DeleteBehavior.Restrict);
         instance.FindProperty(nameof(ItemInstance.Id))!.ClrType.Should().Be(typeof(long));
     }
+    // ===== PandiO/knk-workspace#175: /knk item more mints copies through CloneAsync =====
+
+    private async Task<long> MintSwordAsync(ItemBlueprint sword, Grade legendary, EnchantmentDefinition sharpness, User owner)
+    {
+        await using var db = NewContext();
+        var instance = await Service(db).BuildAsync(sword, legendary.Id, owner.Id, ItemInstanceOrigin.Lootbox,
+            new[] { new ItemInstanceEnchantmentSpec(sharpness.Id, 4) }, "claim-9");
+        instance.CustomDisplayName = "&6Old Faithful";
+        db.ItemInstances.Add(instance);
+        await db.SaveChangesAsync();
+        return instance.Id;
+    }
+
+    [Fact]
+    public async Task CloneAsync_MintsCopiesWithTheirOwnIdsAndAuditsThem()
+    {
+        var (sword, _, legendary, sharpness, _, owner) = await SeedAsync();
+        var sourceId = await MintSwordAsync(sword, legendary, sharpness, owner);
+        var audit = new Mock<IAuditLogService>();
+
+        await using (var db = NewContext())
+        {
+            var result = await new ItemInstanceService(new ItemInstanceRepository(db), Mapper(), audit.Object)
+                .CloneAsync(sourceId, 3, null, 77);
+
+            result.SourceItemInstanceId.Should().Be(sourceId);
+            result.ItemInstanceIds.Should().HaveCount(3).And.OnlyHaveUniqueItems().And.NotContain(sourceId);
+        }
+
+        await using var read = NewContext();
+        var clones = await read.ItemInstances.Include(i => i.Enchantments).Where(i => i.Id != sourceId).ToListAsync();
+        clones.Should().HaveCount(3).And.AllSatisfy(c =>
+        {
+            (c.ItemBlueprintId, c.GradeId, c.OwnerUserId, c.Origin, c.OriginRef, c.OwnerCount, c.CustomDisplayName)
+                .Should().Be((sword.Id, legendary.Id, owner.Id, ItemInstanceOrigin.Admin, $"clone:{sourceId}", 1, "&6Old Faithful"));
+            c.Enchantments.Select(e => (e.EnchantmentDefinitionId, e.Level)).Should().Equal((sharpness.Id, 4));
+        });
+        audit.Verify(a => a.RecordAsync(77, owner.Id, AuditAction.ItemInstanceCloned, It.Is<string>(d => d.Contains($"\"sourceItemInstanceId\":{sourceId}"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task CloneAsync_GivesTheCopiesToTheNamedOwner()
+    {
+        var (sword, _, legendary, sharpness, _, owner) = await SeedAsync();
+        var sourceId = await MintSwordAsync(sword, legendary, sharpness, owner);
+        int bobId;
+        await using (var seed = NewContext())
+        {
+            var bob = new User { Username = "bob" };
+            seed.Users.Add(bob);
+            await seed.SaveChangesAsync();
+            bobId = bob.Id;
+        }
+
+        await using (var db = NewContext())
+        {
+            await Service(db).CloneAsync(sourceId, 1, bobId, null);
+        }
+
+        await using var read = NewContext();
+        (await read.ItemInstances.SingleAsync(i => i.Id != sourceId)).OwnerUserId.Should().Be(bobId);
+    }
+
+    [Fact]
+    public async Task CloneAsync_RefusesBadInput()
+    {
+        var (sword, _, legendary, sharpness, _, owner) = await SeedAsync();
+        var sourceId = await MintSwordAsync(sword, legendary, sharpness, owner);
+        await using var db = NewContext();
+        var service = Service(db);
+
+        await service.Awaiting(s => s.CloneAsync(sourceId + 1000, 1, null, null)).Should().ThrowAsync<KeyNotFoundException>();
+        await service.Awaiting(s => s.CloneAsync(sourceId, 1, 999_999, null)).Should().ThrowAsync<KeyNotFoundException>();
+        await service.Awaiting(s => s.CloneAsync(sourceId, 0, null, null)).Should().ThrowAsync<ArgumentException>();
+        await service.Awaiting(s => s.CloneAsync(sourceId, IItemInstanceService.MaxCloneCount + 1, null, null)).Should().ThrowAsync<ArgumentException>();
+        (await db.ItemInstances.CountAsync()).Should().Be(1, "nothing minted on a refusal");
+    }
 }

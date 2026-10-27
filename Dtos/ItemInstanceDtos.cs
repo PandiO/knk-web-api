@@ -51,6 +51,28 @@ namespace knkwebapi_v2.Dtos
         public List<ItemInstanceEnchantmentDto> Enchantments { get; set; } = new();
     }
 
+    /// <summary>POST /api/ItemInstances/{id}/clone (PandiO/knk-workspace#175, <c>/knk item more</c>).</summary>
+    public class ItemInstanceCloneRequestDto
+    {
+        /// <summary>How many new instances to mint, 1..64.</summary>
+        [JsonPropertyName("count")]
+        public int Count { get; set; } = 1;
+
+        /// <summary>The new instances' owner (the player receiving the copies); null keeps the source's owner.</summary>
+        [JsonPropertyName("ownerUserId")]
+        public int? OwnerUserId { get; set; }
+    }
+
+    public class ItemInstanceCloneResultDto
+    {
+        [JsonPropertyName("sourceItemInstanceId")]
+        public long SourceItemInstanceId { get; set; }
+
+        /// <summary>The new ids, one per copy, in mint order.</summary>
+        [JsonPropertyName("itemInstanceIds")]
+        public List<long> ItemInstanceIds { get; set; } = new();
+    }
+
     public class ItemInstanceEnchantmentDto
     {
         [JsonPropertyName("enchantmentDefinitionId")]

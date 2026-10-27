@@ -5,8 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace knkwebapi_v2.Repositories
 {
-    // Read side only: instances are minted by services inside the caller's own transaction
-    // (docs/specs/lootboxes/DESIGN.md §3.2), so there is no Add/Update/Delete here.
+    // Mostly read side: instances are minted by services inside the caller's own transaction
+    // (docs/specs/lootboxes/DESIGN.md §3.2). The one write is AddAndSaveAsync for /knk item more's clones
+    // (PandiO/knk-workspace#175), which have no other row to save with. No Update/Delete.
     public class ItemInstanceRepository : IItemInstanceRepository
     {
         private readonly KnKDbContext _context;
@@ -26,6 +27,17 @@ namespace knkwebapi_v2.Repositories
                     .ThenInclude(e => e.EnchantmentDefinition)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == id);
+        }
+
+        public Task<bool> UserExistsAsync(int userId)
+        {
+            return _context.Users.AnyAsync(u => u.Id == userId);
+        }
+
+        public async Task AddAndSaveAsync(IReadOnlyCollection<ItemInstance> instances)
+        {
+            _context.ItemInstances.AddRange(instances);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<HashSet<int>> GetExistingEnchantmentDefinitionIdsAsync(IEnumerable<int> definitionIds)
