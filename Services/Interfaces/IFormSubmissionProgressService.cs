@@ -11,7 +11,8 @@ namespace knkwebapi_v2.Services
             string entityTypeName, int? userId, string? propertyName = null, string? propertyValue = null);
         Task<IEnumerable<FormSubmissionProgressDto>> GetByUserIdAsync(int userId);
         Task<FormSubmissionProgressDto?> GetByIdAsync(int id);
-        Task<FormSubmissionProgressDto> SaveProgressAsync(FormSubmissionProgressDto progress);
+        /// <summary>Creates a draft owned by <paramref name="ownerUserId"/> (the caller, #186); the DTO's UserId is ignored.</summary>
+        Task<FormSubmissionProgressDto> SaveProgressAsync(FormSubmissionProgressDto progress, int ownerUserId);
         Task<FormSubmissionProgressDto> UpdateProgressAsync(int id, FormSubmissionProgressDto progress);
         Task DeleteAsync(int id);
     }
