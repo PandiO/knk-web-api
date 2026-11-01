@@ -229,6 +229,15 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IWorkflowService, WorkflowService>();
             services.AddScoped<IWorldTaskRepository, WorldTaskRepository>();
             services.AddScoped<IWorldTaskService, WorldTaskService>();
+            // PandiO/knk-workspace#180: lifetimes (section "WorldTasks", optional) and the 30 s sweep.
+            services.AddOptions<knkwebapi_v2.Configuration.WorldTaskOptions>();
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.WorldTaskOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.WorldTaskOptions.SectionName));
+            }
+            services.AddScoped<WorldTaskSweeper>();
+            services.AddHostedService<WorldTaskSweepService>();
             
             // DisplayConfiguration repositories
             services.AddScoped<IDisplayConfigurationRepository, DisplayConfigurationRepository>();

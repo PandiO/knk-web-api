@@ -118,6 +118,77 @@ namespace knkwebapi_v2.Repositories
             return await SearchAsync(query);
         }
 
+        public async Task<WorldTask?> GetOpenByLinkCodeAsync(string linkCode)
+        {
+            return await _context.WorldTasks
+                .Include(t => t.WorkflowSession)
+                .Where(t => t.LinkCode == linkCode && (t.Status == WorldTaskStatuses.Pending || t.Status == WorldTaskStatuses.InProgress))
+                .OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> IsLinkCodeInUseAsync(string linkCode)
+        {
+            return await _context.WorldTasks.AnyAsync(t => t.LinkCode == linkCode
+                && (t.Status == WorldTaskStatuses.Pending || t.Status == WorldTaskStatuses.InProgress));
+        }
+
+        public async Task<List<WorldTask>> ListInProgressByServerAsync(string serverId)
+        {
+            return await _context.WorldTasks
+                .Where(t => t.Status == WorldTaskStatuses.InProgress && t.ClaimedByServerId == serverId)
+                .OrderBy(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<WorldTask>> ListOpenBySessionAsync(int sessionId)
+        {
+            return await _context.WorldTasks
+                .Where(t => t.WorkflowSessionId == sessionId
+                    && (t.Status == WorldTaskStatuses.Pending || t.Status == WorldTaskStatuses.InProgress))
+                .OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<WorldTask>> ListByProgressAsync(int progressId)
+        {
+            return await _context.WorldTasks
+                .Where(t => t.FormSubmissionProgressId == progressId)
+                .OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<WorldTask>> ListOpenForFieldAsync(int sessionId, int? progressId, string? stepKey, string fieldName)
+        {
+            var q = _context.WorldTasks.Where(t => t.FieldName == fieldName
+                && (t.Status == WorldTaskStatuses.Pending || t.Status == WorldTaskStatuses.InProgress));
+            q = progressId != null
+                ? q.Where(t => t.FormSubmissionProgressId == progressId)
+                : q.Where(t => t.WorkflowSessionId == sessionId && t.StepKey == stepKey);
+            return await q.ToListAsync();
+        }
+
+        public async Task<FormSubmissionProgress?> GetProgressAsync(int progressId)
+        {
+            return await _context.FormSubmissionProgresses.FirstOrDefaultAsync(p => p.Id == progressId);
+        }
+
+        public async Task UpdateProgressAsync(FormSubmissionProgress progress)
+        {
+            _context.FormSubmissionProgresses.Update(progress);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<int?> FindUserIdByUuidAsync(string uuid)
+        {
+            var normalized = uuid.Trim();
+            var compact = normalized.Replace("-", string.Empty);
+            return await _context.Users
+                .Where(u => u.Uuid != null && (u.Uuid == normalized || u.Uuid == compact))
+                .Select(u => (int?)u.Id)
+                .FirstOrDefaultAsync();
+        }
+
         private static IQueryable<WorldTask> ApplySorting(IQueryable<WorldTask> q, string? sortBy, bool desc)
         {
             if (string.IsNullOrWhiteSpace(sortBy)) return desc ? q.OrderByDescending(t => t.CreatedAt) : q.OrderBy(t => t.CreatedAt);
