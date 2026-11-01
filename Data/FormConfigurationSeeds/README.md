@@ -23,7 +23,7 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 | `SiegeScenarioDistrict.join` | SiegeScenarioDistrict - Join Entry (seed v1) | — |
 | `SiegeScenarioGate.join` | SiegeScenarioGate - Join Entry (seed v1) | — |
 | `SiegeLobbyScenario.join` | SiegeLobbyScenario - Join Entry (seed v1) | — |
-| `SiegeScenario` | SiegeScenario - Default (seed v1) | `SiegeScenarioDistrict.join`, `SiegeScenarioGate.join` |
+| `SiegeScenario` | SiegeScenario - Default (seed v2) | `SiegeScenarioDistrict.join`, `SiegeScenarioGate.join` |
 | `SiegeTeam` | SiegeTeam - Default (seed v1) | — |
 | `SiegeSpawnpoint` | SiegeSpawnpoint - Default (seed v1) | `SiegeScenario` (location rule reads the scenario's Town) |
 | `SiegeObjective` | SiegeObjective - Default (seed v1) | `SiegeScenario` (same) |
@@ -67,6 +67,16 @@ every kept step/field uuid5(previous configuration GUID, its previous GUID), the
 configuration GUID, "step:Sub-regions"/"field:SubRegions"); `DomainSubRegion` uses uuid5(URL namespace,
 "knk-formconfig:DomainSubRegion:seed-v1") and uuid5(that, "step:"/"field:" + name). Design: knk-workspace
 `docs/specs/domain-subregions/DESIGN.md` §4.3.
+
+**SiegeScenario seed v2 (alpha test run 1, PandiO/knk-workspace#165/#166, 2026-10-27):** a new `configurationGuid`
+and name, so it imports next to the imported v1; make it the default. The Rewards step gets the gate damage reward
+(`GateDamageRewardStep`, `CoinRewardGateDamage`, `ExpRewardGateDamage`) and the participation reward
+(`CoinRewardParticipation`, `ExpRewardParticipation`, `ParticipationMinActivePercent`); needs the knk-web-api change of
+the same issues. The `SiegeObjective` and `SiegeSpawnpoint` seeds' location rules now depend on v2's Town field (their
+own GUIDs are unchanged, so a database that imported them already keeps its copies, whose rules still read v1's Town
+field: keep v1 while they do, or point those rules at v2's Town field in the form editor before deleting v1). GUIDs:
+configuration uuid5(v1 configuration GUID, "seed-v2"), every kept step/field uuid5(v1 configuration GUID, its v1 GUID),
+the new fields uuid5(v2 configuration GUID, "field:" + name).
 
 ## Priority 2 and 3 (KNG-139, 2026-10-19)
 

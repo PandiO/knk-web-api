@@ -25,6 +25,13 @@ public class SiegeMatchParticipant
     public int HighestKillStreak { get; set; }
     public int Captures { get; set; }
 
+    // Alpha run 1 (PandiO/knk-workspace#165/#166), reported by the plugin with "complete": the gate HP this member
+    // took off the scenario's gates (whole HP), and their active (not AFK) seconds out of their time in the match
+    // (first join to the end or their leave, rejoins included). Basis of the gate damage and participation rewards.
+    public int GateDamage { get; set; }
+    public int ActiveSeconds { get; set; }
+    public int MatchSeconds { get; set; }
+
     public int CoinsAwarded { get; set; }
     public int ExpAwarded { get; set; }
     public int GemsAwarded { get; set; }

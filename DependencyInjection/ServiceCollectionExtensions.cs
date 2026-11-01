@@ -217,6 +217,7 @@ namespace knkwebapi_v2.DependencyInjection
             // Siege Phase 6 — match lifecycle + server-side rewards
             services.AddScoped<ISiegeMatchRepository, SiegeMatchRepository>();
             services.AddScoped<ISiegeMatchService, SiegeMatchService>();
+            services.AddScoped<ISiegeMatchHistoryService, SiegeMatchHistoryService>(); // #174 public results log
             services.AddScoped<ISiegeMatchGateService, SiegeMatchGateService>();
             // Road navigation (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
             services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();

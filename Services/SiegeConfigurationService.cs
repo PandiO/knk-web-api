@@ -56,6 +56,7 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         config.GiveNavigationItem = dto.GiveNavigationItem ?? config.GiveNavigationItem;
         config.PlayerSkipMatchmakingSeconds = dto.PlayerSkipMatchmakingSeconds ?? config.PlayerSkipMatchmakingSeconds;
         config.AdminSkipMatchmakingSeconds = dto.AdminSkipMatchmakingSeconds ?? config.AdminSkipMatchmakingSeconds;
+        config.PostMatchSeconds = dto.PostMatchSeconds ?? config.PostMatchSeconds;
 
         if (dto.NonMemberGateView.HasValue)
         {
@@ -110,6 +111,9 @@ public class SiegeConfigurationService : ISiegeConfigurationService
             throw new ArgumentException("playerSkipMatchmakingSeconds must be between 1 and 86400 seconds.");
         if (c.AdminSkipMatchmakingSeconds < 1 || c.AdminSkipMatchmakingSeconds > 86400)
             throw new ArgumentException("adminSkipMatchmakingSeconds must be between 1 and 86400 seconds.");
+        // #198: 0 restores the members at once; more than 10 minutes at the hub is a typo.
+        if (c.PostMatchSeconds < 0 || c.PostMatchSeconds > 600)
+            throw new ArgumentException("postMatchSeconds must be between 0 and 600 seconds.");
 
         if (c.KillStreakAnnounceAbove < 0) throw new ArgumentException("killStreakAnnounceAbove can't be negative.");
         if (c.HeadshotMultiplier is < 1 or > 10) throw new ArgumentException("headshotMultiplier must be between 1.0 (off) and 10.");
@@ -199,6 +203,7 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         GiveNavigationItem = c.GiveNavigationItem,
         PlayerSkipMatchmakingSeconds = c.PlayerSkipMatchmakingSeconds,
         AdminSkipMatchmakingSeconds = c.AdminSkipMatchmakingSeconds,
+        PostMatchSeconds = c.PostMatchSeconds,
         UpdatedAt = DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc)
     };
 }

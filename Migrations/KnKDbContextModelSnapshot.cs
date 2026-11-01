@@ -5333,6 +5333,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("PlayerSkipMatchmakingSeconds")
                         .HasColumnType("int");
 
+                    b.Property<int>("PostMatchSeconds")
+                        .HasColumnType("int");
+
                     b.Property<double>("SideCaptureReduction")
                         .HasColumnType("double");
 
@@ -5550,6 +5553,9 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("ActiveSeconds")
+                        .HasColumnType("int");
+
                     b.Property<int>("Captures")
                         .HasColumnType("int");
 
@@ -5560,6 +5566,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("ExpAwarded")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GateDamage")
                         .HasColumnType("int");
 
                     b.Property<int>("GemsAwarded")
@@ -5576,6 +5585,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<DateTime?>("LeftAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<int>("MatchSeconds")
+                        .HasColumnType("int");
 
                     b.Property<int>("SiegeMatchId")
                         .HasColumnType("int");
@@ -5671,7 +5683,13 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("CoinRewardCapture")
                         .HasColumnType("int");
 
+                    b.Property<int>("CoinRewardGateDamage")
+                        .HasColumnType("int");
+
                     b.Property<int>("CoinRewardHolding")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CoinRewardParticipation")
                         .HasColumnType("int");
 
                     b.Property<int>("CoinRewardWin")
@@ -5687,10 +5705,19 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("ExpRewardCapture")
                         .HasColumnType("int");
 
+                    b.Property<int>("ExpRewardGateDamage")
+                        .HasColumnType("int");
+
                     b.Property<int>("ExpRewardHolding")
                         .HasColumnType("int");
 
+                    b.Property<int>("ExpRewardParticipation")
+                        .HasColumnType("int");
+
                     b.Property<int>("ExpRewardWin")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GateDamageRewardStep")
                         .HasColumnType("int");
 
                     b.Property<int>("GemRewardWin")
@@ -5723,6 +5750,9 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
+
+                    b.Property<int>("ParticipationMinActivePercent")
+                        .HasColumnType("int");
 
                     b.Property<int>("PlayersMax")
                         .HasColumnType("int");

@@ -46,6 +46,16 @@ namespace knkwebapi_v2.Dtos
         // stats. Their row keeps (or, when the "left" call was lost, gets) this LeftAt, so they are not
         // present at the end and get no reward. Omitted (null) for members present at the end.
         [JsonPropertyName("leftAt")] public DateTime? LeftAt { get; set; }
+        // Alpha run 1 (PandiO/knk-workspace#165): effective gate HP this member took off the scenario's gates
+        // (direct hits and their share of fire they lit). Pays CoinRewardGateDamage/ExpRewardGateDamage per full
+        // GateDamageRewardStep. Omitted (0) by older plugins.
+        [JsonPropertyName("gateDamage")] public double GateDamage { get; set; }
+        // #166: the member's active (not AFK) seconds in the match, and their match time window: from first joining
+        // the match to the end (or their leave), time away within the rejoin window included. The participation
+        // reward needs activeSeconds >= ParticipationMinActivePercent % of matchSeconds. Omitted (0) by older plugins:
+        // then only a 0 % requirement pays.
+        [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
+        [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
     }
 
     // One capture of an objective, or - with capturedByUserId/capturedAt null - its final holder when
@@ -96,6 +106,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("deaths")] public int Deaths { get; set; }
         [JsonPropertyName("highestKillStreak")] public int HighestKillStreak { get; set; }
         [JsonPropertyName("captures")] public int Captures { get; set; }
+        [JsonPropertyName("gateDamage")] public int GateDamage { get; set; }
+        [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
+        [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
         [JsonPropertyName("coinsAwarded")] public int CoinsAwarded { get; set; }
         [JsonPropertyName("expAwarded")] public int ExpAwarded { get; set; }
         [JsonPropertyName("gemsAwarded")] public int GemsAwarded { get; set; }
@@ -157,6 +170,13 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("holdingCount")] public int HoldingCount { get; set; }
         // Distinct objectives this player captured.
         [JsonPropertyName("captureCount")] public int CaptureCount { get; set; }
+        // #165: the gate HP this player took off the scenario's gates, and the full reward steps in it.
+        [JsonPropertyName("gateDamage")] public int GateDamage { get; set; }
+        [JsonPropertyName("gateDamageSteps")] public int GateDamageSteps { get; set; }
+        // #166: true when the participation reward was paid (active long enough); the seconds behind it.
+        [JsonPropertyName("participation")] public bool Participation { get; set; }
+        [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
+        [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
         // Granted coins: BaseCoins (DESIGN §7.6) times CoinMultiplier (personal salary multiplier x
         // rank/premium multiplier, smoke test 2026-09-26). A repeat call derives the multiplier from
         // the stored amount (rounded to 2 decimals).
@@ -182,6 +202,93 @@ namespace knkwebapi_v2.Dtos
         // True when this call found the match already completed and granted nothing.
         [JsonPropertyName("alreadyCompleted")] public bool AlreadyCompleted { get; set; }
         [JsonPropertyName("rewards")] public List<SiegeMatchRewardDto> Rewards { get; set; } = new();
+    }
+
+    // ---- Alpha run 1 (PandiO/knk-workspace#174): the public match pages ----
+    // Match facts (lobby, scenario, teams, who played on which side, objectives, the result) are public. A participant's
+    // own numbers follow their statistics visibility settings in the "siege" context (kills = pvp_kills, deaths,
+    // best streak = highest_killstreak, captures = objectives_captured, gate damage = gate_damage, coins/gems =
+    // economy): visible to the player themselves and staff (knk.admin.statistics.view), to other signed-in players
+    // when the setting is Everyone, never to anonymous visitors. Null = hidden. XP and active time are always
+    // public (like xp_gained and active playtime).
+
+    public class SiegeMatchPublicTeamDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
+        [JsonPropertyName("chatColor")] public string ChatColor { get; set; } = "WHITE";
+        [JsonPropertyName("role")] public SiegeTeamRole Role { get; set; }
+        [JsonPropertyName("allianceGroup")] public int AllianceGroup { get; set; }
+        // Win, Loss, Draw or Aborted.
+        [JsonPropertyName("outcome")] public string Outcome { get; set; } = string.Empty;
+    }
+
+    public class SiegeMatchPublicParticipantDto
+    {
+        [JsonPropertyName("userId")] public int UserId { get; set; }
+        [JsonPropertyName("username")] public string? Username { get; set; }
+        [JsonPropertyName("siegeTeamId")] public int? SiegeTeamId { get; set; }
+        // Win, Loss or Draw (the team's), Left for a member who left before the end, Aborted for an aborted match.
+        [JsonPropertyName("outcome")] public string Outcome { get; set; } = string.Empty;
+        [JsonPropertyName("presentAtEnd")] public bool PresentAtEnd { get; set; }
+        [JsonPropertyName("leftAt")] public DateTime? LeftAt { get; set; }
+        [JsonPropertyName("kills")] public int? Kills { get; set; }
+        [JsonPropertyName("deaths")] public int? Deaths { get; set; }
+        [JsonPropertyName("highestKillStreak")] public int? HighestKillStreak { get; set; }
+        [JsonPropertyName("captures")] public int? Captures { get; set; }
+        [JsonPropertyName("gateDamage")] public int? GateDamage { get; set; }
+        [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
+        [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
+        [JsonPropertyName("coinsAwarded")] public int? CoinsAwarded { get; set; }
+        [JsonPropertyName("gemsAwarded")] public int? GemsAwarded { get; set; }
+        [JsonPropertyName("expAwarded")] public int ExpAwarded { get; set; }
+    }
+
+    public class SiegeMatchPublicCaptureDto
+    {
+        [JsonPropertyName("siegeTeamId")] public int? SiegeTeamId { get; set; }
+        [JsonPropertyName("capturedByUserId")] public int? CapturedByUserId { get; set; }
+        [JsonPropertyName("capturedByUsername")] public string? CapturedByUsername { get; set; }
+        [JsonPropertyName("capturedAt")] public DateTime? CapturedAt { get; set; }
+    }
+
+    public class SiegeMatchPublicObjectiveDto
+    {
+        [JsonPropertyName("siegeObjectiveId")] public int? SiegeObjectiveId { get; set; }
+        [JsonPropertyName("name")] public string? Name { get; set; }
+        [JsonPropertyName("instantVictory")] public bool InstantVictory { get; set; }
+        [JsonPropertyName("finalHolderTeamId")] public int? FinalHolderTeamId { get; set; }
+        [JsonPropertyName("captures")] public List<SiegeMatchPublicCaptureDto> Captures { get; set; } = new();
+    }
+
+    public class SiegeMatchPublicDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("siegeLobbyName")] public string? SiegeLobbyName { get; set; }
+        [JsonPropertyName("siegeScenarioName")] public string? SiegeScenarioName { get; set; }
+        [JsonPropertyName("status")] public SiegeMatchStatus Status { get; set; }
+        [JsonPropertyName("startedAt")] public DateTime? StartedAt { get; set; }
+        [JsonPropertyName("endedAt")] public DateTime? EndedAt { get; set; }
+        [JsonPropertyName("endReason")] public SiegeMatchEndReason? EndReason { get; set; }
+        [JsonPropertyName("winningAllianceGroup")] public int? WinningAllianceGroup { get; set; }
+        [JsonPropertyName("teams")] public List<SiegeMatchPublicTeamDto> Teams { get; set; } = new();
+        [JsonPropertyName("participants")] public List<SiegeMatchPublicParticipantDto> Participants { get; set; } = new();
+        [JsonPropertyName("objectives")] public List<SiegeMatchPublicObjectiveDto> Objectives { get; set; } = new();
+    }
+
+    // One row of a player's match list: the match and that player's own row.
+    public class SiegeMatchPublicSummaryDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("siegeLobbyName")] public string? SiegeLobbyName { get; set; }
+        [JsonPropertyName("siegeScenarioName")] public string? SiegeScenarioName { get; set; }
+        [JsonPropertyName("status")] public SiegeMatchStatus Status { get; set; }
+        [JsonPropertyName("startedAt")] public DateTime? StartedAt { get; set; }
+        [JsonPropertyName("endedAt")] public DateTime? EndedAt { get; set; }
+        [JsonPropertyName("endReason")] public SiegeMatchEndReason? EndReason { get; set; }
+        [JsonPropertyName("participantCount")] public int ParticipantCount { get; set; }
+        [JsonPropertyName("team")] public SiegeMatchPublicTeamDto? Team { get; set; }
+        [JsonPropertyName("participant")] public SiegeMatchPublicParticipantDto Participant { get; set; } = new();
     }
 
     public class SiegeMatchAbortUnfinishedResultDto
