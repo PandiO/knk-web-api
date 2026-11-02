@@ -31,7 +31,7 @@ public class MenuItemTemplate
     public string? ChatColorName { get; set; }
     public string? ChatColorDescription { get; set; }
 
-    /// <summary>NORMAL/DISABLED/HIGHLIGHT/HIDDEN, per IMPLEMENTATION_PLAN.md.</summary>
+    /// <summary>NORMAL/DISABLED/HIGHLIGHT/HIDDEN, per IMPLEMENTATION_PLAN.md, and BLINK (PandiO/knk-workspace#49).</summary>
     public MenuDisplayMode DisplayMode { get; set; } = MenuDisplayMode.Normal;
 
     /// <summary>Render-time gate: should this item be visible at all.</summary>

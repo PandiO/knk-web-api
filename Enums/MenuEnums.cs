@@ -72,14 +72,23 @@ namespace knkwebapi_v2.Enums
     /// <summary>
     /// FR-2.4.1 Display Modes, using IMPLEMENTATION_PLAN.md's naming
     /// (NORMAL/DISABLED/HIGHLIGHT/HIDDEN) rather than the older requirements
-    /// doc's DISPLAY/HIDE/DISABLED/HIGHLIGHT.
+    /// doc's DISPLAY/HIDE/DISABLED/HIGHLIGHT. Blink (PandiO/knk-workspace#49,
+    /// KNG-125) is the plugin's BLINK: the item alternates with a yellow glass
+    /// pane every BlinkTicks ticks (a variable binding, default 10).
+    /// <para>
+    /// Stored as its name (<c>menu_item_templates.DisplayMode</c>, varchar(20),
+    /// see KnKDbContext) and sent as its name in the DTOs, so the plugin reads it
+    /// by name. Append new values at the end anyway, so the numeric values of the
+    /// existing ones never move.
+    /// </para>
     /// </summary>
     public enum MenuDisplayMode
     {
         Normal,
         Disabled,
         Highlight,
-        Hidden
+        Hidden,
+        Blink
     }
 
     /// <summary>
