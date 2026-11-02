@@ -58,16 +58,15 @@ namespace knkwebapi_v2.Services
             return entity == null ? null : _mapper.Map<FormSubmissionProgressDto>(entity);
         }
 
-        public async Task<FormSubmissionProgressDto> SaveProgressAsync(FormSubmissionProgressDto progress)
+        public async Task<FormSubmissionProgressDto> SaveProgressAsync(FormSubmissionProgressDto progress, int ownerUserId)
         {
             if (progress == null) throw new ArgumentNullException(nameof(progress));
-            if (string.IsNullOrWhiteSpace(progress.UserId)) throw new ArgumentException("UserId is required.", nameof(progress));
+            if (ownerUserId <= 0) throw new ArgumentException("The owner must be a valid user.", nameof(ownerUserId));
             if (string.IsNullOrWhiteSpace(progress.FormConfigurationId)) throw new ArgumentException("FormConfigurationId is required.", nameof(progress));
 
-            // Validate UserId can be parsed to int
-            if (!int.TryParse(progress.UserId, out var userId) || userId <= 0)
-                throw new ArgumentException("UserId must be a valid positive integer.", nameof(progress));
-            
+            // #186: the owner is the authenticated caller, never the value the client sent.
+            progress.UserId = ownerUserId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
             // Validate FormConfigurationId can be parsed to int
             if (!int.TryParse(progress.FormConfigurationId, out var configId) || configId <= 0)
                 throw new ArgumentException("FormConfigurationId must be a valid positive integer.", nameof(progress));

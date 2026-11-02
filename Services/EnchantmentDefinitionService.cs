@@ -43,6 +43,8 @@ namespace knkwebapi_v2.Services
             if (string.IsNullOrWhiteSpace(dto.DisplayName)) throw new ArgumentException("DisplayName is required.", nameof(dto));
 
             ValidateAbilityInvariant(dto.IsCustom, dto.AbilityDefinition);
+            ValidateCombatValues(dto.ProcChancePercent, dto.ProcChancePerLevelPercent, dto.CooldownSeconds,
+                dto.EffectDurationSeconds, dto.LevelMultiplier);
 
             // Ensure base enchantment ref exists
             var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, dto.IsCustom);
@@ -70,6 +72,8 @@ namespace knkwebapi_v2.Services
             if (existing == null) throw new KeyNotFoundException($"EnchantmentDefinition with id {id} not found.");
 
             ValidateAbilityInvariant(dto.IsCustom, dto.AbilityDefinition);
+            ValidateCombatValues(dto.ProcChancePercent, dto.ProcChancePerLevelPercent, dto.CooldownSeconds,
+                dto.EffectDurationSeconds, dto.LevelMultiplier);
 
             // Ensure base enchantment ref exists
             var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, dto.IsCustom, existing.MinecraftEnchantmentRefId);
@@ -81,6 +85,14 @@ namespace knkwebapi_v2.Services
             existing.IsCustom = dto.IsCustom;
             existing.MaxLevel = dto.MaxLevel;
             existing.MinecraftEnchantmentRefId = baseEnchantmentRefId;
+
+            // #151: only the combat values the request contained (a form without them keeps the stored ones).
+            if (dto.HasProcChancePercent) existing.ProcChancePercent = dto.ProcChancePercent;
+            if (dto.HasProcChancePerLevelPercent) existing.ProcChancePerLevelPercent = dto.ProcChancePerLevelPercent;
+            if (dto.HasCooldownEnabled) existing.CooldownEnabled = dto.CooldownEnabled;
+            if (dto.HasCooldownSeconds) existing.CooldownSeconds = dto.CooldownSeconds;
+            if (dto.HasEffectDurationSeconds) existing.EffectDurationSeconds = dto.EffectDurationSeconds;
+            if (dto.HasLevelMultiplier) existing.LevelMultiplier = dto.LevelMultiplier;
 
             if (!dto.IsCustom)
             {
@@ -167,6 +179,30 @@ namespace knkwebapi_v2.Services
 
             await _enchantmentRefRepo.AddAsync(newEnchRef);
             return newEnchRef.Id;
+        }
+
+        /// <summary>Upper bounds of the combat values (PandiO/knk-workspace#151); nulls are always allowed.</summary>
+        public const int MaxCooldownSeconds = 86_400;
+        public const double MaxEffectDurationSeconds = 3_600;
+        public const double MaxLevelMultiplier = 10;
+
+        /// <summary>
+        /// PandiO/knk-workspace#151: the combat values an admin may set on an enchantment. The chance per level may
+        /// be negative (a weaker higher level is the admin's call); the plugin caps the resulting chance to 0-100 %.
+        /// </summary>
+        public static void ValidateCombatValues(double? procChancePercent, double? procChancePerLevelPercent,
+            int? cooldownSeconds, double? effectDurationSeconds, double? levelMultiplier)
+        {
+            if (procChancePercent is < 0 or > 100 || (procChancePercent.HasValue && double.IsNaN(procChancePercent.Value)))
+                throw new ArgumentException("Proc chance must be between 0 and 100 percent.");
+            if (procChancePerLevelPercent is < -100 or > 100 || (procChancePerLevelPercent.HasValue && double.IsNaN(procChancePerLevelPercent.Value)))
+                throw new ArgumentException("Proc chance per level must be between -100 and 100 percentage points.");
+            if (cooldownSeconds is < 0 or > MaxCooldownSeconds)
+                throw new ArgumentException($"Cooldown must be between 0 and {MaxCooldownSeconds} seconds.");
+            if (effectDurationSeconds is < 0 or > MaxEffectDurationSeconds || (effectDurationSeconds.HasValue && double.IsNaN(effectDurationSeconds.Value)))
+                throw new ArgumentException($"Effect duration must be between 0 and {MaxEffectDurationSeconds} seconds.");
+            if (levelMultiplier is < 0 or > MaxLevelMultiplier || (levelMultiplier.HasValue && double.IsNaN(levelMultiplier.Value)))
+                throw new ArgumentException($"Level multiplier must be between 0 and {MaxLevelMultiplier}.");
         }
 
         private static void ValidateAbilityInvariant(bool isCustom, AbilityDefinitionUpsertDto? abilityDefinition)

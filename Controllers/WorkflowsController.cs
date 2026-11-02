@@ -2,6 +2,7 @@ using knkwebapi_v2.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Extensions;
 
 namespace KnKWebAPI.Controllers
 {
@@ -22,10 +23,23 @@ namespace KnKWebAPI.Controllers
         [HttpGet("health")] 
         public IActionResult Health() => Ok(new { status = "ok", component = "workflow" });
 
+        /// <summary>
+        /// #186: a logged-in caller owns the session it starts (the userId in the body is ignored).
+        /// Only the game server, which has no user of its own, names the owner in the body.
+        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] WorkflowSessionCreateDto dto)
         {
             if (dto == null) return BadRequest();
+            var callerId = User.GetUserId();
+            if (callerId != null)
+            {
+                dto.UserId = callerId.Value;
+            }
+            else if (dto.UserId <= 0)
+            {
+                return BadRequest(new { error = "userId is required when no user is logged in." });
+            }
             var created = await _service.StartSessionAsync(dto);
             return CreatedAtRoute("GetWorkflowById", new { id = created.Id }, created);
         }

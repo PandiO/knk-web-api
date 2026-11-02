@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.Statistics;
 
 namespace KnKWebAPI.Controllers
 {
@@ -19,11 +21,56 @@ namespace KnKWebAPI.Controllers
     {
         private readonly ISiegeMatchService _service;
         private readonly ISiegeMatchGateService? _gates;
+        private readonly ISiegeMatchHistoryService? _history;
+        private readonly IStatisticsViewerResolver? _viewers;
 
-        public SiegeMatchesController(ISiegeMatchService service, ISiegeMatchGateService? gates = null)
+        public SiegeMatchesController(ISiegeMatchService service, ISiegeMatchGateService? gates = null,
+            ISiegeMatchHistoryService? history = null, IStatisticsViewerResolver? viewers = null)
         {
             _service = service;
             _gates = gates;
+            _history = history;
+            _viewers = viewers;
+        }
+
+        // ===== Alpha run 1 (PandiO/knk-workspace#174): the public siege results log =====
+        // The history reads above need the plugin key or a login and show every number. The public profile and the match
+        // page are open to anyone (signed out too), so these two return finished matches only, with each participant's
+        // own numbers filtered by their statistics visibility settings (SiegeMatchHistoryService).
+
+        /// <summary>A player's finished matches, newest first (limit 1-50, default 20), filtered for the caller.</summary>
+        /// <response code="404">Unknown or inactive player</response>
+        // Public by design (#174, like the statistics reads): pinned in EndpointAccessRulesTests.
+        [AllowAnonymous]
+        [HttpGet("public/users/{userId:int}")]
+        [ProducesResponseType(typeof(List<SiegeMatchPublicSummaryDto>), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> PublicPlayerMatches(int userId, [FromQuery] int limit = 20)
+        {
+            if (_history == null || _viewers == null) return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            var viewer = await _viewers.ResolveAsync(HttpContext.GetKnkCaller(), userId);
+            var rows = await _history.GetPlayerMatchesAsync(userId, viewer, limit);
+            return rows == null
+                ? NotFound(new { error = "UserNotFound", message = $"User with ID {userId} not found" })
+                : Ok(rows);
+        }
+
+        /// <summary>One finished match for the public match page, filtered for the caller.</summary>
+        /// <response code="404">No such finished match (running ones aren't shown)</response>
+        // Public by design (#174): pinned in EndpointAccessRulesTests.
+        [AllowAnonymous]
+        [HttpGet("public/{id:int}")]
+        [ProducesResponseType(typeof(SiegeMatchPublicDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> PublicMatch(int id)
+        {
+            if (_history == null || _viewers == null) return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            // No target player: "self" is decided per participant (SiegeMatchHistoryService.CanSee).
+            var viewer = await _viewers.ResolveAsync(HttpContext.GetKnkCaller(), 0);
+            var match = await _history.GetMatchAsync(id, viewer);
+            return match == null
+                ? NotFound(new { error = "MatchNotFound", message = $"No finished siege match {id}." })
+                : Ok(match);
         }
 
         // History: newest first, optionally filtered (userId also returns that user's own row).

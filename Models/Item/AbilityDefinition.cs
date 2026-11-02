@@ -25,6 +25,7 @@ public class AbilityDefinition
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for full armor repair activation on use.",
                 PlayerUsage = "Right-click with the enchanted item to fully repair all equipped armor pieces.",
                 EffectSummary = "Repairs all armor to full durability. Cooldown: 120s.",
+                CombatDefaults = new(null, null, true, 120, null, null),
                 MatchAliases = new[] { "armorrepair", "armor_repair", "knk:armor_repair" }
             },
             new()
@@ -32,11 +33,12 @@ public class AbilityDefinition
                 EnchantmentKey = "blindness",
                 AbilityKey = "blindness",
                 MaxLevel = 3,
-                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"alwaysTrigger\":true,\"durationTicksPerLevel\":60,\"potion\":\"BLINDNESS\",\"amplifier\":0}",
+                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"potion\":\"BLINDNESS\",\"amplifier\":0}",
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
-                AdminUsage = "Attach to custom EnchantmentDefinition entries to apply guaranteed blindness on hit.",
-                PlayerUsage = "Hit enemies with the enchanted weapon to blind them.",
-                EffectSummary = "Applies Blindness I for level × 60 ticks on every hit.",
+                AdminUsage = "Attach to custom EnchantmentDefinition entries to blind the target on a share of hits.",
+                PlayerUsage = "Hit enemies with the enchanted weapon for a chance to blind them.",
+                EffectSummary = "Default: 20% chance at level I, +10 per level, to apply Blindness I for 2/3/4 s (levels I-III); 10 s cooldown per attacker.",
+                CombatDefaults = new(20, 10, true, 10, 2, 0.5),
                 MatchAliases = new[] { "blindness", "knk:blindness" }
             },
             new()
@@ -49,6 +51,7 @@ public class AbilityDefinition
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for AoE damage and knockback activation.",
                 PlayerUsage = "Right-click to release an area burst that damages and knocks back nearby entities.",
                 EffectSummary = "AoE burst: up to 40 damage in radius 3 and knockback in radius 5. Cooldown: 90s.",
+                CombatDefaults = new(null, null, true, 90, null, null),
                 MatchAliases = new[] { "chaos", "knk:chaos" }
             },
             new()
@@ -68,11 +71,12 @@ public class AbilityDefinition
                 EnchantmentKey = "confusion",
                 AbilityKey = "confusion",
                 MaxLevel = 3,
-                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"chancePerLevel\":0.15,\"durationTicksPerLevel\":60,\"potion\":\"NAUSEA\",\"amplifier\":2}",
+                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"potion\":\"NAUSEA\",\"amplifier\":2}",
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for chance-based confusion effects.",
                 PlayerUsage = "Hit enemies with the enchanted weapon for a chance to inflict nausea.",
-                EffectSummary = "15% chance per level to apply Nausea III for level × 60 ticks.",
+                EffectSummary = "Default: 10% chance at level I, +5 per level, to apply Nausea III for 3/4.5/6 s (levels I-III); 8 s cooldown per attacker.",
+                CombatDefaults = new(10, 5, true, 8, 3, 0.5),
                 MatchAliases = new[] { "confusion", "knk:confusion" }
             },
             new()
@@ -85,6 +89,7 @@ public class AbilityDefinition
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for high-impact AoE burst with debuffs.",
                 PlayerUsage = "Right-click to trigger a stronger chaos burst with debuffs on nearby players.",
                 EffectSummary = "AoE burst: up to 60 damage (radius 3), plus Slowness I and Nausea II to players in radius 5. Cooldown: 90s.",
+                CombatDefaults = new(null, null, true, 90, null, null),
                 MatchAliases = new[] { "flashchaos", "flash_chaos", "knk:flash_chaos" }
             },
             new()
@@ -92,11 +97,12 @@ public class AbilityDefinition
                 EnchantmentKey = "freeze",
                 AbilityKey = "freeze",
                 MaxLevel = 3,
-                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"chancePerLevel\":0.15,\"durationTicksPerLevel\":60,\"playersOnly\":true}",
+                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\"}",
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
                 AdminUsage = "Attach to custom EnchantmentDefinition entries to freeze player targets on successful trigger.",
                 PlayerUsage = "Hit player targets for a chance to immobilize them briefly.",
-                EffectSummary = "15% chance per level to freeze player targets for level × 60 ticks.",
+                EffectSummary = "Default: 10% chance at level I, +5 per level, to freeze the target for 1.5/2.25/3 s (levels I-III); then 20 s cooldown per attacker.",
+                CombatDefaults = new(10, 5, true, 20, 1.5, 0.5),
                 MatchAliases = new[] { "freeze", "knk:freeze" }
             },
             new()
@@ -109,6 +115,7 @@ public class AbilityDefinition
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for multi-tick self-healing bursts.",
                 PlayerUsage = "Right-click to trigger a short burst of repeated healing ticks.",
                 EffectSummary = "Heals in 6 pulses (every 5 ticks), scaling by level. Cooldown: 120s.",
+                CombatDefaults = new(null, null, true, 120, null, null),
                 MatchAliases = new[] { "healthboost", "health_boost", "knk:health_boost" }
             },
             new()
@@ -121,6 +128,7 @@ public class AbilityDefinition
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for temporary invisibility activation.",
                 PlayerUsage = "Right-click to become invisible for a short duration.",
                 EffectSummary = "Applies Invisibility for 200 ticks. Cooldown: 90s.",
+                CombatDefaults = new(null, null, true, 90, 10, 0),
                 MatchAliases = new[] { "invisibility", "knk:invisibility" }
             },
             new()
@@ -128,11 +136,12 @@ public class AbilityDefinition
                 EnchantmentKey = "poison",
                 AbilityKey = "poison",
                 MaxLevel = 3,
-                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"chancePerLevel\":0.15,\"durationTicksPerLevel\":60,\"potion\":\"POISON\",\"amplifier\":1}",
+                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"potion\":\"POISON\",\"amplifier\":1}",
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for chance-based poison attacks.",
                 PlayerUsage = "Hit enemies with the enchanted weapon for a chance to poison them.",
-                EffectSummary = "15% chance per level to apply Poison II for level × 60 ticks.",
+                EffectSummary = "Default: 10% chance at level I, +5 per level, to apply Poison II for 3/4.5/6 s (levels I-III); 8 s cooldown per attacker.",
+                CombatDefaults = new(10, 5, true, 8, 3, 0.5),
                 MatchAliases = new[] { "poison", "knk:poison" }
             },
             new()
@@ -145,6 +154,7 @@ public class AbilityDefinition
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for temporary resistance activation.",
                 PlayerUsage = "Right-click to gain temporary damage resistance.",
                 EffectSummary = "Applies Resistance for (level × 100 + 100) ticks. Cooldown: 120s.",
+                CombatDefaults = new(null, null, true, 120, 10, 0.5),
                 MatchAliases = new[] { "resistance", "knk:resistance" }
             },
             new()
@@ -157,6 +167,7 @@ public class AbilityDefinition
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for chance-based self-strength buff on hit.",
                 PlayerUsage = "Hit enemies for a chance to empower yourself with temporary strength.",
                 EffectSummary = "15% chance per level to apply Strength to attacker for 300 ticks. Cooldown: 120s.",
+                CombatDefaults = new(15, 15, true, 120, 15, 0),
                 MatchAliases = new[] { "strength", "knk:strength" }
             },
             new()
@@ -164,11 +175,12 @@ public class AbilityDefinition
                 EnchantmentKey = "wither",
                 AbilityKey = "wither",
                 MaxLevel = 3,
-                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"chancePerLevel\":0.15,\"durationTicksPerLevel\":40,\"potion\":\"WITHER\",\"amplifier\":1}",
+                RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"ON_HIT\",\"potion\":\"WITHER\",\"amplifier\":1}",
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for chance-based wither attacks.",
                 PlayerUsage = "Hit enemies with the enchanted weapon for a chance to inflict wither.",
-                EffectSummary = "15% chance per level to apply Wither II for level × 40 ticks.",
+                EffectSummary = "Default: 10% chance at level I, +5 per level, to apply Wither II for 2/3/4 s (levels I-III); 8 s cooldown per attacker.",
+                CombatDefaults = new(10, 5, true, 8, 2, 0.5),
                 MatchAliases = new[] { "wither", "knk:wither" }
             }
         });
@@ -207,6 +219,7 @@ public class AbilityDefinition
                     IsCustom = true,
                     MaxLevel = entry.MaxLevel
                 };
+                FillCombatDefaults(enchantment, entry);
 
                 await context.EnchantmentDefinitions.AddAsync(enchantment, cancellationToken);
                 enchantments.Add(enchantment);
@@ -244,6 +257,11 @@ public class AbilityDefinition
             if (enchantment.MaxLevel != entry.MaxLevel)
             {
                 enchantment.MaxLevel = entry.MaxLevel;
+                enchantmentChanged = true;
+            }
+
+            if (FillCombatDefaults(enchantment, entry))
+            {
                 enchantmentChanged = true;
             }
 
@@ -324,6 +342,53 @@ public class AbilityDefinition
             updatedEnchantments,
             created,
             updated);
+    }
+
+    /// <summary>
+    /// PandiO/knk-workspace#156: writes the entry's default combat values into the enchantment's empty columns. A value
+    /// an admin set (anything not null) stays; clearing a field in the web app resets it to the default on the next start.
+    /// </summary>
+    /// <returns>true when a column was filled</returns>
+    public static bool FillCombatDefaults(EnchantmentDefinition enchantment, AbilityCatalogEntry entry)
+    {
+        var defaults = entry.CombatDefaults;
+        if (defaults == null)
+        {
+            return false;
+        }
+
+        var changed = false;
+        if (enchantment.ProcChancePercent == null && defaults.ProcChancePercent != null)
+        {
+            enchantment.ProcChancePercent = defaults.ProcChancePercent;
+            changed = true;
+        }
+        if (enchantment.ProcChancePerLevelPercent == null && defaults.ProcChancePerLevelPercent != null)
+        {
+            enchantment.ProcChancePerLevelPercent = defaults.ProcChancePerLevelPercent;
+            changed = true;
+        }
+        if (enchantment.CooldownEnabled == null)
+        {
+            enchantment.CooldownEnabled = defaults.CooldownEnabled;
+            changed = true;
+        }
+        if (enchantment.CooldownSeconds == null)
+        {
+            enchantment.CooldownSeconds = defaults.CooldownSeconds;
+            changed = true;
+        }
+        if (enchantment.EffectDurationSeconds == null && defaults.EffectDurationSeconds != null)
+        {
+            enchantment.EffectDurationSeconds = defaults.EffectDurationSeconds;
+            changed = true;
+        }
+        if (enchantment.LevelMultiplier == null && defaults.LevelMultiplier != null)
+        {
+            enchantment.LevelMultiplier = defaults.LevelMultiplier;
+            changed = true;
+        }
+        return changed;
     }
 
     private static EnchantmentDefinition? ResolveEnchantment(
@@ -414,4 +479,20 @@ public sealed class AbilityCatalogEntry
     public string PlayerUsage { get; init; } = string.Empty;
     public string EffectSummary { get; init; } = string.Empty;
     public string[] MatchAliases { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// PandiO/knk-workspace#156: the default combat values of the enchantment (#151), written into its empty columns at
+    /// startup; values an admin set are never overwritten. Must match knk-plugin's built-in values
+    /// (<c>EnchantmentTuningTable</c>), which apply while the API can't be reached.
+    /// </summary>
+    public EnchantmentCombatDefaults? CombatDefaults { get; init; }
 }
+
+/// <summary>Default combat values of a canonical custom enchantment (PandiO/knk-workspace#151/#156); null = not used.</summary>
+public sealed record EnchantmentCombatDefaults(
+    double? ProcChancePercent,
+    double? ProcChancePerLevelPercent,
+    bool CooldownEnabled,
+    int CooldownSeconds,
+    double? EffectDurationSeconds,
+    double? LevelMultiplier);

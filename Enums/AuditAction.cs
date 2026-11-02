@@ -99,5 +99,13 @@ public enum AuditAction
     MinecraftUnlinked = 41,
 
     /// <summary>Staff admitted a player without an invitation (KNG-214).</summary>
-    PlayerAdmitted = 42
+    PlayerAdmitted = 42,
+
+    // Value 60 is allocated to closed-alpha test run 1, package I (43-59 left for the other P2/P3 packages).
+
+    /// <summary>
+    /// <c>/knk item more</c> copied an item that carries an ItemInstance id: new instances were minted from it
+    /// (PandiO/knk-workspace#175). Target = the new owner (else the actor); Details name the source and new ids.
+    /// </summary>
+    ItemInstanceCloned = 60
 }

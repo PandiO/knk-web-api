@@ -12,12 +12,21 @@ namespace knkwebapi_v2.Services
     /// CoinRewardHolding / ExpRewardHolding (any team, not only attackers - fixes v2's N4).</item>
     /// <item>Capture: per objective they personally captured, at most once per objective,
     /// CoinRewardCapture / ExpRewardCapture (recapture ping-pong can't farm rewards).</item>
+    /// <item>Gate damage (PandiO/knk-workspace#165): per full GateDamageRewardStep HP they took off the scenario's
+    /// gates, CoinRewardGateDamage / ExpRewardGateDamage (a step below 1 pays nothing).</item>
+    /// <item>Participation (PandiO/knk-workspace#166): CoinRewardParticipation / ExpRewardParticipation when they
+    /// were active (not AFK) for at least ParticipationMinActivePercent of their time in the match, as the plugin
+    /// reported it. Without a reported match time (0) only a 0 % requirement pays.</item>
     /// </list>
     /// Participants who left before the end get nothing. Negative configured amounts count as 0.
     /// </summary>
     public static class SiegeRewardCalculator
     {
-        public sealed record ParticipantInput(int UserId, int? TeamId, bool PresentAtEnd);
+        /// <param name="GateDamage">Gate HP the participant took off the scenario's gates (#165).</param>
+        /// <param name="ActiveSeconds">Their active (not AFK) seconds in the match (#166).</param>
+        /// <param name="MatchSeconds">Their time in the match: first join to the end, rejoins included (#166).</param>
+        public sealed record ParticipantInput(int UserId, int? TeamId, bool PresentAtEnd,
+            int GateDamage = 0, int ActiveSeconds = 0, int MatchSeconds = 0);
 
         /// <param name="CapturerUserIds">Everyone who captured this objective during the match.</param>
         public sealed record ObjectiveOutcome(int ObjectiveId, int? InitialHolderTeamId, int? FinalHolderTeamId, IReadOnlySet<int> CapturerUserIds);
@@ -33,7 +42,9 @@ namespace knkwebapi_v2.Services
             int CaptureCount,
             int Coins,
             int Experience,
-            int Gems);
+            int Gems,
+            int GateDamageSteps = 0,
+            bool Participation = false);
 
         /// <summary>
         /// Every objective of the scenario with its start and end holder. The start holder is the
@@ -100,7 +111,37 @@ namespace knkwebapi_v2.Services
                 + captures * NonNegative(scenario.ExpRewardCapture);
             var gems = won ? NonNegative(scenario.GemRewardWin) : 0;
 
-            return new Reward(participant.UserId, participant.TeamId, true, won, holding, captures, coins, experience, gems);
+            var gateDamageSteps = GateDamageSteps(participant.GateDamage, scenario.GateDamageRewardStep);
+            coins += gateDamageSteps * NonNegative(scenario.CoinRewardGateDamage);
+            experience += gateDamageSteps * NonNegative(scenario.ExpRewardGateDamage);
+
+            var participation = IsActiveEnough(participant.ActiveSeconds, participant.MatchSeconds, scenario.ParticipationMinActivePercent);
+            if (participation)
+            {
+                coins += NonNegative(scenario.CoinRewardParticipation);
+                experience += NonNegative(scenario.ExpRewardParticipation);
+            }
+
+            return new Reward(participant.UserId, participant.TeamId, true, won, holding, captures, coins, experience, gems,
+                gateDamageSteps, participation);
+        }
+
+        /// <summary>Full reward steps in <paramref name="gateDamage"/> HP; 0 when the step is below 1.</summary>
+        public static int GateDamageSteps(int gateDamage, int step) =>
+            step < 1 || gateDamage <= 0 ? 0 : gateDamage / step;
+
+        /// <summary>
+        /// The participation rule (#166): active seconds at least <paramref name="minActivePercent"/> (clamped to
+        /// 0-100) of the match seconds. A 0 % requirement always passes; otherwise a member without a reported
+        /// match time doesn't (an unknown activity is not paid).
+        /// </summary>
+        public static bool IsActiveEnough(int activeSeconds, int matchSeconds, int minActivePercent)
+        {
+            var percent = Math.Clamp(minActivePercent, 0, 100);
+            if (percent == 0) return true;
+            if (matchSeconds <= 0) return false;
+            var active = Math.Clamp(activeSeconds, 0, matchSeconds);
+            return (long)active * 100 >= (long)percent * matchSeconds;
         }
 
         private static int NonNegative(int value) => Math.Max(0, value);

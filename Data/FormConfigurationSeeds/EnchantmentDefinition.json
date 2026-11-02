@@ -1,28 +1,28 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "42bfe821-6e36-505c-ae00-237989dc583e",
+  "configurationGuid": "a4975cf7-5aa7-581a-8c69-2de7af22ab44",
   "entityTypeName": "EnchantmentDefinition",
-  "name": "EnchantmentDefinition - Default (seed v1)",
+  "name": "EnchantmentDefinition - Default (seed v2)",
   "description": "An enchantment the server knows: a vanilla Minecraft one or a custom Knights and Kings ability (Poison, Freeze, ...). Item blueprints, enchantment books and lootbox enchant rolls pick from these.",
   "steps": [
     {
-      "stepGuid": "e0bfff5b-84e6-58e2-93c7-0c485d958b89",
+      "stepGuid": "c2e62685-b237-56d8-9219-fddf8a73c76c",
       "stepName": "Enchantment",
       "description": "Choose vanilla or custom first. For a vanilla enchantment, pick it as the base and its key, name and max level are filled in for you.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "fec9ff19-6743-562e-a85c-81bb45bd9ebd",
+          "fieldGuid": "03c04a7c-3564-530f-a900-c10c353b5f6b",
           "fieldName": "IsCustom",
           "label": "Custom enchantment",
-          "description": "Tick for a Knights and Kings ability that the plugin adds itself (written into the item's lore); leave unticked for a vanilla Minecraft enchantment. Custom enchantments are not limited by the grade cap. The built-in abilities (Poison, Freeze, ...) get their code-defined name, description and max level back whenever the API starts.",
+          "description": "Tick for a Knights and Kings ability that the plugin adds itself (written into the item's lore); leave unticked for a vanilla Minecraft enchantment. Custom enchantments are not limited by the grade cap. The built-in abilities (Poison, Freeze, ...) get their code-defined name, description and max level back whenever the API starts; their combat values (next step) stay as you set them.",
           "fieldType": "Boolean",
           "defaultValue": "False",
           "isRequired": false,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "03d13d95-2cbe-5546-b96c-94e252b6b9f8",
+          "fieldGuid": "7fe8729f-b29b-54f5-a4c8-b7d02e556f3f",
           "fieldName": "MinecraftEnchantmentRefId",
           "label": "Vanilla enchantment",
           "description": "The Minecraft enchantment this entry stands for. Picking one fills in the key, display name and max level below when they are still empty. Only for vanilla enchantments.",
@@ -38,7 +38,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "fec9ff19-6743-562e-a85c-81bb45bd9ebd",
+                  "sourceFieldGuid": "03c04a7c-3564-530f-a900-c10c353b5f6b",
                   "operator": "NotEquals",
                   "valueJson": "true"
                 }
@@ -47,7 +47,7 @@
           ]
         },
         {
-          "fieldGuid": "57b3be6a-dfee-583b-b3ad-74b3ee39c963",
+          "fieldGuid": "4c386fec-740d-53f6-b2f1-3ccbd6b3393f",
           "fieldName": "Key",
           "label": "Key",
           "placeholder": "minecraft:sharpness",
@@ -57,7 +57,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "35e95f3c-3606-5f09-83f2-51385aa19ba4",
+          "fieldGuid": "f593385e-379c-55f5-8d4a-7c0bc7bf48de",
           "fieldName": "DisplayName",
           "label": "Display name",
           "description": "The name players see, e.g. on an enchantment book (\"Teaches: Sharpness III\") and in messages.",
@@ -66,7 +66,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "ca0962b8-1d72-5cb8-acdd-4d9d695816af",
+          "fieldGuid": "ea39825b-a142-5f53-9e65-b80c5a97dabd",
           "fieldName": "Description",
           "label": "Description",
           "description": "One line on what the enchantment does, for admins (custom ones: how a player uses it, e.g. \"Right-click to become invisible for a short duration.\").",
@@ -75,12 +75,93 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "f2888b29-edd5-50ad-9d81-f09d4251621d",
+          "fieldGuid": "936a966a-8996-5496-8897-2b0640f7d9fb",
           "fieldName": "MaxLevel",
           "label": "Max level",
           "description": "Highest level this enchantment can reach on an item; the grade cap divides this number. Vanilla: Minecraft's own maximum (Sharpness 5, Unbreaking 3).",
           "fieldType": "Integer",
           "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "409e61c5-0de7-5bb6-95ae-ac2596eaa8d0",
+      "stepName": "Combat values",
+      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the default: the API fills it in again at its next start, the plugin uses its built-in value until then. Cleaving ignores this step: its numbers are in the plugin's config.yml (gates.cleaving). At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration is the level-I duration x (1 + level multiplier x (n - 1)).",
+      "isManyToManyRelationship": false,
+      "displayConditionGroups": [
+        {
+          "innerLogic": "And",
+          "combineWithPreviousLogic": "And",
+          "isActive": true,
+          "conditions": [
+            {
+              "sourceFieldGuid": "03c04a7c-3564-530f-a900-c10c353b5f6b",
+              "operator": "Equals",
+              "valueJson": "true"
+            }
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "fieldGuid": "d84050eb-9ae7-51d5-a822-10d6d8bd1ca9",
+          "fieldName": "ProcChancePercent",
+          "label": "Chance at level I (%)",
+          "placeholder": "15",
+          "description": "Chance in percent (0-100) that a hit sets the effect off at level I. Only on-hit enchantments (Poison, Wither, Freeze, Blindness, Confusion, Strength) roll it; right-click abilities always go off.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "11898516-1fac-54b4-b6d3-21d8431c609b",
+          "fieldName": "ProcChancePerLevelPercent",
+          "label": "Chance per extra level (percentage points)",
+          "placeholder": "15",
+          "description": "Added to the chance for every level above I; may be negative. 15 with a level-I chance of 15 gives 15/30/45 % at levels I/II/III. The result is kept between 0 and 100 %.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c86196cb-579c-53e1-9cfc-e69aa38c564c",
+          "fieldName": "CooldownEnabled",
+          "label": "Cooldown",
+          "description": "On: after the effect goes off (or the ability is used), the same player can't set it off again until the cooldown has run out, on any target. Off: no cooldown, the length below is kept for later.",
+          "fieldType": "Boolean",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "03accf31-74ba-5758-92e6-e20379193ab9",
+          "fieldName": "CooldownSeconds",
+          "label": "Cooldown length (seconds)",
+          "placeholder": "20",
+          "description": "How long the player who set the effect off has to wait before it can go off again. Only used while Cooldown is on.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "bb8d1650-cd37-556a-9f25-30ed4bd3b9bd",
+          "fieldName": "EffectDurationSeconds",
+          "label": "Duration at level I (seconds)",
+          "placeholder": "3",
+          "description": "How long the effect lasts at level I, in seconds (0.05 = one game tick), e.g. how long a Freeze holds the target. Not used by abilities without a duration (Armor Repair, Health Boost, Chaos, Flash Chaos, Cleaving).",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "987bc8a0-d211-5b35-b71a-09ddda94731d",
+          "fieldName": "LevelMultiplier",
+          "label": "Level multiplier",
+          "placeholder": "1",
+          "description": "How much of the level-I duration every extra level adds: 1 = level II lasts twice, level III three times as long; 0.5 = 1.5x and 2x; 0 = the same at every level.",
+          "fieldType": "Decimal",
+          "isRequired": false,
           "isReadOnly": false
         }
       ]

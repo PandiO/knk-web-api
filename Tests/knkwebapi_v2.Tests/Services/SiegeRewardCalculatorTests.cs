@@ -231,4 +231,94 @@ public class SiegeRewardCalculatorTests
         Assert.Equal((false, 0, 1), (r.Won, r.HoldingCount, r.CaptureCount));
         Assert.Equal((50, 5, 0), (r.Coins, r.Experience, r.Gems));
     }
+
+    // ---- gate damage (PandiO/knk-workspace#165) and participation (#166); defaults: 10 coins / 1 XP per
+    // 100 HP, participation 25 coins / 3 XP at 75 % active ----
+
+    private static Reward Contribution(SiegeScenario s, int gateDamage, int active, int matchSeconds, bool present = true) =>
+        For(new ParticipantInput(7, 201, present, gateDamage, active, matchSeconds), s, null, Outcomes(s, Array.Empty<ObjectiveEntry>()));
+
+    [Fact]
+    public void GateDamage_PaysPerFullStep()
+    {
+        var s = TwoTeams();
+
+        var r = Contribution(s, gateDamage: 350, active: 0, matchSeconds: 0);
+
+        Assert.Equal(3, r.GateDamageSteps);
+        Assert.Equal((30, 3, 0), (r.Coins, r.Experience, r.Gems));
+        Assert.Equal(0, Contribution(s, gateDamage: 99, active: 0, matchSeconds: 0).Coins);
+    }
+
+    [Fact]
+    public void GateDamage_UsesTheScenarioStepAndAmounts_AStepBelowOnePaysNothing()
+    {
+        var s = TwoTeams();
+        s.GateDamageRewardStep = 50;
+        s.CoinRewardGateDamage = 4;
+        s.ExpRewardGateDamage = 2;
+        Assert.Equal((28, 14), (Contribution(s, 350, 0, 0).Coins, Contribution(s, 350, 0, 0).Experience));
+
+        s.GateDamageRewardStep = 0;
+        Assert.Equal((0, 0), (Contribution(s, 350, 0, 0).GateDamageSteps, Contribution(s, 350, 0, 0).Coins));
+    }
+
+    [Theory]
+    [InlineData(450, 600, true)]   // exactly 75 %
+    [InlineData(449, 600, false)]  // just below
+    [InlineData(600, 600, true)]
+    [InlineData(0, 600, false)]
+    [InlineData(0, 0, false)]      // no reported match time: not paid
+    public void Participation_NeedsTheMinimumActiveShare(int active, int matchSeconds, bool paid)
+    {
+        var r = Contribution(TwoTeams(), 0, active, matchSeconds);
+
+        Assert.Equal(paid, r.Participation);
+        Assert.Equal(paid ? (25, 3) : (0, 0), (r.Coins, r.Experience));
+    }
+
+    [Fact]
+    public void Participation_ConfigurablePercent_ZeroPaysEveryoneStillThere()
+    {
+        var s = TwoTeams();
+        s.ParticipationMinActivePercent = 50;
+        Assert.True(Contribution(s, 0, 300, 600).Participation);
+        Assert.False(Contribution(s, 0, 299, 600).Participation);
+
+        s.ParticipationMinActivePercent = 0;
+        Assert.True(Contribution(s, 0, 0, 0).Participation);
+        Assert.False(Contribution(s, 0, 600, 600, present: false).Participation); // leavers never
+    }
+
+    [Fact]
+    public void Leaver_GetsNoGateDamageOrParticipationReward()
+    {
+        var r = Contribution(TwoTeams(), gateDamage: 1000, active: 600, matchSeconds: 600, present: false);
+
+        Assert.Equal((0, 0, 0, false), (r.Coins, r.Experience, r.GateDamageSteps, r.Participation));
+    }
+
+    [Fact]
+    public void AllRewardKinds_AddUp()
+    {
+        var s = TwoTeams();
+        var entries = new[] { new ObjectiveEntry(502, 202, 2), new ObjectiveEntry(501, 202, 3) };
+
+        var r = For(new ParticipantInput(2, 202, true, GateDamage: 250, ActiveSeconds: 500, MatchSeconds: 600), s, 2, Outcomes(s, entries));
+
+        // win 100/10/1, holding 2 x 50/5, capture 50/5, gate damage 2 x 10/1, participation 25/3
+        Assert.Equal((100 + 100 + 50 + 20 + 25, 10 + 10 + 5 + 2 + 3, 1), (r.Coins, r.Experience, r.Gems));
+    }
+
+    [Fact]
+    public void NegativeContributionAmounts_CountAsZero()
+    {
+        var s = TwoTeams();
+        s.CoinRewardGateDamage = -10;
+        s.ExpRewardParticipation = -3;
+
+        var r = Contribution(s, 200, 600, 600);
+
+        Assert.Equal((25, 2), (r.Coins, r.Experience));
+    }
 }

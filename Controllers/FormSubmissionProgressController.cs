@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Extensions;
 
 namespace KnKWebAPI.Controllers
 {
@@ -32,31 +33,57 @@ namespace KnKWebAPI.Controllers
         /// included) saved for that specific structure. See
         /// FormSubmissionProgressRepository.GetByEntityTypeNameAsync for how the match works.
         /// </summary>
+        /// <remarks>
+        /// #186: <c>mine=true</c> lists only the caller's own drafts ("Saved Progress"). The
+        /// <c>userId</c> parameter is kept for older clients and means the same: it no longer
+        /// picks a user, the caller (from the JWT) is used whatever value is sent. Without either,
+        /// every staff member's rows are listed (the relationship-drafts view, which names the owner).
+        /// </remarks>
         [HttpGet("entity")]
         public async Task<IActionResult> GetByEntityTypeName(
             string entityTypeName, int? userId, bool? isSummary = false,
-            string? propertyName = null, string? propertyValue = null)
+            string? propertyName = null, string? propertyValue = null, bool? mine = null)
         {
             if (string.IsNullOrWhiteSpace(entityTypeName))
             {
                 return BadRequest("Entity type name is required.");
             }
+
+            int? ownerFilter = null;
+            if (mine == true || userId.HasValue)
+            {
+                var callerId = User.GetUserId();
+                if (callerId == null)
+                {
+                    return Ok(Array.Empty<FormSubmissionProgressSummaryDto>());
+                }
+                ownerFilter = callerId;
+            }
+
             if (isSummary == true)
             {
-                var summaries = await _service.GetSummaryByEntityTypeNameAsync(entityTypeName, userId, propertyName, propertyValue);
+                var summaries = await _service.GetSummaryByEntityTypeNameAsync(entityTypeName, ownerFilter, propertyName, propertyValue);
                 return Ok(summaries);
             }
             else
             {
-                var progresses = await _service.GetByEntityTypeNameAsync(entityTypeName, userId);
+                var progresses = await _service.GetByEntityTypeNameAsync(entityTypeName, ownerFilter);
                 return Ok(progresses);
             }
         }
 
+        /// <summary>
+        /// #186: the caller's own drafts. <c>userId</c> is ignored (kept so older clients still get an answer).
+        /// </summary>
         [HttpGet("user")]
-        public async Task<IActionResult> GetByUserId(int userId)
+        public async Task<IActionResult> GetByUserId(int? userId = null)
         {
-            var progresses = await _service.GetByUserIdAsync(userId);
+            var callerId = User.GetUserId();
+            if (callerId == null)
+            {
+                return Ok(Array.Empty<FormSubmissionProgressDto>());
+            }
+            var progresses = await _service.GetByUserIdAsync(callerId.Value);
             return Ok(progresses);
         }
 
@@ -78,9 +105,17 @@ namespace KnKWebAPI.Controllers
             }
 
             if (progressDto == null) return BadRequest("Request body is required.");
+
+            // #186: the draft belongs to the logged-in caller; a userId in the body is ignored.
+            var callerId = User.GetUserId();
+            if (callerId == null)
+            {
+                return Unauthorized(new { error = "Saving a draft needs a logged-in user." });
+            }
+
             try
             {
-                var created = await _service.SaveProgressAsync(progressDto);
+                var created = await _service.SaveProgressAsync(progressDto, callerId.Value);
                 return CreatedAtAction(nameof(GetById), new { id = int.Parse(created.Id!) }, created);
             }
             catch (ArgumentException ex)

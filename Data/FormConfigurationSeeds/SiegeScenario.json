@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "4daa6694-8c31-53d8-beea-0bbdb053efc5",
+  "configurationGuid": "e8fb39ed-63b0-518b-89ac-329b47766a2d",
   "entityTypeName": "SiegeScenario",
-  "name": "SiegeScenario - Default (seed v1)",
+  "name": "SiegeScenario - Default (seed v2)",
   "description": "A siege map and mode: town, districts, hub, entry rules, match length, rewards, teams, gates, objectives and readiness. Authored in several saves.",
   "steps": [
     {
-      "stepGuid": "fde7c86f-c8b1-5115-95bc-ffe216bc9d33",
+      "stepGuid": "e01fe3c1-715a-5d3b-a94f-c60f4bb86aa6",
       "stepName": "General",
       "description": "Name the scenario and pick the town under siege. A new scenario is saved when you Submit on the last step; teams, gates and objectives are added by editing it afterwards.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "0b56f523-83ca-556d-a763-d58eeb20f79e",
+          "fieldGuid": "286bbb13-fc07-52f5-a0a1-7268aeecb30f",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown to players when they vote, so make it recognisable (e.g. 'Cinix - North wall').",
@@ -21,7 +21,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "6494eff6-5dbd-5908-90dd-54351e270378",
+          "fieldGuid": "927888f8-e1ae-5474-a3a2-611ac5fe97f2",
           "fieldName": "Description",
           "label": "Description",
           "description": "Optional; a line for admins about what this scenario is for.",
@@ -30,7 +30,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "1e6f66e3-4d1c-5ba4-8568-7c4542fa244b",
+          "fieldGuid": "08d77fe4-c2d4-5c8a-a36b-8f3132a5be3b",
           "fieldName": "TownId",
           "label": "Town",
           "description": "The town under siege. Districts, gates and every point you capture must belong to it.",
@@ -42,7 +42,7 @@
       ]
     },
     {
-      "stepGuid": "e6102eb4-7916-5c36-952d-f5394ea6bde2",
+      "stepGuid": "302c1cf4-485c-5879-af6d-74acab13565b",
       "stepName": "Districts",
       "description": "The districts that form the siege area. Gates in these districts that are not picked on the Gates step are held open during a match. Add each with Create New Join Entry.",
       "isManyToManyRelationship": true,
@@ -55,7 +55,7 @@
       },
       "fields": [
         {
-          "fieldGuid": "dff018f0-39a5-54ea-a653-66e40ce5c362",
+          "fieldGuid": "012c785e-7449-5e56-8362-ac866819de77",
           "fieldName": "Districts",
           "label": "Districts",
           "description": "One entry per district of the town that is part of the siege.",
@@ -67,13 +67,13 @@
       ]
     },
     {
-      "stepGuid": "4556a462-4b87-5220-a6e5-fe4ede00058f",
+      "stepGuid": "0ca5d693-bdf2-5116-93e7-2ec6780efa1d",
       "stepName": "Hub and entry",
       "description": "Where players gather before the match, and who may join. Stand on the hub spot in game and use Send to Minecraft.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "21c01f5b-eec0-561f-99c4-d22b0c75a3cb",
+          "fieldGuid": "8bd1278e-24d7-5e2b-910c-4351952a843a",
           "fieldName": "HubLocationId",
           "label": "Hub location",
           "description": "Players are teleported here 15 seconds before the match starts; the scenario's gates lock down at that moment.",
@@ -84,7 +84,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "ce1584f4-7920-5600-a29b-85f0fdc19de2",
+          "fieldGuid": "bf735ebe-5371-59fd-8f5a-eddb857e329c",
           "fieldName": "PlayersMin",
           "label": "Minimum players",
           "description": "A match starts only with this many players; at least the number of teams.",
@@ -94,7 +94,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "fb29eea0-4d03-50f8-89e4-06782acf328d",
+          "fieldGuid": "a9c56041-ea91-5e1f-87c6-ba0f9b1be344",
           "fieldName": "PlayersMax",
           "label": "Maximum players",
           "description": "Joiners over this number are removed when this scenario is drawn (with a message).",
@@ -104,7 +104,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "d8af8007-f386-5865-a647-57e07410a658",
+          "fieldGuid": "9f2d954b-2b6d-586e-a4e6-6eaa1f239dc9",
           "fieldName": "MinTitleBracketId",
           "label": "Minimum title",
           "description": "Optional: players below this title can't join.",
@@ -114,7 +114,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "62a32003-333b-5767-a258-15d820a48d16",
+          "fieldGuid": "fbe279d1-c3c9-5cba-bea6-ac9a3fad8608",
           "fieldName": "AllowRecapture",
           "label": "Allow recapture",
           "description": "A captured objective can be taken back by the other side.",
@@ -124,7 +124,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "c734c462-982a-50ad-9403-283e791e7530",
+          "fieldGuid": "f6032148-bfab-5b10-877f-1a20a8b8519d",
           "fieldName": "EnchantDropsEnabled",
           "label": "Enchanted-book drops",
           "description": "Enchanted books drop now and then inside the objectives' capture radius; enchantments are removed after the match.",
@@ -134,7 +134,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "fde5a75a-c108-5c34-999b-e175b6c7fceb",
+          "fieldGuid": "ac4cc40c-a37a-5a48-97f7-b85052cd2d8b",
           "fieldName": "NavigationItem",
           "label": "Navigation compass",
           "description": "Whether players of this scenario get the navigation compass when they are teleported to the hub, before the match; it is removed with the inventory restore afterwards. Inherit: follow the global Siege configuration. Give / DoNotGive: decide for this scenario. A lobby's own choice wins over this one.",
@@ -147,13 +147,13 @@
       ]
     },
     {
-      "stepGuid": "1cceffdc-47e5-53c1-820f-07c44e0d6cc1",
+      "stepGuid": "e16b0811-cba4-59d3-8896-7ae94ae88e8b",
       "stepName": "Match length",
       "description": "Match length = players x seconds per player, kept between the minimum and the maximum.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "ee59b782-d520-5fad-902f-39557caf8d5d",
+          "fieldGuid": "32385679-2448-54cd-9517-73e34480c48c",
           "fieldName": "MatchDurationMinSeconds",
           "label": "Minimum (seconds)",
           "description": "Shortest match, however few players. Default 300 = 5 minutes.",
@@ -163,7 +163,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "824100b1-7b98-5372-8b2e-66503debc7ef",
+          "fieldGuid": "48692cfe-e9b4-5aa0-9655-d9c183def374",
           "fieldName": "MatchDurationPerPlayerSeconds",
           "label": "Per player (seconds)",
           "description": "Added to the match length for each player.",
@@ -173,7 +173,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "13d1ac09-b3b5-53e1-8b99-86cecd966552",
+          "fieldGuid": "c2fc6719-3e79-5d45-8a07-65accba77fb5",
           "fieldName": "MatchDurationMaxSeconds",
           "label": "Maximum (seconds)",
           "description": "Longest match, however many players. Default 1800 = 30 minutes.",
@@ -185,13 +185,13 @@
       ]
     },
     {
-      "stepGuid": "886afcaf-74a5-5ced-acb4-1672d709c81f",
+      "stepGuid": "1b11f69a-6575-56e7-9799-6a2e654fd7e6",
       "stepName": "Rewards",
-      "description": "What each participant still in the match at the end receives.",
+      "description": "What each participant still in the match at the end receives: win, holding and capture rewards, a gate damage reward for the HP they took off the scenario's gates, and a participation reward when they were active (not AFK) long enough. Members who leave before the end get nothing. Coins are multiplied by the player's personal and rank multipliers; XP and gems are not.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "d5ca96b3-7740-59c2-a805-439e52fd7bae",
+          "fieldGuid": "0325d4b0-ccd8-53c7-a945-9c031db0a2d7",
           "fieldName": "CoinRewardWin",
           "label": "Coins for a win",
           "description": "Each player on the winning side.",
@@ -201,7 +201,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "89e2fc27-5cf5-5eee-a86c-1c5d6bdfe573",
+          "fieldGuid": "41a04cde-242f-5f70-aeca-a86b8b44cd34",
           "fieldName": "ExpRewardWin",
           "label": "XP for a win",
           "description": "Each player on the winning side.",
@@ -211,7 +211,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "a824879f-7e03-5a9d-93e9-03c532603a0b",
+          "fieldGuid": "9d4b337e-507d-5e55-ad23-6fb1c202562a",
           "fieldName": "GemRewardWin",
           "label": "Gems for a win",
           "description": "Each player on the winning side.",
@@ -221,7 +221,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "f3b242a7-85eb-5cb3-9804-063d0acbc778",
+          "fieldGuid": "181b6014-ca2c-5153-975a-5353cc5620e2",
           "fieldName": "CoinRewardHolding",
           "label": "Coins for holding",
           "description": "Per objective the player's team holds at the end and did not hold at the start.",
@@ -231,7 +231,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "db84f75d-5a93-5f7e-bcef-56951ebfd3fe",
+          "fieldGuid": "3e4b5795-6cae-53d7-bbe8-184c5a073b81",
           "fieldName": "ExpRewardHolding",
           "label": "XP for holding",
           "description": "Per objective the player's team holds at the end and did not hold at the start.",
@@ -241,7 +241,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "4a014e6b-bdb1-514c-ad9c-a07894517898",
+          "fieldGuid": "3a556812-f4b5-5991-8803-413f6e3d1f28",
           "fieldName": "CoinRewardCapture",
           "label": "Coins for a capture",
           "description": "Per objective the player captured personally (once per objective).",
@@ -251,7 +251,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "a310a956-6585-542a-9565-137403a75db3",
+          "fieldGuid": "dfe754e6-ba78-5f51-986e-2d7135251c07",
           "fieldName": "ExpRewardCapture",
           "label": "XP for a capture",
           "description": "Per objective the player captured personally (once per objective).",
@@ -259,17 +259,77 @@
           "defaultValue": "5",
           "isRequired": true,
           "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0ae19620-e73b-5641-b8d7-89126b0e14f1",
+          "fieldName": "GateDamageRewardStep",
+          "label": "Gate damage per reward",
+          "description": "Gate HP a player must take off the scenario's gates for one gate damage reward. Direct hits and their share of fires they lit count. E.g. 100: a player who did 350 HP gets the reward 3 times.",
+          "fieldType": "Integer",
+          "defaultValue": "100",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b26e4bfe-ca96-542e-8c80-c5b3b5f4017c",
+          "fieldName": "CoinRewardGateDamage",
+          "label": "Coins per gate damage reward",
+          "description": "Coins per full 'Gate damage per reward' HP the player did. 0 turns the coins off.",
+          "fieldType": "Integer",
+          "defaultValue": "10",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f24f73fd-f7f7-58a3-a7c4-4ea3787adb3b",
+          "fieldName": "ExpRewardGateDamage",
+          "label": "XP per gate damage reward",
+          "description": "XP per full 'Gate damage per reward' HP the player did. 0 turns the XP off.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1bdd8368-37bb-565a-b390-2df54a9e6791",
+          "fieldName": "CoinRewardParticipation",
+          "label": "Coins for taking part",
+          "description": "Once per match for every player still there at the end who was active long enough (see the minimum active time).",
+          "fieldType": "Integer",
+          "defaultValue": "25",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3e8c089a-c70f-5065-8240-f3e966b78d65",
+          "fieldName": "ExpRewardParticipation",
+          "label": "XP for taking part",
+          "description": "Once per match, on the same condition as the coins for taking part.",
+          "fieldType": "Integer",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8a446ab7-9e77-55f0-8c57-f09485a9ddf8",
+          "fieldName": "ParticipationMinActivePercent",
+          "label": "Minimum active time (%)",
+          "description": "The share of their time in the match (from joining it to the end, time away within the rejoin window included) a player must have been active, not AFK, to get the participation reward. AFK is the server's AFK detection (idle for statistics.afk.idle-seconds, or /afk). 0 pays everyone still there at the end; 100 needs no AFK time at all.",
+          "fieldType": "Integer",
+          "defaultValue": "75",
+          "isRequired": true,
+          "isReadOnly": false
         }
       ]
     },
     {
-      "stepGuid": "b0ec5762-943b-5025-b276-6d7fbcd38d36",
+      "stepGuid": "34b7906a-efef-5601-86d2-1160dfbe0a3b",
       "stepName": "Teams",
       "description": "At least two teams in at least two alliance groups, one of them a Defender. Available once the scenario is saved; each team is saved when you finish its form.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "3c90c0ce-c950-5e01-b7c2-3273a2d6c748",
+          "fieldGuid": "ce354a07-53d5-5b4e-aac7-6979e1e0c223",
           "fieldName": "Teams",
           "label": "Teams",
           "description": "Create New opens the team form; add the team's spawnpoints there.",
@@ -283,7 +343,7 @@
       ]
     },
     {
-      "stepGuid": "2bb2c74f-0ea6-5695-84d6-0c1b3a4e9c8b",
+      "stepGuid": "292ed20c-fb28-51e9-a004-0d6c317f44aa",
       "stepName": "Gates",
       "description": "Gates that take part in the siege. Add teams first to pick a gate's owner. Gates are saved when you Submit the scenario: Submit before adding an objective on a newly picked gate.",
       "isManyToManyRelationship": true,
@@ -296,7 +356,7 @@
       },
       "fields": [
         {
-          "fieldGuid": "c45eb695-5d94-5a89-8d20-9d3f2ae9e96d",
+          "fieldGuid": "94f3a2be-cf75-5297-b807-75a0ba85a1dd",
           "fieldName": "Gates",
           "label": "Gates",
           "description": "One entry per gate, with its owner team and state at the start.",
@@ -308,13 +368,13 @@
       ]
     },
     {
-      "stepGuid": "6903827f-17c1-5952-8ba0-e34f1050dc74",
+      "stepGuid": "fd290120-3450-5542-a888-c15441cec684",
       "stepName": "Objectives",
       "description": "At least one objective, ideally one with Instant victory (the keep or town hall). An objective on a gate needs that gate saved on the Gates step first. Each objective is saved when you finish its form.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "1f3e7cb1-3b14-586b-9bd8-10afa3a48281",
+          "fieldGuid": "2abe4063-3d9f-5000-a432-876b30b8d87f",
           "fieldName": "Objectives",
           "label": "Objectives",
           "description": "Create New opens the objective form.",
@@ -328,13 +388,13 @@
       ]
     },
     {
-      "stepGuid": "2f1396ef-7b6f-5a47-b8d8-0af38516c9ff",
+      "stepGuid": "f832a5d3-a589-5f09-8ed8-af0e07a888b7",
       "stepName": "Readiness",
       "description": "Whether the scenario can be played. Fix every error and press Re-check; only ready scenarios are put up for voting by a lobby.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "e95cce52-92a8-530f-a4dd-3c1b6609b646",
+          "fieldGuid": "99b264f5-32ef-5277-a449-546e5263cc3f",
           "fieldName": "Id",
           "label": "Readiness",
           "description": "Errors block play; warnings don't.",
@@ -348,10 +408,10 @@
   ],
   "validationRules": [
     {
-      "fieldGuid": "21c01f5b-eec0-561f-99c4-d22b0c75a3cb",
+      "fieldGuid": "8bd1278e-24d7-5e2b-910c-4351952a843a",
       "validationType": "LocationInsideRegion",
       "dependsOn": {
-        "fieldGuid": "1e6f66e3-4d1c-5ba4-8568-7c4542fa244b"
+        "fieldGuid": "08d77fe4-c2d4-5c8a-a36b-8f3132a5be3b"
       },
       "dependencyPath": "Town.WgRegionId",
       "configJson": "{\"regionPropertyPath\": \"WgRegionId\", \"allowBoundary\": false}",
