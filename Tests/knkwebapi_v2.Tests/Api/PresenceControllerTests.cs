@@ -78,10 +78,12 @@ public class PresenceControllerTests
         }
 
         var list = (List<OnlineStaffDto>)((OkObjectResult)(await Controller(5).OnlineStaff()).Result!).Value!;
-
-        Assert.Equal(new[] { "Alice", "Bob" }, list.Select(s => s.Username)); // Carl lacks knk.tasks
+        // Alice (the caller) is not listed: hand off to someone else. Carl lacks knk.tasks.
+        Assert.Equal(new[] { "Bob" }, list.Select(s => s.Username));
+        var asCarl = (List<OnlineStaffDto>)((OkObjectResult)(await Controller(10).OnlineStaff()).Result!).Value!;
+        Assert.Equal(new[] { "Alice", "Bob" }, asCarl.Select(s => s.Username));
         Assert.All(list, s => Assert.Equal("survival-1", s.ServerId));
-        _permissions.Verify(p => p.CheckAsync(9, "knk.tasks"), Times.Once);
+        _permissions.Verify(p => p.CheckAsync(9, "knk.tasks"), Times.Exactly(2));
     }
 
     [Fact]

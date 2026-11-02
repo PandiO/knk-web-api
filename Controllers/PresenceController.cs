@@ -43,8 +43,8 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// The "Hand off to…" picker: online players who hold <paramref name="node"/> (default <c>knk.tasks</c>; also
-        /// <c>knk.admin.world</c>). Staff with <c>knk.admin.world</c> only (they create world tasks).
+        /// The "Hand off to…" picker: online players other than the caller who hold <paramref name="node"/> (default
+        /// <c>knk.tasks</c>; also <c>knk.admin.world</c>). Staff with <c>knk.admin.world</c> only (they create world tasks).
         /// </summary>
         [HttpGet("online-staff")]
         [RequirePermission(StaffPermissions.ManageWorld)]
@@ -67,8 +67,10 @@ namespace knkwebapi_v2.Controllers
                 .ToListAsync();
 
             var result = new List<OnlineStaffDto>();
+            var caller = User.GetUserId();
             foreach (var user in users.OrderBy(u => u.Username, StringComparer.OrdinalIgnoreCase))
             {
+                if (user.Id == caller) continue; // "Hand off to…" someone else; your own task is "Send to Minecraft"
                 var check = await _permissions.CheckAsync(user.Id, wanted);
                 if (check?.Allowed != true) continue;
                 var entry = byUuid[PresenceRegistry.NormalizeUuid(user.Uuid)];
