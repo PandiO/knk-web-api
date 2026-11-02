@@ -42,6 +42,16 @@ public class EnchantmentDefinition
     /// <summary>Share of the level-I duration added per level above I (1 = level x the level-I duration, 0 = the same at every level).</summary>
     public double? LevelMultiplier { get; set; }
 
+    // PandiO/knk-workspace#201: Flash Chaos puts two potion effects on its victims. Its Slowness uses
+    // EffectDurationSeconds above and the level below; its Nausea the second duration. Both durations grow with
+    // LevelMultiplier like any other. Other enchantments ignore these two.
+
+    /// <summary>Strength of the effect's potion as a level (1 = level I). Flash Chaos: its Slowness.</summary>
+    public int? EffectLevel { get; set; }
+
+    /// <summary>Duration at level I of a second effect, in seconds. Flash Chaos: its Nausea.</summary>
+    public double? SecondaryEffectDurationSeconds { get; set; }
+
     // Many-to-One: EnchantmentDefinition → MinecraftEnchantmentRef (base enchantment reference)
     [NavigationPair(nameof(BaseEnchantmentRef))]
     [RelatedEntityField(typeof(MinecraftEnchantmentRef))]

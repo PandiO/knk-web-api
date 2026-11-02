@@ -88,8 +88,9 @@ public class AbilityDefinition
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for high-impact AoE burst with debuffs.",
                 PlayerUsage = "Right-click to trigger a stronger chaos burst with debuffs on nearby players.",
-                EffectSummary = "AoE burst: up to 60 damage (radius 3), plus Slowness I and Nausea II to players in radius 5. Cooldown: 90s.",
-                CombatDefaults = new(null, null, true, 90, null, null),
+                EffectSummary = "AoE burst: up to 60 damage (radius 3), plus Slowness I (5s) and Nausea II (12.5s) to players in radius 5. Cooldown: 90s.",
+                // #201: Slowness = effect duration + effect level, Nausea = the second duration; same at every level.
+                CombatDefaults = new(null, null, true, 90, 5, 0, EffectLevel: 1, SecondaryEffectDurationSeconds: 12.5),
                 MatchAliases = new[] { "flashchaos", "flash_chaos", "knk:flash_chaos" }
             },
             new()
@@ -388,6 +389,16 @@ public class AbilityDefinition
             enchantment.LevelMultiplier = defaults.LevelMultiplier;
             changed = true;
         }
+        if (enchantment.EffectLevel == null && defaults.EffectLevel != null)
+        {
+            enchantment.EffectLevel = defaults.EffectLevel;
+            changed = true;
+        }
+        if (enchantment.SecondaryEffectDurationSeconds == null && defaults.SecondaryEffectDurationSeconds != null)
+        {
+            enchantment.SecondaryEffectDurationSeconds = defaults.SecondaryEffectDurationSeconds;
+            changed = true;
+        }
         return changed;
     }
 
@@ -495,4 +506,6 @@ public sealed record EnchantmentCombatDefaults(
     bool CooldownEnabled,
     int CooldownSeconds,
     double? EffectDurationSeconds,
-    double? LevelMultiplier);
+    double? LevelMultiplier,
+    int? EffectLevel = null,
+    double? SecondaryEffectDurationSeconds = null);
