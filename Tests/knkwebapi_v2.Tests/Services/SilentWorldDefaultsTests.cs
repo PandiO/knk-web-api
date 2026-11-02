@@ -12,9 +12,9 @@ using Xunit;
 namespace knkwebapi_v2.Tests.Services;
 
 /// <summary>
-/// KNG-118 (D8, D9): no silent world defaults. A District's new inline Location without a world is
-/// refused instead of stored with an empty world, and a Location task output without a world gives
-/// no Location instead of one in a world named "world".
+/// KNG-118 (D8): no silent world defaults. A District's new inline Location without a world is
+/// refused instead of stored with an empty world. (The D9 tests went with the unused
+/// WorkflowService.ExtractLocationDataFromTaskOutput, removed in PandiO/knk-workspace#147.)
 /// </summary>
 public class SilentWorldDefaultsTests
 {
@@ -80,22 +80,5 @@ public class SilentWorldDefaultsTests
 
         Assert.Equal("hub", stored.World);
         _locations.Verify(r => r.UpdateLocationAsync(stored), Times.Once);
-    }
-
-    [Theory]
-    [InlineData("{\"x\":1,\"y\":2,\"z\":3,\"World\":\"hub\"}", "hub")]
-    [InlineData("{\"x\":1,\"y\":2,\"z\":3,\"worldName\":\" gameplay \"}", "gameplay")]
-    [InlineData("{\"x\":1,\"y\":2,\"z\":3,\"world\":\"hub\"}", "hub")]
-    public void LocationTaskOutput_KeepsTheReportedWorld(string json, string expected)
-    {
-        Assert.Equal(expected, WorkflowService.ExtractLocationDataFromTaskOutput(json)!.World);
-    }
-
-    [Theory]
-    [InlineData("{\"x\":1,\"y\":2,\"z\":3}")]
-    [InlineData("{\"x\":1,\"y\":2,\"z\":3,\"worldName\":\"\"}")]
-    public void LocationTaskOutputWithoutAWorld_GivesNoLocation(string json)
-    {
-        Assert.Null(WorkflowService.ExtractLocationDataFromTaskOutput(json));
     }
 }

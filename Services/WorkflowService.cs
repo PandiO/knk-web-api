@@ -5,7 +5,6 @@ using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
-using System.Text.Json;
 
 namespace knkwebapi_v2.Services
 {
@@ -159,69 +158,6 @@ namespace knkwebapi_v2.Services
             await _workflowRepo.UpdateSessionAsync(session);
 
             return _mapper.Map<WorkflowSessionReadDto>(session);
-        }
-
-        /// <summary>
-        /// Extracts location data from a completed WorldTask's output JSON.
-        /// This is a helper for entity services to use when creating/updating parent entities.
-        /// NOTE: Does NOT create Location entities - that responsibility belongs to the entity service
-        /// that is creating/updating the parent entity (Town, District, Structure, etc.)
-        /// </summary>
-        /// <param name="taskOutputJson">The WorldTask.OutputJson string containing location data</param>
-        /// <returns>LocationDto with extracted data, or null if parsing fails or the output names no world
-        /// (KNG-118 D9: a missing world is refused, never silently "world")</returns>
-        public static LocationDto? ExtractLocationDataFromTaskOutput(string? taskOutputJson)
-        {
-            if (string.IsNullOrEmpty(taskOutputJson))
-                return null;
-
-            try
-            {
-                // Safe to use taskOutputJson now - it's not null or empty
-                using var doc = JsonDocument.Parse(taskOutputJson!);
-                var root = doc.RootElement;
-
-                // Extract location data
-                double x = 0, y = 0, z = 0;
-                float yaw = 0, pitch = 0;
-                string? worldName = null;
-
-                if (root.TryGetProperty("x", out var xProp)) x = xProp.GetDouble();
-                if (root.TryGetProperty("y", out var yProp)) y = yProp.GetDouble();
-                if (root.TryGetProperty("z", out var zProp)) z = zProp.GetDouble();
-                if (root.TryGetProperty("yaw", out var yawProp)) yaw = yawProp.GetSingle();
-                if (root.TryGetProperty("pitch", out var pitchProp)) pitch = pitchProp.GetSingle();
-                // The plugin's Location task writes "World"; older outputs used "worldName". Any casing.
-                foreach (var property in root.EnumerateObject())
-                {
-                    if ((property.Name.Equals("world", StringComparison.OrdinalIgnoreCase)
-                         || property.Name.Equals("worldName", StringComparison.OrdinalIgnoreCase))
-                        && property.Value.ValueKind == JsonValueKind.String
-                        && !string.IsNullOrWhiteSpace(property.Value.GetString()))
-                    {
-                        worldName = property.Value.GetString()!.Trim();
-                        break;
-                    }
-                }
-                if (worldName == null) return null;
-
-                // Return LocationDto with extracted data
-                return new LocationDto
-                {
-                    Name = "Location",
-                    X = x,
-                    Y = y,
-                    Z = z,
-                    Yaw = yaw,
-                    Pitch = pitch,
-                    World = worldName
-                };
-            }
-            catch (JsonException ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to extract location data from task output: {ex.Message}");
-                return null;
-            }
         }
 
         private static bool IsDuplicateStepKeyException(DbUpdateException ex) =>
