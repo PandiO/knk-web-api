@@ -19,7 +19,7 @@ public class InMemoryClientActivityStore : IClientActivityStore
         public RequestInfo? LastRequest { get; set; }
 
         /// <summary>When this client was last seen.</summary>
-        public DateTime LastSeenUtc { get; set; } = DateTime.UtcNow;
+        public DateTime LastSeenUtc { get; set; }
 
         /// <summary>Rolling 60-minute window buckets (one per minute).</summary>
         public RollingWindowBucket?[] Buckets { get; set; } = new RollingWindowBucket?[60];
@@ -43,13 +43,19 @@ public class InMemoryClientActivityStore : IClientActivityStore
     private readonly TimeSpan _cleanupInterval;
 
     /// <summary>Timestamp of last cleanup operation.</summary>
-    private DateTime _lastCleanupUtc = DateTime.UtcNow;
+    private DateTime _lastCleanupUtc;
 
-    public InMemoryClientActivityStore(int maxClients = 1000, TimeSpan? cleanupInterval = null)
+    private readonly TimeProvider _time;
+
+    public InMemoryClientActivityStore(int maxClients = 1000, TimeSpan? cleanupInterval = null, TimeProvider? time = null)
     {
         _maxClients = maxClients;
         _cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(10);
+        _time = time ?? TimeProvider.System;
+        _lastCleanupUtc = UtcNow;
     }
+
+    private DateTime UtcNow => _time.GetUtcNow().UtcDateTime;
 
     public void RecordRequest(ClientInfo client, RequestInfo request)
     {
@@ -61,73 +67,32 @@ public class InMemoryClientActivityStore : IClientActivityStore
         // Trigger cleanup if needed.
         TriggerCleanupIfNeeded();
 
-        var entry = _clients.AddOrUpdate(key,
-            _ => new ClientActivityEntry
-            {
-                Client = client,
-                LastRequest = request,
-                LastSeenUtc = DateTime.UtcNow,
-            },
-            (_, existingEntry) =>
-            {
-                lock (existingEntry.Lock)
-                {
-                    // Update last request and last seen.
-                    existingEntry.LastRequest = request;
-                    existingEntry.LastSeenUtc = DateTime.UtcNow;
-
-                    // Update rolling window bucket.
-                    var minuteIndex = DateTime.UtcNow.Minute;
-                    var bucket = existingEntry.Buckets[minuteIndex];
-                    
-                    if (bucket == null || bucket.MinuteIndex != minuteIndex)
-                    {
-                        // Create new bucket for this minute.
-                        bucket = new RollingWindowBucket
-                        {
-                            MinuteIndex = minuteIndex,
-                            BucketStartUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 
-                                DateTime.UtcNow.Day, DateTime.UtcNow.Hour, minuteIndex, 0, 0, DateTimeKind.Utc)
-                        };
-                        existingEntry.Buckets[minuteIndex] = bucket;
-                    }
-
-                    bucket.RecordRequest(request);
-                }
-
-                return existingEntry;
-            });
-
-        // Ensure first insertion also updates the bucket.
-        if (!_clients.TryGetValue(key, out var existing) || existing == entry)
+        // One bucket update per request (PandiO/knk-workspace#99: the old AddOrUpdate path recorded every request
+        // after a client's first twice). A slot is reused only within its own minute; an hour later the same slot
+        // starts a new bucket instead of adding to the old one.
+        var now = UtcNow;
+        var entry = _clients.GetOrAdd(key, _ => new ClientActivityEntry { Client = client, LastSeenUtc = now });
+        lock (entry.Lock)
         {
-            lock (entry.Lock)
-            {
-                var minuteIndex = DateTime.UtcNow.Minute;
-                var bucket = entry.Buckets[minuteIndex];
-                
-                if (bucket == null || bucket.MinuteIndex != minuteIndex)
-                {
-                    bucket = new RollingWindowBucket
-                    {
-                        MinuteIndex = minuteIndex,
-                        BucketStartUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month,
-                            DateTime.UtcNow.Day, DateTime.UtcNow.Hour, minuteIndex, 0, 0, DateTimeKind.Utc)
-                    };
-                    entry.Buckets[minuteIndex] = bucket;
-                }
+            entry.LastRequest = request;
+            entry.LastSeenUtc = now;
 
-                if (entry.LastRequest == request) // Only record if we just set it above.
-                {
-                    bucket.RecordRequest(request);
-                }
+            var minuteIndex = now.Minute;
+            var minuteStart = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
+            var bucket = entry.Buckets[minuteIndex];
+            if (bucket == null || bucket.BucketStartUtc != minuteStart)
+            {
+                bucket = new RollingWindowBucket { MinuteIndex = minuteIndex, BucketStartUtc = minuteStart };
+                entry.Buckets[minuteIndex] = bucket;
             }
+
+            bucket.RecordRequest(request);
         }
     }
 
     public IReadOnlyList<ClientSnapshot> GetClients(TimeSpan activeWithin)
     {
-        var threshold = DateTime.UtcNow.Subtract(activeWithin);
+        var threshold = UtcNow.Subtract(activeWithin);
         var results = new List<ClientSnapshot>();
 
         foreach (var kvp in _clients)
@@ -175,7 +140,7 @@ public class InMemoryClientActivityStore : IClientActivityStore
 
     public int Cleanup(TimeSpan inactiveOlderThan)
     {
-        var threshold = DateTime.UtcNow.Subtract(inactiveOlderThan);
+        var threshold = UtcNow.Subtract(inactiveOlderThan);
         var keysToRemove = new List<string>();
 
         foreach (var kvp in _clients)
@@ -203,7 +168,7 @@ public class InMemoryClientActivityStore : IClientActivityStore
     /// </summary>
     private void TriggerCleanupIfNeeded()
     {
-        var now = DateTime.UtcNow;
+        var now = UtcNow;
         if (now - _lastCleanupUtc > _cleanupInterval && _clients.Count > _maxClients)
         {
             _lastCleanupUtc = now;
@@ -213,9 +178,10 @@ public class InMemoryClientActivityStore : IClientActivityStore
     }
 
     /// <summary>
-    /// Creates a snapshot from an entry. Assumes caller holds the lock.
+    /// Creates a snapshot from an entry. Assumes caller holds the lock. Buckets from before the last 60 minutes
+    /// (a client that went quiet) are left out, so the Last60Min totals cover the last 60 minutes only.
     /// </summary>
-    private static ClientSnapshot SnapshotFromEntry(ClientActivityEntry entry)
+    private ClientSnapshot SnapshotFromEntry(ClientActivityEntry entry)
     {
         var snapshot = new ClientSnapshot
         {
@@ -225,8 +191,15 @@ public class InMemoryClientActivityStore : IClientActivityStore
             BucketsLast60Minutes = new RollingWindowBucket?[60],
         };
 
-        // Copy buckets array.
-        Array.Copy(entry.Buckets, snapshot.BucketsLast60Minutes, 60);
+        var windowStart = UtcNow.AddMinutes(-60);
+        for (var i = 0; i < 60; i++)
+        {
+            var bucket = entry.Buckets[i];
+            if (bucket != null && bucket.BucketStartUtc > windowStart)
+            {
+                snapshot.BucketsLast60Minutes[i] = bucket;
+            }
+        }
 
         return snapshot;
     }
