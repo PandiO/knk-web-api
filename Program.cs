@@ -71,7 +71,9 @@ builder.Services.AddDbContext<KnKDbContext>((serviceProvider, options) =>
     options.UseMySql(connectionString, mySqlServerVersion.Version)
         .AddInterceptors(serviceProvider.GetRequiredService<knkwebapi_v2.Services.Telemetry.DbCommandMetricsInterceptor>(),
             // Realtime S2 (#179): events raised inside a transaction are sent when it commits.
-            serviceProvider.GetRequiredService<knkwebapi_v2.Realtime.RealtimeTransactionEvents>()));
+            serviceProvider.GetRequiredService<knkwebapi_v2.Realtime.RealtimeTransactionEvents>(),
+            // Realtime S3 (#182): EntityChanged and the configuration events from every save, after it succeeded.
+            serviceProvider.GetRequiredService<knkwebapi_v2.Realtime.RealtimeEntityChangeInterceptor>()));
 
 builder.Services.Configure<knkwebapi_v2.Configuration.SecuritySettings>(builder.Configuration.GetSection("Security"));
 

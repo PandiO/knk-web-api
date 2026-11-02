@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Realtime.Contracts;
 using knkwebapi_v2.Realtime.Presence;
 using knkwebapi_v2.Services.Interfaces;
@@ -11,7 +12,7 @@ namespace knkwebapi_v2.Realtime.Hubs;
 /// <c>/api/hubs/game</c> (DESIGN §4.1): one connection per game server, authenticated with the plugin key
 /// (<c>X-API-Key</c> = <c>Security:PluginApiKey</c>, the <see cref="RealtimeSetup.GameServerPolicy"/> on the endpoint)
 /// and named by <c>X-Knk-Server-Id</c>. Groups <c>servers</c> and <c>server:{id}</c>. Client-to-server methods are
-/// presence (DESIGN §6.4) and, since WT2 (#181), <see cref="WorldTaskOfferResult"/>; nothing else is written over the hub
+/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>; nothing else is written over the hub
 /// (P1). A joining player's waiting notifications are pushed to their server (S2, #179), and tasks still offered or queued
 /// for them are offered again (WT2, DESIGN §8.4).
 /// </summary>
@@ -165,6 +166,30 @@ public sealed partial class GameServerHub : Hub
         {
             // Presence is what this call is for; a failed offer leaves the task code (P5).
             _logger.LogWarning(ex, "Offering waiting world tasks failed");
+        }
+    }
+
+    /// <summary>
+    /// S3 (#182, DESIGN §6.4): the loaded worlds, the same body and rules as <c>PUT api/GameSettings/runtime-worlds</c>
+    /// (a report replaces only its <c>serverId</c>'s worlds; null = the API's default id, as over REST). The plugin
+    /// sends this instead of the REST report while connected. Nothing is answered: a world that adds a new world
+    /// settings entry sends <c>GameSettingsChanged</c> through the entity interceptor.
+    /// </summary>
+    public async Task ReportWorlds(GameSettingsRuntimeWorldsUpdateDto? report)
+    {
+        if (ServerId is not { } serverId || report == null) return;
+        var settings = _services?.GetService<IGameSettingsService>();
+        if (settings == null) return;
+        try
+        {
+            await settings.UpdateRuntimeWorldsAsync(report);
+            _logger.LogDebug("Game server {ServerId} reported {Count} loaded world(s) over the hub", serverId,
+                report.RuntimeWorlds?.Count ?? 0);
+        }
+        catch (Exception ex)
+        {
+            // The REST report is the fallback: the plugin reports there again while the hub is down.
+            _logger.LogWarning(ex, "Recording the worlds reported by game server {ServerId} failed", serverId);
         }
     }
 

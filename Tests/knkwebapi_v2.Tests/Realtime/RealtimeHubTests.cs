@@ -20,6 +20,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using Moq;
+using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Services.Interfaces;
 
 namespace knkwebapi_v2.Tests.Realtime;
 
@@ -37,6 +40,7 @@ public sealed class RealtimeHubTests : IAsyncLifetime
 
     private readonly ManualClock _clock = new(new DateTime(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc));
     private readonly string _dbName = "realtime-hub-" + Guid.NewGuid();
+    private readonly Mock<IGameSettingsService> _gameSettings = new();
     private WebApplication _app = null!;
     private TestServer _server = null!;
 
@@ -69,6 +73,7 @@ public sealed class RealtimeHubTests : IAsyncLifetime
             };
         });
         builder.Services.AddKnkRealtime(builder.Configuration);
+        builder.Services.AddSingleton(_gameSettings.Object);
         _app = builder.Build();
         _app.UseRouting();
         _app.UseAuthentication();
@@ -366,5 +371,30 @@ public sealed class RealtimeHubTests : IAsyncLifetime
         Assert.True(payload.GetProperty("frozen").GetBoolean());
         Assert.Equal("griefing", payload.GetProperty("reason").GetString());
         Assert.Equal(7, payload.GetProperty("by").GetInt32());
+    }
+
+    // S3 (#182, DESIGN §6.4): the worlds report over the hub takes the REST endpoint's path.
+    [Fact]
+    public async Task GameHub_ReportWorlds_RecordsTheReportLikeTheRestEndpoint()
+    {
+        GameSettingsRuntimeWorldsUpdateDto? received = null;
+        _gameSettings.Setup(s => s.UpdateRuntimeWorldsAsync(It.IsAny<GameSettingsRuntimeWorldsUpdateDto>()))
+            .Callback<GameSettingsRuntimeWorldsUpdateDto>(dto => received = dto)
+            .ReturnsAsync(new GameSettingsReadDto());
+        await using var connection = GameConnection();
+        await connection.StartAsync();
+
+        await connection.InvokeAsync("ReportWorlds", new
+        {
+            serverId = "survival",
+            runtimeWorlds = new[] { new { worldName = "world", folderName = "world", environment = "NORMAL", loaded = true, playerCount = 2, isPrimary = true } },
+        });
+
+        Assert.NotNull(received);
+        Assert.Equal("survival", received!.ServerId);
+        var world = Assert.Single(received.RuntimeWorlds);
+        Assert.Equal("world", world.WorldName);
+        Assert.Equal(2, world.PlayerCount);
+        Assert.True(world.IsPrimary);
     }
 }

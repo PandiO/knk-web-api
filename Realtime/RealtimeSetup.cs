@@ -51,6 +51,13 @@ public static class RealtimeSetup
         services.AddHttpContextAccessor();
         services.AddSingleton<RealtimeTransactionEvents>();
         services.AddScoped<IRealtimeEventSink>(AfterCommitRealtimeEventSink.Create);
+        // S3 (PandiO/knk-workspace#182): entity and configuration changes from every save, through the same sink (the
+        // save interceptor is added to KnKDbContext in Program.cs next to the transaction one).
+        services.AddSingleton(sp => new RealtimeEntityChangeInterceptor(
+            context => new AfterCommitRealtimeEventSink(sp.GetRequiredService<IRealtimePublisher>(),
+                sp.GetRequiredService<RealtimeTransactionEvents>(), context, sp.GetService<IHttpContextAccessor>(),
+                sp.GetService<ILogger<AfterCommitRealtimeEventSink>>()),
+            sp.GetService<IHttpContextAccessor>(), sp.GetService<ILogger<RealtimeEntityChangeInterceptor>>()));
         // The player notification queue pushes over the hub; the in-memory queue stays the store the REST poll reads.
         services.TryAddSingleton<InMemoryPlayerNotificationQueue>();
         services.AddSingleton<HubPlayerNotificationQueue>();

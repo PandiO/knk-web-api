@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Realtime;
+using knkwebapi_v2.Realtime.Contracts;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
@@ -20,6 +22,7 @@ namespace knkwebapi_v2.Services
         private readonly ITeleportDestinationService _teleportDestinations;
         private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly IDomainWorldResolver _worlds;
+        private readonly IRealtimeEventSink? _realtime;
 
         public GateStructureService(
             IGateStructureRepository repo,
@@ -28,8 +31,10 @@ namespace knkwebapi_v2.Services
             IMapper mapper,
             ITeleportDestinationService teleportDestinations,
             IDomainRegionNameFinalizer regionNames,
-            IDomainWorldResolver worlds)
+            IDomainWorldResolver worlds,
+            IRealtimeEventSink? realtime = null)
         {
+            _realtime = realtime;
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
@@ -89,6 +94,7 @@ namespace knkwebapi_v2.Services
             await ApplyLocationReferencesAsync(gateStructure, gateStructureDto, isCreate: true);
             await _repo.AddGateStructureAsync(gateStructure);
             await _regionNames.FinalizeAsync(gateStructure);
+            _realtime.GateChanged(gateStructure.Id, EntityChangeOps.Created);
             // KNG-166: answer with the saved gate as a read returns it (its district and town included), so a
             // gate created in a form shows the same picker columns as one found by search.
             var saved = await _repo.GetByIdAsync(gateStructure.Id);
@@ -119,6 +125,7 @@ namespace knkwebapi_v2.Services
             await ApplyLocationReferencesAsync(existing, gateStructureDto);
             await _repo.UpdateGateStructureAsync(existing);
             await _regionNames.FinalizeAsync(existing, previousRegionId);
+            _realtime.GateChanged(id, EntityChangeOps.Updated);
         }
 
         public async Task DeleteAsync(int id)
@@ -139,6 +146,7 @@ namespace knkwebapi_v2.Services
 
             // GateDoors (and their block snapshots) cascade-delete at the DB level.
             await _repo.DeleteGateStructureAsync(id);
+            _realtime.GateChanged(id, EntityChangeOps.Deleted);
         }
 
         public async Task<PagedResultDto<GateStructureListDto>> SearchAsync(PagedQueryDto query)
@@ -186,6 +194,7 @@ namespace knkwebapi_v2.Services
             ApplyOverride(overridesDto.ClearContinuousDamageMultiplierOverride, overridesDto.ContinuousDamageMultiplierOverride, v => existing.ContinuousDamageMultiplierOverride = v);
 
             await _repo.UpdateGateStructureAsync(existing);
+            _realtime.GateChanged(id, EntityChangeOps.Updated);
         }
 
         private static void ApplyOverride<T>(bool clear, T? value, Action<T?> setter) where T : struct
