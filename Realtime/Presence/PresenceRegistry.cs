@@ -171,6 +171,31 @@ public sealed class PresenceRegistry
         }
     }
 
+    /// <summary>
+    /// WT2 (#181): the server <paramref name="uuid"/> is online on, but only while that server is connected (an offer
+    /// can't reach a server in its grace period). Null otherwise.
+    /// </summary>
+    public string? ConnectedServerOf(string? uuid)
+    {
+        var normalized = NormalizeUuid(uuid);
+        if (normalized.Length == 0) return null;
+        lock (_lock)
+        {
+            return _servers.Values.FirstOrDefault(s => s.ConnectionId != null && s.Players.ContainsKey(normalized))?.ServerId;
+        }
+    }
+
+    /// <summary>WT2 (#181): every player on a connected server, with their server id (the "Hand off to…" picker).</summary>
+    public IReadOnlyList<(string ServerId, PresentPlayer Player)> ConnectedPlayers()
+    {
+        lock (_lock)
+        {
+            return _servers.Values.Where(s => s.ConnectionId != null)
+                .SelectMany(s => s.Players.Values.Select(p => (s.ServerId, p)))
+                .ToList();
+        }
+    }
+
     /// <summary>Every UUID online on any known server (connected or within its grace period).</summary>
     public IReadOnlySet<string> AllOnlineUuids()
     {

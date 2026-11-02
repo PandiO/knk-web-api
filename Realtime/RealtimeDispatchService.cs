@@ -75,6 +75,10 @@ public sealed class RealtimeDispatchService : BackgroundService
             var one = _connections.Get(message.ConnectionId);
             targets = one == null || one.Hub != message.Hub ? Array.Empty<RealtimeConnection>() : new[] { one };
         }
+        else if (message.Groups is { Count: > 0 } groups)
+        {
+            targets = _connections.InAnyGroup(message.Hub, groups);
+        }
         else
         {
             targets = _connections.InGroup(message.Hub, message.Group ?? string.Empty);

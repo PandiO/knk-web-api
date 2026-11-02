@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 
 namespace knkwebapi_v2.Realtime;
 
@@ -20,6 +21,9 @@ public static class RealtimeGroups
     public static string Server(string serverId) => "server:" + serverId;
 
     public static string User(int userId) => "user:" + userId;
+
+    /// <summary>WT2 (#181): web connections watching one world task (joined with <c>WebHub.JoinTask</c>).</summary>
+    public static string Task(int taskId) => "task:" + taskId;
 }
 
 /// <summary>One open hub connection. <see cref="NextSeq"/> numbers the messages sent to it (DESIGN §4.2).</summary>
@@ -32,14 +36,34 @@ public sealed class RealtimeConnection
     {
         ConnectionId = connectionId;
         Hub = hub;
-        Groups = new HashSet<string>(groups, StringComparer.Ordinal);
+        _groups = ImmutableHashSet.CreateRange(StringComparer.Ordinal, groups);
         ServerId = serverId;
         UserId = userId;
     }
 
     public string ConnectionId { get; }
     public RealtimeHubKind Hub { get; }
-    public IReadOnlySet<string> Groups { get; }
+    private ImmutableHashSet<string> _groups;
+
+    /// <summary>The groups now (a snapshot). Changed by the API only (<see cref="Join"/>, <see cref="Leave"/>).</summary>
+    public IReadOnlySet<string> Groups => Volatile.Read(ref _groups);
+
+    /// <summary>WT2 (#181): adds a group after connect (e.g. <c>task:{id}</c>); returns false when already in it.</summary>
+    public bool Join(string group) => Swap(set => set.Add(group));
+
+    /// <summary>Removes a group; returns false when it was not in it.</summary>
+    public bool Leave(string group) => Swap(set => set.Remove(group));
+
+    private bool Swap(Func<ImmutableHashSet<string>, ImmutableHashSet<string>> change)
+    {
+        while (true)
+        {
+            var before = Volatile.Read(ref _groups);
+            var after = change(before);
+            if (ReferenceEquals(before, after)) return false;
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _groups, after, before), before)) return true;
+        }
+    }
     public string? ServerId { get; }
     public int? UserId { get; }
 
@@ -67,6 +91,10 @@ public sealed class RealtimeConnections
 
     public IReadOnlyList<RealtimeConnection> InGroup(RealtimeHubKind hub, string group) =>
         _byId.Values.Where(c => c.Hub == hub && c.Groups.Contains(group)).ToList();
+
+    /// <summary>Connections of <paramref name="hub"/> in any of <paramref name="groups"/>, each once.</summary>
+    public IReadOnlyList<RealtimeConnection> InAnyGroup(RealtimeHubKind hub, IReadOnlyCollection<string> groups) =>
+        _byId.Values.Where(c => c.Hub == hub && groups.Any(g => c.Groups.Contains(g))).ToList();
 
     public int Count(RealtimeHubKind hub) => _byId.Values.Count(c => c.Hub == hub);
 }

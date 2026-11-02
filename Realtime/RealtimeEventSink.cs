@@ -16,7 +16,15 @@ namespace knkwebapi_v2.Realtime;
 /// <param name="ActorUserId">The user behind the change, when known; the sink adds the source.</param>
 /// <param name="ServerId">One game server, or null for all of them.</param>
 /// <param name="V">Contract version of <paramref name="Type"/>.</param>
-public sealed record RealtimeEvent(string Type, object? Payload, int? ActorUserId = null, string? ServerId = null, int V = 1);
+/// <param name="WebGroups">WT2 (#181): when set, the event goes to these web hub groups (e.g. <c>task:{id}</c>,
+/// <c>user:{id}</c>) instead of the game servers; <paramref name="ServerId"/> is then ignored.</param>
+public sealed record RealtimeEvent(string Type, object? Payload, int? ActorUserId = null, string? ServerId = null, int V = 1,
+    IReadOnlyList<string>? WebGroups = null)
+{
+    /// <summary>An event for web connections in any of <paramref name="groups"/>.</summary>
+    public static RealtimeEvent ToWeb(string type, object? payload, IReadOnlyList<string> groups, int? actorUserId = null, int v = 1) =>
+        new(type, payload, actorUserId, null, v, groups);
+}
 
 /// <summary>
 /// Where services hand their realtime events (DESIGN §4.3, decision Q3). Option A: the event goes out after the
@@ -70,8 +78,18 @@ public sealed class AfterCommitRealtimeEventSink : IRealtimeEventSink
         try
         {
             var actor = new RealtimeActor(realtimeEvent.ActorUserId, Source());
-            void Send() => _publisher.PublishToGameServers(realtimeEvent.Type, realtimeEvent.Payload,
-                realtimeEvent.ServerId, actor, realtimeEvent.V);
+            void Send()
+            {
+                if (realtimeEvent.WebGroups != null)
+                {
+                    _publisher.PublishToWebGroups(realtimeEvent.WebGroups, realtimeEvent.Type, realtimeEvent.Payload, actor, realtimeEvent.V);
+                }
+                else
+                {
+                    _publisher.PublishToGameServers(realtimeEvent.Type, realtimeEvent.Payload,
+                        realtimeEvent.ServerId, actor, realtimeEvent.V);
+                }
+            }
 
             if (_db != null && _inTransaction(_db))
             {

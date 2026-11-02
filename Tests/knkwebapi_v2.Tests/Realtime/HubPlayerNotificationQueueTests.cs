@@ -25,6 +25,8 @@ public class HubPlayerNotificationQueueTests
 
         public void PublishToWebUser(int userId, string type, object? payload, RealtimeActor? actor = null, int v = 1) { }
 
+        public void PublishToWebGroups(IReadOnlyCollection<string> groups, string type, object? payload, RealtimeActor? actor = null, int v = 1) { }
+
         public void PublishToConnection(RealtimeHubKind hub, string connectionId, string type, object? payload,
             RealtimeActor? actor = null, int v = 1) { }
     }

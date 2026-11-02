@@ -56,6 +56,8 @@ public static class RealtimeSetup
         services.AddSingleton<HubPlayerNotificationQueue>();
         services.RemoveAll<IPlayerNotificationQueue>();
         services.AddSingleton<IPlayerNotificationQueue>(sp => sp.GetRequiredService<HubPlayerNotificationQueue>());
+        // WT2 (PandiO/knk-workspace#181): the world-task events and the presence lookup for offers.
+        services.AddScoped<IWorldTaskRealtime, WorldTaskRealtime>();
 
         services.AddSingleton<IAuthorizationHandler, GameServerKeyHandler>();
         services.AddAuthorization(o =>

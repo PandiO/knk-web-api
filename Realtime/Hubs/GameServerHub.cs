@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using knkwebapi_v2.Realtime.Contracts;
 using knkwebapi_v2.Realtime.Presence;
+using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 
@@ -10,8 +11,9 @@ namespace knkwebapi_v2.Realtime.Hubs;
 /// <c>/api/hubs/game</c> (DESIGN §4.1): one connection per game server, authenticated with the plugin key
 /// (<c>X-API-Key</c> = <c>Security:PluginApiKey</c>, the <see cref="RealtimeSetup.GameServerPolicy"/> on the endpoint)
 /// and named by <c>X-Knk-Server-Id</c>. Groups <c>servers</c> and <c>server:{id}</c>. Client-to-server methods are
-/// presence only (DESIGN §6.4); nothing else is written over the hub (P1). A joining player's waiting notifications
-/// are pushed to their server (S2, #179).
+/// presence (DESIGN §6.4) and, since WT2 (#181), <see cref="WorldTaskOfferResult"/>; nothing else is written over the hub
+/// (P1). A joining player's waiting notifications are pushed to their server (S2, #179), and tasks still offered or queued
+/// for them are offered again (WT2, DESIGN §8.4).
 /// </summary>
 public sealed partial class GameServerHub : Hub
 {
@@ -26,11 +28,13 @@ public sealed partial class GameServerHub : Hub
     private readonly ILogger<GameServerHub> _logger;
     private readonly TimeProvider _time;
     private readonly HubPlayerNotificationQueue? _notifications;
+    private readonly IServiceProvider? _services;
 
     public GameServerHub(RealtimeConnections connections, PresenceRegistry presence, IPresenceStore store,
         IRealtimePublisher publisher, IOptions<RealtimeOptions> options, ILogger<GameServerHub> logger, TimeProvider? time = null,
-        HubPlayerNotificationQueue? notifications = null)
+        HubPlayerNotificationQueue? notifications = null, IServiceProvider? services = null)
     {
+        _services = services;
         _notifications = notifications;
         _connections = connections;
         _presence = presence;
@@ -105,6 +109,8 @@ public sealed partial class GameServerHub : Hub
         var changed = await _store.ReconcileAsync(_presence.AllOnlineUuids(), Now);
         _logger.LogInformation("Game server {ServerId} roster: {Online} online; {Changed} presence row(s) corrected",
             serverId, change.Online.Count, changed);
+        // WT2 (#181, DESIGN §8.4 resync): tasks offered to, handed back from or queued for these players are offered again.
+        await OfferWaitingAsync(change.Online);
     }
 
     public async Task PlayerJoined(RosterPlayerDto? player)
@@ -116,6 +122,49 @@ public sealed partial class GameServerHub : Hub
             await _store.SetOnlineAsync(new[] { uuid }, Now);
             // S2 (#179): what waited for this player (and for the server) is shown now instead of on the next poll.
             _notifications?.PushPendingTo(serverId, uuid);
+            // WT2 (#181, DESIGN §8.6): "Player quits mid-task → release; offer again on rejoin".
+            await OfferWaitingAsync(new[] { uuid });
+        }
+    }
+
+    /// <summary>
+    /// WT2 (#181, DESIGN §6.4): what a player (or the plugin's checks) answered to a <c>WorldTaskOffered</c>: declined,
+    /// timed-out, busy, offline or no-permission. "accepted" needs nothing (the offer claim over REST recorded it).
+    /// </summary>
+    public async Task WorldTaskOfferResult(WorldTaskOfferResultDto? result)
+    {
+        if (ServerId is not { } serverId || result == null || result.TaskId <= 0) return;
+        var tasks = _services?.GetService<IWorldTaskService>();
+        if (tasks == null) return;
+        try
+        {
+            var recorded = await tasks.RecordOfferResultAsync(result.TaskId, result.Result, result.Uuid);
+            _logger.LogInformation("Game server {ServerId}: offer of world task {TaskId} answered {Result}{Ignored}",
+                serverId, result.TaskId, result.Result, recorded ? string.Empty : " (no open offer; ignored)");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Recording the offer answer for world task {TaskId} failed", result.TaskId);
+        }
+    }
+
+    private async Task OfferWaitingAsync(IReadOnlyCollection<string> uuids)
+    {
+        if (uuids.Count == 0) return;
+        var tasks = _services?.GetService<IWorldTaskService>();
+        if (tasks == null) return;
+        try
+        {
+            var offered = await tasks.OfferWaitingForPlayersAsync(uuids);
+            if (offered > 0)
+            {
+                _logger.LogInformation("Offered {Count} waiting world task(s) to players on {ServerId}", offered, ServerId);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Presence is what this call is for; a failed offer leaves the task code (P5).
+            _logger.LogWarning(ex, "Offering waiting world tasks failed");
         }
     }
 

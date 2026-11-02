@@ -7,9 +7,9 @@ using Microsoft.Extensions.Options;
 namespace knkwebapi_v2.Services
 {
     /// <summary>What one sweep pass did (PandiO/knk-workspace#180).</summary>
-    public readonly record struct WorldTaskSweepResult(int Expired, int Released, int SessionsRemoved)
+    public readonly record struct WorldTaskSweepResult(int Expired, int Released, int SessionsRemoved, int OffersTimedOut = 0)
     {
-        public bool Any => Expired > 0 || Released > 0 || SessionsRemoved > 0;
+        public bool Any => Expired > 0 || Released > 0 || SessionsRemoved > 0 || OffersTimedOut > 0;
     }
 
     /// <summary>
@@ -20,8 +20,10 @@ namespace knkwebapi_v2.Services
     /// <item>Workflow sessions no draft points at and with no activity for <c>SessionRetentionDays</c> → removed with their
     /// tasks. Kept: sessions with a Completed task (its output can still be read: <c>DomainWorldResolver</c> finds a
     /// region's world through <c>tempregion_worldtask_&lt;id&gt;</c>) and catalogue-scan sessions (the scan row points at its task).</item>
+    /// <item>#181: an offer (Offered) with no answer after <c>OfferTimeoutSeconds</c> (2 min) → TimedOut (the web app shows the
+    /// task code; the game server drops the Accept/Decline line).</item>
     /// </list>
-    /// Every row is saved on its own and is conditional on the status it was read with (concurrency token), so a claim,
+    /// Every change is told to the hubs (<see cref="IWorldTaskRealtime"/>, WT2). Every row is saved on its own and is conditional on the status it was read with (concurrency token), so a claim,
     /// heartbeat or completion that lands in between wins and the row is left for the next pass.
     /// </summary>
     public class WorldTaskSweeper
@@ -31,12 +33,15 @@ namespace knkwebapi_v2.Services
         private readonly KnKDbContext _db;
         private readonly WorldTaskOptions _options;
         private readonly Func<DateTime> _utcNow;
+        private readonly IWorldTaskRealtime _realtime;
 
-        public WorldTaskSweeper(KnKDbContext db, IOptions<WorldTaskOptions>? options = null, Func<DateTime>? utcNow = null)
+        public WorldTaskSweeper(KnKDbContext db, IOptions<WorldTaskOptions>? options = null, Func<DateTime>? utcNow = null,
+            IWorldTaskRealtime? realtime = null)
         {
             _db = db;
             _options = options?.Value ?? new WorldTaskOptions();
             _utcNow = utcNow ?? (() => DateTime.UtcNow);
+            _realtime = realtime ?? NoWorldTaskRealtime.Instance;
         }
 
         public async Task<WorldTaskSweepResult> RunOnceAsync(CancellationToken ct = default)
@@ -45,14 +50,48 @@ namespace knkwebapi_v2.Services
             var expired = await ExpirePendingAsync(now, ct);
             var released = await ReleaseLapsedLeasesAsync(now, ct);
             var removed = await RemoveAbandonedSessionsAsync(now, ct);
-            return new WorldTaskSweepResult(expired, released, removed);
+            var timedOut = await TimeOutOffersAsync(now, ct);
+            return new WorldTaskSweepResult(expired, released, removed, timedOut);
         }
+
+        private async Task<int> TimeOutOffersAsync(DateTime now, CancellationToken ct)
+        {
+            var cutoff = now - _options.OfferTimeout;
+            var due = await _db.WorldTasks
+                .Include(t => t.TargetUser)
+                .Include(t => t.WorkflowSession)
+                .Where(t => t.Status == WorldTaskStatuses.Pending && t.OfferState == WorldTaskOfferStates.Offered
+                    && t.OfferedAt != null && t.OfferedAt <= cutoff)
+                .OrderBy(t => t.Id)
+                .Take(_options.SweepBatchSize)
+                .ToListAsync(ct);
+
+            var count = 0;
+            foreach (var task in due)
+            {
+                task.OfferState = WorldTaskOfferStates.TimedOut;
+                task.UpdatedAt = now;
+                if (!await TrySaveAsync(task, ct)) continue;
+                count++;
+                _realtime.Changed(task);
+                if (NormalizeUuid(task.TargetUser?.Uuid) is { } uuid)
+                {
+                    _realtime.OfferWithdrawn(task, uuid, "Nobody answered the offer in time.");
+                }
+            }
+            return count;
+        }
+
+        private static string? NormalizeUuid(string? uuid) =>
+            string.IsNullOrWhiteSpace(uuid) ? null : uuid.Trim().ToLowerInvariant();
 
         private async Task<int> ExpirePendingAsync(DateTime now, CancellationToken ct)
         {
             var ttl = _options.PendingTtl;
             var legacyCutoff = now - ttl;
             var due = await _db.WorldTasks
+                .Include(t => t.TargetUser)
+                .Include(t => t.WorkflowSession)
                 .Where(t => t.Status == WorldTaskStatuses.Pending
                     && (t.ExpiresAt != null ? t.ExpiresAt <= now : (t.UpdatedAt ?? t.CreatedAt) <= legacyCutoff))
                 .OrderBy(t => t.Id)
@@ -66,7 +105,14 @@ namespace knkwebapi_v2.Services
                 task.ErrorMessage = $"Expired: nobody claimed it within {_options.PendingTtlMinutes} minutes.";
                 task.LeaseUntil = null;
                 task.UpdatedAt = now;
-                if (await TrySaveAsync(task, ct)) count++;
+                var offeredTo = task.OfferState == WorldTaskOfferStates.Offered ? NormalizeUuid(task.TargetUser?.Uuid) : null;
+                if (!await TrySaveAsync(task, ct)) continue;
+                count++;
+                _realtime.Changed(task);
+                if (offeredTo != null)
+                {
+                    _realtime.Cancelled(task, offeredTo, task.ErrorMessage);
+                }
             }
             return count;
         }
@@ -75,6 +121,8 @@ namespace knkwebapi_v2.Services
         {
             var legacyCutoff = now - _options.Lease;
             var due = await _db.WorldTasks
+                .Include(t => t.TargetUser)
+                .Include(t => t.WorkflowSession)
                 .Where(t => t.Status == WorldTaskStatuses.InProgress
                     && (t.LeaseUntil != null ? t.LeaseUntil <= now : (t.UpdatedAt ?? t.ClaimedAt ?? t.CreatedAt) <= legacyCutoff))
                 .OrderBy(t => t.Id)
@@ -94,7 +142,13 @@ namespace knkwebapi_v2.Services
                 task.ReleaseCount++;
                 task.ExpiresAt = now + _options.PendingTtl;
                 task.UpdatedAt = now;
-                if (await TrySaveAsync(task, ct)) count++;
+                if (!await TrySaveAsync(task, ct)) continue;
+                count++;
+                _realtime.Changed(task);
+                if (WorldTaskService.HeadlessTaskTypes.Contains(task.TaskType))
+                {
+                    _realtime.HeadlessPending(task);
+                }
             }
             return count;
         }
@@ -187,8 +241,8 @@ namespace knkwebapi_v2.Services
                         if (result.Any)
                         {
                             _logger.LogInformation(
-                                "World task sweep: {Expired} expired, {Released} released (no heartbeat), {Sessions} abandoned session(s) removed",
-                                result.Expired, result.Released, result.SessionsRemoved);
+                                "World task sweep: {Expired} expired, {Released} released (no heartbeat), {Sessions} abandoned session(s) removed, {Offers} offer(s) timed out",
+                                result.Expired, result.Released, result.SessionsRemoved, result.OffersTimedOut);
                         }
                         _failures.Succeeded();
                     }

@@ -30,5 +30,15 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<FormSubmissionProgress?> GetProgressAsync(int progressId);
         Task UpdateProgressAsync(FormSubmissionProgress progress);
         Task<int?> FindUserIdByUuidAsync(string uuid);
+
+        // PandiO/knk-workspace#181 (WT2)
+        /// <summary>A user's Minecraft UUID and username, or null when the user doesn't exist.</summary>
+        Task<(string? Uuid, string Username)?> GetUserBriefAsync(int userId);
+        /// <summary>InProgress tasks claimed by this user (the busy check).</summary>
+        Task<List<WorldTask>> ListInProgressClaimedByUserAsync(int userId);
+        /// <summary>Pending tasks targeted at these users in one of these offer states, oldest first.</summary>
+        Task<List<WorldTask>> ListPendingTargetedAsync(IReadOnlyCollection<int> userIds, IReadOnlyCollection<string> offerStates);
+        /// <summary>The name of the form a task belongs to (its draft's, else its session's form configuration).</summary>
+        Task<string?> GetFormNameAsync(WorldTask task);
     }
 }

@@ -42,10 +42,22 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
     private readonly IMinecraftIconResolver _icons;
     private readonly ILogger<MinecraftCatalogScanService> _logger;
     private readonly Func<DateTime> _utcNow;
+    private IWorldTaskRealtime _realtime = NoWorldTaskRealtime.Instance;
 
     public MinecraftCatalogScanService(KnKDbContext db, IMinecraftIconResolver icons, ILogger<MinecraftCatalogScanService> logger)
         : this(db, icons, logger, () => DateTime.UtcNow)
     {
+    }
+
+    /// <summary>
+    /// WT2 (PandiO/knk-workspace#181): with the hubs, a new scan reaches the game server at once (<c>WorldTaskCreated</c>)
+    /// and the admin page gets <c>CatalogScanUpdated</c> instead of polling every 3 s.
+    /// </summary>
+    public MinecraftCatalogScanService(KnKDbContext db, IMinecraftIconResolver icons, ILogger<MinecraftCatalogScanService> logger,
+        IWorldTaskRealtime realtime)
+        : this(db, icons, logger, () => DateTime.UtcNow)
+    {
+        _realtime = realtime;
     }
 
     /// <param name="utcNow">The clock (tests).</param>
@@ -99,6 +111,8 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
         task.InputJson = JsonSerializer.Serialize(new { scanId = scan.Id });
         await _db.SaveChangesAsync(ct);
         if (transaction != null) await transaction.CommitAsync(ct);
+        _realtime.HeadlessPending(task);
+        _realtime.Changed(task);
 
         _logger.LogInformation("Minecraft catalogue scan {ScanId} requested by user {UserId} (WorldTask {TaskId})", scan.Id, requestedByUserId, task.Id);
         return ToDto(scan);
@@ -157,10 +171,15 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
         {
             throw new MinecraftCatalogConflictException($"Scan {scanId} is already {scan.Status}.");
         }
-        await FailAsync(scan, "Cancelled by staff.", ct);
+        var task = await FailAsync(scan, "Cancelled by staff.", ct);
         if (!await SaveUnlessChangedMeanwhileAsync(scan, ct))
         {
             throw new MinecraftCatalogConflictException($"Scan {scanId} changed meanwhile and is now {scan.Status}.");
+        }
+        if (task != null)
+        {
+            _realtime.Changed(task);
+            _realtime.Cancelled(task, null, "Cancelled by staff.");
         }
         return ToDto(scan);
     }
@@ -219,6 +238,7 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
             tracked.Error = null;
             await _db.SaveChangesAsync(ct);
             if (transaction != null) await transaction.CommitAsync(ct);
+            await TellStarterAsync(tracked, ct);
 
             _logger.LogInformation(
                 "Minecraft catalogue scan {ScanId} ({Version}) applied: {Inserted} inserted, {Updated} updated, {Unchanged} unchanged, {Merged} merged, {Deleted} deleted, {Missing} marked missing, {IconsMissing} without icon",
@@ -243,6 +263,7 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
                 failed.Error = $"Applying the snapshot failed: {ex.Message}";
                 failed.CompletedAt = _utcNow();
                 await _db.SaveChangesAsync(CancellationToken.None);
+                await TellStarterAsync(failed, CancellationToken.None);
             }
             _logger.LogError(ex, "Minecraft catalogue scan {ScanId} could not be applied", scanId);
             throw;
@@ -598,7 +619,8 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
     private static string Facts(MinecraftEnchantmentRef e) => string.Join('|',
         e.NamespaceKey, e.DisplayName, e.MaxLevel, e.IsCustom, e.Category, e.CatalogStatus, e.IconUrl);
 
-    private async Task FailAsync(MinecraftCatalogScan scan, string error, CancellationToken ct)
+    /// <returns>The scan's task when it was cancelled with it.</returns>
+    private async Task<WorldTask?> FailAsync(MinecraftCatalogScan scan, string error, CancellationToken ct)
     {
         scan.Status = MinecraftCatalogScanStatus.Failed;
         scan.Error = error;
@@ -611,7 +633,20 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
                 task.Status = "Cancelled";
                 task.ErrorMessage = error;
                 task.UpdatedAt = _utcNow();
+                return task;
             }
+        }
+        return null;
+    }
+
+    /// <summary>#181: <c>CatalogScanUpdated</c> for a scan whose own status changed without its task (applied, failed to apply).</summary>
+    private async Task TellStarterAsync(MinecraftCatalogScan scan, CancellationToken ct)
+    {
+        if (scan.WorldTaskId is not { } taskId) return;
+        var task = await _db.WorldTasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct);
+        if (task != null)
+        {
+            _realtime.Changed(task);
         }
     }
 

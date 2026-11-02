@@ -220,6 +220,17 @@ namespace KnKWebAPI.Controllers
             return Ok(await _service.ListOpenBySessionAsync(sessionId));
         }
 
+        /// <summary>
+        /// WT2 (PandiO/knk-workspace#181, DESIGN §8.3): the busy check before "Send to Minecraft" / "Hand off to…": the
+        /// task the logged-in caller holds in game (with the form it belongs to) and how many wait in their queue.
+        /// </summary>
+        [HttpGet("active-for-me")]
+        public async Task<ActionResult<WorldTaskActiveForMeDto>> GetActiveForMe()
+        {
+            if (User.GetUserId() is not { } userId) return Unauthorized(new { error = "Unauthorized", message = "Log in to use this." });
+            return Ok(await _service.GetActiveForUserAsync(userId));
+        }
+
         /// <summary>DESIGN §8.7: the web app wrote this Completed task's result into its draft.</summary>
         [HttpPost("{id:int}/applied")]
         public async Task<IActionResult> MarkApplied(int id)

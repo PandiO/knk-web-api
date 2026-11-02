@@ -28,5 +28,10 @@ namespace knkwebapi_v2.Services.Interfaces
         Task<List<WorldTaskReadDto>> ListOpenBySessionAsync(int sessionId);
         Task<List<WorldTaskReadDto>> ListLatestForProgressAsync(int progressId);
         Task<WorldTaskReadDto> MarkAppliedAsync(int id);
+
+        // PandiO/knk-workspace#181 (WT2)
+        Task<int> OfferWaitingForPlayersAsync(IReadOnlyCollection<string> uuids);
+        Task<bool> RecordOfferResultAsync(int taskId, string? result, string? uuid);
+        Task<WorldTaskActiveForMeDto> GetActiveForUserAsync(int userId);
     }
 }

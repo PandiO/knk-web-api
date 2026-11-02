@@ -264,6 +264,8 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ReleaseTask), null),
         R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.Heartbeat), null),
         R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ListOpenForServer), null),
+        // WT2 (PandiO/knk-workspace#181): the "Hand off to…" picker lists online staff for staff who create world tasks
+        R(typeof(knkwebapi_v2.Controllers.PresenceController), nameof(knkwebapi_v2.Controllers.PresenceController.OnlineStaff), "knk.admin.world"),
     };
 
     /// <summary>node null = plugin-only (RequirePluginService).</summary>
