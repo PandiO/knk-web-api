@@ -150,5 +150,13 @@ namespace knkwebapi_v2.Models
         /// NULL = nothing recorded (every progress saved before this column existed).
         /// </summary>
         public string? CreatedEntitiesJson { get; set; }
+
+        /// <summary>
+        /// PandiO/knk-workspace#180 (DESIGN §8.7): the workflow session the draft's world tasks belong to. One session per
+        /// draft: resuming the draft reuses it. Set by the web app's save, or by the API when the first world task of the
+        /// draft is created.
+        /// </summary>
+        public int? WorkflowSessionId { get; set; }
+        public WorkflowSession? WorkflowSession { get; set; }
     }
 }
