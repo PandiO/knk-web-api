@@ -291,7 +291,7 @@ namespace knkwebapi_v2.Services
                 return; // it finished meanwhile
             }
             _realtime.Changed(current);
-            _realtime.Cancelled(current, uuid, $"Handed back: the web app sent you task #{replacement.Id} instead.");
+            _realtime.Cancelled(current, uuid, $"the web app sent you task #{replacement.Id} instead.");
         }
 
         /// <summary>
