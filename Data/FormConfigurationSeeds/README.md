@@ -139,3 +139,11 @@ shown for custom enchantments only: chance at level I and per extra level (perce
 API writes it into empty fields at startup). GUIDs:
 configuration uuid5(v1 configuration GUID, "seed-v2"), every kept step/field uuid5(v1 configuration GUID, its v1 GUID),
 the new step and fields uuid5(v2 configuration GUID, "step:Combat values"/"field:" + name).
+
+**EnchantmentDefinition seed v3 (PandiO/knk-workspace#201, 2026-11-02):** a new `configurationGuid` and name, so it
+imports next to v2; make it the default and delete or keep v2 by hand. Adds two fields at the end of "Combat values",
+read by Flash Chaos only: "Effect level" (`EffectLevel`, its Slowness level, 1-10, default 1) and "Second effect
+duration at level I" (`SecondaryEffectDurationSeconds`, its Nausea, default 12.5 s); its Slowness duration is the
+existing "Duration at level I" (default 5 s). The duration, level multiplier and step descriptions say so. GUIDs:
+configuration uuid5(v2 configuration GUID, "seed-v3"), every kept step/field uuid5(v2 configuration GUID, its v2 GUID),
+the new fields uuid5(v3 configuration GUID, "field:" + name).

@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "a4975cf7-5aa7-581a-8c69-2de7af22ab44",
+  "configurationGuid": "7fd65a6d-81c9-5151-baeb-b43a22bee454",
   "entityTypeName": "EnchantmentDefinition",
-  "name": "EnchantmentDefinition - Default (seed v2)",
+  "name": "EnchantmentDefinition - Default (seed v3)",
   "description": "An enchantment the server knows: a vanilla Minecraft one or a custom Knights and Kings ability (Poison, Freeze, ...). Item blueprints, enchantment books and lootbox enchant rolls pick from these.",
   "steps": [
     {
-      "stepGuid": "c2e62685-b237-56d8-9219-fddf8a73c76c",
+      "stepGuid": "10407d53-6689-56a1-b8d6-02903d280867",
       "stepName": "Enchantment",
       "description": "Choose vanilla or custom first. For a vanilla enchantment, pick it as the base and its key, name and max level are filled in for you.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "03c04a7c-3564-530f-a900-c10c353b5f6b",
+          "fieldGuid": "1183e458-757e-5a2a-b19c-d40aa11ee7b6",
           "fieldName": "IsCustom",
           "label": "Custom enchantment",
           "description": "Tick for a Knights and Kings ability that the plugin adds itself (written into the item's lore); leave unticked for a vanilla Minecraft enchantment. Custom enchantments are not limited by the grade cap. The built-in abilities (Poison, Freeze, ...) get their code-defined name, description and max level back whenever the API starts; their combat values (next step) stay as you set them.",
@@ -22,7 +22,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "7fe8729f-b29b-54f5-a4c8-b7d02e556f3f",
+          "fieldGuid": "8471a39a-2066-527f-a363-710785567fa0",
           "fieldName": "MinecraftEnchantmentRefId",
           "label": "Vanilla enchantment",
           "description": "The Minecraft enchantment this entry stands for. Picking one fills in the key, display name and max level below when they are still empty. Only for vanilla enchantments.",
@@ -38,7 +38,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "03c04a7c-3564-530f-a900-c10c353b5f6b",
+                  "sourceFieldGuid": "1183e458-757e-5a2a-b19c-d40aa11ee7b6",
                   "operator": "NotEquals",
                   "valueJson": "true"
                 }
@@ -47,7 +47,7 @@
           ]
         },
         {
-          "fieldGuid": "4c386fec-740d-53f6-b2f1-3ccbd6b3393f",
+          "fieldGuid": "17cbc47d-0b41-5a7b-a325-30609e5ce12d",
           "fieldName": "Key",
           "label": "Key",
           "placeholder": "minecraft:sharpness",
@@ -57,7 +57,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "f593385e-379c-55f5-8d4a-7c0bc7bf48de",
+          "fieldGuid": "b668115b-8fc3-53ff-853d-2a01013c3a91",
           "fieldName": "DisplayName",
           "label": "Display name",
           "description": "The name players see, e.g. on an enchantment book (\"Teaches: Sharpness III\") and in messages.",
@@ -66,7 +66,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "ea39825b-a142-5f53-9e65-b80c5a97dabd",
+          "fieldGuid": "27916094-67b2-50bc-b909-aedd11c3a2b4",
           "fieldName": "Description",
           "label": "Description",
           "description": "One line on what the enchantment does, for admins (custom ones: how a player uses it, e.g. \"Right-click to become invisible for a short duration.\").",
@@ -75,7 +75,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "936a966a-8996-5496-8897-2b0640f7d9fb",
+          "fieldGuid": "6073c967-22b1-54e9-8c99-faa3be09c2dd",
           "fieldName": "MaxLevel",
           "label": "Max level",
           "description": "Highest level this enchantment can reach on an item; the grade cap divides this number. Vanilla: Minecraft's own maximum (Sharpness 5, Unbreaking 3).",
@@ -86,9 +86,9 @@
       ]
     },
     {
-      "stepGuid": "409e61c5-0de7-5bb6-95ae-ac2596eaa8d0",
+      "stepGuid": "9e3dc050-9a72-57f7-9c13-d804aa99ce48",
       "stepName": "Combat values",
-      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the default: the API fills it in again at its next start, the plugin uses its built-in value until then. Cleaving ignores this step: its numbers are in the plugin's config.yml (gates.cleaving). At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration is the level-I duration x (1 + level multiplier x (n - 1)).",
+      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the default: the API fills it in again at its next start, the plugin uses its built-in value until then. Flash Chaos uses the duration for its Slowness, plus the effect level (Slowness) and the second duration (Nausea) at the end. Cleaving ignores this step: its numbers are in the plugin's config.yml (gates.cleaving). At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration is the level-I duration x (1 + level multiplier x (n - 1)).",
       "isManyToManyRelationship": false,
       "displayConditionGroups": [
         {
@@ -97,7 +97,7 @@
           "isActive": true,
           "conditions": [
             {
-              "sourceFieldGuid": "03c04a7c-3564-530f-a900-c10c353b5f6b",
+              "sourceFieldGuid": "1183e458-757e-5a2a-b19c-d40aa11ee7b6",
               "operator": "Equals",
               "valueJson": "true"
             }
@@ -106,7 +106,7 @@
       ],
       "fields": [
         {
-          "fieldGuid": "d84050eb-9ae7-51d5-a822-10d6d8bd1ca9",
+          "fieldGuid": "d1102b3d-37eb-5f8a-8c2f-fd74ab16649c",
           "fieldName": "ProcChancePercent",
           "label": "Chance at level I (%)",
           "placeholder": "15",
@@ -116,7 +116,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "11898516-1fac-54b4-b6d3-21d8431c609b",
+          "fieldGuid": "b4066188-8ac4-5cc4-bdfb-e33b81d9c21b",
           "fieldName": "ProcChancePerLevelPercent",
           "label": "Chance per extra level (percentage points)",
           "placeholder": "15",
@@ -126,7 +126,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "c86196cb-579c-53e1-9cfc-e69aa38c564c",
+          "fieldGuid": "2991999b-9100-5b0a-bc96-adb3eaedde29",
           "fieldName": "CooldownEnabled",
           "label": "Cooldown",
           "description": "On: after the effect goes off (or the ability is used), the same player can't set it off again until the cooldown has run out, on any target. Off: no cooldown, the length below is kept for later.",
@@ -135,7 +135,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "03accf31-74ba-5758-92e6-e20379193ab9",
+          "fieldGuid": "e3a2e977-e6c7-5d37-8057-ba5be0bbde6b",
           "fieldName": "CooldownSeconds",
           "label": "Cooldown length (seconds)",
           "placeholder": "20",
@@ -145,21 +145,41 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "bb8d1650-cd37-556a-9f25-30ed4bd3b9bd",
+          "fieldGuid": "22250223-78c7-5929-87a8-df3efb2b29de",
           "fieldName": "EffectDurationSeconds",
           "label": "Duration at level I (seconds)",
           "placeholder": "3",
-          "description": "How long the effect lasts at level I, in seconds (0.05 = one game tick), e.g. how long a Freeze holds the target. Not used by abilities without a duration (Armor Repair, Health Boost, Chaos, Flash Chaos, Cleaving).",
+          "description": "How long the effect lasts at level I, in seconds (0.05 = one game tick), e.g. how long a Freeze holds the target. Flash Chaos: its Slowness (default 5). Not used by abilities without a duration (Armor Repair, Health Boost, Chaos, Cleaving).",
           "fieldType": "Decimal",
           "isRequired": false,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "987bc8a0-d211-5b35-b71a-09ddda94731d",
+          "fieldGuid": "daa07a57-a6b0-5ffb-badd-46af7e23519f",
           "fieldName": "LevelMultiplier",
           "label": "Level multiplier",
           "placeholder": "1",
-          "description": "How much of the level-I duration every extra level adds: 1 = level II lasts twice, level III three times as long; 0.5 = 1.5x and 2x; 0 = the same at every level.",
+          "description": "How much of the level-I duration every extra level adds: 1 = level II lasts twice, level III three times as long; 0.5 = 1.5x and 2x; 0 = the same at every level. Flash Chaos: applies to both its Slowness and its Nausea.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "71b844b2-4edb-5468-a4c2-137a15f36f2f",
+          "fieldName": "EffectLevel",
+          "label": "Effect level (Flash Chaos: Slowness)",
+          "placeholder": "1",
+          "description": "Only Flash Chaos reads it: the level of the Slowness it gives players in range, 1-10 (1 = Slowness I, 2 = Slowness II). Other enchantments ignore it.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "28d690a5-6eac-5c57-a3df-b42d4ab42079",
+          "fieldName": "SecondaryEffectDurationSeconds",
+          "label": "Second effect duration at level I (seconds) (Flash Chaos: Nausea)",
+          "placeholder": "12.5",
+          "description": "Only Flash Chaos reads it: how long its Nausea lasts at level I, in seconds (default 12.5). It grows per level with the level multiplier, like the duration above. Nausea has no strength levels in Minecraft, so there is no level for it. Other enchantments ignore it.",
           "fieldType": "Decimal",
           "isRequired": false,
           "isReadOnly": false

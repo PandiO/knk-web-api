@@ -53,6 +53,13 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("levelMultiplier")]
         public double? LevelMultiplier { get; set; }
+
+        // PandiO/knk-workspace#201: Flash Chaos's Slowness level and Nausea duration.
+        [JsonPropertyName("effectLevel")]
+        public int? EffectLevel { get; set; }
+
+        [JsonPropertyName("secondaryEffectDurationSeconds")]
+        public double? SecondaryEffectDurationSeconds { get; set; }
     }
 
     // Create DTO
@@ -114,6 +121,13 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("levelMultiplier")]
         public double? LevelMultiplier { get; set; }
+
+        // PandiO/knk-workspace#201: Flash Chaos's Slowness level and Nausea duration.
+        [JsonPropertyName("effectLevel")]
+        public int? EffectLevel { get; set; }
+
+        [JsonPropertyName("secondaryEffectDurationSeconds")]
+        public double? SecondaryEffectDurationSeconds { get; set; }
     }
 
     // Update DTO
@@ -231,6 +245,27 @@ namespace knkwebapi_v2.Dtos
         [JsonIgnore] public bool HasCooldownSeconds { get; private set; }
         [JsonIgnore] public bool HasEffectDurationSeconds { get; private set; }
         [JsonIgnore] public bool HasLevelMultiplier { get; private set; }
+
+        // PandiO/knk-workspace#201: Flash Chaos's Slowness level and Nausea duration, written only when sent.
+        private int? _effectLevel;
+        private double? _secondaryEffectDurationSeconds;
+
+        [JsonPropertyName("effectLevel")]
+        public int? EffectLevel
+        {
+            get => _effectLevel;
+            set { _effectLevel = value; HasEffectLevel = true; }
+        }
+
+        [JsonPropertyName("secondaryEffectDurationSeconds")]
+        public double? SecondaryEffectDurationSeconds
+        {
+            get => _secondaryEffectDurationSeconds;
+            set { _secondaryEffectDurationSeconds = value; HasSecondaryEffectDurationSeconds = true; }
+        }
+
+        [JsonIgnore] public bool HasEffectLevel { get; private set; }
+        [JsonIgnore] public bool HasSecondaryEffectDurationSeconds { get; private set; }
     }
 
     // List DTO - For search/list views

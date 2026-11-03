@@ -30,7 +30,7 @@ public class EnchantmentCombatDefaultsSeedTests
         new object?[] { "freeze",       10d,     5d,    true,   20,  1.5d,       0.5d },
         new object?[] { "strength",     15d,     15d,   true,   120, 15d,        0d },
         new object?[] { "chaos",        null,    null,  true,   90,  null,       null },
-        new object?[] { "flash_chaos",  null,    null,  true,   90,  null,       null },
+        new object?[] { "flash_chaos",  null,    null,  true,   90,  5d,         0d },
         new object?[] { "health_boost", null,    null,  true,   120, null,       null },
         new object?[] { "armor_repair", null,    null,  true,   120, null,       null },
         new object?[] { "resistance",   null,    null,  true,   120, 10d,        0.5d },
@@ -52,6 +52,51 @@ public class EnchantmentCombatDefaultsSeedTests
         Assert.Equal(cooldownSeconds, definition.CooldownSeconds);
         Assert.Equal(duration, definition.EffectDurationSeconds);
         Assert.Equal(multiplier, definition.LevelMultiplier);
+    }
+
+    /// <summary>
+    /// PandiO/knk-workspace#201: Flash Chaos's Slowness level I (5 s, the effect duration above) and Nausea 12.5 s; the
+    /// other enchantments leave both new columns empty.
+    /// </summary>
+    [Fact]
+    public async Task FlashChaos_GetsItsSlownessLevelAndNauseaDuration_OthersStayEmpty()
+    {
+        await using (var context = NewContext()) await AbilityDefinition.SeedCanonicalAsync(context);
+
+        await using var read = NewContext();
+        var all = await read.EnchantmentDefinitions.ToListAsync();
+        var flash = all.Single(e => e.Key == "flash_chaos");
+        Assert.Equal(1, flash.EffectLevel);
+        Assert.Equal(12.5, flash.SecondaryEffectDurationSeconds);
+        Assert.All(all.Where(e => e.Key != "flash_chaos"), e =>
+        {
+            Assert.Null(e.EffectLevel);
+            Assert.Null(e.SecondaryEffectDurationSeconds);
+        });
+    }
+
+    [Fact]
+    public async Task FlashChaos_AnExistingRowWithEmptyColumns_GetsTheNewDefaults_AndKeepsAnAdminsNauseaValue()
+    {
+        await using (var context = NewContext())
+        {
+            context.EnchantmentDefinitions.Add(new EnchantmentDefinition
+            {
+                Key = "knk:flash_chaos", DisplayName = "Flash Chaos", Description = "x", IsCustom = true, MaxLevel = 1,
+                CooldownEnabled = true, CooldownSeconds = 60, SecondaryEffectDurationSeconds = 20
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = NewContext()) await AbilityDefinition.SeedCanonicalAsync(context);
+
+        await using var read = NewContext();
+        var flash = await read.EnchantmentDefinitions.SingleAsync(e => e.Key == "flash_chaos");
+        Assert.Equal(60, flash.CooldownSeconds);
+        Assert.Equal(5, flash.EffectDurationSeconds);
+        Assert.Equal(0, flash.LevelMultiplier);
+        Assert.Equal(1, flash.EffectLevel);
+        Assert.Equal(20, flash.SecondaryEffectDurationSeconds);
     }
 
     [Fact]
@@ -127,6 +172,8 @@ public class EnchantmentCombatDefaultsSeedTests
             var d = entry.CombatDefaults!;
             knkwebapi_v2.Services.EnchantmentDefinitionService.ValidateCombatValues(
                 d.ProcChancePercent, d.ProcChancePerLevelPercent, d.CooldownSeconds, d.EffectDurationSeconds, d.LevelMultiplier);
+            knkwebapi_v2.Services.EnchantmentDefinitionService.ValidateSecondaryCombatValues(
+                d.EffectLevel, d.SecondaryEffectDurationSeconds);
         }
     }
 }

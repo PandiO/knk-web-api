@@ -152,6 +152,10 @@ public class EnchantmentCombatValuesTests
     [InlineData("effectDurationSeconds", "3601")]
     [InlineData("levelMultiplier", "-0.1")]
     [InlineData("levelMultiplier", "11")]
+    [InlineData("effectLevel", "0")]
+    [InlineData("effectLevel", "11")]
+    [InlineData("secondaryEffectDurationSeconds", "-1")]
+    [InlineData("secondaryEffectDurationSeconds", "3601")]
     public async Task Update_RefusesOutOfRangeValues(string property, string value)
     {
         var stored = StoredFreeze();
@@ -181,5 +185,73 @@ public class EnchantmentCombatValuesTests
             Key = "freeze", DisplayName = "Freeze", IsCustom = true, ProcChancePercent = 150
         }));
         _repo.Verify(r => r.AddAsync(It.IsAny<EnchantmentDefinition>()), Times.Never);
+    }
+
+    // PandiO/knk-workspace#201: Flash Chaos's Slowness level and Nausea duration.
+
+    private static EnchantmentDefinition StoredFlashChaos() => new()
+    {
+        Id = 9,
+        Key = "flash_chaos",
+        DisplayName = "Flash Chaos",
+        Description = "x",
+        IsCustom = true,
+        MaxLevel = 1,
+        CooldownEnabled = true,
+        CooldownSeconds = 90,
+        EffectDurationSeconds = 5,
+        LevelMultiplier = 0,
+        EffectLevel = 1,
+        SecondaryEffectDurationSeconds = 12.5
+    };
+
+    [Fact]
+    public async Task Update_WritesTheFlashChaosValues_OnlyWhenSent()
+    {
+        var stored = StoredFlashChaos();
+        _repo.Setup(r => r.GetByIdAsync(9)).ReturnsAsync(stored);
+
+        await _service.UpdateAsync(9, Parse("""
+            {"id":9,"key":"flash_chaos","displayName":"Flash Chaos","isCustom":true,"maxLevel":1,"effectDurationSeconds":8}
+            """));
+        Assert.Equal(8, stored.EffectDurationSeconds);
+        Assert.Equal(1, stored.EffectLevel);
+        Assert.Equal(12.5, stored.SecondaryEffectDurationSeconds);
+
+        await _service.UpdateAsync(9, Parse("""
+            {"id":9,"key":"flash_chaos","displayName":"Flash Chaos","isCustom":true,"maxLevel":1,
+             "effectLevel":3,"secondaryEffectDurationSeconds":null}
+            """));
+        Assert.Equal(3, stored.EffectLevel);
+        Assert.Null(stored.SecondaryEffectDurationSeconds);
+    }
+
+    [Fact]
+    public async Task Create_StoresTheFlashChaosValues_AndTheReadDtoCarriesThem()
+    {
+        EnchantmentDefinition? added = null;
+        _repo.Setup(r => r.AddAsync(It.IsAny<EnchantmentDefinition>()))
+            .Callback<EnchantmentDefinition>(e => added = e)
+            .Returns(Task.CompletedTask);
+
+        var read = await _service.CreateAsync(new EnchantmentDefinitionCreateDto
+        {
+            Key = "flash_chaos", DisplayName = "Flash Chaos", IsCustom = true, MaxLevel = 1,
+            EffectLevel = 2, SecondaryEffectDurationSeconds = 20
+        });
+
+        Assert.Equal(2, added!.EffectLevel);
+        Assert.Equal(20, added.SecondaryEffectDurationSeconds);
+        Assert.Equal(2, read.EffectLevel);
+        Assert.Equal(20, read.SecondaryEffectDurationSeconds);
+    }
+
+    [Fact]
+    public void ValidateSecondary_AcceptsTheBoundsAndNulls()
+    {
+        EnchantmentDefinitionService.ValidateSecondaryCombatValues(1, 0);
+        EnchantmentDefinitionService.ValidateSecondaryCombatValues(10, 3600);
+        EnchantmentDefinitionService.ValidateSecondaryCombatValues(null, null);
+        Assert.Throws<ArgumentException>(() => EnchantmentDefinitionService.ValidateSecondaryCombatValues(null, double.NaN));
     }
 }
