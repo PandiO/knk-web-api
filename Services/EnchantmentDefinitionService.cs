@@ -46,6 +46,7 @@ namespace knkwebapi_v2.Services
             ValidateCombatValues(dto.ProcChancePercent, dto.ProcChancePerLevelPercent, dto.CooldownSeconds,
                 dto.EffectDurationSeconds, dto.LevelMultiplier);
             ValidateSecondaryCombatValues(dto.EffectLevel, dto.SecondaryEffectDurationSeconds);
+            ValidateAreaCombatValues(dto.AreaDamage, dto.GateDamage, dto.DamageRadiusBlocks, dto.EffectRadiusBlocks);
 
             // Ensure base enchantment ref exists
             var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, dto.IsCustom);
@@ -76,6 +77,7 @@ namespace knkwebapi_v2.Services
             ValidateCombatValues(dto.ProcChancePercent, dto.ProcChancePerLevelPercent, dto.CooldownSeconds,
                 dto.EffectDurationSeconds, dto.LevelMultiplier);
             ValidateSecondaryCombatValues(dto.EffectLevel, dto.SecondaryEffectDurationSeconds);
+            ValidateAreaCombatValues(dto.AreaDamage, dto.GateDamage, dto.DamageRadiusBlocks, dto.EffectRadiusBlocks);
 
             // Ensure base enchantment ref exists
             var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, dto.IsCustom, existing.MinecraftEnchantmentRefId);
@@ -97,6 +99,10 @@ namespace knkwebapi_v2.Services
             if (dto.HasLevelMultiplier) existing.LevelMultiplier = dto.LevelMultiplier;
             if (dto.HasEffectLevel) existing.EffectLevel = dto.EffectLevel;
             if (dto.HasSecondaryEffectDurationSeconds) existing.SecondaryEffectDurationSeconds = dto.SecondaryEffectDurationSeconds;
+            if (dto.HasAreaDamage) existing.AreaDamage = dto.AreaDamage;
+            if (dto.HasGateDamage) existing.GateDamage = dto.GateDamage;
+            if (dto.HasDamageRadiusBlocks) existing.DamageRadiusBlocks = dto.DamageRadiusBlocks;
+            if (dto.HasEffectRadiusBlocks) existing.EffectRadiusBlocks = dto.EffectRadiusBlocks;
 
             if (!dto.IsCustom)
             {
@@ -190,6 +196,9 @@ namespace knkwebapi_v2.Services
         public const double MaxEffectDurationSeconds = 3_600;
         public const double MaxLevelMultiplier = 10;
         public const int MaxEffectLevel = 10;
+        public const double MaxAreaDamage = 1_000;
+        public const double MaxGateDamage = 10_000;
+        public const double MaxRadiusBlocks = 32;
 
         /// <summary>
         /// PandiO/knk-workspace#151: the combat values an admin may set on an enchantment. The chance per level may
@@ -221,6 +230,23 @@ namespace knkwebapi_v2.Services
             if (secondaryEffectDurationSeconds is < 0 or > MaxEffectDurationSeconds
                 || (secondaryEffectDurationSeconds.HasValue && double.IsNaN(secondaryEffectDurationSeconds.Value)))
                 throw new ArgumentException($"Second effect duration must be between 0 and {MaxEffectDurationSeconds} seconds.");
+        }
+
+        /// <summary>
+        /// PandiO/knk-workspace#223: the area blast of Chaos / Flash Chaos: damage to entities, damage to gates and the
+        /// two radii in blocks; nulls are always allowed.
+        /// </summary>
+        public static void ValidateAreaCombatValues(double? areaDamage, double? gateDamage, double? damageRadiusBlocks,
+            double? effectRadiusBlocks)
+        {
+            if (areaDamage is < 0 or > MaxAreaDamage || (areaDamage.HasValue && double.IsNaN(areaDamage.Value)))
+                throw new ArgumentException($"Area damage must be between 0 and {MaxAreaDamage}.");
+            if (gateDamage is < 0 or > MaxGateDamage || (gateDamage.HasValue && double.IsNaN(gateDamage.Value)))
+                throw new ArgumentException($"Gate damage must be between 0 and {MaxGateDamage}.");
+            if (damageRadiusBlocks is < 0 or > MaxRadiusBlocks || (damageRadiusBlocks.HasValue && double.IsNaN(damageRadiusBlocks.Value)))
+                throw new ArgumentException($"Damage radius must be between 0 and {MaxRadiusBlocks} blocks.");
+            if (effectRadiusBlocks is < 0 or > MaxRadiusBlocks || (effectRadiusBlocks.HasValue && double.IsNaN(effectRadiusBlocks.Value)))
+                throw new ArgumentException($"Effect radius must be between 0 and {MaxRadiusBlocks} blocks.");
         }
 
         private static void ValidateAbilityInvariant(bool isCustom, AbilityDefinitionUpsertDto? abilityDefinition)

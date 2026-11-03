@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "7fd65a6d-81c9-5151-baeb-b43a22bee454",
+  "configurationGuid": "0fc47579-0a13-52b7-b071-7d3c38088aa9",
   "entityTypeName": "EnchantmentDefinition",
-  "name": "EnchantmentDefinition - Default (seed v3)",
+  "name": "EnchantmentDefinition - Default (seed v4)",
   "description": "An enchantment the server knows: a vanilla Minecraft one or a custom Knights and Kings ability (Poison, Freeze, ...). Item blueprints, enchantment books and lootbox enchant rolls pick from these.",
   "steps": [
     {
-      "stepGuid": "10407d53-6689-56a1-b8d6-02903d280867",
+      "stepGuid": "43ce7ca4-a5ed-5e2d-b00c-b728858a74bb",
       "stepName": "Enchantment",
       "description": "Choose vanilla or custom first. For a vanilla enchantment, pick it as the base and its key, name and max level are filled in for you.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "1183e458-757e-5a2a-b19c-d40aa11ee7b6",
+          "fieldGuid": "df5382e9-2a39-5cce-941b-3356e70c0aa3",
           "fieldName": "IsCustom",
           "label": "Custom enchantment",
           "description": "Tick for a Knights and Kings ability that the plugin adds itself (written into the item's lore); leave unticked for a vanilla Minecraft enchantment. Custom enchantments are not limited by the grade cap. The built-in abilities (Poison, Freeze, ...) get their code-defined name, description and max level back whenever the API starts; their combat values (next step) stay as you set them.",
@@ -22,7 +22,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "8471a39a-2066-527f-a363-710785567fa0",
+          "fieldGuid": "5e9dfec1-e3b8-55e4-a85c-6e0fbdc0d90d",
           "fieldName": "MinecraftEnchantmentRefId",
           "label": "Vanilla enchantment",
           "description": "The Minecraft enchantment this entry stands for. Picking one fills in the key, display name and max level below when they are still empty. Only for vanilla enchantments.",
@@ -38,7 +38,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "1183e458-757e-5a2a-b19c-d40aa11ee7b6",
+                  "sourceFieldGuid": "df5382e9-2a39-5cce-941b-3356e70c0aa3",
                   "operator": "NotEquals",
                   "valueJson": "true"
                 }
@@ -47,7 +47,7 @@
           ]
         },
         {
-          "fieldGuid": "17cbc47d-0b41-5a7b-a325-30609e5ce12d",
+          "fieldGuid": "34d11e0a-0261-5350-8a7b-a159d9d679cd",
           "fieldName": "Key",
           "label": "Key",
           "placeholder": "minecraft:sharpness",
@@ -57,7 +57,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "b668115b-8fc3-53ff-853d-2a01013c3a91",
+          "fieldGuid": "01dd195c-255f-5e96-a8bb-00d45e353456",
           "fieldName": "DisplayName",
           "label": "Display name",
           "description": "The name players see, e.g. on an enchantment book (\"Teaches: Sharpness III\") and in messages.",
@@ -66,7 +66,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "27916094-67b2-50bc-b909-aedd11c3a2b4",
+          "fieldGuid": "e2ab88e9-daf9-5b35-b82f-2318c1010c2c",
           "fieldName": "Description",
           "label": "Description",
           "description": "One line on what the enchantment does, for admins (custom ones: how a player uses it, e.g. \"Right-click to become invisible for a short duration.\").",
@@ -75,7 +75,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "6073c967-22b1-54e9-8c99-faa3be09c2dd",
+          "fieldGuid": "2d24d1bf-e711-58cc-ae71-81351a68590d",
           "fieldName": "MaxLevel",
           "label": "Max level",
           "description": "Highest level this enchantment can reach on an item; the grade cap divides this number. Vanilla: Minecraft's own maximum (Sharpness 5, Unbreaking 3).",
@@ -86,9 +86,9 @@
       ]
     },
     {
-      "stepGuid": "9e3dc050-9a72-57f7-9c13-d804aa99ce48",
+      "stepGuid": "4f8762be-a88b-5ae4-b26a-708aa91b0a00",
       "stepName": "Combat values",
-      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the default: the API fills it in again at its next start, the plugin uses its built-in value until then. Flash Chaos uses the duration for its Slowness, plus the effect level (Slowness) and the second duration (Nausea) at the end. Cleaving ignores this step: its numbers are in the plugin's config.yml (gates.cleaving). At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration is the level-I duration x (1 + level multiplier x (n - 1)).",
+      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the default: the API fills it in again at its next start, the plugin uses its built-in value until then. Flash Chaos uses the duration for its Slowness, plus the effect level (Slowness) and the second duration (Nausea). Chaos and Flash Chaos read the area damage, gate damage and the two radii at the end. Cleaving ignores this step: its numbers are in the plugin's config.yml (gates.cleaving). At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration (Chaos / Flash Chaos: also the area and gate damage) is the level-I value x (1 + level multiplier x (n - 1)).",
       "isManyToManyRelationship": false,
       "displayConditionGroups": [
         {
@@ -97,7 +97,7 @@
           "isActive": true,
           "conditions": [
             {
-              "sourceFieldGuid": "1183e458-757e-5a2a-b19c-d40aa11ee7b6",
+              "sourceFieldGuid": "df5382e9-2a39-5cce-941b-3356e70c0aa3",
               "operator": "Equals",
               "valueJson": "true"
             }
@@ -106,7 +106,7 @@
       ],
       "fields": [
         {
-          "fieldGuid": "d1102b3d-37eb-5f8a-8c2f-fd74ab16649c",
+          "fieldGuid": "f16de5aa-cab5-573b-ad24-5e7a88e4b210",
           "fieldName": "ProcChancePercent",
           "label": "Chance at level I (%)",
           "placeholder": "15",
@@ -116,7 +116,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "b4066188-8ac4-5cc4-bdfb-e33b81d9c21b",
+          "fieldGuid": "4401fb4f-a385-5c63-b894-cd4b9a63b56b",
           "fieldName": "ProcChancePerLevelPercent",
           "label": "Chance per extra level (percentage points)",
           "placeholder": "15",
@@ -126,7 +126,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "2991999b-9100-5b0a-bc96-adb3eaedde29",
+          "fieldGuid": "4ca575bf-7320-54f2-b504-079ccf5aca07",
           "fieldName": "CooldownEnabled",
           "label": "Cooldown",
           "description": "On: after the effect goes off (or the ability is used), the same player can't set it off again until the cooldown has run out, on any target. Off: no cooldown, the length below is kept for later.",
@@ -135,7 +135,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "e3a2e977-e6c7-5d37-8057-ba5be0bbde6b",
+          "fieldGuid": "15eb18ec-4e10-510e-8fd9-10186a77f4d3",
           "fieldName": "CooldownSeconds",
           "label": "Cooldown length (seconds)",
           "placeholder": "20",
@@ -145,7 +145,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "22250223-78c7-5929-87a8-df3efb2b29de",
+          "fieldGuid": "f28a9153-05f8-511f-a39e-57c203c1875f",
           "fieldName": "EffectDurationSeconds",
           "label": "Duration at level I (seconds)",
           "placeholder": "3",
@@ -155,17 +155,17 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "daa07a57-a6b0-5ffb-badd-46af7e23519f",
+          "fieldGuid": "3c9f0bee-c1ae-57c6-a60b-dbd786b75cc3",
           "fieldName": "LevelMultiplier",
           "label": "Level multiplier",
           "placeholder": "1",
-          "description": "How much of the level-I duration every extra level adds: 1 = level II lasts twice, level III three times as long; 0.5 = 1.5x and 2x; 0 = the same at every level. Flash Chaos: applies to both its Slowness and its Nausea.",
+          "description": "How much of the level-I duration every extra level adds: 1 = level II lasts twice, level III three times as long; 0.5 = 1.5x and 2x; 0 = the same at every level. Flash Chaos: applies to both its Slowness and its Nausea. Chaos and Flash Chaos: also to their area damage and gate damage.",
           "fieldType": "Decimal",
           "isRequired": false,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "71b844b2-4edb-5468-a4c2-137a15f36f2f",
+          "fieldGuid": "c47b63b1-2550-510b-9c75-3fc51410c2f0",
           "fieldName": "EffectLevel",
           "label": "Effect level (Flash Chaos: Slowness)",
           "placeholder": "1",
@@ -175,11 +175,51 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "28d690a5-6eac-5c57-a3df-b42d4ab42079",
+          "fieldGuid": "33e814d8-8b1e-52eb-952a-93b8765a367d",
           "fieldName": "SecondaryEffectDurationSeconds",
           "label": "Second effect duration at level I (seconds) (Flash Chaos: Nausea)",
           "placeholder": "12.5",
           "description": "Only Flash Chaos reads it: how long its Nausea lasts at level I, in seconds (default 12.5). It grows per level with the level multiplier, like the duration above. Nausea has no strength levels in Minecraft, so there is no level for it. Other enchantments ignore it.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "744d5a5a-bb8f-51b7-929b-a776318cb1f7",
+          "fieldName": "AreaDamage",
+          "label": "Area damage at level I (Chaos / Flash Chaos)",
+          "placeholder": "40",
+          "description": "Only Chaos and Flash Chaos read it: the damage each creature or player within the damage radius takes at level I (default Chaos 40, Flash Chaos 60; a player has 20 health, armour lowers it). It grows per level with the level multiplier. 0 = knockback only. Range 0-1000.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "df1130c5-7b52-5551-ad71-1923e65e4e74",
+          "fieldName": "GateDamage",
+          "label": "Gate damage at level I (Chaos / Flash Chaos)",
+          "placeholder": "40",
+          "description": "Only Chaos and Flash Chaos read it: the damage each gate door in reach takes at level I, apart from the damage to players (default the same as the area damage: Chaos 40, Flash Chaos 60). How far gates are reached is the plugin's gates.area-enchantment-radius-blocks, not the radii here. It grows per level with the level multiplier. Range 0-10000.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7dc3de74-c769-5528-883e-2b6c289b6f31",
+          "fieldName": "DamageRadiusBlocks",
+          "label": "Damage radius (blocks) (Chaos / Flash Chaos)",
+          "placeholder": "3",
+          "description": "Only Chaos and Flash Chaos read it: creatures and players up to this many blocks from the user take the area damage (default 3). Range 0-32.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "01f27991-571a-5e86-bf33-86026305fdf3",
+          "fieldName": "EffectRadiusBlocks",
+          "label": "Knockback radius (blocks) (Chaos / Flash Chaos)",
+          "placeholder": "5",
+          "description": "Only Chaos and Flash Chaos read it: creatures and players up to this many blocks away are knocked back; Flash Chaos also gives them its Slowness and Nausea (default 5). A value below the damage radius counts as the damage radius. Range 0-32.",
           "fieldType": "Decimal",
           "isRequired": false,
           "isReadOnly": false

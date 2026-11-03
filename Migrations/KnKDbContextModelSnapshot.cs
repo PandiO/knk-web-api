@@ -1335,11 +1335,17 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<double?>("AreaDamage")
+                        .HasColumnType("double");
+
                     b.Property<bool?>("CooldownEnabled")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("CooldownSeconds")
                         .HasColumnType("int");
+
+                    b.Property<double?>("DamageRadiusBlocks")
+                        .HasColumnType("double");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1354,6 +1360,12 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<int?>("EffectLevel")
                         .HasColumnType("int");
+
+                    b.Property<double?>("EffectRadiusBlocks")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("GateDamage")
+                        .HasColumnType("double");
 
                     b.Property<bool>("IsCustom")
                         .HasColumnType("tinyint(1)");
