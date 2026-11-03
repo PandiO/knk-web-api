@@ -1977,10 +1977,22 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AllowAnimatedPassThrough")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<bool>("AllowContinuousDamage")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("AllowPassThrough")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowSnapPassThrough")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowTeleportPassThrough")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowWalkPathPassThrough")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("AnchorPointId")
@@ -2007,6 +2019,11 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<double>("ContinuousDamageMultiplier")
                         .HasColumnType("double");
+
+                    b.Property<string>("DefaultPassThroughMethod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<int>("DoorNameDisplayMode")
                         .HasColumnType("int");
@@ -6942,10 +6959,22 @@ namespace knkwebapi_v2.Migrations
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Structure");
 
+                    b.Property<bool?>("AllowAnimatedPassThroughOverride")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<bool?>("AllowContinuousDamageOverride")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<bool?>("AllowPassThroughOverride")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool?>("AllowSnapPassThroughOverride")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool?>("AllowTeleportPassThroughOverride")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool?>("AllowWalkPathPassThroughOverride")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("AnimateDuringSiege")
@@ -6959,6 +6988,10 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<int?>("CurrentSiegeId")
                         .HasColumnType("int");
+
+                    b.Property<string>("DefaultPassThroughMethodOverride")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<string>("GateNameDisplayModeOverride")
                         .HasMaxLength(50)

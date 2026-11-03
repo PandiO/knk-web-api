@@ -19,7 +19,7 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 | Seed | Configuration | Import after |
 |---|---|---|
 | `GateStructure` | GateStructure - Default (seed v2) | — |
-| `GateDoor` | GateDoor - Default (seed v3) | — (its rules read its own Gate field) |
+| `GateDoor` | GateDoor - Default (seed v4) | — (its rules read its own Gate field) |
 | `SiegeScenarioDistrict.join` | SiegeScenarioDistrict - Join Entry (seed v1) | — |
 | `SiegeScenarioGate.join` | SiegeScenarioGate - Join Entry (seed v1) | — |
 | `SiegeLobbyScenario.join` | SiegeLobbyScenario - Join Entry (seed v1) | — |
@@ -48,6 +48,15 @@ issues); "Open-door scan" is shown for plane grid and region doors (not only onc
 explains when a scan is needed, that a door which only rises and loses decoration needs none, and that a region door
 needs `/gatedoor capture <door> opened` first; "Closed-door scan" names the closed capture. GUIDs: configuration
 uuid5(v2 configuration GUID, "seed-v3"), every step/field uuid5(v2 configuration GUID, its v2 GUID).
+
+**GateDoor seed v4 (PandiO/knk-workspace#167, 2026-10-27):** a new `configurationGuid` and name, so it imports next to
+the imported v3; make it the default and delete or keep v3 by hand. The "Pass-through" step gains the styles the door
+offers - Animated, Snap, Walk-path, Teleport (`AllowAnimatedPassThrough`, `AllowSnapPassThrough`,
+`AllowWalkPathPassThrough`, `AllowTeleportPassThrough`) - and its "Default style" (`DefaultPassThroughMethod`), all shown
+once "Allow pass-through" is on. A player's own style is used when the door offers it, otherwise the door's default.
+Needs the knk-web-api migration `AddGatePassThroughStyles` of the same issue. GUIDs: configuration uuid5(v3
+configuration GUID, "seed-v4"), every kept step/field uuid5(v3 configuration GUID, its v3 GUID), the new fields
+uuid5(v4 configuration GUID, "field:" + name).
 
 **GateStructure seed v2 (KNG-229, 2026-10-21):** a new `configurationGuid` and name, so it imports next to the
 imported v1; make it the default and delete or keep v1 by hand. Adds the domain settings the Structure form has:
