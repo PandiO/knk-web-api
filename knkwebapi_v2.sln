@@ -5,7 +5,7 @@ VisualStudioVersion = 17.12.35527.113 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "knkwebapi_v2", "knkwebapi_v2.csproj", "{A2ED6B90-58E7-4EFE-9AF0-9155F58E0B29}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "knkwebapi_v2.Tests", "tests\knkwebapi_v2.Tests\knkwebapi_v2.Tests.csproj", "{F1B8D4BE-1D23-4E2E-9A22-0E16F0B4E9C1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "knkwebapi_v2.Tests", "Tests\knkwebapi_v2.Tests\knkwebapi_v2.Tests.csproj", "{F1B8D4BE-1D23-4E2E-9A22-0E16F0B4E9C1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
