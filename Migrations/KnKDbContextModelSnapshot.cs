@@ -1352,6 +1352,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<double?>("EffectDurationSeconds")
                         .HasColumnType("double");
 
+                    b.Property<int?>("EffectLevel")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsCustom")
                         .HasColumnType("tinyint(1)");
 
@@ -1372,6 +1375,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("double");
 
                     b.Property<double?>("ProcChancePercent")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SecondaryEffectDurationSeconds")
                         .HasColumnType("double");
 
                     b.HasKey("Id");
