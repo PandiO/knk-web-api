@@ -2,10 +2,12 @@ using knkwebapi_v2.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.EnchantmentInfo;
 using knkwebapi_v2.Dtos;
 
 namespace KnKWebAPI.Controllers
@@ -17,10 +19,27 @@ namespace KnKWebAPI.Controllers
     public class EnchantmentDefinitionsController : ControllerBase
     {
         private readonly IEnchantmentDefinitionService _service;
+        private readonly IEnchantmentInfoService? _info;
 
-        public EnchantmentDefinitionsController(IEnchantmentDefinitionService service)
+        public EnchantmentDefinitionsController(IEnchantmentDefinitionService service, IEnchantmentInfoService? info = null)
         {
             _service = service;
+            _info = info;
+        }
+
+        /// <summary>
+        /// PandiO/knk-workspace#221: the info sheets of every custom enchantment and ability for the public Guides page:
+        /// what it does, whom it hits, its effects, damage, chance and cooldown per level, from the live combat values.
+        /// Only the custom definitions, and only what players may know (no admin texts or ids).
+        /// </summary>
+        // Public by design (#221, like the #174 match pages): pinned in EndpointAccessRulesTests.
+        [AllowAnonymous]
+        [HttpGet("public/info")]
+        [ProducesResponseType(typeof(List<EnchantmentInfoDto>), 200)]
+        public async Task<IActionResult> PublicInfo()
+        {
+            if (_info == null) return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            return Ok(await _info.GetCustomEnchantmentInfoAsync());
         }
 
         [HttpGet]

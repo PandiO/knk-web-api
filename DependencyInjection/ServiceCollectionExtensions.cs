@@ -198,6 +198,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IItemBlueprintService, ItemBlueprintService>();
             services.AddScoped<IEnchantmentDefinitionRepository, EnchantmentDefinitionRepository>();
             services.AddScoped<IEnchantmentDefinitionService, EnchantmentDefinitionService>();
+            // PandiO/knk-workspace#221: the public enchantment info sheets.
+            services.AddScoped<knkwebapi_v2.Services.EnchantmentInfo.IEnchantmentInfoService,
+                knkwebapi_v2.Services.EnchantmentInfo.EnchantmentInfoService>();
             services.AddScoped<IGradeRepository, GradeRepository>();
             services.AddScoped<IGradeService, GradeService>();
             services.AddScoped<ITagRepository, TagRepository>();
