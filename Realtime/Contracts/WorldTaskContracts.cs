@@ -61,8 +61,10 @@ public static class WorldTaskOfferResults
     public const string Busy = "busy";
     /// <summary>The player is not on this server after all.</summary>
     public const string Offline = "offline";
-    /// <summary>The player lacks <c>knk.tasks</c>.</summary>
+    /// <summary>The player lacks <c>knk.tasks</c> (#239: offer state <c>NoPermission</c>, not Declined).</summary>
     public const string NoPermission = "no-permission";
+    /// <summary>#239: the game server couldn't check the player's access (API unreachable, account not loaded); recorded as Declined.</summary>
+    public const string Unavailable = "unavailable";
 }
 
 /// <param name="TaskId">The world task.</param>

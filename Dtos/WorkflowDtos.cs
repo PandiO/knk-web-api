@@ -142,6 +142,13 @@ public class CancelTaskDto
     [JsonPropertyName("reason")] public string? Reason { get; set; }
 }
 
+/// <summary>PandiO/knk-workspace#240: POST api/WorldTasks/{id}/offer ("Send again"), read with <see cref="WorldTaskDelivery.Parse"/>.</summary>
+public class OfferTaskDto
+{
+    /// <summary><c>"auto"</c> (default), <c>"queue"</c>, <c>"replace"</c> or <c>{"userId": n}</c>; <c>"code"</c> is refused.</summary>
+    [JsonPropertyName("deliver")] public JsonElement? Deliver { get; set; }
+}
+
 /// <summary>#180: POST api/WorldTasks/{id}/release (game server: in-game cancel, quit, restart, plugin disable).</summary>
 public class ReleaseTaskDto
 {

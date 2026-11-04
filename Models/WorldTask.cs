@@ -148,4 +148,10 @@ public static class WorldTaskOfferStates
 
     /// <summary>WT2: the target already had a task open when it arrived (a race after the busy check).</summary>
     public const string Busy = "Busy";
+
+    /// <summary>
+    /// PandiO/knk-workspace#239: the game server refused the offer because the target lacks <c>knk.tasks</c> in game (kept
+    /// apart from <see cref="Declined"/> so the web app can say why). Not offered again on rejoin.
+    /// </summary>
+    public const string NoPermission = "NoPermission";
 }

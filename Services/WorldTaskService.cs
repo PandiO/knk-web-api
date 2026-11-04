@@ -357,8 +357,8 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// <c>WorldTaskOfferResult</c> from the game server (DESIGN §6.4). Only an open offer changes: declined, offline
-        /// and no-permission → Declined, timed-out → TimedOut, busy → Busy (the web app shows the task code or the busy
-        /// choices). Accepted needs nothing: the offer claim already recorded it. Returns false when it was ignored.
+        /// and unavailable → Declined, no-permission → NoPermission (#239), timed-out → TimedOut, busy → Busy (the web app
+        /// shows the task code or the busy choices). Accepted needs nothing: the offer claim already recorded it. Returns false when it was ignored.
         /// </summary>
         public async Task<bool> RecordOfferResultAsync(int taskId, string? result, string? uuid)
         {
@@ -377,7 +377,8 @@ namespace knkwebapi_v2.Services
             {
                 Realtime.Contracts.WorldTaskOfferResults.Declined
                     or Realtime.Contracts.WorldTaskOfferResults.Offline
-                    or Realtime.Contracts.WorldTaskOfferResults.NoPermission => WorldTaskOfferStates.Declined,
+                    or Realtime.Contracts.WorldTaskOfferResults.Unavailable => WorldTaskOfferStates.Declined,
+                Realtime.Contracts.WorldTaskOfferResults.NoPermission => WorldTaskOfferStates.NoPermission,
                 Realtime.Contracts.WorldTaskOfferResults.TimedOut => WorldTaskOfferStates.TimedOut,
                 Realtime.Contracts.WorldTaskOfferResults.Busy => WorldTaskOfferStates.Busy,
                 _ => null
@@ -408,6 +409,55 @@ namespace knkwebapi_v2.Services
                 FormName = held == null ? null : await _taskRepo.GetFormNameAsync(held),
                 Queued = queued.Count,
             };
+        }
+
+        /// <summary>
+        /// PandiO/knk-workspace#240 "Send again": offers a waiting (Pending, player-driven) task again, the same way a new task
+        /// is delivered (<see cref="DeliverAsync"/>): auto / replace to the creator, queue, or a hand-off. For a task that fell
+        /// back to its code (handed back, quit, declined, timed out, busy, sent while offline). The task keeps its code and
+        /// gets a fresh expiry. 409 while it is offered, when it is no longer Pending, for a scan, and for auto / replace
+        /// while the creator is not online in game.
+        /// </summary>
+        public async Task<WorldTaskReadDto> OfferAgainAsync(int id, OfferTaskDto? dto)
+        {
+            var delivery = WorldTaskDelivery.Parse(dto?.Deliver);
+            if (delivery.Kind == WorldTaskDelivery.Code)
+                throw new ArgumentException("Send again needs auto, queue, replace or {\"userId\": n}; the task code works as it is.");
+
+            var entity = await _taskRepo.GetByIdAsync(id) ?? throw new KeyNotFoundException();
+            if (entity.Status != WorldTaskStatuses.Pending)
+                throw new WorldTaskConflictException($"Task {id} is {entity.Status}; only a waiting task can be sent again.", entity.Status);
+            if (HeadlessTaskTypes.Contains(entity.TaskType))
+                throw new WorldTaskConflictException($"Task {id} is a scan; the game server picks it up by itself.", entity.Status);
+            if (entity.OfferState == WorldTaskOfferStates.Offered)
+                throw new WorldTaskConflictException($"Task {id} is being offered in game right now; wait for the answer or cancel it.", entity.Status);
+
+            if (delivery.Kind == WorldTaskDelivery.HandOff)
+            {
+                if (await _taskRepo.GetUserBriefAsync(delivery.UserId!.Value) == null)
+                    throw new ArgumentException($"User {delivery.UserId} does not exist.", nameof(dto.Deliver));
+            }
+            else if (delivery.Kind != WorldTaskDelivery.Queue)
+            {
+                var creator = entity.CreatedByUserId is { } creatorId ? await _taskRepo.GetUserBriefAsync(creatorId) : null;
+                if (creator == null || _realtime.ServerOf(NormalizeUuid(creator.Value.Uuid)) == null)
+                    throw new WorldTaskConflictException(
+                        "You're not online in game. Join the server and press Send again, or use the task code.", entity.Status);
+            }
+
+            var now = _utcNow();
+            entity.TargetUserId = null;
+            entity.OfferState = WorldTaskOfferStates.None;
+            entity.OfferedAt = null;
+            entity.ExpiresAt = now + _options.PendingTtl;
+            entity.UpdatedAt = now;
+            await SaveAsync(entity);
+
+            var targetName = await DeliverAsync(entity, delivery);
+            _realtime.Changed(entity);
+            var read = _mapper.Map<WorldTaskReadDto>(entity);
+            read.TargetUsername ??= targetName;
+            return read;
         }
 
         private async Task<string?> TargetUuidAsync(WorldTask entity) =>
