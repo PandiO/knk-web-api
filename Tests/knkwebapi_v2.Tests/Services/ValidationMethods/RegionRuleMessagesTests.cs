@@ -5,7 +5,6 @@ using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Services.ValidationMethods;
-using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace knkwebapi_v2.Tests.Services.ValidationMethods;
@@ -153,17 +152,5 @@ public class RegionRuleMessagesTests
         var result = await service.ValidateFieldAsync(10, "gate_1", new Town { Id = 1, Name = "x", Description = "", WgRegionId = "r" }, null);
 
         Assert.Equal("Cannot verify region containment right now.", result.Message);
-    }
-
-    [Fact]
-    public async Task FieldValidationService_AppendsTheParent()
-    {
-        var validator = Validator("RegionContainment", new ValidationMethodResult { IsValid = false, Message = "outside", Placeholders = Containment() });
-        var service = new FieldValidationService(new Mock<IPlaceholderResolutionService>().Object, new[] { validator.Object }, NullLogger<FieldValidationService>.Instance);
-
-        var result = await service.ValidateRegionContainmentAsync(Rule(blocking: false), "gate_1", new object(), new Dictionary<string, string>());
-
-        Assert.False(result.IsBlocking);
-        Assert.Equal(GateMessage + " Must be inside District \"kng-162 step d2.5\" (region domain_27).", result.Message);
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -61,7 +60,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
                     : JsonSerializer.Deserialize<ConditionalValueMatchConfig>(configJson, ConfigJsonOptions)
                         ?? new ConditionalValueMatchConfig();
 
-                var conditionMet = EvaluateOperator(dependencyValue, config.Condition.Op, config.Condition.Value);
+                var conditionMet = ConditionOperators.Evaluate(dependencyValue, config.Condition.Op, config.Condition.Value);
                 if (!conditionMet)
                 {
                     return await Task.FromResult(new ValidationMethodResult
@@ -71,7 +70,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
                     });
                 }
 
-                var matchesExpected = EvaluateOperator(fieldValue, config.Expected.Op, config.Expected.Value);
+                var matchesExpected = ConditionOperators.Evaluate(fieldValue, config.Expected.Op, config.Expected.Value);
                 if (!matchesExpected)
                 {
                     return await Task.FromResult(new ValidationMethodResult
@@ -80,8 +79,8 @@ namespace knkwebapi_v2.Services.ValidationMethods
                         Message = "This field must be {expectedValue} when the condition is met, but was {actualValue}",
                         Placeholders = new Dictionary<string, string>
                         {
-                            { "expectedValue", ToComparableString(config.Expected.Value) ?? "null" },
-                            { "actualValue", ToComparableString(fieldValue) ?? "empty" }
+                            { "expectedValue", ConditionOperators.ToComparableString(config.Expected.Value) ?? "null" },
+                            { "actualValue", ConditionOperators.ToComparableString(fieldValue) ?? "empty" }
                         }
                     });
                 }
@@ -100,115 +99,6 @@ namespace knkwebapi_v2.Services.ValidationMethods
                     Message = $"Validation error: {ex.Message}"
                 };
             }
-        }
-
-        /// <summary>
-        /// Same operator vocabulary as ConditionalRequiredValidator.EvaluateCondition, reused for
-        /// both the dependency-side condition and the field-side expected-value check. Compares
-        /// via string representation (rather than raw object equality) since config values arrive
-        /// as JSON-deserialized <see cref="object"/>s - always boxed <see cref="JsonElement"/>s,
-        /// never plain CLR strings, because System.Text.Json deserializes an "object"-typed
-        /// property this way regardless of the JSON token's actual shape - while runtime field/
-        /// dependency values are typically plain CLR strings from form data. See
-        /// <see cref="ToComparableString"/>.
-        /// </summary>
-        private static bool EvaluateOperator(object? value, string op, object? comparand)
-        {
-            if (value == null || string.IsNullOrEmpty(op))
-                return false;
-
-            switch (op.ToLowerInvariant())
-            {
-                case "equals":
-                    return string.Equals(ToComparableString(value), ToComparableString(comparand), StringComparison.OrdinalIgnoreCase);
-                case "notequals":
-                    return !string.Equals(ToComparableString(value), ToComparableString(comparand), StringComparison.OrdinalIgnoreCase);
-                case "greaterthan":
-                    return Compare(value, comparand) > 0;
-                case "lessthan":
-                    return Compare(value, comparand) < 0;
-                case "contains":
-                    return ToComparableString(value)?.Contains(ToComparableString(comparand) ?? "", StringComparison.OrdinalIgnoreCase) ?? false;
-                case "in":
-                    return IsInList(value, comparand);
-                default:
-                    return false;
-            }
-        }
-
-        private static int Compare(object left, object? right)
-        {
-            var leftText = ToComparableString(left);
-            var rightText = ToComparableString(right);
-
-            if (double.TryParse(leftText, out var leftNum) && double.TryParse(rightText ?? "0", out var rightNum))
-            {
-                return leftNum.CompareTo(rightNum);
-            }
-
-            return string.Compare(leftText, rightText, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Check if value is in a comma-separated list ("DRAWBRIDGE,DOUBLE_DOORS") or a genuine
-        /// JSON array (["DRAWBRIDGE","DOUBLE_DOORS"]) - "in" for both the dependency condition
-        /// (e.g. GateType) and, less commonly, the expected side (e.g. MotionType allowed to be
-        /// any of several values).
-        /// </summary>
-        private static bool IsInList(object value, object? listValue)
-        {
-            if (listValue == null)
-                return false;
-
-            var stringValue = ToComparableString(value);
-
-            if (listValue is JsonElement { ValueKind: JsonValueKind.Array } arrayElement)
-            {
-                foreach (var item in arrayElement.EnumerateArray())
-                {
-                    if (ToComparableString(item)?.Equals(stringValue, StringComparison.OrdinalIgnoreCase) ?? false)
-                        return true;
-                }
-                return false;
-            }
-
-            if (listValue is IEnumerable enumerable && listValue is not string)
-            {
-                foreach (var item in enumerable)
-                {
-                    if (ToComparableString(item)?.Equals(stringValue, StringComparison.OrdinalIgnoreCase) ?? false)
-                        return true;
-                }
-                return false;
-            }
-
-            var listText = ToComparableString(listValue) ?? string.Empty;
-            var items = listText.Split(',');
-            return Array.Exists(items, item => item.Trim().Equals(stringValue, StringComparison.OrdinalIgnoreCase));
-        }
-
-        /// <summary>
-        /// Unwraps a JSON-deserialized "object" value to a plain string for comparison, since
-        /// System.Text.Json always produces a boxed JsonElement for such a property (a string
-        /// JSON token does NOT deserialize to a CLR string here) - JsonElement.ToString() happens
-        /// to return the right thing for String/Number/bool kinds already, but being explicit
-        /// keeps this correct even if that implementation detail ever changes upstream.
-        /// </summary>
-        private static string? ToComparableString(object? value)
-        {
-            if (value is JsonElement element)
-            {
-                return element.ValueKind switch
-                {
-                    JsonValueKind.String => element.GetString(),
-                    JsonValueKind.Null => null,
-                    JsonValueKind.True => "true",
-                    JsonValueKind.False => "false",
-                    _ => element.ToString()
-                };
-            }
-
-            return value?.ToString();
         }
     }
 

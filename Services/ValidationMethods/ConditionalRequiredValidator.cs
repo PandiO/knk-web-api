@@ -8,24 +8,34 @@ namespace knkwebapi_v2.Services.ValidationMethods
 {
     /// <summary>
     /// Validates that a field is required only when a condition is met on a dependency field.
-    /// 
-    /// ConfigJson schema:
+    ///
+    /// ConfigJson schema (the same "condition" clause as <see cref="ConditionalValueMatchValidator"/>,
+    /// developer decision 2026-11-04 on PandiO/knk-workspace#99):
     /// {
-    ///   "operator": "equals",        // "equals", "notEquals", "greaterThan", "lessThan", "contains", "in"
-    ///   "value": "specific_value"    // Value to compare against
+    ///   "condition": {
+    ///     "op": "equals",          // "equals", "notEquals", "greaterThan", "lessThan", "contains", "in"
+    ///     "value": "complex",      // value to compare the dependency against ("in": comma-separated or an array)
+    ///     "property": "Name"       // optional: which property of a picked record to compare (default "Id")
+    ///   }
     /// }
-    /// 
-    /// Example: A "description" field becomes required when the user selects status="complex"
-    /// - FieldValue: Description text (current value of field being validated)
-    /// - DependencyValue: "complex" (value of dependency field - Status)
-    /// - ConfigJson: { "operator": "equals", "value": "complex" }
-    /// 
+    /// Names are case-insensitive. Configs saved before that decision still work: "operator" is read
+    /// as "op", and a flat { "op"/"operator", "value" } without "condition" is read as the condition.
+    ///
+    /// Values are compared by text (<see cref="ConditionOperators"/>), so a config's <c>true</c>
+    /// matches a checkbox's "true" and <c>5</c> matches "5". When the dependency is an Object field,
+    /// <c>ValidationService</c> passes the saved record; its "property" (default "Id") is compared.
+    ///
+    /// Example: a "description" field becomes required when the user selects status = "complex":
+    /// { "condition": { "op": "equals", "value": "complex" } }
+    ///
     /// Logic:
     /// - If dependency value matches condition: field MUST be filled
     /// - If dependency value doesn't match condition: field can be empty
     /// </summary>
     public class ConditionalRequiredValidator : IValidationMethod
     {
+        private const string DefaultRecordProperty = "Id";
+
         public string ValidationType => "ConditionalRequired";
 
         public async Task<ValidationMethodResult> ValidateAsync(
@@ -36,17 +46,14 @@ namespace knkwebapi_v2.Services.ValidationMethods
         {
             try
             {
-                // Parse configuration
-                var config = string.IsNullOrEmpty(configJson)
-                    ? new ConditionalRequiredConfig()
-                    : JsonSerializer.Deserialize<ConditionalRequiredConfig>(configJson)
-                        ?? new ConditionalRequiredConfig();
+                var config = ConditionalRequiredConfig.Parse(configJson);
 
-                // Evaluate condition: does dependency value match the configured value?
-                var conditionMet = EvaluateCondition(dependencyValue, config.Operator, config.Value);
+                var compared = ConditionOperators.IsScalar(dependencyValue)
+                    ? dependencyValue
+                    : ConditionOperators.ReadProperty(dependencyValue, config.Property ?? DefaultRecordProperty);
 
                 // If condition NOT met: validation passes (field doesn't need to be filled)
-                if (!conditionMet)
+                if (!ConditionOperators.Evaluate(compared, config.Op, config.Value))
                 {
                     return await Task.FromResult(new ValidationMethodResult
                     {
@@ -56,9 +63,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
                 }
 
                 // Condition IS met: field MUST be filled
-                var isEmpty = IsValueEmpty(fieldValue);
-
-                if (isEmpty)
+                if (IsValueEmpty(fieldValue))
                 {
                     return await Task.FromResult(new ValidationMethodResult
                     {
@@ -66,8 +71,8 @@ namespace knkwebapi_v2.Services.ValidationMethods
                         Message = "This field is required when the condition is met",
                         Placeholders = new Dictionary<string, string>
                         {
-                            { "operator", config.Operator },
-                            { "conditionValue", config.Value?.ToString() ?? "null" }
+                            { "operator", config.Op },
+                            { "conditionValue", ConditionOperators.ToComparableString(config.Value) ?? "null" }
                         }
                     });
                 }
@@ -90,96 +95,31 @@ namespace knkwebapi_v2.Services.ValidationMethods
         }
 
         /// <summary>
-        /// Evaluate if dependency value meets the configured condition.
+        /// Check if a value is considered "empty" for validation purposes: null, blank text, a JSON
+        /// null or blank string, or 0 (an unpicked id).
         /// </summary>
-        private bool EvaluateCondition(object? dependencyValue, string op, object? conditionValue)
+        private static bool IsValueEmpty(object? value)
         {
-            if (dependencyValue == null || string.IsNullOrEmpty(op))
-                return false;
-
-            switch (op.ToLowerInvariant())
+            if (value is JsonElement element)
             {
-                case "equals":
-                    return Equals(dependencyValue, conditionValue);
-                case "notequals":
-                    return !Equals(dependencyValue, conditionValue);
-                case "greaterthan":
-                    return Compare(dependencyValue, conditionValue) > 0;
-                case "lessthan":
-                    return Compare(dependencyValue, conditionValue) < 0;
-                case "contains":
-                    return dependencyValue.ToString()?.Contains(conditionValue?.ToString() ?? "") ?? false;
-                case "in":
-                    return IsInList(dependencyValue, conditionValue);
-                default:
-                    return false;
-            }
-        }
-
-        /// <summary>
-        /// Check if a value is considered "empty" for validation purposes.
-        /// </summary>
-        private bool IsValueEmpty(object? value)
-        {
-            return value == null
-                || string.Empty.Equals(value.ToString())
-                || (value is string str && string.IsNullOrWhiteSpace(str))
-                || (value is int intVal && intVal == 0);
-        }
-
-        /// <summary>
-        /// Compare two objects using their comparable interface.
-        /// </summary>
-        private int Compare(object left, object? right)
-        {
-            if (left is IComparable comparable)
-            {
-                return comparable.CompareTo(right);
-            }
-
-            // Try numeric comparison
-            if (double.TryParse(left.ToString(), out var leftNum) 
-                && double.TryParse(right?.ToString() ?? "0", out var rightNum))
-            {
-                return leftNum.CompareTo(rightNum);
-            }
-
-            return 0;
-        }
-
-        /// <summary>
-        /// Check if value is in a comma-separated list or array.
-        /// </summary>
-        private bool IsInList(object value, object? listValue)
-        {
-            if (listValue == null)
-                return false;
-
-            var stringValue = value.ToString();
-
-            // If listValue is a comma-separated string
-            if (listValue is string listStr)
-            {
-                var items = listStr.Split(',');
-                return Array.Exists(items, item => item.Trim().Equals(stringValue, StringComparison.OrdinalIgnoreCase));
-            }
-
-            // If listValue is an array or collection
-            if (listValue is System.Collections.IEnumerable enumerable)
-            {
-                foreach (var item in enumerable)
+                return element.ValueKind switch
                 {
-                    if (item.ToString()?.Equals(stringValue, StringComparison.OrdinalIgnoreCase) ?? false)
-                        return true;
-                }
+                    JsonValueKind.Null or JsonValueKind.Undefined => true,
+                    JsonValueKind.String => string.IsNullOrWhiteSpace(element.GetString()),
+                    JsonValueKind.Number => element.TryGetInt64(out var number) && number == 0,
+                    _ => false
+                };
             }
 
-            return false;
+            return value == null
+                || (value is string str && string.IsNullOrWhiteSpace(str))
+                || (value is int intVal && intVal == 0)
+                || (value is long longVal && longVal == 0);
         }
     }
 
     /// <summary>
-    /// Configuration for ConditionalRequiredValidator
+    /// Configuration for ConditionalRequiredValidator, read from any of the shapes described there.
     /// </summary>
     public class ConditionalRequiredConfig
     {
@@ -187,12 +127,52 @@ namespace knkwebapi_v2.Services.ValidationMethods
         /// Comparison operator.
         /// Valid values: "equals", "notEquals", "greaterThan", "lessThan", "contains", "in"
         /// </summary>
-        public string Operator { get; set; } = "equals";
+        public string Op { get; set; } = "equals";
 
         /// <summary>
-        /// Value to compare against.
-        /// For "in" operator, can be comma-separated: "value1,value2,value3"
+        /// Value to compare against (a <see cref="JsonElement"/> when parsed from ConfigJson).
+        /// For "in", comma-separated ("value1,value2") or an array.
         /// </summary>
         public object? Value { get; set; }
+
+        /// <summary>The property of a picked record to compare; null = "Id".</summary>
+        public string? Property { get; set; }
+
+        public static ConditionalRequiredConfig Parse(string? configJson)
+        {
+            var config = new ConditionalRequiredConfig();
+            if (string.IsNullOrWhiteSpace(configJson))
+                return config;
+
+            using var document = JsonDocument.Parse(configJson);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return config;
+
+            var clause = Member(root, "condition") is { ValueKind: JsonValueKind.Object } nested ? nested : root;
+
+            var op = Member(clause, "op") ?? Member(clause, "operator");
+            if (op is { ValueKind: JsonValueKind.String } opText && !string.IsNullOrWhiteSpace(opText.GetString()))
+                config.Op = opText.GetString()!;
+
+            // Clone: the document is disposed when this method returns.
+            if (Member(clause, "value") is { } value)
+                config.Value = value.Clone();
+
+            if (Member(clause, "property") is { ValueKind: JsonValueKind.String } property && !string.IsNullOrWhiteSpace(property.GetString()))
+                config.Property = property.GetString();
+
+            return config;
+        }
+
+        private static JsonElement? Member(JsonElement obj, string name)
+        {
+            foreach (var member in obj.EnumerateObject())
+            {
+                if (string.Equals(member.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return member.Value;
+            }
+            return null;
+        }
     }
 }

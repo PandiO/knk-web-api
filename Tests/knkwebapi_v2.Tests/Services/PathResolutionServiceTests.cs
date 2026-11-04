@@ -501,18 +501,31 @@ namespace knkwebapi_v2.Tests.Services
             result.ErrorMessage.Should().Contain("collection navigation");
         }
 
+        // A path is relative to the entity it is validated for: DependencyResolutionService passes the form's
+        // EntityTypeName, so "Town.WgRegionId" is a District form's path (District.Town.WgRegionId, the
+        // dependency-resolution design's "Create District" example). PandiO/knk-workspace#99: the two
+        // single-hop rows used to run against "Town", which has no Town property.
         [Theory]
-        [InlineData("Name")]
-        [InlineData("WgRegionId")]
-        [InlineData("Town.Name")]
-        [InlineData("Town.WgRegionId")]
-        public async Task ValidatePathAsync_AllowsValidV1Paths(string path)
+        [InlineData("Town", "Name")]
+        [InlineData("Town", "WgRegionId")]
+        [InlineData("District", "Town.Name")]
+        [InlineData("District", "Town.WgRegionId")]
+        public async Task ValidatePathAsync_AllowsValidV1Paths(string entityTypeName, string path)
         {
             // Act
-            var result = await _service.ValidatePathAsync("Town", path);
+            var result = await _service.ValidatePathAsync(entityTypeName, path);
 
             // Assert
             result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task ValidatePathAsync_PathIsRelativeToTheEntity_TownHasNoTownProperty()
+        {
+            var result = await _service.ValidatePathAsync("Town", "Town.Name");
+
+            result.IsValid.Should().BeFalse();
+            result.MissingProperties.Should().Contain("Town");
         }
 
         #endregion
