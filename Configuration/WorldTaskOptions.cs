@@ -26,6 +26,14 @@ public class WorldTaskOptions
     /// <summary>Rows handled per sweep step and pass.</summary>
     public int SweepBatchSize { get; set; } = 200;
 
+    /// <summary>
+    /// WT2 (#181, decision Q8): how long a "Hand off to…" offer (Accept/Decline in game) stays open, and how long the API
+    /// waits for any offer's answer before it counts as timed out (the web app then expands the task code).
+    /// </summary>
+    public int OfferTimeoutSeconds { get; set; } = 120;
+
+    public TimeSpan OfferTimeout => TimeSpan.FromSeconds(Math.Max(10, OfferTimeoutSeconds));
+
     public TimeSpan PendingTtl => TimeSpan.FromMinutes(Math.Max(1, PendingTtlMinutes));
     public TimeSpan Lease => TimeSpan.FromMinutes(Math.Max(1, LeaseMinutes));
     public TimeSpan SessionRetention => TimeSpan.FromDays(Math.Max(1, SessionRetentionDays));

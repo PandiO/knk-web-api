@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System;
 using System.Text.Json.Serialization;
 
@@ -72,6 +73,13 @@ public class WorldTaskCreateDto
     [JsonPropertyName("payloadJson")] public string? PayloadJson { get; set; }
     /// <summary>PandiO/knk-workspace#180: the draft whose field this task fills (DESIGN §8.7).</summary>
     [JsonPropertyName("formSubmissionProgressId")] public int? FormSubmissionProgressId { get; set; }
+    /// <summary>
+    /// WT2 (PandiO/knk-workspace#181, DESIGN §8.3): <c>"auto"</c> (default: offered to and claimed by the creator when they
+    /// are online in game), <c>"code"</c> (task code only), <c>"queue"</c> (offered when the creator's current task ends),
+    /// <c>"replace"</c> (the creator's current task is released, this one offered) or <c>{"userId": n}</c> ("Hand off
+    /// to…": Accept/Decline in game). Read with <see cref="WorldTaskDelivery.Parse"/>.
+    /// </summary>
+    [JsonPropertyName("deliver")] public JsonElement? Deliver { get; set; }
 }
 
 public class WorldTaskUpdateDto
@@ -139,6 +147,11 @@ public class ReleaseTaskDto
 {
     [JsonPropertyName("serverId")] public string? ServerId { get; set; }
     [JsonPropertyName("reason")] public string? Reason { get; set; }
+    /// <summary>
+    /// WT2 (#181): the player handed the task back on purpose (in-game <c>cancel</c>), so it is not offered to them again
+    /// when they rejoin and the web app shows the task code. False for quit, restart and disable.
+    /// </summary>
+    [JsonPropertyName("handBack")] public bool HandBack { get; set; }
 }
 
 /// <summary>#180: POST api/WorldTasks/{id}/heartbeat (game server, every 60 s for each task it holds).</summary>
@@ -180,4 +193,59 @@ public class WorldTaskReadDto
     [JsonPropertyName("appliedAt")] public string? AppliedAt { get; set; }
     [JsonPropertyName("targetUserId")] public int? TargetUserId { get; set; }
     [JsonPropertyName("offerState")] public string OfferState { get; set; } = "None";
+    /// <summary>WT2 (#181): when the current offer was sent, and to whom (username).</summary>
+    [JsonPropertyName("offeredAt")] public string? OfferedAt { get; set; }
+    [JsonPropertyName("targetUsername")] public string? TargetUsername { get; set; }
+}
+
+/// <summary>WT2 (PandiO/knk-workspace#181): how a new task reaches the game (<see cref="WorldTaskCreateDto.Deliver"/>).</summary>
+public sealed record WorldTaskDelivery(string Kind, int? UserId = null)
+{
+    public const string Auto = "auto";
+    public const string Code = "code";
+    public const string Queue = "queue";
+    public const string Replace = "replace";
+    public const string HandOff = "user";
+
+    public static readonly WorldTaskDelivery Default = new(Auto);
+
+    /// <summary>Reads <c>"auto"|"code"|"queue"|"replace"</c> or <c>{"userId": n}</c>; missing or null = auto.</summary>
+    public static WorldTaskDelivery Parse(JsonElement? deliver)
+    {
+        if (deliver is not { } value || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) return Default;
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            var kind = value.GetString()?.Trim().ToLowerInvariant();
+            return kind switch
+            {
+                null or "" or Auto => Default,
+                Code or Queue or Replace => new WorldTaskDelivery(kind),
+                _ => throw new ArgumentException($"Unknown deliver '{kind}'. Use auto, code, queue, replace or {{\"userId\": n}}."),
+            };
+        }
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in value.EnumerateObject())
+            {
+                if (string.Equals(property.Name, "userId", StringComparison.OrdinalIgnoreCase)
+                    && property.Value.TryGetInt32(out var userId) && userId > 0)
+                {
+                    return new WorldTaskDelivery(HandOff, userId);
+                }
+            }
+            throw new ArgumentException("deliver {\"userId\": n} needs a user id.");
+        }
+        throw new ArgumentException("deliver must be a string or {\"userId\": n}.");
+    }
+}
+
+/// <summary>WT2 (#181): <c>GET api/WorldTasks/active-for-me</c> (the web app's busy check, DESIGN §8.3).</summary>
+public class WorldTaskActiveForMeDto
+{
+    /// <summary>The task the caller holds in game (InProgress, claimed by them), or null.</summary>
+    [JsonPropertyName("task")] public WorldTaskReadDto? Task { get; set; }
+    /// <summary>The form that task fills a field of (named in the "Replace" question), when known.</summary>
+    [JsonPropertyName("formName")] public string? FormName { get; set; }
+    /// <summary>How many of the caller's tasks wait in their queue.</summary>
+    [JsonPropertyName("queued")] public int Queued { get; set; }
 }

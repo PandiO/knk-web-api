@@ -124,6 +124,9 @@ public class InMemoryPlayerNotificationQueue : IPlayerNotificationQueue
         return _pending.Values.OrderBy(n => n.Id).ToList();
     }
 
+    /// <summary>The pending notification with this id, or null (acknowledged, expired or unknown).</summary>
+    public PlayerNotificationDto? Find(long id) => _pending.TryGetValue(id, out var notification) ? notification : null;
+
     public int Acknowledge(IEnumerable<long> ids)
     {
         return ids.Distinct().Count(id => _pending.TryRemove(id, out _));

@@ -17,6 +17,7 @@ namespace knkwebapi_v2.Repositories
         {
             return await _context.WorldTasks
                 .Include(t => t.WorkflowSession)
+                .Include(t => t.TargetUser) // #181: the offer's target username
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
 
@@ -187,6 +188,61 @@ namespace knkwebapi_v2.Repositories
                 .Where(u => u.Uuid != null && (u.Uuid == normalized || u.Uuid == compact))
                 .Select(u => (int?)u.Id)
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task<(string? Uuid, string Username)?> GetUserBriefAsync(int userId)
+        {
+            var user = await _context.Users.AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => new { u.Uuid, u.Username })
+                .FirstOrDefaultAsync();
+            return user == null ? null : (user.Uuid, user.Username);
+        }
+
+        public async Task<List<WorldTask>> ListInProgressClaimedByUserAsync(int userId)
+        {
+            return await _context.WorldTasks
+                .Include(t => t.WorkflowSession)
+                .Where(t => t.Status == WorldTaskStatuses.InProgress && t.ClaimedByUserId == userId)
+                .OrderBy(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<WorldTask>> ListPendingTargetedAsync(IReadOnlyCollection<int> userIds, IReadOnlyCollection<string> offerStates)
+        {
+            if (userIds.Count == 0 || offerStates.Count == 0) return new List<WorldTask>();
+            var ids = userIds.ToList();
+            var states = offerStates.ToList();
+            return await _context.WorldTasks
+                .Include(t => t.WorkflowSession)
+                .Include(t => t.TargetUser)
+                .Where(t => t.Status == WorldTaskStatuses.Pending && t.TargetUserId != null
+                    && ids.Contains(t.TargetUserId.Value) && states.Contains(t.OfferState))
+                .OrderBy(t => t.CreatedAt).ThenBy(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<string?> GetFormNameAsync(WorldTask task)
+        {
+            if (task.FormSubmissionProgressId is { } progressId)
+            {
+                var name = await _context.FormSubmissionProgresses.AsNoTracking()
+                    .Where(p => p.Id == progressId)
+                    .Select(p => p.FormConfiguration.Name)
+                    .FirstOrDefaultAsync();
+                if (!string.IsNullOrWhiteSpace(name)) return name;
+            }
+            var sessionFormId = task.WorkflowSession?.FormConfigurationId
+                ?? await _context.WorkflowSessions.AsNoTracking().Where(s => s.Id == task.WorkflowSessionId)
+                    .Select(s => s.FormConfigurationId).FirstOrDefaultAsync();
+            if (sessionFormId is { } formId)
+            {
+                return await _context.FormConfigurations.AsNoTracking()
+                    .Where(f => f.Id == formId)
+                    .Select(f => f.Name)
+                    .FirstOrDefaultAsync();
+            }
+            return null;
         }
 
         private static IQueryable<WorldTask> ApplySorting(IQueryable<WorldTask> q, string? sortBy, bool desc)

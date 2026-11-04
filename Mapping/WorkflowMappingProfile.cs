@@ -85,7 +85,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.EntityType, o => o.MapFrom(s => s.WorkflowSession != null ? s.WorkflowSession.EntityTypeName : null))
                 .ForMember(d => d.ExpiresAt, o => o.MapFrom(s => s.ExpiresAt.HasValue ? DateTime.SpecifyKind(s.ExpiresAt.Value, DateTimeKind.Utc).ToString("O") : null))
                 .ForMember(d => d.LeaseUntil, o => o.MapFrom(s => s.LeaseUntil.HasValue ? DateTime.SpecifyKind(s.LeaseUntil.Value, DateTimeKind.Utc).ToString("O") : null))
-                .ForMember(d => d.AppliedAt, o => o.MapFrom(s => s.AppliedAt.HasValue ? DateTime.SpecifyKind(s.AppliedAt.Value, DateTimeKind.Utc).ToString("O") : null));
+                .ForMember(d => d.AppliedAt, o => o.MapFrom(s => s.AppliedAt.HasValue ? DateTime.SpecifyKind(s.AppliedAt.Value, DateTimeKind.Utc).ToString("O") : null))
+                // #181
+                .ForMember(d => d.OfferedAt, o => o.MapFrom(s => s.OfferedAt.HasValue ? DateTime.SpecifyKind(s.OfferedAt.Value, DateTimeKind.Utc).ToString("O") : null))
+                .ForMember(d => d.TargetUsername, o => o.MapFrom(s => s.TargetUser != null ? s.TargetUser.Username : null));
         }
     }
 }

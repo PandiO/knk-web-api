@@ -37,6 +37,13 @@ namespace knkwebapi_v2.Services
         private readonly IMapper _mapper;
         private readonly WorldTaskOptions _options;
         private readonly Func<DateTime> _utcNow;
+        private readonly IWorldTaskRealtime _realtime;
+
+        /// <summary>WT2 (#181): offer states a rejoining (or reconnecting) target gets the task offered again in.</summary>
+        private static readonly string[] ReofferStates =
+        {
+            WorldTaskOfferStates.Offered, WorldTaskOfferStates.Accepted, WorldTaskOfferStates.Queued
+        };
 
         public WorldTaskService(
             IWorldTaskRepository taskRepo,
@@ -44,7 +51,8 @@ namespace knkwebapi_v2.Services
             IGateDoorService gateDoorService,
             IMapper mapper,
             IOptions<WorldTaskOptions>? options = null,
-            Func<DateTime>? utcNow = null)
+            Func<DateTime>? utcNow = null,
+            IWorldTaskRealtime? realtime = null)
         {
             _taskRepo = taskRepo;
             _workflowRepo = workflowRepo;
@@ -52,6 +60,7 @@ namespace knkwebapi_v2.Services
             _mapper = mapper;
             _options = options?.Value ?? new WorldTaskOptions();
             _utcNow = utcNow ?? (() => DateTime.UtcNow);
+            _realtime = realtime ?? NoWorldTaskRealtime.Instance;
         }
 
         public Task<WorldTaskReadDto> CreateAsync(WorldTaskCreateDto dto) => CreateAsync(dto, null);
@@ -86,6 +95,12 @@ namespace knkwebapi_v2.Services
 
             if (string.IsNullOrWhiteSpace(dto.TaskType))
                 throw new ArgumentException("TaskType is required", nameof(dto.TaskType));
+
+            // WT2 (#181): how the task reaches the game; checked before anything is written.
+            var delivery = WorldTaskDelivery.Parse(dto.Deliver);
+            if (delivery.Kind == WorldTaskDelivery.HandOff
+                && await _taskRepo.GetUserBriefAsync(delivery.UserId!.Value) == null)
+                throw new ArgumentException($"User {delivery.UserId} does not exist.", nameof(dto.Deliver));
 
             var session = await _workflowRepo.GetSessionByIdAsync(dto.WorkflowSessionId)
                 ?? throw new ArgumentException($"Workflow session {dto.WorkflowSessionId} does not exist.", nameof(dto.WorkflowSessionId));
@@ -126,8 +141,11 @@ namespace knkwebapi_v2.Services
             {
                 try
                 {
+                    var holder = previous.ClaimedByUuid ?? await TargetUuidAsync(previous);
                     Close(previous, WorldTaskStatuses.Cancelled, $"Replaced by task #{entity.Id}.");
                     await SaveAsync(previous);
+                    _realtime.Changed(previous);
+                    _realtime.Cancelled(previous, holder, "Started again in the web app.");
                 }
                 catch (WorldTaskConflictException)
                 {
@@ -143,8 +161,259 @@ namespace knkwebapi_v2.Services
             }
 
             entity.WorkflowSession ??= session;
-            return _mapper.Map<WorldTaskReadDto>(entity);
+
+            // WT2 (#181, DESIGN §8.3): offer it in game, queue it, or leave it to the task code.
+            var targetName = await DeliverAsync(entity, delivery);
+            _realtime.Changed(entity);
+
+            var read = _mapper.Map<WorldTaskReadDto>(entity);
+            read.TargetUsername ??= targetName;
+            return read;
         }
+
+        // ===== WT2 (PandiO/knk-workspace#181): delivery, offers, queue =====
+
+        /// <summary>
+        /// DESIGN §8.3. Headless tasks: <c>WorldTaskCreated</c> to the game servers. Otherwise by <paramref name="delivery"/>:
+        /// auto → offered to the creator when they are online (Busy when they already hold a task), queue → offered when the
+        /// creator's current task ends, replace → the creator's current task is released and this one offered, hand-off →
+        /// Accept/Decline for that player (Declined when they are not online), code → nothing. Returns the target's
+        /// username when an offer target was set.
+        /// </summary>
+        private async Task<string?> DeliverAsync(WorldTask entity, WorldTaskDelivery delivery)
+        {
+            if (HeadlessTaskTypes.Contains(entity.TaskType))
+            {
+                _realtime.HeadlessPending(entity);
+                return null;
+            }
+
+            switch (delivery.Kind)
+            {
+                case WorldTaskDelivery.Code:
+                    return null;
+                case WorldTaskDelivery.HandOff:
+                    return (await OfferToAsync(entity, delivery.UserId!.Value, Realtime.Contracts.WorldTaskOfferModes.Accept)).Username;
+            }
+
+            if (entity.CreatedByUserId is not { } creator) return null;
+            var brief = await _taskRepo.GetUserBriefAsync(creator);
+            if (brief == null || _realtime.ServerOf(brief.Value.Uuid) == null)
+            {
+                // Not online in game (or realtime off): the task code, as before. A queued task waits in the queue.
+                if (delivery.Kind == WorldTaskDelivery.Queue)
+                {
+                    await SetOfferStateAsync(entity, creator, WorldTaskOfferStates.Queued);
+                    return brief?.Username;
+                }
+                return null;
+            }
+
+            var held = await _taskRepo.ListInProgressClaimedByUserAsync(creator);
+            if (held.Count > 0)
+            {
+                switch (delivery.Kind)
+                {
+                    case WorldTaskDelivery.Queue:
+                        await SetOfferStateAsync(entity, creator, WorldTaskOfferStates.Queued);
+                        return brief.Value.Username;
+                    case WorldTaskDelivery.Replace:
+                        foreach (var current in held)
+                        {
+                            await ReleaseForReplaceAsync(current, entity);
+                        }
+                        break;
+                    default:
+                        // The web app checks first (active-for-me); this is the race: the web app shows the same choices.
+                        await SetOfferStateAsync(entity, creator, WorldTaskOfferStates.Busy);
+                        return brief.Value.Username;
+                }
+            }
+
+            return (await OfferToAsync(entity, creator, Realtime.Contracts.WorldTaskOfferModes.AutoClaim)).Username;
+        }
+
+        /// <summary>
+        /// Offers <paramref name="entity"/> to <paramref name="userId"/> on the server they play on. Auto-claim to a player who
+        /// is not online changes nothing (task code); Accept/Decline to one who is not online records Declined.
+        /// </summary>
+        private async Task<(bool Offered, string? Username)> OfferToAsync(WorldTask entity, int userId, string mode)
+        {
+            var brief = await _taskRepo.GetUserBriefAsync(userId);
+            if (brief == null) return (false, null);
+            var uuid = NormalizeUuid(brief.Value.Uuid);
+            var serverId = uuid == null ? null : _realtime.ServerOf(uuid);
+            if (serverId == null)
+            {
+                if (mode == Realtime.Contracts.WorldTaskOfferModes.Accept)
+                {
+                    await SetOfferStateAsync(entity, userId, WorldTaskOfferStates.Declined);
+                }
+                return (false, brief.Value.Username);
+            }
+
+            var now = _utcNow();
+            entity.TargetUserId = userId;
+            entity.OfferState = WorldTaskOfferStates.Offered;
+            entity.OfferedAt = now;
+            entity.UpdatedAt = now;
+            await SaveAsync(entity);
+
+            string? from = null;
+            if (mode == Realtime.Contracts.WorldTaskOfferModes.Accept && entity.CreatedByUserId is { } creator)
+            {
+                from = (await _taskRepo.GetUserBriefAsync(creator))?.Username;
+            }
+            _realtime.Offered(entity, serverId, uuid!, mode, from);
+            return (true, brief.Value.Username);
+        }
+
+        private async Task SetOfferStateAsync(WorldTask entity, int targetUserId, string state)
+        {
+            entity.TargetUserId = targetUserId;
+            entity.OfferState = state;
+            entity.UpdatedAt = _utcNow();
+            await SaveAsync(entity);
+        }
+
+        /// <summary>Busy check "Replace" (Q17): the held task goes back to Pending with its code; its handler in game stops.</summary>
+        private async Task ReleaseForReplaceAsync(WorldTask current, WorldTask replacement)
+        {
+            var uuid = current.ClaimedByUuid;
+            try
+            {
+                ReleaseClaim(current, _utcNow());
+                current.OfferState = WorldTaskOfferStates.Declined;
+                await SaveAsync(current);
+            }
+            catch (WorldTaskConflictException)
+            {
+                return; // it finished meanwhile
+            }
+            _realtime.Changed(current);
+            _realtime.Cancelled(current, uuid, $"the web app sent you task #{replacement.Id} instead.");
+        }
+
+        /// <summary>
+        /// DESIGN §8.4 queue: when a player's task ends (complete, fail, release, cancel), their oldest queued task is
+        /// offered (auto-claim) if they are online and hold nothing else.
+        /// </summary>
+        private async Task OfferNextQueuedAsync(int? userId)
+        {
+            if (userId is not { } user) return;
+            if ((await _taskRepo.ListInProgressClaimedByUserAsync(user)).Count > 0) return;
+            var next = (await _taskRepo.ListPendingTargetedAsync(new[] { user }, new[] { WorldTaskOfferStates.Queued })).FirstOrDefault();
+            if (next == null) return;
+            try
+            {
+                if ((await OfferToAsync(next, user, Realtime.Contracts.WorldTaskOfferModes.AutoClaim)).Offered)
+                {
+                    _realtime.Changed(next);
+                }
+            }
+            catch (WorldTaskConflictException)
+            {
+                // Claimed with its code or cancelled meanwhile.
+            }
+        }
+
+        /// <summary>
+        /// DESIGN §8.4/§8.6: players who joined a server (or are in a reconnecting server's roster) get the oldest task
+        /// still offered, accepted (handed back by a quit or restart) or queued for them, unless they hold one.
+        /// Returns how many were offered.
+        /// </summary>
+        public async Task<int> OfferWaitingForPlayersAsync(IReadOnlyCollection<string> uuids)
+        {
+            var userIds = new List<int>();
+            foreach (var uuid in uuids.Select(NormalizeUuid).OfType<string>().Distinct(StringComparer.Ordinal))
+            {
+                if (await _taskRepo.FindUserIdByUuidAsync(uuid) is { } id) userIds.Add(id);
+            }
+            if (userIds.Count == 0) return 0;
+
+            var waiting = await _taskRepo.ListPendingTargetedAsync(userIds, ReofferStates);
+            var offered = 0;
+            foreach (var group in waiting.GroupBy(t => t.TargetUserId!.Value))
+            {
+                if ((await _taskRepo.ListInProgressClaimedByUserAsync(group.Key)).Count > 0) continue;
+                var task = group.First();
+                var mode = task.TargetUserId == task.CreatedByUserId
+                    ? Realtime.Contracts.WorldTaskOfferModes.AutoClaim
+                    : Realtime.Contracts.WorldTaskOfferModes.Accept;
+                try
+                {
+                    if ((await OfferToAsync(task, group.Key, mode)).Offered)
+                    {
+                        _realtime.Changed(task);
+                        offered++;
+                    }
+                }
+                catch (WorldTaskConflictException)
+                {
+                }
+            }
+            return offered;
+        }
+
+        /// <summary>
+        /// <c>WorldTaskOfferResult</c> from the game server (DESIGN §6.4). Only an open offer changes: declined, offline
+        /// and no-permission → Declined, timed-out → TimedOut, busy → Busy (the web app shows the task code or the busy
+        /// choices). Accepted needs nothing: the offer claim already recorded it. Returns false when it was ignored.
+        /// </summary>
+        public async Task<bool> RecordOfferResultAsync(int taskId, string? result, string? uuid)
+        {
+            var entity = await _taskRepo.GetByIdAsync(taskId);
+            if (entity == null || entity.Status != WorldTaskStatuses.Pending || entity.OfferState != WorldTaskOfferStates.Offered)
+            {
+                return false;
+            }
+            var normalized = uuid == null ? null : NormalizeUuid(uuid);
+            if (normalized != null && entity.TargetUserId is { } target
+                && await _taskRepo.FindUserIdByUuidAsync(normalized) is { } reporter && reporter != target)
+            {
+                return false; // an answer for someone else's offer
+            }
+            var state = (result ?? string.Empty).Trim().ToLowerInvariant() switch
+            {
+                Realtime.Contracts.WorldTaskOfferResults.Declined
+                    or Realtime.Contracts.WorldTaskOfferResults.Offline
+                    or Realtime.Contracts.WorldTaskOfferResults.NoPermission => WorldTaskOfferStates.Declined,
+                Realtime.Contracts.WorldTaskOfferResults.TimedOut => WorldTaskOfferStates.TimedOut,
+                Realtime.Contracts.WorldTaskOfferResults.Busy => WorldTaskOfferStates.Busy,
+                _ => null
+            };
+            if (state == null) return false;
+            entity.OfferState = state;
+            entity.UpdatedAt = _utcNow();
+            try
+            {
+                await SaveAsync(entity);
+            }
+            catch (WorldTaskConflictException)
+            {
+                return false;
+            }
+            _realtime.Changed(entity);
+            return true;
+        }
+
+        /// <summary>GET active-for-me: the busy check before "Send to Minecraft" / "Hand off to…" (DESIGN §8.3).</summary>
+        public async Task<WorldTaskActiveForMeDto> GetActiveForUserAsync(int userId)
+        {
+            var held = (await _taskRepo.ListInProgressClaimedByUserAsync(userId)).FirstOrDefault();
+            var queued = await _taskRepo.ListPendingTargetedAsync(new[] { userId }, new[] { WorldTaskOfferStates.Queued });
+            return new WorldTaskActiveForMeDto
+            {
+                Task = held == null ? null : _mapper.Map<WorldTaskReadDto>(held),
+                FormName = held == null ? null : await _taskRepo.GetFormNameAsync(held),
+                Queued = queued.Count,
+            };
+        }
+
+        private async Task<string?> TargetUuidAsync(WorldTask entity) =>
+            entity.TargetUserId is { } target && entity.OfferState is WorldTaskOfferStates.Offered
+                ? NormalizeUuid((await _taskRepo.GetUserBriefAsync(target))?.Uuid)
+                : null;
 
         public async Task<WorldTaskReadDto?> GetByIdAsync(int id)
         {
@@ -248,6 +517,7 @@ namespace knkwebapi_v2.Services
             }
 
             await SaveAsync(entity);
+            _realtime.Changed(entity);
             return _mapper.Map<WorldTaskReadDto>(entity);
         }
 
@@ -315,6 +585,9 @@ namespace knkwebapi_v2.Services
                 case WorldTaskClaimModes.Offer:
                     if (entity.TargetUserId == null || claimerUserId != entity.TargetUserId)
                         throw new WorldTaskConflictException($"Task {id} was not offered to this player.", entity.Status);
+                    // #181: only an open offer (a declined or timed-out one shows the task code instead).
+                    if (entity.OfferState != WorldTaskOfferStates.Offered)
+                        throw new WorldTaskConflictException($"The offer of task {id} is no longer open ({entity.OfferState}); use its task code.", entity.Status);
                     entity.OfferState = WorldTaskOfferStates.Accepted;
                     break;
                 default:
@@ -330,7 +603,21 @@ namespace knkwebapi_v2.Services
             entity.ClaimedByUserId = claimerUserId;
             entity.LeaseUntil = now + _options.Lease;
 
+            // #181: claimed with its code (or id) by someone else while it was offered or queued: the offer is over.
+            string? withdrawnFrom = null;
+            if (mode != WorldTaskClaimModes.Offer && entity.TargetUserId != null && entity.TargetUserId != claimerUserId
+                && entity.OfferState is WorldTaskOfferStates.Offered or WorldTaskOfferStates.Queued or WorldTaskOfferStates.Busy)
+            {
+                withdrawnFrom = entity.OfferState == WorldTaskOfferStates.Offered ? await TargetUuidAsync(entity) : null;
+                entity.OfferState = WorldTaskOfferStates.None;
+            }
+
             await SaveAsync(entity, $"Task {id} was claimed by someone else just now.");
+            if (withdrawnFrom != null)
+            {
+                _realtime.OfferWithdrawn(entity, withdrawnFrom, $"Claimed by {entity.ClaimedByMinecraftUsername ?? "someone else"} with the task code.");
+            }
+            _realtime.Changed(entity);
             return _mapper.Map<WorldTaskReadDto>(entity);
         }
 
@@ -354,6 +641,7 @@ namespace knkwebapi_v2.Services
                 // Validation failed and is blocking - reject completion
                 Close(entity, WorldTaskStatuses.Failed, validationResult.Message ?? "Validation failed");
                 await SaveAsync(entity);
+                _realtime.Changed(entity);
 
                 throw new WorldTaskRejectedException($"Task validation failed: {validationResult.Message}");
             }
@@ -365,6 +653,7 @@ namespace knkwebapi_v2.Services
                 {
                     Close(entity, WorldTaskStatuses.Failed, scanError);
                     await SaveAsync(entity);
+                    _realtime.Changed(entity);
 
                     throw new WorldTaskRejectedException($"Gate block scan result could not be applied: {scanError}");
                 }
@@ -376,12 +665,14 @@ namespace knkwebapi_v2.Services
                 {
                     Close(entity, WorldTaskStatuses.Failed, scanError);
                     await SaveAsync(entity);
+                    _realtime.Changed(entity);
 
                     throw new WorldTaskRejectedException($"Gate opened-block scan result could not be applied: {scanError}");
                 }
             }
 
             var now = _utcNow();
+            var completedBy = entity.ClaimedByUserId;
             Close(entity, WorldTaskStatuses.Completed, null);
             entity.OutputJson = dto.OutputJson;
             entity.CompletedAt = now;
@@ -400,6 +691,8 @@ namespace knkwebapi_v2.Services
             }
 
             await SaveAsync(entity);
+            _realtime.Changed(entity);
+            await OfferNextQueuedAsync(completedBy);
             return _mapper.Map<WorldTaskReadDto>(entity);
         }
 
@@ -412,9 +705,12 @@ namespace knkwebapi_v2.Services
             }
 
             EnsureHeldBy(entity, dto.ServerId, "failed");
+            var failedBy = entity.ClaimedByUserId;
             Close(entity, WorldTaskStatuses.Failed, dto.ErrorMessage);
 
             await SaveAsync(entity);
+            _realtime.Changed(entity);
+            await OfferNextQueuedAsync(failedBy);
             return _mapper.Map<WorldTaskReadDto>(entity);
         }
 
@@ -435,8 +731,14 @@ namespace knkwebapi_v2.Services
             }
 
             var reason = string.IsNullOrWhiteSpace(dto?.Reason) ? "Cancelled in the web app." : Truncate(dto!.Reason!.Trim(), 500);
+            var heldBy = entity.ClaimedByUserId;
+            var holder = entity.ClaimedByUuid ?? await TargetUuidAsync(entity);
             Close(entity, WorldTaskStatuses.Cancelled, reason);
             await SaveAsync(entity);
+            _realtime.Changed(entity);
+            // #181 (DESIGN §8.4): the server that holds it, or shows its offer, stops at once instead of on the next heartbeat.
+            _realtime.Cancelled(entity, holder, reason);
+            await OfferNextQueuedAsync(heldBy);
             return _mapper.Map<WorldTaskReadDto>(entity);
         }
 
@@ -453,8 +755,24 @@ namespace knkwebapi_v2.Services
             }
 
             EnsureHeldBy(entity, dto?.ServerId, "released");
+            var heldBy = entity.ClaimedByUserId;
             ReleaseClaim(entity, _utcNow());
+            if (dto?.HandBack == true && entity.TargetUserId != null)
+            {
+                // #181: handed back on purpose: not offered to them again on rejoin; the web app shows the task code.
+                entity.OfferState = WorldTaskOfferStates.Declined;
+            }
             await SaveAsync(entity);
+            _realtime.Changed(entity);
+            if (HeadlessTaskTypes.Contains(entity.TaskType))
+            {
+                _realtime.HeadlessPending(entity);
+            }
+            if (dto?.HandBack == true)
+            {
+                // Quit/restart/disable: the player is (about to be) gone; their queue waits for their rejoin.
+                await OfferNextQueuedAsync(heldBy);
+            }
             return _mapper.Map<WorldTaskReadDto>(entity);
         }
 

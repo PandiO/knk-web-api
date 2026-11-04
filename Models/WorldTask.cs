@@ -50,11 +50,11 @@ public class WorldTask
     public int? CreatedByUserId { get; set; }
     public User? CreatedByUser { get; set; }
 
-    /// <summary>#180/#181: the player the task is offered to (null = task code only). Not set by anything yet (WT2).</summary>
+    /// <summary>#180/#181: the player the task is offered to (null = task code only). Set by the WT2 delivery (DESIGN §8.3).</summary>
     public int? TargetUserId { get; set; }
     public User? TargetUser { get; set; }
 
-    /// <summary>#181: <see cref="WorldTaskOfferStates"/>. Always None until WT2.</summary>
+    /// <summary>#181: <see cref="WorldTaskOfferStates"/>.</summary>
     public string OfferState { get; set; } = WorldTaskOfferStates.None;
     public DateTime? OfferedAt { get; set; }
 
@@ -134,7 +134,7 @@ public static class WorldTaskStatuses
     };
 }
 
-/// <summary>#181 (WT2) offer states; the columns exist since #180 so WT2 needs no further migration.</summary>
+/// <summary>#181 (WT2) offer states; the columns exist since #180 so WT2 needs no further migration (string column, 20 chars).</summary>
 public static class WorldTaskOfferStates
 {
     public const string None = "None";
@@ -142,4 +142,10 @@ public static class WorldTaskOfferStates
     public const string Accepted = "Accepted";
     public const string Declined = "Declined";
     public const string TimedOut = "TimedOut";
+
+    /// <summary>WT2: waits until the target's current task ends (busy check "Queue").</summary>
+    public const string Queued = "Queued";
+
+    /// <summary>WT2: the target already had a task open when it arrived (a race after the busy check).</summary>
+    public const string Busy = "Busy";
 }

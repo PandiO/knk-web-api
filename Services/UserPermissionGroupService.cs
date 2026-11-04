@@ -2,6 +2,8 @@ using System.Text.Json;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Realtime;
+using knkwebapi_v2.Realtime.Contracts;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Interfaces;
 
@@ -15,6 +17,7 @@ namespace knkwebapi_v2.Services
         private readonly IAuditLogService _auditLogService;
         private readonly IPlayerNotificationQueue? _notificationQueue;
         private readonly ILootboxTokenGrantService? _lootboxTokenGrants;
+        private readonly IRealtimeEventSink? _realtime;
 
         public UserPermissionGroupService(
             IUserPermissionGroupRepository repo,
@@ -22,8 +25,10 @@ namespace knkwebapi_v2.Services
             IPermissionGroupRepository groupRepo,
             IAuditLogService auditLogService,
             IPlayerNotificationQueue? notificationQueue = null,
-            ILootboxTokenGrantService? lootboxTokenGrants = null)
+            ILootboxTokenGrantService? lootboxTokenGrants = null,
+            IRealtimeEventSink? realtime = null)
         {
+            _realtime = realtime;
             _repo = repo;
             _userRepo = userRepo;
             _groupRepo = groupRepo;
@@ -155,7 +160,7 @@ namespace knkwebapi_v2.Services
                     }));
                 }
             }
-            NotifyRankChanged(user);
+            NotifyRankChanged(user, UserPermissionsChangeReasons.GroupAssigned, actorUserId);
         }
 
         /// <summary>
@@ -190,8 +195,14 @@ namespace knkwebapi_v2.Services
             }));
         }
 
-        private void NotifyRankChanged(User user)
+        /// <summary>
+        /// Tells the game server: <c>UserPermissionsChanged</c> over the realtime hub (drops the player's permission
+        /// set and offline answers, PandiO/knk-workspace#179) and the <c>RankChanged</c> notification (redraws chat and
+        /// the tab list, as before).
+        /// </summary>
+        private void NotifyRankChanged(User user, string reason, int? actorUserId)
         {
+            _realtime.PermissionsChanged(user, reason, actorUserId);
             _notificationQueue?.Enqueue(user.Id, user.Uuid, user.Username, PlayerNotificationTypes.RankChanged, null);
         }
 
@@ -209,7 +220,7 @@ namespace knkwebapi_v2.Services
                 notify[user.Id] = user;
             }
             foreach (var user in notify.Values)
-                NotifyRankChanged(user);
+                NotifyRankChanged(user, UserPermissionsChangeReasons.RankExpired, null);
             return notify.Count;
         }
 
@@ -234,7 +245,7 @@ namespace knkwebapi_v2.Services
             // Removing a premium rank drops the user back to the free Default rank.
             if (wasPaidRank)
                 await EnsureDefaultRankAsync(user, DateTime.UtcNow, actorUserId);
-            NotifyRankChanged(user);
+            NotifyRankChanged(user, UserPermissionsChangeReasons.GroupRemoved, actorUserId);
         }
 
         public async Task<UserPermissionGroupDto?> GetActivePremiumTierAsync(int userId)
