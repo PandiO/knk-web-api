@@ -698,6 +698,11 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("item_blueprints");
 
+            // #232: shield banner base colour (dye colour name, like BannerDesign.BaseColor) and armour trim keys.
+            entity.Property(e => e.ShieldBannerBaseColor).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ArmorTrimPattern).HasMaxLength(64);
+            entity.Property(e => e.ArmorTrimMaterial).HasMaxLength(64);
+
             entity.HasOne(ib => ib.IconMaterial)
                 .WithMany()
                 .HasForeignKey(ib => ib.IconMaterialRefId)
@@ -761,6 +766,23 @@ public partial class KnKDbContext : DbContext
             .WithMany()
             .HasForeignKey(it => it.TagId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ItemBlueprintBannerLayer (#232): the blueprint's own shield pattern layers, same shape as BannerLayer
+        // (SortOrder deliberately not unique). Cascade: a layer means nothing without its blueprint.
+        modelBuilder.Entity<ItemBlueprintBannerLayer>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("item_blueprint_banner_layers");
+
+            entity.Property(e => e.PatternKey).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Color).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.ItemBlueprintId, e.SortOrder });
+
+            entity.HasOne(e => e.ItemBlueprint)
+                .WithMany(b => b.ShieldBannerLayers)
+                .HasForeignKey(e => e.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // ItemBlueprintOrigin: independent Id PK (not a composite key - the same Domain can legitimately
         // appear twice in one item's history, see the model's own comment). ItemBlueprintId cascades (the
@@ -968,6 +990,10 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.OriginRef).HasMaxLength(64);
             entity.Property(e => e.CustomDisplayName).HasMaxLength(128);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            // #232: the look frozen at mint.
+            entity.Property(e => e.ShieldBannerBaseColor).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ArmorTrimPattern).HasMaxLength(64);
+            entity.Property(e => e.ArmorTrimMaterial).HasMaxLength(64);
 
             entity.HasOne(i => i.ItemBlueprint)
                 .WithMany()
@@ -1005,6 +1031,22 @@ public partial class KnKDbContext : DbContext
                 .WithMany(d => d.AppliedToInstances)
                 .HasForeignKey(e => e.EnchantmentDefinitionId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ItemInstanceBannerLayer (#232): the instance's own shield pattern layers, copied from the blueprint at mint.
+        modelBuilder.Entity<ItemInstanceBannerLayer>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("item_instance_banner_layers");
+
+            entity.Property(e => e.PatternKey).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Color).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.ItemInstanceId, e.SortOrder });
+
+            entity.HasOne(e => e.ItemInstance)
+                .WithMany(i => i.ShieldBannerLayers)
+                .HasForeignKey(e => e.ItemInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Lootboxes (docs/specs/lootboxes/DESIGN.md §3.2). Every FK into the catalog (ItemBlueprint, Category, Grade,

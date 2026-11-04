@@ -79,7 +79,13 @@ public class LootboxRuntimeServiceTests
         var foodCategory = new Category { Name = "Food" };
         var sharpness = new EnchantmentDefinition { Key = "minecraft:sharpness", DisplayName = "Sharpness", MaxLevel = 5 };
         var unbreaking = new EnchantmentDefinition { Key = "minecraft:unbreaking", DisplayName = "Unbreaking", MaxLevel = 3 };
-        var sword = new ItemBlueprint { Name = "Steel Sword", DefaultDisplayName = "&bSteel Sword", MaxStackSize = 1, Category = weaponsCategory, Grade = grades[2] };
+        // #232: the sword carries a look (a trim and, for the data flow, one banner layer) that the claim must repeat.
+        var sword = new ItemBlueprint
+        {
+            Name = "Steel Sword", DefaultDisplayName = "&bSteel Sword", MaxStackSize = 1, Category = weaponsCategory, Grade = grades[2],
+            ShieldBannerBaseColor = BannerDyeColor.RED, ArmorTrimPattern = "minecraft:silence", ArmorTrimMaterial = "minecraft:netherite",
+        };
+        sword.ShieldBannerLayers.Add(new ItemBlueprintBannerLayer { ItemBlueprint = sword, SortOrder = 0, PatternKey = "minecraft:stripe_top", Color = BannerDyeColor.YELLOW });
         sword.DefaultEnchantments.Add(new ItemBlueprintDefaultEnchantment { ItemBlueprint = sword, EnchantmentDefinition = unbreaking, Level = 1 });
         var bread = new ItemBlueprint { Name = "Bread", DefaultDisplayName = "&9Bread", MaxStackSize = 64, DefaultQuantity = 8, Category = foodCategory, Grade = grades[2] };
         var weapons = new LootboxType { Name = "Weapons Lootbox", Category = weaponsCategory, Enabled = true, MinBoxStars = 3, MaxBoxStars = 3 };
@@ -271,14 +277,21 @@ public class LootboxRuntimeServiceTests
         result.Enchantments.Select(e => (e.DefinitionId, e.Key, e.Level))
             .Should().BeEquivalentTo(new[] { (_sharpness, "minecraft:sharpness", 3), (_unbreaking, "minecraft:unbreaking", 1) });
         result.ItemInstanceId.Should().NotBeNull();
+        // #232: the look the instance was minted with comes back on the claim for the plugin to apply.
+        result.ShieldBannerBaseColor.Should().Be("RED");
+        result.ShieldBannerLayers.Select(l => (l.PatternKey, l.Color)).Should().Equal(("minecraft:stripe_top", "YELLOW"));
+        (result.ArmorTrimPattern, result.ArmorTrimMaterial).Should().Be(("minecraft:silence", "minecraft:netherite"));
 
         await using var db = NewContext();
         var claim = await db.LootboxClaims.SingleAsync();
         (claim.Id, claim.UserId, claim.LootboxSpawnId, claim.LootboxTokenId, claim.ItemInstanceId)
             .Should().Be((result.ClaimId, _alice, (int?)null, (int?)picked.Id, result.ItemInstanceId));
-        var instance = await db.ItemInstances.Include(i => i.Enchantments).SingleAsync();
+        var instance = await db.ItemInstances.Include(i => i.Enchantments).Include(i => i.ShieldBannerLayers).SingleAsync();
         (instance.Id, instance.Origin, instance.OriginRef, instance.OwnerUserId, instance.ItemBlueprintId, instance.GradeId)
             .Should().Be((result.ItemInstanceId!.Value, ItemInstanceOrigin.Lootbox, result.ClaimId.ToString(), (int?)_alice, _sword, (int?)_grade3));
+        (instance.ShieldBannerBaseColor, instance.ArmorTrimPattern, instance.ArmorTrimMaterial)
+            .Should().Be(((BannerDyeColor?)BannerDyeColor.RED, "minecraft:silence", "minecraft:netherite"));
+        instance.ShieldBannerLayers.Select(l => (l.PatternKey, l.Color)).Should().Equal(("minecraft:stripe_top", BannerDyeColor.YELLOW));
         instance.Enchantments.Select(e => (e.EnchantmentDefinitionId, e.Level))
             .Should().BeEquivalentTo(new[] { (_sharpness, 3), (_unbreaking, 1) });
         var stored = await db.LootboxSpawns.SingleAsync();

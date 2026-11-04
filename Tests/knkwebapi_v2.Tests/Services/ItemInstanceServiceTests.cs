@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Mapping;
 using knkwebapi_v2.Models;
@@ -177,7 +178,109 @@ public class ItemInstanceServiceTests
         On(enchantment, nameof(ItemInstanceEnchantment.ItemInstanceId)).Should().Be(DeleteBehavior.Cascade);
         On(enchantment, nameof(ItemInstanceEnchantment.EnchantmentDefinitionId)).Should().Be(DeleteBehavior.Restrict);
         instance.FindProperty(nameof(ItemInstance.Id))!.ClrType.Should().Be(typeof(long));
+
+        // #232: the look's own child rows cascade like the enchantments.
+        var layer = db.Model.FindEntityType(typeof(ItemInstanceBannerLayer))!;
+        On(layer, nameof(ItemInstanceBannerLayer.ItemInstanceId)).Should().Be(DeleteBehavior.Cascade);
+        var blueprintLayer = db.Model.FindEntityType(typeof(ItemBlueprintBannerLayer))!;
+        On(blueprintLayer, nameof(ItemBlueprintBannerLayer.ItemBlueprintId)).Should().Be(DeleteBehavior.Cascade);
     }
+    // ===== PandiO/knk-workspace#232: the look (shield banner, armour trim) is frozen at mint and copied by clones =====
+
+    private async Task<ItemBlueprint> SeedShieldAsync()
+    {
+        await using var db = NewContext();
+        var shield = new ItemBlueprint
+        {
+            Name = "Kingsguard Shield", DefaultDisplayName = "&6Kingsguard Shield", MaxStackSize = 1,
+            ShieldBannerBaseColor = BannerDyeColor.RED, ArmorTrimPattern = "minecraft:silence", ArmorTrimMaterial = "minecraft:netherite",
+        };
+        shield.ShieldBannerLayers.Add(new ItemBlueprintBannerLayer { SortOrder = 0, PatternKey = "minecraft:stripe_top", Color = BannerDyeColor.YELLOW });
+        shield.ShieldBannerLayers.Add(new ItemBlueprintBannerLayer { SortOrder = 1, PatternKey = "minecraft:cross", Color = BannerDyeColor.WHITE });
+        shield.ShieldBannerLayers.Add(new ItemBlueprintBannerLayer { SortOrder = 2, PatternKey = "minecraft:border", Color = BannerDyeColor.BLACK });
+        db.Add(shield);
+        await db.SaveChangesAsync();
+        return await db.ItemBlueprints.Include(b => b.ShieldBannerLayers).AsNoTracking().SingleAsync(b => b.Id == shield.Id);
+    }
+
+    private static readonly (string, string)[] ShieldLayers =
+    {
+        ("minecraft:stripe_top", "YELLOW"), ("minecraft:cross", "WHITE"), ("minecraft:border", "BLACK"),
+    };
+
+    [Fact]
+    public async Task BuildAsync_FreezesTheBlueprintsLook_AndGetAsyncShowsIt()
+    {
+        var shield = await SeedShieldAsync();
+        long id;
+        await using (var db = NewContext())
+        {
+            var instance = await Service(db).BuildAsync(shield, null, null, ItemInstanceOrigin.Lootbox, Array.Empty<ItemInstanceEnchantmentSpec>());
+            instance.ShieldBannerBaseColor.Should().Be(BannerDyeColor.RED);
+            instance.ShieldBannerLayers.Select(l => (l.SortOrder, l.PatternKey, l.Color)).Should().Equal(
+                (0, "minecraft:stripe_top", BannerDyeColor.YELLOW), (1, "minecraft:cross", BannerDyeColor.WHITE), (2, "minecraft:border", BannerDyeColor.BLACK));
+            db.ItemInstances.Add(instance);
+            await db.SaveChangesAsync();
+            id = instance.Id;
+        }
+
+        // The blueprint changes its look afterwards; the instance keeps the look it was minted with.
+        await using (var db = NewContext())
+        {
+            var blueprint = await db.ItemBlueprints.Include(b => b.ShieldBannerLayers).SingleAsync(b => b.Id == shield.Id);
+            blueprint.ShieldBannerLayers.Clear();
+            blueprint.ShieldBannerBaseColor = BannerDyeColor.BLACK;
+            await db.SaveChangesAsync();
+        }
+
+        await using var read = NewContext();
+        var dto = await Service(read).GetAsync(id);
+        dto!.ShieldBannerBaseColor.Should().Be("RED");
+        dto.ShieldBannerLayers.Select(l => (l.PatternKey, l.Color)).Should().Equal(ShieldLayers);
+        (dto.ArmorTrimPattern, dto.ArmorTrimMaterial).Should().Be(("minecraft:silence", "minecraft:netherite"));
+    }
+
+    [Fact]
+    public async Task BuildAsync_APlainBlueprint_MintsAnInstanceWithoutLookData()
+    {
+        var (sword, _, _, _, _, _) = await SeedAsync();
+        await using var db = NewContext();
+        var instance = await Service(db).BuildAsync(sword, null, null, ItemInstanceOrigin.Admin, Array.Empty<ItemInstanceEnchantmentSpec>());
+        instance.ShieldBannerBaseColor.Should().BeNull();
+        instance.ShieldBannerLayers.Should().BeEmpty();
+        (instance.ArmorTrimPattern, instance.ArmorTrimMaterial).Should().Be(((string?)null, (string?)null));
+    }
+
+    [Fact]
+    public async Task CloneAsync_CopiesTheSourcesLook()
+    {
+        var shield = await SeedShieldAsync();
+        long sourceId;
+        await using (var db = NewContext())
+        {
+            var instance = await Service(db).BuildAsync(shield, null, null, ItemInstanceOrigin.Lootbox, Array.Empty<ItemInstanceEnchantmentSpec>());
+            db.ItemInstances.Add(instance);
+            await db.SaveChangesAsync();
+            sourceId = instance.Id;
+        }
+
+        ItemInstanceCloneResultDto result;
+        await using (var db = NewContext())
+        {
+            result = await Service(db).CloneAsync(sourceId, 2, null, null);
+        }
+
+        await using var read = NewContext();
+        foreach (var cloneId in result.ItemInstanceIds)
+        {
+            var dto = await Service(read).GetAsync(cloneId);
+            dto!.ShieldBannerBaseColor.Should().Be("RED");
+            dto.ShieldBannerLayers.Select(l => (l.PatternKey, l.Color)).Should().Equal(ShieldLayers);
+            (dto.ArmorTrimPattern, dto.ArmorTrimMaterial).Should().Be(("minecraft:silence", "minecraft:netherite"));
+        }
+        (await read.Set<ItemInstanceBannerLayer>().CountAsync()).Should().Be(9, "three layers on the source and on each of the two clones");
+    }
+
     // ===== PandiO/knk-workspace#175: /knk item more mints copies through CloneAsync =====
 
     private async Task<long> MintSwordAsync(ItemBlueprint sword, Grade legendary, EnchantmentDefinition sharpness, User owner)

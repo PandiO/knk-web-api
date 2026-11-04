@@ -27,19 +27,37 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.BasePriceMax, opt => opt.MapFrom(src => src.BasePriceMax))
                 .ForMember(dest => dest.DefaultEnchantments, opt => opt.MapFrom(src => src.DefaultEnchantments))
                 .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags))
-                .ForMember(dest => dest.Origins, opt => opt.MapFrom(src => src.Origins.OrderBy(o => o.SequenceNumber)));
+                .ForMember(dest => dest.Origins, opt => opt.MapFrom(src => src.Origins.OrderBy(o => o.SequenceNumber)))
+                // #232: the look, layers bottom to top.
+                .ForMember(dest => dest.ShieldBannerBaseColor, opt => opt.MapFrom(src => src.ShieldBannerBaseColor.HasValue ? src.ShieldBannerBaseColor.Value.ToString() : null))
+                .ForMember(dest => dest.ShieldBannerLayers, opt => opt.MapFrom(src => src.ShieldBannerLayers.OrderBy(l => l.SortOrder).ThenBy(l => l.Id)))
+                .ForMember(dest => dest.ArmorTrimPattern, opt => opt.MapFrom(src => src.ArmorTrimPattern))
+                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.MapFrom(src => src.ArmorTrimMaterial));
 
-            // Create/Update DTO → ItemBlueprint
+            CreateMap<ItemBlueprintBannerLayer, ItemBannerLayerDto>()
+                .ForMember(dest => dest.PatternKey, opt => opt.MapFrom(src => src.PatternKey))
+                .ForMember(dest => dest.Color, opt => opt.MapFrom(src => src.Color.ToString()));
+
+            // Create/Update DTO → ItemBlueprint. The #232 look (ShieldBanner*/ArmorTrim*) is validated and written by
+            // ItemAppearanceRules in the service, so it is ignored here like the other owned collections.
             CreateMap<ItemBlueprintCreateDto, ItemBlueprint>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.DefaultEnchantments, opt => opt.Ignore()) // Handled in service
                 .ForMember(dest => dest.Tags, opt => opt.Ignore()) // Handled in service
-                .ForMember(dest => dest.Origins, opt => opt.Ignore()); // Handled in service
+                .ForMember(dest => dest.Origins, opt => opt.Ignore()) // Handled in service
+                .ForMember(dest => dest.ShieldBannerBaseColor, opt => opt.Ignore())
+                .ForMember(dest => dest.ShieldBannerLayers, opt => opt.Ignore())
+                .ForMember(dest => dest.ArmorTrimPattern, opt => opt.Ignore())
+                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore());
 
             CreateMap<ItemBlueprintUpdateDto, ItemBlueprint>()
                 .ForMember(dest => dest.DefaultEnchantments, opt => opt.Ignore()) // Handled in service
                 .ForMember(dest => dest.Tags, opt => opt.Ignore()) // Handled in service
-                .ForMember(dest => dest.Origins, opt => opt.Ignore()); // Handled in service
+                .ForMember(dest => dest.Origins, opt => opt.Ignore()) // Handled in service
+                .ForMember(dest => dest.ShieldBannerBaseColor, opt => opt.Ignore())
+                .ForMember(dest => dest.ShieldBannerLayers, opt => opt.Ignore())
+                .ForMember(dest => dest.ArmorTrimPattern, opt => opt.Ignore())
+                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore());
 
             // ItemBlueprint → List DTO
             CreateMap<ItemBlueprint, ItemBlueprintListDto>()

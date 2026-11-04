@@ -15,7 +15,16 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.OwnerUsername, opt => opt.MapFrom(src => src.OwnerUser != null ? src.OwnerUser.Username : null))
                 .ForMember(dest => dest.Origin, opt => opt.MapFrom(src => src.Origin.ToString()))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.SpecifyKind(src.CreatedAt, DateTimeKind.Utc)))
-                .ForMember(dest => dest.Enchantments, opt => opt.MapFrom(src => src.Enchantments.OrderBy(e => e.EnchantmentDefinitionId)));
+                .ForMember(dest => dest.Enchantments, opt => opt.MapFrom(src => src.Enchantments.OrderBy(e => e.EnchantmentDefinitionId)))
+                // #232: the look frozen at mint, layers bottom to top.
+                .ForMember(dest => dest.ShieldBannerBaseColor, opt => opt.MapFrom(src => src.ShieldBannerBaseColor.HasValue ? src.ShieldBannerBaseColor.Value.ToString() : null))
+                .ForMember(dest => dest.ShieldBannerLayers, opt => opt.MapFrom(src => src.ShieldBannerLayers.OrderBy(l => l.SortOrder).ThenBy(l => l.Id)))
+                .ForMember(dest => dest.ArmorTrimPattern, opt => opt.MapFrom(src => src.ArmorTrimPattern))
+                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.MapFrom(src => src.ArmorTrimMaterial));
+
+            CreateMap<ItemInstanceBannerLayer, ItemBannerLayerDto>()
+                .ForMember(dest => dest.PatternKey, opt => opt.MapFrom(src => src.PatternKey))
+                .ForMember(dest => dest.Color, opt => opt.MapFrom(src => src.Color.ToString()));
 
             CreateMap<ItemInstanceEnchantment, ItemInstanceEnchantmentDto>()
                 .ForMember(dest => dest.Key, opt => opt.MapFrom(src => src.EnchantmentDefinition != null ? src.EnchantmentDefinition.Key : string.Empty))

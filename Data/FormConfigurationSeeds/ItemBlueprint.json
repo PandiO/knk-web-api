@@ -8,7 +8,7 @@
     {
       "stepGuid": "099916ba-834e-5152-9b1a-892198640eba",
       "stepName": "Item in game",
-      "description": "How the item looks in game. Quickest: hold the item in your main hand, use Send to Minecraft on Display name and claim the task in game (the code in chat, or /knk itemscan claim <code>); the scan fills this step and Default enchantments. You can also fill everything by hand.",
+      "description": "How the item looks in game. Quickest: hold the item in your main hand, use Send to Minecraft on Display name and claim the task in game (the code in chat, or /knk itemscan claim <code>); the scan fills this step (shield banner and armour trim included) and Default enchantments. You can also fill everything by hand.",
       "isManyToManyRelationship": false,
       "fields": [
         {
@@ -59,6 +59,44 @@
           "fieldType": "Integer",
           "defaultValue": "64",
           "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9de9193d-5eb8-57d3-97bd-687a1c841d2a",
+          "fieldName": "ShieldBannerBaseColor",
+          "label": "Shield base colour",
+          "description": "Shields only: the colour of the shield itself under the banner pattern. An item scan of a shield fills this and the layers below. Leave empty for a plain shield or any other item.",
+          "fieldType": "Enum",
+          "enumType": "BannerDyeColor",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"WHITE\", \"ORANGE\", \"MAGENTA\", \"LIGHT_BLUE\", \"YELLOW\", \"LIME\", \"PINK\", \"GRAY\", \"LIGHT_GRAY\", \"CYAN\", \"PURPLE\", \"BLUE\", \"BROWN\", \"GREEN\", \"RED\", \"BLACK\"]}"
+        },
+        {
+          "fieldGuid": "0cb4763c-f3d7-5363-8a73-c039a21daca8",
+          "fieldName": "ShieldBannerLayers",
+          "label": "Shield banner pattern",
+          "description": "Shields only: the banner pattern layers, bottom to top, each a pattern and a dye colour (the same layers a loom adds). Empty = no pattern.",
+          "fieldType": "BannerLayers",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d266631b-30c4-55dd-be7f-d72222894afb",
+          "fieldName": "ArmorTrimPattern",
+          "label": "Armour trim pattern",
+          "description": "Armour only: the smithing-template trim pattern, e.g. silence, sentry, wayfinder (minecraft: prefix optional). Set together with the trim material; a scan of trimmed armour fills both.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a568c050-c49c-5669-b99f-24a7aa3a9476",
+          "fieldName": "ArmorTrimMaterial",
+          "label": "Armour trim material",
+          "description": "Armour only: the trim's material, e.g. netherite, gold, amethyst (minecraft: prefix optional). Set together with the trim pattern.",
+          "fieldType": "String",
+          "isRequired": false,
           "isReadOnly": false
         }
       ]
