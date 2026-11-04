@@ -49,6 +49,19 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("enchantments")]
         public List<ItemInstanceEnchantmentDto> Enchantments { get; set; } = new();
+
+        // #232: the look frozen at mint (see ItemInstance). Null / empty when the item has none.
+        [JsonPropertyName("shieldBannerBaseColor")]
+        public string? ShieldBannerBaseColor { get; set; }
+
+        [JsonPropertyName("shieldBannerLayers")]
+        public List<ItemBannerLayerDto> ShieldBannerLayers { get; set; } = new();
+
+        [JsonPropertyName("armorTrimPattern")]
+        public string? ArmorTrimPattern { get; set; }
+
+        [JsonPropertyName("armorTrimMaterial")]
+        public string? ArmorTrimMaterial { get; set; }
     }
 
     /// <summary>POST /api/ItemInstances/{id}/clone (PandiO/knk-workspace#175, <c>/knk item more</c>).</summary>

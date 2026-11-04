@@ -27,6 +27,7 @@ namespace knkwebapi_v2.Repositories
                     .ThenInclude(t => t.Tag)
                 .Include(ib => ib.Origins)
                     .ThenInclude(o => o.Domain)
+                .Include(ib => ib.ShieldBannerLayers)
                 .ToListAsync();
         }
 
@@ -43,6 +44,7 @@ namespace knkwebapi_v2.Repositories
                     .ThenInclude(t => t.Tag)
                 .Include(ib => ib.Origins)
                     .ThenInclude(o => o.Domain)
+                .Include(ib => ib.ShieldBannerLayers)
                 .FirstOrDefaultAsync(ib => ib.Id == id);
         }
 

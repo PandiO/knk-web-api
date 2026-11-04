@@ -94,6 +94,10 @@ namespace knkwebapi_v2.Services
             entity.Origins = new List<ItemBlueprintOrigin>();
             await AddOriginsAsync(entity, dto.Origins);
 
+            // #232: shield banner and armour trim, validated (an unknown colour/key is a 400, never dropped).
+            ItemAppearanceRules.Apply(entity, ItemAppearanceRules.Normalize(
+                dto.ShieldBannerBaseColor, dto.ShieldBannerLayers, dto.ArmorTrimPattern, dto.ArmorTrimMaterial));
+
             await _repo.AddAsync(entity);
             return _mapper.Map<ItemBlueprintReadDto>(entity);
         }
@@ -153,6 +157,10 @@ namespace knkwebapi_v2.Services
 
             existing.Origins.Clear();
             await AddOriginsAsync(existing, dto.Origins);
+
+            // #232: the layers are replaced as a whole, like the other owned collections above.
+            ItemAppearanceRules.Apply(existing, ItemAppearanceRules.Normalize(
+                dto.ShieldBannerBaseColor, dto.ShieldBannerLayers, dto.ArmorTrimPattern, dto.ArmorTrimMaterial));
 
             await _repo.UpdateAsync(existing);
         }

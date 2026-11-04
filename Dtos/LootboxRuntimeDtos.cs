@@ -372,6 +372,20 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("deliveredAt")]
         public DateTime? DeliveredAt { get; set; }
+
+        // #232: the item's look - the instance's frozen copy when there is one, else the blueprint's. The plugin
+        // applies it when it builds the drop (shield banner base colour + layers bottom to top; armour trim).
+        [JsonPropertyName("shieldBannerBaseColor")]
+        public string? ShieldBannerBaseColor { get; set; }
+
+        [JsonPropertyName("shieldBannerLayers")]
+        public List<ItemBannerLayerDto> ShieldBannerLayers { get; set; } = new();
+
+        [JsonPropertyName("armorTrimPattern")]
+        public string? ArmorTrimPattern { get; set; }
+
+        [JsonPropertyName("armorTrimMaterial")]
+        public string? ArmorTrimMaterial { get; set; }
     }
 
     /// <summary>POST api/LootboxClaims/{id}/delivered.</summary>

@@ -48,4 +48,12 @@ public class ItemInstance
     public bool IsGhosted { get; set; }
 
     public ICollection<ItemInstanceEnchantment> Enchantments { get; set; } = new List<ItemInstanceEnchantment>();
+
+    // Appearance frozen at mint from the blueprint (PandiO/knk-workspace#232), like GradeId: the shield's banner (base
+    // colour + layers bottom to top) and the armour trim (pattern + material keys, both or neither). A later change to
+    // the blueprint's look doesn't touch existing instances.
+    public BannerDyeColor? ShieldBannerBaseColor { get; set; }
+    public ICollection<ItemInstanceBannerLayer> ShieldBannerLayers { get; set; } = new List<ItemInstanceBannerLayer>();
+    public string? ArmorTrimPattern { get; set; }
+    public string? ArmorTrimMaterial { get; set; }
 }

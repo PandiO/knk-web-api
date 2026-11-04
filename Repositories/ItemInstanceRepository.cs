@@ -25,6 +25,7 @@ namespace knkwebapi_v2.Repositories
                 .Include(i => i.OwnerUser)
                 .Include(i => i.Enchantments)
                     .ThenInclude(e => e.EnchantmentDefinition)
+                .Include(i => i.ShieldBannerLayers)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == id);
         }
