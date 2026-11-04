@@ -156,6 +156,14 @@ public class EnchantmentCombatValuesTests
     [InlineData("effectLevel", "11")]
     [InlineData("secondaryEffectDurationSeconds", "-1")]
     [InlineData("secondaryEffectDurationSeconds", "3601")]
+    [InlineData("areaDamage", "-1")]
+    [InlineData("areaDamage", "1001")]
+    [InlineData("gateDamage", "-1")]
+    [InlineData("gateDamage", "10001")]
+    [InlineData("damageRadiusBlocks", "-0.5")]
+    [InlineData("damageRadiusBlocks", "33")]
+    [InlineData("effectRadiusBlocks", "-0.5")]
+    [InlineData("effectRadiusBlocks", "33")]
     public async Task Update_RefusesOutOfRangeValues(string property, string value)
     {
         var stored = StoredFreeze();
@@ -253,5 +261,81 @@ public class EnchantmentCombatValuesTests
         EnchantmentDefinitionService.ValidateSecondaryCombatValues(10, 3600);
         EnchantmentDefinitionService.ValidateSecondaryCombatValues(null, null);
         Assert.Throws<ArgumentException>(() => EnchantmentDefinitionService.ValidateSecondaryCombatValues(null, double.NaN));
+    }
+
+    // PandiO/knk-workspace#223: Chaos / Flash Chaos area damage, gate damage and radii.
+
+    private static EnchantmentDefinition StoredChaos() => new()
+    {
+        Id = 8,
+        Key = "chaos",
+        DisplayName = "Chaos",
+        Description = "x",
+        IsCustom = true,
+        MaxLevel = 1,
+        CooldownEnabled = true,
+        CooldownSeconds = 90,
+        AreaDamage = 40,
+        GateDamage = 40,
+        DamageRadiusBlocks = 3,
+        EffectRadiusBlocks = 5
+    };
+
+    [Fact]
+    public async Task Update_WritesTheAreaValues_OnlyWhenSent()
+    {
+        var stored = StoredChaos();
+        _repo.Setup(r => r.GetByIdAsync(8)).ReturnsAsync(stored);
+
+        await _service.UpdateAsync(8, Parse("""
+            {"id":8,"key":"chaos","displayName":"Chaos","isCustom":true,"maxLevel":1,"areaDamage":6,"damageRadiusBlocks":2}
+            """));
+        Assert.Equal(6, stored.AreaDamage);
+        Assert.Equal(2, stored.DamageRadiusBlocks);
+        Assert.Equal(40, stored.GateDamage);
+        Assert.Equal(5, stored.EffectRadiusBlocks);
+
+        await _service.UpdateAsync(8, Parse("""
+            {"id":8,"key":"chaos","displayName":"Chaos","isCustom":true,"maxLevel":1,
+             "gateDamage":100,"effectRadiusBlocks":null,"areaDamage":null}
+            """));
+        Assert.Equal(100, stored.GateDamage);
+        Assert.Null(stored.EffectRadiusBlocks);
+        Assert.Null(stored.AreaDamage);
+        Assert.Equal(2, stored.DamageRadiusBlocks);
+    }
+
+    [Fact]
+    public async Task Create_StoresTheAreaValues_AndTheReadDtoCarriesThem()
+    {
+        EnchantmentDefinition? added = null;
+        _repo.Setup(r => r.AddAsync(It.IsAny<EnchantmentDefinition>()))
+            .Callback<EnchantmentDefinition>(e => added = e)
+            .Returns(Task.CompletedTask);
+
+        var read = await _service.CreateAsync(new EnchantmentDefinitionCreateDto
+        {
+            Key = "chaos", DisplayName = "Chaos", IsCustom = true, MaxLevel = 1,
+            AreaDamage = 6, GateDamage = 30, DamageRadiusBlocks = 2, EffectRadiusBlocks = 4.5
+        });
+
+        Assert.Equal(6, added!.AreaDamage);
+        Assert.Equal(30, added.GateDamage);
+        Assert.Equal(2, added.DamageRadiusBlocks);
+        Assert.Equal(4.5, added.EffectRadiusBlocks);
+        Assert.Equal(6, read.AreaDamage);
+        Assert.Equal(30, read.GateDamage);
+        Assert.Equal(2, read.DamageRadiusBlocks);
+        Assert.Equal(4.5, read.EffectRadiusBlocks);
+    }
+
+    [Fact]
+    public void ValidateArea_AcceptsTheBoundsAndNulls()
+    {
+        EnchantmentDefinitionService.ValidateAreaCombatValues(0, 0, 0, 0);
+        EnchantmentDefinitionService.ValidateAreaCombatValues(1000, 10000, 32, 32);
+        EnchantmentDefinitionService.ValidateAreaCombatValues(null, null, null, null);
+        Assert.Throws<ArgumentException>(() => EnchantmentDefinitionService.ValidateAreaCombatValues(double.NaN, null, null, null));
+        Assert.Throws<ArgumentException>(() => EnchantmentDefinitionService.ValidateAreaCombatValues(null, null, null, double.NaN));
     }
 }

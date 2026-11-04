@@ -147,3 +147,12 @@ duration at level I" (`SecondaryEffectDurationSeconds`, its Nausea, default 12.5
 existing "Duration at level I" (default 5 s). The duration, level multiplier and step descriptions say so. GUIDs:
 configuration uuid5(v2 configuration GUID, "seed-v3"), every kept step/field uuid5(v2 configuration GUID, its v2 GUID),
 the new fields uuid5(v3 configuration GUID, "field:" + name).
+
+**EnchantmentDefinition seed v4 (PandiO/knk-workspace#223, 2026-11-03):** a new `configurationGuid` and name, so it
+imports next to v3; make it the default and delete or keep v3 by hand. Adds four fields at the end of "Combat values",
+read by Chaos and Flash Chaos only: "Area damage at level I" (`AreaDamage`, 0-1000, default 40 / 60), "Gate damage at
+level I" (`GateDamage`, 0-10000, default the same as the area damage), "Damage radius" (`DamageRadiusBlocks`, 0-32,
+default 3) and "Knockback radius" (`EffectRadiusBlocks`, 0-32, default 5). Both damages grow per level with the level
+multiplier; the step and level multiplier descriptions say so. GUIDs: configuration uuid5(v3 configuration GUID,
+"seed-v4"), every kept step/field uuid5(v3 configuration GUID, its v3 GUID), the new fields uuid5(v4 configuration
+GUID, "field:" + name).

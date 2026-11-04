@@ -60,6 +60,19 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("secondaryEffectDurationSeconds")]
         public double? SecondaryEffectDurationSeconds { get; set; }
+
+        // PandiO/knk-workspace#223: Chaos / Flash Chaos area damage, gate damage and radii.
+        [JsonPropertyName("areaDamage")]
+        public double? AreaDamage { get; set; }
+
+        [JsonPropertyName("gateDamage")]
+        public double? GateDamage { get; set; }
+
+        [JsonPropertyName("damageRadiusBlocks")]
+        public double? DamageRadiusBlocks { get; set; }
+
+        [JsonPropertyName("effectRadiusBlocks")]
+        public double? EffectRadiusBlocks { get; set; }
     }
 
     // Create DTO
@@ -128,6 +141,19 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("secondaryEffectDurationSeconds")]
         public double? SecondaryEffectDurationSeconds { get; set; }
+
+        // PandiO/knk-workspace#223: Chaos / Flash Chaos area damage, gate damage and radii.
+        [JsonPropertyName("areaDamage")]
+        public double? AreaDamage { get; set; }
+
+        [JsonPropertyName("gateDamage")]
+        public double? GateDamage { get; set; }
+
+        [JsonPropertyName("damageRadiusBlocks")]
+        public double? DamageRadiusBlocks { get; set; }
+
+        [JsonPropertyName("effectRadiusBlocks")]
+        public double? EffectRadiusBlocks { get; set; }
     }
 
     // Update DTO
@@ -266,6 +292,45 @@ namespace knkwebapi_v2.Dtos
 
         [JsonIgnore] public bool HasEffectLevel { get; private set; }
         [JsonIgnore] public bool HasSecondaryEffectDurationSeconds { get; private set; }
+
+        // PandiO/knk-workspace#223: Chaos / Flash Chaos area damage, gate damage and radii, written only when sent.
+        private double? _areaDamage;
+        private double? _gateDamage;
+        private double? _damageRadiusBlocks;
+        private double? _effectRadiusBlocks;
+
+        [JsonPropertyName("areaDamage")]
+        public double? AreaDamage
+        {
+            get => _areaDamage;
+            set { _areaDamage = value; HasAreaDamage = true; }
+        }
+
+        [JsonPropertyName("gateDamage")]
+        public double? GateDamage
+        {
+            get => _gateDamage;
+            set { _gateDamage = value; HasGateDamage = true; }
+        }
+
+        [JsonPropertyName("damageRadiusBlocks")]
+        public double? DamageRadiusBlocks
+        {
+            get => _damageRadiusBlocks;
+            set { _damageRadiusBlocks = value; HasDamageRadiusBlocks = true; }
+        }
+
+        [JsonPropertyName("effectRadiusBlocks")]
+        public double? EffectRadiusBlocks
+        {
+            get => _effectRadiusBlocks;
+            set { _effectRadiusBlocks = value; HasEffectRadiusBlocks = true; }
+        }
+
+        [JsonIgnore] public bool HasAreaDamage { get; private set; }
+        [JsonIgnore] public bool HasGateDamage { get; private set; }
+        [JsonIgnore] public bool HasDamageRadiusBlocks { get; private set; }
+        [JsonIgnore] public bool HasEffectRadiusBlocks { get; private set; }
     }
 
     // List DTO - For search/list views

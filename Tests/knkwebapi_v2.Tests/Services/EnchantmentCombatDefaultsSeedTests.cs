@@ -99,6 +99,53 @@ public class EnchantmentCombatDefaultsSeedTests
         Assert.Equal(20, flash.SecondaryEffectDurationSeconds);
     }
 
+    /// <summary>
+    /// PandiO/knk-workspace#223: Chaos and Flash Chaos get their hard-coded blast (40 / 60 damage within 3 blocks,
+    /// knockback within 5) and a gate damage equal to the damage; the other enchantments leave the four columns empty.
+    /// </summary>
+    [Fact]
+    public async Task ChaosAndFlashChaos_GetTheirAreaDamageAndRadii_OthersStayEmpty()
+    {
+        await using (var context = NewContext()) await AbilityDefinition.SeedCanonicalAsync(context);
+
+        await using var read = NewContext();
+        var all = await read.EnchantmentDefinitions.ToListAsync();
+        var chaos = all.Single(e => e.Key == "chaos");
+        Assert.Equal((40d, 40d, 3d, 5d), (chaos.AreaDamage, chaos.GateDamage, chaos.DamageRadiusBlocks, chaos.EffectRadiusBlocks));
+        var flash = all.Single(e => e.Key == "flash_chaos");
+        Assert.Equal((60d, 60d, 3d, 5d), (flash.AreaDamage, flash.GateDamage, flash.DamageRadiusBlocks, flash.EffectRadiusBlocks));
+        Assert.All(all.Where(e => e.Key is not ("chaos" or "flash_chaos")), e =>
+        {
+            Assert.Null(e.AreaDamage);
+            Assert.Null(e.GateDamage);
+            Assert.Null(e.DamageRadiusBlocks);
+            Assert.Null(e.EffectRadiusBlocks);
+        });
+    }
+
+    [Fact]
+    public async Task Chaos_AnExistingRowWithEmptyColumns_GetsTheDefaults_AndKeepsAnAdminsValues()
+    {
+        await using (var context = NewContext())
+        {
+            context.EnchantmentDefinitions.Add(new EnchantmentDefinition
+            {
+                Key = "knk:chaos", DisplayName = "Chaos", Description = "x", IsCustom = true, MaxLevel = 1,
+                CooldownEnabled = true, CooldownSeconds = 90, AreaDamage = 6, DamageRadiusBlocks = 2
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = NewContext()) await AbilityDefinition.SeedCanonicalAsync(context);
+
+        await using var read = NewContext();
+        var chaos = await read.EnchantmentDefinitions.SingleAsync(e => e.Key == "chaos");
+        Assert.Equal(6, chaos.AreaDamage);
+        Assert.Equal(2, chaos.DamageRadiusBlocks);
+        Assert.Equal(40, chaos.GateDamage);
+        Assert.Equal(5, chaos.EffectRadiusBlocks);
+    }
+
     [Fact]
     public async Task CleavingKeepsItsNumbersInThePluginConfig()
     {
@@ -174,6 +221,8 @@ public class EnchantmentCombatDefaultsSeedTests
                 d.ProcChancePercent, d.ProcChancePerLevelPercent, d.CooldownSeconds, d.EffectDurationSeconds, d.LevelMultiplier);
             knkwebapi_v2.Services.EnchantmentDefinitionService.ValidateSecondaryCombatValues(
                 d.EffectLevel, d.SecondaryEffectDurationSeconds);
+            knkwebapi_v2.Services.EnchantmentDefinitionService.ValidateAreaCombatValues(
+                d.AreaDamage, d.GateDamage, d.DamageRadiusBlocks, d.EffectRadiusBlocks);
         }
     }
 }
