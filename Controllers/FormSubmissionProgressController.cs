@@ -95,6 +95,19 @@ namespace KnKWebAPI.Controllers
             return Ok(progress);
         }
 
+        /// <summary>
+        /// PandiO/knk-workspace#180 (DESIGN §8.7): the latest world task per field of this draft, whatever its status, so
+        /// a field panel reattaches after a reload, a step change or a resume (and applies a result that completed while
+        /// the form was closed).
+        /// </summary>
+        [HttpGet("{id:int}/world-tasks")]
+        public async Task<IActionResult> GetWorldTasks(int id, [FromServices] knkwebapi_v2.Services.Interfaces.IWorldTaskService worldTasks)
+        {
+            var progress = await _service.GetByIdAsync(id);
+            if (progress == null) return NotFound();
+            return Ok(await worldTasks.ListLatestForProgressAsync(id));
+        }
+
         [HttpPost]
         public async Task<IActionResult> SaveProgress([FromBody] FormSubmissionProgressDto progressDto)
         {

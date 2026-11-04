@@ -1845,6 +1845,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("WorkflowSessionId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("FormConfigurationId");
@@ -1852,6 +1855,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("ParentProgressId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("WorkflowSessionId");
 
                     b.HasIndex("Status", "CompletedAt");
 
@@ -6680,6 +6685,9 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("AppliedAt")
+                        .HasColumnType("datetime");
+
                     b.Property<int?>("AssignedUserId")
                         .HasColumnType("int");
 
@@ -6692,23 +6700,52 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("ClaimedByServerId")
                         .HasColumnType("longtext");
 
+                    b.Property<int?>("ClaimedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ClaimedByUuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime");
 
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime");
 
                     b.Property<string>("FieldName")
                         .HasColumnType("longtext");
 
+                    b.Property<int?>("FormSubmissionProgressId")
+                        .HasColumnType("int");
+
                     b.Property<string>("InputJson")
                         .HasColumnType("longtext");
 
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("datetime");
+
                     b.Property<string>("LinkCode")
                         .HasColumnType("longtext");
+
+                    b.Property<string>("OfferState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("None");
+
+                    b.Property<DateTime?>("OfferedAt")
+                        .HasColumnType("datetime");
 
                     b.Property<string>("OutputJson")
                         .HasColumnType("longtext");
@@ -6716,7 +6753,18 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("PayloadJson")
                         .HasColumnType("longtext");
 
+                    b.Property<int>("ReleaseCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp(6)");
+
                     b.Property<string>("Status")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
@@ -6725,6 +6773,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<int?>("StepNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TargetUserId")
                         .HasColumnType("int");
 
                     b.Property<string>("TaskType")
@@ -6741,6 +6792,18 @@ namespace knkwebapi_v2.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AssignedUserId");
+
+                    b.HasIndex("ClaimedByUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FormSubmissionProgressId");
+
+                    b.HasIndex("TargetUserId");
+
+                    b.HasIndex("Status", "ExpiresAt");
+
+                    b.HasIndex("Status", "LeaseUntil");
 
                     b.HasIndex("WorkflowSessionId", "Status");
 
@@ -7519,11 +7582,18 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("knkwebapi_v2.Models.WorkflowSession", "WorkflowSession")
+                        .WithMany()
+                        .HasForeignKey("WorkflowSessionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("FormConfiguration");
 
                     b.Navigation("ParentProgress");
 
                     b.Navigation("User");
+
+                    b.Navigation("WorkflowSession");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateBlockSnapshot", b =>
@@ -8776,6 +8846,26 @@ namespace knkwebapi_v2.Migrations
                         .HasForeignKey("AssignedUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("knkwebapi_v2.Models.User", "ClaimedByUser")
+                        .WithMany()
+                        .HasForeignKey("ClaimedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.FormSubmissionProgress", "FormSubmissionProgress")
+                        .WithMany()
+                        .HasForeignKey("FormSubmissionProgressId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "TargetUser")
+                        .WithMany()
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("knkwebapi_v2.Models.WorkflowSession", "WorkflowSession")
                         .WithMany("WorldTasks")
                         .HasForeignKey("WorkflowSessionId")
@@ -8783,6 +8873,14 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("AssignedUser");
+
+                    b.Navigation("ClaimedByUser");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("FormSubmissionProgress");
+
+                    b.Navigation("TargetUser");
 
                     b.Navigation("WorkflowSession");
                 });

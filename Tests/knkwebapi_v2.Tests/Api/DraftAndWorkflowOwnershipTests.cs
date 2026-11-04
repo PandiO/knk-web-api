@@ -144,6 +144,26 @@ public class DraftAndWorkflowOwnershipTests
         Assert.Equal(7, existing.UserId);
     }
 
+    [Fact]
+    public async Task Update_KeepsTheDraftsWorkflowSession_UnlessANewOneIsSent()
+    {
+        // PandiO/knk-workspace#180: one workflow session per draft; a save without it keeps the link.
+        var existing = new FormSubmissionProgress { Id = 11, UserId = 7, FormConfigurationId = 3, WorkflowSessionId = 21 };
+        var repo = new Mock<IFormSubmissionProgressRepository>();
+        repo.Setup(r => r.GetByIdAsync(11)).ReturnsAsync(existing);
+        var service = new FormSubmissionProgressService(
+            repo.Object, _mapper, Mock.Of<IFormConfigurationRepository>(), Mock.Of<IDisplayConditionEvaluator>());
+
+        var saved = await service.UpdateProgressAsync(11, Draft("1"));
+        Assert.Equal(21, existing.WorkflowSessionId);
+        Assert.Equal(21, saved.WorkflowSessionId);
+
+        var draft = Draft("1");
+        draft.WorkflowSessionId = 22;
+        await service.UpdateProgressAsync(11, draft);
+        Assert.Equal(22, existing.WorkflowSessionId);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(0)]

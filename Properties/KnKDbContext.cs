@@ -1208,6 +1208,8 @@ public partial class KnKDbContext : DbContext
 
             entity.HasIndex(e => e.Token).IsUnique();
             // The lazy expiry sweep and the active-spawn list (DESIGN.md §3.3).
+            // #180: the sweep's scans (LinkCode/ClaimedByServerId/FieldName stay longtext columns, so no index on them;
+            // changing their type would not be an additive migration).
             entity.HasIndex(e => new { e.Status, e.ExpiresAt });
             // Per-area active count (MaxActive).
             entity.HasIndex(e => new { e.SpawnAreaId, e.Status });
@@ -1486,6 +1488,13 @@ public partial class KnKDbContext : DbContext
 
         modelBuilder.Entity<FormSubmissionProgress>()
             .HasIndex(p => new { p.Status, p.CompletedAt });
+
+        // #180: one workflow session per draft; deleting the session leaves the draft.
+        modelBuilder.Entity<FormSubmissionProgress>()
+            .HasOne(p => p.WorkflowSession)
+            .WithMany()
+            .HasForeignKey(p => p.WorkflowSessionId)
+            .OnDelete(DeleteBehavior.SetNull);
         
         // Indexes for performance
         modelBuilder.Entity<FormConfiguration>()
@@ -2144,8 +2153,54 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.CompletedAt)
                 .HasColumnType("datetime");
 
+            // #180: the claim is conditional on the stored status (and row version), so a second claim, a
+            // complete after a cancel or a sweep after a heartbeat fails with a concurrency error → 409.
+            entity.Property(e => e.Status)
+                .IsConcurrencyToken();
+
+            entity.Property(e => e.OfferState)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue(WorldTaskOfferStates.None);
+            entity.Property(e => e.ClaimedByUuid)
+                .HasMaxLength(36);
+            entity.Property(e => e.ReleaseCount)
+                .HasDefaultValue(0);
+            entity.Property(e => e.ExpiresAt)
+                .HasColumnType("datetime");
+            entity.Property(e => e.LeaseUntil)
+                .HasColumnType("datetime");
+            entity.Property(e => e.OfferedAt)
+                .HasColumnType("datetime");
+            entity.Property(e => e.AppliedAt)
+                .HasColumnType("datetime");
+
             entity.HasIndex(e => new { e.WorkflowSessionId, e.Status });
             entity.HasIndex(e => e.AssignedUserId);
+            // #180: the sweep's scans (LinkCode/ClaimedByServerId/FieldName stay longtext columns, so no index on them;
+            // changing their type would not be an additive migration).
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt });
+            entity.HasIndex(e => new { e.Status, e.LeaseUntil });
+
+            entity.HasOne(e => e.FormSubmissionProgress)
+                .WithMany()
+                .HasForeignKey(e => e.FormSubmissionProgressId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.TargetUser)
+                .WithMany()
+                .HasForeignKey(e => e.TargetUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ClaimedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ClaimedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(e => e.WorkflowSession)
                 .WithMany(s => s.WorldTasks)

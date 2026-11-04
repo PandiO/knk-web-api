@@ -88,6 +88,7 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
             TaskType = WorldTaskTypes.MinecraftCatalogScan,
             Status = "Pending",
             CreatedAt = now,
+            CreatedByUserId = requestedByUserId, // PandiO/knk-workspace#180
         };
         _db.MinecraftCatalogScans.Add(scan);
         _db.WorldTasks.Add(task);
@@ -124,6 +125,14 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
             {
                 scan.Status = MinecraftCatalogScanStatus.Failed;
                 scan.Error = $"The Minecraft server reported: {task.ErrorMessage ?? "unknown error"}";
+                scan.CompletedAt = _utcNow();
+                await SaveUnlessChangedMeanwhileAsync(scan, ct);
+            }
+            else if (task?.Status == WorldTaskStatuses.Expired)
+            {
+                // #180: the sweep expired the task (no game server claimed it in time).
+                scan.Status = MinecraftCatalogScanStatus.Failed;
+                scan.Error = task.ErrorMessage ?? "No Minecraft server picked up the scan in time.";
                 scan.CompletedAt = _utcNow();
                 await SaveUnlessChangedMeanwhileAsync(scan, ct);
             }

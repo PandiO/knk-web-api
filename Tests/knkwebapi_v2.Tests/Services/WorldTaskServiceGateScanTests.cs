@@ -28,6 +28,11 @@ public class WorldTaskServiceGateScanTests
     {
         _mapper.Setup(m => m.Map<WorldTaskReadDto>(It.IsAny<WorldTask>()))
             .Returns(new WorldTaskReadDto());
+        // #180: a task needs an existing workflow session.
+        _workflowRepo.Setup(r => r.GetSessionByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync((int id) => new WorkflowSession { Id = id, UserId = 5 });
+        _taskRepo.Setup(r => r.ListOpenForFieldAsync(It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string>()))
+            .ReturnsAsync(new List<WorldTask>());
 
         _service = new WorldTaskService(
             _taskRepo.Object,
