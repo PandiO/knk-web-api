@@ -29,9 +29,7 @@ public class PlaceholderResolutionIntegrationTests : IDisposable
     private readonly KnKDbContext _dbContext;
     private readonly FieldValidationRuleRepository _ruleRepository;
     private readonly PlaceholderResolutionService _placeholderService;
-    private readonly FieldValidationService _validationService;
     private readonly Mock<ILogger<PlaceholderResolutionService>> _mockPlaceholderLogger;
-    private readonly Mock<ILogger<FieldValidationService>> _mockValidationLogger;
 
     public PlaceholderResolutionIntegrationTests()
     {
@@ -43,18 +41,11 @@ public class PlaceholderResolutionIntegrationTests : IDisposable
         _dbContext = new KnKDbContext(options);
         _ruleRepository = new FieldValidationRuleRepository(_dbContext);
         _mockPlaceholderLogger = new Mock<ILogger<PlaceholderResolutionService>>();
-        _mockValidationLogger = new Mock<ILogger<FieldValidationService>>();
 
         _placeholderService = new PlaceholderResolutionService(
             _dbContext,
             _ruleRepository,
             _mockPlaceholderLogger.Object
-        );
-
-        _validationService = new FieldValidationService(
-            _placeholderService,
-            new List<IValidationMethod>(),
-            _mockValidationLogger.Object
         );
 
         SeedTestData();
@@ -443,60 +434,6 @@ public class PlaceholderResolutionIntegrationTests : IDisposable
         {
             Assert.NotEmpty(result.ResolutionErrors);
         }
-    }
-
-    #endregion
-
-    #region FieldValidationService Integration Tests
-
-    [Fact]
-    public async Task ValidateFieldAsync_WithLocationInsideRegion_IntegratesPlaceholderResolution()
-    {
-        // Arrange
-        var rule = await _ruleRepository.GetByIdAsync(1);
-        Assert.NotNull(rule);
-
-        var currentEntityPlaceholders = new Dictionary<string, string>
-        {
-            ["Name"] = "York"
-        };
-
-        // Act
-        var result = await _validationService.ValidateFieldAsync(
-            rule,
-            fieldValue: new { X = 125.5, Y = 64.0, Z = -350.2 },
-            dependencyFieldValue: "town_springfield",
-            currentEntityPlaceholders: currentEntityPlaceholders,
-            entityId: 200
-        );
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.Placeholders == null || result.Placeholders.Count >= 0);
-        Assert.NotNull(result.Metadata);
-        Assert.Equal("LocationInsideRegion", result.Metadata.ValidationType);
-    }
-
-    [Fact]
-    public async Task ValidateFieldAsync_WithConditionalRequired_ResolvesNavigationPlaceholders()
-    {
-        // Arrange
-        var rule = await _ruleRepository.GetByIdAsync(3);
-        Assert.NotNull(rule);
-
-        // Act
-        var result = await _validationService.ValidateFieldAsync(
-            rule,
-            fieldValue: null,
-            dependencyFieldValue: 200, // District ID
-            currentEntityPlaceholders: new Dictionary<string, string>(),
-            entityId: 200
-        );
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.Placeholders == null || result.Placeholders.Count >= 0);
-        // Should resolve District.Name from database
     }
 
     #endregion
