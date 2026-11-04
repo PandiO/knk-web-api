@@ -21,6 +21,8 @@ public class GameSettingsMappingProfile : Profile
             .ForMember(dest => dest.GroupOverrides,
                 opt => opt.MapFrom(src => GameSettingsJson.DeserializeList<PermissionGroupGameSettingsDto>(src.GroupOverridesJson)))
             .ForMember(dest => dest.Hub,
-                opt => opt.MapFrom(src => GameSettingsJson.Deserialize<HubSettingsDto>(src.HubSettingsJson) ?? new HubSettingsDto()));
+                opt => opt.MapFrom(src => GameSettingsJson.Deserialize<HubSettingsDto>(src.HubSettingsJson) ?? new HubSettingsDto()))
+            .ForMember(dest => dest.ChatTokens,
+                opt => opt.MapFrom(src => GameSettingsJson.Deserialize<ChatTokenSettingsDto>(src.ChatTokenSettingsJson) ?? new ChatTokenSettingsDto()));
     }
 }

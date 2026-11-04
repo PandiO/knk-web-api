@@ -48,6 +48,10 @@ public class GameSettingsReadDto
     [JsonPropertyName("hub")]
     public HubSettingsDto Hub { get; set; } = new();
 
+    /// <summary>Chat hashtag token limits (PandiO/knk-workspace#233): never null on read; 0 = off.</summary>
+    [JsonPropertyName("chatTokens")]
+    public ChatTokenSettingsDto ChatTokens { get; set; } = new();
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
@@ -89,6 +93,28 @@ public class GameSettingsUpdateDto
     /// <summary>Null = keep the current hub settings.</summary>
     [JsonPropertyName("hub")]
     public HubSettingsDto? Hub { get; set; }
+
+    /// <summary>Null = keep the current chat-token limits.</summary>
+    [JsonPropertyName("chatTokens")]
+    public ChatTokenSettingsDto? ChatTokens { get; set; }
+}
+
+/// <summary>
+/// Limits of the chat hashtag tokens such as <c>#hand</c> and <c>#kills</c> (PandiO/knk-workspace#233). Both are off
+/// (0) by default; the plugin skips them for holders of <c>knk.chat.token.bypass</c>.
+/// </summary>
+public class ChatTokenSettingsDto
+{
+    public const int MaxTokensPerMessageLimit = 20;
+    public const int MaxCooldownSeconds = 3600;
+
+    /// <summary>The most tokens expanded in one message; later ones stay plain text. 0 = no limit.</summary>
+    [JsonPropertyName("maxTokensPerMessage")]
+    public int MaxTokensPerMessage { get; set; }
+
+    /// <summary>Seconds a player waits between messages with statistics tokens. 0 = no cooldown.</summary>
+    [JsonPropertyName("statCooldownSeconds")]
+    public int StatCooldownSeconds { get; set; }
 }
 
 /// <summary>

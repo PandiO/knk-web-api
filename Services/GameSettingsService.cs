@@ -85,6 +85,10 @@ public class GameSettingsService : IGameSettingsService
         {
             existing.HubSettingsJson = GameSettingsJson.Serialize(hub);
         }
+        if (dto.ChatTokens != null)
+        {
+            existing.ChatTokenSettingsJson = GameSettingsJson.Serialize(dto.ChatTokens);
+        }
         existing.UpdatedAt = DateTime.UtcNow;
 
         var saved = await _repository.UpsertAsync(existing);
@@ -316,6 +320,18 @@ public class GameSettingsService : IGameSettingsService
             if (o != null)
             {
                 ValidateRespawnPolicy(o.RespawnPolicy, $"groupOverrides[{o.PermissionGroupId}].respawnPolicy");
+            }
+        }
+
+        if (dto.ChatTokens != null)
+        {
+            if (dto.ChatTokens.MaxTokensPerMessage < 0 || dto.ChatTokens.MaxTokensPerMessage > ChatTokenSettingsDto.MaxTokensPerMessageLimit)
+            {
+                throw new ArgumentException($"chatTokens.maxTokensPerMessage must be between 0 (no limit) and {ChatTokenSettingsDto.MaxTokensPerMessageLimit}");
+            }
+            if (dto.ChatTokens.StatCooldownSeconds < 0 || dto.ChatTokens.StatCooldownSeconds > ChatTokenSettingsDto.MaxCooldownSeconds)
+            {
+                throw new ArgumentException($"chatTokens.statCooldownSeconds must be between 0 (no cooldown) and {ChatTokenSettingsDto.MaxCooldownSeconds}");
             }
         }
 

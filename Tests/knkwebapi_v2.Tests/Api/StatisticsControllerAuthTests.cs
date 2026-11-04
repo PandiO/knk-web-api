@@ -157,6 +157,25 @@ public class StatisticsControllerAuthTests : IDisposable
     }
 
     [Fact]
+    public async Task Reads_AudiencePublic_IsTheSignedInView_ForSelfAndStaff()
+    {
+        // PandiO/knk-workspace#233: chat tokens show what /stats <player> shows another player.
+        foreach (var http in new[] { ServiceAuthTestHelper.Plugin(actingUserId: 1), ServiceAuthTestHelper.WebUser(2), ServiceAuthTestHelper.WebUser(3) })
+        {
+            var read = await Controller(http).GetUser(1, null, null, default, "public");
+            Assert.Equal("signedIn", ((PlayerStatisticsDto)((OkObjectResult)read.Result!).Value!).Viewer);
+        }
+
+        var anonymous = await Controller(ServiceAuthTestHelper.Anonymous()).GetUser(1, null, null, default, "public");
+        Assert.Equal("anonymous", ((PlayerStatisticsDto)((OkObjectResult)anonymous.Result!).Value!).Viewer);
+
+        var viewer = await Controller(ServiceAuthTestHelper.Plugin(actingUserId: 1)).GetUser(1, null, null, default, "Viewer");
+        Assert.Equal("self", ((PlayerStatisticsDto)((OkObjectResult)viewer.Result!).Value!).Viewer);
+
+        Assert.Equal(400, Status(await Controller(ServiceAuthTestHelper.Plugin(actingUserId: 1)).GetUser(1, null, null, default, "everyone")));
+    }
+
+    [Fact]
     public void Catalog_IsPublic()
     {
         var result = Controller(ServiceAuthTestHelper.Anonymous()).GetCatalog();

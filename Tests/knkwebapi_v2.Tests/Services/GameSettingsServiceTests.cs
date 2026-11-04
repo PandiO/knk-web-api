@@ -340,4 +340,30 @@ public class GameSettingsServiceTests
             new MapperConfiguration(cfg => cfg.AddProfile<GameSettingsMappingProfile>()).CreateMapper(), _groupRepo.Object)
             .GetAsync()).Hub.DomainId);
     }
+
+    [Fact]
+    public async Task ChatTokens_AreOffByDefault_KeptWhenNull_AndValidated()
+    {
+        // PandiO/knk-workspace#233: both limits off (0) until set on the Game Settings page.
+        var read = await _service.GetAsync();
+        Assert.Equal(0, read.ChatTokens.MaxTokensPerMessage);
+        Assert.Equal(0, read.ChatTokens.StatCooldownSeconds);
+
+        var update = Update();
+        update.ChatTokens = new ChatTokenSettingsDto { MaxTokensPerMessage = 3, StatCooldownSeconds = 10 };
+        var saved = await _service.UpdateAsync(update);
+        Assert.Equal(3, saved.ChatTokens.MaxTokensPerMessage);
+        Assert.Equal(10, saved.ChatTokens.StatCooldownSeconds);
+
+        var kept = await _service.UpdateAsync(Update());
+        Assert.Equal(3, kept.ChatTokens.MaxTokensPerMessage);
+        Assert.Equal(10, kept.ChatTokens.StatCooldownSeconds);
+
+        var negative = Update();
+        negative.ChatTokens = new ChatTokenSettingsDto { MaxTokensPerMessage = -1 };
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(negative));
+        var tooLong = Update();
+        tooLong.ChatTokens = new ChatTokenSettingsDto { StatCooldownSeconds = ChatTokenSettingsDto.MaxCooldownSeconds + 1 };
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(tooLong));
+    }
 }
