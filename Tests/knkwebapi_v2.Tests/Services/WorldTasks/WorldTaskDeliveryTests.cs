@@ -317,7 +317,8 @@ public class WorldTaskDeliveryTests
     [Theory]
     [InlineData(WorldTaskOfferResults.Declined, WorldTaskOfferStates.Declined)]
     [InlineData(WorldTaskOfferResults.Offline, WorldTaskOfferStates.Declined)]
-    [InlineData(WorldTaskOfferResults.NoPermission, WorldTaskOfferStates.Declined)]
+    [InlineData(WorldTaskOfferResults.Unavailable, WorldTaskOfferStates.Declined)]
+    [InlineData(WorldTaskOfferResults.NoPermission, WorldTaskOfferStates.NoPermission)] // #239: kept apart from Declined
     [InlineData(WorldTaskOfferResults.TimedOut, WorldTaskOfferStates.TimedOut)]
     [InlineData(WorldTaskOfferResults.Busy, WorldTaskOfferStates.Busy)]
     public async Task OfferResult_ClosesTheOffer_AndTheOfferClaimIsRefusedAfterwards(string result, string state)
@@ -507,5 +508,121 @@ public class WorldTaskDeliveryTests
         Assert.Equal(WorldTaskStatuses.Expired, (await ReadAsync(task.Id)).Status);
         var cancel = Assert.Single(_realtime.Cancels);
         Assert.Equal((WorldTaskStatuses.Expired, (string?)AdminUuid), (cancel.Status, cancel.Uuid));
+    }
+
+    // ---- #240: Send again ----
+
+    private async Task<WorldTaskReadDto> OfferAgainAsync(int id, string? deliver = null)
+    {
+        await using var db = NewContext();
+        return await Service(db).OfferAgainAsync(id, new OfferTaskDto { Deliver = deliver == null ? null : Deliver(deliver) });
+    }
+
+    [Fact]
+    public async Task OfferAgain_HandedBackTask_IsOfferedToTheOnlineCreatorAgain_WithAFreshExpiry()
+    {
+        var sessionId = await SeedAsync();
+        _realtime.Online[AdminUuid] = "survival-1";
+        var task = await CreateAsync(sessionId);
+        await ClaimAsync(task.Id, "offer", AdminUuid);
+        await using (var db = NewContext())
+        {
+            await Service(db).ReleaseAsync(task.Id, new ReleaseTaskDto { ServerId = "survival-1", HandBack = true });
+        }
+        _now = _now.AddMinutes(20);
+
+        var again = await OfferAgainAsync(task.Id);
+
+        var stored = await ReadAsync(task.Id);
+        Assert.Equal(WorldTaskStatuses.Pending, stored.Status);
+        Assert.Equal(WorldTaskOfferStates.Offered, stored.OfferState);
+        Assert.Equal(task.LinkCode, stored.LinkCode); // same task, same code
+        Assert.Equal(_now.AddMinutes(30), stored.ExpiresAt);
+        Assert.Equal(2, _realtime.Offers.Count);
+        Assert.Equal(WorldTaskOfferModes.AutoClaim, _realtime.Offers[^1].Mode);
+        Assert.Equal("Alice", again.TargetUsername);
+    }
+
+    [Fact]
+    public async Task OfferAgain_DeclinedHandOff_CanBeHandedToSomeoneElse()
+    {
+        var sessionId = await SeedAsync();
+        _realtime.Online[BuilderUuid] = "survival-1";
+        var task = await CreateAsync(sessionId, "{\"userId\": 9}");
+        await using (var db = NewContext())
+        {
+            await Service(db).RecordOfferResultAsync(task.Id, WorldTaskOfferResults.NoPermission, BuilderUuid);
+        }
+        Assert.Equal(WorldTaskOfferStates.NoPermission, (await ReadAsync(task.Id)).OfferState);
+        _realtime.Online[AdminUuid] = "survival-2";
+
+        await OfferAgainAsync(task.Id, "\"auto\"");
+
+        var stored = await ReadAsync(task.Id);
+        Assert.Equal(WorldTaskOfferStates.Offered, stored.OfferState);
+        Assert.Equal(Admin, stored.TargetUserId);
+        Assert.Equal(("survival-2", AdminUuid), (_realtime.Offers[^1].ServerId, _realtime.Offers[^1].Uuid));
+    }
+
+    [Fact]
+    public async Task OfferAgain_CreatorNotOnline_Is409_AndChangesNothing()
+    {
+        var sessionId = await SeedAsync();
+        var task = await CreateAsync(sessionId);
+
+        var error = await Assert.ThrowsAsync<WorldTaskConflictException>(() => OfferAgainAsync(task.Id));
+
+        Assert.Contains("not online", error.Message);
+        Assert.Equal(WorldTaskOfferStates.None, (await ReadAsync(task.Id)).OfferState);
+        Assert.Empty(_realtime.Offers);
+    }
+
+    [Fact]
+    public async Task OfferAgain_Queue_WhileOffline_IsQueued()
+    {
+        var sessionId = await SeedAsync();
+        var task = await CreateAsync(sessionId);
+
+        await OfferAgainAsync(task.Id, "\"queue\"");
+
+        Assert.Equal(WorldTaskOfferStates.Queued, (await ReadAsync(task.Id)).OfferState);
+    }
+
+    [Fact]
+    public async Task OfferAgain_CreatorHoldsATask_IsBusy_UnlessReplace()
+    {
+        var sessionId = await SeedAsync();
+        var held = await HeldByAdminAsync(sessionId);
+        _realtime.Online[AdminUuid] = "survival-1";
+        var task = await CreateAsync(sessionId, "\"code\"");
+
+        await OfferAgainAsync(task.Id);
+        Assert.Equal(WorldTaskOfferStates.Busy, (await ReadAsync(task.Id)).OfferState);
+
+        await OfferAgainAsync(task.Id, "\"replace\"");
+        Assert.Equal(WorldTaskOfferStates.Offered, (await ReadAsync(task.Id)).OfferState);
+        Assert.Equal(WorldTaskStatuses.Pending, (await ReadAsync(held.Id)).Status); // released with its code
+    }
+
+    [Fact]
+    public async Task OfferAgain_IsRefused_WhileOffered_ForAScan_OnceClosed_AndForCode()
+    {
+        var sessionId = await SeedAsync();
+        _realtime.Online[AdminUuid] = "survival-1";
+        var offered = await CreateAsync(sessionId);
+        await Assert.ThrowsAsync<WorldTaskConflictException>(() => OfferAgainAsync(offered.Id));
+
+        var scan = await CreateAsync(sessionId, field: "Scan", type: "GateBlockScan");
+        await Assert.ThrowsAsync<WorldTaskConflictException>(() => OfferAgainAsync(scan.Id));
+
+        var closed = await CreateAsync(sessionId, "\"code\"", field: "Closed");
+        await using (var db = NewContext())
+        {
+            await Service(db).CancelAsync(closed.Id, null);
+        }
+        await Assert.ThrowsAsync<WorldTaskConflictException>(() => OfferAgainAsync(closed.Id));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => OfferAgainAsync(closed.Id, "\"code\""));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => OfferAgainAsync(9999));
     }
 }

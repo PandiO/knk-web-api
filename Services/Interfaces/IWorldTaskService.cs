@@ -32,6 +32,8 @@ namespace knkwebapi_v2.Services.Interfaces
         // PandiO/knk-workspace#181 (WT2)
         Task<int> OfferWaitingForPlayersAsync(IReadOnlyCollection<string> uuids);
         Task<bool> RecordOfferResultAsync(int taskId, string? result, string? uuid);
+        /// <summary>PandiO/knk-workspace#240: "Send again" for a waiting task.</summary>
+        Task<WorldTaskReadDto> OfferAgainAsync(int id, OfferTaskDto? dto);
         Task<WorldTaskActiveForMeDto> GetActiveForUserAsync(int userId);
     }
 }

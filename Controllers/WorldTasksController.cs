@@ -188,6 +188,17 @@ namespace KnKWebAPI.Controllers
             return await Run(() => _service.CancelAsync(id, dto));
         }
 
+        /// <summary>
+        /// PandiO/knk-workspace#240 "Send again": offers a waiting task again (<c>{"deliver": "auto" | "queue" | "replace" |
+        /// {"userId": n}}</c>, default auto). 409 while it is offered, once it is no longer Pending, for a scan, or for
+        /// auto/replace while you are not online in game. Web writes need knk.admin.world (class attribute).
+        /// </summary>
+        [HttpPost("{id:int}/offer")]
+        public async Task<IActionResult> OfferAgain(int id, [FromBody] OfferTaskDto? dto = null)
+        {
+            return await Run(() => _service.OfferAgainAsync(id, dto));
+        }
+
         /// <summary>#180: InProgress → Pending (in-game cancel, quit, restart, plugin disable). The task keeps its code.</summary>
         [HttpPost("{id:int}/release")]
         [RequirePluginService]
