@@ -222,6 +222,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ISiegeMatchService, SiegeMatchService>();
             services.AddScoped<ISiegeMatchHistoryService, SiegeMatchHistoryService>(); // #174 public results log
             services.AddScoped<ISiegeMatchGateService, SiegeMatchGateService>();
+            // Siege Survival phase 1 (PandiO/knk-workspace#41, link S4) — survival settings, child collections, frozen configuration
+            services.AddScoped<ISiegeSurvivalRepository, SiegeSurvivalRepository>();
+            services.AddScoped<ISiegeSurvivalService, SiegeSurvivalService>();
             // Road navigation (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
             services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();
             services.AddScoped<IRoadNetworkService, RoadNetworkService>();
