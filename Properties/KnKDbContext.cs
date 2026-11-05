@@ -182,6 +182,28 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<SiegeMatchObjectiveResult> SiegeMatchObjectiveResults { get; set; } = null!;
     public virtual DbSet<SiegeMatchGateSnapshot> SiegeMatchGateSnapshots { get; set; } = null!;
 
+    // Siege Survival phase 1 (knk-workspace docs/specs/siege-survival/DESIGN.md §10; PandiO/knk-workspace#41, link
+    // S4). Model configuration: the "Siege Survival phase 1" block in OnModelCreating. No migration yet: the
+    // coordinator adds `AddSiegeSurvivalPhase1` once #167's migration is merged (migration chain kept linear).
+    public virtual DbSet<SiegeSurvivalSettings> SiegeSurvivalSettings { get; set; } = null!;
+    public virtual DbSet<SurvivalSettingsKit> SurvivalSettingsKits { get; set; } = null!;
+    public virtual DbSet<SurvivalLobbySettings> SurvivalLobbySettings { get; set; } = null!;
+    public virtual DbSet<SurvivalDifficultyProfile> SurvivalDifficultyProfiles { get; set; } = null!;
+    public virtual DbSet<SurvivalMonsterType> SurvivalMonsterTypes { get; set; } = null!;
+    public virtual DbSet<SurvivalSpecialWaveProfile> SurvivalSpecialWaveProfiles { get; set; } = null!;
+    public virtual DbSet<SurvivalSpecialWaveMonsterType> SurvivalSpecialWaveMonsterTypes { get; set; } = null!;
+    public virtual DbSet<SurvivalSpecialWaveEntry> SurvivalSpecialWaveEntries { get; set; } = null!;
+    public virtual DbSet<SurvivalSpawnZone> SurvivalSpawnZones { get; set; } = null!;
+    public virtual DbSet<SurvivalSpawnZonePoint> SurvivalSpawnZonePoints { get; set; } = null!;
+    public virtual DbSet<SurvivalSpawnZoneObjective> SurvivalSpawnZoneObjectives { get; set; } = null!;
+    public virtual DbSet<SurvivalTargetOverride> SurvivalTargetOverrides { get; set; } = null!;
+    public virtual DbSet<SurvivalPurchasePoint> SurvivalPurchasePoints { get; set; } = null!;
+    public virtual DbSet<SurvivalPurchaseOffer> SurvivalPurchaseOffers { get; set; } = null!;
+    public virtual DbSet<SurvivalMysteryBoxPool> SurvivalMysteryBoxPools { get; set; } = null!;
+    public virtual DbSet<SurvivalMysteryBoxEntry> SurvivalMysteryBoxEntries { get; set; } = null!;
+    public virtual DbSet<SurvivalMysteryBoxEntryEnchantment> SurvivalMysteryBoxEntryEnchantments { get; set; } = null!;
+    public virtual DbSet<SurvivalMysteryBoxPoint> SurvivalMysteryBoxPoints { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -578,6 +600,232 @@ public partial class KnKDbContext : DbContext
             .HasForeignKey(g => g.CurrentSiegeId)
             .OnDelete(DeleteBehavior.SetNull);
         // ==== end Siege Phase 2 ================================================================
+
+        // ==== Siege Survival phase 1 (docs/specs/siege-survival/DESIGN.md §10; PandiO/knk-workspace#41) ====
+        // Kept as one block (with the DbSets above) so it merges cleanly with other branches. Delete rules follow
+        // the Siege Phase 2 block: everything survival-authored cascades from the scenario (or its parent row);
+        // shared world/catalog rows (Location, GateStructure, Kit, ItemBlueprint, EnchantmentDefinition) are
+        // Restrict; team references are SetNull (back to the "first Defender / first Attacker" default); a target
+        // override cascades with its target; a pool still used by a Mystery Box point is Restrict. Enums are strings.
+        modelBuilder.Entity<SiegeSurvivalSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_settings");
+
+            entity.HasIndex(e => e.SiegeScenarioId).IsUnique();
+            entity.Property(e => e.EquipmentMode).HasConversion<string>().HasMaxLength(30);
+            entity.Property(e => e.CoinsPerKill).HasPrecision(12, 2);
+            entity.Property(e => e.XpPerKill).HasPrecision(12, 2);
+            entity.Property(e => e.KillBonusMultiplier).HasPrecision(9, 4);
+
+            entity.HasOne(e => e.SiegeScenario).WithOne().HasForeignKey<SiegeSurvivalSettings>(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.HumanTeam).WithMany().HasForeignKey(e => e.HumanTeamId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.NpcTeam).WithMany().HasForeignKey(e => e.NpcTeamId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.DefaultKit).WithMany().HasForeignKey(e => e.DefaultKitId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.BaselineLoadoutKit).WithMany().HasForeignKey(e => e.BaselineLoadoutKitId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalSettingsKit>(entity =>
+        {
+            entity.HasKey(e => new { e.SiegeSurvivalSettingsId, e.KitId });
+            entity.ToTable("siege_survival_settings_kits");
+
+            entity.HasOne(e => e.SiegeSurvivalSettings).WithMany(s => s.SelectedKits).HasForeignKey(e => e.SiegeSurvivalSettingsId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Kit).WithMany().HasForeignKey(e => e.KitId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalLobbySettings>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_lobby_settings");
+
+            entity.HasIndex(e => e.SiegeLobbyId).IsUnique();
+            entity.Property(e => e.AllCapturedOverride).HasConversion<string>().HasMaxLength(20);
+
+            entity.HasOne(e => e.SiegeLobby).WithOne().HasForeignKey<SurvivalLobbySettings>(e => e.SiegeLobbyId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalDifficultyProfile>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_difficulty_profiles");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CountPreset).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.StatPreset).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalMonsterType>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_monster_types");
+
+            entity.Property(e => e.EntityType).IsRequired().HasMaxLength(64);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.EntityType }).IsUnique();
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalSpecialWaveProfile>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_special_wave_profiles");
+
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.Key }).IsUnique();
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalSpecialWaveMonsterType>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_special_wave_monster_types");
+
+            entity.Property(e => e.EntityType).IsRequired().HasMaxLength(64);
+            entity.HasIndex(e => new { e.SurvivalSpecialWaveProfileId, e.EntityType }).IsUnique();
+
+            entity.HasOne(e => e.SurvivalSpecialWaveProfile).WithMany(p => p.MonsterTypes).HasForeignKey(e => e.SurvivalSpecialWaveProfileId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalSpecialWaveEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_special_wave_entries");
+
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SurvivalSpecialWaveProfile).WithMany().HasForeignKey(e => e.SurvivalSpecialWaveProfileId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalSpawnZone>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_spawn_zones");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PrerequisitePolicy).HasConversion<string>().HasMaxLength(10);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.AnchorLocation).WithMany().HasForeignKey(e => e.AnchorLocationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalSpawnZonePoint>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_spawn_zone_points");
+
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(10);
+            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.HasIndex(e => new { e.SurvivalSpawnZoneId, e.Kind, e.SortOrder });
+
+            entity.HasOne(e => e.SurvivalSpawnZone).WithMany(z => z.Points).HasForeignKey(e => e.SurvivalSpawnZoneId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Location).WithMany().HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalSpawnZoneObjective>(entity =>
+        {
+            entity.HasKey(e => new { e.SurvivalSpawnZoneId, e.SiegeObjectiveId });
+            entity.ToTable("siege_survival_spawn_zone_objectives");
+
+            entity.HasOne(e => e.SurvivalSpawnZone).WithMany(z => z.PrerequisiteObjectives).HasForeignKey(e => e.SurvivalSpawnZoneId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SiegeObjective).WithMany().HasForeignKey(e => e.SiegeObjectiveId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalTargetOverride>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_target_overrides");
+
+            entity.Property(e => e.Mode).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SiegeObjectiveId }).IsUnique();
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.GateStructureId }).IsUnique();
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SiegeObjective).WithMany().HasForeignKey(e => e.SiegeObjectiveId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.GateStructure).WithMany().HasForeignKey(e => e.GateStructureId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalPurchasePoint>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_purchase_points");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Location).WithMany().HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalPurchaseOffer>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_purchase_offers");
+
+            entity.HasIndex(e => new { e.SurvivalPurchasePointId, e.SortOrder });
+
+            entity.HasOne(e => e.SurvivalPurchasePoint).WithMany(p => p.Offers).HasForeignKey(e => e.SurvivalPurchasePointId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalMysteryBoxPool>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_mystery_box_pools");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Variant).HasConversion<string>().HasMaxLength(20);
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalMysteryBoxEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_mystery_box_entries");
+
+            entity.Property(e => e.ChancePercent).HasPrecision(5, 2);
+            entity.HasIndex(e => new { e.SurvivalMysteryBoxPoolId, e.SortOrder });
+
+            entity.HasOne(e => e.SurvivalMysteryBoxPool).WithMany(p => p.Entries).HasForeignKey(e => e.SurvivalMysteryBoxPoolId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.EnchantmentDefinition).WithMany().HasForeignKey(e => e.EnchantmentDefinitionId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalMysteryBoxEntryEnchantment>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_mystery_box_entry_enchantments");
+
+            entity.Property(e => e.ChancePercent).HasPrecision(5, 2);
+            entity.HasIndex(e => new { e.SurvivalMysteryBoxEntryId, e.EnchantmentDefinitionId }).IsUnique();
+
+            entity.HasOne(e => e.SurvivalMysteryBoxEntry).WithMany(e => e.Enchantments).HasForeignKey(e => e.SurvivalMysteryBoxEntryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.EnchantmentDefinition).WithMany().HasForeignKey(e => e.EnchantmentDefinitionId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalMysteryBoxPoint>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_mystery_box_points");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.BlockType).IsRequired().HasMaxLength(191);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany().HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Location).WithMany().HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SurvivalMysteryBoxPool).WithMany().HasForeignKey(e => e.SurvivalMysteryBoxPoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ==== end Siege Survival phase 1 =======================================================
 
         // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
         // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.
