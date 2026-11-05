@@ -1,0 +1,338 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "c3f4ea75-dfca-56d1-bb7a-375fc56abb31",
+  "entityTypeName": "SurvivalDifficultyProfile",
+  "name": "SurvivalDifficultyProfile - Default (seed v1)",
+  "description": "A difficulty of a survival scenario: how the enemy count and the enemy stats grow per round, per-player scaling, caps, repair rate and other difficulty values. A scenario can have several; one is the default.",
+  "steps": [
+    {
+      "stepGuid": "ad4ccfe0-c22d-50ec-8b76-9032033d5cb8",
+      "stepName": "General",
+      "description": "Name the difficulty. The default one is used when a match names none.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "efa34447-a603-5488-952a-d0d562f2a00c",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "b8301428-657b-58c8-8168-63422fa0a81a",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown to players when a difficulty is chosen, e.g. 'Normal' or 'Nightmare'.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7712521c-7a49-5985-bdf9-46a9183a0f0d",
+          "fieldName": "IsDefault",
+          "label": "Default difficulty",
+          "description": "Marking this one clears the default of the others.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "55ce4819-3254-53b1-9883-0f842f7f65ed",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing difficulties.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "179cbbc3-10ac-5b6e-8587-2db63aac77e1",
+      "stepName": "Enemy count",
+      "description": "How many enemies a round has (DESIGN §7). Linear: b + a·(round−1). Logarithmic: b + a·ln(round). Exponential: b·m^(round−1). Hybrid: linear up to the switch round, then ×m per round (Call of Duty style). Round 1 has the round-1 count.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "584c6319-fbca-55b7-a9e5-cb84e1fa2cf4",
+          "fieldName": "CountPreset",
+          "label": "Preset",
+          "description": "Linear: b + a·(round−1). Logarithmic: b + a·ln(round). Exponential: b·m^(round−1). Hybrid: linear up to the switch round, then ×m per round (Call of Duty style).",
+          "fieldType": "Enum",
+          "defaultValue": "Linear",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Linear\", \"Logarithmic\", \"Exponential\", \"Hybrid\"]}"
+        },
+        {
+          "fieldGuid": "85c00fc7-0798-5f67-b748-03a58d63e240",
+          "fieldName": "CountBase",
+          "label": "Round-1 enemy count (b)",
+          "description": "Enemies in round 1 for one player (at least 1).",
+          "fieldType": "Decimal",
+          "defaultValue": "6",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "57c20c73-da14-5ca7-93ce-744cc133ee0b",
+          "fieldName": "CountStep",
+          "label": "Step per round (a)",
+          "description": "Added per round by the linear, logarithmic and hybrid presets.",
+          "fieldType": "Decimal",
+          "defaultValue": "2",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "291a0eb3-b4ea-5f42-9774-884faa3124f8",
+          "fieldName": "CountMultiplier",
+          "label": "Multiplier per round (m)",
+          "description": "Used by the exponential preset, and by hybrid after the switch round.",
+          "fieldType": "Decimal",
+          "defaultValue": "1.1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "37a5406e-3e5e-558a-989f-1a449e85bd59",
+          "fieldName": "CountSwitchRound",
+          "label": "Switch round (s)",
+          "description": "Hybrid only: the last linear round.",
+          "fieldType": "Integer",
+          "defaultValue": "9",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "c87b7c14-4660-5452-8f3c-2eb880fd2832",
+      "stepName": "Enemy stats",
+      "description": "One shared growth curve for the enemy stats (round 1 = vanilla, DESIGN S30, S54); each stat follows it with its own weight: multiplier = 1 + weight × (curve − 1). Weight 1 follows the curve fully, 0.3 grows at 30 % of it, 0 keeps the stat vanilla.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "fae08546-c29e-5f3d-af10-0bfb4d9b5f16",
+          "fieldName": "StatPreset",
+          "label": "Preset",
+          "description": "Linear: b + a·(round−1). Logarithmic: b + a·ln(round). Exponential: b·m^(round−1). Hybrid: linear up to the switch round, then ×m per round (Call of Duty style). The round-1 value is always 1.",
+          "fieldType": "Enum",
+          "defaultValue": "Linear",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Linear\", \"Logarithmic\", \"Exponential\", \"Hybrid\"]}"
+        },
+        {
+          "fieldGuid": "9f6a0a0a-8989-5331-adcc-2243f4c17a4f",
+          "fieldName": "StatStep",
+          "label": "Step per round (a)",
+          "description": "Added to the multiplier per round by the linear, logarithmic and hybrid presets.",
+          "fieldType": "Decimal",
+          "defaultValue": "0.1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4ac68d6c-f3b2-5e88-9609-d95803ee97b9",
+          "fieldName": "StatMultiplier",
+          "label": "Multiplier per round (m)",
+          "description": "Used by the exponential preset, and by hybrid after the switch round.",
+          "fieldType": "Decimal",
+          "defaultValue": "1.1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3e4317de-333f-5837-a877-c1918d42b906",
+          "fieldName": "StatSwitchRound",
+          "label": "Switch round (s)",
+          "description": "Hybrid only: the last linear round.",
+          "fieldType": "Integer",
+          "defaultValue": "9",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "89098494-6c11-5525-bc67-d4df53ee9829",
+          "fieldName": "HealthWeight",
+          "label": "Health weight",
+          "description": "How much of the curve the enemies' health follows.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e27b8840-3386-55ef-b8f7-e36f9f7998a8",
+          "fieldName": "WalkingSpeedWeight",
+          "label": "Walking speed weight",
+          "description": "How much of the curve the walking speed follows. Keep it low: pathfinding breaks above an effective speed of 0.5.",
+          "fieldType": "Decimal",
+          "defaultValue": "0.3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1131f851-b62a-5b91-b076-4a6867def63c",
+          "fieldName": "MeleeDamageWeight",
+          "label": "Melee damage weight",
+          "description": "How much of the curve the melee damage follows.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3aa3c176-ca14-571f-8b48-169c85a29869",
+          "fieldName": "RangedDamageWeight",
+          "label": "Ranged damage weight",
+          "description": "How much of the curve the ranged (projectile) damage follows.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fed179ff-df02-5b51-823d-69a004df38b6",
+          "fieldName": "AttackSpeedWeight",
+          "label": "Attack speed weight",
+          "description": "How much of the curve the attack speed follows.",
+          "fieldType": "Decimal",
+          "defaultValue": "0.5",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "d10a40f2-e9d6-5156-abaf-3fef1c21f740",
+      "stepName": "Players and caps",
+      "description": "Per-player scaling (DESIGN S55: × (1 + p × (players − 1)), players counted at round start, ghosts included) and the caps.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "c886ada3-2f8b-561d-a102-e812e642b8e1",
+          "fieldName": "PerPlayerFactor",
+          "label": "Per-player factor (p)",
+          "description": "Always scales the enemy count; 0 = off.",
+          "fieldType": "Decimal",
+          "defaultValue": "0.25",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ac3fdb1e-1f70-5cca-8779-692b4216b745",
+          "fieldName": "PerPlayerAppliesToStats",
+          "label": "Scale the stats per player too",
+          "description": "Off by default: then only the count grows with the player count.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5507490e-f490-56dc-a0fb-8e821b9a4fdb",
+          "fieldName": "MaxAlive",
+          "label": "Max enemies alive",
+          "description": "The rest of a round's queue spawns as others die. 0 = unlimited.",
+          "fieldType": "Integer",
+          "defaultValue": "40",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e7c9cd9e-3e46-50b1-9a88-93efb89c3698",
+          "fieldName": "StatCap",
+          "label": "Stat cap",
+          "description": "The maximum stat multiplier (applied last; at least 1).",
+          "fieldType": "Decimal",
+          "defaultValue": "8",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "77d155ab-158d-553a-b772-3e9e45640663",
+          "fieldName": "CountCap",
+          "label": "Count cap",
+          "description": "The maximum enemies per round. 0 = unlimited.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "14d9db8b-2c26-51b6-a660-9ce974869667",
+      "stepName": "Repairs, gates and spawning",
+      "description": "Other values of this difficulty (DESIGN §5, §7).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "311ed21f-ac0a-5ee1-b2f2-bfdff4957395",
+          "fieldName": "RepairRatePerSecond",
+          "label": "Repair rate",
+          "description": "Door health repaired per second per repairing player (DESIGN §5: a 1000-health door with rate 50 takes 20 s alone, 10 s with two).",
+          "fieldType": "Decimal",
+          "defaultValue": "50",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0d851e2d-8d54-5971-9086-4eea5e8cc0e8",
+          "fieldName": "GateDamageFactor",
+          "label": "Gate damage factor",
+          "description": "Multiplier on the enemies' gate damage (1 = the mob's normal damage).",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5f1aff14-de15-5327-8e07-96319fb770b5",
+          "fieldName": "CaptureContributionWeight",
+          "label": "Capture weight",
+          "description": "Weight of one enemy in the objective capture calculation (1 = a player).",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8f548d54-19b1-5a28-a767-768cc1e2738d",
+          "fieldName": "SpawnIntervalMillis",
+          "label": "Spawn interval (ms)",
+          "description": "Minimum time between two spawns of a round.",
+          "fieldType": "Integer",
+          "defaultValue": "500",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "834937ae-483e-5014-8f99-bba02c92c1b0",
+          "fieldName": "AggroRadius",
+          "label": "Aggro radius (blocks)",
+          "description": "Players within this radius can divert enemies. Leave empty for the plugin's default.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a713f166-fda4-5af6-999b-5deb8d6b763f",
+          "fieldName": "LeashDistance",
+          "label": "Leash distance (blocks)",
+          "description": "An enemy dragged further than this from its route returns. Leave empty for the plugin's default.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

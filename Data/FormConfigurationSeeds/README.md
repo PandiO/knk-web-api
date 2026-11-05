@@ -28,6 +28,17 @@ Format and authoring guide: knk-workspace `docs/specs/form-configurations/DEFAUL
 | `SiegeSpawnpoint` | SiegeSpawnpoint - Default (seed v1) | `SiegeScenario` (location rule reads the scenario's Town) |
 | `SiegeObjective` | SiegeObjective - Default (seed v1) | `SiegeScenario` (same) |
 | `SiegeLobby` | SiegeLobby - Default (seed v1) | `SiegeLobbyScenario.join` |
+| `SurvivalSettingsKit.join` | SurvivalSettingsKit - Join Entry (seed v1) | — |
+| `SurvivalSpawnZoneObjective.join` | SurvivalSpawnZoneObjective - Join Entry (seed v1) | — |
+| `SiegeSurvivalSettings` | SiegeSurvivalSettings - Default (seed v1) | `SurvivalSettingsKit.join` |
+| `SurvivalLobbySettings` | SurvivalLobbySettings - Default (seed v1) | — |
+| `SurvivalDifficultyProfile` | SurvivalDifficultyProfile - Default (seed v1) | — |
+| `SurvivalMonsterType` | SurvivalMonsterType - Default (seed v1) | — |
+| `SurvivalSpecialWaveProfile`, `SurvivalSpecialWaveMonsterType`, `SurvivalSpecialWaveEntry` | … - Default (seed v1) | — |
+| `SurvivalSpawnZone`, `SurvivalSpawnZonePoint` | … - Default (seed v1) | `SurvivalSpawnZoneObjective.join` (the zone) |
+| `SurvivalTargetOverride` | SurvivalTargetOverride - Default (seed v1) | — |
+| `SurvivalPurchasePoint`, `SurvivalPurchaseOffer` | … - Default (seed v1) | — |
+| `SurvivalMysteryBoxPool`, `SurvivalMysteryBoxEntry`, `SurvivalMysteryBoxEntryEnchantment`, `SurvivalMysteryBoxPoint` | … - Default (seed v1) | — |
 
 So one working order is: the three `.join` seeds, `SiegeScenario`, `SiegeTeam`, `SiegeSpawnpoint`,
 `SiegeObjective`, `SiegeLobby`, then `GateStructure` and `GateDoor`. The dry run names the missing seed if the
@@ -156,3 +167,18 @@ default 3) and "Knockback radius" (`EffectRadiusBlocks`, 0-32, default 5). Both 
 multiplier; the step and level multiplier descriptions say so. GUIDs: configuration uuid5(v3 configuration GUID,
 "seed-v4"), every kept step/field uuid5(v3 configuration GUID, its v3 GUID), the new fields uuid5(v4 configuration
 GUID, "field:" + name).
+
+**Siege Survival phase 1 (PandiO/knk-workspace#41, link S4, 2026-11-05):** eighteen new seeds for the survival entities
+(knk-workspace `docs/specs/siege-survival/DESIGN.md` §10), one per entity, two of them join entries. Nothing existing was
+changed: survival settings are their own row 1:1 with the scenario (`SiegeSurvivalSettings`, step "Scenario and mode" →
+"Kill rewards"), the lobby override its own row 1:1 with the lobby (`SurvivalLobbySettings`), and the survival children
+(difficulty profiles, monster types, special-wave profiles/types/entries, spawnzones with points and prerequisite
+objectives, target overrides, purchase points with offers, Mystery Box pools with entries and enchantment chances, Mystery
+Box points) hang off the scenario with their own forms, each with the parent id as a read-only first field. Import order:
+the two `.join` seeds first; parents before the forms their owned-collection steps open (`SurvivalSpecialWaveProfile` before
+`SurvivalSpecialWaveMonsterType` is not needed - owned collections are resolved by entity name, not by seed). No example
+rows, no validation rules: location-inside-region rules are the admin's choice, as for the siege forms. The percentage
+fields (`ChancePercent`) take 0.01 % precision; readiness, not the form, checks that a pool adds up to 100 %. GUIDs:
+configuration uuid5(URL namespace, `knk-formconfig:<Entity>:seed-v1`), every step/field uuid5(that, `step:`/`field:` +
+name), the `DomainSubRegion` convention. The database tables behind these forms arrive with the follow-up migration
+`AddSiegeSurvivalPhase1` (added after `claude/alpha-run-1-gates` merges); until then the forms import but a save fails.

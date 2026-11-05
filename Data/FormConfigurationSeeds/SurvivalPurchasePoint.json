@@ -1,0 +1,95 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "69d7fd54-d680-5bfa-a32b-606b9880c9d2",
+  "entityTypeName": "SurvivalPurchasePoint",
+  "name": "SurvivalPurchasePoint - Default (seed v1)",
+  "description": "A fixed equipment purchase point of a survival scenario (DESIGN §8, S44), available in every equipment mode, with its offers.",
+  "steps": [
+    {
+      "stepGuid": "1b4c57bd-f608-5673-bbca-767cbd350109",
+      "stepName": "General",
+      "description": "Name the point and set how close a player must be to buy.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "9fa98f5a-5d19-5abd-8657-de50aa397c25",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "edbfa91f-1015-5cf9-b457-f010104a924b",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "E.g. 'Armory'.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a83f98b7-1d7e-5be0-85c5-94381dd4261f",
+          "fieldName": "InteractionRange",
+          "label": "Interaction range (blocks)",
+          "description": "Players within this many blocks can buy (default 3, at most 64).",
+          "fieldType": "Decimal",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4778f13b-5ff8-5187-801a-50d7dd9756fb",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing points.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b3894892-d71e-5d02-9fd4-1caf8b0bbdb1",
+      "stepName": "Location",
+      "description": "Stand on the spot in game and use Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "700f2434-98bd-5d59-87f5-0286cd8a68e1",
+          "fieldName": "LocationId",
+          "label": "Location",
+          "description": "Where the purchase point is.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "0f16b36f-b2dc-5d60-8bf3-28a70569d26a",
+      "stepName": "Offers",
+      "description": "What the point sells. Available once the point is saved.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "833e958f-fbb0-5a21-9393-d29ec131a120",
+          "fieldName": "Offers",
+          "label": "Offers",
+          "description": "Create New opens the offer form with this point filled in.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "SurvivalPurchaseOffer",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

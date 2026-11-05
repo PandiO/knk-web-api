@@ -1,0 +1,66 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "856a9743-7517-57bb-b587-09f8084097db",
+  "entityTypeName": "SurvivalSpecialWaveMonsterType",
+  "name": "SurvivalSpecialWaveMonsterType - Default (seed v1)",
+  "description": "A vanilla monster type of a special-wave profile, with its draw weight and first round.",
+  "steps": [
+    {
+      "stepGuid": "9592e2a9-0fd7-5670-9ad8-eb0582c1079e",
+      "stepName": "Monster type",
+      "description": "The special profile's own mix. A profile without any type uses the scenario's normal mix.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "98f72834-a8ce-5d6e-a53d-8375279fcd6e",
+          "fieldName": "SurvivalSpecialWaveProfileId",
+          "label": "Special-wave profile",
+          "description": "Filled in from the profile you are editing.",
+          "fieldType": "Object",
+          "objectType": "SurvivalSpecialWaveProfile",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "19a7619c-f245-5080-890f-0f70838d0df3",
+          "fieldName": "EntityType",
+          "label": "Monster type",
+          "description": "A vanilla Minecraft monster type, e.g. ZOMBIE, SKELETON, SPIDER, CREEPER (stored upper case).",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f46f776c-6d4c-58d2-acfd-3f54067b3648",
+          "fieldName": "Weight",
+          "label": "Weight",
+          "description": "Draw weight among the selected types (default 1, equal chances).",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "14163bcb-aab3-547c-a0df-1a22bef8c72d",
+          "fieldName": "UnlockRound",
+          "label": "First round",
+          "description": "The first round this type can appear in (default 1).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "857d03a9-4823-5504-9f71-e5abb208cf2f",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing types.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

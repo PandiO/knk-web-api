@@ -1,0 +1,68 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "51433de7-0015-5c92-8684-17f89031dfe3",
+  "entityTypeName": "SurvivalMysteryBoxPool",
+  "name": "SurvivalMysteryBoxPool - Default (seed v1)",
+  "description": "A Mystery Box pool of a survival scenario (DESIGN §8a, S59): items or enchanted books, each entry with a percentage chance adding up to exactly 100 %.",
+  "steps": [
+    {
+      "stepGuid": "c2f5c210-31a1-5185-b14d-ae427cc435da",
+      "stepName": "Pool",
+      "description": "Name the pool and pick its variant. Both variants play through the same box; a Mystery Box point names one pool.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "277fd904-10ae-58d8-ad34-c938e71a1d6e",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "c0579234-d3ca-5e63-a3b7-87a9de08cc63",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "E.g. 'Weapons' or 'Books'.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d7376ff6-6f4c-53d5-899c-e19af6e731d2",
+          "fieldName": "Variant",
+          "label": "Variant",
+          "description": "Items: item blueprints with optional enchantment chances. EnchantedBooks: an enchantment and level per entry.",
+          "fieldType": "Enum",
+          "defaultValue": "Items",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Items\", \"EnchantedBooks\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "7e7b9a75-3f53-5f58-8442-61bce20c4da3",
+      "stepName": "Entries",
+      "description": "The pool's entries and chances. Available once the pool is saved; readiness checks that they add up to 100 %.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "642912f8-cbcd-524b-940a-be2d40b01d1b",
+          "fieldName": "Entries",
+          "label": "Entries",
+          "description": "Create New opens the entry form with this pool filled in.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "SurvivalMysteryBoxEntry",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

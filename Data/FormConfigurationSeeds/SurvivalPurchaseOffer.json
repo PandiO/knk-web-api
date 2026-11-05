@@ -1,0 +1,67 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "0d38b1c1-0ad2-5c12-a25a-a11e4af9c7eb",
+  "entityTypeName": "SurvivalPurchaseOffer",
+  "name": "SurvivalPurchaseOffer - Default (seed v1)",
+  "description": "One product of a survival purchase point: an item blueprint, a quantity and its price in match currency. Created from the point's Offers step.",
+  "steps": [
+    {
+      "stepGuid": "4101ebe2-ec3f-51df-bd04-740052026e86",
+      "stepName": "Offer",
+      "description": "What the point sells and for how much match currency.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4867b4e3-2def-53df-a0bf-87a248ae9e5a",
+          "fieldName": "SurvivalPurchasePointId",
+          "label": "Purchase point",
+          "description": "Filled in from the purchase point you are editing.",
+          "fieldType": "Object",
+          "objectType": "SurvivalPurchasePoint",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "d79ea4ae-0657-5287-b124-f2713b2a2ee4",
+          "fieldName": "ItemBlueprintId",
+          "label": "Item",
+          "description": "The item blueprint sold.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5c2574ca-9b63-5109-a391-0949a0a9c4bf",
+          "fieldName": "Quantity",
+          "label": "Quantity",
+          "description": "Items per purchase (default 1).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f99338c3-7793-509f-bbb6-a9e6ed9d6a23",
+          "fieldName": "Price",
+          "label": "Price",
+          "description": "Match currency per purchase (default 100).",
+          "fieldType": "Integer",
+          "defaultValue": "100",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6bdc92a8-9671-5616-8556-875f16ba8c06",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing offers.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -1,0 +1,96 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "c30d0caf-f294-5c19-aa9a-4955f391f949",
+  "entityTypeName": "SurvivalSpecialWaveEntry",
+  "name": "SurvivalSpecialWaveEntry - Default (seed v1)",
+  "description": "One entry of a survival scenario's special-wave schedule: a profile every n waves, or at one wave number (DESIGN S14, S53).",
+  "steps": [
+    {
+      "stepGuid": "7436c41e-761d-55a3-a875-1bc76ca252be",
+      "stepName": "Schedule entry",
+      "description": "Recurring: every Interval waves from Start wave on (5, 10, 15 … for interval 5). Explicit: one wave number; it beats every recurring entry for that wave. Recurring entries that can hit the same wave need different priorities (the lowest wins) or readiness fails.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "193f58f5-d2f0-5f49-93da-b7f760ca0ee6",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "54132005-e9f4-5bbc-a985-35ea36ca48c4",
+          "fieldName": "SurvivalSpecialWaveProfileId",
+          "label": "Profile",
+          "description": "A special-wave profile of this scenario.",
+          "fieldType": "Object",
+          "objectType": "SurvivalSpecialWaveProfile",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"siegeScenarioId\": \"{SiegeScenarioId}\"}}"
+        },
+        {
+          "fieldGuid": "2d662aeb-1148-5052-ac0a-150ebca2dfaf",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "Recurring (every n waves) or Explicit (one wave number).",
+          "fieldType": "Enum",
+          "defaultValue": "Recurring",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Recurring\", \"Explicit\"]}"
+        },
+        {
+          "fieldGuid": "b18f927a-6612-5cea-9b74-262c7721848b",
+          "fieldName": "Interval",
+          "label": "Every n waves",
+          "description": "Recurring: the interval (1 or more).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c6d77ab8-c8ae-511d-81c2-31590d0187e0",
+          "fieldName": "StartWave",
+          "label": "Start wave",
+          "description": "Recurring: the first wave it applies to. Leave empty for the interval itself.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a3b76ee1-3707-5147-85ec-149861c271d3",
+          "fieldName": "Priority",
+          "label": "Priority",
+          "description": "Recurring: the lowest value wins when two recurring entries hit the same wave (default 1).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "16979876-6349-5dcf-95e4-d8582c222e74",
+          "fieldName": "Wave",
+          "label": "Wave number",
+          "description": "Explicit: the one wave this profile plays in.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2c1c4aee-5f52-5b40-a8fe-29a3f9c0caee",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing entries.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

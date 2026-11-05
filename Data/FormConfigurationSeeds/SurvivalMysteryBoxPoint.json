@@ -1,0 +1,124 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "deb9f6f0-787b-5fc8-a0d8-341c880e6f46",
+  "entityTypeName": "SurvivalMysteryBoxPoint",
+  "name": "SurvivalMysteryBoxPoint - Default (seed v1)",
+  "description": "A Mystery Box of a survival scenario (DESIGN §8a): its block, pool, roll price and claim timeout.",
+  "steps": [
+    {
+      "stepGuid": "b8a2c372-0c71-5a55-866d-5125a65b3d46",
+      "stepName": "General",
+      "description": "Name the box.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a5853973-2773-54c9-a8c9-37978ca9747a",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "1b42a5e4-19fd-5b22-81b7-c68b92dafebb",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "E.g. 'Mystery Box (keep)'.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0caec0ba-43af-591f-9f0c-b2aa70f558ba",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing boxes.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "535b083f-8867-5cff-88b8-bd6550a4dcd5",
+      "stepName": "Location",
+      "description": "Stand on the box block in game and use Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "13b3c05a-37b5-5147-b89e-ba9803d803bc",
+          "fieldName": "LocationId",
+          "label": "Block location",
+          "description": "Where the box block is.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "10ab13e0-ac52-59e8-9f2f-136a26203233",
+          "fieldName": "InteractionRange",
+          "label": "Interaction range (blocks)",
+          "description": "Players within this many blocks can roll (default 3, at most 64).",
+          "fieldType": "Decimal",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "8cc2f5da-74f6-5da4-9ddc-cafb0b4938cd",
+      "stepName": "Box",
+      "description": "What the box rolls from and what a roll costs. Only the roller can claim the shown item, by right-clicking it; unclaimed it despawns after the timeout and is forfeited.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ddd04f83-b4b9-5508-9310-1ef75cfe7ea3",
+          "fieldName": "SurvivalMysteryBoxPoolId",
+          "label": "Pool",
+          "description": "A Mystery Box pool of this scenario.",
+          "fieldType": "Object",
+          "objectType": "SurvivalMysteryBoxPool",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"siegeScenarioId\": \"{SiegeScenarioId}\"}}"
+        },
+        {
+          "fieldGuid": "8c06ddea-a944-5366-a3b7-9e177bc24137",
+          "fieldName": "BlockType",
+          "label": "Block",
+          "description": "Minecraft block key of the box block (default minecraft:end_portal_frame).",
+          "fieldType": "String",
+          "defaultValue": "minecraft:end_portal_frame",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e47dcbcf-0fa2-5911-a562-853f8b77b252",
+          "fieldName": "RollPrice",
+          "label": "Roll price",
+          "description": "Match currency per roll (default 1000).",
+          "fieldType": "Integer",
+          "defaultValue": "1000",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0f76a5c1-1620-58bb-91e5-9221387c2386",
+          "fieldName": "ClaimTimeoutMillis",
+          "label": "Claim timeout (ms)",
+          "description": "How long the rolled item waits to be claimed (default 10000 = 10 s).",
+          "fieldType": "Integer",
+          "defaultValue": "10000",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

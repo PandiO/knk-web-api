@@ -1,0 +1,286 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "3bac4bbd-a685-572a-8a47-e5b36cd8de5f",
+  "entityTypeName": "SiegeSurvivalSettings",
+  "name": "SiegeSurvivalSettings - Default (seed v1)",
+  "description": "Survival (Defend the Castle) settings of a siege scenario: mode, teams, equipment, end conditions, spawning, stuck enemies and per-kill rewards. One per scenario.",
+  "steps": [
+    {
+      "stepGuid": "b44fbc8a-1caf-5edb-920e-b210e2d9ddc6",
+      "stepName": "Scenario and mode",
+      "description": "Which scenario plays as survival and who plays whom. A scenario without survival settings is an ordinary PvP siege.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4d799cca-0a17-546d-b15e-09f89b12adeb",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "13583f3a-e102-59c7-91cf-7bb5fdf211d8",
+          "fieldName": "Enabled",
+          "label": "Survival on",
+          "description": "Off keeps the survival settings but the scenario plays (and is listed) as ordinary PvP until it is on.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0653d30a-180a-50bb-b276-464af78b0e57",
+          "fieldName": "MinPlayers",
+          "label": "Minimum players",
+          "description": "A survival match can start with this many players (default 1). The scenario's own PlayersMin keeps its PvP meaning.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0f91da23-9911-56a5-bc0e-98396ba1596a",
+          "fieldName": "HumanTeamId",
+          "label": "Human team",
+          "description": "The defender team the players join. Leave empty for the scenario's first Defender team.",
+          "fieldType": "Object",
+          "objectType": "SiegeTeam",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"siegeScenarioId\": \"{SiegeScenarioId}\"}}"
+        },
+        {
+          "fieldGuid": "5fd5c907-85c2-54bb-ada6-3e20e975f2af",
+          "fieldName": "NpcTeamId",
+          "label": "NPC team",
+          "description": "The attacker team the enemies belong to (no player ever joins it). Leave empty for the scenario's first Attacker team.",
+          "fieldType": "Object",
+          "objectType": "SiegeTeam",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"siegeScenarioId\": \"{SiegeScenarioId}\"}}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "84f9db46-aa48-54f4-b0d8-94d2c598aab0",
+      "stepName": "Equipment",
+      "description": "How players are equipped (DESIGN §8): their own inventory, a kit picked at the hub, or a match loadout (Zombies-style). Purchase points, teammate transfers and the Mystery Box exist in every mode; inventories are kept on death everywhere.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "7430d359-4eeb-50d2-b7dc-c2044bb2558d",
+          "fieldName": "EquipmentMode",
+          "label": "Equipment mode",
+          "description": "OwnInventory: players use their own gear. Kits: each player picks one of the selected kits at the hub. MatchProgression: players start with the baseline loadout (or an empty inventory).",
+          "fieldType": "Enum",
+          "defaultValue": "OwnInventory",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"OwnInventory\", \"Kits\", \"MatchProgression\"]}"
+        },
+        {
+          "fieldGuid": "fcc638f1-b48d-5f23-93ce-bbb4366e0159",
+          "fieldName": "DefaultKitId",
+          "label": "Default kit",
+          "description": "Kits mode: the kit a player who doesn't pick gets. Must be one of the selected kits.",
+          "fieldType": "Object",
+          "objectType": "Kit",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0b19e9e1-0183-59f6-a198-471e7409ab89",
+          "fieldName": "BaselineLoadoutKitId",
+          "label": "Baseline loadout",
+          "description": "Match progression: the kit granted at entry. Leave empty for an empty inventory.",
+          "fieldType": "Object",
+          "objectType": "Kit",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "af9d3cd4-5eb6-5b4f-a7fa-4a19d2f9cbec",
+      "stepName": "Selected kits",
+      "description": "Kits mode: the kits players may pick at the hub. Save the settings first, then add kits with Create New Join Entry.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "SelectedKits",
+      "joinEntityType": "SurvivalSettingsKit",
+      "subConfigurationRef": {
+        "configurationGuid": "8918b334-037f-5772-a39a-716a56e9daa4",
+        "entityTypeName": "SurvivalSettingsKit",
+        "name": "SurvivalSettingsKit - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "ab616bcd-65c6-5b54-9dab-39901bff19b5",
+          "fieldName": "SelectedKits",
+          "label": "Kits",
+          "description": "Each entry is a kit of the catalog.",
+          "fieldType": "List",
+          "objectType": "SurvivalSettingsKit",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "0deed2d3-7871-56b0-a6a4-4529d9db4ab4",
+      "stepName": "Waves and spawning",
+      "description": "The pause between rounds, the end condition and the spawn preference (DESIGN §3a, §6).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "60846cf0-4494-5c49-809b-9020ee5945fb",
+          "fieldName": "IntermissionMillis",
+          "label": "Pause between rounds (ms)",
+          "description": "The next round starts this long after the last enemy of a round died (default 10000 = 10 s). Dead players respawn at its start.",
+          "fieldType": "Integer",
+          "defaultValue": "10000",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "cd9600ab-9f86-50f1-8827-8858809ce4db",
+          "fieldName": "EndWhenAllObjectivesCaptured",
+          "label": "End when all objectives are captured",
+          "description": "Off by default: then only a team wipe or an objective with Instant victory (insta-lose) ends the game. A survival lobby can override this.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2dc7d71b-8787-5ea8-8212-d35244c81933",
+          "fieldName": "FavorNearPlayersPercent",
+          "label": "Favor spawning close to players (%)",
+          "description": "Share of the spawns that go to the active spawnzones nearest the living players (0-100); the rest is spread by zone weight. 0 = zone weight only. Never exclusive.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8656a035-660d-5cc2-a9ec-9fc5cc9ca0b5",
+          "fieldName": "NearZoneCount",
+          "label": "Nearest zones",
+          "description": "How many of the nearest active zones count as 'close to the players' (default 1).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "885789f0-0db6-5f03-8283-ab302cf8edae",
+      "stepName": "Stuck enemies",
+      "description": "Call of Duty-style stuck handling (DESIGN §3c): a stuck enemy is respawned closer to the players, the last enemies glow and chase, repeated respawns end in a system kill, and a round backstop clears what is left.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "fc4381a0-da49-5ea0-bb17-8e1858eb5deb",
+          "fieldName": "StuckAfterMillis",
+          "label": "Stuck after (ms)",
+          "description": "An enemy that made no progress for this long is respawned (default 30000).",
+          "fieldType": "Integer",
+          "defaultValue": "30000",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "401193f4-d900-5644-824d-dfcbb25ade0d",
+          "fieldName": "LastEnemiesCount",
+          "label": "Last enemies",
+          "description": "When at most this many enemies of a round remain (and the queue is empty) they glow and go straight for the nearest player (default 3).",
+          "fieldType": "Integer",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5f312f18-6753-56d9-a3a6-f4ce7b5ca40f",
+          "fieldName": "RespawnLimit",
+          "label": "Respawn limit",
+          "description": "An enemy respawned this many times and stuck again is killed by the system (default 2).",
+          "fieldType": "Integer",
+          "defaultValue": "2",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2756aa76-6c4b-57df-9a77-bc9d9abd9ef0",
+          "fieldName": "RoundBackstopMillis",
+          "label": "Round backstop (ms)",
+          "description": "If the round is still running this long after its last planned enemy spawned, the rest is killed by the system (default 300000 = 5 min). Empty = off.",
+          "fieldType": "Integer",
+          "defaultValue": "300000",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "54cf170c-05ed-54db-890a-4b794d253c62",
+          "fieldName": "MeaningfulDistance",
+          "label": "Meaningful distance (blocks)",
+          "description": "Getting at least this much closer to the target counts as progress (default 1).",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "13bbfea0-d2bd-5977-b694-aeaf36bfe2fd",
+      "stepName": "Kill rewards",
+      "description": "Per NPC kill (DESIGN S32, S33): permanent coins and XP settled once at the end of a normal match, and match currency credited at once. Headshot and critical-hit kills pay the bonus multiplier.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "690ea9d8-9b3e-52ad-ae45-a285957235a5",
+          "fieldName": "CoinsPerKill",
+          "label": "Coins per kill",
+          "description": "Permanent coins per kill. Leave empty for the scenario's capture coin reward ÷ 10.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a614df2a-7ab8-5cf2-a058-b70d6c398cd5",
+          "fieldName": "XpPerKill",
+          "label": "XP per kill",
+          "description": "Permanent experience per kill. Leave empty for the scenario's capture XP reward ÷ 10.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d0131f57-fd2d-5cec-b359-1be6a105696c",
+          "fieldName": "MatchCurrencyPerKill",
+          "label": "Match currency per kill",
+          "description": "Spendable match currency per kill (default 70); it only exists inside the match.",
+          "fieldType": "Integer",
+          "defaultValue": "70",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1c904213-b57b-5f15-bac1-102aa34d6e71",
+          "fieldName": "KillBonusMultiplier",
+          "label": "Headshot / critical multiplier",
+          "description": "Multiplier for a headshot or critical-hit kill (default 1.1), applied once.",
+          "fieldType": "Decimal",
+          "defaultValue": "1.1",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

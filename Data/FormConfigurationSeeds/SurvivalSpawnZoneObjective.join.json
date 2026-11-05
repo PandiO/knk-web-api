@@ -1,0 +1,28 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "571c3eb1-86a6-525d-8951-b4b37e34ba04",
+  "entityTypeName": "SurvivalSpawnZoneObjective",
+  "name": "SurvivalSpawnZoneObjective - Join Entry (seed v1)",
+  "description": "Join entry for an objective that must be NPC-held before a spawnzone activates.",
+  "steps": [
+    {
+      "stepGuid": "9d7464e1-0e6b-560e-beef-2a284a5b88c5",
+      "stepName": "Objective",
+      "description": "An objective of the scenario; the zone's policy says whether all or any of its objectives must be NPC-held.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "0e773d23-7b29-5d8d-b857-d84792d3d9ae",
+          "fieldName": "SiegeObjectiveId",
+          "label": "Objective",
+          "description": "One of the scenario's objectives.",
+          "fieldType": "Object",
+          "objectType": "SiegeObjective",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

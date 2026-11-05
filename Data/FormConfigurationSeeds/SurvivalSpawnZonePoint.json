@@ -1,0 +1,76 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "e82685cb-dcdc-594f-907f-d15b340d10ea",
+  "entityTypeName": "SurvivalSpawnZonePoint",
+  "name": "SurvivalSpawnZonePoint - Default (seed v1)",
+  "description": "A spawnpoint of a survival spawnzone, or one point of its ordered lane override. Created from the zone's Points step.",
+  "steps": [
+    {
+      "stepGuid": "b4f8be4a-ce06-5621-9678-1f09d7235236",
+      "stepName": "Point",
+      "description": "Spawn points are where enemies of this zone appear; Lane points, in order, describe an optional route override when automatic navigation doesn't find the intended way.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "74a87f66-b141-5ba5-ba2d-afe80c7ba626",
+          "fieldName": "SurvivalSpawnZoneId",
+          "label": "Spawnzone",
+          "description": "Filled in from the spawnzone you are editing.",
+          "fieldType": "Object",
+          "objectType": "SurvivalSpawnZone",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "130f6915-faa2-5e3e-98c5-a228453858ba",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "Spawn: a spawnpoint. Lane: a point of the ordered lane override.",
+          "fieldType": "Enum",
+          "defaultValue": "Spawn",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Spawn\", \"Lane\"]}"
+        },
+        {
+          "fieldGuid": "59492ad1-06e4-5296-a156-bece1c80aaf7",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Optional, for your own reference.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8c381a6e-427d-5140-97d0-8706174a6275",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Lane points are followed in this order. Leave empty to add it after the existing points of its kind.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "f433a9a6-7d5d-529e-8c59-bb06806d8368",
+      "stepName": "Location",
+      "description": "Stand on the spot in game and use Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "f1aecdc3-cee6-58e1-b4d8-5b09d3053544",
+          "fieldName": "LocationId",
+          "label": "Location",
+          "description": "The spawn spot, or the lane point.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

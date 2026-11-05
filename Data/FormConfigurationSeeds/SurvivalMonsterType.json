@@ -1,0 +1,66 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "33727547-27ca-509d-8bca-746294601695",
+  "entityTypeName": "SurvivalMonsterType",
+  "name": "SurvivalMonsterType - Default (seed v1)",
+  "description": "A vanilla monster type of a survival scenario's normal waves, with its draw weight and first round (DESIGN S42, S56).",
+  "steps": [
+    {
+      "stepGuid": "edcb5e37-ed29-586a-aee3-9a384769344f",
+      "stepName": "Monster type",
+      "description": "Enemies of a round are drawn by weight from the selected types that are unlocked in that round. Readiness needs at least one type unlocked in round 1.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "f50fd19c-7c24-5475-a02f-a1d2df558010",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "02ca7faf-e693-50c8-ae37-eb1a10d2583d",
+          "fieldName": "EntityType",
+          "label": "Monster type",
+          "description": "A vanilla Minecraft monster type, e.g. ZOMBIE, SKELETON, SPIDER, CREEPER (stored upper case).",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "282b9fed-5347-5b10-810c-158f0285564a",
+          "fieldName": "Weight",
+          "label": "Weight",
+          "description": "Draw weight among the selected types (default 1, equal chances).",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e66e8e08-910c-5286-b37a-07eee291b276",
+          "fieldName": "UnlockRound",
+          "label": "First round",
+          "description": "The first round this type can appear in (default 1).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ca210a72-9c83-57d4-a6c1-a85a43b453ad",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing types.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

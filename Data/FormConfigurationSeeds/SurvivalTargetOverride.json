@@ -1,0 +1,59 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "c5f300ad-a61e-5b82-b446-2e14084bf3ee",
+  "entityTypeName": "SurvivalTargetOverride",
+  "name": "SurvivalTargetOverride - Default (seed v1)",
+  "description": "The NPC targeting override of one objective or one gate of a survival scenario (DESIGN §4): follow standard rules, explicitly allow or explicitly deny.",
+  "steps": [
+    {
+      "stepGuid": "685eff76-6516-5cfe-9947-275c51fdd888",
+      "stepName": "Target override",
+      "description": "Pick exactly one objective or one gate of the scenario. A denied objective is never captured; a denied gate is never attacked, not even on the way to an allowed objective. Allow makes the target eligible without boosting it. Targets without an override follow the standard rules.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "f3e225e0-f43a-57cb-85ee-a67352ee71a3",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "c2eb347a-5284-5260-95b2-6b18c853794d",
+          "fieldName": "SiegeObjectiveId",
+          "label": "Objective",
+          "description": "An objective of this scenario (leave empty when the override is for a gate).",
+          "fieldType": "Object",
+          "objectType": "SiegeObjective",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "182d8c4a-7429-5405-b384-4eed57fb41c6",
+          "fieldName": "GateStructureId",
+          "label": "Gate",
+          "description": "One of the scenario's selected gates (leave empty when the override is for an objective).",
+          "fieldType": "Object",
+          "objectType": "GateStructure",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fddadddf-acf5-5d00-be70-c809613f4003",
+          "fieldName": "Mode",
+          "label": "Mode",
+          "description": "Standard: follow the rules. Allow: explicitly eligible. Deny: never a target.",
+          "fieldType": "Enum",
+          "defaultValue": "Standard",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Standard\", \"Allow\", \"Deny\"]}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

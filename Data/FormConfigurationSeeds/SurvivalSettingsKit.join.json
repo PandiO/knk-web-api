@@ -1,0 +1,37 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "8918b334-037f-5772-a39a-716a56e9daa4",
+  "entityTypeName": "SurvivalSettingsKit",
+  "name": "SurvivalSettingsKit - Join Entry (seed v1)",
+  "description": "Join entry for a kit players may pick in kits mode.",
+  "steps": [
+    {
+      "stepGuid": "bebf398b-bdb9-5366-8de8-d9d2b1246a27",
+      "stepName": "Kit",
+      "description": "A kit a player may pick at the hub in kits mode (DESIGN S23). Its own conditions, cooldown and prices do not apply in the match.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4ac2d321-7d82-5777-b013-b603fc52fd8f",
+          "fieldName": "KitId",
+          "label": "Kit",
+          "description": "One of the kits of the catalog.",
+          "fieldType": "Object",
+          "objectType": "Kit",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d8ff7953-bfb1-5ca1-b56c-c8eebd9034d9",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Order in the kit picker; leave empty to add it last.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

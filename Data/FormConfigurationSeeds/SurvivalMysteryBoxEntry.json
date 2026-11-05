@@ -1,0 +1,96 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "46a5dde1-431a-5afb-bfd3-a917a5eb84ce",
+  "entityTypeName": "SurvivalMysteryBoxEntry",
+  "name": "SurvivalMysteryBoxEntry - Default (seed v1)",
+  "description": "One entry of a Mystery Box pool with its percentage chance: an item blueprint (items pool) or an enchantment and level (enchanted-books pool). Created from the pool's Entries step.",
+  "steps": [
+    {
+      "stepGuid": "ad4844b9-c174-5ec0-b422-bcd2f8e4cdae",
+      "stepName": "Entry",
+      "description": "Items pool: pick an item; enchanted-books pool: pick an enchantment and level. The pool's chances must add up to exactly 100 % (readiness).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "06ac5fd4-811f-522b-9527-16e3b302d654",
+          "fieldName": "SurvivalMysteryBoxPoolId",
+          "label": "Pool",
+          "description": "Filled in from the pool you are editing.",
+          "fieldType": "Object",
+          "objectType": "SurvivalMysteryBoxPool",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "6a53addb-2b1d-516b-bc3d-647692bd1b16",
+          "fieldName": "ItemBlueprintId",
+          "label": "Item",
+          "description": "Items pool: the item blueprint won.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8ef6d43a-1836-57fc-9b3d-749c544e7a35",
+          "fieldName": "EnchantmentDefinitionId",
+          "label": "Enchantment",
+          "description": "Enchanted-books pool: the book's enchantment.",
+          "fieldType": "Object",
+          "objectType": "EnchantmentDefinition",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "dde76be4-f255-544d-a5c6-92063efab15b",
+          "fieldName": "EnchantmentLevel",
+          "label": "Enchantment level",
+          "description": "Enchanted-books pool: the book's level (1 or more).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "12bf248c-fcbc-5464-a625-08037d4972a1",
+          "fieldName": "ChancePercent",
+          "label": "Chance (%)",
+          "description": "0.01-100 at 0.01 % precision (default 10).",
+          "fieldType": "Decimal",
+          "defaultValue": "10",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "36975247-dcd6-5e4c-bc21-06fe950d4b4c",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing entries.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "195201ad-b77c-5266-ab5d-380a0ea1c200",
+      "stepName": "Enchantments",
+      "description": "Items pool only: enchantments the item may come with, each with its own chance. Available once the entry is saved.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4c8bf9e3-c6a0-5c4a-b6c0-79ca0da89624",
+          "fieldName": "Enchantments",
+          "label": "Enchantment chances",
+          "description": "Create New opens the enchantment chance form with this entry filled in.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "SurvivalMysteryBoxEntryEnchantment",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

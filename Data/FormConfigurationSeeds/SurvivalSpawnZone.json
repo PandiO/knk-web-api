@@ -1,0 +1,197 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "546f0a3b-6b92-5523-8c50-c6e5ad3c4ae5",
+  "entityTypeName": "SurvivalSpawnZone",
+  "name": "SurvivalSpawnZone - Default (seed v1)",
+  "description": "An NPC spawnzone of a survival scenario (DESIGN §6): where enemies appear, when the zone activates (objective ownership only), which waves it serves and an optional lane override.",
+  "steps": [
+    {
+      "stepGuid": "9df2734d-ab77-52af-95bf-3320279e4423",
+      "stepName": "General",
+      "description": "Name the zone and set its weight among the active zones.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ba7c9b06-55c9-5640-9cad-8dbc5f4e3dd6",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "The siege scenario this belongs to; filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "dde61a81-3125-51c4-a94e-a88e0aa81f95",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "E.g. 'Outside the walls' or 'Courtyard (overrun)'.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c79379b1-e11b-5746-865a-0930e302f6b9",
+          "fieldName": "Weight",
+          "label": "Weight",
+          "description": "Spawn weight among the active zones (default 1).",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "99edc90d-dd0a-56f0-83c1-29f69cc2152e",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing zones.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "2a6a4b26-5b70-56c2-b7d2-b1413cb62cea",
+      "stepName": "Area",
+      "description": "The zone's anchor (its centre, used for the distance to the players) and an optional spawn area around it. A zone needs spawnpoints (Points step) or an area radius.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "7678ddd1-a4ca-51ed-a005-b3c911f976c7",
+          "fieldName": "AnchorLocationId",
+          "label": "Anchor",
+          "description": "The zone's representative position; capture it in game.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "ce9fff18-3094-51ba-bcfb-c44ea583615e",
+          "fieldName": "AreaRadius",
+          "label": "Area radius (blocks)",
+          "description": "Spawn anywhere within this radius of the anchor. Leave empty to spawn only at the zone's spawnpoints.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "0968c52d-7ca8-5b54-8a01-6a096a22557b",
+      "stepName": "Activation",
+      "description": "Ownership-driven only (DESIGN S10, S22): a zone with no prerequisite is active from the start; otherwise it activates once the listed objectives are NPC-held. An open or destroyed door never activates a zone. Save the zone first, then add objectives with Create New Join Entry.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "PrerequisiteObjectives",
+      "joinEntityType": "SurvivalSpawnZoneObjective",
+      "subConfigurationRef": {
+        "configurationGuid": "571c3eb1-86a6-525d-8951-b4b37e34ba04",
+        "entityTypeName": "SurvivalSpawnZoneObjective",
+        "name": "SurvivalSpawnZoneObjective - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "99211887-9eac-5dcf-bc98-a4ae555572db",
+          "fieldName": "PrerequisitePolicy",
+          "label": "Policy",
+          "description": "All: every listed objective must be NPC-held. Any: one is enough.",
+          "fieldType": "Enum",
+          "defaultValue": "All",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"All\", \"Any\"]}"
+        },
+        {
+          "fieldGuid": "e9ffe2cd-aa47-5da9-a24c-ce822ebf2a30",
+          "fieldName": "PrerequisiteObjectives",
+          "label": "Prerequisite objectives",
+          "description": "Objectives that must be NPC-held.",
+          "fieldType": "List",
+          "objectType": "SurvivalSpawnZoneObjective",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b7c008cc-b0b4-5bcd-9e36-e081f4e97196",
+      "stepName": "Waves",
+      "description": "Which waves this zone serves.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "2642be0d-412d-51a0-9cf9-7ed01b94b600",
+          "fieldName": "MinWave",
+          "label": "First wave",
+          "description": "The zone spawns from this wave on (default 1).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "eab24f54-5d68-5dfd-b8f7-3fb932ac5578",
+          "fieldName": "MaxWave",
+          "label": "Last wave",
+          "description": "The zone stops spawning after this wave. Leave empty for no limit.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8c5dbc17-8586-576e-a6ea-c23bcdf94c99",
+          "fieldName": "ForNormalWaves",
+          "label": "Normal waves",
+          "description": "Spawn enemies of normal waves here.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "32e3c9e2-5e66-5517-98ec-ade1b8647da8",
+          "fieldName": "ForSpecialWaves",
+          "label": "Special waves",
+          "description": "Spawn enemies of special waves here.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "0e8450f8-bd5f-5194-85b3-7ff8e24262b8",
+      "stepName": "Points and lane",
+      "description": "The zone's spawnpoints and its optional lane override (ordered Lane points). Available once the zone is saved.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4e06277c-16aa-5586-8b8b-6b37de76e8f4",
+          "fieldName": "Points",
+          "label": "Points",
+          "description": "Create New opens the point form with this zone filled in; capture each spot in game.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "SurvivalSpawnZonePoint",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        },
+        {
+          "fieldGuid": "039f6ca1-4be0-52bb-9936-a7b2e315dd63",
+          "fieldName": "LaneAutoReroute",
+          "label": "Automatic reroute",
+          "description": "Lane override only: after the bounded retries, let navigation try an automatic route to the destination. Off by default.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

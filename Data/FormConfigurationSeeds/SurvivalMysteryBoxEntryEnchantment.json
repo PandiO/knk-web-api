@@ -1,0 +1,58 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "b530e6ff-eda3-574d-b85e-676a9cf08db7",
+  "entityTypeName": "SurvivalMysteryBoxEntryEnchantment",
+  "name": "SurvivalMysteryBoxEntryEnchantment - Default (seed v1)",
+  "description": "An optional enchantment of a Mystery Box item entry with its own, independent chance. Created from the entry's Enchantments step.",
+  "steps": [
+    {
+      "stepGuid": "5ebec2b7-0c0c-555a-8eb8-a8cf3764d73f",
+      "stepName": "Enchantment",
+      "description": "Rolled on its own after the item is picked, so the chances of one entry need not add up to anything.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "bab5c2e6-5a4f-5ac8-a93e-5337034902a7",
+          "fieldName": "SurvivalMysteryBoxEntryId",
+          "label": "Pool entry",
+          "description": "Filled in from the entry you are editing.",
+          "fieldType": "Object",
+          "objectType": "SurvivalMysteryBoxEntry",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "d8fa4f40-8903-5431-8d6d-59a49b741f2d",
+          "fieldName": "EnchantmentDefinitionId",
+          "label": "Enchantment",
+          "description": "The enchantment.",
+          "fieldType": "Object",
+          "objectType": "EnchantmentDefinition",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "413f98a1-bc10-586e-b1e7-1b9ec89760f0",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "The enchantment level (1 or more).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ced187c0-e08a-589a-8621-9663bc8c5017",
+          "fieldName": "ChancePercent",
+          "label": "Chance (%)",
+          "description": "0.01-100 at 0.01 % precision (default 25).",
+          "fieldType": "Decimal",
+          "defaultValue": "25",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

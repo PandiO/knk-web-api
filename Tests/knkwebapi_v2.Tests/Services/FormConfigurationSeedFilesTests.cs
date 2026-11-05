@@ -137,6 +137,9 @@ public class FormConfigurationSeedFilesTests
         ["LootboxPoolEntry"] = new() { ["LootboxTypeId"] = "set by the box type's Pool step (join entry)" },
         ["LootboxEnchantRoll"] = new() { ["LootboxTypeId"] = "set by the box type's Enchant rolls step (join entry)" },
         ["LootboxSpawnAreaType"] = new() { ["LootboxSpawnAreaId"] = "set by the spawn area's Allowed types step (join entry)" },
+        // Siege Survival phase 1 (PandiO/knk-workspace#41, link S4) join entries.
+        ["SurvivalSettingsKit"] = new() { ["SiegeSurvivalSettingsId"] = "set by the survival settings' Selected kits step (join entry)" },
+        ["SurvivalSpawnZoneObjective"] = new() { ["SurvivalSpawnZoneId"] = "set by the spawnzone's Activation step (join entry)" },
         // GateDoorMappingProfile maps a missing value to "" for this one; a form field would have to be required
         // (FormTemplateValidationService doesn't see the "= string.Empty" initialiser), and empty is the normal value.
         // ScanMaterialWhitelist/ScanMaterialBlacklist carry [DefaultValue("")] since KNG-193, so the whitelist is an

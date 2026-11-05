@@ -1,0 +1,39 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "05211ea3-1f66-5d80-bcf7-864f67d812a6",
+  "entityTypeName": "SurvivalLobbySettings",
+  "name": "SurvivalLobbySettings - Default (seed v1)",
+  "description": "Survival settings of a siege lobby: the override of 'end when all objectives are captured'. One per lobby.",
+  "steps": [
+    {
+      "stepGuid": "95e7d868-d6ec-5d39-a1ee-aa43687d541b",
+      "stepName": "End condition",
+      "description": "A survival lobby's say over the scenario's 'end when all objectives are captured' (DESIGN S46): Inherit follows the scenario, On and Off decide for this lobby.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "7555ec36-7bb6-5689-9895-0d1afdc7569a",
+          "fieldName": "SiegeLobbyId",
+          "label": "Lobby",
+          "description": "The siege lobby; filled in from the lobby you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeLobby",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "8e6c9b3e-9fb0-5193-8d63-c0e207fbe78b",
+          "fieldName": "AllCapturedOverride",
+          "label": "End when all objectives are captured",
+          "description": "Inherit: follow the scenario. On / Off: decide for every match of this lobby.",
+          "fieldType": "Enum",
+          "defaultValue": "Inherit",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Inherit\", \"On\", \"Off\"]}"
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}
