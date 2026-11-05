@@ -220,4 +220,20 @@ public class PrivacyErasureFeedTests : IDisposable
         Assert.True(page.HasMore);
         Assert.Single(page.Items);
     }
+
+    [Fact]
+    public async Task Feed_LeavesOutAFormerUuidThatAReturningPlayerHoldsAgain()
+    {
+        var id = await ScheduledFor(2);
+        _db.Clock = Now.AddDays(5);
+        await Service().ExecuteAsync(id, null, dryRun: false);
+        Assert.Equal("uuid-b", (await Service().GetErasuresSinceAsync(0, 10)).Items.Single().FormerUuid);
+
+        // Bob comes back: a fresh account with the same Minecraft UUID.
+        _db.Context.Users.Add(new User { Id = 5, Username = "bob2", Uuid = "uuid-b" });
+        _db.Context.SaveChanges();
+
+        var item = (await Service().GetErasuresSinceAsync(0, 10)).Items.Single();
+        Assert.Equal((2, (string?)null), (item.UserId, item.FormerUuid));
+    }
 }

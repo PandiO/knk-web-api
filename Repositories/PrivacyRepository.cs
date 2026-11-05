@@ -197,6 +197,15 @@ namespace knkwebapi_v2.Repositories
             _context.PrivacyErasureEvents.AsNoTracking().Where(e => e.Id > sinceId).OrderBy(e => e.Id)
                 .Take(Math.Max(1, limit)).ToListAsync(ct);
 
+        public async Task<HashSet<string>> GetUuidsInUseAsync(IReadOnlyCollection<string> uuids, CancellationToken ct = default)
+        {
+            var list = uuids.Distinct().ToList();
+            if (list.Count == 0) return new HashSet<string>();
+            var used = await _context.Users.AsNoTracking().Where(u => u.Uuid != null && list.Contains(u.Uuid))
+                .Select(u => u.Uuid!).ToListAsync(ct);
+            return new HashSet<string>(used, StringComparer.OrdinalIgnoreCase);
+        }
+
         public async Task<long> GetLatestErasureEventIdAsync(CancellationToken ct = default) =>
             await _context.PrivacyErasureEvents.AsNoTracking().Select(e => (long?)e.Id).MaxAsync(ct) ?? 0;
 

@@ -58,6 +58,9 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// <summary>Feed rows with an id above <paramref name="sinceId"/>, oldest first, at most <paramref name="limit"/>.</summary>
         Task<List<PrivacyErasureEvent>> GetErasureEventsSinceAsync(long sinceId, int limit, CancellationToken ct = default);
 
+        /// <summary>Which of these UUIDs an account has now (a returning player's fresh account).</summary>
+        Task<HashSet<string>> GetUuidsInUseAsync(IReadOnlyCollection<string> uuids, CancellationToken ct = default);
+
         /// <summary>The newest feed id, 0 when the feed is empty.</summary>
         Task<long> GetLatestErasureEventIdAsync(CancellationToken ct = default);
 

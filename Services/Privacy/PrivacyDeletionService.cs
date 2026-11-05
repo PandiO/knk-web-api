@@ -92,7 +92,8 @@ namespace knkwebapi_v2.Services.Privacy
 
         /// <summary>
         /// Realtime S5 (PandiO/knk-workspace#184): the erasure feed after <paramref name="sinceId"/>, oldest first, at most
-        /// <paramref name="limit"/> (1-500) rows. The game server calls it on every hub (re)connect.
+        /// <paramref name="limit"/> (1-500) rows. The game server calls it on every hub (re)connect. A former UUID that an
+        /// account holds again (a returning player) is left out of its row.
         /// </summary>
         Task<PrivacyErasureFeedDto> GetErasuresSinceAsync(long sinceId, int limit, CancellationToken ct = default);
 
@@ -419,11 +420,17 @@ namespace knkwebapi_v2.Services.Privacy
             // One extra row tells whether more follow.
             var rows = await _repository.GetErasureEventsSinceAsync(since, take + 1, ct);
             var page = rows.Take(take).ToList();
+            // A returning player got a fresh account under the same UUID: a late catch-up must not touch that account,
+            // so such a row is served without its UUID (the game server then deletes by the erased user id only).
+            var reused = await _repository.GetUuidsInUseAsync(
+                page.Where(e => e.FormerUuid != null).Select(e => e.FormerUuid!).ToList(), ct);
             return new PrivacyErasureFeedDto
             {
                 Items = page.Select(e => new PrivacyErasureFeedItemDto
                 {
-                    ErasureId = e.Id, UserId = e.UserId, FormerUuid = e.FormerUuid, ErasedAt = e.ErasedAt
+                    ErasureId = e.Id, UserId = e.UserId,
+                    FormerUuid = e.FormerUuid != null && reused.Contains(e.FormerUuid) ? null : e.FormerUuid,
+                    ErasedAt = e.ErasedAt
                 }).ToList(),
                 LastId = page.Count > 0 ? page[^1].Id : since,
                 HasMore = rows.Count > take,
