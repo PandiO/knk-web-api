@@ -140,6 +140,27 @@ public class EnchantmentInfoServiceTests
         Assert.Contains("+50 %", cleaving.Levels[1].Detail);
         Assert.Contains("6x", cleaving.Levels[1].Detail);
         Assert.Contains("30 s", cleaving.Levels[3].Detail);
+        Assert.Equal(new[] { 60, 50, 40, 30 }, cleaving.Levels.Select(l => l.CooldownSeconds));
+    }
+
+    /// <summary>PandiO/knk-workspace#259: Cleaving's rows follow its live combat values.</summary>
+    [Fact]
+    public void Cleaving_AnAdminsValuesAreShown()
+    {
+        var cleaving = Custom("cleaving", "Cleaving", 4);
+        cleaving.GateDamageBonusPerLevel = 0.5;
+        cleaving.StrikeMultiplier = 3;
+        cleaving.StrikeMultiplierPerLevel = 2;
+        cleaving.CooldownSeconds = 90;
+        cleaving.CooldownPerLevelSeconds = -40;
+
+        var sheet = EnchantmentInfoService.Build(cleaving);
+
+        Assert.Equal("Melee hits on gate doors deal +50 % gate damage; the charged strike deals 3x that hit, then needs 90 s to recharge.",
+            sheet.Levels[0].Detail);
+        Assert.Equal("Melee hits on gate doors deal +200 % gate damage; the charged strike deals 9x that hit, with no cooldown.",
+            sheet.Levels[3].Detail);
+        Assert.DoesNotContain(sheet.Notes, n => n.Contains("default settings"));
     }
 
     [Fact]

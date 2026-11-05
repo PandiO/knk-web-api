@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "0fc47579-0a13-52b7-b071-7d3c38088aa9",
+  "configurationGuid": "9435767a-9aa8-56cc-821c-4c1885efc92a",
   "entityTypeName": "EnchantmentDefinition",
-  "name": "EnchantmentDefinition - Default (seed v4)",
+  "name": "EnchantmentDefinition - Default (seed v5)",
   "description": "An enchantment the server knows: a vanilla Minecraft one or a custom Knights and Kings ability (Poison, Freeze, ...). Item blueprints, enchantment books and lootbox enchant rolls pick from these.",
   "steps": [
     {
-      "stepGuid": "43ce7ca4-a5ed-5e2d-b00c-b728858a74bb",
+      "stepGuid": "c32cc5e9-34cf-5ad8-804b-b9e246cf028a",
       "stepName": "Enchantment",
       "description": "Choose vanilla or custom first. For a vanilla enchantment, pick it as the base and its key, name and max level are filled in for you.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "df5382e9-2a39-5cce-941b-3356e70c0aa3",
+          "fieldGuid": "381cba35-2f62-50c5-96c5-a7aac57613d3",
           "fieldName": "IsCustom",
           "label": "Custom enchantment",
           "description": "Tick for a Knights and Kings ability that the plugin adds itself (written into the item's lore); leave unticked for a vanilla Minecraft enchantment. Custom enchantments are not limited by the grade cap. The built-in abilities (Poison, Freeze, ...) get their code-defined name, description and max level back whenever the API starts; their combat values (next step) stay as you set them.",
@@ -22,7 +22,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "5e9dfec1-e3b8-55e4-a85c-6e0fbdc0d90d",
+          "fieldGuid": "ce0aa262-a64f-54c3-b51e-7528f8180f82",
           "fieldName": "MinecraftEnchantmentRefId",
           "label": "Vanilla enchantment",
           "description": "The Minecraft enchantment this entry stands for. Picking one fills in the key, display name and max level below when they are still empty. Only for vanilla enchantments.",
@@ -38,7 +38,7 @@
               "isActive": true,
               "conditions": [
                 {
-                  "sourceFieldGuid": "df5382e9-2a39-5cce-941b-3356e70c0aa3",
+                  "sourceFieldGuid": "381cba35-2f62-50c5-96c5-a7aac57613d3",
                   "operator": "NotEquals",
                   "valueJson": "true"
                 }
@@ -47,7 +47,7 @@
           ]
         },
         {
-          "fieldGuid": "34d11e0a-0261-5350-8a7b-a159d9d679cd",
+          "fieldGuid": "dea2d6a7-0384-575e-a1a0-60d31d632b11",
           "fieldName": "Key",
           "label": "Key",
           "placeholder": "minecraft:sharpness",
@@ -57,7 +57,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "01dd195c-255f-5e96-a8bb-00d45e353456",
+          "fieldGuid": "504113fa-3245-5f77-ac50-c2922789afe1",
           "fieldName": "DisplayName",
           "label": "Display name",
           "description": "The name players see, e.g. on an enchantment book (\"Teaches: Sharpness III\") and in messages.",
@@ -66,7 +66,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "e2ab88e9-daf9-5b35-b82f-2318c1010c2c",
+          "fieldGuid": "4eefca53-ec34-5d33-9520-4167d33d1c7d",
           "fieldName": "Description",
           "label": "Description",
           "description": "One line on what the enchantment does, for admins (custom ones: how a player uses it, e.g. \"Right-click to become invisible for a short duration.\").",
@@ -75,7 +75,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "2d24d1bf-e711-58cc-ae71-81351a68590d",
+          "fieldGuid": "e436942c-3895-52cc-9036-7ae7a4701a05",
           "fieldName": "MaxLevel",
           "label": "Max level",
           "description": "Highest level this enchantment can reach on an item; the grade cap divides this number. Vanilla: Minecraft's own maximum (Sharpness 5, Unbreaking 3).",
@@ -86,9 +86,9 @@
       ]
     },
     {
-      "stepGuid": "4f8762be-a88b-5ae4-b26a-708aa91b0a00",
+      "stepGuid": "d4b14280-8174-53b2-b03a-343e0f5b824b",
       "stepName": "Combat values",
-      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the default: the API fills it in again at its next start, the plugin uses its built-in value until then. Flash Chaos uses the duration for its Slowness, plus the effect level (Slowness) and the second duration (Nausea). Chaos and Flash Chaos read the area damage, gate damage and the two radii at the end. Cleaving ignores this step: its numbers are in the plugin's config.yml (gates.cleaving). At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration (Chaos / Flash Chaos: also the area and gate damage) is the level-I value x (1 + level multiplier x (n - 1)).",
+      "description": "Only for custom enchantments: how often the effect goes off, how long it lasts, how it grows per level and the cooldown of the player who used it. The plugin picks changes up within a few minutes or at /ce reload, without a restart. Empty = the default: the API fills it in again at its next start, the plugin uses its built-in value until then. Flash Chaos uses the duration for its Slowness, plus the effect level (Slowness) and the second duration (Nausea). Chaos and Flash Chaos read the area damage, gate damage and the two radii at the end. Cleaving uses the cooldown for its charged strike at level I and reads its four gate fields at the end. At level n the chance is the level-I chance plus (n - 1) x the chance per level, and the duration (Chaos / Flash Chaos: also the area and gate damage) is the level-I value x (1 + level multiplier x (n - 1)).",
       "isManyToManyRelationship": false,
       "displayConditionGroups": [
         {
@@ -97,7 +97,7 @@
           "isActive": true,
           "conditions": [
             {
-              "sourceFieldGuid": "df5382e9-2a39-5cce-941b-3356e70c0aa3",
+              "sourceFieldGuid": "381cba35-2f62-50c5-96c5-a7aac57613d3",
               "operator": "Equals",
               "valueJson": "true"
             }
@@ -106,7 +106,7 @@
       ],
       "fields": [
         {
-          "fieldGuid": "f16de5aa-cab5-573b-ad24-5e7a88e4b210",
+          "fieldGuid": "f316231b-e5b0-53f5-baee-453f0b7be514",
           "fieldName": "ProcChancePercent",
           "label": "Chance at level I (%)",
           "placeholder": "15",
@@ -116,7 +116,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "4401fb4f-a385-5c63-b894-cd4b9a63b56b",
+          "fieldGuid": "684cb41f-24e2-5c28-905d-475c587c0753",
           "fieldName": "ProcChancePerLevelPercent",
           "label": "Chance per extra level (percentage points)",
           "placeholder": "15",
@@ -126,7 +126,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "4ca575bf-7320-54f2-b504-079ccf5aca07",
+          "fieldGuid": "3974c5e6-eb67-5e88-9d94-d588842f1156",
           "fieldName": "CooldownEnabled",
           "label": "Cooldown",
           "description": "On: after the effect goes off (or the ability is used), the same player can't set it off again until the cooldown has run out, on any target. Off: no cooldown, the length below is kept for later.",
@@ -135,17 +135,17 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "15eb18ec-4e10-510e-8fd9-10186a77f4d3",
+          "fieldGuid": "33981dca-5215-5898-bc7d-1931a6370c74",
           "fieldName": "CooldownSeconds",
           "label": "Cooldown length (seconds)",
           "placeholder": "20",
-          "description": "How long the player who set the effect off has to wait before it can go off again. Only used while Cooldown is on.",
+          "description": "How long the player who set the effect off has to wait before it can go off again. Only used while Cooldown is on. Cleaving: the charged strike's cooldown at level I (default 60), changed per level by the last field.",
           "fieldType": "Integer",
           "isRequired": false,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "f28a9153-05f8-511f-a39e-57c203c1875f",
+          "fieldGuid": "9f8a5dfd-5c96-5556-89c8-d89e7370a6ec",
           "fieldName": "EffectDurationSeconds",
           "label": "Duration at level I (seconds)",
           "placeholder": "3",
@@ -155,7 +155,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "3c9f0bee-c1ae-57c6-a60b-dbd786b75cc3",
+          "fieldGuid": "3bf50363-d31a-525b-8194-7b706b40ae7a",
           "fieldName": "LevelMultiplier",
           "label": "Level multiplier",
           "placeholder": "1",
@@ -165,7 +165,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "c47b63b1-2550-510b-9c75-3fc51410c2f0",
+          "fieldGuid": "49e05e24-093f-5c2d-bae7-ac7fce60db4c",
           "fieldName": "EffectLevel",
           "label": "Effect level (Flash Chaos: Slowness)",
           "placeholder": "1",
@@ -175,7 +175,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "33e814d8-8b1e-52eb-952a-93b8765a367d",
+          "fieldGuid": "59b6d24e-b3ef-547f-bb3e-37b1b9cbb620",
           "fieldName": "SecondaryEffectDurationSeconds",
           "label": "Second effect duration at level I (seconds) (Flash Chaos: Nausea)",
           "placeholder": "12.5",
@@ -185,7 +185,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "744d5a5a-bb8f-51b7-929b-a776318cb1f7",
+          "fieldGuid": "691cc378-aeb8-5874-965f-73b3221c09d3",
           "fieldName": "AreaDamage",
           "label": "Area damage at level I (Chaos / Flash Chaos)",
           "placeholder": "40",
@@ -195,7 +195,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "df1130c5-7b52-5551-ad71-1923e65e4e74",
+          "fieldGuid": "cc65c336-6be8-53f5-ae86-16dd7c307574",
           "fieldName": "GateDamage",
           "label": "Gate damage at level I (Chaos / Flash Chaos)",
           "placeholder": "40",
@@ -205,7 +205,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "7dc3de74-c769-5528-883e-2b6c289b6f31",
+          "fieldGuid": "adbe1b84-5a59-5da2-8f9b-cf23f0394a0d",
           "fieldName": "DamageRadiusBlocks",
           "label": "Damage radius (blocks) (Chaos / Flash Chaos)",
           "placeholder": "3",
@@ -215,12 +215,52 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "01f27991-571a-5e86-bf33-86026305fdf3",
+          "fieldGuid": "435e06bc-72a9-5848-b437-19961b1eeca1",
           "fieldName": "EffectRadiusBlocks",
           "label": "Knockback radius (blocks) (Chaos / Flash Chaos)",
           "placeholder": "5",
           "description": "Only Chaos and Flash Chaos read it: creatures and players up to this many blocks away are knocked back; Flash Chaos also gives them its Slowness and Nausea (default 5). A value below the damage radius counts as the damage radius. Range 0-32.",
           "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ad9b708b-6bdc-583a-8732-86f65fb36134",
+          "fieldName": "GateDamageBonusPerLevel",
+          "label": "Gate damage bonus per level (Cleaving)",
+          "placeholder": "0.25",
+          "description": "Only Cleaving reads it: the extra share of the weapon's gate damage per level, so melee hits on a gate door deal (1 + bonus x level) times the normal gate damage (default 0.25: x1.25 / x1.5 / x1.75 / x2 at levels I-IV). Range 0-10.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0c5a5d88-4e89-5d5e-8f4e-398b58d02f71",
+          "fieldName": "StrikeMultiplier",
+          "label": "Charged strike at level I (Cleaving)",
+          "placeholder": "5",
+          "description": "Only Cleaving reads it: the right-click charged strike on a gate door deals this many times the boosted gate hit at level I (default 5). Range 0-100.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "53f758ac-2da5-523b-88be-a8b4a2786182",
+          "fieldName": "StrikeMultiplierPerLevel",
+          "label": "Charged strike per extra level (Cleaving)",
+          "placeholder": "1",
+          "description": "Only Cleaving reads it: added to the charged strike multiplier per level above I (default 1: 5 / 6 / 7 / 8). May be negative; the result never goes below 0. Range -100 to 100.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f02916a4-9934-52ea-86c2-cef82934f646",
+          "fieldName": "CooldownPerLevelSeconds",
+          "label": "Strike cooldown change per extra level (seconds) (Cleaving)",
+          "placeholder": "-10",
+          "description": "Only Cleaving reads it: seconds added to the charged strike's cooldown per level above I; negative makes higher levels recharge faster (default -10: 60 / 50 / 40 / 30 s). The result never goes below 0. Range -86400 to 86400.",
+          "fieldType": "Integer",
           "isRequired": false,
           "isReadOnly": false
         }

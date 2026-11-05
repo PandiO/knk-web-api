@@ -63,9 +63,12 @@ public class AbilityDefinition
                 MaxLevel = 4,
                 RuntimeConfigJson = "{\"abilityType\":\"ATTACK_PASSIVE\",\"trigger\":\"GATE_HIT\",\"gateDamageBonusPerLevel\":0.25,\"chargedHitMultiplierPerLevel\":[5,6,7,8],\"chargedCooldownSecondsPerLevel\":[60,50,40,30]}",
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
-                AdminUsage = "Attach to custom EnchantmentDefinition entries for a gate-breaking weapon (siege playtest 2026-10-24). The numbers live in knk-plugin's config.yml (gates.cleaving).",
+                AdminUsage = "Attach to custom EnchantmentDefinition entries for a gate-breaking weapon (siege playtest 2026-10-24). Its numbers are combat values (#259): gate bonus per level, strike multiplier at level I and per level, strike cooldown (Cooldown) and its change per level.",
                 PlayerUsage = "Hit a gate door for extra damage; right-click a gate door for a charged strike, then wait for the cooldown.",
-                EffectSummary = "Gate hits x1.25/x1.5/x1.75/x2 by level; charged right-click strike of 5/6/7/8 such hits (netherite sword: 50/72/98/128 of a 500 HP gate). Cooldown: 60/50/40/30s.",
+                EffectSummary = "Default: gate hits x1.25/x1.5/x1.75/x2 by level; charged right-click strike of 5/6/7/8 such hits (netherite sword: 50/72/98/128 of a 500 HP gate). Cooldown: 60/50/40/30s.",
+                // #259: the old gates.cleaving defaults as level I + step (decision 2026-11-05).
+                CombatDefaults = new(null, null, true, 60, null, null,
+                    GateDamageBonusPerLevel: 0.25, StrikeMultiplier: 5, StrikeMultiplierPerLevel: 1, CooldownPerLevelSeconds: -10),
                 MatchAliases = new[] { "cleaving", "knk:cleaving" }
             },
             new()
@@ -423,6 +426,26 @@ public class AbilityDefinition
             enchantment.EffectRadiusBlocks = defaults.EffectRadiusBlocks;
             changed = true;
         }
+        if (enchantment.GateDamageBonusPerLevel == null && defaults.GateDamageBonusPerLevel != null)
+        {
+            enchantment.GateDamageBonusPerLevel = defaults.GateDamageBonusPerLevel;
+            changed = true;
+        }
+        if (enchantment.StrikeMultiplier == null && defaults.StrikeMultiplier != null)
+        {
+            enchantment.StrikeMultiplier = defaults.StrikeMultiplier;
+            changed = true;
+        }
+        if (enchantment.StrikeMultiplierPerLevel == null && defaults.StrikeMultiplierPerLevel != null)
+        {
+            enchantment.StrikeMultiplierPerLevel = defaults.StrikeMultiplierPerLevel;
+            changed = true;
+        }
+        if (enchantment.CooldownPerLevelSeconds == null && defaults.CooldownPerLevelSeconds != null)
+        {
+            enchantment.CooldownPerLevelSeconds = defaults.CooldownPerLevelSeconds;
+            changed = true;
+        }
         return changed;
     }
 
@@ -536,4 +559,8 @@ public sealed record EnchantmentCombatDefaults(
     double? AreaDamage = null,
     double? GateDamage = null,
     double? DamageRadiusBlocks = null,
-    double? EffectRadiusBlocks = null);
+    double? EffectRadiusBlocks = null,
+    double? GateDamageBonusPerLevel = null,
+    double? StrikeMultiplier = null,
+    double? StrikeMultiplierPerLevel = null,
+    int? CooldownPerLevelSeconds = null);

@@ -47,6 +47,8 @@ namespace knkwebapi_v2.Services
                 dto.EffectDurationSeconds, dto.LevelMultiplier);
             ValidateSecondaryCombatValues(dto.EffectLevel, dto.SecondaryEffectDurationSeconds);
             ValidateAreaCombatValues(dto.AreaDamage, dto.GateDamage, dto.DamageRadiusBlocks, dto.EffectRadiusBlocks);
+            ValidateGateStrikeCombatValues(dto.GateDamageBonusPerLevel, dto.StrikeMultiplier, dto.StrikeMultiplierPerLevel,
+                dto.CooldownPerLevelSeconds);
 
             // Ensure base enchantment ref exists
             var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, dto.IsCustom);
@@ -78,6 +80,8 @@ namespace knkwebapi_v2.Services
                 dto.EffectDurationSeconds, dto.LevelMultiplier);
             ValidateSecondaryCombatValues(dto.EffectLevel, dto.SecondaryEffectDurationSeconds);
             ValidateAreaCombatValues(dto.AreaDamage, dto.GateDamage, dto.DamageRadiusBlocks, dto.EffectRadiusBlocks);
+            ValidateGateStrikeCombatValues(dto.GateDamageBonusPerLevel, dto.StrikeMultiplier, dto.StrikeMultiplierPerLevel,
+                dto.CooldownPerLevelSeconds);
 
             // Ensure base enchantment ref exists
             var baseEnchantmentRefId = await EnsureEnchantmentRefAsync(dto.MinecraftEnchantmentRefId, dto.EnchantmentNamespaceKey, dto.IsCustom, existing.MinecraftEnchantmentRefId);
@@ -103,6 +107,10 @@ namespace knkwebapi_v2.Services
             if (dto.HasGateDamage) existing.GateDamage = dto.GateDamage;
             if (dto.HasDamageRadiusBlocks) existing.DamageRadiusBlocks = dto.DamageRadiusBlocks;
             if (dto.HasEffectRadiusBlocks) existing.EffectRadiusBlocks = dto.EffectRadiusBlocks;
+            if (dto.HasGateDamageBonusPerLevel) existing.GateDamageBonusPerLevel = dto.GateDamageBonusPerLevel;
+            if (dto.HasStrikeMultiplier) existing.StrikeMultiplier = dto.StrikeMultiplier;
+            if (dto.HasStrikeMultiplierPerLevel) existing.StrikeMultiplierPerLevel = dto.StrikeMultiplierPerLevel;
+            if (dto.HasCooldownPerLevelSeconds) existing.CooldownPerLevelSeconds = dto.CooldownPerLevelSeconds;
 
             if (!dto.IsCustom)
             {
@@ -199,6 +207,8 @@ namespace knkwebapi_v2.Services
         public const double MaxAreaDamage = 1_000;
         public const double MaxGateDamage = 10_000;
         public const double MaxRadiusBlocks = 32;
+        public const double MaxGateDamageBonusPerLevel = 10;
+        public const double MaxStrikeMultiplier = 100;
 
         /// <summary>
         /// PandiO/knk-workspace#151: the combat values an admin may set on an enchantment. The chance per level may
@@ -247,6 +257,25 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException($"Damage radius must be between 0 and {MaxRadiusBlocks} blocks.");
             if (effectRadiusBlocks is < 0 or > MaxRadiusBlocks || (effectRadiusBlocks.HasValue && double.IsNaN(effectRadiusBlocks.Value)))
                 throw new ArgumentException($"Effect radius must be between 0 and {MaxRadiusBlocks} blocks.");
+        }
+
+        /// <summary>
+        /// PandiO/knk-workspace#259: Cleaving's gate bonus per level (0-10), strike multiplier at level I (0-100) and per
+        /// level (-100 to 100), and the strike cooldown's change per level in seconds (-86400 to 86400); nulls allowed.
+        /// </summary>
+        public static void ValidateGateStrikeCombatValues(double? gateDamageBonusPerLevel, double? strikeMultiplier,
+            double? strikeMultiplierPerLevel, int? cooldownPerLevelSeconds)
+        {
+            if (gateDamageBonusPerLevel is < 0 or > MaxGateDamageBonusPerLevel
+                || (gateDamageBonusPerLevel.HasValue && double.IsNaN(gateDamageBonusPerLevel.Value)))
+                throw new ArgumentException($"Gate damage bonus per level must be between 0 and {MaxGateDamageBonusPerLevel}.");
+            if (strikeMultiplier is < 0 or > MaxStrikeMultiplier || (strikeMultiplier.HasValue && double.IsNaN(strikeMultiplier.Value)))
+                throw new ArgumentException($"Strike multiplier must be between 0 and {MaxStrikeMultiplier}.");
+            if (strikeMultiplierPerLevel is < -MaxStrikeMultiplier or > MaxStrikeMultiplier
+                || (strikeMultiplierPerLevel.HasValue && double.IsNaN(strikeMultiplierPerLevel.Value)))
+                throw new ArgumentException($"Strike multiplier per level must be between -{MaxStrikeMultiplier} and {MaxStrikeMultiplier}.");
+            if (cooldownPerLevelSeconds is < -MaxCooldownSeconds or > MaxCooldownSeconds)
+                throw new ArgumentException($"Cooldown change per level must be between -{MaxCooldownSeconds} and {MaxCooldownSeconds} seconds.");
         }
 
         private static void ValidateAbilityInvariant(bool isCustom, AbilityDefinitionUpsertDto? abilityDefinition)
