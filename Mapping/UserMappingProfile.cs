@@ -40,6 +40,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatPrimaryColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatSecondaryColorGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PermissionGroups, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
                 .ForMember(dest => dest.PersonalGemBonusMultiplier, src => src.MapFrom(src => (decimal?)src.PersonalGemBonusMultiplier))
@@ -139,6 +141,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatPrimaryColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatSecondaryColorGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PermissionGroups, opt => opt.Ignore())
                 .ForMember(dest => dest.Gender, src => src.MapFrom(src => src.Gender));
 

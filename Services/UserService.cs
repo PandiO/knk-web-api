@@ -120,6 +120,8 @@ namespace knkwebapi_v2.Services
                 dto.ChatPrimaryColor = styles.ChatPrimaryColor;
                 dto.ChatSecondaryColor = styles.ChatSecondaryColor;
                 dto.NameColor = styles.NameColor;
+                dto.ChatPrimaryColorGroupId = styles.ChatPrimaryColorGroupId;
+                dto.ChatSecondaryColorGroupId = styles.ChatSecondaryColorGroupId;
                 dto.NameColorGroupId = styles.NameColorGroupId;
                 dto.PermissionGroups = ordered.Select(g => new PermissionGroupRefDto { Id = g.Id, Name = g.Name }).ToList();
             }

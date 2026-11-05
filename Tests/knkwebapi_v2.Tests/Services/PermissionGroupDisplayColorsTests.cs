@@ -244,6 +244,8 @@ public class PermissionGroupDisplayColorsTests
         Assert.Equal("&2", dto.ChatSecondaryColor);
         Assert.Equal("&7", dto.NameColor);
         Assert.Null(dto.NameColorGroupId);
+        Assert.Equal(110, dto.ChatPrimaryColorGroupId);
+        Assert.Null(dto.ChatSecondaryColorGroupId); // Default's
     }
 
     [Fact]
@@ -286,7 +288,7 @@ public class PermissionGroupDisplayColorsTests
         Assert.Equal("&b", dto!.ChatPrimaryColor);
         Assert.Equal("&3", dto.ChatSecondaryColor);
         Assert.Equal("&9", dto.NameColor);
-        Assert.Equal(50, dto.NameColorGroupId);
+        Assert.Equal((50, 102, 102), (dto.NameColorGroupId, dto.ChatPrimaryColorGroupId, dto.ChatSecondaryColorGroupId));
     }
 
     [Fact]
@@ -301,7 +303,7 @@ public class PermissionGroupDisplayColorsTests
 
         Assert.Equal("&c", dto!.ChatPrimaryColor);
         Assert.Equal("&6", dto.ChatSecondaryColor); // Moderator leaves it unset: its parent's
-        Assert.Equal(61, dto.NameColorGroupId);
+        Assert.Equal((61, 61, 60), (dto.NameColorGroupId, dto.ChatPrimaryColorGroupId, dto.ChatSecondaryColorGroupId));
         Assert.Equal(new[] { 61, 60, 1 }, dto.PermissionGroups.Select(g => g.Id)); // the same order as before #260
     }
 
@@ -325,7 +327,7 @@ public class PermissionGroupDisplayColorsTests
 
         var styles = GroupDisplayStyles.Resolve(new[] { heavyDefault, builder }, heavyDefault);
 
-        Assert.Equal(new GroupDisplayStyles.Result("&a", "&2", "&2", 70), styles);
+        Assert.Equal(new GroupDisplayStyles.Result("&a", "&2", "&2", null, null, 70), styles);
     }
 
     [Fact]

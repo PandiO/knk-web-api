@@ -170,6 +170,14 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("nameColorGroupId")]
         public int? NameColorGroupId { get; set; }
 
+        /// <summary>#260: the group whose ChatPrimaryColor won; null = the Default group's or none (owner/staff keep their fixed chat style).</summary>
+        [JsonPropertyName("chatPrimaryColorGroupId")]
+        public int? ChatPrimaryColorGroupId { get; set; }
+
+        /// <summary>#260: the same for ChatSecondaryColor.</summary>
+        [JsonPropertyName("chatSecondaryColorGroupId")]
+        public int? ChatSecondaryColorGroupId { get; set; }
+
         /// <summary>
         /// The user's effective PermissionGroups - unexpired memberships plus the groups they inherit
         /// from - in Game Settings precedence order (PermissionGroupPrecedence: deeper in the
@@ -332,6 +340,14 @@ namespace knkwebapi_v2.Dtos
         /// <summary>#260: the group whose NameColor won (its own tab-list team in game); null = the Default group's or none.</summary>
         [JsonPropertyName("nameColorGroupId")]
         public int? NameColorGroupId { get; set; }
+
+        /// <summary>#260: the group whose ChatPrimaryColor won; null = the Default group's or none (owner/staff keep their fixed chat style).</summary>
+        [JsonPropertyName("chatPrimaryColorGroupId")]
+        public int? ChatPrimaryColorGroupId { get; set; }
+
+        /// <summary>#260: the same for ChatSecondaryColor.</summary>
+        [JsonPropertyName("chatSecondaryColorGroupId")]
+        public int? ChatSecondaryColorGroupId { get; set; }
 
         /// <summary>
         /// The user's effective PermissionGroups - unexpired memberships plus the groups they inherit
