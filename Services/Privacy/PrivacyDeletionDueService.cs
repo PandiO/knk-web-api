@@ -13,7 +13,8 @@ namespace knkwebapi_v2.Services.Privacy
     /// Hourly GDPR deletion job (DESIGN.md §F.14, developer decisions 2026-10-03): expires
     /// confirmation links that were not used in time and executes confirmed requests whose grace
     /// period (Privacy:GraceDays) is over. It never acts on a player without such a request. With
-    /// Privacy:AutoExecuteEnabled false it only expires links; the owner executes by hand.
+    /// Privacy:AutoExecuteEnabled false it only expires links; the owner executes by hand. It also clears the former
+    /// UUIDs of the erasure feed past Privacy:ErasureFeedUuidRetentionDays (realtime S5, PandiO/knk-workspace#184).
     /// </summary>
     public sealed class PrivacyDeletionDueService : BackgroundService
     {
@@ -60,6 +61,9 @@ namespace knkwebapi_v2.Services.Privacy
                 if (expired > 0) _logger.LogInformation("GDPR deletion: {Count} unconfirmed request(s) expired", expired);
                 var executed = await service.ExecuteScheduledAsync(now, ct);
                 if (executed > 0) _logger.LogWarning("GDPR deletion: executed {Count} request(s) after their grace period", executed);
+                // Realtime S5 (#184): the erasure feed keeps a former UUID only for Privacy:ErasureFeedUuidRetentionDays.
+                var cleared = await service.ClearExpiredErasureUuidsAsync(now, ct);
+                if (cleared > 0) _logger.LogInformation("GDPR deletion: cleared the former UUID of {Count} erasure feed row(s)", cleared);
                 return executed;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

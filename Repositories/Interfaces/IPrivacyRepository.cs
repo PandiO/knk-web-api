@@ -44,5 +44,24 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         /// <summary>Pseudonymizes the users rows (§F.14); returns how many rows changed.</summary>
         Task<int> PseudonymizeUsersAsync(IReadOnlyCollection<int> userIds, DateTime now, string reason, CancellationToken ct = default);
+
+        // ---- realtime S5 (PandiO/knk-workspace#184): the erasure feed ----
+
+        /// <summary>
+        /// Adds one feed row per user (in the order given) with the UUID the account has now; call it before
+        /// <see cref="PseudonymizeUsersAsync"/>, which clears the UUID. Not saved: the next save writes the rows (in the
+        /// erasure's transaction) and gives them their ids.
+        /// </summary>
+        Task<List<PrivacyErasureEvent>> AddErasureEventsAsync(IReadOnlyCollection<int> userIds, int requestId, DateTime now,
+            CancellationToken ct = default);
+
+        /// <summary>Feed rows with an id above <paramref name="sinceId"/>, oldest first, at most <paramref name="limit"/>.</summary>
+        Task<List<PrivacyErasureEvent>> GetErasureEventsSinceAsync(long sinceId, int limit, CancellationToken ct = default);
+
+        /// <summary>The newest feed id, 0 when the feed is empty.</summary>
+        Task<long> GetLatestErasureEventIdAsync(CancellationToken ct = default);
+
+        /// <summary>Clears the former UUID of feed rows erased before <paramref name="cutoff"/>; returns how many.</summary>
+        Task<int> ClearErasureUuidsBeforeAsync(DateTime cutoff, DateTime now, CancellationToken ct = default);
     }
 }

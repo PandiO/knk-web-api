@@ -176,6 +176,42 @@ namespace knkwebapi_v2.Repositories
             return users.Count;
         }
 
+        public async Task<List<PrivacyErasureEvent>> AddErasureEventsAsync(IReadOnlyCollection<int> userIds, int requestId,
+            DateTime now, CancellationToken ct = default)
+        {
+            var ids = userIds.Distinct().ToList();
+            var uuids = await _context.Users.AsNoTracking().Where(u => ids.Contains(u.Id))
+                .Select(u => new { u.Id, u.Uuid }).ToDictionaryAsync(u => u.Id, u => u.Uuid, ct);
+            var rows = ids.Select(id => new PrivacyErasureEvent
+            {
+                UserId = id,
+                FormerUuid = uuids.TryGetValue(id, out var uuid) && !string.IsNullOrWhiteSpace(uuid) ? uuid : null,
+                DeletionRequestId = requestId,
+                ErasedAt = now
+            }).ToList();
+            _context.PrivacyErasureEvents.AddRange(rows);
+            return rows;
+        }
+
+        public Task<List<PrivacyErasureEvent>> GetErasureEventsSinceAsync(long sinceId, int limit, CancellationToken ct = default) =>
+            _context.PrivacyErasureEvents.AsNoTracking().Where(e => e.Id > sinceId).OrderBy(e => e.Id)
+                .Take(Math.Max(1, limit)).ToListAsync(ct);
+
+        public async Task<long> GetLatestErasureEventIdAsync(CancellationToken ct = default) =>
+            await _context.PrivacyErasureEvents.AsNoTracking().Select(e => (long?)e.Id).MaxAsync(ct) ?? 0;
+
+        public async Task<int> ClearErasureUuidsBeforeAsync(DateTime cutoff, DateTime now, CancellationToken ct = default)
+        {
+            var rows = await _context.PrivacyErasureEvents.Where(e => e.FormerUuid != null && e.ErasedAt < cutoff).ToListAsync(ct);
+            foreach (var row in rows)
+            {
+                row.FormerUuid = null;
+                row.UuidClearedAt = now;
+            }
+            if (rows.Count > 0) await _context.SaveChangesAsync(ct);
+            return rows.Count;
+        }
+
         /// <summary>Result key for the road-builder proposals whose requester name was cleared.</summary>
         public const string RoadProposalNamesKey = "road_tile_proposals.created_by";
 
