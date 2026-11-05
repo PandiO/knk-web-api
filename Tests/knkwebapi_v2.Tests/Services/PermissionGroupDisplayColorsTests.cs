@@ -151,7 +151,7 @@ public class PermissionGroupDisplayColorsTests
     };
 
     private static (UserService Service, Mock<IPermissionGroupRepository> GroupRepo) UserServiceWith(
-        UserPermissionGroupDto? tier, PermissionGroup? defaultGroup)
+        UserPermissionGroupDto? tier, PermissionGroup? defaultGroup, params PermissionGroup[] held)
     {
         var userRepo = new Mock<IUserRepository>();
         userRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>()))
@@ -167,6 +167,9 @@ public class PermissionGroupDisplayColorsTests
         memberships.Setup(s => s.GetActivePremiumTierAsync(It.IsAny<int>())).ReturnsAsync(tier);
         var groupRepo = new Mock<IPermissionGroupRepository>();
         groupRepo.Setup(r => r.GetByNameAsync(UserService.DefaultGroupName)).ReturnsAsync(defaultGroup);
+        // The player's effective groups (memberships and their parents), as the repository returns them.
+        groupRepo.Setup(r => r.GetActiveGroupsForUserAsync(It.IsAny<int>(), It.IsAny<DateTime>()))
+            .ReturnsAsync(held.ToList());
 
         var service = new UserService(userRepo.Object, mapper.Object, new Mock<IPasswordService>().Object,
             new Mock<ILinkCodeService>().Object, titles.Object, memberships.Object,
@@ -176,15 +179,24 @@ public class PermissionGroupDisplayColorsTests
         return (service, groupRepo);
     }
 
+    private static PermissionGroup Group(int id, string name, int weight, string? chat = null, string? bracket = null,
+        string? name_ = null, PermissionGroup? parent = null, bool tier = false) => new()
+    {
+        Id = id, Name = name, Weight = weight, IsPremiumTier = tier, ChatPrimaryColor = chat, ChatSecondaryColor = bracket,
+        NameColor = name_, ParentGroupId = parent?.Id, ParentGroup = parent
+    };
+
+    private static UserPermissionGroupDto TierDto(PermissionGroup g) => new()
+    {
+        PermissionGroupId = g.Id, PermissionGroupName = g.Name, IsPremiumTier = true,
+        ChatPrimaryColor = g.ChatPrimaryColor, ChatSecondaryColor = g.ChatSecondaryColor, NameColor = g.NameColor
+    };
+
     [Fact]
     public async Task UserDto_WithTier_UsesTierColors()
     {
-        var tier = new UserPermissionGroupDto
-        {
-            PermissionGroupId = 103, PermissionGroupName = "Dragon Blood", IsPremiumTier = true,
-            ChatPrimaryColor = "&c", ChatSecondaryColor = "&4", NameColor = "&c"
-        };
-        var (service, _) = UserServiceWith(tier, DefaultGroup);
+        var dragon = Group(103, "Dragon Blood", 30, "&c", "&4", "&c", parent: DefaultGroup, tier: true);
+        var (service, _) = UserServiceWith(TierDto(dragon), DefaultGroup, dragon, DefaultGroup);
 
         var dto = await service.GetByIdAsync(7);
 
@@ -192,12 +204,13 @@ public class PermissionGroupDisplayColorsTests
         Assert.Equal("&c", dto.ChatPrimaryColor);
         Assert.Equal("&4", dto.ChatSecondaryColor);
         Assert.Equal("&c", dto.NameColor);
+        Assert.Equal(103, dto.NameColorGroupId);
     }
 
     [Fact]
     public async Task UserDto_WithoutTier_UsesDefaultGroupColors()
     {
-        var (service, _) = UserServiceWith(null, DefaultGroup);
+        var (service, _) = UserServiceWith(null, DefaultGroup, DefaultGroup);
 
         var dto = await service.GetByIdAsync(7);
 
@@ -205,23 +218,32 @@ public class PermissionGroupDisplayColorsTests
         Assert.Equal("&a", dto.ChatPrimaryColor);
         Assert.Equal("&2", dto.ChatSecondaryColor);
         Assert.Equal("&7", dto.NameColor);
+        Assert.Null(dto.NameColorGroupId); // the Default group's colour: the plugin's default team
+    }
+
+    [Fact]
+    public async Task UserDto_WithoutTierOrMembership_StillGetsDefaultGroupColors()
+    {
+        var (service, _) = UserServiceWith(null, DefaultGroup);
+
+        var dto = await service.GetByIdAsync(7);
+
+        Assert.Equal("&7", dto!.NameColor);
+        Assert.Null(dto.NameColorGroupId);
     }
 
     [Fact]
     public async Task UserDto_TierWithUnsetColor_FallsBackToDefaultPerField()
     {
-        var tier = new UserPermissionGroupDto
-        {
-            PermissionGroupId = 110, PermissionGroupName = "Emperor", IsPremiumTier = true,
-            ChatPrimaryColor = "&d"
-        };
-        var (service, _) = UserServiceWith(tier, DefaultGroup);
+        var emperor = Group(110, "Emperor", 40, chat: "&d", tier: true);
+        var (service, _) = UserServiceWith(TierDto(emperor), DefaultGroup, emperor, DefaultGroup);
 
         var dto = await service.GetByIdAsync(7);
 
         Assert.Equal("&d", dto!.ChatPrimaryColor);
         Assert.Equal("&2", dto.ChatSecondaryColor);
         Assert.Equal("&7", dto.NameColor);
+        Assert.Null(dto.NameColorGroupId);
     }
 
     [Fact]
@@ -234,6 +256,76 @@ public class PermissionGroupDisplayColorsTests
         Assert.Null(dto!.ChatPrimaryColor);
         Assert.Null(dto.ChatSecondaryColor);
         Assert.Null(dto.NameColor);
+        Assert.Null(dto.NameColorGroupId);
+    }
+
+    // ---- PandiO/knk-workspace#260: any group, by precedence (hierarchy, then weight) ----
+
+    [Fact]
+    public async Task UserDto_StaffGroupColours_AreUsed_AboveATierOfLowerWeight()
+    {
+        // The developer's S2 test: the Staff group (not a tier) sets all three; before #260 they were never drawn.
+        var royal = Group(102, "Royal", 20, "&b", "&3", "&b", parent: DefaultGroup, tier: true);
+        var staff = Group(50, "Staff", 80, "&9", "&1", "&9");
+        var (service, _) = UserServiceWith(TierDto(royal), DefaultGroup, staff, royal, DefaultGroup);
+
+        var dto = await service.GetByIdAsync(7);
+
+        Assert.Equal(("&9", "&1", "&9", (int?)50), (dto!.ChatPrimaryColor, dto.ChatSecondaryColor, dto.NameColor, dto.NameColorGroupId));
+    }
+
+    [Fact]
+    public async Task UserDto_EachFieldFromTheFirstGroupThatSetsIt()
+    {
+        var royal = Group(102, "Royal", 20, "&b", "&3", "&b", tier: true);
+        var staff = Group(50, "Staff", 80, name_: "&9"); // only the tab-list colour
+        var (service, _) = UserServiceWith(TierDto(royal), DefaultGroup, staff, royal, DefaultGroup);
+
+        var dto = await service.GetByIdAsync(7);
+
+        Assert.Equal("&b", dto!.ChatPrimaryColor);
+        Assert.Equal("&3", dto.ChatSecondaryColor);
+        Assert.Equal("&9", dto.NameColor);
+        Assert.Equal(50, dto.NameColorGroupId);
+    }
+
+    [Fact]
+    public async Task UserDto_HierarchyBeforeWeight_AHeldGroupBeatsTheParentItInherits()
+    {
+        // Moderator inherits from Helper; Helper has the higher weight, but the held child comes first in the chain.
+        var helper = Group(60, "Helper", 90, "&e", "&6", "&e");
+        var moderator = Group(61, "Moderator", 70, "&c", null, "&c", parent: helper);
+        var (service, _) = UserServiceWith(null, DefaultGroup, moderator, helper, DefaultGroup);
+
+        var dto = await service.GetByIdAsync(7);
+
+        Assert.Equal("&c", dto!.ChatPrimaryColor);
+        Assert.Equal("&6", dto.ChatSecondaryColor); // Moderator leaves it unset: its parent's
+        Assert.Equal(61, dto.NameColorGroupId);
+        Assert.Equal(new[] { 61, 60, 1 }, dto.PermissionGroups.Select(g => g.Id)); // the same order as before #260
+    }
+
+    [Fact]
+    public async Task UserDto_TwoUnrelatedGroups_TheHigherWeightWins()
+    {
+        var builder = Group(70, "Builder", 40, name_: "&2");
+        var staff = Group(50, "Staff", 80, name_: "&9");
+        var (service, _) = UserServiceWith(null, DefaultGroup, builder, staff, DefaultGroup);
+
+        var dto = await service.GetByIdAsync(7);
+
+        Assert.Equal(("&9", (int?)50), (dto!.NameColor, dto.NameColorGroupId));
+    }
+
+    [Fact]
+    public void Resolve_BlankValuesDontCount_AndDefaultIsLastEvenWithAHigherWeight()
+    {
+        var heavyDefault = Group(1, UserService.DefaultGroupName, 999, "&a", "&2", "&7");
+        var builder = Group(70, "Builder", 40, chat: "  ", name_: "&2");
+
+        var styles = GroupDisplayStyles.Resolve(new[] { heavyDefault, builder }, heavyDefault);
+
+        Assert.Equal(new GroupDisplayStyles.Result("&a", "&2", "&2", 70), styles);
     }
 
     [Fact]
