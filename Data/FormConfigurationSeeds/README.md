@@ -156,3 +156,11 @@ default 3) and "Knockback radius" (`EffectRadiusBlocks`, 0-32, default 5). Both 
 multiplier; the step and level multiplier descriptions say so. GUIDs: configuration uuid5(v3 configuration GUID,
 "seed-v4"), every kept step/field uuid5(v3 configuration GUID, its v3 GUID), the new fields uuid5(v4 configuration
 GUID, "field:" + name).
+
+**LootboxSpawnArea seed v2 (PandiO/knk-workspace#34, 2026-11-05):** a new `configurationGuid` and name, so it imports
+next to the imported v1; make it the default and delete or keep v1 by hand. Only descriptions change: a region drawn
+with Send to Minecraft is now renamed to `lootbox_area_<id>` on save and stretched to full build height (knk-web-api and
+knk-plugin of the same issue), so the "Area and region" step and the Region field no longer steer admins to
+`select <region>` or `/knk lootbox area create`; the Name field says `area_<number>` is reserved. Needs that API and
+plugin change: before it, a drawn region keeps its temp name and the server removes it after 14 days. GUIDs:
+configuration uuid5(v1 configuration GUID, "seed-v2"), every step/field uuid5(v1 configuration GUID, its v1 GUID).
