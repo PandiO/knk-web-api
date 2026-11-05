@@ -45,6 +45,8 @@ public class UserStateEventTests
 
         public void PublishToWebGroups(IReadOnlyCollection<string> groups, string type, object? payload, RealtimeActor? actor = null, int v = 1) { }
 
+        public void PublishToWebHolders(string node, string type, object? payload, RealtimeActor? actor = null, int v = 1) { }
+
         public void PublishToConnection(RealtimeHubKind hub, string connectionId, string type, object? payload,
             RealtimeActor? actor = null, int v = 1) { }
     }

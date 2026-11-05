@@ -16,6 +16,7 @@ namespace knkwebapi_v2.Services
         private readonly ITitleService _titleService;
         private readonly ISalaryService _salaryService;
         private readonly ISalaryConfigurationService _salaryConfigurationService;
+        private readonly Repositories.IUserRepository? _users;
 
         public UserProfileSummaryService(
             IUserService userService,
@@ -23,8 +24,10 @@ namespace knkwebapi_v2.Services
             IUserPermissionGroupService userPermissionGroupService,
             ITitleService titleService,
             ISalaryService salaryService,
-            ISalaryConfigurationService salaryConfigurationService)
+            ISalaryConfigurationService salaryConfigurationService,
+            Repositories.IUserRepository? users = null)
         {
+            _users = users;
             _userService = userService;
             _permissionResolutionService = permissionResolutionService;
             _userPermissionGroupService = userPermissionGroupService;
@@ -51,6 +54,9 @@ namespace knkwebapi_v2.Services
             var title = await _titleService.ResolveAsync(account.ExperiencePoints);
             var rankMultiplier = await _salaryService.GetCurrentRankMultiplierAsync(userId);
             var salaryConfig = await _salaryConfigurationService.GetAsync();
+            // #183 (S4): the online badge's first state, the same User.IsOnline column the moderation list shows;
+            // PresenceChanged keeps it live while the web hub is connected.
+            var user = _users == null ? null : await _users.GetByIdAsync(userId);
 
             var globalMultiplier = salaryConfig.GlobalMultiplier;
 
@@ -74,7 +80,8 @@ namespace knkwebapi_v2.Services
                 Permissions = permissions ?? new PermissionEffectiveResponseDto { UserId = userId },
                 Groups = groups,
                 Title = title,
-                Salary = salary
+                Salary = salary,
+                Presence = user == null ? null : new ProfilePresenceDto { Online = user.IsOnline, LastSeenAt = user.LastSeenAt }
             };
         }
     }

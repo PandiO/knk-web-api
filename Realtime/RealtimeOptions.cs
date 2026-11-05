@@ -31,4 +31,11 @@ public sealed class RealtimeOptions
     /// logs it.
     /// </summary>
     public string[] AllowedServerIds { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// S4 (#183): how long a web user's "holds node X" answer is reused for the node-gated live updates
+    /// (<c>EntityChanged</c>, <c>PresenceChanged</c>). A node taken away stops those events within this time; 0 checks
+    /// on every message.
+    /// </summary>
+    public int WebPermissionCacheSeconds { get; set; } = 30;
 }
