@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -407,5 +408,81 @@ public class WebLiveEventTests
         await f.Db.SaveChangesAsync();
         Assert.Empty(f.Publisher.Web);
         Assert.Empty(f.Publisher.Game);
+    }
+
+    // Developer decision 2026-11-06 on LX1-10: Realtime:WebLiveUpdatesEnabled switches the web live updates off.
+
+    private static (RealtimeEntityChangeInterceptor Interceptor, RealtimeConnections Connections, RealtimePublisher Publisher)
+        FromSetup(bool? enabled)
+    {
+        var settings = new Dictionary<string, string?>();
+        if (enabled != null) settings["Realtime:WebLiveUpdatesEnabled"] = enabled.Value ? "true" : "false";
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddKnkRealtime(configuration);
+        var provider = services.BuildServiceProvider();
+        var connections = provider.GetRequiredService<RealtimeConnections>();
+        connections.Add(new RealtimeConnection("web-1", RealtimeHubKind.Web, new[] { RealtimeGroups.User(7) }, userId: 7));
+        return (provider.GetRequiredService<RealtimeEntityChangeInterceptor>(), connections,
+            provider.GetRequiredService<RealtimePublisher>());
+    }
+
+    private static async Task<(List<RealtimeMessage> Messages, int TownId)> SaveTownAndPresence(RealtimeEntityChangeInterceptor interceptor,
+        RealtimePublisher publisher)
+    {
+        using var db = new KnKDbContext(new DbContextOptionsBuilder<KnKDbContext>()
+            .UseInMemoryDatabase("web-live-off-" + Guid.NewGuid())
+            .AddInterceptors(interceptor)
+            .Options);
+        var town = new Town { Name = "T", Description = "d", WgRegionId = "town_off", AllowEntry = true, AllowExit = true };
+        db.Add(town);
+        var user = new User { Username = "carol", Uuid = "00000000-0000-0000-0000-0000000000c3", CreatedAt = DateTime.UtcNow };
+        db.Add(user);
+        await db.SaveChangesAsync();
+        user.IsOnline = true;
+        await db.SaveChangesAsync();
+        publisher.Complete();
+        var messages = new List<RealtimeMessage>();
+        await foreach (var message in publisher.Reader.ReadAllAsync())
+        {
+            messages.Add(message);
+        }
+        return (messages, town.Id);
+    }
+
+    [Fact]
+    public void WebLiveUpdatesEnabled_DefaultsToOn()
+    {
+        Assert.True(new RealtimeOptions().WebLiveUpdatesEnabled);
+    }
+
+    [Fact]
+    public async Task Setup_WebLiveUpdatesOff_BuildsNoWebEvents_TheGameServersStillGetTheirs()
+    {
+        var (interceptor, _, publisher) = FromSetup(enabled: false);
+
+        var (messages, townId) = await SaveTownAndPresence(interceptor, publisher);
+
+        Assert.DoesNotContain(messages, m => m.Hub == RealtimeHubKind.Web);
+        Assert.DoesNotContain(messages, m => m.Type == WebLiveEventTypes.PresenceChanged);
+        Assert.Contains(messages, m => m.Hub == RealtimeHubKind.Game && m.Type == "EntityChanged"
+            && Equals(m.Payload, new EntityChangedPayload("Town", townId, EntityChangeOps.Created, "town_off")));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(null)]
+    public async Task Setup_WebLiveUpdatesOnOrUnset_SendsEntityChangedAndPresenceChangedToTheWeb(bool? enabled)
+    {
+        var (interceptor, _, publisher) = FromSetup(enabled);
+
+        var (messages, _) = await SaveTownAndPresence(interceptor, publisher);
+
+        var web = messages.Where(m => m.Hub == RealtimeHubKind.Web).ToList();
+        Assert.Contains(web, m => m.Type == WebLiveEventTypes.EntityChanged && m.RequiredNode == StaffPermissions.ManageContent);
+        Assert.Contains(web, m => m.Type == WebLiveEventTypes.PresenceChanged && m.RequiredNode == StaffPermissions.ManageUsers);
+        Assert.Contains(messages, m => m.Hub == RealtimeHubKind.Game && m.Type == "EntityChanged");
     }
 }

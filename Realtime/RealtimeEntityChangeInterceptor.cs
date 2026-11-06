@@ -19,7 +19,8 @@ namespace knkwebapi_v2.Realtime;
 /// <para>S4 (PandiO/knk-workspace#183): the same saves also feed the web hub's live updates
 /// (<see cref="RealtimeWebChangeMap"/>: <c>EntityChanged</c> for the dashboard types, <c>PresenceChanged</c>), built only
 /// while a web connection is open and sent through the same sink to the holders of each event's node. The game
-/// servers' events are unchanged.</para>
+/// servers' events are unchanged. <c>Realtime:WebLiveUpdatesEnabled = false</c> turns them off (decision 2026-11-06 on
+/// LX1-10; <see cref="RealtimeSetup"/> folds it into <c>webListening</c>).</para>
 /// </summary>
 public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
 {
@@ -41,8 +42,8 @@ public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
     /// <param name="sinkFor">The sink for a context's events (default: an <see cref="AfterCommitRealtimeEventSink"/>
     /// over that context, built by <see cref="RealtimeSetup"/>).</param>
     /// <param name="http">For the actor's user id; null outside a request.</param>
-    /// <param name="webListening">S4 (#183): whether any web hub connection is open (default: yes); the web events are
-    /// skipped while nobody could get them.</param>
+    /// <param name="webListening">S4 (#183): whether the web live updates are on and any web hub connection is open
+    /// (default: yes); the web events are skipped otherwise.</param>
     /// <param name="serverOf">S4: the game server a UUID is on, for <c>PresenceChanged</c>.</param>
     public RealtimeEntityChangeInterceptor(Func<DbContext, IRealtimeEventSink?> sinkFor, IHttpContextAccessor? http = null,
         ILogger<RealtimeEntityChangeInterceptor>? logger = null, Func<bool>? webListening = null,

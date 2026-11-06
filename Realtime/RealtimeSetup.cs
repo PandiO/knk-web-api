@@ -6,6 +6,7 @@ using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace knkwebapi_v2.Realtime;
 
@@ -61,8 +62,10 @@ public static class RealtimeSetup
                 sp.GetRequiredService<RealtimeTransactionEvents>(), context, sp.GetService<IHttpContextAccessor>(),
                 sp.GetService<ILogger<AfterCommitRealtimeEventSink>>()),
             sp.GetService<IHttpContextAccessor>(), sp.GetService<ILogger<RealtimeEntityChangeInterceptor>>(),
-            // S4 (#183): the web live updates, only built while a web connection is open; presence names the server.
-            webListening: () => sp.GetRequiredService<RealtimeConnections>().Count(RealtimeHubKind.Web) > 0,
+            // S4 (#183): the web live updates, only built while they are on (Realtime:WebLiveUpdatesEnabled, decision
+            // 2026-11-06 on LX1-10) and a web connection is open; presence names the server.
+            webListening: () => sp.GetRequiredService<IOptionsMonitor<RealtimeOptions>>().CurrentValue.WebLiveUpdatesEnabled
+                && sp.GetRequiredService<RealtimeConnections>().Count(RealtimeHubKind.Web) > 0,
             serverOf: uuid => sp.GetRequiredService<PresenceRegistry>().ConnectedServerOf(uuid)));
         // The player notification queue pushes over the hub; the in-memory queue stays the store the REST poll reads.
         services.TryAddSingleton<InMemoryPlayerNotificationQueue>();
