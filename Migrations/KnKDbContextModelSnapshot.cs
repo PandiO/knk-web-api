@@ -5964,6 +5964,99 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("siege_spawnpoints", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeSurvivalSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BaselineLoadoutKitId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CoinsPerKill")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int?>("DefaultKitId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("EndWhenAllObjectivesCaptured")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("EquipmentMode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<int>("FavorNearPlayersPercent")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("HumanTeamId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IntermissionMillis")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("KillBonusMultiplier")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<int>("LastEnemiesCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MatchCurrencyPerKill")
+                        .HasColumnType("int");
+
+                    b.Property<double>("MeaningfulDistance")
+                        .HasColumnType("double");
+
+                    b.Property<int>("MinPlayers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NearZoneCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NpcTeamId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RespawnLimit")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RoundBackstopMillis")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StuckAfterMillis")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("XpPerKill")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("BaselineLoadoutKitId");
+
+                    b.HasIndex("DefaultKitId");
+
+                    b.HasIndex("HumanTeamId");
+
+                    b.HasIndex("NpcTeamId");
+
+                    b.HasIndex("SiegeScenarioId")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_settings", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeTeam", b =>
                 {
                     b.Property<int>("Id")
@@ -6141,6 +6234,678 @@ namespace knkwebapi_v2.Migrations
                         .HasName("PRIMARY");
 
                     b.ToTable("streets", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalDifficultyProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double?>("AggroRadius")
+                        .HasColumnType("double");
+
+                    b.Property<double>("AttackSpeedWeight")
+                        .HasColumnType("double");
+
+                    b.Property<double>("CaptureContributionWeight")
+                        .HasColumnType("double");
+
+                    b.Property<double>("CountBase")
+                        .HasColumnType("double");
+
+                    b.Property<int>("CountCap")
+                        .HasColumnType("int");
+
+                    b.Property<double>("CountMultiplier")
+                        .HasColumnType("double");
+
+                    b.Property<string>("CountPreset")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<double>("CountStep")
+                        .HasColumnType("double");
+
+                    b.Property<int>("CountSwitchRound")
+                        .HasColumnType("int");
+
+                    b.Property<double>("GateDamageFactor")
+                        .HasColumnType("double");
+
+                    b.Property<double>("HealthWeight")
+                        .HasColumnType("double");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<double?>("LeashDistance")
+                        .HasColumnType("double");
+
+                    b.Property<int>("MaxAlive")
+                        .HasColumnType("int");
+
+                    b.Property<double>("MeleeDamageWeight")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("PerPlayerAppliesToStats")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<double>("PerPlayerFactor")
+                        .HasColumnType("double");
+
+                    b.Property<double>("RangedDamageWeight")
+                        .HasColumnType("double");
+
+                    b.Property<double>("RepairRatePerSecond")
+                        .HasColumnType("double");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SpawnIntervalMillis")
+                        .HasColumnType("int");
+
+                    b.Property<double>("StatCap")
+                        .HasColumnType("double");
+
+                    b.Property<double>("StatMultiplier")
+                        .HasColumnType("double");
+
+                    b.Property<string>("StatPreset")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<double>("StatStep")
+                        .HasColumnType("double");
+
+                    b.Property<int>("StatSwitchRound")
+                        .HasColumnType("int");
+
+                    b.Property<double>("WalkingSpeedWeight")
+                        .HasColumnType("double");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeScenarioId", "SortOrder");
+
+                    b.ToTable("siege_survival_difficulty_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalLobbySettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AllCapturedOverride")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("SiegeLobbyId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeLobbyId")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_lobby_settings", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMonsterType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UnlockRound")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Weight")
+                        .HasColumnType("double");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeScenarioId", "EntityType")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_monster_types", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ChancePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int?>("EnchantmentDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EnchantmentLevel")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalMysteryBoxPoolId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("EnchantmentDefinitionId");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("SurvivalMysteryBoxPoolId", "SortOrder");
+
+                    b.ToTable("siege_survival_mystery_box_entries", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxEntryEnchantment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ChancePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("EnchantmentDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalMysteryBoxEntryId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("EnchantmentDefinitionId");
+
+                    b.HasIndex("SurvivalMysteryBoxEntryId", "EnchantmentDefinitionId")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_mystery_box_entry_enchantments", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxPoint", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BlockType")
+                        .IsRequired()
+                        .HasMaxLength(191)
+                        .HasColumnType("varchar(191)");
+
+                    b.Property<int>("ClaimTimeoutMillis")
+                        .HasColumnType("int");
+
+                    b.Property<double>("InteractionRange")
+                        .HasColumnType("double");
+
+                    b.Property<int>("LocationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("RollPrice")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalMysteryBoxPoolId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("SurvivalMysteryBoxPoolId");
+
+                    b.HasIndex("SiegeScenarioId", "SortOrder");
+
+                    b.ToTable("siege_survival_mystery_box_points", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxPool", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Variant")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeScenarioId");
+
+                    b.ToTable("siege_survival_mystery_box_pools", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalPurchaseOffer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Price")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalPurchasePointId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("SurvivalPurchasePointId", "SortOrder");
+
+                    b.ToTable("siege_survival_purchase_offers", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalPurchasePoint", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("InteractionRange")
+                        .HasColumnType("double");
+
+                    b.Property<int>("LocationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("SiegeScenarioId", "SortOrder");
+
+                    b.ToTable("siege_survival_purchase_points", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSettingsKit", b =>
+                {
+                    b.Property<int>("SiegeSurvivalSettingsId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("KitId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("SiegeSurvivalSettingsId", "KitId");
+
+                    b.HasIndex("KitId");
+
+                    b.ToTable("siege_survival_settings_kits", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpawnZone", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AnchorLocationId")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("AreaRadius")
+                        .HasColumnType("double");
+
+                    b.Property<bool>("ForNormalWaves")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("ForSpecialWaves")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("LaneAutoReroute")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("MaxWave")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinWave")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("PrerequisitePolicy")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Weight")
+                        .HasColumnType("double");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("AnchorLocationId");
+
+                    b.HasIndex("SiegeScenarioId", "SortOrder");
+
+                    b.ToTable("siege_survival_spawn_zones", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpawnZoneObjective", b =>
+                {
+                    b.Property<int>("SurvivalSpawnZoneId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeObjectiveId")
+                        .HasColumnType("int");
+
+                    b.HasKey("SurvivalSpawnZoneId", "SiegeObjectiveId");
+
+                    b.HasIndex("SiegeObjectiveId");
+
+                    b.ToTable("siege_survival_spawn_zone_objectives", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpawnZonePoint", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<int>("LocationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalSpawnZoneId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("SurvivalSpawnZoneId", "Kind", "SortOrder");
+
+                    b.ToTable("siege_survival_spawn_zone_points", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpecialWaveEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("Interval")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StartWave")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalSpecialWaveProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Wave")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SurvivalSpecialWaveProfileId");
+
+                    b.HasIndex("SiegeScenarioId", "SortOrder");
+
+                    b.ToTable("siege_survival_special_wave_entries", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpecialWaveMonsterType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalSpecialWaveProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UnlockRound")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Weight")
+                        .HasColumnType("double");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SurvivalSpecialWaveProfileId", "EntityType")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_special_wave_monster_types", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpecialWaveProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Additive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<double>("CountMultiplier")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("CountOverride")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeScenarioId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_special_wave_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalTargetOverride", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("GateStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("SiegeObjectiveId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("GateStructureId");
+
+                    b.HasIndex("SiegeObjectiveId");
+
+                    b.HasIndex("SiegeScenarioId", "GateStructureId")
+                        .IsUnique();
+
+                    b.HasIndex("SiegeScenarioId", "SiegeObjectiveId")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_target_overrides", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Tag", b =>
@@ -8700,6 +9465,45 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("SiegeTeam");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeSurvivalSettings", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Kit", "BaselineLoadoutKit")
+                        .WithMany()
+                        .HasForeignKey("BaselineLoadoutKitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Kit", "DefaultKit")
+                        .WithMany()
+                        .HasForeignKey("DefaultKitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeTeam", "HumanTeam")
+                        .WithMany()
+                        .HasForeignKey("HumanTeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeTeam", "NpcTeam")
+                        .WithMany()
+                        .HasForeignKey("NpcTeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.SiegeSurvivalSettings", "SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BaselineLoadoutKit");
+
+                    b.Navigation("DefaultKit");
+
+                    b.Navigation("HumanTeam");
+
+                    b.Navigation("NpcTeam");
+
+                    b.Navigation("SiegeScenario");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeTeam", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.BannerDesign", "BannerDesign")
@@ -8745,6 +9549,301 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowSession");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalDifficultyProfile", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeScenario");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalLobbySettings", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeLobby", "SiegeLobby")
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.SurvivalLobbySettings", "SiegeLobbyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeLobby");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMonsterType", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeScenario");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxEntry", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.EnchantmentDefinition", "EnchantmentDefinition")
+                        .WithMany()
+                        .HasForeignKey("EnchantmentDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.SurvivalMysteryBoxPool", "SurvivalMysteryBoxPool")
+                        .WithMany("Entries")
+                        .HasForeignKey("SurvivalMysteryBoxPoolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EnchantmentDefinition");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("SurvivalMysteryBoxPool");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxEntryEnchantment", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.EnchantmentDefinition", "EnchantmentDefinition")
+                        .WithMany()
+                        .HasForeignKey("EnchantmentDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SurvivalMysteryBoxEntry", "SurvivalMysteryBoxEntry")
+                        .WithMany("Enchantments")
+                        .HasForeignKey("SurvivalMysteryBoxEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EnchantmentDefinition");
+
+                    b.Navigation("SurvivalMysteryBoxEntry");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxPoint", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SurvivalMysteryBoxPool", "SurvivalMysteryBoxPool")
+                        .WithMany()
+                        .HasForeignKey("SurvivalMysteryBoxPoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+
+                    b.Navigation("SiegeScenario");
+
+                    b.Navigation("SurvivalMysteryBoxPool");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxPool", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeScenario");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalPurchaseOffer", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SurvivalPurchasePoint", "SurvivalPurchasePoint")
+                        .WithMany("Offers")
+                        .HasForeignKey("SurvivalPurchasePointId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("SurvivalPurchasePoint");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalPurchasePoint", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+
+                    b.Navigation("SiegeScenario");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSettingsKit", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Kit", "Kit")
+                        .WithMany()
+                        .HasForeignKey("KitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeSurvivalSettings", "SiegeSurvivalSettings")
+                        .WithMany("SelectedKits")
+                        .HasForeignKey("SiegeSurvivalSettingsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Kit");
+
+                    b.Navigation("SiegeSurvivalSettings");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpawnZone", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Location", "AnchorLocation")
+                        .WithMany()
+                        .HasForeignKey("AnchorLocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AnchorLocation");
+
+                    b.Navigation("SiegeScenario");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpawnZoneObjective", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeObjective", "SiegeObjective")
+                        .WithMany()
+                        .HasForeignKey("SiegeObjectiveId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SurvivalSpawnZone", "SurvivalSpawnZone")
+                        .WithMany("PrerequisiteObjectives")
+                        .HasForeignKey("SurvivalSpawnZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeObjective");
+
+                    b.Navigation("SurvivalSpawnZone");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpawnZonePoint", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SurvivalSpawnZone", "SurvivalSpawnZone")
+                        .WithMany("Points")
+                        .HasForeignKey("SurvivalSpawnZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+
+                    b.Navigation("SurvivalSpawnZone");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpecialWaveEntry", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SurvivalSpecialWaveProfile", "SurvivalSpecialWaveProfile")
+                        .WithMany()
+                        .HasForeignKey("SurvivalSpecialWaveProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeScenario");
+
+                    b.Navigation("SurvivalSpecialWaveProfile");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpecialWaveMonsterType", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SurvivalSpecialWaveProfile", "SurvivalSpecialWaveProfile")
+                        .WithMany("MonsterTypes")
+                        .HasForeignKey("SurvivalSpecialWaveProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SurvivalSpecialWaveProfile");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpecialWaveProfile", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeScenario");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalTargetOverride", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.GateStructure", "GateStructure")
+                        .WithMany()
+                        .HasForeignKey("GateStructureId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeObjective", "SiegeObjective")
+                        .WithMany()
+                        .HasForeignKey("SiegeObjectiveId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany()
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GateStructure");
+
+                    b.Navigation("SiegeObjective");
+
+                    b.Navigation("SiegeScenario");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.UserDomainDiscovery", b =>
@@ -9185,6 +10284,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Teams");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeSurvivalSettings", b =>
+                {
+                    b.Navigation("SelectedKits");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeTeam", b =>
                 {
                     b.Navigation("Spawnpoints");
@@ -9193,6 +10297,33 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
                 {
                     b.Navigation("Structures");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxEntry", b =>
+                {
+                    b.Navigation("Enchantments");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxPool", b =>
+                {
+                    b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalPurchasePoint", b =>
+                {
+                    b.Navigation("Offers");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpawnZone", b =>
+                {
+                    b.Navigation("Points");
+
+                    b.Navigation("PrerequisiteObjectives");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalSpecialWaveProfile", b =>
+                {
+                    b.Navigation("MonsterTypes");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
