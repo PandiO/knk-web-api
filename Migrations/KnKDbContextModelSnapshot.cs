@@ -6404,6 +6404,34 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("siege_survival_monster_types", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxDelivery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DeliveredAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("SurvivalMysteryBoxRollId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SurvivalMysteryBoxRollId")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_mystery_box_deliveries", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -6553,6 +6581,89 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("SiegeScenarioId");
 
                     b.ToTable("siege_survival_mystery_box_pools", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxRoll", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("EntryJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ForfeitReason")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime?>("ForfeitedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("PriceCharged")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReelJson")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<string>("RollId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("RolledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("RolledEnchantmentsJson")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<int>("SiegeMatchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("SurvivalMysteryBoxEntryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalMysteryBoxPointId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SurvivalMysteryBoxPoolId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Variant")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("RollId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SiegeMatchId", "RolledAt");
+
+                    b.HasIndex("SiegeMatchId", "UserId");
+
+                    b.ToTable("siege_survival_mystery_box_rolls", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalPurchaseOffer", b =>
@@ -9584,6 +9695,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("SiegeScenario");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxDelivery", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SurvivalMysteryBoxRoll", "SurvivalMysteryBoxRoll")
+                        .WithOne("Delivery")
+                        .HasForeignKey("knkwebapi_v2.Models.SurvivalMysteryBoxDelivery", "SurvivalMysteryBoxRollId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SurvivalMysteryBoxRoll");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxEntry", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.EnchantmentDefinition", "EnchantmentDefinition")
@@ -9664,6 +9786,25 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("SiegeScenario");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxRoll", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeMatch", "SiegeMatch")
+                        .WithMany()
+                        .HasForeignKey("SiegeMatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SiegeMatch");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalPurchaseOffer", b =>
@@ -10307,6 +10448,11 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxPool", b =>
                 {
                     b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxRoll", b =>
+                {
+                    b.Navigation("Delivery");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalPurchasePoint", b =>
