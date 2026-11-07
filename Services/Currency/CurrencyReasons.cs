@@ -70,6 +70,9 @@ namespace knkwebapi_v2.Services
         /// <summary>Siege match rewards, one multi-leg posting per match. Key: <c>siege-match:{matchId}</c>.</summary>
         public const string SiegeReward = "SIEGE_REWARD";
 
+        /// <summary>Siege Survival per-kill permanent rewards (knk-workspace siege-survival DESIGN §9, S32; link S8a), one multi-leg posting per match for the players still in it. Key: <c>siege-survival:{matchId}</c>.</summary>
+        public const string SurvivalReward = "SURVIVAL_REWARD";
+
         /// <summary>One-time coin/gem/XP bonus of a title reached. Key: <c>title-bonus:{userId}:{bracketId}</c>, one posting with a leg per currency (once ever, DESIGN.md D10; one paid to an account merged into the user's counts as paid).</summary>
         public const string TitleBonus = "TITLE_BONUS";
 
@@ -134,6 +137,7 @@ namespace knkwebapi_v2.Services
             [SignupGrant] = new(SignupGrant, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysSignup, "Starting balance"),
             [Salary] = new(Salary, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysSalary, "Salary payout"),
             [SiegeReward] = new(SiegeReward, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysSiege, "Siege match reward"),
+            [SurvivalReward] = new(SurvivalReward, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysSiege, "Siege Survival per-kill reward"),
             [TitleBonus] = new(TitleBonus, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysTitle, "Title promotion bonus"),
             [KitClaimCost] = new(KitClaimCost, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysKits, "Kit claim cost"),
             [KitPurchase] = new(KitPurchase, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysKits, "Kit purchase"),

@@ -210,6 +210,13 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<SurvivalMysteryBoxRoll> SurvivalMysteryBoxRolls { get; set; } = null!;
     public virtual DbSet<SurvivalMysteryBoxDelivery> SurvivalMysteryBoxDeliveries { get; set; } = null!;
 
+    // Siege Survival phase 5 (DESIGN §9, §10, §11; PandiO/knk-workspace#41, link S8a): the durable match result with
+    // its per-player rows and the latest checkpoint per match. Model configuration: the "Siege Survival phase 5"
+    // block in OnModelCreating; migration AddSiegeSurvivalResults.
+    public virtual DbSet<SurvivalMatchResult> SurvivalMatchResults { get; set; } = null!;
+    public virtual DbSet<SurvivalMatchPlayerResult> SurvivalMatchPlayerResults { get; set; } = null!;
+    public virtual DbSet<SurvivalMatchCheckpoint> SurvivalMatchCheckpoints { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -868,6 +875,57 @@ public partial class KnKDbContext : DbContext
             entity.HasOne(e => e.SurvivalMysteryBoxRoll).WithOne(r => r.Delivery).HasForeignKey<SurvivalMysteryBoxDelivery>(e => e.SurvivalMysteryBoxRollId).OnDelete(DeleteBehavior.Cascade);
         });
         // ==== end Siege Survival phase 4 =======================================================
+
+        // ==== Siege Survival phase 5 (docs/specs/siege-survival/DESIGN.md §9, §10, §11; PandiO/knk-workspace#41, link S8a) ====
+        // One durable result per match (unique SiegeMatchId, cascade), per-player rows (cascade with the result, the
+        // user Restrict like SiegeMatchParticipant), one checkpoint per match (unique, cascade). Scenario/lobby/
+        // profile/kit ids are plain columns: match history must survive authoring deletes.
+        modelBuilder.Entity<SurvivalMatchResult>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_match_results");
+
+            entity.HasIndex(e => e.SiegeMatchId).IsUnique();
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.EndedAt });
+            entity.HasIndex(e => e.EndedAt);
+            entity.Property(e => e.EquipmentMode).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.EndReason).HasConversion<string>().HasMaxLength(30);
+            entity.Property(e => e.Source).HasConversion<string>().HasMaxLength(10);
+            entity.Property(e => e.RewardPolicyVersion).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.LedgerKey).HasMaxLength(100);
+            entity.Property(e => e.LedgerPostingPublicId).HasMaxLength(64);
+            entity.Property(e => e.RequestFingerprint).HasMaxLength(64);
+
+            entity.HasOne(e => e.SiegeMatch).WithOne().HasForeignKey<SurvivalMatchResult>(e => e.SiegeMatchId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurvivalMatchPlayerResult>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_match_player_results");
+
+            entity.HasIndex(e => new { e.SurvivalMatchResultId, e.UserId }).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            // Exact accruals in tenths (DESIGN §9); four decimals leave room for a finer multiplier.
+            entity.Property(e => e.CoinsAccrued).HasPrecision(14, 4);
+            entity.Property(e => e.XpAccrued).HasPrecision(14, 4);
+
+            entity.HasOne(e => e.SurvivalMatchResult).WithMany(r => r.Players).HasForeignKey(e => e.SurvivalMatchResultId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalMatchCheckpoint>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_match_checkpoints");
+
+            entity.HasIndex(e => e.SiegeMatchId).IsUnique();
+            entity.Property(e => e.Substate).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.PayloadJson).IsRequired().HasColumnType("longtext");
+
+            entity.HasOne(e => e.SiegeMatch).WithOne().HasForeignKey<SurvivalMatchCheckpoint>(e => e.SiegeMatchId).OnDelete(DeleteBehavior.Cascade);
+        });
+        // ==== end Siege Survival phase 5 =======================================================
 
         // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
         // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.

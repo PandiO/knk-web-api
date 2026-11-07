@@ -6370,6 +6370,259 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("siege_survival_lobby_settings", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMatchCheckpoint", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AliveEnemies")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CapturedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("CompletedWave")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("DifficultyProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Ghosts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Players")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QueuedEnemies")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeMatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Substate")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Wave")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeMatchId")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_match_checkpoints", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMatchPlayerResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BonusKills")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("CoinsAccrued")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("decimal(14,4)");
+
+                    b.Property<int>("CoinsSettled")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Deaths")
+                        .HasColumnType("int");
+
+                    b.Property<long>("FinalMatchBalance")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Kills")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("KitId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LeftAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("LeftEarly")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<long>("MatchCurrencyEarned")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("MatchCurrencySpent")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("MysteryBoxClaims")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MysteryBoxForfeits")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MysteryBoxRolls")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PresentAtEnd")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<double>("RepairWork")
+                        .HasColumnType("double");
+
+                    b.Property<int>("SurvivalMatchResultId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("XpAccrued")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("decimal(14,4)");
+
+                    b.Property<int>("XpSettled")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SurvivalMatchResultId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("siege_survival_match_player_results", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMatchResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompletedWave")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ConfigurationGeneratedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("DifficultyProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EarnedKills")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EndReason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<DateTime>("EndedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("EquipmentMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("LedgerKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("LedgerPostingPublicId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("PlayersAtEnd")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PlayersAtStart")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReachedWave")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("RequestFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("RewardPolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("SettlesRewards")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("SiegeLobbyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeMatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("SystemKills")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalCoinsSettled")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalXpSettled")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("EndedAt");
+
+                    b.HasIndex("SiegeMatchId")
+                        .IsUnique();
+
+                    b.HasIndex("SiegeScenarioId", "EndedAt");
+
+                    b.ToTable("siege_survival_match_results", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMonsterType", b =>
                 {
                     b.Property<int>("Id")
@@ -9684,6 +9937,47 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("SiegeLobby");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMatchCheckpoint", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeMatch", "SiegeMatch")
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.SurvivalMatchCheckpoint", "SiegeMatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeMatch");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMatchPlayerResult", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SurvivalMatchResult", "SurvivalMatchResult")
+                        .WithMany("Players")
+                        .HasForeignKey("SurvivalMatchResultId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SurvivalMatchResult");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMatchResult", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeMatch", "SiegeMatch")
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.SurvivalMatchResult", "SiegeMatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeMatch");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMonsterType", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
@@ -10438,6 +10732,11 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
                 {
                     b.Navigation("Structures");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMatchResult", b =>
+                {
+                    b.Navigation("Players");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SurvivalMysteryBoxEntry", b =>

@@ -700,8 +700,11 @@ namespace knkwebapi_v2.Dtos
     }
 
     // ==== Result and checkpoint contracts (DESIGN §3, §9, §10 "Runtime/checkpoint") ====
-    // Contracts only in phase 1: the shapes the plugin will report with (phase 5, link S8 persists them and settles
-    // the per-kill rewards through the existing ledger). Nothing here is stored or accepted by an endpoint yet.
+    // Phase 1 (link S4) defined the shapes the plugin reports with; phase 5 (link S8a) accepts them:
+    // POST api/siege-survival/matches/{id}/result stores the result once (same body again = 200 the stored row,
+    // different body = 409 ResultAlreadyStored) and settles the per-kill rewards through the ledger when the end
+    // reason settles (S62); PUT .../checkpoint upserts the latest checkpoint. Fields marked "API-filled" are set by
+    // the API in its answer and ignored in the request body (they take no part in the idempotency comparison).
 
     public class SurvivalMatchResultDto
     {
@@ -720,6 +723,14 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("systemKills")] public int SystemKills { get; set; }
         [JsonPropertyName("players")] public List<SurvivalPlayerResultDto> Players { get; set; } = new();
         [JsonPropertyName("settlement")] public SurvivalSettlementDto Settlement { get; set; } = new();
+        // Phase 5 (link S8a). The equipment mode the match ran with; null in the request = the scenario's setting.
+        [JsonPropertyName("equipmentMode")] public SurvivalEquipmentMode? EquipmentMode { get; set; }
+        // API-filled: the reward policy the settlement used (DESIGN §9 "store ... the reward-policy version").
+        [JsonPropertyName("rewardPolicyVersion")] public string? RewardPolicyVersion { get; set; }
+        // API-filled: Plugin (posted by the game server) or Abort (written by the API at a Siege abort, nothing settled).
+        [JsonPropertyName("source")] public SurvivalMatchResultSource? Source { get; set; }
+        // API-filled: when the row was stored.
+        [JsonPropertyName("recordedAt")] public DateTime? RecordedAt { get; set; }
     }
 
     public class SurvivalPlayerResultDto
@@ -740,6 +751,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("xpAccrued")] public decimal XpAccrued { get; set; }
         [JsonPropertyName("coinsSettled")] public int CoinsSettled { get; set; }
         [JsonPropertyName("xpSettled")] public int XpSettled { get; set; }
+        // Phase 5 (link S8a), API-filled from the match's Mystery Box roll rows (S7a): rolls made, claimed, forfeited.
+        [JsonPropertyName("mysteryBoxRolls")] public int MysteryBoxRolls { get; set; }
+        [JsonPropertyName("mysteryBoxClaims")] public int MysteryBoxClaims { get; set; }
+        [JsonPropertyName("mysteryBoxForfeits")] public int MysteryBoxForfeits { get; set; }
     }
 
     public class SurvivalSettlementDto
@@ -748,8 +763,14 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("settlesRewards")] public bool SettlesRewards { get; set; }
         [JsonPropertyName("totalCoins")] public int TotalCoins { get; set; }
         [JsonPropertyName("totalXp")] public int TotalXp { get; set; }
-        // The ledger idempotency key the settlement will use (siege-match:{id} convention).
+        // The ledger idempotency key the settlement uses: siege-survival:{matchId} (link S8a; the PvP posting keeps
+        // siege-match:{id}). Optional in the request; when given it must be this key.
         [JsonPropertyName("ledgerKey")] public string? LedgerKey { get; set; }
+        // Phase 5 (link S8a), API-filled: when the posting was made (also set when there was nothing to pay), its
+        // public id (null when no leg was > 0 or nothing settles) and how many players got a leg.
+        [JsonPropertyName("settledAt")] public DateTime? SettledAt { get; set; }
+        [JsonPropertyName("ledgerPostingId")] public string? LedgerPostingId { get; set; }
+        [JsonPropertyName("playersSettled")] public int PlayersSettled { get; set; }
     }
 
     public class SurvivalMatchCheckpointDto
@@ -768,6 +789,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("activeSpawnZoneIds")] public List<int> ActiveSpawnZoneIds { get; set; } = new();
         [JsonPropertyName("doorRepairs")] public List<SurvivalDoorRepairCheckpointDto> DoorRepairs { get; set; } = new();
         [JsonPropertyName("players")] public List<SurvivalPlayerCheckpointDto> Players { get; set; } = new();
+        // Phase 5 (link S8a), API-filled: when the stored checkpoint was last written and how many times (1 = first).
+        [JsonPropertyName("updatedAt")] public DateTime? UpdatedAt { get; set; }
+        [JsonPropertyName("revision")] public int? Revision { get; set; }
     }
 
     public class SurvivalDoorRepairCheckpointDto
