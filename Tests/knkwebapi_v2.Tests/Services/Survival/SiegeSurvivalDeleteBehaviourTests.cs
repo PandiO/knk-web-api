@@ -14,6 +14,10 @@ public class SiegeSurvivalDeleteBehaviourTests
 {
     public static IEnumerable<object[]> ExpectedDeleteRules() => new List<object[]>
     {
+        // Phase 4 (link S7a): rolls cascade with the match, the user is Restrict; the delivery cascades with its roll.
+        new object[] { typeof(SurvivalMysteryBoxRoll), nameof(SurvivalMysteryBoxRoll.SiegeMatchId), DeleteBehavior.Cascade },
+        new object[] { typeof(SurvivalMysteryBoxRoll), nameof(SurvivalMysteryBoxRoll.UserId), DeleteBehavior.Restrict },
+        new object[] { typeof(SurvivalMysteryBoxDelivery), nameof(SurvivalMysteryBoxDelivery.SurvivalMysteryBoxRollId), DeleteBehavior.Cascade },
         new object[] { typeof(SiegeSurvivalSettings), nameof(SiegeSurvivalSettings.SiegeScenarioId), DeleteBehavior.Cascade },
         new object[] { typeof(SiegeSurvivalSettings), nameof(SiegeSurvivalSettings.HumanTeamId), DeleteBehavior.SetNull },
         new object[] { typeof(SiegeSurvivalSettings), nameof(SiegeSurvivalSettings.NpcTeamId), DeleteBehavior.SetNull },
@@ -68,7 +72,8 @@ public class SiegeSurvivalDeleteBehaviourTests
         using var context = SiegeTestData.NewContext("SurvivalTables");
         var survivalTypes = context.Model.GetEntityTypes()
             .Where(t => t.ClrType.Name.StartsWith("Survival") || t.ClrType == typeof(SiegeSurvivalSettings)).ToList();
-        Assert.Equal(18, survivalTypes.Count);
+        // 18 phase 1 tables + the phase 4 roll and delivery tables (link S7a).
+        Assert.Equal(20, survivalTypes.Count);
         Assert.All(survivalTypes, t => Assert.StartsWith("siege_survival_", t.GetTableName()!));
         foreach (var property in survivalTypes.SelectMany(t => t.GetProperties()).Where(p => p.ClrType.IsEnum))
             Assert.Equal(typeof(string), property.GetProviderClrType());
