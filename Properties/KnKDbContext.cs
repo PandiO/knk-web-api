@@ -204,6 +204,12 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<SurvivalMysteryBoxEntryEnchantment> SurvivalMysteryBoxEntryEnchantments { get; set; } = null!;
     public virtual DbSet<SurvivalMysteryBoxPoint> SurvivalMysteryBoxPoints { get; set; } = null!;
 
+    // Siege Survival phase 4 (DESIGN §8a; PandiO/knk-workspace#41, link S7a): the match-scoped Mystery Box rolls and
+    // their one delivery per roll. Model configuration: the "Siege Survival phase 4" block in OnModelCreating;
+    // migration AddSiegeSurvivalMysteryBoxRolls.
+    public virtual DbSet<SurvivalMysteryBoxRoll> SurvivalMysteryBoxRolls { get; set; } = null!;
+    public virtual DbSet<SurvivalMysteryBoxDelivery> SurvivalMysteryBoxDeliveries { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -826,6 +832,42 @@ public partial class KnKDbContext : DbContext
             entity.HasOne(e => e.SurvivalMysteryBoxPool).WithMany().HasForeignKey(e => e.SurvivalMysteryBoxPoolId).OnDelete(DeleteBehavior.Restrict);
         });
         // ==== end Siege Survival phase 1 =======================================================
+
+        // ==== Siege Survival phase 4 (docs/specs/siege-survival/DESIGN.md §8a; PandiO/knk-workspace#41, link S7a) ====
+        // Match-scoped Mystery Box rolls: one row per plugin roll id (unique), the picked entry as a snapshot (plain
+        // point/pool/entry ids, no FK, so authoring never conflicts with match history), cascade with the match, the
+        // user Restrict like SiegeMatchParticipant; at most one delivery per roll (unique index).
+        modelBuilder.Entity<SurvivalMysteryBoxRoll>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_mystery_box_rolls");
+
+            entity.Property(e => e.RollId).IsRequired().HasMaxLength(64);
+            entity.HasIndex(e => e.RollId).IsUnique();
+            entity.HasIndex(e => new { e.SiegeMatchId, e.RolledAt });
+            entity.HasIndex(e => new { e.SiegeMatchId, e.UserId });
+            entity.Property(e => e.Variant).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.State).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ForfeitReason).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.EntryJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.RolledEnchantmentsJson).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.ReelJson).IsRequired().HasMaxLength(2000);
+
+            entity.HasOne(e => e.SiegeMatch).WithMany().HasForeignKey(e => e.SiegeMatchId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SurvivalMysteryBoxDelivery>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_survival_mystery_box_deliveries");
+
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.SurvivalMysteryBoxRollId).IsUnique();
+
+            entity.HasOne(e => e.SurvivalMysteryBoxRoll).WithOne(r => r.Delivery).HasForeignKey<SurvivalMysteryBoxDelivery>(e => e.SurvivalMysteryBoxRollId).OnDelete(DeleteBehavior.Cascade);
+        });
+        // ==== end Siege Survival phase 4 =======================================================
 
         // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
         // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.

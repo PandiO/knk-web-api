@@ -386,6 +386,22 @@ namespace knkwebapi_v2.Services
                 Error(result, SurvivalReadinessCodes.MixDuplicate, $"{label}: monster type {duplicate.Key} is selected twice.", entityType, entityId);
         }
 
+        /// <summary>
+        /// The pool rules alone (DESIGN §8a, S59: entries valid for the variant, references known, every chance in
+        /// range, total exactly 100 %), for the match-scoped roll (link S7a): the box.* errors, empty when the pool
+        /// is valid. The same rules as the scenario readiness.
+        /// </summary>
+        public static List<SiegeReadinessIssueDto> EvaluatePool(SurvivalMysteryBoxPool pool, HashSet<int> existingItemBlueprintIds, HashSet<int> existingEnchantmentDefinitionIds)
+        {
+            var result = new SurvivalReadinessDto();
+            CheckPool(result, pool, new SurvivalScenarioGraph
+            {
+                ExistingItemBlueprintIds = existingItemBlueprintIds,
+                ExistingEnchantmentDefinitionIds = existingEnchantmentDefinitionIds
+            });
+            return result.Errors;
+        }
+
         private static void CheckPool(SurvivalReadinessDto result, SurvivalMysteryBoxPool pool, SurvivalScenarioGraph graph)
         {
             var type = nameof(SurvivalMysteryBoxPool);

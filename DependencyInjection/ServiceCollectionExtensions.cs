@@ -225,6 +225,15 @@ namespace knkwebapi_v2.DependencyInjection
             // Siege Survival phase 1 (PandiO/knk-workspace#41, link S4) — survival settings, child collections, frozen configuration
             services.AddScoped<ISiegeSurvivalRepository, SiegeSurvivalRepository>();
             services.AddScoped<ISiegeSurvivalService, SiegeSurvivalService>();
+            // Siege Survival phase 4 (PandiO/knk-workspace#41, link S7a) — match-scoped Mystery Box rolls (section "SiegeSurvival", optional)
+            services.AddOptions<knkwebapi_v2.Configuration.SiegeSurvivalOptions>();
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.SiegeSurvivalOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.SiegeSurvivalOptions.SectionName));
+            }
+            services.AddScoped<ISurvivalMysteryBoxRollRepository, SurvivalMysteryBoxRollRepository>();
+            services.AddScoped<ISurvivalMysteryBoxRollService, knkwebapi_v2.Services.Survival.SurvivalMysteryBoxRollService>();
             // Road navigation (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
             services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();
             services.AddScoped<IRoadNetworkService, RoadNetworkService>();
