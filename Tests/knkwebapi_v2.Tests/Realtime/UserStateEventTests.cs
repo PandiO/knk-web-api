@@ -167,9 +167,12 @@ public class UserStateEventTests
 
     private static readonly PermissionGroup Builders = new() { Id = 40, Name = "Builders", Weight = 5 };
 
+    /// <summary>The dashboard read checks (#280 AM2) the services drop entries from.</summary>
+    private readonly Mock<IPermissionReadCache> _readCache = new();
+
     private UserPermissionGroupService MembershipService() =>
         new(_memberships.Object, _users.Object, _groups.Object, new Mock<IAuditLogService>().Object, _queue.Object,
-            realtime: _sink);
+            realtime: _sink, readCache: _readCache.Object);
 
     [Fact]
     public async Task GroupAssigned_SendsUserPermissionsChanged_AndStillQueuesRankChanged()
@@ -204,14 +207,15 @@ public class UserStateEventTests
 
     private readonly Mock<IPermissionGrantRepository> _grants = new();
 
-    private PermissionGrantService GrantService()
+    private PermissionGrantService GrantService(bool noSink = false)
     {
         var mapper = new Mock<IMapper>();
         mapper.Setup(m => m.Map<PermissionGrantDto>(It.IsAny<PermissionGrant>()))
             .Returns((PermissionGrant g) => new PermissionGrantDto { Id = g.Id, HolderId = g.HolderId, Node = g.Node, Value = g.Value });
         _grants.Setup(r => r.HolderExistsAsync(It.IsAny<int>())).ReturnsAsync(true);
         _grants.Setup(r => r.GetGrantsForHolderNodeAsync(It.IsAny<int>(), It.IsAny<string>())).ReturnsAsync(new List<PermissionGrant>());
-        return new PermissionGrantService(_grants.Object, mapper.Object, _users.Object, new Mock<IAuditLogService>().Object, _sink);
+        return new PermissionGrantService(_grants.Object, mapper.Object, _users.Object, new Mock<IAuditLogService>().Object,
+            noSink ? null : _sink, _readCache.Object);
     }
 
     [Fact]
@@ -334,5 +338,56 @@ public class UserStateEventTests
 
         Assert.Equal(new UserBalancesChangedPayload(1, Uuid, 125, 4, 50),
             Assert.Single(_sink.Payloads<UserBalancesChangedPayload>(RealtimeEventTypes.UserBalancesChanged)));
+    }
+
+    // ===== the dashboard read cache follows the same changes (#280 AM2) =====
+
+    [Fact]
+    public async Task MembershipChange_DropsTheUsersReadChecks()
+    {
+        _users.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice", Uuid = Uuid });
+        _groups.Setup(r => r.GetByIdAsync(Builders.Id)).ReturnsAsync(Builders);
+        _memberships.Setup(r => r.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroup>());
+
+        await MembershipService().UpsertAsync(new UpsertUserPermissionGroupDto { UserId = 1, PermissionGroupId = Builders.Id }, actorUserId: 9);
+
+        _readCache.Verify(c => c.ForgetUser(1), Times.Once);
+        _readCache.Verify(c => c.ForgetAll(), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GrantToAUser_DropsTheirReadChecks_EvenWithoutRealtime(bool noSink)
+    {
+        // A web-only account (no UUID) gets no realtime event, but its read checks still go.
+        _users.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        await GrantService(noSink).UpsertByNodeAsync(1, "knk.admin.world", true, null, actorUserId: 9);
+
+        _readCache.Verify(c => c.ForgetUser(1), Times.Once);
+    }
+
+    [Fact]
+    public async Task GrantToAGroup_DropsEveryReadCheck()
+    {
+        _users.Setup(r => r.GetByIdAsync(Builders.Id)).ReturnsAsync((User?)null);
+
+        await GrantService().UpsertByNodeAsync(Builders.Id, "knk.admin.world", true, null, actorUserId: 9);
+
+        _readCache.Verify(c => c.ForgetAll(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GroupUpdatedAndDeleted_DropEveryReadCheck()
+    {
+        var repo = new Mock<IPermissionGroupRepository>();
+        repo.Setup(r => r.GetByIdAsync(Builders.Id)).ReturnsAsync(new PermissionGroup { Id = Builders.Id, Name = "Builders" });
+        var service = new PermissionGroupService(repo.Object, new Mock<IMapper>().Object, null, _readCache.Object);
+
+        await service.UpdateAsync(Builders.Id, new PermissionGroupDto { Name = "Builders", SalaryMultiplier = 1 });
+        await service.DeleteAsync(Builders.Id);
+
+        _readCache.Verify(c => c.ForgetAll(), Times.Exactly(2));
     }
 }
