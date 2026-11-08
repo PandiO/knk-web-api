@@ -17,18 +17,20 @@ namespace knkwebapi_v2.Realtime;
 ///     presence store and the REST <c>PUT api/Users/{id}/presence</c> both save through EF). More than
 ///     <see cref="CollapseAbove"/> in one save (a roster reconcile) → one event without a user id.</item>
 /// </list>
-/// Each event names the node a receiver must hold (<see cref="RealtimeEvent.WebNode"/>), the node that already gates
-/// the same data over REST: <c>knk.admin.content</c> (the dashboard and detail page) by default,
-/// <c>knk.admin.user.manage</c> for users and their memberships, grants and audit log (the moderation list and the
-/// player profile; also presence), and nothing at all for types whose REST reads are the game server's or a ledger
-/// (<see cref="NotSent"/>).
+/// Each event names the node a receiver must hold (<see cref="RealtimeEvent.WebNode"/>): the type's **area node** from
+/// <see cref="DashboardAccess"/> (dashboard access model, PandiO/knk-workspace#280 decision 8, DESIGN.md § 4.7), so a
+/// world builder gets world events and a content editor content events; <c>knk.admin.user.manage</c> for users and
+/// their memberships, grants and audit log (the moderation list and the player profile; also presence);
+/// <see cref="DefaultNode"/> for a type outside the registry; and nothing at all for types whose REST reads are the game
+/// server's or a ledger (<see cref="NotSent"/>). Delete nodes don't change the audience: a <c>Deleted</c> event goes to
+/// whoever may view the type. A base type's event (<c>Domain</c> for a saved <c>Town</c>) uses the base type's area.
 /// </summary>
 public static class RealtimeWebChangeMap
 {
     /// <summary>More entities of one type than this in one save → one event without an id.</summary>
     public const int CollapseAbove = 50;
 
-    /// <summary>The node for every type not listed below: the dashboard's and the detail page's.</summary>
+    /// <summary>The node for a type outside <see cref="DashboardAccess"/> (none today; pinned by the tests).</summary>
     public const string DefaultNode = StaffPermissions.ManageContent;
 
     /// <summary>Types read over REST only with <c>knk.admin.user.manage</c>.</summary>
@@ -84,8 +86,11 @@ public static class RealtimeWebChangeMap
     public static string? NodeFor(Type entityType)
     {
         if (NotSent.Contains(entityType)) return null;
-        return UserManagedTypes.Contains(entityType) ? StaffPermissions.ManageUsers : DefaultNode;
+        return UserManagedTypes.Contains(entityType) ? StaffPermissions.ManageUsers : NodeForName(entityType.Name);
     }
+
+    /// <summary>The node for the events of one dashboard type name: its area node, or <see cref="DefaultNode"/>.</summary>
+    public static string NodeForName(string typeName) => DashboardAccess.Find(typeName)?.AreaNode ?? DefaultNode;
 
     /// <summary>The web events for one save, entity events first, then presence; without duplicates.</summary>
     /// <param name="serverOf">The game server a UUID is on (the presence registry), or null.</param>
@@ -134,8 +139,8 @@ public static class RealtimeWebChangeMap
 
     private static void AddEntityChanged(RealtimeEntityChange change, List<(string, string, int?, string)> into)
     {
-        var node = NodeFor(change.EntityType);
-        if (node == null) return;
+        var ownNode = NodeFor(change.EntityType);
+        if (ownNode == null) return;
         var names = DashboardTypeNames(change.EntityType);
         if (names.Count == 0) return;
         if (change.State == RealtimeEntityState.Modified && Quiet(change)) return;
@@ -149,6 +154,9 @@ public static class RealtimeWebChangeMap
         };
         foreach (var name in names)
         {
+            // The CLR type's own name keeps its node (users stay on knk.admin.user.manage); a base type's name is
+            // sent to that base type's area.
+            var node = name == change.EntityType.Name ? ownNode : NodeForName(name);
             into.Add((node, name, id, op));
         }
     }

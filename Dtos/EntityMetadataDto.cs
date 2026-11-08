@@ -13,6 +13,43 @@ namespace knkwebapi_v2.Dtos
         public List<FieldMetadataDto> Fields { get; set; } = new();
         [JsonPropertyName("defaultTableColumns")]
         public List<string>? DefaultTableColumns { get; set; }
+
+        // Dashboard access model (PandiO/knk-workspace#280, DESIGN.md § 4.2), from Attributes/DashboardAccess, so the
+        // web app never hard-codes a node per type. Null/false for a type outside the registry.
+
+        /// <summary>The type's area: Content, World, Kits, Lootboxes, Siege, Roads or Players.</summary>
+        [JsonPropertyName("area")]
+        public string? Area { get; set; }
+
+        /// <summary>The area node: view, create and edit (and who gets the type's live updates).</summary>
+        [JsonPropertyName("accessNode")]
+        public string? AccessNode { get; set; }
+
+        /// <summary>What create and edit need: the area node, except permission groups (knk.admin.user.perm).</summary>
+        [JsonPropertyName("writeNode")]
+        public string? WriteNode { get; set; }
+
+        /// <summary>Any one of these lets a user read the type in full (area node plus cross-area page nodes).</summary>
+        [JsonPropertyName("readNodes")]
+        public List<string> ReadNodes { get; set; } = new();
+
+        [JsonPropertyName("deletable")]
+        public bool Deletable { get; set; }
+
+        [JsonPropertyName("bulkDeletable")]
+        public bool BulkDeletable { get; set; }
+
+        /// <summary>POST api/Dashboard/export can read this type.</summary>
+        [JsonPropertyName("exportable")]
+        public bool Exportable { get; set; }
+
+        /// <summary>
+        /// For each action the type allows, every node it needs (all of them): <c>create</c>, <c>edit</c>,
+        /// <c>delete</c>, <c>bulkDelete</c>, <c>export</c>. An action the type doesn't allow is left out. Viewing is
+        /// <see cref="ReadNodes"/> (any one).
+        /// </summary>
+        [JsonPropertyName("actionNodes")]
+        public Dictionary<string, List<string>> ActionNodes { get; set; } = new();
     }
 
     public class FieldMetadataDto

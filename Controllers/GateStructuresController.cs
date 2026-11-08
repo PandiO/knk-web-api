@@ -142,6 +142,8 @@ namespace KnKWebAPI.Controllers
         }
 
         [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

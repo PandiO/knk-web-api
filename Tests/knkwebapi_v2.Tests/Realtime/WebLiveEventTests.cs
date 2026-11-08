@@ -37,7 +37,7 @@ public class WebLiveEventTests
     // ===== the map =====
 
     [Fact]
-    public void Map_DashboardType_SendsEntityChangedToContentStaff_WithTheActor()
+    public void Map_DashboardType_SendsEntityChangedToItsAreaStaff_WithTheActor()
     {
         var events = RealtimeWebChangeMap.Map(new[]
         {
@@ -49,9 +49,10 @@ public class WebLiveEventTests
         Assert.All(events, e => Assert.Null(e.WebGroups));
         Assert.Equal(new[]
         {
-            (StaffPermissions.ManageContent, new WebEntityChangedPayload("Street", 3, EntityChangeOps.Updated, 7, "alice")),
+            // Dashboard access model (PandiO/knk-workspace#280 decision 8): each type's area node.
+            (StaffPermissions.ManageWorld, new WebEntityChangedPayload("Street", 3, EntityChangeOps.Updated, 7, "alice")),
             (StaffPermissions.ManageContent, new WebEntityChangedPayload("ItemBlueprint", 9, EntityChangeOps.Created, 7, "alice")),
-            (StaffPermissions.ManageContent, new WebEntityChangedPayload("LootboxType", 2, EntityChangeOps.Deleted, 7, "alice")),
+            (StaffPermissions.ManageLootboxes, new WebEntityChangedPayload("LootboxType", 2, EntityChangeOps.Deleted, 7, "alice")),
         }, Entities(events));
     }
 
@@ -368,7 +369,7 @@ public class WebLiveEventTests
 
         Assert.Empty(f.Publisher.Game); // a street was never a game-server event
         var web = Assert.Single(f.Publisher.Web);
-        Assert.Equal((StaffPermissions.ManageContent, WebLiveEventTypes.EntityChanged), (web.Node, web.Type));
+        Assert.Equal((StaffPermissions.ManageWorld, WebLiveEventTypes.EntityChanged), (web.Node, web.Type));
         Assert.Equal(new WebEntityChangedPayload("Street", street.Id, EntityChangeOps.Created, null, null), web.Payload);
         Assert.Equal("system", web.Actor!.Source);
 
@@ -481,8 +482,52 @@ public class WebLiveEventTests
         var (messages, _) = await SaveTownAndPresence(interceptor, publisher);
 
         var web = messages.Where(m => m.Hub == RealtimeHubKind.Web).ToList();
-        Assert.Contains(web, m => m.Type == WebLiveEventTypes.EntityChanged && m.RequiredNode == StaffPermissions.ManageContent);
+        Assert.Contains(web, m => m.Type == WebLiveEventTypes.EntityChanged && m.RequiredNode == StaffPermissions.ManageWorld);
         Assert.Contains(web, m => m.Type == WebLiveEventTypes.PresenceChanged && m.RequiredNode == StaffPermissions.ManageUsers);
         Assert.Contains(messages, m => m.Hub == RealtimeHubKind.Game && m.Type == "EntityChanged");
+    }
+
+    // ===== dashboard access model: live updates follow the area (PandiO/knk-workspace#280 decision 8) =====
+
+    [Theory]
+    [InlineData(typeof(Category), StaffPermissions.ManageContent)]
+    [InlineData(typeof(MinecraftMaterialRef), StaffPermissions.ManageContent)]
+    [InlineData(typeof(Town), StaffPermissions.ManageWorld)]
+    [InlineData(typeof(GateDoor), StaffPermissions.ManageWorld)]
+    [InlineData(typeof(Kit), StaffPermissions.ManageKits)]
+    [InlineData(typeof(KitContent), StaffPermissions.ManageKits)]
+    [InlineData(typeof(LootboxSpawnArea), StaffPermissions.ManageLootboxes)]
+    [InlineData(typeof(SiegeTeam), StaffPermissions.SiegeManage)]
+    [InlineData(typeof(PermissionGroup), StaffPermissions.ManageUsers)]
+    [InlineData(typeof(User), StaffPermissions.ManageUsers)]
+    [InlineData(typeof(PermissionGrant), StaffPermissions.ManageUsers)]
+    [InlineData(typeof(AuditLogEntry), StaffPermissions.ManageUsers)]
+    public void NodeFor_IsTheTypesAreaNode(Type entityType, string node)
+    {
+        Assert.Equal(node, RealtimeWebChangeMap.NodeFor(entityType));
+    }
+
+    [Fact]
+    public void NodeFor_NotSentTypes_StaysNull()
+    {
+        Assert.Null(RealtimeWebChangeMap.NodeFor(typeof(ItemInstance)));
+        Assert.Null(RealtimeWebChangeMap.NodeFor(typeof(KitClaim)));
+    }
+
+    [Fact]
+    public void EveryWatchedDashboardType_HasAnAreaNode_NotTheFallback()
+    {
+        var types = typeof(Town).Assembly.GetTypes()
+            .Where(t => t.GetCustomAttributes(typeof(FormConfigurableEntityAttribute), false).Length > 0)
+            .Where(RealtimeWebChangeMap.IsWatched);
+        Assert.All(types, t => Assert.Equal(DashboardAccess.Find(t.Name)!.AreaNode, RealtimeWebChangeMap.NodeFor(t)));
+    }
+
+    [Fact]
+    public void Map_ADeleteGoesToWhoeverViewsTheType_NotToADeleteNode()
+    {
+        var events = RealtimeWebChangeMap.Map(new[] { Change(typeof(Kit), RealtimeEntityState.Deleted, null, ("Id", 5)) });
+        Assert.Equal(new[] { (StaffPermissions.ManageKits, new WebEntityChangedPayload("Kit", 5, EntityChangeOps.Deleted, null, null)) },
+            Entities(events));
     }
 }
