@@ -223,6 +223,8 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(KitsController), nameof(KitsController.Claim), null),
         R(typeof(KitsController), nameof(KitsController.Purchase), null),
         R(typeof(KitsController), nameof(KitsController.GrantFirstJoin), null),
+        R(typeof(KitsController), nameof(KitsController.GetPendingDeliveries), null),
+        R(typeof(KitsController), nameof(KitsController.MarkDelivered), null),
         // Config and permissions
         R(typeof(SalaryConfigurationController), nameof(SalaryConfigurationController.Update), "knk.admin.currency.policy"),
         R(typeof(AuditLogRetentionConfigurationController), nameof(AuditLogRetentionConfigurationController.Update), "knk.admin.config"),

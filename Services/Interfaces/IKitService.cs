@@ -37,8 +37,21 @@ namespace knkwebapi_v2.Services.Interfaces
         Task<KitPurchaseResultDto> PurchaseKitAsync(int userId, int kitId, CurrencyContext? purchaseContext = null);
 
         /// <summary>Staff-initiated grant - bypasses gating, cooldown, and cost entirely by
-        /// design (DESIGN.md §4.1, §0b). Still writes a normal KitClaim row.</summary>
-        Task<KitClaimResultDto> GiveKitAsync(int? actorUserId, int targetUserId, int kitId);
+        /// design (DESIGN.md §4.1, §0b). Still writes a normal KitClaim row.
+        /// <paramref name="queueDelivery"/>: the caller is not the game server, which places the
+        /// items itself for /kit give, so the API owes the player an in-game hand-over
+        /// (PandiO/knk-workspace#261): the claim is marked pending and a KitDeliveryPending
+        /// notification nudges the game server.</summary>
+        Task<KitClaimResultDto> GiveKitAsync(int? actorUserId, int targetUserId, int kitId, bool queueDelivery = false);
+
+        /// <summary>The user's staff grants still waiting for the in-game hand-over, oldest first
+        /// (PandiO/knk-workspace#261). Read by the game server on join and on KitDeliveryPending.</summary>
+        Task<List<KitDeliveryDto>> GetPendingDeliveriesAsync(int userId);
+
+        /// <summary>The game server takes a pending delivery before it places the items. Exactly one
+        /// caller gets <see cref="KitDeliveryMarkResult.Delivered"/>; every later one gets
+        /// AlreadyDelivered, so a grant is never handed over twice.</summary>
+        Task<KitDeliveryMarkResult> MarkDeliveredAsync(int userId, int claimId);
 
         /// <summary>Grants every GrantOnFirstJoin kit the user is gated to receive, ignoring
         /// cost/cooldown entirely (DESIGN.md §4.4).</summary>

@@ -2798,6 +2798,12 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("ClaimedAt")
                         .HasColumnType("datetime");
 
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<DateTime?>("DeliveryRequestedAt")
+                        .HasColumnType("datetime");
+
                     b.Property<int>("KitId")
                         .HasColumnType("int");
 
