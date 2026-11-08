@@ -15,6 +15,7 @@ public partial class KnKDbContext
     public virtual DbSet<TelemetryTestRun> TelemetryTestRuns { get; set; } = null!;
     public virtual DbSet<TelemetryEnhancedTarget> TelemetryEnhancedTargets { get; set; } = null!;
     public virtual DbSet<PrivacyDeletionRequest> PrivacyDeletionRequests { get; set; } = null!;
+    public virtual DbSet<PrivacyErasureEvent> PrivacyErasureEvents { get; set; } = null!;
 
     private static void ConfigureTelemetry(ModelBuilder modelBuilder)
     {
@@ -96,6 +97,20 @@ public partial class KnKDbContext
             entity.HasIndex(e => new { e.Status, e.DueAt });
             entity.HasIndex(e => new { e.Status, e.ScheduledAt });
             entity.HasIndex(e => e.ConfirmationTokenHash);
+            entity.HasIndex(e => e.UserId);
+        });
+
+        // Realtime S5 (PandiO/knk-workspace#184): the erasure feed game servers catch up from; Id is the sequence.
+        modelBuilder.Entity<PrivacyErasureEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("privacy_erasure_events");
+
+            entity.Property(e => e.FormerUuid).HasMaxLength(36);
+            entity.Property(e => e.ErasedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.UuidClearedAt).HasColumnType("datetime(6)");
+
+            entity.HasIndex(e => e.ErasedAt);
             entity.HasIndex(e => e.UserId);
         });
     }

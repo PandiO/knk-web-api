@@ -197,6 +197,57 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("contents")]
         public List<KitContentSlotDto> Contents { get; set; } = new();
+
+        /// <summary>The KitClaim row a give wrote (PandiO/knk-workspace#261); null on the other
+        /// grant paths.</summary>
+        [JsonPropertyName("claimId")]
+        public int? ClaimId { get; set; }
+
+        /// <summary>True when the items still have to be handed over in game (a staff grant from
+        /// outside the game server, PandiO/knk-workspace#261): the player gets them within seconds
+        /// when online, otherwise on their next join. False when the caller places them itself.</summary>
+        [JsonPropertyName("deliveryPending")]
+        public bool DeliveryPending { get; set; }
+    }
+
+    /// <summary>A staff grant waiting for its in-game hand-over (PandiO/knk-workspace#261).</summary>
+    public class KitDeliveryDto
+    {
+        [JsonPropertyName("claimId")]
+        public int ClaimId { get; set; }
+
+        [JsonPropertyName("kitId")]
+        public int KitId { get; set; }
+
+        [JsonPropertyName("kitName")]
+        public string KitName { get; set; } = "";
+
+        [JsonPropertyName("grantedAt")]
+        public DateTime GrantedAt { get; set; }
+
+        /// <summary>What to place, the same loadout a claim returns.</summary>
+        [JsonPropertyName("loadout")]
+        public KitClaimResultDto Loadout { get; set; } = new();
+    }
+
+    /// <summary>Answer of POST api/Kits/deliveries/{claimId}/delivered.</summary>
+    public class KitDeliveryMarkResultDto
+    {
+        [JsonPropertyName("claimId")]
+        public int ClaimId { get; set; }
+
+        [JsonPropertyName("delivered")]
+        public bool Delivered { get; set; }
+    }
+
+    public enum KitDeliveryMarkResult
+    {
+        /// <summary>This call took the delivery: the caller places the items now.</summary>
+        Delivered,
+        /// <summary>Taken before (another server, an earlier call): place nothing.</summary>
+        AlreadyDelivered,
+        /// <summary>No such claim for this user, or it was never an in-game delivery.</summary>
+        NotFound
     }
 
     // One resolved (SlotIndex, ItemBlueprintId, Quantity) entry within a KitClaimResultDto.

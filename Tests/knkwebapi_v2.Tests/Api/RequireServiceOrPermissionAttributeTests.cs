@@ -223,6 +223,8 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(KitsController), nameof(KitsController.Claim), null),
         R(typeof(KitsController), nameof(KitsController.Purchase), null),
         R(typeof(KitsController), nameof(KitsController.GrantFirstJoin), null),
+        R(typeof(KitsController), nameof(KitsController.GetPendingDeliveries), null),
+        R(typeof(KitsController), nameof(KitsController.MarkDelivered), null),
         // Config and permissions
         R(typeof(SalaryConfigurationController), nameof(SalaryConfigurationController.Update), "knk.admin.currency.policy"),
         R(typeof(AuditLogRetentionConfigurationController), nameof(AuditLogRetentionConfigurationController.Update), "knk.admin.config"),
@@ -266,6 +268,8 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ListOpenForServer), null),
         // WT2 (PandiO/knk-workspace#181): the "Hand off to…" picker lists online staff for staff who create world tasks
         R(typeof(knkwebapi_v2.Controllers.PresenceController), nameof(knkwebapi_v2.Controllers.PresenceController.OnlineStaff), "knk.admin.world"),
+        // Realtime S5 (PandiO/knk-workspace#184): the erasure feed carries former UUIDs and is the game server's only
+        R(typeof(knkwebapi_v2.Controllers.PrivacyErasuresController), nameof(knkwebapi_v2.Controllers.PrivacyErasuresController.GetSince), null),
     };
 
     /// <summary>node null = plugin-only (RequirePluginService).</summary>
