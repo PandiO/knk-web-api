@@ -10,6 +10,8 @@ using knkwebapi_v2.Configuration;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Realtime;
+using knkwebapi_v2.Realtime.Contracts;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
@@ -87,6 +89,16 @@ namespace knkwebapi_v2.Services.Privacy
 
         /// <summary>Marks unconfirmed requests whose link expired as Expired; returns how many.</summary>
         Task<int> ExpireConfirmationsAsync(DateTime now, CancellationToken ct = default);
+
+        /// <summary>
+        /// Realtime S5 (PandiO/knk-workspace#184): the erasure feed after <paramref name="sinceId"/>, oldest first, at most
+        /// <paramref name="limit"/> (1-500) rows. The game server calls it on every hub (re)connect. A former UUID that an
+        /// account holds again (a returning player) is left out of its row.
+        /// </summary>
+        Task<PrivacyErasureFeedDto> GetErasuresSinceAsync(long sinceId, int limit, CancellationToken ct = default);
+
+        /// <summary>Clears the former UUID of feed rows older than Privacy:ErasureFeedUuidRetentionDays; returns how many.</summary>
+        Task<int> ClearExpiredErasureUuidsAsync(DateTime now, CancellationToken ct = default);
     }
 
     /// <summary>
@@ -100,6 +112,9 @@ namespace knkwebapi_v2.Services.Privacy
     /// account merged into them, and pseudonymizes their users rows. Ledger and Siege match rows stay
     /// (accounting records / other players' history) on the anonymous account, which never gets
     /// statistics again. The request keeps only counts.</para>
+    /// <para>Realtime S5 (PandiO/knk-workspace#184): the same transaction writes one <see cref="PrivacyErasureEvent"/> per
+    /// erased account (the feed game servers catch up from), and once it committed an <c>AccountErased</c> event per
+    /// account goes to the game servers, which kick the player and delete what they keep locally.</para>
     /// </summary>
     public sealed class PrivacyDeletionService : IPrivacyDeletionService
     {
@@ -114,20 +129,25 @@ namespace knkwebapi_v2.Services.Privacy
         private readonly IMemoryCache _cache;
         private readonly ILogger _logger;
         private readonly Func<DateTime> _clock;
+        private readonly IRealtimeEventSink? _realtime;
+
+        /// <summary>Most feed rows one <see cref="GetErasuresSinceAsync"/> call returns.</summary>
+        public const int MaxErasureFeedPage = 500;
 
         public PrivacyDeletionService(IPrivacyRepository repository, ICurrencyService currency, IAuditLogService audit,
             IPrivacyEmailService email, IMemoryCache cache, IOptions<PrivacyOptions>? options = null,
             IOptions<SecuritySettings>? security = null, ILogger<PrivacyDeletionService>? logger = null,
-            IOptions<AppSettings>? app = null)
+            IOptions<AppSettings>? app = null, IRealtimeEventSink? realtime = null)
             : this(repository, currency, audit, email, options?.Value ?? new PrivacyOptions(), () => DateTime.UtcNow,
-                security?.Value.PasswordResetFrontendBaseUrl, cache, logger, app?.Value.PublicBaseUrl)
+                security?.Value.PasswordResetFrontendBaseUrl, cache, logger, app?.Value.PublicBaseUrl, realtime)
         {
         }
 
         public PrivacyDeletionService(IPrivacyRepository repository, ICurrencyService currency, IAuditLogService audit,
             IPrivacyEmailService email, PrivacyOptions options, Func<DateTime> clock, string? fallbackFrontendBaseUrl = null,
-            IMemoryCache? cache = null, ILogger? logger = null, string? publicBaseUrl = null)
+            IMemoryCache? cache = null, ILogger? logger = null, string? publicBaseUrl = null, IRealtimeEventSink? realtime = null)
         {
+            _realtime = realtime;
             _repository = repository;
             _currency = currency;
             _audit = audit;
@@ -341,8 +361,11 @@ namespace knkwebapi_v2.Services.Privacy
                 return new PrivacyResult(PrivacyOutcome.GracePeriod, await DtoAsync(request, ct));
             }
 
+            List<PrivacyErasureEvent> feed = new();
             var result = await _repository.InTransactionAsync(async () =>
             {
+                // S5: the feed rows read the UUIDs before the pseudonymization clears them; saved below with the rest.
+                feed = await _repository.AddErasureEventsAsync(userIds, request.Id, now, ct);
                 var deleted = await _repository.EraseUserDataAsync(userIds, ct);
                 var pseudonymized = await _repository.PseudonymizeUsersAsync(userIds, now, ErasureReason, ct);
                 var summary = new PrivacyDeletionResultDto { UserIds = userIds, Deleted = deleted, PseudonymizedUsers = pseudonymized };
@@ -359,6 +382,7 @@ namespace knkwebapi_v2.Services.Privacy
             await _audit.RecordAsync(executorUserId, request.UserId, AuditAction.PrivacyDeletionExecuted,
                 JsonSerializer.Serialize(new { requestId = request.Id, automatic = executorUserId == null, result.PseudonymizedUsers,
                     deleted = result.Deleted.Values.Sum() }));
+            PublishErased(feed, executorUserId);
             return Ok(await DtoAsync(request, ct));
         }
 
@@ -385,6 +409,53 @@ namespace knkwebapi_v2.Services.Privacy
             }
             if (stale.Count > 0) await _repository.SaveChangesAsync(ct);
             return stale.Count;
+        }
+
+        // ------------------------------------------------------------------ erasure feed (realtime S5)
+
+        public async Task<PrivacyErasureFeedDto> GetErasuresSinceAsync(long sinceId, int limit, CancellationToken ct = default)
+        {
+            var since = Math.Max(0, sinceId);
+            var take = Math.Clamp(limit, 1, MaxErasureFeedPage);
+            // One extra row tells whether more follow.
+            var rows = await _repository.GetErasureEventsSinceAsync(since, take + 1, ct);
+            var page = rows.Take(take).ToList();
+            // A returning player got a fresh account under the same UUID: a late catch-up must not touch that account,
+            // so such a row is served without its UUID (the game server then deletes by the erased user id only).
+            var reused = await _repository.GetUuidsInUseAsync(
+                page.Where(e => e.FormerUuid != null).Select(e => e.FormerUuid!).ToList(), ct);
+            return new PrivacyErasureFeedDto
+            {
+                Items = page.Select(e => new PrivacyErasureFeedItemDto
+                {
+                    ErasureId = e.Id, UserId = e.UserId,
+                    FormerUuid = e.FormerUuid != null && reused.Contains(e.FormerUuid) ? null : e.FormerUuid,
+                    ErasedAt = e.ErasedAt
+                }).ToList(),
+                LastId = page.Count > 0 ? page[^1].Id : since,
+                HasMore = rows.Count > take,
+                LatestId = await _repository.GetLatestErasureEventIdAsync(ct)
+            };
+        }
+
+        public Task<int> ClearExpiredErasureUuidsAsync(DateTime now, CancellationToken ct = default)
+        {
+            var days = Math.Max(31, _options.ErasureFeedUuidRetentionDays);
+            return _repository.ClearErasureUuidsBeforeAsync(now.AddDays(-days), now, ct);
+        }
+
+        /// <summary>
+        /// One <c>AccountErased</c> per erased account, after the erasure committed (the sink holds it while an outer
+        /// transaction is open and drops it on a rollback). The payload carries ids and the former UUID only, never a name.
+        /// </summary>
+        private void PublishErased(IEnumerable<PrivacyErasureEvent> feed, int? executorUserId)
+        {
+            if (_realtime == null) return;
+            foreach (var row in feed)
+            {
+                _realtime.Publish(new RealtimeEvent(PrivacyEventTypes.AccountErased,
+                    new AccountErasedPayload(row.UserId, row.FormerUuid, row.Id), executorUserId));
+            }
         }
 
         // ------------------------------------------------------------------ helpers
