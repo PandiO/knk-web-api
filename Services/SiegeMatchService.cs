@@ -27,6 +27,9 @@ namespace knkwebapi_v2.Services
         private readonly IUserPermissionGroupRepository? _memberships;
         private readonly ICurrencyService? _currency;
         private readonly ITitleProgressionService? _titleProgression;
+        // Siege Survival phase 5 (PandiO/knk-workspace#41, link S8a): a match of a survival scenario settles through
+        // the survival result, never through the PvP calculator, and an aborted one gets its result row + roll cleanup.
+        private readonly ISurvivalMatchResultService? _survivalResults;
 
         public SiegeMatchService(
             ISiegeMatchRepository repo,
@@ -35,10 +38,12 @@ namespace knkwebapi_v2.Services
             ILogger<SiegeMatchService>? logger = null,
             IUserPermissionGroupRepository? memberships = null,
             ICurrencyService? currency = null,
-            ITitleProgressionService? titleProgression = null)
+            ITitleProgressionService? titleProgression = null,
+            ISurvivalMatchResultService? survivalResults = null)
         {
             _currency = currency;
             _titleProgression = titleProgression;
+            _survivalResults = survivalResults;
             _repo = repo;
             _titleService = titleService;
             _notificationQueue = notificationQueue;
@@ -265,6 +270,14 @@ namespace knkwebapi_v2.Services
                         Input(p),
                         scenario, dto.WinningAllianceGroup, outcomes)))
                     .ToList();
+                // Siege Survival (siege-survival DESIGN §9 "separate survival formula selection from the PvP
+                // calculator", S62; link S8a): a survival scenario's match records its completion but pays no PvP
+                // legs — the survival result (POST api/siege-survival/matches/{id}/result) is the only settlement.
+                if (_survivalResults != null && await _survivalResults.IsSurvivalScenarioAsync(match.SiegeScenarioId))
+                {
+                    rewards = rewards.Select(x => (x.Row, x.Reward with { Coins = 0, Experience = 0, Gems = 0 })).ToList();
+                    _logger?.LogInformation("Siege match {MatchId} is a survival match; PvP rewards skipped, the survival result settles", id);
+                }
 
                 var grantees = rewards.Where(x => x.Reward.Coins > 0 || x.Reward.Experience > 0 || x.Reward.Gems > 0).ToList();
                 // Read for the personal multipliers only; the ledger locks the rows (ascending id,
@@ -362,6 +375,10 @@ namespace knkwebapi_v2.Services
                 match.EndReason = dto.EndReason;
                 match.WinningAllianceGroup = null;
                 match.EndedAt = endedAt;
+                // Siege Survival (S59, S61, S62; link S8a): open Mystery Box rolls forfeited, a result row without
+                // settlement when the plugin never posted one. No-op for a PvP scenario. Before the participants are
+                // closed, so the row knows who was still in the match.
+                if (_survivalResults != null) await _survivalResults.OnMatchAbortedAsync(match, dto.EndReason, endedAt);
                 foreach (var p in match.Participants.Where(p => p.LeftAt == null)) p.LeftAt = endedAt;
 
                 await _repo.SaveChangesAsync();
