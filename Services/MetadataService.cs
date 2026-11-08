@@ -153,8 +153,13 @@ namespace knkwebapi_v2.Services
             meta.Deletable = access.Deletable;
             meta.BulkDeletable = access.BulkDeletable;
             meta.Exportable = access.Exportable;
+            meta.LookupSearchable = access.LookupSearchable;
+            meta.LookupGettable = access.LookupGettable;
             meta.ActionNodes = new Dictionary<string, List<string>>
             {
+                // AM2: the dashboard lists the type for its area node; other pages may read it in full with any one of
+                // readNodes, and anyone with an area node may look it up (api/Lookup) when lookupSearchable/lookupGettable.
+                ["view"] = new() { access.AreaNode },
                 ["create"] = new() { access.WriteNode },
                 ["edit"] = new() { access.WriteNode },
             };

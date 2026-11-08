@@ -12,6 +12,7 @@ namespace KnKWebAPI.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [DashboardReads("Clan")]
     public class ClansController : ControllerBase
     {
         private readonly IClanService _service;
@@ -32,6 +33,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpGet("default-for-town/{townId:int}")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.Lookup)]
         public async Task<IActionResult> GetDefaultForTown(int townId)
         {
             var item = await _service.GetDefaultForTownAsync(townId);

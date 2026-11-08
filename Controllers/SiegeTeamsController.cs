@@ -10,6 +10,7 @@ namespace KnKWebAPI.Controllers
     // own owned children, listed/created here and addressed singly by SiegeSpawnpointsController.
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeTeam")]
     public class SiegeTeamsController : ControllerBase
     {
         private readonly ISiegeScenarioService _service;

@@ -16,6 +16,7 @@ namespace KnKWebAPI.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
+    [DashboardReads("Domain")]
     public class DomainsController : ControllerBase
     {
         private readonly IDomainService _service;
@@ -107,6 +108,7 @@ namespace KnKWebAPI.Controllers
         /// (KNG-56). Read-only, small (one row per domain region).
         /// </summary>
         [HttpGet("access-rules")]
+        [DashboardReads(DashboardArea.World)]
         public async Task<ActionResult<IReadOnlyList<DomainAccessRuleDto>>> GetAccessRules()
         {
             return Ok(await _service.GetAccessRulesAsync());
@@ -115,6 +117,7 @@ namespace KnKWebAPI.Controllers
         /// <param name="regionName">The WorldGuard region id.</param>
         /// <param name="world">KNG-111: the world the region is in. Without it the lookup is world-blind.</param>
         [HttpGet("by-region/{regionName}")]
+        [DashboardReads(DashboardArea.World)]
         public async Task<ActionResult<DomainRegionDecisionDto>> GetByRegionName(string regionName, [FromQuery] string? world = null)
         {
             if (string.IsNullOrWhiteSpace(regionName)) return BadRequest("regionName is required.");
@@ -131,6 +134,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPost("search-region-decisions")]
+        [DashboardReads(DashboardArea.World)]
         public async Task<ActionResult<Dictionary<int, DomainRegionDecisionDto>>> SearchDomainRegionDecision([FromBody] DomainRegionQueryDto queryDto)
         {
             if (queryDto.WgRegionIds == null) return BadRequest("WgRegionIds is required.");
@@ -145,6 +149,7 @@ namespace KnKWebAPI.Controllers
         /// reject.
         /// </summary>
         [HttpPost("world/resolve")]
+        [DashboardReads(DashboardArea.World)]
         public async Task<ActionResult<DomainWorldResolutionDto>> ResolveWorld([FromBody] DomainWorldResolveRequestDto request)
         {
             if (request == null) return BadRequest("A request body is required.");
@@ -169,6 +174,7 @@ namespace KnKWebAPI.Controllers
 
         /// <summary>KNG-111: domains that still have no world (created before worlds were stored).</summary>
         [HttpGet("world/missing")]
+        [DashboardReads(DashboardArea.World)]
         public async Task<ActionResult<List<DomainWorldMissingDto>>> GetDomainsWithoutWorld()
         {
             return Ok(await _worldBackfill.ListMissingAsync());

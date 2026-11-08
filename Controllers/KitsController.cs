@@ -9,6 +9,7 @@ namespace knkwebapi_v2.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("Kit")]
     public class KitsController : ControllerBase
     {
         private readonly IKitService _service;

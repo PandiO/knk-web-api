@@ -14,6 +14,7 @@ namespace knkwebapi_v2.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/road-profiles")]
+[DashboardReads("RoadProfile")]
 public class RoadProfilesController : RoadControllerBase
 {
     private readonly IRoadNetworkService _service;

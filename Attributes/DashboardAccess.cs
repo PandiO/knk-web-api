@@ -27,8 +27,9 @@ namespace knkwebapi_v2.Attributes
     {
         internal DashboardTypeAccess(string typeName, DashboardArea area, string areaNode, string writeNode,
             IReadOnlyList<string> readNodes, Func<IServiceProvider, int, Task>? delete, bool bulkDeletable,
-            Func<IServiceProvider, PagedQueryDto, Task<DashboardPage>>? search)
+            Func<IServiceProvider, PagedQueryDto, Task<DashboardPage>>? search, DashboardLookup? lookup = null)
         {
+            Lookup = lookup;
             TypeName = typeName;
             Area = area;
             AreaNode = areaNode;
@@ -65,6 +66,45 @@ namespace knkwebapi_v2.Attributes
         public Func<IServiceProvider, PagedQueryDto, Task<DashboardPage>>? Search { get; }
 
         public bool Exportable => Search != null;
+
+        /// <summary>How <c>api/Lookup</c> labels the type (AM2, DESIGN.md § 4.6.3); null = no lookup.</summary>
+        public DashboardLookup? Lookup { get; }
+
+        /// <summary><c>POST api/Lookup/{type}/search</c> works: a search and a label.</summary>
+        public bool LookupSearchable => Search != null && Lookup != null;
+
+        /// <summary><c>GET api/Lookup/{type}/{id}</c> works: a get by id and a label.</summary>
+        public bool LookupGettable => Lookup?.Get != null;
+    }
+
+    /// <summary>
+    /// The lookup side of a registry entry (DESIGN.md § 4.6.3): a get by id through the type's own service, a label
+    /// and one short detail line, read from the row (list or detail DTO alike, property names match without case).
+    /// Never an email: a user's label is the username and nothing else.
+    /// </summary>
+    public sealed class DashboardLookup
+    {
+        internal DashboardLookup(Func<IServiceProvider, int, Task<object?>>? get, Func<object, string?> label,
+            Func<object, string?>? detail, Func<string?, PagedQueryDto, PagedQueryDto>? query)
+        {
+            Get = get;
+            Label = label;
+            Detail = detail;
+            Query = query;
+        }
+
+        /// <summary>The type's own get by id (the same service call as its <c>GET {id}</c>); null = search only.</summary>
+        public Func<IServiceProvider, int, Task<object?>>? Get { get; }
+
+        public Func<object, string?> Label { get; }
+
+        public Func<object, string?>? Detail { get; }
+
+        /// <summary>
+        /// Turns the search term into the type's own query when the plain term would match more than the label (users:
+        /// the username filter, so a lookup can't find a user by an email fragment). Null = the term as is.
+        /// </summary>
+        public Func<string?, PagedQueryDto, PagedQueryDto>? Query { get; }
     }
 
     /// <summary>
@@ -229,10 +269,14 @@ namespace knkwebapi_v2.Attributes
         /// <summary>Every distinct area node, in area order (who may open the dashboard, decision 8).</summary>
         public static IReadOnlyList<string> AreaNodes { get; } = Entries.Select(e => e.AreaNode).Distinct(StringComparer.Ordinal).ToList();
 
+        /// <summary>The area node of an area (records of an area that aren't a dashboard type read with it).</summary>
+        public static string AreaNodeOf(DashboardArea area) => Entries.First(e => e.Area == area).AreaNode;
+
         private static DashboardTypeAccess Type(string name, DashboardArea area, string areaNode,
             Func<IServiceProvider, int, Task>? delete, Func<IServiceProvider, PagedQueryDto, Task<DashboardPage>>? search = null,
             bool bulk = true, string? writeNode = null) =>
-            new(name, area, areaNode, writeNode ?? areaNode, ReadNodesOf(name, areaNode), delete, bulk, search);
+            new(name, area, areaNode, writeNode ?? areaNode, ReadNodesOf(name, areaNode), delete, bulk, search,
+                DashboardLookups.For(name));
 
         private static DashboardTypeAccess ViewOnly(string name, DashboardArea area, string areaNode, string? writeNode = null) =>
             new(name, area, areaNode, writeNode ?? areaNode, ReadNodesOf(name, areaNode), null, false, null);

@@ -9,6 +9,7 @@ namespace KnKWebAPI.Controllers
     // live under the parent scenario (GET/POST /api/SiegeScenarios/{id}/objectives).
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeObjective")]
     public class SiegeObjectivesController : ControllerBase
     {
         private readonly ISiegeScenarioService _service;

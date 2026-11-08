@@ -43,10 +43,18 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("exportable")]
         public bool Exportable { get; set; }
 
+        /// <summary>POST api/Lookup/{entityName}/search answers for this type (AM2: pickers without a full read).</summary>
+        [JsonPropertyName("lookupSearchable")]
+        public bool LookupSearchable { get; set; }
+
+        /// <summary>GET api/Lookup/{entityName}/{id} answers for this type (AM2: relation labels without a full read).</summary>
+        [JsonPropertyName("lookupGettable")]
+        public bool LookupGettable { get; set; }
+
         /// <summary>
-        /// For each action the type allows, every node it needs (all of them): <c>create</c>, <c>edit</c>,
-        /// <c>delete</c>, <c>bulkDelete</c>, <c>export</c>. An action the type doesn't allow is left out. Viewing is
-        /// <see cref="ReadNodes"/> (any one).
+        /// For each action the type allows, every node it needs (all of them): <c>view</c> (the dashboard lists the
+        /// type: its area node), <c>create</c>, <c>edit</c>, <c>delete</c>, <c>bulkDelete</c>, <c>export</c>. An action
+        /// the type doesn't allow is left out. A full read from another page is <see cref="ReadNodes"/> (any one).
         /// </summary>
         [JsonPropertyName("actionNodes")]
         public Dictionary<string, List<string>> ActionNodes { get; set; } = new();

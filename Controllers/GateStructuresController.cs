@@ -13,6 +13,7 @@ namespace KnKWebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("GateStructure")]
     public class GateStructuresController : ControllerBase
     {
         private readonly IGateStructureService _service;

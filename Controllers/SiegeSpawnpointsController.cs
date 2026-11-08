@@ -9,6 +9,7 @@ namespace KnKWebAPI.Controllers
     // live under the parent team (GET/POST /api/SiegeTeams/{id}/spawnpoints).
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeSpawnpoint")]
     public class SiegeSpawnpointsController : ControllerBase
     {
         private readonly ISiegeScenarioService _service;

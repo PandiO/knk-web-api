@@ -10,6 +10,7 @@ namespace KnKWebAPI.Controllers
     // M2M join in the lobby payload) plus the plugin's runtime-config.
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeLobby")]
     public class SiegeLobbiesController : ControllerBase
     {
         private readonly ISiegeLobbyService _service;

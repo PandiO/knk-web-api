@@ -17,6 +17,7 @@ namespace KnKWebAPI.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [DashboardReads("Category")]
     public class CategoriesController : ControllerBase
     {
         private readonly ICategoryService _service;

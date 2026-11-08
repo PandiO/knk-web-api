@@ -14,6 +14,7 @@ namespace KnKWebAPI.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [DashboardReads("MinecraftBlockRef")]
     public class MinecraftBlockRefsController : ControllerBase
     {
         private readonly IMinecraftBlockRefService _service;

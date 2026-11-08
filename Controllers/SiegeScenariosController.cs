@@ -12,6 +12,7 @@ namespace KnKWebAPI.Controllers
     // scenario's own create/update ignores them.
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeScenario")]
     public class SiegeScenariosController : ControllerBase
     {
         private readonly ISiegeScenarioService _service;

@@ -1,3 +1,4 @@
+using knkwebapi_v2.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Dtos;
@@ -7,6 +8,7 @@ namespace knkwebapi_v2.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
     public class MetadataController : ControllerBase
     {
         private readonly IMetadataService _metadataService;

@@ -16,6 +16,7 @@ namespace knkwebapi_v2.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
+    [DashboardReads("DomainSubRegion")]
     public class DomainSubRegionsController : ControllerBase
     {
         private readonly IDomainSubRegionService _service;

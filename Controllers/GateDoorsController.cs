@@ -19,6 +19,7 @@ namespace KnKWebAPI.Controllers
     [Route("api")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
+    [DashboardReads("GateDoor")]
     public class GateDoorsController : ControllerBase
     {
         private readonly IGateDoorService _service;

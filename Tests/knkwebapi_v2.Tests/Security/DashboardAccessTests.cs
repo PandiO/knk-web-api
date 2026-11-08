@@ -126,6 +126,10 @@ public class DashboardAccessTests
         Assert.Equal(new[] { "knk.admin.world", "knk.admin.delete" }, meta.ActionNodes["delete"]);
         Assert.Equal(new[] { "knk.admin.world", "knk.admin.delete", "knk.admin.delete.bulk" }, meta.ActionNodes["bulkDelete"]);
         Assert.Equal(new[] { "knk.admin.world", "knk.admin.export" }, meta.ActionNodes["export"]);
+        // AM2: the dashboard lists the type for its area node; lookups for pickers and labels.
+        Assert.Equal(new[] { "knk.admin.world" }, meta.ActionNodes["view"]);
+        Assert.True(meta.LookupSearchable);
+        Assert.True(meta.LookupGettable);
     }
 
     [Fact]
@@ -137,6 +141,7 @@ public class DashboardAccessTests
         Assert.False(group.ActionNodes.ContainsKey("bulkDelete"));
         Assert.Equal(new[] { "knk.admin.user.perm", "knk.admin.delete" }, group.ActionNodes["delete"]);
         Assert.Equal(new[] { "knk.admin.user.perm" }, group.ActionNodes["create"]);
+        Assert.Equal(new[] { "knk.admin.user.manage" }, group.ActionNodes["view"]);
 
         var link = new EntityMetadataDto { EntityName = "CategoryTag", DisplayName = "CategoryTag" };
         MetadataService.ApplyDashboardAccess(link);
@@ -144,5 +149,7 @@ public class DashboardAccessTests
         Assert.False(link.Deletable);
         Assert.False(link.ActionNodes.ContainsKey("delete"));
         Assert.False(link.Exportable);
+        Assert.False(link.LookupSearchable);
+        Assert.False(link.LookupGettable);
     }
 }

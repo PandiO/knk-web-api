@@ -12,6 +12,7 @@ namespace KnKWebAPI.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [DashboardReads("BannerDesign")]
     public class BannerDesignsController : ControllerBase
     {
         private readonly IBannerDesignService _service;
@@ -33,6 +34,7 @@ namespace KnKWebAPI.Controllers
 
         // Valid BannerLayer.PatternKey values for the running server version.
         [HttpGet("pattern-keys")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public IActionResult GetPatternKeys() => Ok(_service.GetPatternKeys());
 
         [HttpPost]

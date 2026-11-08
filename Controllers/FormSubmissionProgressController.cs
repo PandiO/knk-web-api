@@ -13,7 +13,7 @@ namespace KnKWebAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: staff drafts - reads and writes need knk.admin.content (web only; the plugin doesn't use this).
-    [RequirePermission(StaffPermissions.ManageContent)]
+    [RequireAnyAreaNode(ReadCategory.OwnRecords)] // #280 AM2: any area node (was knk.admin.content); ownership as #186 checks it
     public class FormSubmissionProgressController : ControllerBase
     {
         private readonly IFormSubmissionProgressService _service;

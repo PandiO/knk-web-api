@@ -341,6 +341,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Returns the user summary</response>
         /// <response code="404">User not found</response>
         [HttpGet("uuid/{uuid}", Name = nameof(GetUserSummaryByUuid))]
+        [DashboardReads("User")]
         public async Task<IActionResult> GetUserSummaryByUuid(string uuid)
         {
             var item = await _service.GetByUuidAsync(uuid);
@@ -382,6 +383,7 @@ namespace knkwebapi_v2.Controllers
         /// <response code="200">Returns the user summary</response>
         /// <response code="404">User not found</response>
         [HttpGet("username/{username}", Name = nameof(GetUserSummaryByUsername))]
+        [DashboardReads("User")]
         public async Task<IActionResult> GetUserSummaryByUsername(string username)
         {
             var item = await _service.GetByUsernameAsync(username);

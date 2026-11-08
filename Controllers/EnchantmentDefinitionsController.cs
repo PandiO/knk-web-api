@@ -16,6 +16,7 @@ namespace KnKWebAPI.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [DashboardReads("EnchantmentDefinition")]
     public class EnchantmentDefinitionsController : ControllerBase
     {
         private readonly IEnchantmentDefinitionService _service;
