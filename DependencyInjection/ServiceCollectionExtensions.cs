@@ -234,6 +234,9 @@ namespace knkwebapi_v2.DependencyInjection
             }
             services.AddScoped<ISurvivalMysteryBoxRollRepository, SurvivalMysteryBoxRollRepository>();
             services.AddScoped<ISurvivalMysteryBoxRollService, knkwebapi_v2.Services.Survival.SurvivalMysteryBoxRollService>();
+            // Siege Survival phase 5 (PandiO/knk-workspace#41, link S8a) — durable match results, per-kill settlement, checkpoints
+            services.AddScoped<ISurvivalMatchResultRepository, SurvivalMatchResultRepository>();
+            services.AddScoped<ISurvivalMatchResultService, knkwebapi_v2.Services.Survival.SurvivalMatchResultService>();
             // Road navigation (docs/specs/navigation/IMPLEMENTATION_PLAN.md)
             services.AddScoped<IRoadNetworkRepository, RoadNetworkRepository>();
             services.AddScoped<IRoadNetworkService, RoadNetworkService>();
