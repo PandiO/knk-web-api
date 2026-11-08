@@ -31,4 +31,20 @@ public sealed class RealtimeOptions
     /// logs it.
     /// </summary>
     public string[] AllowedServerIds { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// S4 (#183): how long a web user's "holds node X" answer is reused for the node-gated live updates
+    /// (<c>EntityChanged</c>, <c>PresenceChanged</c>). A node taken away stops those events within this time; 0 checks
+    /// on every message.
+    /// </summary>
+    public int WebPermissionCacheSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// S4 (#183, developer decision 2026-11-06 on LX1-10): the web hub's live updates. False: no <c>EntityChanged</c> or
+    /// <c>PresenceChanged</c> web event is built or sent (the web app then behaves as before S4: no dashboard refresh,
+    /// no live badges). The game servers' events, the web hub itself and the profile summary's <c>presence</c> field
+    /// stay. Read on every save, so a changed appsettings file applies without a restart; an environment variable
+    /// (<c>Realtime__WebLiveUpdatesEnabled</c>) needs one.
+    /// </summary>
+    public bool WebLiveUpdatesEnabled { get; set; } = true;
 }

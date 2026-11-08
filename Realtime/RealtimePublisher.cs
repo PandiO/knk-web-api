@@ -23,6 +23,12 @@ public interface IRealtimePublisher
     /// </summary>
     void PublishToWebGroups(IReadOnlyCollection<string> groups, string type, object? payload, RealtimeActor? actor = null, int v = 1);
 
+    /// <summary>
+    /// S4 (#183): to every web connection whose user holds <paramref name="node"/> (the node that gates the same data
+    /// over REST), checked when the message is sent (<see cref="RealtimeWebAudience"/>).
+    /// </summary>
+    void PublishToWebHolders(string node, string type, object? payload, RealtimeActor? actor = null, int v = 1);
+
     /// <summary>To one connection of either hub (e.g. the game server's <c>Welcome</c>).</summary>
     void PublishToConnection(RealtimeHubKind hub, string connectionId, string type, object? payload,
         RealtimeActor? actor = null, int v = 1);
@@ -31,8 +37,10 @@ public interface IRealtimePublisher
 /// <summary>A queued message: a group of one hub, or one connection.</summary>
 /// <param name="Groups">WT2 (#181): several groups instead of <paramref name="Group"/>; a connection in more than one
 /// gets the message once.</param>
+/// <param name="RequiredNode">S4 (#183): only connections whose user holds this node get it; with no group or
+/// connection set, every web connection is a candidate.</param>
 public sealed record RealtimeMessage(RealtimeHubKind Hub, string? Group, string? ConnectionId, string Type, int V,
-    object? Payload, RealtimeActor? Actor, DateTime At, IReadOnlyList<string>? Groups = null);
+    object? Payload, RealtimeActor? Actor, DateTime At, IReadOnlyList<string>? Groups = null, string? RequiredNode = null);
 
 /// <summary>
 /// <see cref="IRealtimePublisher"/> on a bounded channel (drop-oldest, logged). <see cref="RealtimeDispatchService"/>
@@ -85,6 +93,15 @@ public sealed class RealtimePublisher : IRealtimePublisher
         Enqueue(RealtimeHubKind.Web, null, null, type, payload, actor, v, distinct);
     }
 
+    public void PublishToWebHolders(string node, string type, object? payload, RealtimeActor? actor = null, int v = 1)
+    {
+        if (string.IsNullOrWhiteSpace(node))
+        {
+            throw new ArgumentException("A permission node is required.", nameof(node));
+        }
+        Enqueue(RealtimeHubKind.Web, null, null, type, payload, actor, v, requiredNode: node);
+    }
+
     public void PublishToConnection(RealtimeHubKind hub, string connectionId, string type, object? payload,
         RealtimeActor? actor = null, int v = 1) =>
         Enqueue(hub, null, connectionId, type, payload, actor, v);
@@ -93,13 +110,13 @@ public sealed class RealtimePublisher : IRealtimePublisher
     public void Complete() => _channel.Writer.TryComplete();
 
     private void Enqueue(RealtimeHubKind hub, string? group, string? connectionId, string type, object? payload,
-        RealtimeActor? actor, int v, IReadOnlyList<string>? groups = null)
+        RealtimeActor? actor, int v, IReadOnlyList<string>? groups = null, string? requiredNode = null)
     {
         if (string.IsNullOrWhiteSpace(type))
         {
             throw new ArgumentException("An event type is required.", nameof(type));
         }
-        var message = new RealtimeMessage(hub, group, connectionId, type, v, payload, actor, _time.GetUtcNow().UtcDateTime, groups);
+        var message = new RealtimeMessage(hub, group, connectionId, type, v, payload, actor, _time.GetUtcNow().UtcDateTime, groups, requiredNode);
         // Bounded + DropOldest: TryWrite only fails once the channel is completed (shutdown).
         if (_channel.Writer.TryWrite(message))
         {
