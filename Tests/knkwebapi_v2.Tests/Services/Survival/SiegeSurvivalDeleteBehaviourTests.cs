@@ -14,6 +14,11 @@ public class SiegeSurvivalDeleteBehaviourTests
 {
     public static IEnumerable<object[]> ExpectedDeleteRules() => new List<object[]>
     {
+        // Phase 5 (link S8a): the result and checkpoint cascade with the match, player rows with the result, the user is Restrict.
+        new object[] { typeof(SurvivalMatchResult), nameof(SurvivalMatchResult.SiegeMatchId), DeleteBehavior.Cascade },
+        new object[] { typeof(SurvivalMatchPlayerResult), nameof(SurvivalMatchPlayerResult.SurvivalMatchResultId), DeleteBehavior.Cascade },
+        new object[] { typeof(SurvivalMatchPlayerResult), nameof(SurvivalMatchPlayerResult.UserId), DeleteBehavior.Restrict },
+        new object[] { typeof(SurvivalMatchCheckpoint), nameof(SurvivalMatchCheckpoint.SiegeMatchId), DeleteBehavior.Cascade },
         // Phase 4 (link S7a): rolls cascade with the match, the user is Restrict; the delivery cascades with its roll.
         new object[] { typeof(SurvivalMysteryBoxRoll), nameof(SurvivalMysteryBoxRoll.SiegeMatchId), DeleteBehavior.Cascade },
         new object[] { typeof(SurvivalMysteryBoxRoll), nameof(SurvivalMysteryBoxRoll.UserId), DeleteBehavior.Restrict },
@@ -72,8 +77,9 @@ public class SiegeSurvivalDeleteBehaviourTests
         using var context = SiegeTestData.NewContext("SurvivalTables");
         var survivalTypes = context.Model.GetEntityTypes()
             .Where(t => t.ClrType.Name.StartsWith("Survival") || t.ClrType == typeof(SiegeSurvivalSettings)).ToList();
-        // 18 phase 1 tables + the phase 4 roll and delivery tables (link S7a).
-        Assert.Equal(20, survivalTypes.Count);
+        // 18 phase 1 tables + the phase 4 roll and delivery tables (link S7a) + the phase 5 result, player result and
+        // checkpoint tables (link S8a).
+        Assert.Equal(23, survivalTypes.Count);
         Assert.All(survivalTypes, t => Assert.StartsWith("siege_survival_", t.GetTableName()!));
         foreach (var property in survivalTypes.SelectMany(t => t.GetProperties()).Where(p => p.ClrType.IsEnum))
             Assert.Equal(typeof(string), property.GetProviderClrType());

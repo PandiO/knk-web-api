@@ -37,8 +37,35 @@ public static class SiegeTestData
         var membershipService = new UserPermissionGroupService(
             new UserPermissionGroupRepository(context), users, new PermissionGroupRepository(context), audit);
         var currency = new CurrencyService(new CurrencyRepository(context), users, NullLogger<CurrencyService>.Instance);
+        var titleProgression = new TitleProgressionService(currency, users, titles, membershipService, audit);
         return new SiegeMatchService(new SiegeMatchRepository(context), titles, notifications, null, memberships,
-            currency, new TitleProgressionService(currency, users, titles, membershipService, audit));
+            currency, titleProgression, SurvivalResultService(context, currency, titleProgression, notifications));
+    }
+
+    /// <summary>
+    /// The Siege Survival result service (PandiO/knk-workspace#41, link S8a) on <paramref name="context"/> with the
+    /// real repositories and ledger, as MatchService wires it: the PvP complete skips its legs for a survival
+    /// scenario and the abort writes the survival result row.
+    /// </summary>
+    public static knkwebapi_v2.Services.Survival.SurvivalMatchResultService SurvivalResultService(KnKDbContext context,
+        CurrencyService? currency = null, TitleProgressionService? titleProgression = null, IPlayerNotificationQueue? notifications = null)
+    {
+        if (currency == null || titleProgression == null)
+        {
+            var users = new UserRepository(context);
+            var titles = new TitleService(new TitleBracketRepository(context));
+            var audit = new AuditLogService(new AuditLogRepository(context), users);
+            var membershipService = new UserPermissionGroupService(
+                new UserPermissionGroupRepository(context), users, new PermissionGroupRepository(context), audit);
+            currency ??= new CurrencyService(new CurrencyRepository(context), users, NullLogger<CurrencyService>.Instance);
+            titleProgression ??= new TitleProgressionService(currency, users, titles, membershipService, audit);
+        }
+        var rolls = new SurvivalMysteryBoxRollRepository(context);
+        return new knkwebapi_v2.Services.Survival.SurvivalMatchResultService(
+            new SurvivalMatchResultRepository(context), new SiegeMatchRepository(context), rolls,
+            new knkwebapi_v2.Services.Survival.SurvivalMysteryBoxRollService(rolls, new knkwebapi_v2.Services.Lootbox.CryptoLootRandom(),
+                knkwebapi_v2.Tests.Services.Survival.SurvivalTestData.Mapper()),
+            currency, titleProgression, notifications);
     }
 
     public static IMapper Mapper() => new MapperConfiguration(cfg =>
