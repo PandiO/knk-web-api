@@ -102,6 +102,18 @@ namespace knkwebapi_v2.Attributes
         /// Matched by knk.admin.* and *.</summary>
         public const string ManageWorld = "knk.admin.world";
 
+        // Dashboard actions on top of the area nodes (knk-workspace docs/specs/dashboard-access-model/DESIGN.md
+        // § 4.1, PandiO/knk-workspace#280, model A). The area node (DashboardAccess) still means view, create and
+        // edit; these say what kind of write is allowed on top of it. All are children of knk.admin, so
+        // knk.admin.* and * match them; knk.admin.delete.* matches Delete and DeleteBulk.
+        /// <summary>Delete one record of a dashboard type whose area node you hold (area node AND this).</summary>
+        public const string Delete = "knk.admin.delete";
+        /// <summary>Delete several records in one action (POST api/Dashboard/bulk-delete); also needs
+        /// <see cref="Delete"/> and the area node. Only the owner hands it out (PermissionEscalationGuard.OwnerGrantOnly).</summary>
+        public const string DeleteBulk = "knk.admin.delete.bulk";
+        /// <summary>Export rows of a dashboard type whose area node you hold (POST api/Dashboard/export).</summary>
+        public const string Export = "knk.admin.export";
+
         /// <summary>Read players' private messages (docs/specs/private-messages/DESIGN.md §3.5) -
         /// owner group; every read is audited.</summary>
         public const string ReadPrivateMessages = "knk.pmlog.read";

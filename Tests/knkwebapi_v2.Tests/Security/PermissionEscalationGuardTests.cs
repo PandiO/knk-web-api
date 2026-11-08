@@ -290,4 +290,169 @@ public class PermissionEscalationGuardTests
 
         Assert.IsType<OkObjectResult>(result);
     }
+
+    // Dashboard access model (PandiO/knk-workspace#280, DESIGN.md § 4.4): bulk delete is the owner's to hand out, also
+    // through wildcards and groups; groups ranked at or above the actor can't be changed (developer 2026-11-08: Staff).
+
+    private const int AdminUser = 40;
+    private const int StaffUser = 41;
+    private const int StaffGroupId = 700;
+    private const int AdminGroupId = 701;
+    private const int ModeratorGroupId = 702;
+    private const int BulkRankGroup = 703;
+    private const int PremiumBulkGroup = 704;
+
+    private void AdminAndStaff()
+    {
+        RankedGroup(StaffGroupId, 25, null, Allow("knk.admin.user.manage"), Allow("knk.admin.user.perm"), Allow("knk.admin.user.group"), Allow("knk.freeze"));
+        RankedGroup(ModeratorGroupId, 50, StaffGroupId, Allow("knk.fly.others"));
+        RankedGroup(AdminGroupId, 100, ModeratorGroupId, Allow("knk.admin.*"));
+        _held[AdminUser] = new[] { "knk.admin.*", "knk.fly.others", "knk.freeze" };
+        _held[StaffUser] = new[] { "knk.admin.user.manage", "knk.admin.user.perm", "knk.admin.user.group", "knk.freeze" };
+        MemberOf(AdminUser, 100);
+        MemberOf(StaffUser, 25);
+    }
+
+    [Theory]
+    [InlineData("knk.admin.delete.bulk")]
+    [InlineData("knk.admin.delete.*")]
+    [InlineData("knk.admin.*")]
+    [InlineData(" knk.admin.delete.bulk ")]
+    public async Task AnAdmin_CantGrantBulkDelete_OrAWildcardCoveringIt(string node)
+    {
+        AdminAndStaff();
+        var result = await _guard.CanGrantNodeAsync(AdminUser, Player, node);
+        Assert.False(result.Allowed);
+        Assert.Equal(PermissionEscalationGuard.OwnerOnlyMessage, result.Message);
+    }
+
+    [Theory]
+    [InlineData("knk.admin.delete")]
+    [InlineData("knk.admin.export")]
+    [InlineData("knk.admin.content")]
+    [InlineData("knk.admin.deletebulk")] // not covered: no dot
+    public async Task AnAdmin_CanStillGrantDeleteAndExport(string node)
+    {
+        AdminAndStaff();
+        Assert.True((await _guard.CanGrantNodeAsync(AdminUser, Player, node)).Allowed);
+    }
+
+    [Theory]
+    [InlineData("knk.admin.delete.bulk")]
+    [InlineData("knk.admin.*")]
+    [InlineData("*")]
+    public async Task TheOwner_HandsOutBulkDelete(string node)
+    {
+        Assert.True((await _guard.CanGrantNodeAsync(Owner, Player, node)).Allowed);
+    }
+
+    [Fact]
+    public void CoversOwnerGrantOnly_FollowsTheResolverMatching()
+    {
+        Assert.True(PermissionEscalationGuard.CoversOwnerGrantOnly("*"));
+        Assert.True(PermissionEscalationGuard.CoversOwnerGrantOnly("knk.*"));
+        Assert.True(PermissionEscalationGuard.CoversOwnerGrantOnly("knk.admin.delete.bulk.*")); // x.* also matches x
+        Assert.True(PermissionEscalationGuard.CoversOwnerGrantOnly("knk.admin.del*"));
+        Assert.False(PermissionEscalationGuard.CoversOwnerGrantOnly("knk.admin.delete"));
+        Assert.False(PermissionEscalationGuard.CoversOwnerGrantOnly("knk.admin.content.*"));
+        Assert.False(PermissionEscalationGuard.CoversOwnerGrantOnly(null));
+    }
+
+    [Fact]
+    public async Task AnAdmin_CantAssignOrInheritFromAGroupThatCarriesBulkDelete()
+    {
+        AdminAndStaff();
+        RankedGroup(BulkRankGroup, 60, null, Allow("knk.admin.delete.bulk"));
+        _groups.Setup(g => g.GetByIdAsync(PremiumBulkGroup)).ReturnsAsync(new PermissionGroup
+        {
+            Id = PremiumBulkGroup, Name = "Sneaky premium", Weight = 10, IsPremiumTier = true,
+            Grants = new List<PermissionGrant> { Allow("knk.admin.delete.bulk") }
+        });
+
+        Assert.Equal(PermissionEscalationGuard.OwnerOnlyMessage, (await _guard.CanAssignGroupAsync(AdminUser, Player, BulkRankGroup)).Message);
+        // Also for a premium rank, whose own nodes the premium node otherwise lets staff hand out without holding them.
+        _held[AdminUser] = _held[AdminUser].Append("knk.admin.user.group.premium").ToArray();
+        Assert.Equal(PermissionEscalationGuard.OwnerOnlyMessage, (await _guard.CanAssignGroupAsync(AdminUser, Player, PremiumBulkGroup)).Message);
+        Assert.Equal(PermissionEscalationGuard.OwnerOnlyMessage, (await _guard.CanInheritFromGroupAsync(AdminUser, BulkRankGroup)).Message);
+        Assert.Equal(PermissionEscalationGuard.OwnerOnlyMessage, (await _guard.CanInheritFromGroupAsync(AdminUser, AdminGroupId)).Message); // knk.admin.*
+
+        Assert.True((await _guard.CanAssignGroupAsync(Owner, Player, BulkRankGroup)).Allowed);
+        Assert.True((await _guard.CanInheritFromGroupAsync(Owner, AdminGroupId)).Allowed);
+    }
+
+    [Fact]
+    public async Task AGroupDenyOfBulkDelete_IsNoReasonToRefuse()
+    {
+        AdminAndStaff();
+        RankedGroup(BulkRankGroup, 60, null, Deny("knk.admin.delete.bulk"), Allow("knk.freeze"));
+        Assert.True((await _guard.CanAssignGroupAsync(AdminUser, Player, BulkRankGroup)).Allowed);
+    }
+
+    [Fact]
+    public async Task Staff_CantHandOutOrRemoveGroupsAtOrAboveItsRank()
+    {
+        AdminAndStaff();
+        foreach (var group in new[] { StaffGroupId, ModeratorGroupId, AdminGroupId })
+        {
+            Assert.Equal(PermissionEscalationGuard.RankMessage, (await _guard.CanAssignGroupAsync(StaffUser, Player, group)).Message);
+        }
+    }
+
+    [Fact]
+    public async Task Staff_CantChangeTheGrantsOfGroupsAtOrAboveItsRank()
+    {
+        AdminAndStaff();
+        RankedGroup(BulkRankGroup, 10, null);
+        foreach (var group in new[] { StaffGroupId, ModeratorGroupId, AdminGroupId })
+        {
+            Assert.Equal(PermissionEscalationGuard.GroupRankMessage, (await _guard.CanGrantNodeAsync(StaffUser, group, "knk.freeze")).Message);
+        }
+        // A group below its rank, and a player, as before.
+        Assert.True((await _guard.CanGrantNodeAsync(StaffUser, BulkRankGroup, "knk.freeze")).Allowed);
+        Assert.True((await _guard.CanGrantNodeAsync(StaffUser, Player, "knk.freeze")).Allowed);
+    }
+
+    [Fact]
+    public async Task Staff_CantEditCreateOrDeleteGroupsAtOrAboveItsRank()
+    {
+        AdminAndStaff();
+        RankedGroup(BulkRankGroup, 10, null);
+
+        Assert.Equal(PermissionEscalationGuard.GroupRankMessage, (await _guard.CanChangeGroupAsync(StaffUser, AdminGroupId, 10)).Message);
+        Assert.Equal(PermissionEscalationGuard.GroupRankMessage, (await _guard.CanChangeGroupAsync(StaffUser, StaffGroupId, 10)).Message);
+        Assert.Equal(PermissionEscalationGuard.GroupRankMessage, (await _guard.CanChangeGroupAsync(StaffUser, AdminGroupId, null)).Message);
+        // Raising a lower group to its own rank, or creating one there.
+        Assert.Equal(PermissionEscalationGuard.GroupRankMessage, (await _guard.CanChangeGroupAsync(StaffUser, BulkRankGroup, 25)).Message);
+        Assert.Equal(PermissionEscalationGuard.GroupRankMessage, (await _guard.CanChangeGroupAsync(StaffUser, null, 30)).Message);
+
+        Assert.True((await _guard.CanChangeGroupAsync(StaffUser, BulkRankGroup, 20)).Allowed);
+        Assert.True((await _guard.CanChangeGroupAsync(StaffUser, null, 5)).Allowed);
+        Assert.True((await _guard.CanChangeGroupAsync(AdminUser, StaffGroupId, 25)).Allowed);
+        Assert.True((await _guard.CanChangeGroupAsync(Owner, AdminGroupId, 1000)).Allowed);
+    }
+
+    [Fact]
+    public async Task GroupEndpoints_RefuseAGroupAboveTheActorsRank_BeforeChangingAnything()
+    {
+        AdminAndStaff();
+        var groups = new Mock<IPermissionGroupService>();
+        var controller = new KnKWebAPI.Controllers.PermissionGroupsController(groups.Object, _guard, _permissions.Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.WebUser(StaffUser) }
+        };
+
+        var update = await controller.Update(AdminGroupId, new PermissionGroupDto { Name = "Admin", Weight = 100 });
+        var delete = await controller.Delete(AdminGroupId);
+        var create = await controller.Create(new PermissionGroupDto { Name = "Overlords", Weight = 500 });
+
+        foreach (var result in new[] { update, delete, create })
+        {
+            var refused = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(403, refused.StatusCode);
+            Assert.Contains(PermissionEscalationGuard.GroupRankMessage, refused.Value!.ToString());
+        }
+        groups.Verify(g => g.UpdateAsync(It.IsAny<int>(), It.IsAny<PermissionGroupDto>()), Times.Never);
+        groups.Verify(g => g.DeleteAsync(It.IsAny<int>()), Times.Never);
+        groups.Verify(g => g.CreateAsync(It.IsAny<PermissionGroupDto>()), Times.Never);
+    }
 }
