@@ -217,7 +217,7 @@ public class ReadAccessRulesTests
         ["StatisticsController.GetTitleHistory"] = "P",
         ["StatisticsController.GetUser"] = "P",
         ["UsersController.CheckDuplicateAvailability"] = "P",
-        // G: game server only (13)
+        // G: game server only (14)
         ["AdmissionController.Check"] = "G",
         ["DiscoveriesController.GetKnown"] = "G",
         ["KitsController.GetPendingDeliveries"] = "G",
@@ -231,6 +231,7 @@ public class ReadAccessRulesTests
         ["TeleportDestinationsController.Policy"] = "G",
         ["UserIgnoresController.Get"] = "G",
         ["WorldTasksController.ListOpenForServer"] = "G",
+        ["WorldTasksController.ListTempRegionReleases"] = "G",
         // U: the action's own stricter rule (node, self-or-node, owner node, [Authorize]) (83)
         ["AdminClientsController.GetActiveClients"] = "U",
         ["AdminClientsController.GetAllClients"] = "U",
@@ -370,7 +371,7 @@ public class ReadAccessRulesTests
         "LocationsController.GetLocationById", "GateStructuresController.GetAll", "GateStructuresController.GetById",
         "GateDoorsController.GetByStructure", "GateDoorsController.GetById",
         "WorldTasksController.ListByStatus", "WorldTasksController.GetByLinkCode", "WorldTasksController.GetById",
-        "WorldTasksController.ListOpenForServer",
+        "WorldTasksController.ListOpenForServer", "WorldTasksController.ListTempRegionReleases",
         "KitsController.Search", "KitsController.GetById", "KitsController.GetAvailable", "KitsController.GetPendingDeliveries",
         "SiegeLobbiesController.GetRuntimeConfig", "SiegeScenariosController.GetReadiness", "SiegeMatchesController.PublicPlayerMatches",
         "RoadTilesController.List", "RoadTilesController.GetGraph", "RoadTilesController.ListProposals", "RoadTilesController.GetProposal",

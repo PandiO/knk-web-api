@@ -38,6 +38,7 @@ namespace knkwebapi_v2.Services
         private readonly WorldTaskOptions _options;
         private readonly Func<DateTime> _utcNow;
         private readonly IWorldTaskRealtime _realtime;
+        private readonly ITempRegionReleaseService? _tempRegionReleases;
 
         /// <summary>WT2 (#181): offer states a rejoining (or reconnecting) target gets the task offered again in.</summary>
         private static readonly string[] ReofferStates =
@@ -52,7 +53,8 @@ namespace knkwebapi_v2.Services
             IMapper mapper,
             IOptions<WorldTaskOptions>? options = null,
             Func<DateTime>? utcNow = null,
-            IWorldTaskRealtime? realtime = null)
+            IWorldTaskRealtime? realtime = null,
+            ITempRegionReleaseService? tempRegionReleases = null)
         {
             _taskRepo = taskRepo;
             _workflowRepo = workflowRepo;
@@ -61,7 +63,17 @@ namespace knkwebapi_v2.Services
             _options = options?.Value ?? new WorldTaskOptions();
             _utcNow = utcNow ?? (() => DateTime.UtcNow);
             _realtime = realtime ?? NoWorldTaskRealtime.Instance;
+            _tempRegionReleases = tempRegionReleases;
         }
+
+        /// <summary>
+        /// PandiO/knk-workspace#269: a region task that closed without a result (Cancelled, Expired, Failed) releases its
+        /// temp region for the game server to remove; anything else (and a task that never drew one) is skipped.
+        /// </summary>
+        private Task ReleaseTempRegionAsync(WorldTask entity) =>
+            _tempRegionReleases != null && TempRegionReleaseReasons.ForClosedStatus(entity.Status) is { } reason
+                ? _tempRegionReleases.QueueAsync(entity, reason)
+                : Task.CompletedTask;
 
         public Task<WorldTaskReadDto> CreateAsync(WorldTaskCreateDto dto) => CreateAsync(dto, null);
 
@@ -144,6 +156,7 @@ namespace knkwebapi_v2.Services
                     var holder = previous.ClaimedByUuid ?? await TargetUuidAsync(previous);
                     Close(previous, WorldTaskStatuses.Cancelled, $"Replaced by task #{entity.Id}.");
                     await SaveAsync(previous);
+                    await ReleaseTempRegionAsync(previous);
                     _realtime.Changed(previous);
                     _realtime.Cancelled(previous, holder, "Started again in the web app.");
                 }
@@ -534,6 +547,8 @@ namespace knkwebapi_v2.Services
             }
 
             var now = _utcNow();
+            // #269: closing without a result releases a region task's temp region (after the save).
+            var closesWithoutResult = target != entity.Status && TempRegionReleaseReasons.ForClosedStatus(target) != null;
             if (target == WorldTaskStatuses.Pending && entity.Status == WorldTaskStatuses.InProgress)
             {
                 ReleaseClaim(entity, now);
@@ -568,6 +583,7 @@ namespace knkwebapi_v2.Services
 
             await SaveAsync(entity);
             _realtime.Changed(entity);
+            if (closesWithoutResult) await ReleaseTempRegionAsync(entity);
             return _mapper.Map<WorldTaskReadDto>(entity);
         }
 
@@ -612,6 +628,7 @@ namespace knkwebapi_v2.Services
             {
                 Close(entity, WorldTaskStatuses.Expired, ExpiredMessage());
                 await SaveAsync(entity);
+                await ReleaseTempRegionAsync(entity);
                 throw new WorldTaskConflictException($"Task {id} has expired.", WorldTaskStatuses.Expired);
             }
 
@@ -692,6 +709,7 @@ namespace knkwebapi_v2.Services
                 Close(entity, WorldTaskStatuses.Failed, validationResult.Message ?? "Validation failed");
                 await SaveAsync(entity);
                 _realtime.Changed(entity);
+                await ReleaseTempRegionAsync(entity);
 
                 throw new WorldTaskRejectedException($"Task validation failed: {validationResult.Message}");
             }
@@ -760,6 +778,7 @@ namespace knkwebapi_v2.Services
 
             await SaveAsync(entity);
             _realtime.Changed(entity);
+            await ReleaseTempRegionAsync(entity);
             await OfferNextQueuedAsync(failedBy);
             return _mapper.Map<WorldTaskReadDto>(entity);
         }
@@ -786,6 +805,7 @@ namespace knkwebapi_v2.Services
             Close(entity, WorldTaskStatuses.Cancelled, reason);
             await SaveAsync(entity);
             _realtime.Changed(entity);
+            await ReleaseTempRegionAsync(entity);
             // #181 (DESIGN §8.4): the server that holds it, or shows its offer, stops at once instead of on the next heartbeat.
             _realtime.Cancelled(entity, holder, reason);
             await OfferNextQueuedAsync(heldBy);

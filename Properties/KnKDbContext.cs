@@ -77,6 +77,8 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<WorkflowSession> WorkflowSessions { get; set; } = null!;
     public virtual DbSet<StepProgress> StepProgresses { get; set; } = null!;
     public virtual DbSet<WorldTask> WorldTasks { get; set; } = null!;
+    /// <summary>PandiO/knk-workspace#269: temp regions of abandoned drafts and closed tasks, for the game server to remove.</summary>
+    public virtual DbSet<TempRegionRelease> TempRegionReleases { get; set; } = null!;
 
     // InventoryMenu (docs/specs/inventory-menu/IMPLEMENTATION_PLAN.md Phase 1)
     public virtual DbSet<MenuTemplate> MenuTemplates { get; set; } = null!;
@@ -2213,6 +2215,20 @@ public partial class KnKDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.AssignedUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PandiO/knk-workspace#269: no foreign key to world_tasks; a row outlives a task the sweep removes with its session.
+        modelBuilder.Entity<TempRegionRelease>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("temp_region_releases");
+            entity.Property(e => e.RegionId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.World).HasMaxLength(100);
+            entity.Property(e => e.ServerId).HasMaxLength(100);
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.RequestedAt).HasColumnType("datetime");
+            entity.HasIndex(e => e.WorldTaskId);
+            entity.HasIndex(e => e.RequestedAt);
         });
 
         // InventoryMenu (docs/specs/inventory-menu/IMPLEMENTATION_PLAN.md Phase 1)
