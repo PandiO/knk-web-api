@@ -58,6 +58,13 @@ namespace knkwebapi_v2.Dtos
         /// </summary>
         [JsonPropertyName("actionNodes")]
         public Dictionary<string, List<string>> ActionNodes { get; set; } = new();
+
+        /// <summary>
+        /// The type's relationships for the entity detail page (PandiO/knk-workspace#188): what each navigation links to,
+        /// whether Select/Add and Unlink work through <c>api/Relationships</c>, why not, and the nodes a change needs.
+        /// </summary>
+        [JsonPropertyName("relationships")]
+        public List<RelationshipMetadataDto> Relationships { get; set; } = new();
     }
 
     public class FieldMetadataDto

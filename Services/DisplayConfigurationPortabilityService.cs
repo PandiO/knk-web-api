@@ -38,13 +38,7 @@ namespace knkwebapi_v2.Services
         private static readonly IReadOnlySet<string> KnownButtonKeys = new HashSet<string>(StringComparer.Ordinal)
         {
             "showViewButton", "showEditButton", "showCreateButton", "showSelectButton",
-            "showUnlinkButton", "showAddButton", "showRemoveButton"
-        };
-
-        /// <summary>Relationship buttons the renderer hides while KNG-148 is open (RELATIONSHIP_ACTIONS_AVAILABLE = false).</summary>
-        private static readonly IReadOnlySet<string> HiddenButtonKeys = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "showSelectButton", "showUnlinkButton", "showAddButton", "showRemoveButton"
+            "showUnlinkButton", "showAddButton", "showRemoveButton", "showDeleteButton"
         };
 
         /// <summary>The fieldType values the renderer formats or the builder offers (README rule E5).</summary>
@@ -814,8 +808,6 @@ namespace knkwebapi_v2.Services
                     }
                     if (property.Value.ValueKind != JsonValueKind.True) continue;
                     anyShown = true;
-                    if (HiddenButtonKeys.Contains(property.Name))
-                        build.Warnings.Add($"{where}: {property.Name} is hidden on the page until relationship actions exist (KNG-148).");
                 }
 
                 if (anyShown && relatedEntityTypeName == null)

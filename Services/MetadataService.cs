@@ -136,6 +136,7 @@ namespace knkwebapi_v2.Services
                 };
 
                 ApplyDashboardAccess(clone);
+                clone.Relationships = RelationshipCatalog.For(dbContext.Model, meta.EntityName).Select(r => r.ToDto()).ToList();
                 return clone;
             }).ToList();
         }
