@@ -86,4 +86,30 @@ public class RegionServiceRenameTests
 
         Assert.DoesNotContain("parentRegionId", handler.LastRequest!.Query);
     }
+
+    [Fact]
+    public async Task LootboxAreaRename_AsksForFullHeight_WithoutADomainType()
+    {
+        // PandiO/knk-workspace#34: a spawn area is not a managed region, but is stretched like /knk lootbox area create.
+        var (service, handler) = Create();
+
+        await service.RenameLootboxAreaRegionAsync("tempregion_worldtask_5", "lootbox_area_3", "world", "lootbox_area_3");
+
+        var query = handler.LastRequest!.Query;
+        Assert.Contains("newRegionId=lootbox_area_3", query);
+        Assert.Contains("world=world", query);
+        Assert.Contains("replaceRegionId=lootbox_area_3", query);
+        Assert.Contains("fullHeight=true", query);
+        Assert.DoesNotContain("domainType", query);
+    }
+
+    [Fact]
+    public async Task DomainRename_NeverAsksForFullHeight()
+    {
+        var (service, handler) = Create();
+
+        await service.RenameRegionAsync("tempregion_worldtask_6", "domain_9", "Town", null, "world", "domain_9");
+
+        Assert.DoesNotContain("fullHeight", handler.LastRequest!.Query);
+    }
 }
