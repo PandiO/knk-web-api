@@ -449,4 +449,59 @@ public class PermissionResolutionServiceTests
         result.Permissions.Should().ContainSingle(p => p.Node == "knk.account.use" && p.SourceRank == 2);
         (await _service.CheckAsync(1, "knk.fly"))!.Result.Should().Be(PermissionResolutionResult.Granted);
     }
+
+    // ===== CheckAnyAsync (PandiO/knk-workspace#280 AM2) =====
+
+    [Fact]
+    public async Task CheckAnyAsync_ReturnsTheFirstGrantedNode_InTheGivenOrder()
+    {
+        var user = MakeUser(1, "alice");
+        SetupUser(user);
+        SetupDirectGrants(1, Grant(1, "knk.admin.config", true));
+        SetupMemberGroups(1, MakeGroup(10, "Builders", 10, null, Grant(10, "knk.admin.world", true)));
+
+        (await _service.CheckAnyAsync(1, new[] { "knk.admin.content", "knk.admin.world", "knk.admin.config" }))
+            .Should().Be("knk.admin.world");
+        (await _service.CheckAnyAsync(1, new[] { "knk.admin.content", "knk.kit.manage" })).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CheckAnyAsync_ResolvesEachNodeLikeCheckAsync_DenyAndWildcardIncluded()
+    {
+        var user = MakeUser(2, "bob");
+        SetupUser(user);
+        // A user-level deny beats the group's wildcard for that node only.
+        SetupDirectGrants(2, Grant(2, "knk.admin.world", false));
+        SetupMemberGroups(2, MakeGroup(20, "Admin", 100, null, Grant(20, "knk.admin.*", true)));
+
+        (await _service.CheckAnyAsync(2, new[] { "knk.admin.world" })).Should().BeNull();
+        (await _service.CheckAnyAsync(2, new[] { "knk.admin.world", "knk.admin.content" })).Should().Be("knk.admin.content");
+        foreach (var node in new[] { "knk.admin.world", "knk.admin.content" })
+        {
+            var single = await _service.CheckAsync(2, node);
+            (single!.Allowed).Should().Be(node == "knk.admin.content");
+        }
+    }
+
+    [Fact]
+    public async Task CheckAnyAsync_UnknownUserOrNoNodes_IsNull()
+    {
+        _userRepo.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((User?)null);
+        (await _service.CheckAnyAsync(999, new[] { "knk.admin.world" })).Should().BeNull();
+        (await _service.CheckAnyAsync(1, Array.Empty<string>())).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CheckAnyAsync_BuildsTheHolderChainOnce()
+    {
+        var user = MakeUser(3, "carol");
+        SetupUser(user);
+        SetupDirectGrants(3);
+        SetupMemberGroups(3);
+
+        await _service.CheckAnyAsync(3, new[] { "a.b", "c.d", "e.f" });
+
+        _userRepo.Verify(r => r.GetByIdAsync(3), Times.Once);
+        _groupRepo.Verify(r => r.GetActiveGroupsForUserAsync(3, It.IsAny<DateTime>()), Times.Once);
+    }
 }

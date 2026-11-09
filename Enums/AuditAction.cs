@@ -107,5 +107,17 @@ public enum AuditAction
     /// <c>/knk item more</c> copied an item that carries an ItemInstance id: new instances were minted from it
     /// (PandiO/knk-workspace#175). Target = the new owner (else the actor); Details name the source and new ids.
     /// </summary>
-    ItemInstanceCloned = 60
+    ItemInstanceCloned = 60,
+
+    // Values 61-62 are allocated to the dashboard access model (PandiO/knk-workspace#280, DESIGN.md § 4.7, § 4.8).
+
+    /// <summary>
+    /// Staff deleted several dashboard records at once (POST api/Dashboard/bulk-delete). Target = the actor; Details
+    /// name the type, the deleted ids and how many were refused.
+    /// </summary>
+    DashboardBulkDelete = 61,
+
+    /// <summary>Staff exported dashboard rows (POST api/Dashboard/export). Target = the actor; Details name the type,
+    /// the scope (selection or search) and the row count, never the rows.</summary>
+    DashboardExport = 62
 }

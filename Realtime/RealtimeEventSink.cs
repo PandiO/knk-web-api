@@ -18,12 +18,18 @@ namespace knkwebapi_v2.Realtime;
 /// <param name="V">Contract version of <paramref name="Type"/>.</param>
 /// <param name="WebGroups">WT2 (#181): when set, the event goes to these web hub groups (e.g. <c>task:{id}</c>,
 /// <c>user:{id}</c>) instead of the game servers; <paramref name="ServerId"/> is then ignored.</param>
+/// <param name="WebNode">S4 (#183): when set, the event goes to every web connection whose user holds this node
+/// (checked when sent, <see cref="RealtimeWebAudience"/>) instead of the game servers.</param>
 public sealed record RealtimeEvent(string Type, object? Payload, int? ActorUserId = null, string? ServerId = null, int V = 1,
-    IReadOnlyList<string>? WebGroups = null)
+    IReadOnlyList<string>? WebGroups = null, string? WebNode = null)
 {
     /// <summary>An event for web connections in any of <paramref name="groups"/>.</summary>
     public static RealtimeEvent ToWeb(string type, object? payload, IReadOnlyList<string> groups, int? actorUserId = null, int v = 1) =>
         new(type, payload, actorUserId, null, v, groups);
+
+    /// <summary>S4 (#183): an event for the web connections of users who hold <paramref name="node"/>.</summary>
+    public static RealtimeEvent ToWebHolders(string node, string type, object? payload, int? actorUserId = null, int v = 1) =>
+        new(type, payload, actorUserId, null, v, null, node);
 }
 
 /// <summary>
@@ -80,7 +86,11 @@ public sealed class AfterCommitRealtimeEventSink : IRealtimeEventSink
             var actor = new RealtimeActor(realtimeEvent.ActorUserId, Source());
             void Send()
             {
-                if (realtimeEvent.WebGroups != null)
+                if (realtimeEvent.WebNode != null)
+                {
+                    _publisher.PublishToWebHolders(realtimeEvent.WebNode, realtimeEvent.Type, realtimeEvent.Payload, actor, realtimeEvent.V);
+                }
+                else if (realtimeEvent.WebGroups != null)
                 {
                     _publisher.PublishToWebGroups(realtimeEvent.WebGroups, realtimeEvent.Type, realtimeEvent.Payload, actor, realtimeEvent.V);
                 }

@@ -6,6 +6,7 @@ using knkwebapi_v2.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace knkwebapi_v2.Realtime;
 
@@ -41,6 +42,9 @@ public static class RealtimeSetup
         services.AddSingleton<RealtimePublisher>();
         services.AddSingleton<IRealtimePublisher>(sp => sp.GetRequiredService<RealtimePublisher>());
         services.AddSingleton<IRealtimeTransport, HubContextRealtimeTransport>();
+        // S4 (PandiO/knk-workspace#183): who may receive the node-gated web events (the REST permission check, cached).
+        services.AddSingleton<RealtimeWebAudience>();
+        services.AddSingleton<IRealtimeWebAudience>(sp => sp.GetRequiredService<RealtimeWebAudience>());
         services.AddHostedService<RealtimeDispatchService>();
         services.AddSingleton<PresenceRegistry>();
         services.AddScoped<IPresenceStore, PresenceStore>();
@@ -57,7 +61,12 @@ public static class RealtimeSetup
             context => new AfterCommitRealtimeEventSink(sp.GetRequiredService<IRealtimePublisher>(),
                 sp.GetRequiredService<RealtimeTransactionEvents>(), context, sp.GetService<IHttpContextAccessor>(),
                 sp.GetService<ILogger<AfterCommitRealtimeEventSink>>()),
-            sp.GetService<IHttpContextAccessor>(), sp.GetService<ILogger<RealtimeEntityChangeInterceptor>>()));
+            sp.GetService<IHttpContextAccessor>(), sp.GetService<ILogger<RealtimeEntityChangeInterceptor>>(),
+            // S4 (#183): the web live updates, only built while they are on (Realtime:WebLiveUpdatesEnabled, decision
+            // 2026-11-06 on LX1-10) and a web connection is open; presence names the server.
+            webListening: () => sp.GetRequiredService<IOptionsMonitor<RealtimeOptions>>().CurrentValue.WebLiveUpdatesEnabled
+                && sp.GetRequiredService<RealtimeConnections>().Count(RealtimeHubKind.Web) > 0,
+            serverOf: uuid => sp.GetRequiredService<PresenceRegistry>().ConnectedServerOf(uuid)));
         // The player notification queue pushes over the hub; the in-memory queue stays the store the REST poll reads.
         services.TryAddSingleton<InMemoryPlayerNotificationQueue>();
         services.AddSingleton<HubPlayerNotificationQueue>();

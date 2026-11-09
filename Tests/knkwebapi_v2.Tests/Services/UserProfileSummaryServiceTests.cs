@@ -21,6 +21,7 @@ public class UserProfileSummaryServiceTests
     private readonly Mock<ITitleService> _mockTitleService;
     private readonly Mock<ISalaryService> _mockSalaryService;
     private readonly Mock<ISalaryConfigurationService> _mockSalaryConfigurationService;
+    private readonly Mock<knkwebapi_v2.Repositories.IUserRepository> _mockUserRepository = new();
     private readonly UserProfileSummaryService _service;
 
     public UserProfileSummaryServiceTests()
@@ -37,7 +38,8 @@ public class UserProfileSummaryServiceTests
             _mockUserPermissionGroupService.Object,
             _mockTitleService.Object,
             _mockSalaryService.Object,
-            _mockSalaryConfigurationService.Object);
+            _mockSalaryConfigurationService.Object,
+            _mockUserRepository.Object);
     }
 
     [Fact]
@@ -108,5 +110,23 @@ public class UserProfileSummaryServiceTests
         Assert.NotNull(result!.Permissions);
         Assert.Equal(1, result.Permissions.UserId);
         Assert.Empty(result.Permissions.Permissions);
+    }
+
+    /// <summary>PandiO/knk-workspace#183: the profile's online badge starts from User.IsOnline, as the moderation list.</summary>
+    [Fact]
+    public async Task GetAsync_CarriesTheOnlineStateAndLastSeen()
+    {
+        var seen = new DateTime(2026, 11, 5, 20, 0, 0, DateTimeKind.Utc);
+        _mockUserService.Setup(s => s.GetByIdAsync(1)).ReturnsAsync(new UserDto { Id = 1, Username = "alice" });
+        _mockUserRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice", IsOnline = true, LastSeenAt = seen });
+        _mockTitleService.Setup(s => s.ResolveAsync(It.IsAny<int>(), It.IsAny<Gender?>())).ReturnsAsync(new TitleResolutionDto());
+        _mockUserPermissionGroupService.Setup(s => s.GetByUserAsync(1)).ReturnsAsync(new List<UserPermissionGroupDto>());
+        _mockSalaryConfigurationService.Setup(s => s.GetAsync()).ReturnsAsync(new SalaryConfigurationDto { GlobalMultiplier = 1.0m });
+
+        var result = await _service.GetAsync(1);
+
+        Assert.NotNull(result!.Presence);
+        Assert.True(result.Presence!.Online);
+        Assert.Equal(seen, result.Presence.LastSeenAt);
     }
 }

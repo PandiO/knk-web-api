@@ -47,9 +47,13 @@ public class SiegeConfigurationAuthTests
 
     private async Task AssertServiceOrNodeAsync(MethodInfo method, string node)
     {
-        var filter = method.GetCustomAttributes<TypeFilterAttribute>().Single();
+        var filters = method.GetCustomAttributes<TypeFilterAttribute>().ToList();
+        var filter = Assert.Single(filters, f => Equals(f.Arguments?.FirstOrDefault(), node));
         Assert.Equal(typeof(RequireServiceOrPermissionFilter), filter.ImplementationType);
         Assert.Equal(node, Assert.Single(filter.Arguments!));
+        // A delete also needs knk.admin.delete (dashboard access model, PandiO/knk-workspace#280); nothing else.
+        Assert.All(filters.Where(f => f != filter), f => Assert.Equal(StaffPermissions.Delete, Assert.Single(f.Arguments!)));
+        Assert.Equal(method.GetCustomAttributes<HttpDeleteAttribute>().Any() ? 1 : 0, filters.Count - 1);
 
         async Task<IActionResult?> Run(HttpContext http)
         {

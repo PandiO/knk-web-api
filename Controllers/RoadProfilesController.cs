@@ -14,6 +14,7 @@ namespace knkwebapi_v2.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/road-profiles")]
+[DashboardReads("RoadProfile")]
 public class RoadProfilesController : RoadControllerBase
 {
     private readonly IRoadNetworkService _service;
@@ -54,6 +55,8 @@ public class RoadProfilesController : RoadControllerBase
     public Task<IActionResult> Update(int id, [FromBody] RoadProfileUpsertDto dto) =>
         Run(async () => Ok(await _service.UpdateProfileAsync(id, dto)));
 
+    // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+    [RequireServiceOrPermission(StaffPermissions.Delete)]
     [HttpDelete("{id:int}")]
     [RequireServiceOrPermission(StaffPermissions.RoadManage)]
     [ProducesResponseType(204)]

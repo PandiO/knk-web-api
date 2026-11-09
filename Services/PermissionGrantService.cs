@@ -17,11 +17,13 @@ namespace knkwebapi_v2.Services
         private readonly IUserRepository _userRepo;
         private readonly IAuditLogService _auditLogService;
         private readonly IRealtimeEventSink? _realtime;
+        private readonly IPermissionReadCache? _readCache;
 
         public PermissionGrantService(IPermissionGrantRepository repo, IMapper mapper, IUserRepository userRepo, IAuditLogService auditLogService,
-            IRealtimeEventSink? realtime = null)
+            IRealtimeEventSink? realtime = null, IPermissionReadCache? readCache = null)
         {
             _realtime = realtime;
+            _readCache = readCache;
             _repo = repo;
             _mapper = mapper;
             _userRepo = userRepo;
@@ -44,8 +46,12 @@ namespace knkwebapi_v2.Services
         /// </summary>
         private async Task NotifyHolderAsync(int holderId, int? actorUserId)
         {
-            if (_realtime == null) return;
+            if (_realtime == null && _readCache == null) return;
             var user = await _userRepo.GetByIdAsync(holderId);
+            // #280 AM2: the dashboard read checks forget the old answer (a group's grants reach all its members).
+            if (user != null) _readCache?.ForgetUser(holderId);
+            else _readCache?.ForgetAll();
+            if (_realtime == null) return;
             if (user != null)
                 _realtime.PermissionsChanged(user, UserPermissionsChangeReasons.GrantChanged, actorUserId);
             else

@@ -61,4 +61,36 @@ public class ForWritesSearchTests
     [InlineData("DELETE", "api/Domains/{id:int}")]
     public async Task OtherWrites_StillNeedTheNode(string method, string template) =>
         Assert.True(await Refused(method, template));
+
+    // ===== #280 AM2: a POST whose action carries a read rule of its own is a read too =====
+
+    private async Task<bool> RefusedAction(Type controller, string action)
+    {
+        var method = controller.GetMethods().Single(m => m.Name == action);
+        var descriptor = new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor
+        {
+            ControllerTypeInfo = System.Reflection.IntrospectionExtensions.GetTypeInfo(controller),
+            MethodInfo = method,
+            AttributeRouteInfo = new AttributeRouteInfo { Template = "api/x/" + action },
+        };
+        var context = new AuthorizationFilterContext(new ActionContext(LoggedIn("POST"), new RouteData(), descriptor), new List<IFilterMetadata>());
+        await new RequireServiceOrPermissionForWritesFilter(StaffPermissions.ManageContent, _permissions.Object).OnAuthorizationAsync(context);
+        return context.Result != null;
+    }
+
+    [Theory]
+    [InlineData(nameof(KnKWebAPI.Controllers.FieldValidationRulesController.ValidateField))]
+    [InlineData(nameof(KnKWebAPI.Controllers.FieldValidationRulesController.ValidateFields))]
+    [InlineData(nameof(KnKWebAPI.Controllers.FieldValidationRulesController.ResolvePlaceholders))]
+    [InlineData(nameof(KnKWebAPI.Controllers.FieldValidationRulesController.ResolveDependencies))]
+    [InlineData(nameof(KnKWebAPI.Controllers.FieldValidationRulesController.ValidatePath))]
+    [InlineData(nameof(KnKWebAPI.Controllers.FieldValidationRulesController.ValidateDraftConfiguration))]
+    [InlineData(nameof(KnKWebAPI.Controllers.FieldValidationRulesController.ValidateFieldRule))]
+    public async Task FormRuntimePosts_AreLeftToTheirAnyAreaNodeRule(string action) =>
+        Assert.False(await RefusedAction(typeof(KnKWebAPI.Controllers.FieldValidationRulesController), action));
+
+    [Fact]
+    public async Task BuilderWrites_StillNeedTheNode() =>
+        Assert.True(await RefusedAction(typeof(KnKWebAPI.Controllers.FieldValidationRulesController),
+            nameof(KnKWebAPI.Controllers.FieldValidationRulesController.Create)));
 }

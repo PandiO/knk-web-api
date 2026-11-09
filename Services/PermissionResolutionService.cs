@@ -144,6 +144,28 @@ namespace knkwebapi_v2.Services
             };
         }
 
+        public async Task<string?> CheckAnyAsync(int userId, IReadOnlyList<string> nodes)
+        {
+            if (nodes == null || nodes.Count == 0) return null;
+            if (nodes.Any(string.IsNullOrWhiteSpace)) throw new ArgumentException("Permission nodes must not be empty.", nameof(nodes));
+
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user == null) return null;
+
+            var chain = await BuildHolderChainAsync(user, DateTime.UtcNow);
+            foreach (var node in nodes)
+            {
+                foreach (var level in chain)
+                {
+                    var best = BestMatchAtHolder(level.Grants, node);
+                    if (best == null) continue;
+                    if (best.Value) return node;
+                    break; // the first holder that decides the node decides it
+                }
+            }
+            return null;
+        }
+
         public async Task<PermissionGroupCheckResponseDto?> CheckGroupAsync(int groupId, string node)
         {
             if (string.IsNullOrWhiteSpace(node)) throw new ArgumentException("Permission node is required.", nameof(node));

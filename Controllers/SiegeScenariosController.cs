@@ -12,6 +12,7 @@ namespace KnKWebAPI.Controllers
     // scenario's own create/update ignores them.
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeScenario")]
     public class SiegeScenariosController : ControllerBase
     {
         private readonly ISiegeScenarioService _service;
@@ -68,6 +69,8 @@ namespace KnKWebAPI.Controllers
         }
 
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

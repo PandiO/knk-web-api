@@ -942,6 +942,8 @@ public partial class KnKDbContext : DbContext
             entity.ToTable("kit_claims");
 
             entity.Property(e => e.ClaimedAt).HasColumnType("datetime");
+            entity.Property(e => e.DeliveryRequestedAt).HasColumnType("datetime");
+            entity.Property(e => e.DeliveredAt).HasColumnType("datetime");
 
             entity.HasOne(kc => kc.Kit)
                 .WithMany()
