@@ -16,6 +16,11 @@ namespace knkwebapi_v2.Realtime;
 /// save sends nothing. Option C (an outbox) only swaps the sink. Singleton; the pending changes are kept per context.
 /// <para>Writes the interceptor can't see (<c>ExecuteUpdate</c>/raw SQL) send their events explicitly: balances (S2,
 /// <c>CurrencyService</c>); presence has no game-server event.</para>
+/// <para>S4 (PandiO/knk-workspace#183): the same saves also feed the web hub's live updates
+/// (<see cref="RealtimeWebChangeMap"/>: <c>EntityChanged</c> for the dashboard types, <c>PresenceChanged</c>), built only
+/// while a web connection is open and sent through the same sink to the holders of each event's node. The game
+/// servers' events are unchanged. <c>Realtime:WebLiveUpdatesEnabled = false</c> turns them off (decision 2026-11-06 on
+/// LX1-10; <see cref="RealtimeSetup"/> folds it into <c>webListening</c>).</para>
 /// </summary>
 public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
 {
@@ -28,16 +33,27 @@ public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
     private readonly Func<DbContext, IRealtimeEventSink?> _sinkFor;
     private readonly IHttpContextAccessor? _http;
     private readonly ILogger<RealtimeEntityChangeInterceptor>? _logger;
+    private readonly Func<bool> _webListening;
+    private readonly Func<string?, string?>? _serverOf;
+
+    private static readonly IReadOnlyList<string> ValueNames =
+        RealtimeEntityChangeMap.ValueNames.Concat(RealtimeWebChangeMap.ValueNames).Distinct(StringComparer.Ordinal).ToList();
 
     /// <param name="sinkFor">The sink for a context's events (default: an <see cref="AfterCommitRealtimeEventSink"/>
     /// over that context, built by <see cref="RealtimeSetup"/>).</param>
     /// <param name="http">For the actor's user id; null outside a request.</param>
+    /// <param name="webListening">S4 (#183): whether the web live updates are on and any web hub connection is open
+    /// (default: yes); the web events are skipped otherwise.</param>
+    /// <param name="serverOf">S4: the game server a UUID is on, for <c>PresenceChanged</c>.</param>
     public RealtimeEntityChangeInterceptor(Func<DbContext, IRealtimeEventSink?> sinkFor, IHttpContextAccessor? http = null,
-        ILogger<RealtimeEntityChangeInterceptor>? logger = null)
+        ILogger<RealtimeEntityChangeInterceptor>? logger = null, Func<bool>? webListening = null,
+        Func<string?, string?>? serverOf = null)
     {
         _sinkFor = sinkFor;
         _http = http;
         _logger = logger;
+        _webListening = webListening ?? (() => true);
+        _serverOf = serverOf;
     }
 
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
@@ -91,6 +107,7 @@ public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
             {
                 context.ChangeTracker.DetectChanges();
             }
+            var web = WebListening();
             var pending = _pending.GetOrCreateValue(context);
             lock (pending)
             {
@@ -105,7 +122,7 @@ public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
                         EntityState.Deleted => RealtimeEntityState.Deleted,
                         _ => (RealtimeEntityState?)null,
                     };
-                    if (state == null || !RealtimeEntityChangeMap.IsWatched(entry.Metadata.ClrType)) continue;
+                    if (state == null || !IsWatched(entry.Metadata.ClrType, web)) continue;
                     IReadOnlySet<string> modified = state == RealtimeEntityState.Modified
                         ? entry.Properties.Where(p => p.IsModified).Select(p => p.Metadata.Name).ToHashSet(StringComparer.Ordinal)
                         : new HashSet<string>();
@@ -133,7 +150,12 @@ public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
         }
         try
         {
-            var events = RealtimeEntityChangeMap.Map(changes, ActorUserId());
+            var actor = Actor();
+            var events = RealtimeEntityChangeMap.Map(changes, actor.UserId).ToList();
+            if (WebListening())
+            {
+                events.AddRange(RealtimeWebChangeMap.Map(changes, actor.UserId, actor.Name, _serverOf));
+            }
             if (events.Count == 0) return;
             var sink = _sinkFor(context);
             if (sink == null) return;
@@ -161,7 +183,7 @@ public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
     private static IReadOnlyDictionary<string, object?> ReadValues(EntityEntry entry)
     {
         var values = new Dictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var name in RealtimeEntityChangeMap.ValueNames)
+        foreach (var name in ValueNames)
         {
             var property = entry.Metadata.FindProperty(name);
             if (property?.PropertyInfo == null) continue;
@@ -177,18 +199,36 @@ public sealed class RealtimeEntityChangeInterceptor : SaveChangesInterceptor
         return values;
     }
 
-    private int? ActorUserId()
+    private static bool IsWatched(Type type, bool web) =>
+        RealtimeEntityChangeMap.IsWatched(type) || (web && RealtimeWebChangeMap.IsWatched(type));
+
+    private bool WebListening()
     {
-        var context = _http?.HttpContext;
-        if (context == null) return null;
         try
         {
-            var caller = context.GetKnkCaller();
-            return caller.IsWebUser ? caller.WebUserId : null;
+            return _webListening();
         }
         catch (Exception)
         {
-            return null;
+            return false;
+        }
+    }
+
+    /// <summary>The web user behind the save (id, and the name from their access token for the "updated by" hint).</summary>
+    private (int? UserId, string? Name) Actor()
+    {
+        var context = _http?.HttpContext;
+        if (context == null) return (null, null);
+        try
+        {
+            var caller = context.GetKnkCaller();
+            if (!caller.IsWebUser) return (null, null);
+            var name = context.User?.FindFirst("username")?.Value;
+            return (caller.WebUserId, string.IsNullOrWhiteSpace(name) ? null : name);
+        }
+        catch (Exception)
+        {
+            return (null, null);
         }
     }
 }

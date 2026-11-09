@@ -10,6 +10,7 @@ namespace KnKWebAPI.Controllers
     // own owned children, listed/created here and addressed singly by SiegeSpawnpointsController.
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeTeam")]
     public class SiegeTeamsController : ControllerBase
     {
         private readonly ISiegeScenarioService _service;
@@ -47,6 +48,8 @@ namespace KnKWebAPI.Controllers
         }
 
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

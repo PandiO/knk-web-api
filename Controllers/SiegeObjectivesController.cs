@@ -9,6 +9,7 @@ namespace KnKWebAPI.Controllers
     // live under the parent scenario (GET/POST /api/SiegeScenarios/{id}/objectives).
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeObjective")]
     public class SiegeObjectivesController : ControllerBase
     {
         private readonly ISiegeScenarioService _service;
@@ -46,6 +47,8 @@ namespace KnKWebAPI.Controllers
         }
 
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

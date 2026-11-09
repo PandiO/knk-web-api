@@ -202,7 +202,7 @@ public class RequireServiceOrPermissionAttributeTests
     {
         // UsersController
         R(typeof(UsersController), nameof(UsersController.Update), "knk.admin.user.manage"),
-        R(typeof(UsersController), nameof(UsersController.Delete), "knk.admin.user.manage"),
+        R(typeof(UsersController), nameof(UsersController.Delete), "knk.admin.user.manage + knk.admin.delete"), // #280 decision 5
         R(typeof(UsersController), nameof(UsersController.AdjustBalances), "knk.admin.user.manage"),
         R(typeof(UsersController), nameof(UsersController.UpdatePersonalMultipliers), "knk.admin.user.salary"),
         R(typeof(UsersController), nameof(UsersController.PayOutSalary), "knk.admin.user.salary"),
@@ -218,17 +218,19 @@ public class RequireServiceOrPermissionAttributeTests
         // KitsController
         R(typeof(KitsController), nameof(KitsController.Create), "knk.kit.manage"),
         R(typeof(KitsController), nameof(KitsController.Update), "knk.kit.manage"),
-        R(typeof(KitsController), nameof(KitsController.Delete), "knk.kit.manage"),
+        R(typeof(KitsController), nameof(KitsController.Delete), "knk.kit.manage + knk.admin.delete"),
         R(typeof(KitsController), nameof(KitsController.Give), "knk.kit.give"),
         R(typeof(KitsController), nameof(KitsController.Claim), null),
         R(typeof(KitsController), nameof(KitsController.Purchase), null),
         R(typeof(KitsController), nameof(KitsController.GrantFirstJoin), null),
+        R(typeof(KitsController), nameof(KitsController.GetPendingDeliveries), null),
+        R(typeof(KitsController), nameof(KitsController.MarkDelivered), null),
         // Config and permissions
         R(typeof(SalaryConfigurationController), nameof(SalaryConfigurationController.Update), "knk.admin.currency.policy"),
         R(typeof(AuditLogRetentionConfigurationController), nameof(AuditLogRetentionConfigurationController.Update), "knk.admin.config"),
         R(typeof(KnKWebAPI.Controllers.PermissionGroupsController), "Create", "knk.admin.user.perm"),
         R(typeof(KnKWebAPI.Controllers.PermissionGroupsController), "Update", "knk.admin.user.perm"),
-        R(typeof(KnKWebAPI.Controllers.PermissionGroupsController), "Delete", "knk.admin.user.perm"),
+        R(typeof(KnKWebAPI.Controllers.PermissionGroupsController), "Delete", "knk.admin.user.perm + knk.admin.delete"),
         R(typeof(KnKWebAPI.Controllers.PermissionGrantsController), "Create", "knk.admin.user.perm"),
         R(typeof(KnKWebAPI.Controllers.PermissionGrantsController), "Update", "knk.admin.user.perm"),
         R(typeof(KnKWebAPI.Controllers.PermissionGrantsController), "Delete", "knk.admin.user.perm"),
@@ -266,9 +268,21 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ListOpenForServer), null),
         // WT2 (PandiO/knk-workspace#181): the "Hand off to…" picker lists online staff for staff who create world tasks
         R(typeof(knkwebapi_v2.Controllers.PresenceController), nameof(knkwebapi_v2.Controllers.PresenceController.OnlineStaff), "knk.admin.world"),
+        // Realtime S5 (PandiO/knk-workspace#184): the erasure feed carries former UUIDs and is the game server's only
+        R(typeof(knkwebapi_v2.Controllers.PrivacyErasuresController), nameof(knkwebapi_v2.Controllers.PrivacyErasuresController.GetSince), null),
+        // Dashboard access model (PandiO/knk-workspace#280): bulk delete and export are web-only; the type's area node
+        // is checked in the action. One single delete per area (the class rule adds the area node where noted).
+        R(typeof(knkwebapi_v2.Controllers.DashboardController), nameof(knkwebapi_v2.Controllers.DashboardController.BulkDelete), "knk.admin.delete.bulk + knk.admin.delete"),
+        R(typeof(knkwebapi_v2.Controllers.DashboardController), nameof(knkwebapi_v2.Controllers.DashboardController.Export), "knk.admin.export"),
+        R(typeof(KnKWebAPI.Controllers.CategoriesController), nameof(KnKWebAPI.Controllers.CategoriesController.Delete), "knk.admin.delete"),   // + ForWrites(knk.admin.content)
+        R(typeof(KnKWebAPI.Controllers.TownsController), nameof(KnKWebAPI.Controllers.TownsController.Delete), "knk.admin.delete"),             // + ForWrites(knk.admin.world)
+        R(typeof(KnKWebAPI.Controllers.GateStructuresController), nameof(KnKWebAPI.Controllers.GateStructuresController.Delete), "knk.admin.world + knk.admin.delete"),
+        R(typeof(LootboxTypesController), nameof(LootboxTypesController.Delete), "knk.admin.lootbox.manage + knk.admin.delete"),
+        R(typeof(KnKWebAPI.Controllers.SiegeScenariosController), nameof(KnKWebAPI.Controllers.SiegeScenariosController.Delete), "knk.siege.admin.manage + knk.admin.delete"),
+        R(typeof(RoadProfilesController), nameof(RoadProfilesController.Delete), "knk.admin.road + knk.admin.delete"),
     };
 
-    /// <summary>node null = plugin-only (RequirePluginService).</summary>
+    /// <summary>node null = plugin-only (RequirePluginService); "a + b" = the action carries both node rules.</summary>
     private static object[] R(Type controller, string action, string? node) => new object[] { controller, action, node! };
 
     [Theory]
@@ -285,7 +299,7 @@ public class RequireServiceOrPermissionAttributeTests
             var gates = method.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node)
                 .Concat(method.GetCustomAttributes<RequirePermissionAttribute>().Select(a => (string)a.Arguments![0]))
                 .ToList();
-            Assert.Equal(new[] { node }, gates);
+            Assert.Equal(node.Split(" + ").OrderBy(n => n, StringComparer.Ordinal), gates.OrderBy(n => n, StringComparer.Ordinal));
         }
     }
 

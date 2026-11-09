@@ -10,6 +10,7 @@ namespace knkwebapi_v2.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
     public class DisplaySectionsController : ControllerBase
     {
         private readonly IDisplaySectionService _service;

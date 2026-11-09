@@ -25,7 +25,21 @@ namespace knkwebapi_v2.Services
         /// of a failed DELETE names. The default lists every reference, cascades included.
         /// </summary>
         Task<EntityReferencesDto?> GetReferencesAsync(string entityTypeName, string id, IEnumerable<string>? ignore = null, bool blockingOnly = false);
+
+        /// <summary>
+        /// PandiO/knk-workspace#44: the same references as <see cref="GetReferencesAsync"/>, per foreign key, with the
+        /// ids of the referencing rows (for a join row the other side's id): what "Show details" lists. Null when the
+        /// entity type is unknown. Rows without a single key (or a null identity) count but have no id.
+        /// </summary>
+        Task<IReadOnlyList<ReferencingRows>?> GetReferencingRowsAsync(string entityTypeName, string id, bool blockingOnly = true);
     }
+
+    /// <summary>
+    /// The rows of one reference (#44): <see cref="ReferencedBy"/> as in <see cref="EntityReferenceCountDto"/>, the type
+    /// that names a row (<see cref="EntityTypeName"/>: the dependent, or the other side of a join row; null when it has no
+    /// single key), how many rows there are and their ids (null ids left out).
+    /// </summary>
+    public sealed record ReferencingRows(string ReferencedBy, string? EntityTypeName, int Count, IReadOnlyList<string> Ids);
 
     /// <summary>
     /// KNG-162: the "in use" check before the web app deletes an entity a child form created while a
@@ -55,28 +69,13 @@ namespace knkwebapi_v2.Services
             var principal = FindEntityType(entityTypeName);
             if (principal == null) return null;
 
-            var key = principal.FindPrimaryKey();
-            if (key == null || key.Properties.Count != 1) return null;
-            var keyValue = ConvertKey(id, key.Properties[0].ClrType);
-            if (keyValue == null) return null;
+            var groups = await CollectAsync(principal, id, ParseIgnore(ignore), blockingOnly);
+            if (groups == null) return null;
 
-            var ignored = ParseIgnore(ignore);
             var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (var foreignKey in CountedForeignKeys(principal))
+            foreach (var group in groups)
             {
-                if (blockingOnly && !BlocksDelete(foreignKey)) continue;
-                var dependent = foreignKey.DeclaringEntityType;
-
-                // What identifies the referencing row for the ignore list: the other side of a join
-                // row, else the referencing entity itself.
-                var (identityType, identityProperty) = ReferencingIdentity(dependent, foreignKey);
-                var values = await ReferencingRowsAsync(dependent, foreignKey.Properties[0], keyValue, identityProperty);
-                var count = values.Count(value =>
-                    identityType == null || value == null || !ignored.Contains(IgnoreKey(identityType, value)));
-                if (count <= 0) continue;
-
-                var label = ReferenceLabel(dependent, foreignKey);
-                counts[label] = counts.TryGetValue(label, out var existing) ? existing + count : count;
+                counts[group.ReferencedBy] = counts.TryGetValue(group.ReferencedBy, out var existing) ? existing + group.Count : group.Count;
             }
 
             return new EntityReferencesDto
@@ -89,6 +88,56 @@ namespace knkwebapi_v2.Services
                     .Select(entry => new EntityReferenceCountDto { ReferencedBy = entry.Key, Count = entry.Value })
                     .ToList()
             };
+        }
+
+        public async Task<IReadOnlyList<ReferencingRows>?> GetReferencingRowsAsync(string entityTypeName, string id, bool blockingOnly = true)
+        {
+            var principal = FindEntityType(entityTypeName);
+            if (principal == null) return null;
+            var groups = await CollectAsync(principal, id, new HashSet<string>(StringComparer.Ordinal), blockingOnly);
+            if (groups == null) return null;
+
+            // Two foreign keys with one label (a join table seen twice) read as one reference, as in the counts.
+            return groups
+                .GroupBy(g => g.ReferencedBy, StringComparer.Ordinal)
+                .OrderBy(g => g.Key, StringComparer.Ordinal)
+                .Select(g => new ReferencingRows(
+                    g.Key,
+                    g.Select(x => x.EntityTypeName).FirstOrDefault(n => n != null),
+                    g.Sum(x => x.Count),
+                    g.SelectMany(x => x.Ids).Distinct(StringComparer.Ordinal).ToList()))
+                .ToList();
+        }
+
+        /// <summary>
+        /// One entry per counted foreign key with rows that use <paramref name="id"/> (ignored rows left out); null when the
+        /// id doesn't fit the key. What identifies a referencing row: the other side of a join row, else the row itself.
+        /// </summary>
+        private async Task<List<ReferencingRows>?> CollectAsync(IEntityType principal, string id, HashSet<string> ignored, bool blockingOnly)
+        {
+            var key = principal.FindPrimaryKey();
+            if (key == null || key.Properties.Count != 1) return null;
+            var keyValue = ConvertKey(id, key.Properties[0].ClrType);
+            if (keyValue == null) return null;
+
+            var groups = new List<ReferencingRows>();
+            foreach (var foreignKey in CountedForeignKeys(principal))
+            {
+                if (blockingOnly && !BlocksDelete(foreignKey)) continue;
+                var dependent = foreignKey.DeclaringEntityType;
+
+                var (identityType, identityProperty) = ReferencingIdentity(dependent, foreignKey);
+                var values = await ReferencingRowsAsync(dependent, foreignKey.Properties[0], keyValue, identityProperty);
+                var kept = values.Where(value =>
+                    identityType == null || value == null || !ignored.Contains(IgnoreKey(identityType, value))).ToList();
+                if (kept.Count <= 0) continue;
+
+                var ids = identityType == null
+                    ? new List<string>()
+                    : kept.Where(value => value != null).Select(value => value!).ToList();
+                groups.Add(new ReferencingRows(ReferenceLabel(dependent, foreignKey), identityType, kept.Count, ids));
+            }
+            return groups;
         }
 
         /// <summary>

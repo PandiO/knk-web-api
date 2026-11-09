@@ -81,6 +81,8 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddHostedService<LinkCodeCleanupService>();
             // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
             services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
+            // PandiO/knk-workspace#280 AM2: dashboard read checks, 30 s per user and node, dropped when grants change.
+            services.AddSingleton<IPermissionReadCache>(_ => new PermissionReadCache());
             // KNG-212: invitations and invite-based registration (Security:Registration:Mode).
             services.AddScoped<IInvitationRepository, InvitationRepository>();
             services.AddScoped<knkwebapi_v2.Services.Invitations.IInvitationService, knkwebapi_v2.Services.Invitations.InvitationService>();

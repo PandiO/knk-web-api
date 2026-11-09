@@ -2798,6 +2798,12 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("ClaimedAt")
                         .HasColumnType("datetime");
 
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<DateTime?>("DeliveryRequestedAt")
+                        .HasColumnType("datetime");
+
                     b.Property<int>("KitId")
                         .HasColumnType("int");
 
@@ -4755,6 +4761,40 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("Status", "ScheduledAt");
 
                     b.ToTable("privacy_deletion_requests", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PrivacyErasureEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("DeletionRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ErasedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("FormerUuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UuidClearedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ErasedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("privacy_erasure_events", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.PrivateMessageLogEntry", b =>

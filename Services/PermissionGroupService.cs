@@ -12,11 +12,15 @@ namespace knkwebapi_v2.Services
         private readonly IPermissionGroupRepository _repo;
         private readonly IMapper _mapper;
         private readonly IRealtimeEventSink? _realtime;
+        private readonly IPermissionReadCache? _readCache;
 
         /// <param name="realtime">Tells the game server about group changes (PandiO/knk-workspace#179); optional.</param>
-        public PermissionGroupService(IPermissionGroupRepository repo, IMapper mapper, IRealtimeEventSink? realtime = null)
+        /// <param name="readCache">The dashboard read checks (#280 AM2), dropped on every group change; optional.</param>
+        public PermissionGroupService(IPermissionGroupRepository repo, IMapper mapper, IRealtimeEventSink? realtime = null,
+            IPermissionReadCache? readCache = null)
         {
             _realtime = realtime;
+            _readCache = readCache;
             _repo = repo;
             _mapper = mapper;
         }
@@ -59,6 +63,7 @@ namespace knkwebapi_v2.Services
             var group = _mapper.Map<PermissionGroup>(dto);
             PermissionGroupTeleportSettings.Apply(group, dto);
             await _repo.AddAsync(group);
+            _readCache?.ForgetAll();
             _realtime.PermissionGroupChanged(group.Id, PermissionGroupChangeOps.Created);
             return _mapper.Map<PermissionGroupDto>(group);
         }
@@ -105,6 +110,7 @@ namespace knkwebapi_v2.Services
             PermissionGroupTeleportSettings.Apply(existing, dto);
 
             await _repo.UpdateAsync(existing);
+            _readCache?.ForgetAll();
             _realtime.PermissionGroupChanged(id, PermissionGroupChangeOps.Updated);
         }
 
@@ -118,6 +124,7 @@ namespace knkwebapi_v2.Services
                 throw new InvalidOperationException("Cannot delete a group with child groups. Reassign or delete children first.");
 
             await _repo.DeleteAsync(id);
+            _readCache?.ForgetAll();
             _realtime.PermissionGroupChanged(id, PermissionGroupChangeOps.Deleted);
         }
 

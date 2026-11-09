@@ -41,15 +41,18 @@ public sealed class RealtimeDispatchService : BackgroundService
     private readonly IRealtimeTransport _transport;
     private readonly ILogger<RealtimeDispatchService> _logger;
     private readonly RealtimeMetrics? _metrics;
+    private readonly IRealtimeWebAudience? _audience;
 
+    /// <param name="audience">S4 (#183): decides who gets a node-gated message; without one such a message reaches nobody.</param>
     public RealtimeDispatchService(RealtimePublisher publisher, RealtimeConnections connections, IRealtimeTransport transport,
-        ILogger<RealtimeDispatchService> logger, RealtimeMetrics? metrics = null)
+        ILogger<RealtimeDispatchService> logger, RealtimeMetrics? metrics = null, IRealtimeWebAudience? audience = null)
     {
         _publisher = publisher;
         _connections = connections;
         _transport = transport;
         _logger = logger;
         _metrics = metrics;
+        _audience = audience;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -79,9 +82,18 @@ public sealed class RealtimeDispatchService : BackgroundService
         {
             targets = _connections.InAnyGroup(message.Hub, groups);
         }
+        else if (message.Group == null && message.RequiredNode != null)
+        {
+            targets = _connections.All(message.Hub);
+        }
         else
         {
             targets = _connections.InGroup(message.Hub, message.Group ?? string.Empty);
+        }
+
+        if (message.RequiredNode != null)
+        {
+            targets = await HoldersAsync(targets, message.RequiredNode, cancellationToken);
         }
 
         var sent = 0;
@@ -106,6 +118,22 @@ public sealed class RealtimeDispatchService : BackgroundService
             }
         }
         return sent;
+    }
+
+    /// <summary>S4 (#183): the connections whose user holds <paramref name="node"/> (fail closed: no audience, nobody).</summary>
+    private async Task<IReadOnlyList<RealtimeConnection>> HoldersAsync(IReadOnlyList<RealtimeConnection> candidates, string node,
+        CancellationToken cancellationToken)
+    {
+        if (_audience == null || candidates.Count == 0) return Array.Empty<RealtimeConnection>();
+        var result = new List<RealtimeConnection>(candidates.Count);
+        foreach (var connection in candidates)
+        {
+            if (connection.UserId is > 0 && await _audience.HoldsAsync(connection.UserId.Value, node, cancellationToken))
+            {
+                result.Add(connection);
+            }
+        }
+        return result;
     }
 
     public override Task StopAsync(CancellationToken cancellationToken)

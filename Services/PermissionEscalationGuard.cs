@@ -19,6 +19,12 @@ namespace knkwebapi_v2.Services
     /// knk.admin.user.group.premium), and may never change their own permissions unless they hold
     /// <c>*</c> (the owner). The game server is not checked here: the plugin does its own in-game
     /// node checks before calling (see <see cref="EscalationGuardHttp"/>).
+    /// <para>Dashboard access model (PandiO/knk-workspace#280, DESIGN.md § 4.4): nodes on
+    /// <see cref="PermissionEscalationGuard.OwnerGrantOnly"/> (bulk delete) and every wildcard that covers them
+    /// (<c>knk.admin.*</c>, <c>knk.admin.delete.*</c>, <c>knk.*</c>) are handed out only by <c>*</c>, also through a group
+    /// that grants them. Groups ranked at or above the actor's own highest group can't be changed by them either:
+    /// not their grants, not their settings, not deleted (developer 2026-11-08: Staff makes no group changes above
+    /// its rank).</para>
     /// </summary>
     public interface IPermissionEscalationGuard
     {
@@ -33,6 +39,11 @@ namespace knkwebapi_v2.Services
         /// <summary>May <paramref name="actorId"/> make <paramref name="parentGroupId"/> the parent of
         /// a group? A child inherits every node of its parent chain, so the actor must hold them all.</summary>
         Task<EscalationCheck> CanInheritFromGroupAsync(int actorId, int parentGroupId);
+
+        /// <summary>May <paramref name="actorId"/> create, edit or delete a group? The group as it is
+        /// (<paramref name="groupId"/>, null for a new one) and as it will be (<paramref name="newWeight"/>, null when
+        /// deleting) must both rank below the actor's own highest group.</summary>
+        Task<EscalationCheck> CanChangeGroupAsync(int actorId, int? groupId, int? newWeight);
     }
 
     public class PermissionEscalationGuard : IPermissionEscalationGuard
@@ -42,6 +53,37 @@ namespace knkwebapi_v2.Services
         public const string SelfMessage = "You can't change your own permissions.";
         public const string GroupNotHeldMessage = "You can't hand out a group with permissions you don't have.";
         public const string RankMessage = "You can only hand out or remove groups ranked below your own.";
+        public const string GroupRankMessage = "You can only change groups ranked below your own.";
+        public const string OwnerOnlyMessage = "Only the owner can hand out bulk delete.";
+
+        /// <summary>
+        /// Nodes only <c>*</c> may grant, deny or revoke (decision 4 of #280), directly, through a wildcard that covers
+        /// them or through a group that grants either. Denies of a covered node are owner-only too: a deny of
+        /// <c>knk.admin.*</c> would also take bulk delete away.
+        /// </summary>
+        public static readonly IReadOnlyList<string> OwnerGrantOnly = new[] { StaffPermissions.DeleteBulk };
+
+        /// <summary>
+        /// Whether <paramref name="node"/> is, or as a wildcard covers, an <see cref="OwnerGrantOnly"/> node: the same
+        /// matching as PermissionResolutionService (a trailing <c>*</c> matches every node starting with what comes
+        /// before it, and the bare node without its <c>.*</c>).
+        /// </summary>
+        public static bool CoversOwnerGrantOnly(string? node)
+        {
+            if (string.IsNullOrWhiteSpace(node)) return false;
+            var grant = node.Trim();
+            return OwnerGrantOnly.Any(owned => Covers(grant, owned));
+        }
+
+        private static bool Covers(string grant, string node)
+        {
+            if (string.Equals(grant, node, StringComparison.Ordinal)) return true;
+            if (!grant.EndsWith('*')) return false;
+            var prefix = grant[..^1];
+            if (prefix.Length == 0) return true;
+            var bare = prefix.EndsWith('.') ? prefix[..^1] : prefix;
+            return node.StartsWith(prefix, StringComparison.Ordinal) || string.Equals(node, bare, StringComparison.Ordinal);
+        }
 
         private readonly IPermissionResolutionService _permissions;
         private readonly IPermissionGroupRepository _groups;
@@ -69,11 +111,27 @@ namespace knkwebapi_v2.Services
                 return EscalationCheck.Ok;
             }
 
+            if (holdsWildcard)
+            {
+                return EscalationCheck.Ok;
+            }
+            // A group's grants are changed only by someone ranked above it, like its members (#280: Staff
+            // makes no group changes above its rank). Holder ids are shared by users and groups.
+            var targetGroup = await _groups.GetByIdAsync(targetHolderId);
+            if (targetGroup != null && targetGroup.Weight >= await HighestRankAsync(actorId))
+            {
+                return EscalationCheck.Refused(GroupRankMessage);
+            }
+
             // A deny (value=false) needs the node too: otherwise staff could strip a node from
             // someone above them. "*" can only come from someone holding "*".
-            return holdsWildcard || await HoldsAsync(actorId, node.Trim())
-                ? EscalationCheck.Ok
-                : EscalationCheck.Refused(NotHeldMessage);
+            if (!await HoldsAsync(actorId, node.Trim()))
+            {
+                return EscalationCheck.Refused(NotHeldMessage);
+            }
+            // Bulk delete (and any wildcard covering it) is the owner's to hand out, even by someone who holds it
+            // (#280 decision 4).
+            return CoversOwnerGrantOnly(node) ? EscalationCheck.Refused(OwnerOnlyMessage) : EscalationCheck.Ok;
         }
 
         public async Task<EscalationCheck> CanAssignGroupAsync(int actorId, int targetUserId, int groupId)
@@ -106,10 +164,27 @@ namespace knkwebapi_v2.Services
             return await HoldsAsync(actorId, Wildcard) ? EscalationCheck.Ok : await HoldsEveryGroupNodeAsync(actorId, parentGroupId);
         }
 
+        public async Task<EscalationCheck> CanChangeGroupAsync(int actorId, int? groupId, int? newWeight)
+        {
+            if (await HoldsAsync(actorId, Wildcard))
+            {
+                return EscalationCheck.Ok;
+            }
+            var rank = await HighestRankAsync(actorId);
+            if (groupId is int id && await _groups.GetByIdAsync(id) is { } group && group.Weight >= rank)
+            {
+                return EscalationCheck.Refused(GroupRankMessage);
+            }
+            return newWeight is int weight && weight >= rank
+                ? EscalationCheck.Refused(GroupRankMessage)
+                : EscalationCheck.Ok;
+        }
+
         private async Task<EscalationCheck> HoldsEveryGroupNodeAsync(int actorId, int groupId, bool skipPremium = false)
         {
             var now = DateTime.UtcNow;
             var nodes = new HashSet<string>(StringComparer.Ordinal);
+            var carriesOwnerOnlyNode = false;
             var visited = new HashSet<int>();
             int? currentId = groupId;
             while (currentId.HasValue && visited.Add(currentId.Value))
@@ -119,10 +194,16 @@ namespace knkwebapi_v2.Services
                 {
                     break; // an unknown group is the service's 404, not an escalation
                 }
-                foreach (var grant in skipPremium && group.IsPremiumTier ? new List<Models.PermissionGrant>() : group.Grants ?? new List<Models.PermissionGrant>())
+                foreach (var grant in group.Grants ?? new List<Models.PermissionGrant>())
                 {
                     // A deny only takes something away, so handing it out is never an escalation.
-                    if (grant.Value && (grant.ExpiresAt == null || grant.ExpiresAt > now))
+                    if (!grant.Value || (grant.ExpiresAt != null && grant.ExpiresAt <= now))
+                    {
+                        continue;
+                    }
+                    // A group that carries bulk delete is the owner's to hand out, premium or not (#280).
+                    carriesOwnerOnlyNode |= CoversOwnerGrantOnly(grant.Node);
+                    if (!(skipPremium && group.IsPremiumTier))
                     {
                         nodes.Add(grant.Node);
                     }
@@ -137,7 +218,7 @@ namespace knkwebapi_v2.Services
                     return EscalationCheck.Refused(GroupNotHeldMessage);
                 }
             }
-            return EscalationCheck.Ok;
+            return carriesOwnerOnlyNode ? EscalationCheck.Refused(OwnerOnlyMessage) : EscalationCheck.Ok;
         }
 
         /// <summary>The Weight of the actor's highest active group; no group means no rank.</summary>

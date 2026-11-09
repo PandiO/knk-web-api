@@ -57,5 +57,22 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("salary")]
         public SalaryStateDto Salary { get; set; } = null!;
+
+        /// <summary>
+        /// PandiO/knk-workspace#183 (S4): whether the player is online in game (<c>User.IsOnline</c>, as on the
+        /// moderation list); null when it could not be read. Kept live by the web hub's <c>PresenceChanged</c>.
+        /// </summary>
+        [JsonPropertyName("presence")]
+        public ProfilePresenceDto? Presence { get; set; }
+    }
+
+    /// <summary>PandiO/knk-workspace#183: the player profile's online badge.</summary>
+    public class ProfilePresenceDto
+    {
+        [JsonPropertyName("online")]
+        public bool Online { get; set; }
+
+        [JsonPropertyName("lastSeenAt")]
+        public DateTime? LastSeenAt { get; set; }
     }
 }

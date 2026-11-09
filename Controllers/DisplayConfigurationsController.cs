@@ -12,6 +12,7 @@ namespace knkwebapi_v2.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
     public class DisplayConfigurationsController : ControllerBase
     {
         private readonly IDisplayConfigurationService _service;
@@ -242,6 +243,7 @@ namespace knkwebapi_v2.Controllers
 
         /// <summary>The configuration as a portable "knk-displayconfig/1" file (GUIDs, no database ids).</summary>
         [HttpGet("{id:int}/export")]
+        [DashboardReads(DashboardArea.Content)]
         public async Task<IActionResult> Export(int id)
         {
             var file = await _portability.ExportAsync(id);
@@ -268,6 +270,7 @@ namespace knkwebapi_v2.Controllers
 
         /// <summary>The bundled seed files (Data/DisplayConfigurationSeeds/) and whether each is imported.</summary>
         [HttpGet("seeds")]
+        [DashboardReads(DashboardArea.Content)]
         public async Task<IActionResult> GetSeeds()
         {
             return Ok(await _portability.ListSeedsAsync());

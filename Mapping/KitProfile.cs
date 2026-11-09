@@ -84,7 +84,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.BootsId, opt => opt.MapFrom(src => src.BootsId))
                 .ForMember(dest => dest.ShieldId, opt => opt.MapFrom(src => src.ShieldId))
                 .ForMember(dest => dest.HandId, opt => opt.MapFrom(src => src.HandId))
-                .ForMember(dest => dest.Contents, opt => opt.MapFrom(src => src.Contents.OrderBy(c => c.SlotIndex)));
+                .ForMember(dest => dest.Contents, opt => opt.MapFrom(src => src.Contents.OrderBy(c => c.SlotIndex)))
+                // Claim facts, not kit facts: KitService sets them (PandiO/knk-workspace#261).
+                .ForMember(dest => dest.ClaimId, opt => opt.Ignore())
+                .ForMember(dest => dest.DeliveryPending, opt => opt.Ignore());
         }
     }
 }

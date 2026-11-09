@@ -10,6 +10,7 @@ namespace KnKWebAPI.Controllers
     // M2M join in the lobby payload) plus the plugin's runtime-config.
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("SiegeLobby")]
     public class SiegeLobbiesController : ControllerBase
     {
         private readonly ISiegeLobbyService _service;
@@ -84,6 +85,8 @@ namespace KnKWebAPI.Controllers
         }
 
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

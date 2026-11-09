@@ -41,6 +41,7 @@ public sealed class RealtimeHubTests : IAsyncLifetime
     private readonly ManualClock _clock = new(new DateTime(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc));
     private readonly string _dbName = "realtime-hub-" + Guid.NewGuid();
     private readonly Mock<IGameSettingsService> _gameSettings = new();
+    private readonly Mock<knkwebapi_v2.Services.IPermissionResolutionService> _permissions = new();
     private WebApplication _app = null!;
     private TestServer _server = null!;
 
@@ -52,7 +53,11 @@ public sealed class RealtimeHubTests : IAsyncLifetime
         builder.Configuration["Realtime:PresenceGraceSeconds"] = "60";
         builder.Configuration["Realtime:PresenceSweepSeconds"] = "3600";
         builder.Services.AddSingleton<TimeProvider>(_clock);
-        builder.Services.AddDbContext<KnKDbContext>(o => o.UseInMemoryDatabase(_dbName));
+        builder.Configuration["Realtime:WebPermissionCacheSeconds"] = "0";
+        // As in Program.cs: the save interceptor feeds the realtime events (S3; S4's web live updates, #183).
+        builder.Services.AddDbContext<KnKDbContext>((sp, o) => o.UseInMemoryDatabase(_dbName)
+            .AddInterceptors(sp.GetRequiredService<RealtimeEntityChangeInterceptor>()));
+        builder.Services.AddSingleton(_permissions.Object);
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
         {
             o.TokenValidationParameters = new TokenValidationParameters
@@ -217,6 +222,47 @@ public sealed class RealtimeHubTests : IAsyncLifetime
 
         await connection.InvokeAsync("PlayerLeft", new { uuid = A, world = "world" });
         Assert.False(await IsOnline(a));
+    }
+
+    /// <summary>PandiO/knk-workspace#183 (S4): a player joining reaches the web connections of user managers only.</summary>
+    [Fact]
+    public async Task PlayerJoined_SendsPresenceChanged_ToUserManagersOnly()
+    {
+        var a = await AddUser("a", A, online: false);
+        const int staff = 501, player = 502;
+        _permissions.Setup(p => p.CheckAsync(It.IsAny<int>(), It.IsAny<string>()))
+            .ReturnsAsync((int id, string node) => new PermissionCheckResponseDto
+            {
+                UserId = id, Node = node,
+                Result = id == staff && node == knkwebapi_v2.Attributes.StaffPermissions.ManageUsers
+                    ? PermissionResolutionResult.Granted : PermissionResolutionResult.Undeclared,
+            });
+
+        await using var staffWeb = WebConnection(bearer: Jwt(staff));
+        await using var playerWeb = WebConnection(bearer: Jwt(player));
+        var staffGot = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var playerGot = 0;
+        staffWeb.On<JsonElement>("PresenceChanged", e => staffGot.TrySetResult(e));
+        playerWeb.On<JsonElement>("PresenceChanged", _ => Interlocked.Increment(ref playerGot));
+        await staffWeb.StartAsync();
+        await playerWeb.StartAsync();
+
+        await using var game = GameConnection();
+        await game.StartAsync();
+        await game.InvokeAsync("PlayerJoined", new { uuid = A, name = "a", world = "world" });
+
+        var envelope = await staffGot.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var payload = envelope.GetProperty("payload");
+        Assert.Equal(a, payload.GetProperty("userId").GetInt32());
+        Assert.True(payload.GetProperty("online").GetBoolean());
+        Assert.Equal("test-1", payload.GetProperty("serverId").GetString());
+
+        // Something sent after it reaches the player's connection, so a PresenceChanged would have arrived first.
+        var marker = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        playerWeb.On<JsonElement>("Marker", _ => marker.TrySetResult());
+        _app.Services.GetRequiredService<IRealtimePublisher>().PublishToWebUser(player, "Marker", null);
+        await marker.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, Volatile.Read(ref playerGot));
     }
 
     [Fact]
