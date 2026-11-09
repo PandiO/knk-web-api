@@ -12,6 +12,7 @@ namespace KnKWebAPI.Controllers
     // Closed-alpha WP1.3: every write needs knk.admin.world or the game server (POST .../search counts as a read);
     // reads stay logged-in. #180: claim/complete/fail/release/heartbeat and GET open are the game server's only.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
+    [DashboardReads(DashboardArea.World)]
     public class WorldTasksController : ControllerBase
     {
         private readonly IWorldTaskService _service;
@@ -92,6 +93,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpGet("{id:int}", Name = "GetWorldTaskById")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]
         public async Task<IActionResult> GetById(int id)
         {
             var item = await _service.GetByIdAsync(id);
@@ -101,6 +103,7 @@ namespace KnKWebAPI.Controllers
 
         // Get an open task by its task code (#180: closed tasks no longer answer to their code)
         [HttpGet("by-link-code/{linkCode}")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]
         public async Task<IActionResult> GetByLinkCode(string linkCode)
         {
             var item = await _service.GetByLinkCodeAsync(linkCode);
@@ -118,6 +121,7 @@ namespace KnKWebAPI.Controllers
 
         // List by session
         [HttpGet("session/{sessionId:int}")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]
         public async Task<IActionResult> GetBySession(int sessionId)
         {
             var items = await _service.GetBySessionAsync(sessionId);
@@ -226,6 +230,7 @@ namespace KnKWebAPI.Controllers
 
         /// <summary>#180: the open tasks of a workflow session (web reattach after a reload).</summary>
         [HttpGet("session/{sessionId:int}/open")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]
         public async Task<IActionResult> GetOpenBySession(int sessionId)
         {
             return Ok(await _service.ListOpenBySessionAsync(sessionId));
@@ -236,6 +241,7 @@ namespace KnKWebAPI.Controllers
         /// task the logged-in caller holds in game (with the form it belongs to) and how many wait in their queue.
         /// </summary>
         [HttpGet("active-for-me")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]
         public async Task<ActionResult<WorldTaskActiveForMeDto>> GetActiveForMe()
         {
             if (User.GetUserId() is not { } userId) return Unauthorized(new { error = "Unauthorized", message = "Log in to use this." });

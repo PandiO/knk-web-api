@@ -121,5 +121,30 @@ namespace knkwebapi_v2.Repositories
             await _context.SaveChangesAsync();
             return purchase;
         }
+
+        public async Task<List<KitClaim>> GetPendingDeliveriesAsync(int userId)
+        {
+            return await _context.KitClaims
+                .AsNoTracking()
+                .Include(c => c.Kit)
+                    .ThenInclude(k => k.Contents)
+                .Where(c => c.UserId == userId && c.DeliveryRequestedAt != null && c.DeliveredAt == null)
+                .OrderBy(c => c.Id)
+                .ToListAsync();
+        }
+
+        public async Task<bool> TryMarkDeliveredAsync(int claimId, int userId, DateTime deliveredAt)
+        {
+            // One statement, so two callers (push + join drain, or two game servers) can't both win.
+            var changed = await _context.KitClaims
+                .Where(c => c.Id == claimId && c.UserId == userId && c.DeliveryRequestedAt != null && c.DeliveredAt == null)
+                .ExecuteUpdateAsync(set => set.SetProperty(c => c.DeliveredAt, deliveredAt));
+            return changed == 1;
+        }
+
+        public async Task<KitClaim?> GetClaimAsync(int claimId)
+        {
+            return await _context.KitClaims.AsNoTracking().FirstOrDefaultAsync(c => c.Id == claimId);
+        }
     }
 }

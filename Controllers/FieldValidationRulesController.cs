@@ -15,6 +15,7 @@ namespace KnKWebAPI.Controllers
     [Route("api/field-validation-rules")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
     public class FieldValidationRulesController : ControllerBase
     {
         private readonly IValidationService _validationService;
@@ -112,6 +113,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPost("validate")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public async Task<IActionResult> ValidateField([FromBody] ValidateFieldRequestDto request)
         {
             if (request == null) return BadRequest();
@@ -129,6 +131,7 @@ namespace KnKWebAPI.Controllers
 
         /// <summary>KNG-269: validate every rule-bearing field of a step in one request; results by field id.</summary>
         [HttpPost("validate-batch")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public async Task<IActionResult> ValidateFields([FromBody] ValidateFieldsBatchRequestDto request)
         {
             if (request == null) return BadRequest();
@@ -159,6 +162,7 @@ namespace KnKWebAPI.Controllers
         /// <response code="400">Invalid request (missing rule ID and placeholder paths).</response>
         /// <response code="404">Rule not found.</response>
         [HttpPost("resolve-placeholders")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public async Task<IActionResult> ResolvePlaceholders([FromBody] PlaceholderResolutionRequest request)
         {
             if (request == null) return BadRequest();
@@ -198,6 +202,7 @@ namespace KnKWebAPI.Controllers
         /// <response code="400">Invalid request.</response>
         /// <response code="404">Rule not found.</response>
         [HttpPost("/api/field-validations/validate-field")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public async Task<IActionResult> ValidateFieldRule([FromBody] ValidateFieldRuleRequestDto request)
         {
             if (request == null) return BadRequest();
@@ -286,6 +291,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpPost("health-check/configuration/draft")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public async Task<IActionResult> ValidateDraftConfiguration([FromBody] FormConfigurationDto configDto)
         {
             try
@@ -309,6 +315,7 @@ namespace KnKWebAPI.Controllers
         /// Batch resolve all dependencies for validation rules on specified fields.
         /// </summary>
         [HttpPost("resolve-dependencies")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public async Task<ActionResult<DependencyResolutionResponse>> ResolveDependencies(
             [FromBody] DependencyResolutionRequest request)
         {
@@ -325,6 +332,7 @@ namespace KnKWebAPI.Controllers
         /// Validate a dependency path syntax and entity compatibility.
         /// </summary>
         [HttpPost("validate-path")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public async Task<ActionResult<PathValidationResult>> ValidatePath(
             [FromBody] ValidatePathRequest request)
         {

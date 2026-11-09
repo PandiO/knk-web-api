@@ -96,5 +96,8 @@ public sealed class RealtimeConnections
     public IReadOnlyList<RealtimeConnection> InAnyGroup(RealtimeHubKind hub, IReadOnlyCollection<string> groups) =>
         _byId.Values.Where(c => c.Hub == hub && groups.Any(g => c.Groups.Contains(g))).ToList();
 
+    /// <summary>S4 (#183): every connection of <paramref name="hub"/>.</summary>
+    public IReadOnlyList<RealtimeConnection> All(RealtimeHubKind hub) => _byId.Values.Where(c => c.Hub == hub).ToList();
+
     public int Count(RealtimeHubKind hub) => _byId.Values.Count(c => c.Hub == hub);
 }

@@ -115,5 +115,10 @@ public class TelemetryPrivacyMySqlTests : IClassFixture<MySqlTestDatabase>
         Assert.False(await check.PlayerPvpKillPairDailies.AnyAsync(p => p.VictimUserId == target));
         Assert.Equal($"deleted-{target}", (await check.Users.SingleAsync(u => u.Id == target)).Username);
         Assert.NotNull((await check.PrivacyDeletionRequests.SingleAsync(r => r.Id == requestId)).ResultJson);
+        // Realtime S5 (#184): the feed row is written in the same transaction, with the UUID the account had.
+        var feed = await check.PrivacyErasureEvents.SingleAsync(e => e.DeletionRequestId == requestId);
+        Assert.Equal(target, feed.UserId);
+        Assert.NotNull(feed.FormerUuid);
+        Assert.Null((await check.Users.SingleAsync(u => u.Id == target)).Uuid);
     }
 }

@@ -14,6 +14,7 @@ namespace KnKWebAPI.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
+    [DashboardReads("District")]
     public class DistrictsController : ControllerBase
     {
         private readonly IDistrictService _service;
@@ -75,6 +76,8 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

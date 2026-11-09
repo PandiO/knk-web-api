@@ -82,6 +82,8 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequirePermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         [RequirePermission(StaffPermissions.ManageLootboxes)]
         public async Task<IActionResult> Delete(int id)
