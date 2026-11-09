@@ -41,6 +41,9 @@ public class DeleteConstraintExceptionFilterTests
     {
         public Task<EntityReferencesDto?> GetReferencesAsync(string entityTypeName, string id, IEnumerable<string>? ignore = null, bool blockingOnly = false) =>
             Task.FromResult<EntityReferencesDto?>(null);
+
+        public Task<IReadOnlyList<ReferencingRows>?> GetReferencingRowsAsync(string entityTypeName, string id, bool blockingOnly = true) =>
+            Task.FromResult<IReadOnlyList<ReferencingRows>?>(null);
     }
 
     private static readonly DeleteConstraintExceptionFilter Filter = new(NullLogger<DeleteConstraintExceptionFilter>.Instance, new NoReferences());

@@ -88,6 +88,32 @@ public class EntityReferenceServiceTests : IDisposable
         Assert.Empty(result.References);
     }
 
+    [Fact]
+    public async Task ReferencingRows_NameTheRows_ByTheirOwnIdOrTheOtherSideOfALink()
+    {
+        // #44: the same references as the counts, with the rows' ids.
+        var groups = await Service().GetReferencingRowsAsync("District", "2", blockingOnly: false);
+
+        Assert.NotNull(groups);
+        var structures = Assert.Single(groups!, g => g.ReferencedBy == "Structure.DistrictId");
+        Assert.Equal("Structure", structures.EntityTypeName);
+        Assert.Equal(1, structures.Count);
+        Assert.Equal(new[] { "3" }, structures.Ids);
+        var streets = Assert.Single(groups!, g => g.ReferencedBy == "Street (link)");
+        Assert.Equal("Street", streets.EntityTypeName);
+        Assert.Equal(new[] { "1" }, streets.Ids);
+    }
+
+    [Fact]
+    public async Task ReferencingRows_MatchTheCounts_AndUnknownTypesAreNull()
+    {
+        var counts = await Service().GetReferencesAsync("District", "2", blockingOnly: true);
+        var rows = await Service().GetReferencingRowsAsync("District", "2", blockingOnly: true);
+
+        Assert.Equal(counts!.References.Select(r => (r.ReferencedBy, r.Count)), rows!.Select(g => (g.ReferencedBy, g.Count)));
+        Assert.Null(await Service().GetReferencingRowsAsync("NoSuchEntity", "1"));
+    }
+
     [Theory]
     [InlineData("NoSuchEntity", "1")]
     [InlineData("District", "not-a-number")]

@@ -231,7 +231,7 @@ public class ReadAccessRulesTests
         ["TeleportDestinationsController.Policy"] = "G",
         ["UserIgnoresController.Get"] = "G",
         ["WorldTasksController.ListOpenForServer"] = "G",
-        // U: the action's own stricter rule (node, self-or-node, owner node, [Authorize]) (83)
+        // U: the action's own stricter rule (node, self-or-node, owner node, [Authorize]) (84)
         ["AdminClientsController.GetActiveClients"] = "U",
         ["AdminClientsController.GetAllClients"] = "U",
         ["AdminClientsController.GetClient"] = "U",
@@ -252,6 +252,7 @@ public class ReadAccessRulesTests
         ["DiscoveryRewardsController.GetRules"] = "U",
         ["DiscoveryRewardsController.Preview"] = "U",
         ["EmailOutboxController.List"] = "U",
+        ["EntityReferencesController.GetRows"] = "U",
         ["GameSettingsController.GetHubDomains"] = "U",
         ["InvitationsController.GetAccessSyncStatus"] = "U",
         ["InvitationsController.GetOptions"] = "U",
