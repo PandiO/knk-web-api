@@ -342,13 +342,15 @@ public class DisplayConfigurationPortabilityServiceTests : IDisposable
         var (_, service) = NewDb();
         var file = GateFile();
         Section(file, "General").ActionButtonsConfigJson = "{\"showEditButton\":true,\"showFancyButton\":true}";
-        Section(file, "Doors").ActionButtonsConfigJson = "{\"showAddButton\":true,\"showViewButton\":\"yes\"}";
+        Section(file, "Doors").ActionButtonsConfigJson = "{\"showAddButton\":true,\"showRemoveButton\":true,\"showDeleteButton\":true,\"showViewButton\":\"yes\"}";
 
         var result = await DryRun(service, file);
         Assert.Equal(FormConfigurationImportStatus.DryRunPassed, result.Status);
         AssertWarning(result, "Section 'General': action buttons are only shown on sections with a relatedEntityTypeName");
         AssertWarning(result, "key 'showFancyButton' is not one the page reads");
-        AssertWarning(result, "showAddButton is hidden on the page until relationship actions exist (KNG-148)");
+        // #188: Select/Unlink/Add/Remove (= unlink) and Delete are real now: no "hidden" warning, Delete is a known key.
+        Assert.DoesNotContain(result.Warnings, w => w.Contains("hidden on the page"));
+        Assert.DoesNotContain(result.Warnings, w => w.Contains("'showDeleteButton'"));
         AssertWarning(result, "'showViewButton' should be true or false");
 
         Section(file, "Spawn point").ActionButtonsConfigJson = "[true]";

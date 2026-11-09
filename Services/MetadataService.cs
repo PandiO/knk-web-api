@@ -135,8 +135,47 @@ namespace knkwebapi_v2.Services
                         : meta.DefaultTableColumns
                 };
 
+                ApplyDashboardAccess(clone);
+                clone.Relationships = RelationshipCatalog.For(dbContext.Model, meta.EntityName).Select(r => r.ToDto()).ToList();
                 return clone;
             }).ToList();
+        }
+
+        /// <summary>The access model's fields from <see cref="DashboardAccess"/> (PandiO/knk-workspace#280, DESIGN.md § 4.2).</summary>
+        public static void ApplyDashboardAccess(EntityMetadataDto meta)
+        {
+            var access = DashboardAccess.Find(meta.EntityName);
+            if (access == null) return;
+
+            meta.Area = access.Area.ToString();
+            meta.AccessNode = access.AreaNode;
+            meta.WriteNode = access.WriteNode;
+            meta.ReadNodes = access.ReadNodes.ToList();
+            meta.Deletable = access.Deletable;
+            meta.BulkDeletable = access.BulkDeletable;
+            meta.Exportable = access.Exportable;
+            meta.LookupSearchable = access.LookupSearchable;
+            meta.LookupGettable = access.LookupGettable;
+            meta.ActionNodes = new Dictionary<string, List<string>>
+            {
+                // AM2: the dashboard lists the type for its area node; other pages may read it in full with any one of
+                // readNodes, and anyone with an area node may look it up (api/Lookup) when lookupSearchable/lookupGettable.
+                ["view"] = new() { access.AreaNode },
+                ["create"] = new() { access.WriteNode },
+                ["edit"] = new() { access.WriteNode },
+            };
+            if (access.Deletable)
+            {
+                meta.ActionNodes["delete"] = new() { access.WriteNode, StaffPermissions.Delete };
+            }
+            if (access.BulkDeletable)
+            {
+                meta.ActionNodes["bulkDelete"] = new() { access.AreaNode, StaffPermissions.Delete, StaffPermissions.DeleteBulk };
+            }
+            if (access.Exportable)
+            {
+                meta.ActionNodes["export"] = new() { access.AreaNode, StaffPermissions.Export };
+            }
         }
 
         private static List<string>? ParseColumns(string? json)

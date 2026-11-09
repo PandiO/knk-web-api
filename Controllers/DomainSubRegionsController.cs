@@ -16,6 +16,7 @@ namespace knkwebapi_v2.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
+    [DashboardReads("DomainSubRegion")]
     public class DomainSubRegionsController : ControllerBase
     {
         private readonly IDomainSubRegionService _service;
@@ -76,6 +77,8 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

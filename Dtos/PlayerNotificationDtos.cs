@@ -126,6 +126,15 @@ namespace knkwebapi_v2.Dtos
         /// Payload in AccountLinked.
         /// </summary>
         public const string AccountLinked = "AccountLinked";
+
+        /// <summary>
+        /// A staff member granted this player a kit outside the game server ("Grant" on the web
+        /// app's player profile, PandiO/knk-workspace#261). The kit's KitClaim row is the delivery
+        /// record; this only nudges the game server to fetch GET api/Kits/deliveries/pending and
+        /// hand the items over now. No payload. Losing it (API restart, the 24 h window) delays
+        /// nothing past the player's next join, which reads the pending deliveries anyway.
+        /// </summary>
+        public const string KitDeliveryPending = "KitDeliveryPending";
     }
 
     /// <summary>Payload of an AccountLinked notification.</summary>

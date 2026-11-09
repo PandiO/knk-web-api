@@ -18,6 +18,13 @@ namespace knkwebapi_v2.Services
         Task<PermissionEffectiveResponseDto?> GetEffectiveAsync(int userId);
 
         /// <summary>
+        /// PandiO/knk-workspace#280 AM2: the first of <paramref name="nodes"/> (in order) that resolves to granted, each
+        /// node checked exactly like <see cref="CheckAsync"/> but on one holder chain built once. Null when none is
+        /// granted or no user with this id exists.
+        /// </summary>
+        Task<string?> CheckAnyAsync(int userId, IReadOnlyList<string> nodes);
+
+        /// <summary>
         /// KNG-116: a group's effective answer for a node - the group, then its parent chain, matched like a user's
         /// check. Null if no group with this id exists.
         /// </summary>

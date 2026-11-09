@@ -21,6 +21,7 @@ namespace KnKWebAPI.Controllers
 
         // Health endpoint to confirm orchestration is wired
         [HttpGet("health")] 
+        [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public IActionResult Health() => Ok(new { status = "ok", component = "workflow" });
 
         /// <summary>
@@ -45,6 +46,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpGet("{id:int}", Name = "GetWorkflowById")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]
         public async Task<IActionResult> GetById(int id)
         {
             var item = await _service.GetSessionAsync(id);
@@ -53,6 +55,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpGet("by-guid/{guid:guid}")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]
         public async Task<IActionResult> GetByGuid(Guid guid)
         {
             var item = await _service.GetSessionByGuidAsync(guid);
@@ -69,6 +72,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpGet("{id:int}/progress")]
+        [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]
         public async Task<IActionResult> GetProgress(int id)
         {
             var steps = await _service.GetProgressAsync(id);

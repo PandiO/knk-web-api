@@ -23,6 +23,8 @@ namespace knkwebapi_v2.Services
         private readonly ICurrencyService _currency;
         private readonly IMapper _mapper;
         private readonly ILootboxTokenGrantService? _lootboxTokenGrants;
+        private readonly IPlayerNotificationQueue? _notifications;
+        private readonly Func<DateTime> _utcNow;
 
         public KitService(
             IKitRepository kitRepo,
@@ -36,8 +38,12 @@ namespace knkwebapi_v2.Services
             IAuditLogService auditLogService,
             IMapper mapper,
             ICurrencyService currency,
-            ILootboxTokenGrantService? lootboxTokenGrants = null)
+            ILootboxTokenGrantService? lootboxTokenGrants = null,
+            IPlayerNotificationQueue? notifications = null,
+            Func<DateTime>? utcNow = null)
         {
+            _notifications = notifications;
+            _utcNow = utcNow ?? (() => DateTime.UtcNow);
             _currency = currency;
             _kitRepo = kitRepo;
             _userRepo = userRepo;
@@ -363,7 +369,7 @@ namespace knkwebapi_v2.Services
             };
         }
 
-        public async Task<KitClaimResultDto> GiveKitAsync(int? actorUserId, int targetUserId, int kitId)
+        public async Task<KitClaimResultDto> GiveKitAsync(int? actorUserId, int targetUserId, int kitId, bool queueDelivery = false)
         {
             // Null actor = the game server gave it without naming the staff member (a plugin
             // call without X-Acting-User-Id); the audit entry then shows it as system.
@@ -372,14 +378,23 @@ namespace knkwebapi_v2.Services
                 _ = await _userRepo.GetByIdAsync(actorUserId.Value)
                     ?? throw new KeyNotFoundException($"User with id {actorUserId} not found.");
             }
-            _ = await _userRepo.GetByIdAsync(targetUserId)
+            var target = await _userRepo.GetByIdAsync(targetUserId)
                 ?? throw new KeyNotFoundException($"User with id {targetUserId} not found.");
             var kit = await _kitRepo.GetByIdAsync(kitId)
                 ?? throw new KeyNotFoundException($"Kit with id {kitId} not found.");
 
             // DESIGN.md §4.1 (§0b): GiveKitAsync deliberately bypasses gating, cooldown, and cost
             // - a staff override hands a kit to a player regardless of eligibility/affordability.
-            var claim = new KitClaim { KitId = kitId, UserId = targetUserId, ClaimedAt = DateTime.UtcNow };
+            var now = _utcNow();
+            var claim = new KitClaim
+            {
+                KitId = kitId,
+                UserId = targetUserId,
+                ClaimedAt = now,
+                // #261: only the game server places items. A grant from anywhere else (the web
+                // app's player profile) is a pending delivery until a game server takes it.
+                DeliveryRequestedAt = queueDelivery ? now : null
+            };
             await _kitRepo.AddClaimAsync(claim);
 
             // DESIGN.md §4.1: a staff give is an admin-initiated mutation, so it goes through the
@@ -388,11 +403,56 @@ namespace knkwebapi_v2.Services
             {
                 kitId = kit.Id,
                 kitName = kit.Name,
-                claimId = claim.Id
+                claimId = claim.Id,
+                deliveryPending = queueDelivery
             }));
 
             await IssueLootboxTokensAsync(targetUserId, kit, claim, actorUserId);
-            return _mapper.Map<KitClaimResultDto>(kit);
+
+            if (queueDelivery)
+            {
+                // A nudge only (pushed over the realtime hub, or polled): the claim row is the record,
+                // and the player's next join reads it whether or not this arrives.
+                _notifications?.Enqueue(target.Id, target.Uuid, target.Username, PlayerNotificationTypes.KitDeliveryPending, null);
+            }
+
+            var result = _mapper.Map<KitClaimResultDto>(kit);
+            result.ClaimId = claim.Id;
+            result.DeliveryPending = queueDelivery;
+            return result;
+        }
+
+        public async Task<List<KitDeliveryDto>> GetPendingDeliveriesAsync(int userId)
+        {
+            var claims = await _kitRepo.GetPendingDeliveriesAsync(userId);
+            return claims.Select(c =>
+            {
+                var loadout = _mapper.Map<KitClaimResultDto>(c.Kit);
+                loadout.ClaimId = c.Id;
+                loadout.DeliveryPending = true;
+                return new KitDeliveryDto
+                {
+                    ClaimId = c.Id,
+                    KitId = c.KitId,
+                    KitName = c.Kit.Name,
+                    GrantedAt = c.ClaimedAt,
+                    Loadout = loadout
+                };
+            }).ToList();
+        }
+
+        public async Task<KitDeliveryMarkResult> MarkDeliveredAsync(int userId, int claimId)
+        {
+            if (await _kitRepo.TryMarkDeliveredAsync(claimId, userId, _utcNow()))
+            {
+                return KitDeliveryMarkResult.Delivered;
+            }
+
+            // Lost the update: tell "someone took it" from "there was nothing to take".
+            var claim = await _kitRepo.GetClaimAsync(claimId);
+            return claim != null && claim.UserId == userId && claim.DeliveryRequestedAt.HasValue && claim.DeliveredAt.HasValue
+                ? KitDeliveryMarkResult.AlreadyDelivered
+                : KitDeliveryMarkResult.NotFound;
         }
 
         public async Task<List<KitClaimResultDto>> GrantFirstJoinKitsAsync(int userId)

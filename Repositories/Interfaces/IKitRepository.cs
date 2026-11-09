@@ -27,5 +27,17 @@ namespace knkwebapi_v2.Repositories
         /// <summary>Persists a new purchase row; same transaction as its KIT_PURCHASE posting
         /// (DESIGN.md §5.2).</summary>
         Task<KitPurchase> AddPurchaseAsync(KitPurchase purchase);
+
+        /// <summary>The user's claims still waiting for an in-game hand-over (PandiO/knk-workspace#261),
+        /// oldest first, each with its kit and the kit's contents.</summary>
+        Task<List<KitClaim>> GetPendingDeliveriesAsync(int userId);
+
+        /// <summary>Marks a pending delivery as taken, in one conditional UPDATE: true only for the
+        /// one call that changed the row; false when it was taken already, isn't the user's, or
+        /// was never a delivery.</summary>
+        Task<bool> TryMarkDeliveredAsync(int claimId, int userId, DateTime deliveredAt);
+
+        /// <summary>The claim row, or null.</summary>
+        Task<KitClaim?> GetClaimAsync(int claimId);
     }
 }

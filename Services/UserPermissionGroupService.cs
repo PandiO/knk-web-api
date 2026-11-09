@@ -18,6 +18,7 @@ namespace knkwebapi_v2.Services
         private readonly IPlayerNotificationQueue? _notificationQueue;
         private readonly ILootboxTokenGrantService? _lootboxTokenGrants;
         private readonly IRealtimeEventSink? _realtime;
+        private readonly IPermissionReadCache? _readCache;
 
         public UserPermissionGroupService(
             IUserPermissionGroupRepository repo,
@@ -26,8 +27,10 @@ namespace knkwebapi_v2.Services
             IAuditLogService auditLogService,
             IPlayerNotificationQueue? notificationQueue = null,
             ILootboxTokenGrantService? lootboxTokenGrants = null,
-            IRealtimeEventSink? realtime = null)
+            IRealtimeEventSink? realtime = null,
+            IPermissionReadCache? readCache = null)
         {
+            _readCache = readCache;
             _realtime = realtime;
             _repo = repo;
             _userRepo = userRepo;
@@ -202,6 +205,7 @@ namespace knkwebapi_v2.Services
         /// </summary>
         private void NotifyRankChanged(User user, string reason, int? actorUserId)
         {
+            _readCache?.ForgetUser(user.Id); // #280 AM2: dashboard read checks
             _realtime.PermissionsChanged(user, reason, actorUserId);
             _notificationQueue?.Enqueue(user.Id, user.Uuid, user.Username, PlayerNotificationTypes.RankChanged, null);
         }
