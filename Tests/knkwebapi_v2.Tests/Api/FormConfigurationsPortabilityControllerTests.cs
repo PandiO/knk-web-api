@@ -23,7 +23,7 @@ public class FormConfigurationsPortabilityControllerTests
 
     public FormConfigurationsPortabilityControllerTests()
     {
-        _controller = new FormConfigurationsController(null!, null!, null!, null!, null!, null!, null!, _portability.Object);
+        _controller = new FormConfigurationsController(null!, null!, null!, null!, null!, null!, null!, _portability.Object, null!);
     }
 
     private static JsonElement Body(string json = "{\"format\": \"knk-formconfig/1\"}") => JsonDocument.Parse(json).RootElement;

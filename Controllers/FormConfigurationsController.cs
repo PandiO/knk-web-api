@@ -1,6 +1,7 @@
 using knkwebapi_v2.Attributes;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Services;
@@ -27,6 +28,7 @@ namespace KnKWebAPI.Controllers
         private readonly IFormStepService _stepService;
         private readonly IFormFieldService _fieldService;
         private readonly IFormConfigurationPortabilityService _portability;
+        private readonly IFormConfigurationDraftService _drafts;
 
         public FormConfigurationsController(
             IFormConfigurationService service,
@@ -36,7 +38,8 @@ namespace KnKWebAPI.Controllers
             IFormConfigurationRepository configRepo,
             IFormStepService stepService,
             IFormFieldService fieldService,
-            IFormConfigurationPortabilityService portability)
+            IFormConfigurationPortabilityService portability,
+            IFormConfigurationDraftService drafts)
         {
             _service = service;
             _reusableService = reusableService;
@@ -46,14 +49,20 @@ namespace KnKWebAPI.Controllers
             _stepService = stepService;
             _fieldService = fieldService;
             _portability = portability;
+            _drafts = drafts;
         }
 
+        /// <param name="includeDrafts">#71: also configurations that were never published (Entity setup's list).</param>
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] bool includeDrafts = false)
         {
             var configs = await _service.GetAllAsync();
-            return Ok(configs);
+            return Ok(WithoutDrafts(configs, includeDrafts));
         }
+
+        // #71: the wizard, "New with", child forms and sub-configuration pickers only ever see published configurations.
+        private static IEnumerable<FormConfigurationDto> WithoutDrafts(IEnumerable<FormConfigurationDto> configs, bool includeDrafts) =>
+            includeDrafts ? configs : configs.Where(c => !c.IsDraft).ToList();
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
@@ -64,7 +73,7 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpGet("{entityName}")]
-        public async Task<IActionResult> GetAllByEntityTypeName(string entityName, bool defaultOnly = false)
+        public async Task<IActionResult> GetAllByEntityTypeName(string entityName, bool defaultOnly = false, [FromQuery] bool includeDrafts = false)
         {
             try
             {
@@ -78,7 +87,7 @@ namespace KnKWebAPI.Controllers
                 {
                     var config = await _service.GetAllByEntityTypeNameAsync(entityName, defaultOnly);
                     if (config == null) return NotFound();
-                    return Ok(config);
+                    return Ok(WithoutDrafts(config, includeDrafts));
                 }
             }
             catch (KeyNotFoundException)
@@ -93,10 +102,10 @@ namespace KnKWebAPI.Controllers
         }
 
         [HttpGet("{entityName}/all")]
-        public async Task<IActionResult> GetAllByEntityTypeNameAll(string entityName)
+        public async Task<IActionResult> GetAllByEntityTypeNameAll(string entityName, [FromQuery] bool includeDrafts = false)
         {
             var configs = await _service.GetAllByEntityTypeNameAllAsync(entityName);
-            return Ok(configs);
+            return Ok(WithoutDrafts(configs, includeDrafts));
         }
 
         [HttpGet("entity-names")]
@@ -151,7 +160,11 @@ namespace KnKWebAPI.Controllers
             if (configDto == null) return BadRequest();
             try
             {
+                // #71: a never-published configuration can't be the wizard's default before its first Publish.
+                if (configDto.IsDefault && await _drafts.IsNeverPublishedAsync(id))
+                    return BadRequest("Publish this configuration in the builder before making it the default.");
                 await _service.UpdateAsync(id, configDto);
+                await _drafts.SyncDraftDefaultAsync(id, configDto.IsDefault);
                 // Return the updated resource instead of 204
                 var updated = await _service.GetByIdAsync(id);
                 return Ok(updated);
@@ -265,6 +278,70 @@ namespace KnKWebAPI.Controllers
                 return BadRequest(ex.Message);
             }
             catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // ---- PandiO/knk-workspace#71: the builder's draft, Publish and Duplicate (writes need knk.admin.content, class rule) ----
+
+        /// <summary>
+        /// What the builder opens: the working copy (saved draft, else the published version), the published version,
+        /// and what Publish would change (open wizard drafts, the current default).
+        /// </summary>
+        [HttpGet("{id:int}/builder")]
+        [DashboardReads(DashboardArea.Content)]
+        public async Task<IActionResult> GetBuilderState(int id)
+        {
+            var state = await _drafts.GetBuilderStateAsync(id);
+            if (state == null) return NotFound();
+            return Ok(state);
+        }
+
+        /// <summary>A new configuration, saved as a draft only (never published, the wizard doesn't offer it).</summary>
+        [HttpPost("drafts")]
+        public Task<IActionResult> CreateDraft([FromBody] FormConfigurationDto draft) =>
+            RunDraft(async () =>
+            {
+                var state = await _drafts.CreateDraftAsync(draft);
+                return CreatedAtAction(nameof(GetBuilderState), new { id = int.Parse(state.Configuration.Id!) }, state);
+            });
+
+        /// <summary>Saves the builder's working copy; the published version (and the wizard) stay as they are.</summary>
+        [HttpPut("{id:int}/draft")]
+        public Task<IActionResult> SaveDraft(int id, [FromBody] FormConfigurationDto draft) =>
+            RunDraft(async () => Ok(await _drafts.SaveDraftAsync(id, draft)));
+
+        /// <summary>Drops the saved working copy; the builder opens the published version again.</summary>
+        [HttpPost("{id:int}/draft/discard")]
+        public Task<IActionResult> DiscardDraft(int id) =>
+            RunDraft(async () => Ok(await _drafts.DiscardDraftAsync(id)));
+
+        /// <summary>Applies the working copy with every save check; from then on the wizard uses it.</summary>
+        [HttpPost("{id:int}/publish")]
+        public Task<IActionResult> Publish(int id) =>
+            RunDraft(async () => Ok(await _drafts.PublishAsync(id)));
+
+        /// <summary>A copy of the published version (steps, fields, conditions, validation rules) as a new draft.</summary>
+        [HttpPost("{id:int}/duplicate")]
+        public Task<IActionResult> Duplicate(int id, [FromBody] DuplicateConfigurationRequestDto? request) =>
+            RunDraft(async () => Ok(await _drafts.DuplicateAsync(id, request?.Name)));
+
+        private async Task<IActionResult> RunDraft(Func<Task<IActionResult>> action)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }

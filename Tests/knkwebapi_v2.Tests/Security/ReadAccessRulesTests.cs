@@ -50,6 +50,7 @@ public class ReadAccessRulesTests
         ["ClansController.GetById"] = "F Clan",
         ["ClansController.Search"] = "F Clan",
         ["DisplayConfigurationsController.Export"] = "F Content",
+        ["DisplayConfigurationsController.GetBuilderState"] = "F Content", // #71: the builder's working copy
         ["DisplayConfigurationsController.GetSeeds"] = "F Content",
         ["DistrictsController.GetAll"] = "F District",
         ["DistrictsController.GetDistrictById"] = "F District",
@@ -68,6 +69,7 @@ public class ReadAccessRulesTests
         ["EnchantmentDefinitionsController.GetById"] = "F EnchantmentDefinition",
         ["EnchantmentDefinitionsController.Search"] = "F EnchantmentDefinition",
         ["FormConfigurationsController.Export"] = "F Content",
+        ["FormConfigurationsController.GetBuilderState"] = "F Content", // #71: the builder's working copy
         ["FormConfigurationsController.GetSeeds"] = "F Content",
         ["GateDoorsController.GetById"] = "F GateDoor",
         ["GateDoorsController.GetByStructure"] = "F GateDoor",
@@ -679,6 +681,26 @@ public class ReadAccessRulesTests
         Assert.Equal(403, await _pipeline.RunAsync(typeof(DisplayConfigurationsController), "GetSeeds", WorldOnly));
         Assert.Null(await _pipeline.RunAsync(typeof(FormConfigurationsController), "Export", ContentOnly));
         Assert.Null(await _pipeline.RunAsync(typeof(FormConfigurationsController), "Create", ContentOnly));
+    }
+
+    /// <summary>PandiO/knk-workspace#71: the builder's draft reads and writes are builder tools: knk.admin.content only.</summary>
+    [Theory]
+    [InlineData(typeof(FormConfigurationsController), "GetBuilderState")]
+    [InlineData(typeof(FormConfigurationsController), "CreateDraft")]
+    [InlineData(typeof(FormConfigurationsController), "SaveDraft")]
+    [InlineData(typeof(FormConfigurationsController), "DiscardDraft")]
+    [InlineData(typeof(FormConfigurationsController), "Publish")]
+    [InlineData(typeof(FormConfigurationsController), "Duplicate")]
+    [InlineData(typeof(DisplayConfigurationsController), "GetBuilderState")]
+    [InlineData(typeof(DisplayConfigurationsController), "CreateDraft")]
+    [InlineData(typeof(DisplayConfigurationsController), "SaveDraft")]
+    [InlineData(typeof(DisplayConfigurationsController), "DiscardDraft")]
+    [InlineData(typeof(DisplayConfigurationsController), "PublishAsync")]
+    [InlineData(typeof(DisplayConfigurationsController), "Duplicate")]
+    public async Task BuilderDrafts_NeedContent(Type controller, string action)
+    {
+        Assert.Equal(403, await _pipeline.RunAsync(controller, action, WorldOnly));
+        Assert.Null(await _pipeline.RunAsync(controller, action, ContentOnly));
     }
 
     [Fact]

@@ -32,6 +32,16 @@ namespace knkwebapi_v2.Dtos
         
         [JsonPropertyName("isDraft")]
         public bool IsDraft { get; set; } = true;
+
+        /// <summary>PandiO/knk-workspace#71: the builder holds a saved, unpublished working copy. Read only.</summary>
+        [JsonPropertyName("hasUnpublishedChanges")]
+        public bool HasUnpublishedChanges { get; set; }
+
+        [JsonPropertyName("draftSavedAt")]
+        public string? DraftSavedAt { get; set; }
+
+        [JsonPropertyName("publishedAt")]
+        public string? PublishedAt { get; set; }
         
         [JsonPropertyName("createdAt")]
         public string? CreatedAt { get; set; }

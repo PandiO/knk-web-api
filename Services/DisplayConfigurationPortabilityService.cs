@@ -318,7 +318,17 @@ namespace knkwebapi_v2.Services
             return await ImportAsync(file, dryRun, makeDefault, asDraft);
         }
 
-        public async Task<DisplayConfigurationImportResultDto> ImportAsync(PortableDisplayConfigurationDto file, bool dryRun, bool makeDefault, bool asDraft)
+        public Task<DisplayConfigurationImportResultDto> ImportAsync(PortableDisplayConfigurationDto file, bool dryRun, bool makeDefault, bool asDraft)
+            => ImportCoreAsync(file, dryRun, makeDefault, asDraft, draftCopy: false);
+
+        /// <summary>
+        /// PandiO/knk-workspace#71 (Duplicate): the file as a new draft that is never the default (no default swap),
+        /// with every check of an import.
+        /// </summary>
+        public Task<DisplayConfigurationImportResultDto> ImportDraftCopyAsync(PortableDisplayConfigurationDto file)
+            => ImportCoreAsync(file, dryRun: false, makeDefault: false, asDraft: true, draftCopy: true);
+
+        private async Task<DisplayConfigurationImportResultDto> ImportCoreAsync(PortableDisplayConfigurationDto file, bool dryRun, bool makeDefault, bool asDraft, bool draftCopy)
         {
             if (file == null) return Invalid(dryRun, asDraft, "The file is empty.");
 
@@ -392,7 +402,7 @@ namespace knkwebapi_v2.Services
             var currentDefaults = await _db.DisplayConfigurations
                 .Where(c => c.EntityTypeName == entity.EntityTypeName && c.IsDefault)
                 .ToListAsync();
-            result.IsDefault = currentDefaults.Count == 0 || makeDefault;
+            result.IsDefault = !draftCopy && (currentDefaults.Count == 0 || makeDefault);
             if (makeDefault && currentDefaults.Count > 0)
             {
                 result.ReplacedDefaultId = currentDefaults[0].Id.ToString();

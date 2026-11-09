@@ -173,6 +173,7 @@ namespace knkwebapi_v2.DependencyInjection
                 Directory = Path.Combine(sp.GetRequiredService<IHostEnvironment>().ContentRootPath, "Data", "FormConfigurationSeeds")
             });
             services.AddScoped<IFormConfigurationPortabilityService, FormConfigurationPortabilityService>();
+            services.AddScoped<IFormConfigurationDraftService, FormConfigurationDraftService>(); // #71
             services.AddScoped<IFormStepRepository, FormStepRepository>();
             services.AddScoped<IFormStepService, FormStepService>();
             services.AddScoped<IFormFieldRepository, FormFieldRepository>();
@@ -251,6 +252,7 @@ namespace knkwebapi_v2.DependencyInjection
             
             // DisplayConfiguration services
             services.AddScoped<IDisplayConfigurationService, DisplayConfigurationService>();
+            services.AddScoped<IDisplayConfigurationDraftService, DisplayConfigurationDraftService>(); // #71
             services.AddScoped<IDisplaySectionService, DisplaySectionService>();
             services.AddScoped<IDisplayFieldService, DisplayFieldService>();
             // knk-displayconfig/1: bundled DisplayConfiguration seed files, imported on request (no startup seeder).

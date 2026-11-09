@@ -859,6 +859,12 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
+                    b.Property<string>("DraftJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("DraftSavedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("EntityTypeName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -874,6 +880,9 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("SectionOrderJson")
                         .IsRequired()
@@ -1604,6 +1613,12 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("DraftJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("DraftSavedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("EntityTypeName")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
@@ -1611,9 +1626,15 @@ namespace knkwebapi_v2.Migrations
                     b.Property<bool>("IsDefault")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("StepOrderJson")
                         .IsRequired()

@@ -21,6 +21,12 @@ namespace knkwebapi_v2.Services
         /// </summary>
         Task<FormConfigurationImportResultDto> ImportAsync(PortableFormConfigurationDto file, bool dryRun, bool makeDefault);
 
+        /// <summary>
+        /// PandiO/knk-workspace#71: imports the file as a new, never-published configuration (Duplicate). Never the
+        /// default; nothing else changes.
+        /// </summary>
+        Task<FormConfigurationImportResultDto> ImportDraftCopyAsync(PortableFormConfigurationDto file);
+
         /// <summary>Parses the JSON text of a portable file, then imports it as ImportAsync does.</summary>
         Task<FormConfigurationImportResultDto> ImportJsonAsync(string json, bool dryRun, bool makeDefault);
 

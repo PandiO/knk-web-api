@@ -24,7 +24,7 @@ public class DisplayConfigurationsPortabilityControllerTests
 
     public DisplayConfigurationsPortabilityControllerTests()
     {
-        _controller = new DisplayConfigurationsController(null!, _portability.Object, NullLogger<DisplayConfigurationsController>.Instance);
+        _controller = new DisplayConfigurationsController(null!, _portability.Object, null!, NullLogger<DisplayConfigurationsController>.Instance);
     }
 
     private static JsonElement Body(string json = "{\"format\": \"knk-displayconfig/1\"}") => JsonDocument.Parse(json).RootElement;
