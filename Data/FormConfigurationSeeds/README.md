@@ -156,3 +156,13 @@ default 3) and "Knockback radius" (`EffectRadiusBlocks`, 0-32, default 5). Both 
 multiplier; the step and level multiplier descriptions say so. GUIDs: configuration uuid5(v3 configuration GUID,
 "seed-v4"), every kept step/field uuid5(v3 configuration GUID, its v3 GUID), the new fields uuid5(v4 configuration
 GUID, "field:" + name).
+
+**EnchantmentDefinition seed v5 (PandiO/knk-workspace#259, 2026-11-05):** a new `configurationGuid` and name, so it
+imports next to v4; make it the default and delete or keep v4 by hand. Adds four fields at the end of "Combat values",
+read by Cleaving only (they replace knk-plugin's config.yml `gates.cleaving`): "Gate damage bonus per level"
+(`GateDamageBonusPerLevel`, 0-10, default 0.25), "Charged strike at level I" (`StrikeMultiplier`, 0-100, default 5),
+"Charged strike per extra level" (`StrikeMultiplierPerLevel`, -100 to 100, default 1) and "Strike cooldown change per
+extra level" (`CooldownPerLevelSeconds`, -86400 to 86400, default -10); the strike's level-I cooldown is the existing
+"Cooldown length" (default 60). The step and cooldown descriptions say so. GUIDs: configuration uuid5(v4 configuration
+GUID, "seed-v5"), every kept step/field uuid5(v4 configuration GUID, its v4 GUID), the new fields uuid5(v5
+configuration GUID, "field:" + name).

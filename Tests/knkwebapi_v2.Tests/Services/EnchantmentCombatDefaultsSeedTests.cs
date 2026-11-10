@@ -35,6 +35,8 @@ public class EnchantmentCombatDefaultsSeedTests
         new object?[] { "armor_repair", null,    null,  true,   120, null,       null },
         new object?[] { "resistance",   null,    null,  true,   120, 10d,        0.5d },
         new object?[] { "invisibility", null,    null,  true,   90,  10d,        0d },
+        // #259: Cleaving's charged strike cooldown at level I (its gate numbers: see the test below).
+        new object?[] { "cleaving",     null,    null,  true,   60,  null,       null },
     };
 
     [Theory]
@@ -146,16 +148,53 @@ public class EnchantmentCombatDefaultsSeedTests
         Assert.Equal(5, chaos.EffectRadiusBlocks);
     }
 
+    /// <summary>
+    /// PandiO/knk-workspace#259: Cleaving's gate numbers are combat values now, with the old config.yml gates.cleaving
+    /// defaults (+25 % per level, strike 5 + 1 per level, cooldown 60 - 10 s per level); the others leave them empty.
+    /// </summary>
     [Fact]
-    public async Task CleavingKeepsItsNumbersInThePluginConfig()
+    public async Task Cleaving_GetsItsGateStrikeDefaults_OthersStayEmpty()
     {
         await using (var context = NewContext()) await AbilityDefinition.SeedCanonicalAsync(context);
 
         await using var read = NewContext();
-        var cleaving = await read.EnchantmentDefinitions.SingleAsync(e => e.Key == "cleaving");
+        var all = await read.EnchantmentDefinitions.ToListAsync();
+        var cleaving = all.Single(e => e.Key == "cleaving");
         Assert.Null(cleaving.ProcChancePercent);
-        Assert.Null(cleaving.CooldownEnabled);
-        Assert.Null(cleaving.CooldownSeconds);
+        Assert.True(cleaving.CooldownEnabled);
+        Assert.Equal(60, cleaving.CooldownSeconds);
+        Assert.Equal((0.25d, 5d, 1d, -10),
+            (cleaving.GateDamageBonusPerLevel, cleaving.StrikeMultiplier, cleaving.StrikeMultiplierPerLevel, cleaving.CooldownPerLevelSeconds));
+        Assert.All(all.Where(e => e.Key != "cleaving"), e =>
+        {
+            Assert.Null(e.GateDamageBonusPerLevel);
+            Assert.Null(e.StrikeMultiplier);
+            Assert.Null(e.StrikeMultiplierPerLevel);
+            Assert.Null(e.CooldownPerLevelSeconds);
+        });
+    }
+
+    [Fact]
+    public async Task Cleaving_AnExistingRowGetsTheNewDefaults_AndKeepsAnAdminsValues()
+    {
+        await using (var context = NewContext())
+        {
+            context.EnchantmentDefinitions.Add(new EnchantmentDefinition
+            {
+                Key = "knk:cleaving", DisplayName = "Cleaving", Description = "x", IsCustom = true, MaxLevel = 4,
+                StrikeMultiplier = 3
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = NewContext()) await AbilityDefinition.SeedCanonicalAsync(context);
+
+        await using var read = NewContext();
+        var cleaving = await read.EnchantmentDefinitions.SingleAsync(e => e.Key == "cleaving");
+        Assert.Equal(3, cleaving.StrikeMultiplier);
+        Assert.Equal(0.25, cleaving.GateDamageBonusPerLevel);
+        Assert.Equal(-10, cleaving.CooldownPerLevelSeconds);
+        Assert.Equal(60, cleaving.CooldownSeconds);
     }
 
     [Fact]
@@ -204,11 +243,11 @@ public class EnchantmentCombatDefaultsSeedTests
     }
 
     [Fact]
-    public void EveryCanonicalEnchantmentButCleavingHasDefaults()
+    public void EveryCanonicalEnchantmentHasDefaults_CleavingToo()
     {
-        Assert.All(AbilityDefinition.CanonicalCatalog, entry =>
-            Assert.Equal(entry.EnchantmentKey != "cleaving", entry.CombatDefaults != null));
-        Assert.Equal(AbilityDefinition.CanonicalCatalog.Count - 1, Defaults().Count());
+        // #259: Cleaving's gate numbers are combat values too (they were knk-plugin config.yml gates.cleaving).
+        Assert.All(AbilityDefinition.CanonicalCatalog, entry => Assert.NotNull(entry.CombatDefaults));
+        Assert.Equal(AbilityDefinition.CanonicalCatalog.Count, Defaults().Count());
     }
 
     [Fact]
@@ -223,6 +262,8 @@ public class EnchantmentCombatDefaultsSeedTests
                 d.EffectLevel, d.SecondaryEffectDurationSeconds);
             knkwebapi_v2.Services.EnchantmentDefinitionService.ValidateAreaCombatValues(
                 d.AreaDamage, d.GateDamage, d.DamageRadiusBlocks, d.EffectRadiusBlocks);
+            knkwebapi_v2.Services.EnchantmentDefinitionService.ValidateGateStrikeCombatValues(
+                d.GateDamageBonusPerLevel, d.StrikeMultiplier, d.StrikeMultiplierPerLevel, d.CooldownPerLevelSeconds);
         }
     }
 }

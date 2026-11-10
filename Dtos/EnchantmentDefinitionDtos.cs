@@ -73,6 +73,19 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("effectRadiusBlocks")]
         public double? EffectRadiusBlocks { get; set; }
+
+        // PandiO/knk-workspace#259: Cleaving's gate bonus and charged strike.
+        [JsonPropertyName("gateDamageBonusPerLevel")]
+        public double? GateDamageBonusPerLevel { get; set; }
+
+        [JsonPropertyName("strikeMultiplier")]
+        public double? StrikeMultiplier { get; set; }
+
+        [JsonPropertyName("strikeMultiplierPerLevel")]
+        public double? StrikeMultiplierPerLevel { get; set; }
+
+        [JsonPropertyName("cooldownPerLevelSeconds")]
+        public int? CooldownPerLevelSeconds { get; set; }
     }
 
     // Create DTO
@@ -154,6 +167,19 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("effectRadiusBlocks")]
         public double? EffectRadiusBlocks { get; set; }
+
+        // PandiO/knk-workspace#259: Cleaving's gate bonus and charged strike.
+        [JsonPropertyName("gateDamageBonusPerLevel")]
+        public double? GateDamageBonusPerLevel { get; set; }
+
+        [JsonPropertyName("strikeMultiplier")]
+        public double? StrikeMultiplier { get; set; }
+
+        [JsonPropertyName("strikeMultiplierPerLevel")]
+        public double? StrikeMultiplierPerLevel { get; set; }
+
+        [JsonPropertyName("cooldownPerLevelSeconds")]
+        public int? CooldownPerLevelSeconds { get; set; }
     }
 
     // Update DTO
@@ -331,6 +357,45 @@ namespace knkwebapi_v2.Dtos
         [JsonIgnore] public bool HasGateDamage { get; private set; }
         [JsonIgnore] public bool HasDamageRadiusBlocks { get; private set; }
         [JsonIgnore] public bool HasEffectRadiusBlocks { get; private set; }
+
+        // PandiO/knk-workspace#259: Cleaving's gate bonus and charged strike, written only when sent.
+        private double? _gateDamageBonusPerLevel;
+        private double? _strikeMultiplier;
+        private double? _strikeMultiplierPerLevel;
+        private int? _cooldownPerLevelSeconds;
+
+        [JsonPropertyName("gateDamageBonusPerLevel")]
+        public double? GateDamageBonusPerLevel
+        {
+            get => _gateDamageBonusPerLevel;
+            set { _gateDamageBonusPerLevel = value; HasGateDamageBonusPerLevel = true; }
+        }
+
+        [JsonPropertyName("strikeMultiplier")]
+        public double? StrikeMultiplier
+        {
+            get => _strikeMultiplier;
+            set { _strikeMultiplier = value; HasStrikeMultiplier = true; }
+        }
+
+        [JsonPropertyName("strikeMultiplierPerLevel")]
+        public double? StrikeMultiplierPerLevel
+        {
+            get => _strikeMultiplierPerLevel;
+            set { _strikeMultiplierPerLevel = value; HasStrikeMultiplierPerLevel = true; }
+        }
+
+        [JsonPropertyName("cooldownPerLevelSeconds")]
+        public int? CooldownPerLevelSeconds
+        {
+            get => _cooldownPerLevelSeconds;
+            set { _cooldownPerLevelSeconds = value; HasCooldownPerLevelSeconds = true; }
+        }
+
+        [JsonIgnore] public bool HasGateDamageBonusPerLevel { get; private set; }
+        [JsonIgnore] public bool HasStrikeMultiplier { get; private set; }
+        [JsonIgnore] public bool HasStrikeMultiplierPerLevel { get; private set; }
+        [JsonIgnore] public bool HasCooldownPerLevelSeconds { get; private set; }
     }
 
     // List DTO - For search/list views

@@ -54,8 +54,8 @@ namespace knkwebapi_v2.Services.EnchantmentInfo
             bool AreaBlast = false,
             /// <summary>Health Boost: health restored per level (2 = one heart).</summary>
             double HealPerLevel = 0,
-            /// <summary>Cleaving: a line per level about its gate numbers, which live in the plugin's config.yml.</summary>
-            Func<int, string>? LevelDetail = null);
+            /// <summary>Cleaving: its gate bonus and charged strike per level, from its combat values (#259).</summary>
+            bool GateStrike = false);
 
         private const string SafezoneNote =
             "Doesn't work in combat safezones: a player in a safezone is not hit or affected.";
@@ -98,10 +98,9 @@ namespace knkwebapi_v2.Services.EnchantmentInfo
                 Array.Empty<EffectFact>(),
                 new[]
                 {
-                    "Its numbers are server settings, not combat values; the page shows the default settings.",
-                    "A defender's hits never hurt their own gate. The strike has its own cooldown, shown in a boss bar."
+                    "A defender's hits never hurt their own gate. The strike's cooldown is shown in a boss bar."
                 },
-                LevelDetail: level => CleavingDetail(level)),
+                GateStrike: true),
             ["chaos"] = new(RightClick, Area,
                 "Right-click to release a blast around you: every player and creature in the damage radius takes the "
                 + "area damage, everyone in the knockback radius is thrown back, and gate doors near you take the gate "
@@ -159,18 +158,17 @@ namespace knkwebapi_v2.Services.EnchantmentInfo
         }
 
         /// <summary>
-        /// Cleaving's defaults in knk-plugin's config.yml (gates.cleaving): +25 % gate damage per level on melee hits,
-        /// a charged strike of 5/6/7/8 times that boosted hit with a 60/50/40/30 s cooldown (levels I-IV; higher levels
-        /// use the last entry).
+        /// Cleaving at one level (#259): melee hits on gate doors deal (1 + bonus x level) times the gate damage; the
+        /// charged strike deals its multiplier times that hit and then needs its cooldown (0 = none) to recharge.
         /// </summary>
-        public static string CleavingDetail(int level)
+        public static string CleavingDetail(double bonusPercent, double strikeMultiplier, int cooldownSeconds)
         {
-            int[] multiplier = { 5, 6, 7, 8 };
-            int[] cooldown = { 60, 50, 40, 30 };
-            var index = Math.Clamp(level, 1, multiplier.Length) - 1;
-            var bonus = 25 * level;
-            return $"Melee hits on gate doors deal +{bonus} % gate damage; the charged strike deals {multiplier[index]}x "
-                   + $"that hit, then needs {cooldown[index]} s to recharge.";
+            var recharge = cooldownSeconds > 0 ? $", then needs {cooldownSeconds} s to recharge" : ", with no cooldown";
+            return $"Melee hits on gate doors deal +{Format(bonusPercent)} % gate damage; the charged strike deals "
+                   + $"{Format(strikeMultiplier)}x that hit{recharge}.";
         }
+
+        private static string Format(double value) =>
+            Math.Round(value, 2).ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 }

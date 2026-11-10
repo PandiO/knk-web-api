@@ -1341,6 +1341,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<bool?>("CooldownEnabled")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<int?>("CooldownPerLevelSeconds")
+                        .HasColumnType("int");
+
                     b.Property<int?>("CooldownSeconds")
                         .HasColumnType("int");
 
@@ -1367,6 +1370,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<double?>("GateDamage")
                         .HasColumnType("double");
 
+                    b.Property<double?>("GateDamageBonusPerLevel")
+                        .HasColumnType("double");
+
                     b.Property<bool>("IsCustom")
                         .HasColumnType("tinyint(1)");
 
@@ -1390,6 +1396,12 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("double");
 
                     b.Property<double?>("SecondaryEffectDurationSeconds")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("StrikeMultiplier")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("StrikeMultiplierPerLevel")
                         .HasColumnType("double");
 
                     b.HasKey("Id");

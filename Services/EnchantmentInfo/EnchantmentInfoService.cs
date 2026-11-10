@@ -125,7 +125,17 @@ namespace knkwebapi_v2.Services.EnchantmentInfo
             {
                 row.HealAmount = facts.HealPerLevel * level;
             }
-            row.Detail = facts.LevelDetail?.Invoke(level);
+            if (facts.GateStrike)
+            {
+                // #259: the plugin's GateStrike / EnchantmentTuning.strikeCooldownMsAt.
+                var bonusPercent = values.GateDamageBonusPerLevel * level * 100;
+                var strike = Math.Max(0, values.StrikeMultiplier + values.StrikeMultiplierPerLevel * (level - 1));
+                var cooldown = values.CooldownEnabled
+                    ? Math.Max(0, values.CooldownSeconds + values.CooldownPerLevelSeconds * (level - 1))
+                    : 0;
+                row.CooldownSeconds = cooldown;
+                row.Detail = EnchantmentInfoCatalog.CleavingDetail(bonusPercent, strike, cooldown);
+            }
             return row;
         }
 
@@ -149,7 +159,9 @@ namespace knkwebapi_v2.Services.EnchantmentInfo
         private sealed record CombatValues(
             double ChancePercent, double ChancePerLevelPercent, bool CooldownEnabled, int CooldownSeconds,
             double DurationSeconds, double LevelMultiplier, int EffectLevel, double SecondaryDurationSeconds,
-            double AreaDamage, double GateDamage, double DamageRadius, double EffectRadius)
+            double AreaDamage, double GateDamage, double DamageRadius, double EffectRadius,
+            double GateDamageBonusPerLevel, double StrikeMultiplier, double StrikeMultiplierPerLevel,
+            int CooldownPerLevelSeconds)
         {
             public static CombatValues Of(EnchantmentDefinition d, EnchantmentCombatDefaults? x) => new(
                 d.ProcChancePercent ?? x?.ProcChancePercent ?? 100,
@@ -163,7 +175,11 @@ namespace knkwebapi_v2.Services.EnchantmentInfo
                 d.AreaDamage ?? x?.AreaDamage ?? 0,
                 d.GateDamage ?? x?.GateDamage ?? 0,
                 d.DamageRadiusBlocks ?? x?.DamageRadiusBlocks ?? 0,
-                d.EffectRadiusBlocks ?? x?.EffectRadiusBlocks ?? 0);
+                d.EffectRadiusBlocks ?? x?.EffectRadiusBlocks ?? 0,
+                Math.Max(0, d.GateDamageBonusPerLevel ?? x?.GateDamageBonusPerLevel ?? 0),
+                Math.Max(0, d.StrikeMultiplier ?? x?.StrikeMultiplier ?? 0),
+                d.StrikeMultiplierPerLevel ?? x?.StrikeMultiplierPerLevel ?? 0,
+                d.CooldownPerLevelSeconds ?? x?.CooldownPerLevelSeconds ?? 0);
         }
     }
 }

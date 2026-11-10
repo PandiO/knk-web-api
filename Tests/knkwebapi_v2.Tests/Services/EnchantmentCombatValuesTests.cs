@@ -164,6 +164,14 @@ public class EnchantmentCombatValuesTests
     [InlineData("damageRadiusBlocks", "33")]
     [InlineData("effectRadiusBlocks", "-0.5")]
     [InlineData("effectRadiusBlocks", "33")]
+    [InlineData("gateDamageBonusPerLevel", "-0.1")]
+    [InlineData("gateDamageBonusPerLevel", "11")]
+    [InlineData("strikeMultiplier", "-1")]
+    [InlineData("strikeMultiplier", "101")]
+    [InlineData("strikeMultiplierPerLevel", "-101")]
+    [InlineData("strikeMultiplierPerLevel", "101")]
+    [InlineData("cooldownPerLevelSeconds", "-86401")]
+    [InlineData("cooldownPerLevelSeconds", "86401")]
     public async Task Update_RefusesOutOfRangeValues(string property, string value)
     {
         var stored = StoredFreeze();
@@ -327,6 +335,43 @@ public class EnchantmentCombatValuesTests
         Assert.Equal(30, read.GateDamage);
         Assert.Equal(2, read.DamageRadiusBlocks);
         Assert.Equal(4.5, read.EffectRadiusBlocks);
+    }
+
+    // PandiO/knk-workspace#259: Cleaving's gate bonus and charged strike.
+
+    [Fact]
+    public async Task Update_WritesTheCleavingValues_OnlyWhenSent()
+    {
+        var stored = new EnchantmentDefinition
+        {
+            Id = 10, Key = "cleaving", DisplayName = "Cleaving", Description = "x", IsCustom = true, MaxLevel = 4,
+            CooldownEnabled = true, CooldownSeconds = 60, GateDamageBonusPerLevel = 0.25, StrikeMultiplier = 5,
+            StrikeMultiplierPerLevel = 1, CooldownPerLevelSeconds = -10
+        };
+        _repo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(stored);
+
+        await _service.UpdateAsync(10, Parse("""
+            {"id":10,"key":"cleaving","displayName":"Cleaving","isCustom":true,"maxLevel":4,"strikeMultiplier":3,"cooldownPerLevelSeconds":-5}
+            """));
+        Assert.Equal(3, stored.StrikeMultiplier);
+        Assert.Equal(-5, stored.CooldownPerLevelSeconds);
+        Assert.Equal(0.25, stored.GateDamageBonusPerLevel);
+        Assert.Equal(1, stored.StrikeMultiplierPerLevel);
+
+        await _service.UpdateAsync(10, Parse("""
+            {"id":10,"key":"cleaving","displayName":"Cleaving","isCustom":true,"maxLevel":4,"gateDamageBonusPerLevel":null}
+            """));
+        Assert.Null(stored.GateDamageBonusPerLevel);
+        Assert.Equal(3, stored.StrikeMultiplier);
+    }
+
+    [Fact]
+    public void ValidateGateStrike_AcceptsTheBoundsAndNulls()
+    {
+        EnchantmentDefinitionService.ValidateGateStrikeCombatValues(0, 0, -100, -86400);
+        EnchantmentDefinitionService.ValidateGateStrikeCombatValues(10, 100, 100, 86400);
+        EnchantmentDefinitionService.ValidateGateStrikeCombatValues(null, null, null, null);
+        Assert.Throws<ArgumentException>(() => EnchantmentDefinitionService.ValidateGateStrikeCombatValues(double.NaN, null, null, null));
     }
 
     [Fact]

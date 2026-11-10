@@ -68,6 +68,22 @@ public class EnchantmentDefinition
     /// <summary>Radius in blocks of the knockback (Flash Chaos: and its debuffs).</summary>
     public double? EffectRadiusBlocks { get; set; }
 
+    // PandiO/knk-workspace#259: Cleaving's gate numbers (were knk-plugin config.yml gates.cleaving). Level I plus a step
+    // per level (developer decision 2026-11-05); the charged strike's level-I cooldown is CooldownSeconds above.
+    // Other enchantments ignore these four.
+
+    /// <summary>Extra share of the weapon's gate damage per level: gate hits x (1 + bonus x level).</summary>
+    public double? GateDamageBonusPerLevel { get; set; }
+
+    /// <summary>The charged strike at level I, as a multiple of the boosted gate hit.</summary>
+    public double? StrikeMultiplier { get; set; }
+
+    /// <summary>Added to the strike multiplier per level above I (may be negative).</summary>
+    public double? StrikeMultiplierPerLevel { get; set; }
+
+    /// <summary>Seconds added to the strike's cooldown per level above I (negative = shorter).</summary>
+    public int? CooldownPerLevelSeconds { get; set; }
+
     // Many-to-One: EnchantmentDefinition → MinecraftEnchantmentRef (base enchantment reference)
     [NavigationPair(nameof(BaseEnchantmentRef))]
     [RelatedEntityField(typeof(MinecraftEnchantmentRef))]
