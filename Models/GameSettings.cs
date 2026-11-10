@@ -57,6 +57,12 @@ public class GameSettings
     /// <summary>Serialized HubSettingsDto (hub DESIGN §16 Phase 4). Null = no hub configured.</summary>
     public string? HubSettingsJson { get; set; }
 
+    /// <summary>
+    /// Serialized ChatTokenSettingsDto: the per-player limits of the chat hashtag tokens
+    /// (PandiO/knk-workspace#233). Null = no limits.
+    /// </summary>
+    public string? ChatTokenSettingsJson { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

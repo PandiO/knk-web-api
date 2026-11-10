@@ -25,6 +25,12 @@ namespace knkwebapi_v2.Services.Statistics
         /// <summary>Self and staff see every non-internal statistic regardless of the settings.</summary>
         public bool SeesEverything => Kind is StatisticsViewerKind.Self or StatisticsViewerKind.Staff;
 
+        /// <summary>
+        /// The view any other signed-in player gets (PandiO/knk-workspace#233, chat tokens): the player themselves and
+        /// staff become <see cref="StatisticsViewerKind.SignedIn"/>; signed-in and anonymous viewers stay as they are.
+        /// </summary>
+        public StatisticsViewer AsPublic() => SeesEverything ? this with { Kind = StatisticsViewerKind.SignedIn } : this;
+
         /// <summary>The DTO's "viewer" value.</summary>
         public string Name => Kind switch
         {

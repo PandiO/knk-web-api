@@ -1869,6 +1869,9 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
+                    b.Property<string>("ChatTokenSettingsJson")
+                        .HasColumnType("longtext");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime");
 

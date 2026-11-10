@@ -122,6 +122,11 @@ public class StatisticsController : ControllerBase
     /// <param name="period">lifetime (default), day, week or month.</param>
     /// <param name="date">A local day inside the wanted period (default today).</param>
     /// <param name="ct">Cancellation.</param>
+    /// <param name="audience">
+    /// <c>viewer</c> (default): what the caller may see. <c>public</c>: what any other signed-in player sees, also when
+    /// the caller is the player or staff — the plugin's chat tokens show this view to everyone in chat
+    /// (PandiO/knk-workspace#233). An anonymous caller stays anonymous.
+    /// </param>
     // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
     // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.
     [AllowAnonymous]
@@ -129,9 +134,16 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(PlayerStatisticsDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(404)]
-    public Task<ActionResult<PlayerStatisticsDto>> GetUser(int userId, [FromQuery] string? period, [FromQuery] DateOnly? date,
-        CancellationToken ct) =>
-        Run(userId, viewer => _query.GetAsync(userId, viewer, period, date, ct));
+    public async Task<ActionResult<PlayerStatisticsDto>> GetUser(int userId, [FromQuery] string? period, [FromQuery] DateOnly? date,
+        CancellationToken ct, [FromQuery] string? audience = null)
+    {
+        var publicView = string.Equals(audience, "public", StringComparison.OrdinalIgnoreCase);
+        if (!publicView && !string.IsNullOrEmpty(audience) && !string.Equals(audience, "viewer", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { error = "InvalidAudience", message = "audience must be 'viewer' or 'public'." });
+        }
+        return await Run(userId, viewer => _query.GetAsync(userId, publicView ? viewer.AsPublic() : viewer, period, date, ct));
+    }
 
     /// <summary>One metric per day, week or month (≤ 366 points); 403 when the caller may not see it.</summary>
     // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
