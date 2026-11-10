@@ -15,8 +15,7 @@ namespace knkwebapi_v2.Tests.Services.ValidationMethods
     ///
     /// Exercises the validator directly via IValidationMethod.ValidateAsync(fieldValue,
     /// dependencyValue, configJson, formContextData) - the real, current signature used by
-    /// FieldValidationService (see Services/FieldValidationService.cs's ValidateAsync call
-    /// sites), not the stale FieldValidationRule-based signature in the excluded
+    /// ValidationService, not the stale FieldValidationRule-based signature in the excluded
     /// ValidationMethodsTests.cs (see the &lt;Compile Remove&gt; entries in
     /// knkwebapi_v2.Tests.csproj) - that file predates the current interface and isn't compiled.
     /// </summary>

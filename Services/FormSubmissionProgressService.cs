@@ -98,6 +98,11 @@ namespace knkwebapi_v2.Services
             {
                 existing.CreatedEntitiesJson = incoming.CreatedEntitiesJson;
             }
+            // #180: null = not sent; keeps the draft's workflow session.
+            if (incoming.WorkflowSessionId != null)
+            {
+                existing.WorkflowSessionId = incoming.WorkflowSessionId;
+            }
             existing.UpdatedAt = DateTime.UtcNow;
             if (string.Equals(incoming.Status, "Completed", StringComparison.OrdinalIgnoreCase))
             {

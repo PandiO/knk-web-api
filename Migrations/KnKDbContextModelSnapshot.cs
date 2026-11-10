@@ -1335,11 +1335,17 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<double?>("AreaDamage")
+                        .HasColumnType("double");
+
                     b.Property<bool?>("CooldownEnabled")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("CooldownSeconds")
                         .HasColumnType("int");
+
+                    b.Property<double?>("DamageRadiusBlocks")
+                        .HasColumnType("double");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1354,6 +1360,12 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<int?>("EffectLevel")
                         .HasColumnType("int");
+
+                    b.Property<double?>("EffectRadiusBlocks")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("GateDamage")
+                        .HasColumnType("double");
 
                     b.Property<bool>("IsCustom")
                         .HasColumnType("tinyint(1)");
@@ -1833,6 +1845,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("WorkflowSessionId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("FormConfigurationId");
@@ -1840,6 +1855,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("ParentProgressId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("WorkflowSessionId");
 
                     b.HasIndex("Status", "CompletedAt");
 
@@ -2412,6 +2429,14 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ArmorTrimMaterial")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("ArmorTrimPattern")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<decimal>("BasePriceMax")
                         .HasColumnType("decimal(65,30)");
 
@@ -2450,6 +2475,10 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("ShieldBannerBaseColor")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
@@ -2460,6 +2489,38 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("IconMaterialRefId");
 
                     b.ToTable("item_blueprints", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintBannerLayer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PatternKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ItemBlueprintId", "SortOrder");
+
+                    b.ToTable("item_blueprint_banner_layers", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintDefaultEnchantment", b =>
@@ -2531,6 +2592,14 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("ArmorTrimMaterial")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("ArmorTrimPattern")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime");
 
@@ -2565,6 +2634,10 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int?>("OwnerUserId")
                         .HasColumnType("int");
 
+                    b.Property<string>("ShieldBannerBaseColor")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
@@ -2577,6 +2650,38 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("Origin", "OriginRef");
 
                     b.ToTable("item_instances", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemInstanceBannerLayer", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<long>("ItemInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PatternKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ItemInstanceId", "SortOrder");
+
+                    b.ToTable("item_instance_banner_layers", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemInstanceEnchantment", b =>
@@ -6583,6 +6688,9 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("AppliedAt")
+                        .HasColumnType("datetime");
+
                     b.Property<int?>("AssignedUserId")
                         .HasColumnType("int");
 
@@ -6595,23 +6703,52 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("ClaimedByServerId")
                         .HasColumnType("longtext");
 
+                    b.Property<int?>("ClaimedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ClaimedByUuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime");
 
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime");
 
                     b.Property<string>("FieldName")
                         .HasColumnType("longtext");
 
+                    b.Property<int?>("FormSubmissionProgressId")
+                        .HasColumnType("int");
+
                     b.Property<string>("InputJson")
                         .HasColumnType("longtext");
 
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("datetime");
+
                     b.Property<string>("LinkCode")
                         .HasColumnType("longtext");
+
+                    b.Property<string>("OfferState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("None");
+
+                    b.Property<DateTime?>("OfferedAt")
+                        .HasColumnType("datetime");
 
                     b.Property<string>("OutputJson")
                         .HasColumnType("longtext");
@@ -6619,7 +6756,18 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("PayloadJson")
                         .HasColumnType("longtext");
 
+                    b.Property<int>("ReleaseCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp(6)");
+
                     b.Property<string>("Status")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
@@ -6628,6 +6776,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<int?>("StepNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TargetUserId")
                         .HasColumnType("int");
 
                     b.Property<string>("TaskType")
@@ -6644,6 +6795,18 @@ namespace knkwebapi_v2.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AssignedUserId");
+
+                    b.HasIndex("ClaimedByUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FormSubmissionProgressId");
+
+                    b.HasIndex("TargetUserId");
+
+                    b.HasIndex("Status", "ExpiresAt");
+
+                    b.HasIndex("Status", "LeaseUntil");
 
                     b.HasIndex("WorkflowSessionId", "Status");
 
@@ -7422,11 +7585,18 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("knkwebapi_v2.Models.WorkflowSession", "WorkflowSession")
+                        .WithMany()
+                        .HasForeignKey("WorkflowSessionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("FormConfiguration");
 
                     b.Navigation("ParentProgress");
 
                     b.Navigation("User");
+
+                    b.Navigation("WorkflowSession");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.GateBlockSnapshot", b =>
@@ -7570,6 +7740,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("IconMaterial");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintBannerLayer", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany("ShieldBannerLayers")
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintDefaultEnchantment", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.EnchantmentDefinition", "EnchantmentDefinition")
@@ -7650,6 +7831,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ItemBlueprint");
 
                     b.Navigation("OwnerUser");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemInstanceBannerLayer", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemInstance", "ItemInstance")
+                        .WithMany("ShieldBannerLayers")
+                        .HasForeignKey("ItemInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemInstance");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemInstanceEnchantment", b =>
@@ -8657,6 +8849,26 @@ namespace knkwebapi_v2.Migrations
                         .HasForeignKey("AssignedUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("knkwebapi_v2.Models.User", "ClaimedByUser")
+                        .WithMany()
+                        .HasForeignKey("ClaimedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.FormSubmissionProgress", "FormSubmissionProgress")
+                        .WithMany()
+                        .HasForeignKey("FormSubmissionProgressId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "TargetUser")
+                        .WithMany()
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("knkwebapi_v2.Models.WorkflowSession", "WorkflowSession")
                         .WithMany("WorldTasks")
                         .HasForeignKey("WorkflowSessionId")
@@ -8664,6 +8876,14 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("AssignedUser");
+
+                    b.Navigation("ClaimedByUser");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("FormSubmissionProgress");
+
+                    b.Navigation("TargetUser");
 
                     b.Navigation("WorkflowSession");
                 });
@@ -8869,12 +9089,16 @@ namespace knkwebapi_v2.Migrations
 
                     b.Navigation("Origins");
 
+                    b.Navigation("ShieldBannerLayers");
+
                     b.Navigation("Tags");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemInstance", b =>
                 {
                     b.Navigation("Enchantments");
+
+                    b.Navigation("ShieldBannerLayers");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Kit", b =>

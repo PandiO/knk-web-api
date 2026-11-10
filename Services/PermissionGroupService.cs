@@ -1,6 +1,8 @@
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Realtime;
+using knkwebapi_v2.Realtime.Contracts;
 using knkwebapi_v2.Repositories;
 
 namespace knkwebapi_v2.Services
@@ -9,9 +11,12 @@ namespace knkwebapi_v2.Services
     {
         private readonly IPermissionGroupRepository _repo;
         private readonly IMapper _mapper;
+        private readonly IRealtimeEventSink? _realtime;
 
-        public PermissionGroupService(IPermissionGroupRepository repo, IMapper mapper)
+        /// <param name="realtime">Tells the game server about group changes (PandiO/knk-workspace#179); optional.</param>
+        public PermissionGroupService(IPermissionGroupRepository repo, IMapper mapper, IRealtimeEventSink? realtime = null)
         {
+            _realtime = realtime;
             _repo = repo;
             _mapper = mapper;
         }
@@ -54,6 +59,7 @@ namespace knkwebapi_v2.Services
             var group = _mapper.Map<PermissionGroup>(dto);
             PermissionGroupTeleportSettings.Apply(group, dto);
             await _repo.AddAsync(group);
+            _realtime.PermissionGroupChanged(group.Id, PermissionGroupChangeOps.Created);
             return _mapper.Map<PermissionGroupDto>(group);
         }
 
@@ -99,6 +105,7 @@ namespace knkwebapi_v2.Services
             PermissionGroupTeleportSettings.Apply(existing, dto);
 
             await _repo.UpdateAsync(existing);
+            _realtime.PermissionGroupChanged(id, PermissionGroupChangeOps.Updated);
         }
 
         public async Task DeleteAsync(int id)
@@ -111,6 +118,7 @@ namespace knkwebapi_v2.Services
                 throw new InvalidOperationException("Cannot delete a group with child groups. Reassign or delete children first.");
 
             await _repo.DeleteAsync(id);
+            _realtime.PermissionGroupChanged(id, PermissionGroupChangeOps.Deleted);
         }
 
         public async Task<PagedResultDto<PermissionGroupListDto>> SearchAsync(PagedQueryDto queryDto)

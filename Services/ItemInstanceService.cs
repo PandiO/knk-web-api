@@ -66,6 +66,8 @@ namespace knkwebapi_v2.Services
                 IsSoulbound = false,
                 IsGhosted = false,
             };
+            // #232: the look is frozen at mint, like the grade (the blueprint must be read with its ShieldBannerLayers).
+            ItemAppearanceRules.Apply(instance, ItemAppearanceRules.Of(blueprint));
             foreach (var (definitionId, level) in merged.OrderBy(kv => kv.Key))
             {
                 instance.Enchantments.Add(new ItemInstanceEnchantment
@@ -116,6 +118,7 @@ namespace knkwebapi_v2.Services
                     IsSoulbound = source.IsSoulbound,
                     IsGhosted = source.IsGhosted,
                 };
+                ItemAppearanceRules.Apply(clone, ItemAppearanceRules.Of(source));
                 foreach (var enchantment in source.Enchantments.OrderBy(e => e.EnchantmentDefinitionId))
                 {
                     clone.Enchantments.Add(new ItemInstanceEnchantment

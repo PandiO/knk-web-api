@@ -1,4 +1,5 @@
 using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Enums;
 
 namespace knkwebapi_v2.Models;
 
@@ -46,4 +47,15 @@ public class ItemBlueprint
 
     [RelatedEntityField(typeof(ItemBlueprintOrigin))]
     public ICollection<ItemBlueprintOrigin> Origins { get; set; } = new List<ItemBlueprintOrigin>();
+
+    // Shield banner (PandiO/knk-workspace#232): the shield's base colour plus its pattern layers, bottom to top, the
+    // same data Minecraft keeps on the item (base colour + layers of pattern type and dye colour). Null/empty = a plain
+    // shield. Only meaningful on a shield or banner material; knk-plugin applies it in ItemAppearanceBukkitMapper.
+    public BannerDyeColor? ShieldBannerBaseColor { get; set; }
+    public ICollection<ItemBlueprintBannerLayer> ShieldBannerLayers { get; set; } = new List<ItemBlueprintBannerLayer>();
+
+    // Armor trim (#232): trim pattern and material registry keys ("minecraft:silence", "minecraft:netherite"), both
+    // set or both null (ArmorTrimKeys). Only meaningful on an armour material.
+    public string? ArmorTrimPattern { get; set; }
+    public string? ArmorTrimMaterial { get; set; }
 }

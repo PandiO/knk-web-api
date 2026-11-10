@@ -52,6 +52,22 @@ public class EnchantmentDefinition
     /// <summary>Duration at level I of a second effect, in seconds. Flash Chaos: its Nausea.</summary>
     public double? SecondaryEffectDurationSeconds { get; set; }
 
+    // PandiO/knk-workspace#223: the area blast of the right-click abilities Chaos and Flash Chaos. Both damages grow
+    // with LevelMultiplier like the durations (damage at level n = value x (1 + multiplier x (n - 1))); the radii
+    // don't. Other enchantments ignore these four.
+
+    /// <summary>Damage at level I to each living entity within the damage radius.</summary>
+    public double? AreaDamage { get; set; }
+
+    /// <summary>Damage at level I to each gate with a door block in reach (the reach is the plugin's gate setting).</summary>
+    public double? GateDamage { get; set; }
+
+    /// <summary>Radius in blocks of the area damage.</summary>
+    public double? DamageRadiusBlocks { get; set; }
+
+    /// <summary>Radius in blocks of the knockback (Flash Chaos: and its debuffs).</summary>
+    public double? EffectRadiusBlocks { get; set; }
+
     // Many-to-One: EnchantmentDefinition → MinecraftEnchantmentRef (base enchantment reference)
     [NavigationPair(nameof(BaseEnchantmentRef))]
     [RelatedEntityField(typeof(MinecraftEnchantmentRef))]

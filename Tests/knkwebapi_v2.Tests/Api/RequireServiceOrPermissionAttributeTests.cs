@@ -256,6 +256,16 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(AdmissionController), nameof(AdmissionController.Check), null),
         R(typeof(UsersController), nameof(UsersController.Admit), "knk.admin.user.manage"),
         R(typeof(UsersController), nameof(UsersController.DetachWebLogin), "knk.admin.user.manage"),
+        // World tasks (PandiO/knk-workspace#180): claim, complete, fail, release, heartbeat and the open list are the game
+        // server's; create/cancel/applied stay on the class rule (knk.admin.world or the game server)
+        R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ClaimTask), null),
+        R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.CompleteTask), null),
+        R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.FailTask), null),
+        R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ReleaseTask), null),
+        R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.Heartbeat), null),
+        R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ListOpenForServer), null),
+        // WT2 (PandiO/knk-workspace#181): the "Hand off to…" picker lists online staff for staff who create world tasks
+        R(typeof(knkwebapi_v2.Controllers.PresenceController), nameof(knkwebapi_v2.Controllers.PresenceController.OnlineStaff), "knk.admin.world"),
     };
 
     /// <summary>node null = plugin-only (RequirePluginService).</summary>

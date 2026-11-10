@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Realtime;
+using knkwebapi_v2.Realtime.Contracts;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
@@ -19,13 +21,17 @@ namespace knkwebapi_v2.Services
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
 
+        private readonly IRealtimeEventSink? _realtime;
+
         public GateDoorService(
             IGateDoorRepository repo,
             IGateStructureRepository structureRepo,
             ILocationRepository locationRepo,
             ILocationService locationService,
-            IMapper mapper)
+            IMapper mapper,
+            IRealtimeEventSink? realtime = null)
         {
+            _realtime = realtime;
             _repo = repo;
             _structureRepo = structureRepo;
             _locationRepo = locationRepo;
@@ -95,6 +101,7 @@ namespace knkwebapi_v2.Services
             gateDoor.GateStructureId = gateStructureId;
             await ApplyLocationReferencesAsync(gateDoor, gateDoorDto, isCreate: true);
             await _repo.AddAsync(gateDoor);
+            _realtime.GateChanged(gateStructureId, EntityChangeOps.Updated);
             return _mapper.Map<GateDoorDto>(gateDoor);
         }
 
@@ -120,6 +127,7 @@ namespace knkwebapi_v2.Services
             _mapper.Map(gateDoorDto, existing);
             await ApplyLocationReferencesAsync(existing, gateDoorDto);
             await _repo.UpdateAsync(existing);
+            _realtime.GateChanged(existing.GateStructureId, EntityChangeOps.Updated);
         }
 
         public async Task DeleteAsync(int id)
@@ -137,6 +145,7 @@ namespace knkwebapi_v2.Services
             await _repo.DeleteOpenedBlockSnapshotsByDoorIdAsync(id);
 
             await _repo.DeleteAsync(id);
+            _realtime.GateChanged(existing.GateStructureId, EntityChangeOps.Updated);
         }
 
         public async Task UpdateHealthAsync(int id, double newHealth)
@@ -190,6 +199,7 @@ namespace knkwebapi_v2.Services
                 throw new KeyNotFoundException($"GateDoor with id {id} not found.");
 
             await _repo.UpdateRegionDataAsync(id, isOpenedRegion, regionData ?? string.Empty);
+            _realtime.GateChanged(existing.GateStructureId, EntityChangeOps.Updated);
         }
 
         public async Task<IEnumerable<GateBlockSnapshotDto>> GetBlockSnapshotsAsync(int gateDoorId)
@@ -220,6 +230,7 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.AddBlockSnapshotsAsync(snapshotEntities);
+            _realtime.GateChanged(existing.GateStructureId, EntityChangeOps.Updated);
         }
 
         public async Task AddBlockSnapshotsAsync(int gateDoorId, IEnumerable<GateBlockSnapshotCreateDto> snapshots)
@@ -241,6 +252,7 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.AddBlockSnapshotsAsync(snapshotEntities);
+            _realtime.GateChanged(existing.GateStructureId, EntityChangeOps.Updated);
         }
 
         public async Task ClearBlockSnapshotsAsync(int gateDoorId)
@@ -249,6 +261,7 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Invalid gateDoorId.", nameof(gateDoorId));
 
             await _repo.DeleteBlockSnapshotsByDoorIdAsync(gateDoorId);
+            await GateOfDoorChangedAsync(gateDoorId);
         }
 
         public async Task<IEnumerable<GateOpenedBlockSnapshotDto>> GetOpenedBlockSnapshotsAsync(int gateDoorId)
@@ -279,6 +292,7 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.AddOpenedBlockSnapshotsAsync(snapshotEntities);
+            _realtime.GateChanged(existing.GateStructureId, EntityChangeOps.Updated);
         }
 
         public async Task AddOpenedBlockSnapshotsAsync(int gateDoorId, IEnumerable<GateOpenedBlockSnapshotCreateDto> snapshots)
@@ -300,6 +314,7 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.AddOpenedBlockSnapshotsAsync(snapshotEntities);
+            _realtime.GateChanged(existing.GateStructureId, EntityChangeOps.Updated);
         }
 
         public async Task ClearOpenedBlockSnapshotsAsync(int gateDoorId)
@@ -308,6 +323,18 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Invalid gateDoorId.", nameof(gateDoorId));
 
             await _repo.DeleteOpenedBlockSnapshotsByDoorIdAsync(gateDoorId);
+            await GateOfDoorChangedAsync(gateDoorId);
+        }
+
+        /// <summary>S3 (#182): <c>GateChanged</c> for the structure of a door the caller didn't load.</summary>
+        private async Task GateOfDoorChangedAsync(int gateDoorId)
+        {
+            if (_realtime == null) return;
+            var door = await _repo.GetByIdAsync(gateDoorId);
+            if (door != null)
+            {
+                _realtime.GateChanged(door.GateStructureId, EntityChangeOps.Updated);
+            }
         }
 
         private static void ValidateHealth(GateDoorDto dto)

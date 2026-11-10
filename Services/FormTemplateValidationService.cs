@@ -380,6 +380,11 @@ namespace knkwebapi_v2.Services
                     // Special application-specific type, no validation needed
                     break;
 
+                case FieldType.BannerLayers:
+                    // #232: an ordered layer list on a collection property (ItemBlueprint.ShieldBannerLayers).
+                    ValidateListTypeCompatibility(field, metadataField, result);
+                    break;
+
                 default:
                     result.Issues.Add($"Unknown field type: {field.FieldType}");
                     break;

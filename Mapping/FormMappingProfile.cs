@@ -263,7 +263,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.CompletedAt, o => o.MapFrom(s => ParseNullableDate(s.CompletedAt)))
                 .ForMember(d => d.CreatedEntitiesJson, o => o.MapFrom(s => string.IsNullOrWhiteSpace(s.CreatedEntitiesJson) ? null : s.CreatedEntitiesJson))
                 .ForMember(d => d.FormConfiguration, o => o.Ignore())
-                .ForMember(d => d.ParentProgress, o => o.Ignore());
+                .ForMember(d => d.ParentProgress, o => o.Ignore())
+                .ForMember(d => d.WorkflowSession, o => o.Ignore());
 
             CreateMap<FormSubmissionProgress, FormSubmissionProgressDto>()
                 .ForMember(d => d.Id, o => o.MapFrom(s => s.Id.ToString()))

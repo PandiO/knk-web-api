@@ -59,6 +59,22 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("origins")]
         public List<ItemBlueprintOriginDto> Origins { get; set; } = new();
+
+        /// <summary>#232: the shield's base dye colour (null = plain / not a shield).</summary>
+        [JsonPropertyName("shieldBannerBaseColor")]
+        public string? ShieldBannerBaseColor { get; set; }
+
+        /// <summary>#232: the shield's banner pattern layers, bottom to top (empty = no pattern).</summary>
+        [JsonPropertyName("shieldBannerLayers")]
+        public List<ItemBannerLayerDto> ShieldBannerLayers { get; set; } = new();
+
+        /// <summary>#232: armour trim pattern key, e.g. "minecraft:silence" (null = no trim).</summary>
+        [JsonPropertyName("armorTrimPattern")]
+        public string? ArmorTrimPattern { get; set; }
+
+        /// <summary>#232: armour trim material key, e.g. "minecraft:netherite" (null = no trim).</summary>
+        [JsonPropertyName("armorTrimMaterial")]
+        public string? ArmorTrimMaterial { get; set; }
     }
 
     // Create DTO
@@ -121,6 +137,20 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("origins")]
         public List<ItemBlueprintOriginCreateDto> Origins { get; set; } = new();
+
+        // #232 shield banner and armour trim; see ItemBlueprintReadDto. Colours and keys are normalised
+        // ("red", "Stripe_Top", "silence" all work); an unknown one is a 400. Trim pattern and material go together.
+        [JsonPropertyName("shieldBannerBaseColor")]
+        public string? ShieldBannerBaseColor { get; set; }
+
+        [JsonPropertyName("shieldBannerLayers")]
+        public List<ItemBannerLayerDto> ShieldBannerLayers { get; set; } = new();
+
+        [JsonPropertyName("armorTrimPattern")]
+        public string? ArmorTrimPattern { get; set; }
+
+        [JsonPropertyName("armorTrimMaterial")]
+        public string? ArmorTrimMaterial { get; set; }
     }
 
     // Update DTO
@@ -186,6 +216,20 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("origins")]
         public List<ItemBlueprintOriginCreateDto> Origins { get; set; } = new();
+
+        // #232 shield banner and armour trim; see ItemBlueprintReadDto. Colours and keys are normalised
+        // ("red", "Stripe_Top", "silence" all work); an unknown one is a 400. Trim pattern and material go together.
+        [JsonPropertyName("shieldBannerBaseColor")]
+        public string? ShieldBannerBaseColor { get; set; }
+
+        [JsonPropertyName("shieldBannerLayers")]
+        public List<ItemBannerLayerDto> ShieldBannerLayers { get; set; } = new();
+
+        [JsonPropertyName("armorTrimPattern")]
+        public string? ArmorTrimPattern { get; set; }
+
+        [JsonPropertyName("armorTrimMaterial")]
+        public string? ArmorTrimMaterial { get; set; }
     }
 
     // Navigation DTO - Lightweight representation for relationships

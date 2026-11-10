@@ -50,8 +50,10 @@ public class AbilityDefinition
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for AoE damage and knockback activation.",
                 PlayerUsage = "Right-click to release an area burst that damages and knocks back nearby entities.",
-                EffectSummary = "AoE burst: up to 40 damage in radius 3 and knockback in radius 5. Cooldown: 90s.",
-                CombatDefaults = new(null, null, true, 90, null, null),
+                EffectSummary = "Default: AoE burst of 40 damage (also to gates) in radius 3 and knockback in radius 5; damage, gate damage and both radii are combat values. Cooldown: 90s.",
+                // #223: area damage, gate damage (same as the damage) and both radii, as hard-coded before.
+                CombatDefaults = new(null, null, true, 90, null, null,
+                    AreaDamage: 40, GateDamage: 40, DamageRadiusBlocks: 3, EffectRadiusBlocks: 5),
                 MatchAliases = new[] { "chaos", "knk:chaos" }
             },
             new()
@@ -88,9 +90,11 @@ public class AbilityDefinition
                 FutureUserAssignmentContract = "UserAbilityAssignmentV1: supports optional per-player enable/disable and cooldown override.",
                 AdminUsage = "Attach to custom EnchantmentDefinition entries for high-impact AoE burst with debuffs.",
                 PlayerUsage = "Right-click to trigger a stronger chaos burst with debuffs on nearby players.",
-                EffectSummary = "AoE burst: up to 60 damage (radius 3), plus Slowness I (5s) and Nausea II (12.5s) to players in radius 5. Cooldown: 90s.",
+                EffectSummary = "Default: AoE burst of 60 damage (also to gates) in radius 3, plus Slowness I (5s) and Nausea II (12.5s) to players in radius 5; damage, gate damage and both radii are combat values. Cooldown: 90s.",
                 // #201: Slowness = effect duration + effect level, Nausea = the second duration; same at every level.
-                CombatDefaults = new(null, null, true, 90, 5, 0, EffectLevel: 1, SecondaryEffectDurationSeconds: 12.5),
+                // #223: area damage, gate damage (same as the damage) and both radii, as hard-coded before.
+                CombatDefaults = new(null, null, true, 90, 5, 0, EffectLevel: 1, SecondaryEffectDurationSeconds: 12.5,
+                    AreaDamage: 60, GateDamage: 60, DamageRadiusBlocks: 3, EffectRadiusBlocks: 5),
                 MatchAliases = new[] { "flashchaos", "flash_chaos", "knk:flash_chaos" }
             },
             new()
@@ -399,6 +403,26 @@ public class AbilityDefinition
             enchantment.SecondaryEffectDurationSeconds = defaults.SecondaryEffectDurationSeconds;
             changed = true;
         }
+        if (enchantment.AreaDamage == null && defaults.AreaDamage != null)
+        {
+            enchantment.AreaDamage = defaults.AreaDamage;
+            changed = true;
+        }
+        if (enchantment.GateDamage == null && defaults.GateDamage != null)
+        {
+            enchantment.GateDamage = defaults.GateDamage;
+            changed = true;
+        }
+        if (enchantment.DamageRadiusBlocks == null && defaults.DamageRadiusBlocks != null)
+        {
+            enchantment.DamageRadiusBlocks = defaults.DamageRadiusBlocks;
+            changed = true;
+        }
+        if (enchantment.EffectRadiusBlocks == null && defaults.EffectRadiusBlocks != null)
+        {
+            enchantment.EffectRadiusBlocks = defaults.EffectRadiusBlocks;
+            changed = true;
+        }
         return changed;
     }
 
@@ -508,4 +532,8 @@ public sealed record EnchantmentCombatDefaults(
     double? EffectDurationSeconds,
     double? LevelMultiplier,
     int? EffectLevel = null,
-    double? SecondaryEffectDurationSeconds = null);
+    double? SecondaryEffectDurationSeconds = null,
+    double? AreaDamage = null,
+    double? GateDamage = null,
+    double? DamageRadiusBlocks = null,
+    double? EffectRadiusBlocks = null);

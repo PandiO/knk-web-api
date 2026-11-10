@@ -698,6 +698,11 @@ public partial class KnKDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.ToTable("item_blueprints");
 
+            // #232: shield banner base colour (dye colour name, like BannerDesign.BaseColor) and armour trim keys.
+            entity.Property(e => e.ShieldBannerBaseColor).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ArmorTrimPattern).HasMaxLength(64);
+            entity.Property(e => e.ArmorTrimMaterial).HasMaxLength(64);
+
             entity.HasOne(ib => ib.IconMaterial)
                 .WithMany()
                 .HasForeignKey(ib => ib.IconMaterialRefId)
@@ -761,6 +766,23 @@ public partial class KnKDbContext : DbContext
             .WithMany()
             .HasForeignKey(it => it.TagId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ItemBlueprintBannerLayer (#232): the blueprint's own shield pattern layers, same shape as BannerLayer
+        // (SortOrder deliberately not unique). Cascade: a layer means nothing without its blueprint.
+        modelBuilder.Entity<ItemBlueprintBannerLayer>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("item_blueprint_banner_layers");
+
+            entity.Property(e => e.PatternKey).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Color).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.ItemBlueprintId, e.SortOrder });
+
+            entity.HasOne(e => e.ItemBlueprint)
+                .WithMany(b => b.ShieldBannerLayers)
+                .HasForeignKey(e => e.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // ItemBlueprintOrigin: independent Id PK (not a composite key - the same Domain can legitimately
         // appear twice in one item's history, see the model's own comment). ItemBlueprintId cascades (the
@@ -968,6 +990,10 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.OriginRef).HasMaxLength(64);
             entity.Property(e => e.CustomDisplayName).HasMaxLength(128);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            // #232: the look frozen at mint.
+            entity.Property(e => e.ShieldBannerBaseColor).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ArmorTrimPattern).HasMaxLength(64);
+            entity.Property(e => e.ArmorTrimMaterial).HasMaxLength(64);
 
             entity.HasOne(i => i.ItemBlueprint)
                 .WithMany()
@@ -1005,6 +1031,22 @@ public partial class KnKDbContext : DbContext
                 .WithMany(d => d.AppliedToInstances)
                 .HasForeignKey(e => e.EnchantmentDefinitionId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ItemInstanceBannerLayer (#232): the instance's own shield pattern layers, copied from the blueprint at mint.
+        modelBuilder.Entity<ItemInstanceBannerLayer>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("item_instance_banner_layers");
+
+            entity.Property(e => e.PatternKey).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Color).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.ItemInstanceId, e.SortOrder });
+
+            entity.HasOne(e => e.ItemInstance)
+                .WithMany(i => i.ShieldBannerLayers)
+                .HasForeignKey(e => e.ItemInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Lootboxes (docs/specs/lootboxes/DESIGN.md §3.2). Every FK into the catalog (ItemBlueprint, Category, Grade,
@@ -1166,6 +1208,8 @@ public partial class KnKDbContext : DbContext
 
             entity.HasIndex(e => e.Token).IsUnique();
             // The lazy expiry sweep and the active-spawn list (DESIGN.md §3.3).
+            // #180: the sweep's scans (LinkCode/ClaimedByServerId/FieldName stay longtext columns, so no index on them;
+            // changing their type would not be an additive migration).
             entity.HasIndex(e => new { e.Status, e.ExpiresAt });
             // Per-area active count (MaxActive).
             entity.HasIndex(e => new { e.SpawnAreaId, e.Status });
@@ -1444,6 +1488,13 @@ public partial class KnKDbContext : DbContext
 
         modelBuilder.Entity<FormSubmissionProgress>()
             .HasIndex(p => new { p.Status, p.CompletedAt });
+
+        // #180: one workflow session per draft; deleting the session leaves the draft.
+        modelBuilder.Entity<FormSubmissionProgress>()
+            .HasOne(p => p.WorkflowSession)
+            .WithMany()
+            .HasForeignKey(p => p.WorkflowSessionId)
+            .OnDelete(DeleteBehavior.SetNull);
         
         // Indexes for performance
         modelBuilder.Entity<FormConfiguration>()
@@ -2102,8 +2153,54 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.CompletedAt)
                 .HasColumnType("datetime");
 
+            // #180: the claim is conditional on the stored status (and row version), so a second claim, a
+            // complete after a cancel or a sweep after a heartbeat fails with a concurrency error → 409.
+            entity.Property(e => e.Status)
+                .IsConcurrencyToken();
+
+            entity.Property(e => e.OfferState)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue(WorldTaskOfferStates.None);
+            entity.Property(e => e.ClaimedByUuid)
+                .HasMaxLength(36);
+            entity.Property(e => e.ReleaseCount)
+                .HasDefaultValue(0);
+            entity.Property(e => e.ExpiresAt)
+                .HasColumnType("datetime");
+            entity.Property(e => e.LeaseUntil)
+                .HasColumnType("datetime");
+            entity.Property(e => e.OfferedAt)
+                .HasColumnType("datetime");
+            entity.Property(e => e.AppliedAt)
+                .HasColumnType("datetime");
+
             entity.HasIndex(e => new { e.WorkflowSessionId, e.Status });
             entity.HasIndex(e => e.AssignedUserId);
+            // #180: the sweep's scans (LinkCode/ClaimedByServerId/FieldName stay longtext columns, so no index on them;
+            // changing their type would not be an additive migration).
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt });
+            entity.HasIndex(e => new { e.Status, e.LeaseUntil });
+
+            entity.HasOne(e => e.FormSubmissionProgress)
+                .WithMany()
+                .HasForeignKey(e => e.FormSubmissionProgressId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.TargetUser)
+                .WithMany()
+                .HasForeignKey(e => e.TargetUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ClaimedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ClaimedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(e => e.WorkflowSession)
                 .WithMany(s => s.WorldTasks)

@@ -618,6 +618,10 @@ namespace knkwebapi_v2.Services
 
             var itemStars = claim.ItemGrade?.Stars;
             var threshold = claim.LootboxType?.AnnounceMinItemStars ?? config.AnnounceMinItemStars;
+            // #232: the instance's frozen look when there is one, else the blueprint's (stackable items).
+            var appearance = claim.ItemInstance != null
+                ? ItemAppearanceRules.Of(claim.ItemInstance)
+                : claim.ItemBlueprint != null ? ItemAppearanceRules.Of(claim.ItemBlueprint) : ItemAppearance.None;
             return new LootboxClaimResultDto
             {
                 ClaimId = claim.Id,
@@ -639,6 +643,10 @@ namespace knkwebapi_v2.Services
                 Announce = claim.IsSpecial || (itemStars is int stars && stars >= threshold),
                 ClaimedAt = Utc(claim.ClaimedAt),
                 DeliveredAt = Utc(claim.DeliveredAt),
+                ShieldBannerBaseColor = appearance.ShieldBannerBaseColor?.ToString(),
+                ShieldBannerLayers = ItemAppearanceRules.ToDtos(appearance),
+                ArmorTrimPattern = appearance.ArmorTrimPattern,
+                ArmorTrimMaterial = appearance.ArmorTrimMaterial,
             };
         }
 

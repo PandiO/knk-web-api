@@ -205,6 +205,12 @@ namespace knkwebapi_v2.Dtos
         /// <summary>KNG-162: JSON array of the entities child forms saved under this root form (see the model).</summary>
         [JsonPropertyName("createdEntitiesJson")]
         public string? CreatedEntitiesJson { get; set; }
+        /// <summary>
+        /// PandiO/knk-workspace#180: the draft's workflow session (one per draft; resuming reuses it). Null on a save
+        /// means "not sent" and keeps the stored link.
+        /// </summary>
+        [JsonPropertyName("workflowSessionId")]
+        public int? WorkflowSessionId { get; set; }
     }
 
     public class FormSubmissionProgressOverviewDto

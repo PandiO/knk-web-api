@@ -167,9 +167,13 @@ namespace knkwebapi_v2.Repositories
             .Include(c => c.ItemBlueprint)
                 .ThenInclude(b => b.DefaultEnchantments)
                     .ThenInclude(e => e.EnchantmentDefinition)
+            .Include(c => c.ItemBlueprint)
+                .ThenInclude(b => b.ShieldBannerLayers)
             .Include(c => c.ItemInstance)
                 .ThenInclude(i => i!.Enchantments)
                     .ThenInclude(e => e.EnchantmentDefinition)
+            .Include(c => c.ItemInstance)
+                .ThenInclude(i => i!.ShieldBannerLayers)
             .Include(c => c.LootboxToken)
             .AsSplitQuery();
 
@@ -472,6 +476,7 @@ namespace knkwebapi_v2.Repositories
             return await _context.ItemBlueprints.AsNoTracking()
                 .Include(b => b.DefaultEnchantments)
                     .ThenInclude(e => e.EnchantmentDefinition)
+                .Include(b => b.ShieldBannerLayers)
                 .FirstOrDefaultAsync(b => b.Id == id);
         }
     }

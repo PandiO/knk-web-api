@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Extensions;
 
 namespace KnKWebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
+    // Closed-alpha WP1.3: every write needs knk.admin.world or the game server (POST .../search counts as a read);
+    // reads stay logged-in. #180: claim/complete/fail/release/heartbeat and GET open are the game server's only.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
     public class WorldTasksController : ControllerBase
     {
@@ -25,7 +27,8 @@ namespace KnKWebAPI.Controllers
             if (dto == null) return BadRequest();
             try
             {
-                var created = await _service.CreateAsync(dto);
+                // #180: the creator is the logged-in caller (null for the game server: the session owner).
+                var created = await _service.CreateAsync(dto, User.GetUserId());
                 return CreatedAtRoute("GetWorldTaskById", new { id = created.Id }, created);
             }
             catch (GateScanNotReadyException ex)
@@ -96,7 +99,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
-        // Get task by link code
+        // Get an open task by its task code (#180: closed tasks no longer answer to their code)
         [HttpGet("by-link-code/{linkCode}")]
         public async Task<IActionResult> GetByLinkCode(string linkCode)
         {
@@ -144,65 +147,130 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequest body)
         {
             if (body == null || string.IsNullOrWhiteSpace(body.Status)) return BadRequest();
-            try
-            {
-                var updated = await _service.UpdateStatusAsync(id, body.Status, body.PayloadJson);
-                return Ok(updated);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            return await Run(() => _service.UpdateStatusAsync(id, body.Status, body.PayloadJson));
         }
 
-        // Claim a task
+        // Claim a task (#180: Pending only, task code checked on a code claim; a second claimer gets 409)
         [HttpPost("{id:int}/claim")]
+        [RequirePluginService]
         public async Task<IActionResult> ClaimTask(int id, [FromBody] ClaimTaskDto dto)
         {
-            try
-            {
-                var updated = await _service.ClaimAsync(id, dto);
-                return Ok(updated);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            if (dto == null) return BadRequest();
+            return await Run(() => _service.ClaimAsync(id, dto));
         }
 
-        // Complete a task
+        // Complete a task (#180: InProgress only, by the claiming server; a refused result is 422)
         [HttpPost("{id:int}/complete")]
+        [RequirePluginService]
         public async Task<IActionResult> CompleteTask(int id, [FromBody] CompleteTaskDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.OutputJson)) return BadRequest();
-            try
-            {
-                var updated = await _service.CompleteAsync(id, dto);
-                return Ok(updated);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            return await Run(() => _service.CompleteAsync(id, dto));
         }
 
-        // Fail a task
+        // Fail a task (#180: InProgress only, by the claiming server)
         [HttpPost("{id:int}/fail")]
+        [RequirePluginService]
         public async Task<IActionResult> FailTask(int id, [FromBody] FailTaskDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.ErrorMessage)) return BadRequest();
+            return await Run(() => _service.FailAsync(id, dto));
+        }
+
+        /// <summary>
+        /// #180: Pending/InProgress → Cancelled. The web app (the creator, who needs knk.admin.world to create a task at
+        /// all, or any knk.admin.world holder) on Capture again / Try again / leaving the form / "Cancel task"; the game
+        /// server when the player discards the task in game.
+        /// </summary>
+        [HttpPost("{id:int}/cancel")]
+        public async Task<IActionResult> CancelTask(int id, [FromBody] CancelTaskDto? dto = null)
+        {
+            return await Run(() => _service.CancelAsync(id, dto));
+        }
+
+        /// <summary>
+        /// PandiO/knk-workspace#240 "Send again": offers a waiting task again (<c>{"deliver": "auto" | "queue" | "replace" |
+        /// {"userId": n}}</c>, default auto). 409 while it is offered, once it is no longer Pending, for a scan, or for
+        /// auto/replace while you are not online in game. Web writes need knk.admin.world (class attribute).
+        /// </summary>
+        [HttpPost("{id:int}/offer")]
+        public async Task<IActionResult> OfferAgain(int id, [FromBody] OfferTaskDto? dto = null)
+        {
+            return await Run(() => _service.OfferAgainAsync(id, dto));
+        }
+
+        /// <summary>#180: InProgress → Pending (in-game cancel, quit, restart, plugin disable). The task keeps its code.</summary>
+        [HttpPost("{id:int}/release")]
+        [RequirePluginService]
+        public async Task<IActionResult> ReleaseTask(int id, [FromBody] ReleaseTaskDto? dto = null)
+        {
+            return await Run(() => _service.ReleaseAsync(id, dto));
+        }
+
+        /// <summary>#180: renews the claim (every 60 s); 409 when the task is no longer this server's (stop the handler).</summary>
+        [HttpPost("{id:int}/heartbeat")]
+        [RequirePluginService]
+        public async Task<IActionResult> Heartbeat(int id, [FromBody] HeartbeatTaskDto? dto = null)
+        {
+            return await Run(() => _service.HeartbeatAsync(id, dto));
+        }
+
+        /// <summary>#180: the tasks a game server holds (InProgress, claimed by serverId), for its resync after a restart.</summary>
+        [HttpGet("open")]
+        [RequirePluginService]
+        public async Task<IActionResult> ListOpenForServer([FromQuery] string? serverId)
+        {
+            if (string.IsNullOrWhiteSpace(serverId)) return BadRequest(new { error = "serverId is required." });
+            return Ok(await _service.ListOpenForServerAsync(serverId));
+        }
+
+        /// <summary>#180: the open tasks of a workflow session (web reattach after a reload).</summary>
+        [HttpGet("session/{sessionId:int}/open")]
+        public async Task<IActionResult> GetOpenBySession(int sessionId)
+        {
+            return Ok(await _service.ListOpenBySessionAsync(sessionId));
+        }
+
+        /// <summary>
+        /// WT2 (PandiO/knk-workspace#181, DESIGN §8.3): the busy check before "Send to Minecraft" / "Hand off to…": the
+        /// task the logged-in caller holds in game (with the form it belongs to) and how many wait in their queue.
+        /// </summary>
+        [HttpGet("active-for-me")]
+        public async Task<ActionResult<WorldTaskActiveForMeDto>> GetActiveForMe()
+        {
+            if (User.GetUserId() is not { } userId) return Unauthorized(new { error = "Unauthorized", message = "Log in to use this." });
+            return Ok(await _service.GetActiveForUserAsync(userId));
+        }
+
+        /// <summary>DESIGN §8.7: the web app wrote this Completed task's result into its draft.</summary>
+        [HttpPost("{id:int}/applied")]
+        public async Task<IActionResult> MarkApplied(int id)
+        {
+            return await Run(() => _service.MarkAppliedAsync(id));
+        }
+
+        /// <summary>#180: the answers of the state machine: 404, 409 (with the current status), 422, 400.</summary>
+        private async Task<IActionResult> Run(Func<Task<WorldTaskReadDto>> action)
+        {
             try
             {
-                var updated = await _service.FailAsync(id, dto);
-                return Ok(updated);
+                return Ok(await action());
             }
             catch (KeyNotFoundException)
             {
                 return NotFound();
+            }
+            catch (WorldTaskConflictException ex)
+            {
+                return Conflict(new { code = "WorldTaskConflict", message = ex.Message, status = ex.CurrentStatus });
+            }
+            catch (WorldTaskRejectedException ex)
+            {
+                return UnprocessableEntity(new { code = "WorldTaskRejected", message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { code = "WorldTaskInvalid", message = ex.Message });
             }
         }
 
