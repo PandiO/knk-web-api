@@ -15,3 +15,18 @@ This is the ASP.NET Core API with EF Core/MySQL. Check the actual
 `TargetFramework` in `knkwebapi_v2.csproj` before choosing SDK commands.
 Build with `dotnet build`; test with
 `dotnet test Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj`.
+
+## Shipping a change
+
+All documentation lives in `knk-workspace/docs/`; this repo keeps only its README, `AGENTS.md`,
+`CLAUDE.md` and `.github/`. Follow `knk-workspace/docs/ai-agents/GLOBAL_AGENT_INSTRUCTIONS.md` § Shipping a change
+([online](https://github.com/PandiO/knk-workspace/blob/main/docs/ai-agents/GLOBAL_AGENT_INSTRUCTIONS.md#shipping-a-change-documentation)):
+fill in the PR template's Docs impact and Admin steps sections, and ship the essential docs (deploy notes, changelog
+entry, status) before merge. At merge, close the feature issue, put the remaining docs in a `documentation`
+sub-issue and start a new docs session for it right away with
+[the docs-session prompt](https://github.com/PandiO/knk-workspace/blob/main/docs/ai-agents/docs-session-prompt.md).
+
+Docs triggers in this repo: a migration means the seed (`knk-dev-db-seed`) and the migration steps in
+`guides/production-installation.md`; a new or changed setting or secret means the configuration and secret tables
+there (and the closed-alpha runbook when alpha needs it); a new or changed endpoint means `docs/specs/api/` and the
+architecture docs.
