@@ -37,6 +37,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.IsDraft, o => o.MapFrom(s => s.IsDraft))
                 .ForMember(d => d.CreatedAt, o => o.MapFrom(s => s.CreatedAt.ToString("o")))
                 .ForMember(d => d.UpdatedAt, o => o.MapFrom(s => s.UpdatedAt.HasValue ? s.UpdatedAt.Value.ToString("o") : null))
+                .ForMember(d => d.HasUnpublishedChanges, o => o.MapFrom(s => s.DraftJson != null))
+                .ForMember(d => d.DraftSavedAt, o => o.MapFrom(s => s.DraftSavedAt.HasValue ? s.DraftSavedAt.Value.ToString("o") : null))
+                .ForMember(d => d.PublishedAt, o => o.MapFrom(s => s.PublishedAt.HasValue ? s.PublishedAt.Value.ToString("o") : null))
                 .ForMember(d => d.Sections, o => o.MapFrom(s => s.Sections));
 
             CreateMap<DisplayConfigurationDto, DisplayConfiguration>()
@@ -53,7 +56,11 @@ namespace knkwebapi_v2.Mapping
                     string.IsNullOrEmpty(s.CreatedAt) ? DateTime.UtcNow : DateTime.Parse(s.CreatedAt)))
                 .ForMember(d => d.UpdatedAt, o => o.MapFrom(s => 
                     string.IsNullOrEmpty(s.UpdatedAt) ? (DateTime?)null : DateTime.Parse(s.UpdatedAt)))
-                .ForMember(d => d.Sections, o => o.MapFrom(s => s.Sections));
+                .ForMember(d => d.Sections, o => o.MapFrom(s => s.Sections))
+                // #71: the builder's working copy is DisplayConfigurationDraftService's, never taken from a body.
+                .ForMember(d => d.DraftJson, o => o.Ignore())
+                .ForMember(d => d.DraftSavedAt, o => o.Ignore())
+                .ForMember(d => d.PublishedAt, o => o.Ignore());
 
             // DisplaySection mappings
             CreateMap<DisplaySection, DisplaySectionDto>()

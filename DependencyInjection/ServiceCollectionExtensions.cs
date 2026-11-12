@@ -81,6 +81,8 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddHostedService<LinkCodeCleanupService>();
             // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
             services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
+            // PandiO/knk-workspace#280 AM2: dashboard read checks, 30 s per user and node, dropped when grants change.
+            services.AddSingleton<IPermissionReadCache>(_ => new PermissionReadCache());
             // KNG-212: invitations and invite-based registration (Security:Registration:Mode).
             services.AddScoped<IInvitationRepository, InvitationRepository>();
             services.AddScoped<knkwebapi_v2.Services.Invitations.IInvitationService, knkwebapi_v2.Services.Invitations.InvitationService>();
@@ -171,6 +173,7 @@ namespace knkwebapi_v2.DependencyInjection
                 Directory = Path.Combine(sp.GetRequiredService<IHostEnvironment>().ContentRootPath, "Data", "FormConfigurationSeeds")
             });
             services.AddScoped<IFormConfigurationPortabilityService, FormConfigurationPortabilityService>();
+            services.AddScoped<IFormConfigurationDraftService, FormConfigurationDraftService>(); // #71
             services.AddScoped<IFormStepRepository, FormStepRepository>();
             services.AddScoped<IFormStepService, FormStepService>();
             services.AddScoped<IFormFieldRepository, FormFieldRepository>();
@@ -249,6 +252,7 @@ namespace knkwebapi_v2.DependencyInjection
             
             // DisplayConfiguration services
             services.AddScoped<IDisplayConfigurationService, DisplayConfigurationService>();
+            services.AddScoped<IDisplayConfigurationDraftService, DisplayConfigurationDraftService>(); // #71
             services.AddScoped<IDisplaySectionService, DisplaySectionService>();
             services.AddScoped<IDisplayFieldService, DisplayFieldService>();
             // knk-displayconfig/1: bundled DisplayConfiguration seed files, imported on request (no startup seeder).

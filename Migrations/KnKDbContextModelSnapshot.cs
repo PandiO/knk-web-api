@@ -859,6 +859,12 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
+                    b.Property<string>("DraftJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("DraftSavedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("EntityTypeName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -874,6 +880,9 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("SectionOrderJson")
                         .IsRequired()
@@ -1616,6 +1625,12 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("DraftJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("DraftSavedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("EntityTypeName")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
@@ -1623,9 +1638,15 @@ namespace knkwebapi_v2.Migrations
                     b.Property<bool>("IsDefault")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("StepOrderJson")
                         .IsRequired()
@@ -2811,6 +2832,12 @@ namespace knkwebapi_v2.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("ClaimedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<DateTime?>("DeliveryRequestedAt")
                         .HasColumnType("datetime");
 
                     b.Property<int>("KitId")
@@ -4770,6 +4797,40 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("Status", "ScheduledAt");
 
                     b.ToTable("privacy_deletion_requests", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.PrivacyErasureEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("DeletionRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ErasedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("FormerUuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UuidClearedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ErasedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("privacy_erasure_events", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.PrivateMessageLogEntry", b =>

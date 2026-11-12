@@ -13,6 +13,7 @@ namespace knkwebapi_v2.Controllers;
 [Route("api/[controller]")]
 // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.world or the game server; reads stay logged-in.
 [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
+[DashboardReads("Location")]
 public class LocationsController : ControllerBase
 {
     private readonly ILocationService _service;
@@ -74,6 +75,8 @@ public class LocationsController : ControllerBase
         }
     }
 
+    // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+    [RequireServiceOrPermission(StaffPermissions.Delete)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

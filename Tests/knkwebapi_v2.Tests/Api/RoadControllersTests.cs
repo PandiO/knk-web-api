@@ -174,6 +174,8 @@ public class RoadControllersTests
     {
         var granted = new Mock<IPermissionResolutionService>();
         granted.Setup(p => p.CheckAsync(7, StaffPermissions.RoadManage)).ReturnsAsync(new PermissionCheckResponseDto { UserId = 7, Node = StaffPermissions.RoadManage, Result = PermissionResolutionResult.Granted });
+        // A delete also needs knk.admin.delete (PandiO/knk-workspace#280).
+        granted.Setup(p => p.CheckAsync(7, StaffPermissions.Delete)).ReturnsAsync(new PermissionCheckResponseDto { UserId = 7, Node = StaffPermissions.Delete, Result = PermissionResolutionResult.Granted });
 
         Assert.Equal(401, await ServiceAuthTestHelper.RunGates(controller, action, ServiceAuthTestHelper.Anonymous()));
         Assert.Equal(403, await ServiceAuthTestHelper.RunGates(controller, action, ServiceAuthTestHelper.WebUser(7)));

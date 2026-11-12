@@ -9,6 +9,7 @@ namespace knkwebapi_v2.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [DashboardReads("Kit")]
     public class KitsController : ControllerBase
     {
         private readonly IKitService _service;
@@ -72,6 +73,8 @@ namespace knkwebapi_v2.Controllers
         }
 
         [RequireServiceOrPermission(StaffPermissions.ManageKits)]
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -194,13 +197,42 @@ namespace knkwebapi_v2.Controllers
 
             try
             {
-                var result = await _service.GiveKitAsync(HttpContext.GetKnkCaller().ActorUserId, request.TargetUserId, id);
+                // #261: the game server places the items itself (/kit give); any other caller, i.e.
+                // a logged-in web user (also under the development key bypass), leaves an in-game
+                // delivery pending that the game server picks up now or on the player's next join.
+                var caller = HttpContext.GetKnkCaller();
+                var placedByGameServer = caller.IsPluginService && !caller.IsWebUser;
+                var result = await _service.GiveKitAsync(caller.ActorUserId, request.TargetUserId, id, queueDelivery: !placedByGameServer);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(ex.Message);
             }
+        }
+
+        // ===== In-game delivery of staff grants made outside the game server (PandiO/knk-workspace#261) =====
+
+        // The game server reads these on a player's join and on a KitDeliveryPending notification.
+        [RequirePluginService]
+        [HttpGet("deliveries/pending")]
+        public async Task<ActionResult<List<KitDeliveryDto>>> GetPendingDeliveries([FromQuery] int userId)
+        {
+            return Ok(await _service.GetPendingDeliveriesAsync(userId));
+        }
+
+        // Taken before the items are placed: 200 for the one call that took it, 409 for every later
+        // one (place nothing), 404 when there is no such pending delivery for the user.
+        [RequirePluginService]
+        [HttpPost("deliveries/{claimId:int}/delivered")]
+        public async Task<IActionResult> MarkDelivered(int claimId, [FromQuery] int userId)
+        {
+            return await _service.MarkDeliveredAsync(userId, claimId) switch
+            {
+                KitDeliveryMarkResult.Delivered => Ok(new KitDeliveryMarkResultDto { ClaimId = claimId, Delivered = true }),
+                KitDeliveryMarkResult.AlreadyDelivered => Conflict(new { code = "AlreadyDelivered", message = $"Kit claim {claimId} was delivered already." }),
+                _ => NotFound(new { code = "NoPendingDelivery", message = $"No pending kit delivery {claimId} for user {userId}." })
+            };
         }
 
         [RequirePluginService]

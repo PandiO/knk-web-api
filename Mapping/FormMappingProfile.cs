@@ -222,6 +222,11 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.Description, o => o.MapFrom(s => s.Description ?? s.ConfigurationName))
                 .ForMember(d => d.IsDefault, o => o.MapFrom(s => s.IsDefault))
                 .ForMember(d => d.Steps, o => o.MapFrom(s => s.Steps.OrderBy(st => st.Order)))
+                // #71: publication state is the builder's (FormConfigurationDraftService), never taken from a body.
+                .ForMember(d => d.IsDraft, o => o.Ignore())
+                .ForMember(d => d.DraftJson, o => o.Ignore())
+                .ForMember(d => d.DraftSavedAt, o => o.Ignore())
+                .ForMember(d => d.PublishedAt, o => o.Ignore())
                 .AfterMap((src, dest) =>
                 {
                     if (!string.IsNullOrWhiteSpace(src.StepOrderJson))
@@ -244,6 +249,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.StepOrderJson, o => o.MapFrom(s => s.StepOrderJson))
                 .ForMember(d => d.CreatedAt, o => o.MapFrom(s => s.CreatedAt.ToString("O")))
                 .ForMember(d => d.UpdatedAt, o => o.MapFrom(s => s.UpdatedAt.HasValue ? s.UpdatedAt.Value.ToString("O") : null))
+                .ForMember(d => d.IsDraft, o => o.MapFrom(s => s.IsDraft))
+                .ForMember(d => d.HasUnpublishedChanges, o => o.MapFrom(s => s.DraftJson != null))
+                .ForMember(d => d.DraftSavedAt, o => o.MapFrom(s => s.DraftSavedAt.HasValue ? s.DraftSavedAt.Value.ToString("O") : null))
+                .ForMember(d => d.PublishedAt, o => o.MapFrom(s => s.PublishedAt.HasValue ? s.PublishedAt.Value.ToString("O") : null))
                 .ForMember(d => d.Steps, o => o.MapFrom(s => OrderSteps(s.Steps, s.StepOrderJson)));
 
             // FormSubmissionProgress

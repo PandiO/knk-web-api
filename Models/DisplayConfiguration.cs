@@ -49,6 +49,19 @@ namespace knkwebapi_v2.Models
         /// When false, full validation is enforced.
         /// </summary>
         public bool IsDraft { get; set; } = true;
+
+        /// <summary>
+        /// PandiO/knk-workspace#71: the builder's saved working copy (a DisplayConfigurationDto as JSON), or null when
+        /// the builder has nothing unpublished. The rows stay the version detail pages read; Publish applies
+        /// this copy to them and clears it.
+        /// </summary>
+        public string? DraftJson { get; set; }
+
+        /// <summary>#71: when DraftJson was last saved.</summary>
+        public DateTime? DraftSavedAt { get; set; }
+
+        /// <summary>#71: when it was last published (null for rows published before #71).</summary>
+        public DateTime? PublishedAt { get; set; }
         
         // Navigation properties
         public List<DisplaySection> Sections { get; set; } = new();

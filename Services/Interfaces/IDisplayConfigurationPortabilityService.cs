@@ -23,6 +23,9 @@ namespace knkwebapi_v2.Services.Interfaces
         Task<DisplayConfigurationImportResultDto> ImportAsync(PortableDisplayConfigurationDto file, bool dryRun, bool makeDefault, bool asDraft);
 
         /// <summary>Parses the JSON text of a portable file, then imports it as ImportAsync does.</summary>
+        /// <summary>PandiO/knk-workspace#71: the file as a new draft, never the default (Duplicate).</summary>
+        Task<DisplayConfigurationImportResultDto> ImportDraftCopyAsync(PortableDisplayConfigurationDto file);
+
         Task<DisplayConfigurationImportResultDto> ImportJsonAsync(string json, bool dryRun, bool makeDefault, bool asDraft);
 
         Task<IReadOnlyList<DisplayConfigurationSeedDto>> ListSeedsAsync();

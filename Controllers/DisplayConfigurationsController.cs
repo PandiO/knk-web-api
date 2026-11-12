@@ -12,19 +12,23 @@ namespace knkwebapi_v2.Controllers
     [Route("api/[controller]")]
     // Closed-alpha WP1.3: every write (incl. POST search) needs knk.admin.content or the game server; reads stay logged-in.
     [RequireServiceOrPermissionForWrites(StaffPermissions.ManageContent)]
+    [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
     public class DisplayConfigurationsController : ControllerBase
     {
         private readonly IDisplayConfigurationService _service;
         private readonly IDisplayConfigurationPortabilityService _portability;
+        private readonly IDisplayConfigurationDraftService _drafts;
         private readonly ILogger<DisplayConfigurationsController> _logger;
 
         public DisplayConfigurationsController(
             IDisplayConfigurationService service,
             IDisplayConfigurationPortabilityService portability,
+            IDisplayConfigurationDraftService drafts,
             ILogger<DisplayConfigurationsController> logger)
         {
             _service = service;
             _portability = portability;
+            _drafts = drafts;
             _logger = logger;
         }
 
@@ -169,6 +173,7 @@ namespace knkwebapi_v2.Controllers
             try
             {
                 await _service.UpdateAsync(id, config);
+                await _drafts.SyncDraftDefaultAsync(id, config.IsDefault); // #71: the saved builder copy follows
                 return NoContent();
             }
             catch (KeyNotFoundException ex)
@@ -213,14 +218,15 @@ namespace knkwebapi_v2.Controllers
         }
 
         /// <summary>
-        /// Publish display configuration (sets IsDraft = false after validation).
+        /// Publish: a never-published configuration goes live (IsDraft = false), and #71: the builder's saved working copy
+        /// replaces the published version (detail pages show it from then on).
         /// </summary>
         [HttpPost("{id:int}/publish")]
         public async Task<ActionResult<DisplayConfigurationDto>> PublishAsync(int id)
         {
             try
             {
-                var result = await _service.PublishAsync(id);
+                var result = await _drafts.PublishAsync(id);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
@@ -238,10 +244,66 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        // ---- PandiO/knk-workspace#71: the builder's draft and Duplicate (writes need knk.admin.content, class rule) ----
+
+        /// <summary>What the builder opens: the working copy, the published version and the current default.</summary>
+        [HttpGet("{id:int}/builder")]
+        [DashboardReads(DashboardArea.Content)]
+        public async Task<IActionResult> GetBuilderState(int id)
+        {
+            var state = await _drafts.GetBuilderStateAsync(id);
+            if (state == null) return NotFound(new { message = $"DisplayConfiguration with id {id} not found." });
+            return Ok(state);
+        }
+
+        /// <summary>A new display configuration, saved as a draft only (detail pages don't use it).</summary>
+        [HttpPost("drafts")]
+        public Task<IActionResult> CreateDraft([FromBody] DisplayConfigurationDto draft) =>
+            RunDraft(async () =>
+            {
+                var state = await _drafts.CreateDraftAsync(draft);
+                return CreatedAtAction(nameof(GetBuilderState), new { id = int.Parse(state.Configuration.Id!) }, state);
+            });
+
+        /// <summary>Saves the builder's working copy; the published version (and detail pages) stay as they are.</summary>
+        [HttpPut("{id:int}/draft")]
+        public Task<IActionResult> SaveDraft(int id, [FromBody] DisplayConfigurationDto draft) =>
+            RunDraft(async () => Ok(await _drafts.SaveDraftAsync(id, draft)));
+
+        [HttpPost("{id:int}/draft/discard")]
+        public Task<IActionResult> DiscardDraft(int id) =>
+            RunDraft(async () => Ok(await _drafts.DiscardDraftAsync(id)));
+
+        /// <summary>A copy of the published version as a new draft.</summary>
+        [HttpPost("{id:int}/duplicate")]
+        public Task<IActionResult> Duplicate(int id, [FromBody] DuplicateConfigurationRequestDto? request) =>
+            RunDraft(async () => Ok(await _drafts.DuplicateAsync(id, request?.Name)));
+
+        private static async Task<IActionResult> RunDraft(Func<Task<IActionResult>> action)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return new NotFoundObjectResult(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return new BadRequestObjectResult(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return new BadRequestObjectResult(new { message = ex.Message });
+            }
+        }
+
         // ---- knk-displayconfig/1: portable export/import and bundled seeds (writes need knk.admin.content, class rule) ----
 
         /// <summary>The configuration as a portable "knk-displayconfig/1" file (GUIDs, no database ids).</summary>
         [HttpGet("{id:int}/export")]
+        [DashboardReads(DashboardArea.Content)]
         public async Task<IActionResult> Export(int id)
         {
             var file = await _portability.ExportAsync(id);
@@ -268,6 +330,7 @@ namespace knkwebapi_v2.Controllers
 
         /// <summary>The bundled seed files (Data/DisplayConfigurationSeeds/) and whether each is imported.</summary>
         [HttpGet("seeds")]
+        [DashboardReads(DashboardArea.Content)]
         public async Task<IActionResult> GetSeeds()
         {
             return Ok(await _portability.ListSeedsAsync());

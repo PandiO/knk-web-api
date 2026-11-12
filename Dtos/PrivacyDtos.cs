@@ -110,3 +110,33 @@ public class PrivacyDeletionRequestDto
     [JsonPropertyName("result")]
     public PrivacyDeletionResultDto? Result { get; set; }
 }
+
+/// <summary>One erased account in the erasure feed (realtime S5, PandiO/knk-workspace#184).</summary>
+public class PrivacyErasureFeedItemDto
+{
+    /// <summary>The feed's sequence; pass the highest one seen as <c>since</c>.</summary>
+    public long ErasureId { get; set; }
+
+    public int UserId { get; set; }
+
+    /// <summary>The Minecraft UUID the account had; null when it had none or after Privacy:ErasureFeedUuidRetentionDays.</summary>
+    public string? FormerUuid { get; set; }
+
+    public DateTime ErasedAt { get; set; }
+}
+
+/// <summary><c>GET api/privacy/erasures?since={id}</c>: the erasures after <c>since</c>, oldest first.</summary>
+public class PrivacyErasureFeedDto
+{
+    public List<PrivacyErasureFeedItemDto> Items { get; set; } = new();
+
+    /// <summary>The highest erasure id in <see cref="Items"/>, or <c>since</c> when there are none.</summary>
+    public long LastId { get; set; }
+
+    /// <summary>More rows follow; ask again with <see cref="LastId"/>.</summary>
+    public bool HasMore { get; set; }
+
+    /// <summary>The newest erasure id the feed has (0 when empty). A <c>since</c> above it means the caller's position
+    /// came from another database (a reset): start again from 0.</summary>
+    public long LatestId { get; set; }
+}

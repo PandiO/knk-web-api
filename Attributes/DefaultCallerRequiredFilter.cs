@@ -27,7 +27,9 @@ namespace knkwebapi_v2.Attributes
     /// (<see cref="IKnkAccessRule"/> or <c>[Authorize]</c>), else 403 "This endpoint has no access
     /// rule." and an error in the log, so a new endpoint can't ship open by accident.</item>
     /// </list>
-    /// Reads without a rule stay "any logged-in user or the game server". Minimal APIs
+    /// Reads without a rule stay "any logged-in user or the game server"; the dashboard types' reads carry
+    /// <see cref="DashboardReadsAttribute"/> or an any-area-node rule (PandiO/knk-workspace#280 AM2, ReadAccessRulesTests
+    /// pins every read's category). Minimal APIs
     /// (MapHealthChecks) never reach MVC filters and are unaffected.
     /// </summary>
     public class DefaultCallerRequiredFilter : IAsyncAuthorizationFilter
@@ -116,8 +118,10 @@ namespace knkwebapi_v2.Attributes
     /// <c>node</c>, while reads keep the default "logged in or the game server" rule. Used on
     /// the generic CRUD controllers (closed-alpha hardening WP1.3), where every write needs the
     /// controller's node and the reads stay open to logged-in users. A POST search
-    /// (<see cref="DefaultCallerRequiredFilter.IsSearch"/>) counts as a read, so content staff can
-    /// list world data and the reverse.
+    /// (<see cref="DefaultCallerRequiredFilter.IsSearch"/>) counts as a read, and so does a POST whose action carries a
+    /// read rule of its own (<see cref="DashboardReadsAttribute"/>, <see cref="AnyAreaNodeRuleAttribute"/>: the form
+    /// runtime's validation POSTs, PandiO/knk-workspace#280 AM2). Who may read is decided by those rules (DESIGN.md § 4.6),
+    /// not here.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
     public class RequireServiceOrPermissionForWritesAttribute : TypeFilterAttribute, IKnkAccessRule
@@ -144,7 +148,8 @@ namespace knkwebapi_v2.Attributes
         {
             var method = context.HttpContext.Request.Method;
             return DefaultCallerRequiredFilter.IsRead(method)
-                || (HttpMethods.IsPost(method) && DefaultCallerRequiredFilter.IsSearch(context.ActionDescriptor))
+                || (HttpMethods.IsPost(method) && (DefaultCallerRequiredFilter.IsSearch(context.ActionDescriptor)
+                    || ReadAccess.HasActionReadRule(context.ActionDescriptor)))
                 ? Task.CompletedTask
                 : _inner.OnAuthorizationAsync(context);
         }

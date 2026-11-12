@@ -29,6 +29,12 @@ namespace KnKWebAPI.Controllers
         // pick a parent whose nodes they all hold - and may only drop or replace the current parent
         // when they hold its nodes too: detaching a group from an owner/admin parent strips those
         // inherited nodes from every member, which is as strong as revoking them directly.
+        // #280 (developer 2026-11-08): a web user changes only groups ranked below their own highest group, as
+        // they hand out only those; the group as it is and as it will be (its new Weight).
+        private Task<IActionResult?> RefuseIfRankedTooHighAsync(int? groupId, int? newWeight) =>
+            EscalationGuardHttp.RefuseIfEscalationAsync(HttpContext,
+                actor => _escalationGuard.CanChangeGroupAsync(actor, groupId, newWeight));
+
         private async Task<IActionResult?> RefuseIfParentEscalatesAsync(int? newParentId, int? currentParentId)
         {
             if (newParentId == currentParentId) return null;
@@ -67,6 +73,8 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> Create([FromBody] PermissionGroupDto dto)
         {
             if (dto == null) return BadRequest();
+            var refusedRank = await RefuseIfRankedTooHighAsync(null, dto.Weight);
+            if (refusedRank != null) return refusedRank;
             var refused = await RefuseIfParentEscalatesAsync(dto.ParentGroupId, null);
             if (refused != null) return refused;
             try
@@ -85,6 +93,8 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] PermissionGroupDto dto)
         {
             if (dto == null) return BadRequest();
+            var refusedRank = await RefuseIfRankedTooHighAsync(id, dto.Weight);
+            if (refusedRank != null) return refusedRank;
             var current = await _service.GetByIdAsync(id);
             var refused = await RefuseIfParentEscalatesAsync(dto.ParentGroupId, current?.ParentGroupId);
             if (refused != null) return refused;
@@ -104,9 +114,13 @@ namespace KnKWebAPI.Controllers
         }
 
         [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
+        // Area node AND knk.admin.delete (dashboard access model, PandiO/knk-workspace#280).
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
+            var refusedRank = await RefuseIfRankedTooHighAsync(id, null);
+            if (refusedRank != null) return refusedRank;
             try
             {
                 await _service.DeleteAsync(id);

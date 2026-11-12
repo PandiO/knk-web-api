@@ -22,6 +22,13 @@ public class PrivacyOptions
 
     public bool AutoExecuteEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Realtime S5 (PandiO/knk-workspace#184): how long the erasure feed (<c>privacy_erasure_events</c>) keeps an erased
+    /// account's former Minecraft UUID for game servers that catch up late. Past the game server's own 30-day maximum
+    /// age (KNG-58) by default; at least 31 days.
+    /// </summary>
+    public int ErasureFeedUuidRetentionDays { get; set; } = 35;
+
     /// <summary>Web app base URL for the links in emails; empty = Security:PasswordResetFrontendBaseUrl.</summary>
     public string? FrontendBaseUrl { get; set; }
 }

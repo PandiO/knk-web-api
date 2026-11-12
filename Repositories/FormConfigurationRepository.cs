@@ -72,8 +72,9 @@ namespace knkwebapi_v2.Repositories
 
         public async Task<FormConfiguration?> GetDefaultByEntityTypeNameAsync(string entityName)
         {
+            // #71: a never-published configuration is never the default the wizard opens.
             return await WithFullGraph(_context.FormConfigurations)
-                .FirstOrDefaultAsync(fc => fc.EntityTypeName == entityName && fc.IsDefault);
+                .FirstOrDefaultAsync(fc => fc.EntityTypeName == entityName && fc.IsDefault && !fc.IsDraft);
         }
 
         public async Task AddAsync(FormConfiguration config)
@@ -655,7 +656,9 @@ namespace knkwebapi_v2.Repositories
 
         public async Task<IEnumerable<string>> GetEntityTypeNamesAsync()
         {
+            // #71: types whose only configurations were never published have no form yet.
             return await _context.FormConfigurations
+                .Where(fc => !fc.IsDraft)
                 .Select(fc => fc.EntityTypeName)
                 .Distinct()
                 .ToListAsync();

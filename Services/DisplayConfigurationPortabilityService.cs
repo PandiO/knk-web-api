@@ -38,13 +38,7 @@ namespace knkwebapi_v2.Services
         private static readonly IReadOnlySet<string> KnownButtonKeys = new HashSet<string>(StringComparer.Ordinal)
         {
             "showViewButton", "showEditButton", "showCreateButton", "showSelectButton",
-            "showUnlinkButton", "showAddButton", "showRemoveButton"
-        };
-
-        /// <summary>Relationship buttons the renderer hides while KNG-148 is open (RELATIONSHIP_ACTIONS_AVAILABLE = false).</summary>
-        private static readonly IReadOnlySet<string> HiddenButtonKeys = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "showSelectButton", "showUnlinkButton", "showAddButton", "showRemoveButton"
+            "showUnlinkButton", "showAddButton", "showRemoveButton", "showDeleteButton"
         };
 
         /// <summary>The fieldType values the renderer formats or the builder offers (README rule E5).</summary>
@@ -324,7 +318,17 @@ namespace knkwebapi_v2.Services
             return await ImportAsync(file, dryRun, makeDefault, asDraft);
         }
 
-        public async Task<DisplayConfigurationImportResultDto> ImportAsync(PortableDisplayConfigurationDto file, bool dryRun, bool makeDefault, bool asDraft)
+        public Task<DisplayConfigurationImportResultDto> ImportAsync(PortableDisplayConfigurationDto file, bool dryRun, bool makeDefault, bool asDraft)
+            => ImportCoreAsync(file, dryRun, makeDefault, asDraft, draftCopy: false);
+
+        /// <summary>
+        /// PandiO/knk-workspace#71 (Duplicate): the file as a new draft that is never the default (no default swap),
+        /// with every check of an import.
+        /// </summary>
+        public Task<DisplayConfigurationImportResultDto> ImportDraftCopyAsync(PortableDisplayConfigurationDto file)
+            => ImportCoreAsync(file, dryRun: false, makeDefault: false, asDraft: true, draftCopy: true);
+
+        private async Task<DisplayConfigurationImportResultDto> ImportCoreAsync(PortableDisplayConfigurationDto file, bool dryRun, bool makeDefault, bool asDraft, bool draftCopy)
         {
             if (file == null) return Invalid(dryRun, asDraft, "The file is empty.");
 
@@ -398,7 +402,7 @@ namespace knkwebapi_v2.Services
             var currentDefaults = await _db.DisplayConfigurations
                 .Where(c => c.EntityTypeName == entity.EntityTypeName && c.IsDefault)
                 .ToListAsync();
-            result.IsDefault = currentDefaults.Count == 0 || makeDefault;
+            result.IsDefault = !draftCopy && (currentDefaults.Count == 0 || makeDefault);
             if (makeDefault && currentDefaults.Count > 0)
             {
                 result.ReplacedDefaultId = currentDefaults[0].Id.ToString();
@@ -814,8 +818,6 @@ namespace knkwebapi_v2.Services
                     }
                     if (property.Value.ValueKind != JsonValueKind.True) continue;
                     anyShown = true;
-                    if (HiddenButtonKeys.Contains(property.Name))
-                        build.Warnings.Add($"{where}: {property.Name} is hidden on the page until relationship actions exist (KNG-148).");
                 }
 
                 if (anyShown && relatedEntityTypeName == null)

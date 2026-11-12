@@ -278,7 +278,17 @@ namespace knkwebapi_v2.Services
             return await ImportAsync(file, dryRun, makeDefault);
         }
 
-        public async Task<FormConfigurationImportResultDto> ImportAsync(PortableFormConfigurationDto file, bool dryRun, bool makeDefault)
+        public Task<FormConfigurationImportResultDto> ImportAsync(PortableFormConfigurationDto file, bool dryRun, bool makeDefault)
+            => ImportCoreAsync(file, dryRun, makeDefault, draftCopy: false);
+
+        /// <summary>
+        /// PandiO/knk-workspace#71 (Duplicate): the file as a new, never-published configuration (IsDraft): never the
+        /// default, no default swap, with every check of an import.
+        /// </summary>
+        public Task<FormConfigurationImportResultDto> ImportDraftCopyAsync(PortableFormConfigurationDto file)
+            => ImportCoreAsync(file, dryRun: false, makeDefault: false, draftCopy: true);
+
+        private async Task<FormConfigurationImportResultDto> ImportCoreAsync(PortableFormConfigurationDto file, bool dryRun, bool makeDefault, bool draftCopy)
         {
             if (file == null) return Invalid(dryRun, "The file is empty.");
 
@@ -362,7 +372,7 @@ namespace knkwebapi_v2.Services
             var currentDefaults = await _db.FormConfigurations
                 .Where(c => c.EntityTypeName == entity.EntityTypeName && c.IsDefault)
                 .ToListAsync();
-            result.IsDefault = currentDefaults.Count == 0 || makeDefault;
+            result.IsDefault = !draftCopy && (currentDefaults.Count == 0 || makeDefault);
             if (makeDefault && currentDefaults.Count > 0)
             {
                 result.ReplacedDefaultId = currentDefaults[0].Id.ToString();
@@ -382,6 +392,7 @@ namespace knkwebapi_v2.Services
             await using var transaction = _db.Database.IsRelational() ? await _db.Database.BeginTransactionAsync() : null;
 
             entity.IsDefault = result.IsDefault;
+            entity.IsDraft = draftCopy;
             if (makeDefault && currentDefaults.Count > 0)
             {
                 foreach (var previous in currentDefaults)

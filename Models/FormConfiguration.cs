@@ -42,6 +42,26 @@ namespace knkwebapi_v2.Models
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+
+        /// <summary>
+        /// PandiO/knk-workspace#71: true while the configuration was never published (created in the builder or
+        /// duplicated). The form wizard, pickers and "New with" never offer it; Publish clears it. Existing rows
+        /// and imports are published (false).
+        /// </summary>
+        public bool IsDraft { get; set; } = false;
+
+        /// <summary>
+        /// #71: the builder's saved working copy (a FormConfigurationDto as JSON), or null when the builder has
+        /// nothing unpublished. The rows (steps, fields) are always the published version the wizard reads;
+        /// Publish applies this copy to them and clears it.
+        /// </summary>
+        public string? DraftJson { get; set; }
+
+        /// <summary>#71: when DraftJson was last saved.</summary>
+        public DateTime? DraftSavedAt { get; set; }
+
+        /// <summary>#71: when the builder last published (null for rows published before #71).</summary>
+        public DateTime? PublishedAt { get; set; }
         
         /// <summary>
         /// JSON array storing the ordered IDs of steps: ["step-guid-1", "step-guid-2", ...].
