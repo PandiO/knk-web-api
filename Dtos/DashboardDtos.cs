@@ -20,6 +20,21 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("reason")]
         public string Reason { get; set; } = null!;
+
+        /// <summary>
+        /// Why, as a code (PandiO/knk-workspace#280 AM3): <c>InUse</c> (other records still use it; the web app offers
+        /// "Show what uses it"), <c>NotFound</c>, <c>Refused</c> (a business rule) or <c>Failed</c>.
+        /// </summary>
+        [JsonPropertyName("code")]
+        public string Code { get; set; } = DashboardBulkDeleteRefusalCodes.Refused;
+    }
+
+    public static class DashboardBulkDeleteRefusalCodes
+    {
+        public const string InUse = "InUse";
+        public const string NotFound = "NotFound";
+        public const string Refused = "Refused";
+        public const string Failed = "Failed";
     }
 
     public class DashboardBulkDeleteResponseDto
