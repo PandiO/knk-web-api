@@ -4,8 +4,8 @@ namespace knkwebapi_v2.Services.Lootbox;
 
 /// <summary>
 /// Lootbox counters (docs/specs/lootboxes/DESIGN.md §3.3 "Observability"), exported through the OpenTelemetry
-/// pipeline in Program.cs (<c>AddMeter(LootboxMetrics.MeterName)</c>). There is no Prometheus /metrics endpoint;
-/// they reach a collector only when Telemetry:Exporter is otlp.
+/// pipeline in Program.cs (<c>AddMeter(LootboxMetrics.MeterName)</c>): to an OTLP collector when Telemetry:Exporter is otlp, and on the
+/// Prometheus /metrics endpoint when it is enabled (KNG-232, off by default).
 /// </summary>
 public static class LootboxMetrics
 {
