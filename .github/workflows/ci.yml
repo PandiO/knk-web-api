@@ -1,0 +1,54 @@
+# Build and unit tests on every push and pull request.
+# The requires-mysql tests skip themselves when KNK_TEST_MYSQL is unset, which it is here: this job has no
+# database. Fresh-database migration checks run separately in migrations.yml.
+# Tests marked [Trait("Category", "KnownFailure")] are excluded; each mark names the issue that tracks it.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: |
+          dotnet restore knkwebapi_v2.csproj
+          dotnet restore Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj
+
+      - name: Build
+        run: dotnet build knkwebapi_v2.csproj --no-restore
+
+      - name: Test
+        run: >-
+          dotnet test Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj
+          --no-restore
+          --filter "Category!=KnownFailure"
+          --logger "trx;LogFileName=test-results.trx"
+          --logger "console;verbosity=normal"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-results
+          path: Tests/knkwebapi_v2.Tests/TestResults/*.trx
+          if-no-files-found: ignore
