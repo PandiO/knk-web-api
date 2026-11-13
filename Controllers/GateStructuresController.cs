@@ -96,6 +96,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("GateStructure")]
         [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] GateStructureDto gateStructureDto)
@@ -117,6 +118,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("GateStructure")]
         [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] GateStructureDto gateStructureDto)

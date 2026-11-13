@@ -37,6 +37,7 @@ namespace KnKWebAPI.Controllers
         [RequireServiceOrAnyAreaNode(ReadCategory.FormRuntime)]
         public IActionResult GetPatternKeys() => Ok(_service.GetPatternKeys());
 
+        [RequireDashboardChange("BannerDesign")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] BannerDesignUpsertDto dto)
         {
@@ -52,6 +53,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("BannerDesign")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] BannerDesignUpsertDto dto)
         {
@@ -114,6 +116,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("BannerLayer")]
         [HttpPost("{id:int}/layers")]
         public async Task<IActionResult> CreateLayer(int id, [FromBody] BannerLayerUpsertDto dto)
         {

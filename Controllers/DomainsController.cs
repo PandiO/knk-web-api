@@ -47,6 +47,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("Domain")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] Domain domain)
         {
@@ -62,6 +63,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("Domain")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] Domain domain)
         {

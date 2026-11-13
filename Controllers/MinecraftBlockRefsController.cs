@@ -39,6 +39,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("MinecraftBlockRef")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] MinecraftBlockRefCreateDto dto)
         {
@@ -74,6 +75,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("MinecraftBlockRef")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] MinecraftBlockRefUpdateDto dto)
         {

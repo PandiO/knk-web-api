@@ -707,7 +707,14 @@ public class ReadAccessRulesTests
     public async Task Writes_KeepTheirAreaNode()
     {
         Assert.Equal(403, await _pipeline.RunAsync(typeof(TownsController), "Create", ConfigOnly));
-        Assert.Null(await _pipeline.RunAsync(typeof(TownsController), "Create", WorldOnly));
+        // #374: create and edit also need knk.admin.content; neither node alone is enough.
+        Assert.Equal(403, await _pipeline.RunAsync(typeof(TownsController), "Create", WorldOnly));
+        Assert.Equal(403, await _pipeline.RunAsync(typeof(TownsController), "Create", ContentOnly));
+        Assert.Null(await _pipeline.RunAsync(typeof(TownsController), "Create", Owner));
+        _pipeline.Permissions.Grant(8, StaffPermissions.ManageWorld, StaffPermissions.ManageContent);
+        Assert.Null(await _pipeline.RunAsync(typeof(TownsController), "Update", 8));
+        _pipeline.Permissions.Grant(9, StaffPermissions.ManageWorld, StaffPermissions.Delete);
+        Assert.Null(await _pipeline.RunAsync(typeof(TownsController), "Delete", 9)); // delete: area + knk.admin.delete, no content
         Assert.Equal(403, await _pipeline.RunAsync(typeof(DomainsController), "ResolveWorld", DiscoveryOnly));
         Assert.Null(await _pipeline.RunAsync(typeof(DomainsController), "ResolveWorld", WorldOnly));
     }

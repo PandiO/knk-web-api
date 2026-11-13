@@ -184,6 +184,8 @@ public class EndpointAccessRulesTests
     {
         Assert.Null(await RunFilter(ServiceAuthTestHelper.WebUser(5), "POST", new RequirePluginServiceAttribute()));
         Assert.Null(await RunFilter(ServiceAuthTestHelper.WebUser(5), "POST", new AuthorizeAttribute()));
+        // #374: the dashboard create/edit rule counts as an access rule; its own filter checks the change nodes.
+        Assert.Null(await RunFilter(ServiceAuthTestHelper.WebUser(5), "PUT", new RequireDashboardChangeAttribute("Town")));
     }
 
     [Fact]
