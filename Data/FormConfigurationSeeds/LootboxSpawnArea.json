@@ -1,38 +1,38 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "15d51987-df1e-5a35-af7e-2e1791b7a8f4",
+  "configurationGuid": "770bcbcf-8dec-5712-b5a6-0223251f70e9",
   "entityTypeName": "LootboxSpawnArea",
-  "name": "LootboxSpawnArea - Default (seed v1)",
+  "name": "LootboxSpawnArea - Default (seed v2)",
   "description": "A lootbox spawn area: a WorldGuard region where world boxes appear, with its spawn rules and allowed box types. Also created in game with /knk lootbox area create, which opens in this form too.",
   "steps": [
     {
-      "stepGuid": "72c5d3f8-8112-5623-9f09-c95d6a4c8057",
+      "stepGuid": "a6ee44d5-9da4-50b2-a550-e5b95cedd51f",
       "stepName": "Area and region",
-      "description": "Name the area and pick its WorldGuard region. For a new region, /knk lootbox area create <name> in game is simplest; here, use Send to Minecraft and type select <region> to use an existing one.",
+      "description": "Name the area and pick its WorldGuard region: draw a new one with Send to Minecraft, or type select <region> to use an existing one. A drawn region becomes lootbox_area_<id> when you save, reaching the world's full build height. /knk lootbox area create <name> in game works too.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "c0c7ea40-b891-56ee-b711-8acfcf93cec4",
+          "fieldGuid": "abf0cf4c-b163-5a61-8ece-26afda94e704",
           "fieldName": "Name",
           "label": "Name",
           "placeholder": "cinix_market",
-          "description": "1-32 letters, digits, _ or -, unique. The in-game /knk lootbox area commands use it.",
+          "description": "1-32 letters, digits, _ or -, unique; area_<number> is reserved. The in-game /knk lootbox area commands use it.",
           "fieldType": "String",
           "isRequired": true,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "2031e8b4-cd39-5864-9ec3-7e0aa2109d5e",
+          "fieldGuid": "bb107eb2-5e98-58b5-9e85-d0cf9c3e9982",
           "fieldName": "WgRegionId",
           "label": "Region",
-          "description": "Boxes appear on the ground anywhere inside this region. Prefer an existing region (select <region>): one drawn here gets a temporary name, is only as high as your selection, and the server removes it after 14 days.",
+          "description": "Boxes appear on the ground anywhere inside this region. A region you draw here is renamed to lootbox_area_<id> when you save and stretched to full build height, so the server keeps it; running this step again on a saved area replaces that region. A region you select (a town, or one from /knk lootbox area create) is used as it is.",
           "fieldType": "String",
           "isRequired": true,
           "isReadOnly": false,
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
         },
         {
-          "fieldGuid": "7b74e9fc-3b4b-5c8b-9ed1-4ee9d414d62e",
+          "fieldGuid": "96ac38f9-29b9-5346-b0c3-1c5179ca57e5",
           "fieldName": "World",
           "label": "World",
           "description": "The world the region is in, exactly as the server names it (shown in the region result above). Boxes only spawn there when the name matches.",
@@ -41,7 +41,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "9e39feca-5187-5d0e-83e5-8bd7955db1e6",
+          "fieldGuid": "b62852b6-4c17-5735-890f-f3e993330778",
           "fieldName": "ExcludedRegionIds",
           "label": "Excluded regions",
           "placeholder": "plot_12,domain_45",
@@ -53,13 +53,13 @@
       ]
     },
     {
-      "stepGuid": "fec3b697-4351-55e5-a436-290a6b4af504",
+      "stepGuid": "4e0709ba-4c31-5f11-9181-2d68dc8dda92",
       "stepName": "Spawn rules",
       "description": "When the server tries to spawn a box here. Every try waits the full interval, whether a box appears or not.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "7cc9cf18-94df-5388-8abc-4c8c28d4abc5",
+          "fieldGuid": "4be33784-9c8d-5dce-bc27-d4369588f604",
           "fieldName": "Enabled",
           "label": "Enabled",
           "description": "Only enabled areas spawn boxes. Turn it on once the region and allowed types are set.",
@@ -69,7 +69,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "d9d864e6-4f0f-5db8-a73c-218b7d29ddba",
+          "fieldGuid": "6baa1acb-e09b-5615-94fd-3e9ed5cb0340",
           "fieldName": "SpawnIntervalSeconds",
           "label": "Try every (seconds)",
           "description": "Time between spawn tries, at least 60.",
@@ -79,7 +79,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "ee2bcb96-2fd8-51bd-91b7-d77769d16b59",
+          "fieldGuid": "d0fa484f-0010-5780-9120-339f6c45f7ef",
           "fieldName": "SpawnChancePercent",
           "label": "Spawn chance (%)",
           "description": "Chance that a try spawns a box, 0-100.",
@@ -89,7 +89,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "a1021dcc-6cb8-5818-a086-68189a3c3b71",
+          "fieldGuid": "43d0be6c-a75d-5b51-806f-92432ce962c5",
           "fieldName": "MinOnlinePlayers",
           "label": "Minimum players online",
           "description": "No tries while fewer players are on the server. 0 = always.",
@@ -101,13 +101,13 @@
       ]
     },
     {
-      "stepGuid": "44d38bb0-29f2-5d5b-85bd-5dc6e822eb4a",
+      "stepGuid": "b4eb21d6-5e56-5ae7-9f26-e52dc2418879",
       "stepName": "Box limits",
       "description": "How many boxes the area holds at once, how close to players they may appear, and how long they last.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "cae4ccd9-682b-5d4a-bddf-1cec30ceaf3e",
+          "fieldGuid": "4055257f-163d-5bf6-b71d-1457fc9d8b77",
           "fieldName": "MaxActive",
           "label": "Maximum boxes at once",
           "description": "No new box while this many are waiting in the area (0 or more). The global limit in the lootbox settings applies as well.",
@@ -117,7 +117,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "d97e39d4-4f57-5b67-b6a5-6ca417d4bd60",
+          "fieldGuid": "c7c7e7ff-93a5-5b1b-bf49-05a8ceb20edf",
           "fieldName": "MinDistanceFromPlayers",
           "label": "Minimum distance from players (blocks)",
           "description": "A spot closer than this to any player is skipped, so boxes don't appear in front of someone. 0 = anywhere.",
@@ -127,7 +127,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "2256212b-e54a-5b81-9cd1-e5a6f516a61a",
+          "fieldGuid": "72565111-855c-5d03-b258-dd6dad24c614",
           "fieldName": "LifetimeMinutes",
           "label": "Box lifetime (minutes)",
           "description": "A box nobody picks up crumbles after this time, at least 1.",
@@ -139,7 +139,7 @@
       ]
     },
     {
-      "stepGuid": "456d911b-7dc0-535a-8ceb-446508abe398",
+      "stepGuid": "01f9348f-8b5e-5c76-8c51-f70687737d62",
       "stepName": "Allowed types",
       "description": "Which box types may spawn here. Leave it empty to allow every enabled type.",
       "isManyToManyRelationship": true,
@@ -152,7 +152,7 @@
       },
       "fields": [
         {
-          "fieldGuid": "d4c64d4e-eb81-55e8-997f-6ae1845118c6",
+          "fieldGuid": "3473d8a7-b819-5cab-b1c7-03df48422df7",
           "fieldName": "AllowedTypes",
           "label": "Allowed box types",
           "description": "Create New Join Entry adds a type; types are picked by their spawn weight.",

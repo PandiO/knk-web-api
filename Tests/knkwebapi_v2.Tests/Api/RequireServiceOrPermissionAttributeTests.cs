@@ -266,6 +266,9 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ReleaseTask), null),
         R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.Heartbeat), null),
         R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ListOpenForServer), null),
+        // PandiO/knk-workspace#269: temp regions the game server removes.
+        R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.ListTempRegionReleases), null),
+        R(typeof(KnKWebAPI.Controllers.WorldTasksController), nameof(KnKWebAPI.Controllers.WorldTasksController.SettleTempRegionRelease), null),
         // WT2 (PandiO/knk-workspace#181): the "Hand off to…" picker lists online staff for staff who create world tasks
         R(typeof(knkwebapi_v2.Controllers.PresenceController), nameof(knkwebapi_v2.Controllers.PresenceController.OnlineStaff), "knk.admin.world"),
         // Realtime S5 (PandiO/knk-workspace#184): the erasure feed carries former UUIDs and is the game server's only
