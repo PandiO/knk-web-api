@@ -66,6 +66,46 @@ namespace knkwebapi_v2.Tests.Services
         }
 
         [Fact]
+        public void FromPreviousStep_FollowsStepOrderJson_NotTheStoredOrder()
+        {
+            const string nameNotEmpty = "{\"conditions\":[{\"fieldName\":\"Name\",\"operator\":\"IsNotEmpty\",\"fromPreviousStep\":true}],\"logic\":\"AND\"}";
+            var details = Step("Details", new[] { "Notes" }, Condition(nameNotEmpty, "StartCondition"));
+            var basics = Step("Basics", new[] { "Name" });
+            details.StepGuid = Guid.NewGuid();
+            basics.StepGuid = Guid.NewGuid();
+
+            // Stored with Details first, shown with Basics first: the reference is fine.
+            var reordered = Config(details, basics);
+            reordered.StepOrderJson = $"[\"{basics.StepGuid}\",\"{details.StepGuid}\"]";
+            Assert.Empty(StepConditionHealth.FindIssues(reordered));
+
+            // Stored with Basics first, shown with Details first: Name comes later, so it is flagged.
+            var broken = Config(basics, details);
+            broken.StepOrderJson = $"[\"{details.StepGuid}\",\"{basics.StepGuid}\"]";
+            Assert.Single(StepConditionHealth.FindIssues(broken));
+        }
+
+        [Fact]
+        public void WorkingCopy_FollowsStepOrderJsonToo()
+        {
+            var dto = new knkwebapi_v2.Dtos.FormConfigurationDto
+            {
+                StepOrderJson = "[\"b\",\"a\"]",
+                Steps = new()
+                {
+                    new() { StepGuid = "a", StepName = "Details", Conditions = new() { new() {
+                        ConditionType = "Entry", IsActive = true,
+                        ConditionJson = "{\"conditions\":[{\"fieldName\":\"Name\",\"operator\":\"IsNotEmpty\",\"fromPreviousStep\":true}]}" } } },
+                    new() { StepGuid = "b", StepName = "Basics", Fields = new() { new() { FieldName = "Name" } } }
+                }
+            };
+
+            Assert.Empty(StepConditionHealth.FindIssues(dto));
+            dto.StepOrderJson = null;
+            Assert.Single(StepConditionHealth.FindIssues(dto));
+        }
+
+        [Fact]
         public void SwitchedOffCondition_IsOnlyInformation()
         {
             var config = Config(Step("Region", new[] { "Other" },

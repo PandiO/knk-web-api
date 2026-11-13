@@ -19,7 +19,8 @@ namespace knkwebapi_v2.Services
         public sealed record StepInfo(string StepName, IReadOnlyCollection<string> FieldNames, IReadOnlyList<ConditionInfo> Conditions);
 
         public static List<ValidationIssueDto> FindIssues(FormConfiguration config) =>
-            FindIssues(config.Steps.Select(step => new StepInfo(
+            // The wizard walks the steps in StepOrderJson order, which can differ from the stored order.
+            FindIssues(FormOrdering.OrderSteps(config).Select(step => new StepInfo(
                 step.StepName,
                 step.Fields.Select(f => f.FieldName).ToList(),
                 step.StepConditions
@@ -27,7 +28,7 @@ namespace knkwebapi_v2.Services
                     .ToList())).ToList());
 
         public static List<ValidationIssueDto> FindIssues(FormConfigurationDto config) =>
-            FindIssues((config.Steps ?? new()).Select(step => new StepInfo(
+            FindIssues(OrderSteps(config).Select(step => new StepInfo(
                 step.StepName,
                 (step.Fields ?? new()).Select(f => f.FieldName).ToList(),
                 (step.Conditions ?? new())
@@ -66,6 +67,29 @@ namespace knkwebapi_v2.Services
             }
 
             return issues;
+        }
+
+        /// <summary>The working copy's steps in StepOrderJson order (step GUIDs), as the wizard shows them.</summary>
+        private static List<FormStepDto> OrderSteps(FormConfigurationDto config)
+        {
+            var steps = config.Steps ?? new();
+            if (string.IsNullOrWhiteSpace(config.StepOrderJson)) return steps;
+            List<string>? order;
+            try
+            {
+                order = JsonSerializer.Deserialize<List<string>>(config.StepOrderJson);
+            }
+            catch (JsonException)
+            {
+                return steps;
+            }
+            if (order == null || order.Count == 0) return steps;
+
+            var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < order.Count; i++) rank[order[i]] = i;
+            return steps
+                .OrderBy(step => step.StepGuid != null && rank.TryGetValue(step.StepGuid, out var r) ? r : int.MaxValue)
+                .ToList();
         }
 
         /// <summary>The rules of a condition in the builder's shape; nothing for any other JSON.</summary>
