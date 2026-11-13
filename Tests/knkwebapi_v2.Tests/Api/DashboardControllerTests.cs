@@ -218,6 +218,8 @@ public class DashboardActionServiceTests
             (4, "This category can't be deleted: it is still used by 2 item blueprints. Remove or change those first."),
             (5, DashboardActionService.FailedReason), // an unexpected error's text is never shown
         }, result.Refused.Select(r => (r.Id, r.Reason)));
+        // AM3: the code says which refusal has rows behind it ("Show what uses it").
+        Assert.Equal(new[] { "NotFound", "Refused", "InUse", "Failed" }, result.Refused.Select(r => r.Code));
         _categories.Verify(c => c.DeleteAsync(It.IsAny<int>()), Times.Exactly(6));
         _audit.Verify(a => a.RecordAsync(Actor, Actor, AuditAction.DashboardBulkDelete,
             It.Is<string>(d => d.Contains("\"entityType\":\"Category\"") && d.Contains("\"ids\":[1,6]") && d.Contains("\"refused\":4"))), Times.Once);

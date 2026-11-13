@@ -56,14 +56,15 @@ namespace knkwebapi_v2.Services
             var result = new DashboardBulkDeleteResponseDto();
             foreach (var id in ids)
             {
-                var reason = await DeleteOneAsync(type, id);
-                if (reason == null)
+                var refusal = await DeleteOneAsync(type, id);
+                if (refusal == null)
                 {
                     result.Deleted.Add(id);
                 }
                 else
                 {
-                    result.Refused.Add(new DashboardBulkDeleteRefusalDto { Id = id, Reason = reason });
+                    refusal.Id = id;
+                    result.Refused.Add(refusal);
                 }
             }
 
@@ -80,8 +81,8 @@ namespace knkwebapi_v2.Services
             return result;
         }
 
-        /// <summary>Null when deleted, else the reason, worded as the single delete's answer would be.</summary>
-        private async Task<string?> DeleteOneAsync(DashboardTypeAccess type, int id)
+        /// <summary>Null when deleted, else the reason (worded as the single delete's answer would be) and its code.</summary>
+        private async Task<DashboardBulkDeleteRefusalDto?> DeleteOneAsync(DashboardTypeAccess type, int id)
         {
             try
             {
@@ -92,23 +93,26 @@ namespace knkwebapi_v2.Services
             }
             catch (KeyNotFoundException)
             {
-                return NotFoundReason;
+                return Refusal(NotFoundReason, DashboardBulkDeleteRefusalCodes.NotFound);
             }
             catch (Exception ex) when (DeleteConstraintExceptionFilter.IsConstraintFailure(ex))
             {
-                return await DescribeConstraintAsync(type, id);
+                return Refusal(await DescribeConstraintAsync(type, id), DashboardBulkDeleteRefusalCodes.InUse);
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
                 // Business rules (has children, still in a lootbox pool, …): their messages are written for admins.
-                return ex.Message;
+                return Refusal(ex.Message, DashboardBulkDeleteRefusalCodes.Refused);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning("Bulk delete of {EntityType} {Id} failed: {Error}", type.TypeName, id, ex.GetType().Name);
-                return FailedReason;
+                return Refusal(FailedReason, DashboardBulkDeleteRefusalCodes.Failed);
             }
         }
+
+        private static DashboardBulkDeleteRefusalDto Refusal(string reason, string code) =>
+            new() { Reason = reason, Code = code };
 
         private async Task<string> DescribeConstraintAsync(DashboardTypeAccess type, int id)
         {

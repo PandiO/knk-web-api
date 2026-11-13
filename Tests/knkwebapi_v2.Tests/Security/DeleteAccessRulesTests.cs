@@ -51,8 +51,18 @@ public class DeleteAccessRulesTests
     };
 
     /// <summary>
-    /// DELETEs that keep their own rules (DESIGN.md § 4.7 "not covered"): builder parts and whole form/display
-    /// configurations, menus, your own drafts, world-task and workflow lifecycle, plugin-only and player-own deletes, and
+    /// Deletes of whole form and display configurations (not dashboard types): they also need <c>knk.admin.delete</c>, on
+    /// top of the class rule <c>knk.admin.content</c> (LV7-8, developer 2026-11-12; DESIGN.md § 4.7).
+    /// </summary>
+    public static readonly IReadOnlySet<string> ConfigurationDeletes = new HashSet<string>
+    {
+        "FormConfigurationsController.Delete",
+        "DisplayConfigurationsController.DeleteAsync",
+    };
+
+    /// <summary>
+    /// DELETEs that keep their own rules (DESIGN.md § 4.7 "not covered"): builder parts (steps, fields, sections,
+    /// validation rules), menus, your own drafts, world-task and workflow lifecycle, plugin-only and player-own deletes, and
     /// link deletes (memberships, grants, snapshots, overrides).
     /// </summary>
     public static readonly IReadOnlySet<string> Exempt = new HashSet<string>
@@ -60,10 +70,8 @@ public class DeleteAccessRulesTests
         "EntityTypeConfigurationController.Delete",
         "DisplayFieldsController.DeleteAsync",
         "DisplaySectionsController.DeleteAsync",
-        "DisplayConfigurationsController.DeleteAsync",
         "FormStepsController.Delete",
         "FormFieldsController.Delete",
-        "FormConfigurationsController.Delete",
         "FieldValidationRulesController.Delete",
         "MenuTemplatesController.Delete",
         "FormSubmissionProgressController.Delete",
@@ -125,9 +133,25 @@ public class DeleteAccessRulesTests
     }
 
     [Fact]
+    public void ConfigurationDeletes_NeedTheDeleteNode_AndTheContentNode()
+    {
+        var actions = DeleteActions().ToDictionary(Name);
+        foreach (var actionName in ConfigurationDeletes)
+        {
+            Assert.True(actions.TryGetValue(actionName, out var action), actionName);
+            var nodes = Nodes(action!).ToList();
+            var classRule = action!.DeclaringType!.GetCustomAttribute<RequireServiceOrPermissionForWritesAttribute>()?.Node;
+            if (classRule != null) nodes.Add(classRule);
+
+            Assert.Contains(StaffPermissions.Delete, nodes);
+            Assert.Contains(StaffPermissions.ManageContent, nodes);
+        }
+    }
+
+    [Fact]
     public void EveryOtherDelete_IsPinnedAsExempt_AndDoesntCarryTheDeleteNode()
     {
-        var primary = PrimaryDeletes.Values.ToHashSet();
+        var primary = PrimaryDeletes.Values.Concat(ConfigurationDeletes).ToHashSet();
         var others = DeleteActions().Where(m => !primary.Contains(Name(m))).ToList();
 
         // Joined, so a failure names every offender.

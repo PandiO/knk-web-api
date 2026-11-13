@@ -280,6 +280,9 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(LootboxTypesController), nameof(LootboxTypesController.Delete), "knk.admin.lootbox.manage + knk.admin.delete"),
         R(typeof(KnKWebAPI.Controllers.SiegeScenariosController), nameof(KnKWebAPI.Controllers.SiegeScenariosController.Delete), "knk.siege.admin.manage + knk.admin.delete"),
         R(typeof(RoadProfilesController), nameof(RoadProfilesController.Delete), "knk.admin.road + knk.admin.delete"),
+        // LV7-8 (developer 2026-11-12): whole form/display configuration deletes need knk.admin.delete too.
+        R(typeof(KnKWebAPI.Controllers.FormConfigurationsController), nameof(KnKWebAPI.Controllers.FormConfigurationsController.Delete), "knk.admin.delete"),          // + ForWrites(knk.admin.content)
+        R(typeof(DisplayConfigurationsController), nameof(DisplayConfigurationsController.DeleteAsync), "knk.admin.delete"), // + ForWrites(knk.admin.content)
     };
 
     /// <summary>node null = plugin-only (RequirePluginService); "a + b" = the action carries both node rules.</summary>

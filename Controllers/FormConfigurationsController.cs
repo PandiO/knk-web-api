@@ -183,6 +183,9 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        // PandiO/knk-workspace#280 (LV7-8, developer 2026-11-12): deleting a whole form configuration also needs
+        // knk.admin.delete, on top of the class rule knk.admin.content.
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
