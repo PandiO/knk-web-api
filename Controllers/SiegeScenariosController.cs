@@ -32,6 +32,7 @@ namespace KnKWebAPI.Controllers
             return item == null ? NotFound() : Ok(item);
         }
 
+        [RequireDashboardChange("SiegeScenario")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] SiegeScenarioUpsertDto dto)
@@ -48,6 +49,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("SiegeScenario")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeScenarioUpsertDto dto)
@@ -135,6 +137,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("SiegeTeam")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost("{id:int}/teams")]
         public async Task<IActionResult> CreateTeam(int id, [FromBody] SiegeTeamUpsertDto dto)
@@ -170,6 +173,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("SiegeObjective")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost("{id:int}/objectives")]
         public async Task<IActionResult> CreateObjective(int id, [FromBody] SiegeObjectiveUpsertDto dto)

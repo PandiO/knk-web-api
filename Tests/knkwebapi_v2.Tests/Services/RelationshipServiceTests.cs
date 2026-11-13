@@ -95,7 +95,8 @@ public class RelationshipServiceTests
         Assert.Equal(new[] { StaffPermissions.ManageUsers, StaffPermissions.UserPermissions }, grants.Nodes);
 
         Assert.Equal(new[] { StaffPermissions.ManageContent }, RelationshipCatalog.Find(db.Model, "Category", "childCategories")!.Nodes);
-        Assert.Equal(new[] { StaffPermissions.ManageWorld }, RelationshipCatalog.Find(db.Model, "Town", "streets")!.Nodes);
+        // #374: link changes outside the Content area also need knk.admin.content; the Players area keeps its own nodes.
+        Assert.Equal(new[] { StaffPermissions.ManageWorld, StaffPermissions.ManageContent }, RelationshipCatalog.Find(db.Model, "Town", "streets")!.Nodes);
     }
 
     [Fact]

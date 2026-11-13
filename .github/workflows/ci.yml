@@ -2,7 +2,7 @@
 # The requires-mysql tests skip themselves when KNK_TEST_MYSQL is unset, which it is here: this job has no
 # database. Fresh-database migration checks run separately in migrations.yml.
 # Tests marked [Trait("Category", "KnownFailure")] are excluded; each mark names the issue that tracks it.
-name: CI
+name: Build and test
 
 on:
   push:

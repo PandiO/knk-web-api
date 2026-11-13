@@ -40,6 +40,7 @@ namespace KnKWebAPI.Controllers
             return Ok(await _service.GetRuntimeConfigAsync());
         }
 
+        [RequireDashboardChange("SiegeLobby")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] SiegeLobbyUpsertDto dto)
@@ -60,6 +61,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("SiegeLobby")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeLobbyUpsertDto dto)

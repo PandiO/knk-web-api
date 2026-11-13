@@ -91,13 +91,24 @@ public class RelationshipsControllerTests
         Assert.Equal(403, Status(refused));
         var json = JsonSerializer.Serialize(((ObjectResult)refused!).Value);
         Assert.Contains("\"code\":\"NoWriteAccess\"", json);
-        Assert.Contains("\"nodes\":[\"knk.admin.world\"]", json);
+        Assert.Contains("\"nodes\":[\"knk.admin.world\",\"knk.admin.content\"]", json);
     }
 
     [Fact]
-    public async Task WithTheWriteNode_Passes_WithoutAnyDeleteNode()
+    public async Task TheAreaNodeWithoutContent_Is403()
+    {
+        // #374: Select / Unlink / Add are changes, so they need knk.admin.content too.
+        _held.Add(StaffPermissions.ManageWorld);
+        var refused = await Gate(ServiceAuthTestHelper.WebUser(Staff), "Town", "streets");
+        Assert.Equal(403, Status(refused));
+        Assert.Contains("requires knk.admin.world and knk.admin.content", JsonSerializer.Serialize(((ObjectResult)refused!).Value));
+    }
+
+    [Fact]
+    public async Task WithTheChangeNodes_Passes_WithoutAnyDeleteNode()
     {
         _held.Add(StaffPermissions.ManageWorld);
+        _held.Add(StaffPermissions.ManageContent);
         Assert.Equal(200, Status(await Gate(ServiceAuthTestHelper.WebUser(Staff), "town", "Streets")));
     }
 

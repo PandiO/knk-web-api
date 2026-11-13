@@ -64,6 +64,7 @@ namespace KnKWebAPI.Controllers
             return Ok(result);
         }
 
+        [RequireDashboardChange("GateDoor")]
         [HttpPost("GateStructures/{gateStructureId:int}/doors")]
         public async Task<IActionResult> Create(int gateStructureId, [FromBody] GateDoorDto gateDoorDto)
         {
@@ -88,6 +89,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("GateDoor")]
         [HttpPut("GateDoors/{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] GateDoorDto gateDoorDto)
         {

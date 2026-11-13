@@ -37,6 +37,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("Structure")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] StructureDto structureDto)
         {
@@ -52,6 +53,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("Structure")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] StructureDto structureDto)
         {

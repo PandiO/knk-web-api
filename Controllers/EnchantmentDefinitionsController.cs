@@ -58,6 +58,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("EnchantmentDefinition")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] EnchantmentDefinitionCreateDto dto)
         {
@@ -73,6 +74,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("EnchantmentDefinition")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] EnchantmentDefinitionUpdateDto dto)
         {

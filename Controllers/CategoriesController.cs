@@ -56,6 +56,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("Category")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CategoryDto categoryDto)
         {
@@ -71,6 +72,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("Category")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] CategoryDto categoryDto)
         {
