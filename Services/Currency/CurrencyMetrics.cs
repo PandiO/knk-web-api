@@ -10,7 +10,7 @@ namespace knkwebapi_v2.Services
     /// to the existing WithMetrics pipeline. Singleton.
     /// <para>
     /// Labels are low-cardinality only (reason code, currency, kind, error code, rule, severity) —
-    /// never a user id or amount (OBSERVABILITY.md privacy rules). Postings are counted when
+    /// never a user id or amount (knk-workspace docs/architecture/web-api-observability.md privacy rules). Postings are counted when
     /// CurrencyService has written them; a caller that posts inside its own transaction and then
     /// rolls back has still been counted (rare: only failures after the posting).
     /// </para>
