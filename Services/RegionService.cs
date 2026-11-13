@@ -49,6 +49,15 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameSubRegionAsync(string oldRegionId, string newRegionId, string? domainType, string subRegionOf, string? world, string? replaceRegionId);
 
         /// <summary>
+        /// PandiO/knk-workspace#34: renames a lootbox spawn area's region drawn through the form's region task to its final
+        /// name. No domain type (a spawn area is not a managed region: priority, parent and flags stay as drawn);
+        /// <c>fullHeight=true</c> asks the plugin to stretch it to the world's full build height, as
+        /// <c>/knk lootbox area create</c> does. <paramref name="replaceRegionId"/> is as for a domain (KNG-103). A plugin
+        /// without #34 ignores <c>fullHeight</c> and only renames.
+        /// </summary>
+        Task<bool> RenameLootboxAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId);
+
+        /// <summary>
         /// Check whether a location (x,z) lies inside the specified region.
         /// </summary>
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
@@ -281,7 +290,12 @@ namespace knkwebapi_v2.Services
             return RenameAsync(oldRegionId, newRegionId, domainType, subRegionOf, world, replaceRegionId, subRegionOf);
         }
 
-        private async Task<bool> RenameAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId, string? subRegionOf)
+        public Task<bool> RenameLootboxAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId)
+        {
+            return RenameAsync(oldRegionId, newRegionId, null, null, world, replaceRegionId, null, fullHeight: true);
+        }
+
+        private async Task<bool> RenameAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId, string? subRegionOf, bool fullHeight = false)
         {
             Console.WriteLine("[VALIDATION_TRACE_BACKEND]     RegionService.RenameRegionAsync started");
             Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       oldRegionId: {oldRegionId}");
@@ -326,6 +340,10 @@ namespace knkwebapi_v2.Services
                     if (!string.IsNullOrWhiteSpace(subRegionOf))
                     {
                         url += $"&subRegionOf={Uri.EscapeDataString(subRegionOf)}";
+                    }
+                    if (fullHeight)
+                    {
+                        url += "&fullHeight=true";
                     }
                     Console.WriteLine($"[VALIDATION_TRACE_BACKEND]       POST {url}");
                     var response = await client.PostAsync(url, new StringContent(""));

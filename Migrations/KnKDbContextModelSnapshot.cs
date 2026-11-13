@@ -6439,6 +6439,47 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("teleport_fee_voids", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.TempRegionRelease", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<string>("RegionId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("ServerId")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("World")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("WorldTaskId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestedAt");
+
+                    b.HasIndex("WorldTaskId");
+
+                    b.ToTable("temp_region_releases", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.TitleBracket", b =>
                 {
                     b.Property<int>("Id")

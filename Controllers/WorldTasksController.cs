@@ -228,6 +228,37 @@ namespace KnKWebAPI.Controllers
             return Ok(await _service.ListOpenForServerAsync(serverId));
         }
 
+        /// <summary>
+        /// PandiO/knk-workspace#269: the temp regions (<c>tempregion_worldtask_&lt;id&gt;</c>) this game server may remove now:
+        /// their draft was deleted, their task closed without a result or its session was swept, and nothing the API knows
+        /// of uses them. Releases of another server are left out; ones with no server are listed to every server.
+        /// </summary>
+        [HttpGet("temp-region-releases")]
+        [RequirePluginService]
+        public async Task<IActionResult> ListTempRegionReleases([FromServices] ITempRegionReleaseService releases,
+            [FromQuery] string? serverId = null, [FromQuery] int max = 50)
+        {
+            return Ok(await releases.ListDueAsync(serverId, max, HttpContext.RequestAborted));
+        }
+
+        /// <summary>#269: the game server removed the region, found none, or kept it; the release is deleted (404: gone already).</summary>
+        [HttpPost("temp-region-releases/{id:int}/settle")]
+        [RequirePluginService]
+        public async Task<IActionResult> SettleTempRegionRelease(int id, [FromBody] TempRegionReleaseSettleDto? dto,
+            [FromServices] ITempRegionReleaseService releases)
+        {
+            try
+            {
+                return await releases.SettleAsync(id, dto ?? new TempRegionReleaseSettleDto(), HttpContext.RequestAborted)
+                    ? NoContent()
+                    : NotFound(new { error = $"Temp region release {id} does not exist (settled already)." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         /// <summary>#180: the open tasks of a workflow session (web reattach after a reload).</summary>
         [HttpGet("session/{sessionId:int}/open")]
         [RequireServiceOrAnyAreaNode(ReadCategory.OwnRecords)]

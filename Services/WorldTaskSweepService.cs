@@ -20,6 +20,8 @@ namespace knkwebapi_v2.Services
     /// <item>Workflow sessions no draft points at and with no activity for <c>SessionRetentionDays</c> → removed with their
     /// tasks. Kept: sessions with a Completed task (its output can still be read: <c>DomainWorldResolver</c> finds a
     /// region's world through <c>tempregion_worldtask_&lt;id&gt;</c>) and catalogue-scan sessions (the scan row points at its task).</item>
+    /// <item>#269: an expired region task a game server held, and the region tasks of a removed session, release their
+    /// <c>tempregion_worldtask_&lt;id&gt;</c> regions (<see cref="TempRegionReleases"/>) in the same save.</item>
     /// <item>#181: an offer (Offered) with no answer after <c>OfferTimeoutSeconds</c> (2 min) → TimedOut (the web app shows the
     /// task code; the game server drops the Accept/Decline line).</item>
     /// </list>
@@ -106,7 +108,9 @@ namespace knkwebapi_v2.Services
                 task.LeaseUntil = null;
                 task.UpdatedAt = now;
                 var offeredTo = task.OfferState == WorldTaskOfferStates.Offered ? NormalizeUuid(task.TargetUser?.Uuid) : null;
-                if (!await TrySaveAsync(task, ct)) continue;
+                // #269: a region task a game server held (and lost, e.g. a crash after drawing) releases its temp region.
+                var release = await TempRegionReleases.AddIfNewAsync(_db, task, TempRegionReleaseReasons.TaskExpired, now, ct);
+                if (!await TrySaveAsync(task, ct, release)) continue;
                 count++;
                 _realtime.Changed(task);
                 if (offeredTo != null)
@@ -172,6 +176,12 @@ namespace knkwebapi_v2.Services
             var count = 0;
             foreach (var session in sessions)
             {
+                // #269: the session's region tasks (none Completed) release their temp regions in the same save; the
+                // release rows outlive the tasks.
+                foreach (var task in session.WorldTasks.OrderBy(t => t.Id))
+                {
+                    await TempRegionReleases.AddIfNewAsync(_db, task, TempRegionReleaseReasons.SessionRemoved, now, ct);
+                }
                 _db.WorkflowSessions.Remove(session);
                 try
                 {
@@ -187,7 +197,7 @@ namespace knkwebapi_v2.Services
             return count;
         }
 
-        private async Task<bool> TrySaveAsync(WorldTask task, CancellationToken ct)
+        private async Task<bool> TrySaveAsync(WorldTask task, CancellationToken ct, TempRegionRelease? release = null)
         {
             try
             {
@@ -198,6 +208,10 @@ namespace knkwebapi_v2.Services
             {
                 // A claim, heartbeat or completion won; the next pass sees the new state.
                 _db.Entry(task).State = EntityState.Detached;
+                if (release != null)
+                {
+                    _db.Entry(release).State = EntityState.Detached;
+                }
                 return false;
             }
         }
