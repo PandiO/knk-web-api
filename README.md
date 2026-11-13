@@ -13,6 +13,7 @@ user-secrets from the repo root (the full list, including the plugin key and SMT
 dotnet user-secrets set "ConnectionStrings:MySqlDbConnection" "Server=localhost;Database=knightsandkings_dev_v2;User=<user>;Password=<password>;Allow User Variables=True"
 dotnet user-secrets set "Security:Jwt:Secret" "<output of: openssl rand -base64 48>"
 
+dotnet tool install --global dotnet-ef --version 9.0.10   # once; matches Microsoft.EntityFrameworkCore.Design
 dotnet restore
 dotnet ef database update     # apply the migrations
 dotnet run                    # http://localhost:5294, Swagger at /swagger in Development
