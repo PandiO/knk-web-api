@@ -41,6 +41,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("ItemBlueprint")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ItemBlueprintCreateDto dto)
         {
@@ -56,6 +57,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("ItemBlueprint")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] ItemBlueprintUpdateDto dto)
         {

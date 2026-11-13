@@ -165,7 +165,7 @@ namespace knkwebapi_v2.Services
                     UnlinkReason = !nullable
                         ? $"A {ownerLabel} always has a {target.ClrType.Name}: change it on the Edit page."
                         : supported ? IconRequiredReason : EditPageReason,
-                    Nodes = new[] { owner.WriteNode },
+                    Nodes = owner.ChangeNodes,
                 };
             }
 
@@ -184,15 +184,15 @@ namespace knkwebapi_v2.Services
                         LinkRowClr = target.ClrType,
                         CanLink = supported && allowed.Link, CanUnlink = supported && allowed.Unlink,
                         LinkReason = EditPageReason, UnlinkReason = EditPageReason,
-                        Nodes = new[] { owner.WriteNode },
+                        Nodes = owner.ChangeNodes,
                     };
                 }
 
                 var nullable = fkProperty.IsNullable;
                 var related = DashboardAccess.Find(target.ClrType.Name);
                 var relatedLabel = target.ClrType.Name;
-                var nodes = new List<string> { owner.WriteNode };
-                if (related != null && !nodes.Contains(related.WriteNode)) nodes.Add(related.WriteNode);
+                var nodes = new List<string>(owner.ChangeNodes);
+                if (related != null) nodes.AddRange(related.ChangeNodes.Where(node => !nodes.Contains(node)));
                 var childrenSupported = supported && nullable && related != null && related.Area != DashboardArea.Players;
                 return new RelationshipDescriptor
                 {
@@ -217,7 +217,7 @@ namespace knkwebapi_v2.Services
                 OwnerType = owner.TypeName, OwnerClr = entity.ClrType, Property = navigation.Name,
                 RelatedType = target.ClrType.Name, RelatedClr = target.ClrType, IsCollection = navigation.IsCollection,
                 Storage = RelationshipStorage.Other, LinkReason = EditPageReason, UnlinkReason = EditPageReason,
-                Nodes = new[] { owner.WriteNode },
+                Nodes = owner.ChangeNodes,
             };
         }
 
@@ -231,7 +231,7 @@ namespace knkwebapi_v2.Services
                 Storage = RelationshipStorage.Many,
                 CanLink = supported && allowed.Link, CanUnlink = supported && allowed.Unlink,
                 LinkReason = EditPageReason, UnlinkReason = EditPageReason,
-                Nodes = new[] { owner.WriteNode },
+                Nodes = owner.ChangeNodes,
             };
         }
 

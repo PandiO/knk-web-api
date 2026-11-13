@@ -40,6 +40,7 @@ namespace knkwebapi_v2.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("DomainSubRegion")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] DomainSubRegionDto dto)
         {
@@ -59,6 +60,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireDashboardChange("DomainSubRegion")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] DomainSubRegionDto dto)
         {

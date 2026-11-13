@@ -41,6 +41,7 @@ public class LocationsController : ControllerBase
         return Ok(item);
     }
 
+    [RequireDashboardChange("Location")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] LocationDto locationDto)
     {
@@ -56,6 +57,7 @@ public class LocationsController : ControllerBase
         }
     }
 
+    [RequireDashboardChange("Location")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] LocationDto locationDto)
     {

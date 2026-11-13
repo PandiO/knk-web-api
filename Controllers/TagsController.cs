@@ -38,6 +38,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("Tag")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] TagCreateDto dto)
         {
@@ -53,6 +54,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("Tag")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] TagUpdateDto dto)
         {

@@ -38,6 +38,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("Grade")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] GradeCreateDto dto)
         {
@@ -53,6 +54,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("Grade")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] GradeUpdateDto dto)
         {

@@ -216,8 +216,8 @@ public class RequireServiceOrPermissionAttributeTests
         R(typeof(UsersController), nameof(UsersController.UpdateGatePassThroughMethod), null),
         R(typeof(UsersController), nameof(UsersController.RecordTeleportAudit), null),
         // KitsController
-        R(typeof(KitsController), nameof(KitsController.Create), "knk.kit.manage"),
-        R(typeof(KitsController), nameof(KitsController.Update), "knk.kit.manage"),
+        R(typeof(KitsController), nameof(KitsController.Create), "knk.kit.manage + knk.admin.content"), // #374
+        R(typeof(KitsController), nameof(KitsController.Update), "knk.kit.manage + knk.admin.content"), // #374
         R(typeof(KitsController), nameof(KitsController.Delete), "knk.kit.manage + knk.admin.delete"),
         R(typeof(KitsController), nameof(KitsController.Give), "knk.kit.give"),
         R(typeof(KitsController), nameof(KitsController.Claim), null),
@@ -283,9 +283,21 @@ public class RequireServiceOrPermissionAttributeTests
         // LV7-8 (developer 2026-11-12): whole form/display configuration deletes need knk.admin.delete too.
         R(typeof(KnKWebAPI.Controllers.FormConfigurationsController), nameof(KnKWebAPI.Controllers.FormConfigurationsController.Delete), "knk.admin.delete"),          // + ForWrites(knk.admin.content)
         R(typeof(DisplayConfigurationsController), nameof(DisplayConfigurationsController.DeleteAsync), "knk.admin.delete"), // + ForWrites(knk.admin.content)
+        // #374 (developer 2026-11-13): create and edit of a dashboard type need its write node AND knk.admin.content
+        // (RequireDashboardChange reads DashboardAccess.ChangeNodes), except the Players types and RoadProfile.
+        R(typeof(KnKWebAPI.Controllers.TownsController), nameof(KnKWebAPI.Controllers.TownsController.Create), "knk.admin.world + knk.admin.content"),
+        R(typeof(KnKWebAPI.Controllers.TownsController), nameof(KnKWebAPI.Controllers.TownsController.Update), "knk.admin.world + knk.admin.content"),
+        R(typeof(KnKWebAPI.Controllers.GateDoorsController), nameof(KnKWebAPI.Controllers.GateDoorsController.Create), "knk.admin.world + knk.admin.content"),
+        R(typeof(LootboxTypesController), nameof(LootboxTypesController.Create), "knk.admin.lootbox.manage + knk.admin.content"),
+        R(typeof(LootboxTypesController), nameof(LootboxTypesController.Update), "knk.admin.lootbox.manage + knk.admin.content"),
+        R(typeof(KnKWebAPI.Controllers.SiegeScenariosController), nameof(KnKWebAPI.Controllers.SiegeScenariosController.CreateTeam), "knk.siege.admin.manage + knk.admin.content"),
+        R(typeof(KnKWebAPI.Controllers.CategoriesController), nameof(KnKWebAPI.Controllers.CategoriesController.Create), "knk.admin.content"),
+        R(typeof(RoadProfilesController), nameof(RoadProfilesController.Create), "knk.admin.road"),
+        R(typeof(RoadProfilesController), nameof(RoadProfilesController.Update), "knk.admin.road"),
     };
 
-    /// <summary>node null = plugin-only (RequirePluginService); "a + b" = the action carries both node rules.</summary>
+    /// <summary>node null = plugin-only (RequirePluginService); "a + b" = the action carries both node rules (a
+    /// RequireDashboardChange counts as its type's change nodes).</summary>
     private static object[] R(Type controller, string action, string? node) => new object[] { controller, action, node! };
 
     [Theory]
@@ -301,6 +313,9 @@ public class RequireServiceOrPermissionAttributeTests
         {
             var gates = method.GetCustomAttributes<RequireServiceOrPermissionAttribute>().Select(a => a.Node)
                 .Concat(method.GetCustomAttributes<RequirePermissionAttribute>().Select(a => (string)a.Arguments![0]))
+                .Concat(method.GetCustomAttributes<RequireDashboardChangeAttribute>()
+                    .SelectMany(a => DashboardAccess.Find(a.TypeName)!.ChangeNodes))
+                .Distinct(StringComparer.Ordinal)
                 .ToList();
             Assert.Equal(node.Split(" + ").OrderBy(n => n, StringComparer.Ordinal), gates.OrderBy(n => n, StringComparer.Ordinal));
         }
