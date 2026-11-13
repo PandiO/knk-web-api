@@ -27,6 +27,10 @@ concurrency:
 
 jobs:
   release:
+    # Only the workflow on the default branch may release: a run started on another branch (whose copy of this file
+    # could differ) is skipped. The `release` environment should also allow only the default branch
+    # (Settings > Environments > release > Deployment branches and tags).
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: release
@@ -45,7 +49,6 @@ jobs:
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SHA must be the full 40-character commit hash"; exit 1; }
           git cat-file -e "$SHA^{commit}" || { echo "::error::Commit $SHA does not exist in this repository"; exit 1; }
           git merge-base --is-ancestor "$SHA" "origin/$DEFAULT_BRANCH" || { echo "::error::Commit $SHA is not on $DEFAULT_BRANCH"; exit 1; }
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then echo "::error::Tag $TAG already exists"; exit 1; fi
 
       - name: Create the tag and the release
         env:
@@ -53,5 +56,9 @@ jobs:
           TAG: ${{ inputs.tag }}
           SHA: ${{ inputs.sha }}
         run: |
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SHA" --title "$TAG" --generate-notes
+          # Create-only: the API refuses (422) when the tag already exists, so an existing or concurrently created
+          # tag fails the run instead of being reused.
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$SHA" >/dev/null \
+            || { echo "::error::Could not create tag $TAG at $SHA (does it already exist?)"; exit 1; }
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" --generate-notes
           echo "Released $TAG at $SHA: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
