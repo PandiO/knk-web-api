@@ -28,6 +28,7 @@ namespace KnKWebAPI.Controllers
             return layer == null ? NotFound() : Ok(layer);
         }
 
+        [RequireDashboardChange("BannerLayer")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] BannerLayerUpsertDto dto)
         {

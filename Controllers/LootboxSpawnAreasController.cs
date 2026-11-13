@@ -39,6 +39,7 @@ namespace knkwebapi_v2.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("LootboxSpawnArea")]
         [HttpPost]
         [RequirePermission(StaffPermissions.ManageLootboxes)]
         public async Task<IActionResult> Create([FromBody] LootboxSpawnAreaDto dto)
@@ -59,6 +60,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireDashboardChange("LootboxSpawnArea")]
         [HttpPut("{id:int}")]
         [RequirePermission(StaffPermissions.ManageLootboxes)]
         public async Task<IActionResult> Update(int id, [FromBody] LootboxSpawnAreaDto dto)

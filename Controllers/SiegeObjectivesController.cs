@@ -26,6 +26,7 @@ namespace KnKWebAPI.Controllers
             return objective == null ? NotFound() : Ok(objective);
         }
 
+        [RequireDashboardChange("SiegeObjective")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeObjectiveUpsertDto dto)

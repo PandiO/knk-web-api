@@ -7,9 +7,10 @@ namespace knkwebapi_v2.Attributes
 {
     /// <summary>
     /// The access rule of <c>api/Relationships/{entityType}/{id}/{property}/…</c> (PandiO/knk-workspace#188, the #280
-    /// model): Select, Unlink and Add are edits, so they need the type's write node (its area node; permission groups
-    /// <c>knk.admin.user.perm</c>) and, when the related row's own column changes (a child moved under this one), the
-    /// related type's write node too: every node in <see cref="RelationshipDescriptor.Nodes"/>. Web users only (the
+    /// model): Select, Unlink and Add are edits, so they need the type's change nodes (its write node and, since #374,
+    /// <c>knk.admin.content</c>: <see cref="DashboardTypeAccess.ChangeNodes"/>) and, when the related row's own column
+    /// changes (a child moved under this one), the related type's change nodes too: every node in
+    /// <see cref="RelationshipDescriptor.Nodes"/>. Web users only (the
     /// game server doesn't edit links). Anonymous → 401, the plugin key alone → 403, an unknown type or relationship →
     /// 404, a missing node → 403 <c>{ code: "NoWriteAccess", entityType, nodes, message }</c>. Never deletes anything,
     /// so <c>knk.admin.delete</c> is not involved.

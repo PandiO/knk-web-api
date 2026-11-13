@@ -35,6 +35,7 @@ public class MinecraftEnchantmentRefsController : ControllerBase
         return Ok(item);
     }
 
+    [RequireDashboardChange("MinecraftEnchantmentRef")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] MinecraftEnchantmentRefCreateDto dto)
     {
@@ -65,6 +66,7 @@ public class MinecraftEnchantmentRefsController : ControllerBase
         }
     }
 
+    [RequireDashboardChange("MinecraftEnchantmentRef")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] MinecraftEnchantmentRefUpdateDto dto)
     {

@@ -128,6 +128,9 @@ public class DashboardAccessTests
         Assert.Equal(new[] { "knk.admin.world", "knk.admin.export" }, meta.ActionNodes["export"]);
         // AM2: the dashboard lists the type for its area node; lookups for pickers and labels.
         Assert.Equal(new[] { "knk.admin.world" }, meta.ActionNodes["view"]);
+        // #374: create and edit also need knk.admin.content.
+        Assert.Equal(new[] { "knk.admin.world", "knk.admin.content" }, meta.ActionNodes["create"]);
+        Assert.Equal(new[] { "knk.admin.world", "knk.admin.content" }, meta.ActionNodes["edit"]);
         Assert.True(meta.LookupSearchable);
         Assert.True(meta.LookupGettable);
     }
@@ -151,5 +154,50 @@ public class DashboardAccessTests
         Assert.False(link.Exportable);
         Assert.False(link.LookupSearchable);
         Assert.False(link.LookupGettable);
+    }
+
+    // #374 (developer 2026-11-13): area staff work with the content available; creating, editing and changing links
+    // of a dashboard type also needs knk.admin.content, except the Players types and RoadProfile.
+    private static readonly string[] ChangesWithoutContent =
+        { "RoadProfile", "User", "PermissionGroup", "PermissionHolder", "PermissionGrant", "UserPermissionGroup" };
+
+    [Fact]
+    public void ChangeNodes_AreTheWriteNodeAndContent_ExceptPlayersAndRoadProfile()
+    {
+        foreach (var entry in DashboardAccess.All)
+        {
+            if (ChangesWithoutContent.Contains(entry.TypeName))
+            {
+                Assert.False(entry.ChangesNeedContent, entry.TypeName);
+                Assert.Equal(new[] { entry.WriteNode }, entry.ChangeNodes);
+            }
+            else if (entry.WriteNode == StaffPermissions.ManageContent)
+            {
+                Assert.True(entry.ChangesNeedContent, entry.TypeName);
+                Assert.Equal(new[] { StaffPermissions.ManageContent }, entry.ChangeNodes);
+            }
+            else
+            {
+                Assert.True(entry.ChangesNeedContent, entry.TypeName);
+                Assert.Equal(new[] { entry.WriteNode, StaffPermissions.ManageContent }, entry.ChangeNodes);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("Town", new[] { "knk.admin.world", "knk.admin.content" })]
+    [InlineData("Kit", new[] { "knk.kit.manage", "knk.admin.content" })]
+    [InlineData("LootboxType", new[] { "knk.admin.lootbox.manage", "knk.admin.content" })]
+    [InlineData("SiegeSpawnpoint", new[] { "knk.siege.admin.manage", "knk.admin.content" })]
+    [InlineData("ItemBlueprint", new[] { "knk.admin.content" })]
+    [InlineData("RoadProfile", new[] { "knk.admin.road" })]
+    [InlineData("User", new[] { "knk.admin.user.manage" })]
+    [InlineData("PermissionGroup", new[] { "knk.admin.user.perm" })]
+    public void Metadata_CreateAndEdit_AreTheChangeNodes(string typeName, string[] nodes)
+    {
+        var meta = new EntityMetadataDto { EntityName = typeName, DisplayName = typeName };
+        MetadataService.ApplyDashboardAccess(meta);
+        Assert.Equal(nodes, meta.ActionNodes["create"]);
+        Assert.Equal(nodes, meta.ActionNodes["edit"]);
     }
 }

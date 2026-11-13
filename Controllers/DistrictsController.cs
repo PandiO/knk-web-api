@@ -42,6 +42,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("District")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] DistrictDto districtDto)
         {
@@ -57,6 +58,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("District")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] DistrictDto districtDto)
         {

@@ -161,8 +161,10 @@ namespace knkwebapi_v2.Services
                 // AM2: the dashboard lists the type for its area node; other pages may read it in full with any one of
                 // readNodes, and anyone with an area node may look it up (api/Lookup) when lookupSearchable/lookupGettable.
                 ["view"] = new() { access.AreaNode },
-                ["create"] = new() { access.WriteNode },
-                ["edit"] = new() { access.WriteNode },
+                // #374: create and edit need the write node AND knk.admin.content (except the Players types and
+                // RoadProfile), the same list RequireDashboardChange enforces.
+                ["create"] = access.ChangeNodes.ToList(),
+                ["edit"] = access.ChangeNodes.ToList(),
             };
             if (access.Deletable)
             {

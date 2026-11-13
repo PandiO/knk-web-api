@@ -40,6 +40,7 @@ namespace KnKWebAPI.Controllers
             return item == null ? NotFound() : Ok(item);
         }
 
+        [RequireDashboardChange("Clan")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ClanUpsertDto dto)
         {
@@ -59,6 +60,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("Clan")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] ClanUpsertDto dto)
         {

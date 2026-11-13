@@ -26,6 +26,7 @@ namespace KnKWebAPI.Controllers
             return spawnpoint == null ? NotFound() : Ok(spawnpoint);
         }
 
+        [RequireDashboardChange("SiegeSpawnpoint")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeSpawnpointUpsertDto dto)

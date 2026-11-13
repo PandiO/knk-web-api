@@ -27,9 +27,14 @@ namespace knkwebapi_v2.Attributes
     {
         internal DashboardTypeAccess(string typeName, DashboardArea area, string areaNode, string writeNode,
             IReadOnlyList<string> readNodes, Func<IServiceProvider, int, Task>? delete, bool bulkDeletable,
-            Func<IServiceProvider, PagedQueryDto, Task<DashboardPage>>? search, DashboardLookup? lookup = null)
+            Func<IServiceProvider, PagedQueryDto, Task<DashboardPage>>? search, DashboardLookup? lookup = null,
+            bool changesNeedContent = true)
         {
             Lookup = lookup;
+            ChangesNeedContent = changesNeedContent;
+            ChangeNodes = changesNeedContent && writeNode != StaffPermissions.ManageContent
+                ? new[] { writeNode, StaffPermissions.ManageContent }
+                : new[] { writeNode };
             TypeName = typeName;
             Area = area;
             AreaNode = areaNode;
@@ -50,6 +55,22 @@ namespace knkwebapi_v2.Attributes
 
         /// <summary>The node create and edit need: the area node, except permission groups (<c>knk.admin.user.perm</c>).</summary>
         public string WriteNode { get; }
+
+        /// <summary>
+        /// Create, edit and the detail page's Select / Unlink / Add also need <see cref="StaffPermissions.ManageContent"/>
+        /// (PandiO/knk-workspace#374, developer 2026-11-13: "Area staff should not be able to change forms at this
+        /// point. They only work with the content available."). False for the Players types (the player profile and
+        /// permission group writes keep their own nodes) and RoadProfile (the roads page edits it, no form).
+        /// </summary>
+        public bool ChangesNeedContent { get; }
+
+        /// <summary>
+        /// Every node a web user needs to create or edit the type, or to change one of its links (all-of):
+        /// <see cref="WriteNode"/>, plus <c>knk.admin.content</c> when <see cref="ChangesNeedContent"/>. Enforced by
+        /// <see cref="RequireDashboardChangeAttribute"/> on each type's create and update actions and by the
+        /// relationship endpoints; the metadata's <c>actionNodes.create</c>/<c>edit</c> report it. The plugin key passes.
+        /// </summary>
+        public IReadOnlyList<string> ChangeNodes { get; }
 
         /// <summary>Who may read the type in full: the area node first, then the cross-area page nodes (§ 4.6.2; enforced from AM2).</summary>
         public IReadOnlyList<string> ReadNodes { get; }
@@ -115,6 +136,8 @@ namespace knkwebapi_v2.Attributes
     /// metadata endpoint (<c>area</c>, <c>accessNode</c>, … on <see cref="EntityMetadataDto"/>) and
     /// <c>RealtimeWebChangeMap.NodeFor</c> (live updates follow the area).
     /// <list type="bullet">
+    ///   <item>Create, edit, link changes = <see cref="DashboardTypeAccess.ChangeNodes"/>: the write node AND
+    ///     <see cref="StaffPermissions.ManageContent"/>, except the Players types and RoadProfile (#374).</item>
     ///   <item>Delete one = the type's area (or write) node AND <see cref="StaffPermissions.Delete"/> (attributes on each
     ///     <c>DELETE {id}</c>, pinned by DeleteAccessRulesTests).</item>
     ///   <item>Bulk delete = area node AND <see cref="StaffPermissions.Delete"/> AND <see cref="StaffPermissions.DeleteBulk"/>.</item>
@@ -240,20 +263,23 @@ namespace knkwebapi_v2.Attributes
                 Del<IRoadNetworkService>(async (s, id) =>
                 {
                     if (!await s.DeleteProfileAsync(id)) throw new KeyNotFoundException($"Road profile {id} not found.");
-                })),
+                }), changesNeedContent: false),
 
             // Players: one delete at a time only (decision 6); group writes need knk.admin.user.perm.
             Type("User", DashboardArea.Players, StaffPermissions.ManageUsers,
-                Del<IUserService>((s, id) => s.DeleteAsync(id)), Lists<IUserService, UserListDto>((s, q) => s.SearchAsync(q)), bulk: false),
+                Del<IUserService>((s, id) => s.DeleteAsync(id)), Lists<IUserService, UserListDto>((s, q) => s.SearchAsync(q)), bulk: false,
+                changesNeedContent: false),
             Type("PermissionGroup", DashboardArea.Players, StaffPermissions.ManageUsers,
                 Del<IPermissionGroupService>((s, id) => s.DeleteAsync(id)),
                 Lists<IPermissionGroupService, PermissionGroupListDto>((s, q) => s.SearchAsync(q)), bulk: false,
-                writeNode: StaffPermissions.UserPermissions),
+                writeNode: StaffPermissions.UserPermissions, changesNeedContent: false),
             Type("PermissionHolder", DashboardArea.Players, StaffPermissions.ManageUsers, null,
                 Lists<IPermissionHolderService, PermissionHolderListDto>((s, q) => s.SearchAsync(q)), bulk: false,
-                writeNode: StaffPermissions.UserPermissions),
-            ViewOnly("PermissionGrant", DashboardArea.Players, StaffPermissions.ManageUsers, StaffPermissions.UserPermissions),
-            ViewOnly("UserPermissionGroup", DashboardArea.Players, StaffPermissions.ManageUsers, StaffPermissions.UserGroups),
+                writeNode: StaffPermissions.UserPermissions, changesNeedContent: false),
+            ViewOnly("PermissionGrant", DashboardArea.Players, StaffPermissions.ManageUsers, StaffPermissions.UserPermissions,
+                changesNeedContent: false),
+            ViewOnly("UserPermissionGroup", DashboardArea.Players, StaffPermissions.ManageUsers, StaffPermissions.UserGroups,
+                changesNeedContent: false),
         };
 
         private static readonly IReadOnlyDictionary<string, DashboardTypeAccess> ByName =
@@ -274,12 +300,14 @@ namespace knkwebapi_v2.Attributes
 
         private static DashboardTypeAccess Type(string name, DashboardArea area, string areaNode,
             Func<IServiceProvider, int, Task>? delete, Func<IServiceProvider, PagedQueryDto, Task<DashboardPage>>? search = null,
-            bool bulk = true, string? writeNode = null) =>
+            bool bulk = true, string? writeNode = null, bool changesNeedContent = true) =>
             new(name, area, areaNode, writeNode ?? areaNode, ReadNodesOf(name, areaNode), delete, bulk, search,
-                DashboardLookups.For(name));
+                DashboardLookups.For(name), changesNeedContent);
 
-        private static DashboardTypeAccess ViewOnly(string name, DashboardArea area, string areaNode, string? writeNode = null) =>
-            new(name, area, areaNode, writeNode ?? areaNode, ReadNodesOf(name, areaNode), null, false, null);
+        private static DashboardTypeAccess ViewOnly(string name, DashboardArea area, string areaNode, string? writeNode = null,
+            bool changesNeedContent = true) =>
+            new(name, area, areaNode, writeNode ?? areaNode, ReadNodesOf(name, areaNode), null, false, null, null,
+                changesNeedContent);
 
         private static IReadOnlyList<string> ReadNodesOf(string name, string areaNode) =>
             new[] { areaNode }.Concat(ExtraReadNodes.GetValueOrDefault(name, Array.Empty<string>())).ToList();

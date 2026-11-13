@@ -38,6 +38,7 @@ namespace knkwebapi_v2.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("LootboxSpecialEntry")]
         [HttpPost]
         [RequirePermission(StaffPermissions.ManageLootboxes)]
         public async Task<IActionResult> Create([FromBody] LootboxSpecialEntryDto dto)
@@ -58,6 +59,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireDashboardChange("LootboxSpecialEntry")]
         [HttpPut("{id:int}")]
         [RequirePermission(StaffPermissions.ManageLootboxes)]
         public async Task<IActionResult> Update(int id, [FromBody] LootboxSpecialEntryDto dto)

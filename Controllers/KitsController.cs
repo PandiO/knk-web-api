@@ -36,6 +36,7 @@ namespace knkwebapi_v2.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("Kit")]
         [RequireServiceOrPermission(StaffPermissions.ManageKits)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] KitDto dto)
@@ -52,6 +53,7 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        [RequireDashboardChange("Kit")]
         [RequireServiceOrPermission(StaffPermissions.ManageKits)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] KitDto dto)

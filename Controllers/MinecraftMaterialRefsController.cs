@@ -39,6 +39,7 @@ namespace KnKWebAPI.Controllers
             return Ok(item);
         }
 
+        [RequireDashboardChange("MinecraftMaterialRef")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] MinecraftMaterialRefCreateDto dto)
         {
@@ -74,6 +75,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("MinecraftMaterialRef")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] MinecraftMaterialRefUpdateDto dto)
         {

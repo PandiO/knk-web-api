@@ -47,13 +47,19 @@ public class SiegeConfigurationAuthTests
 
     private async Task AssertServiceOrNodeAsync(MethodInfo method, string node)
     {
-        var filters = method.GetCustomAttributes<TypeFilterAttribute>().ToList();
+        var change = method.GetCustomAttribute<RequireDashboardChangeAttribute>();
+        var filters = method.GetCustomAttributes<TypeFilterAttribute>().Where(f => f is not RequireDashboardChangeAttribute).ToList();
         var filter = Assert.Single(filters, f => Equals(f.Arguments?.FirstOrDefault(), node));
         Assert.Equal(typeof(RequireServiceOrPermissionFilter), filter.ImplementationType);
         Assert.Equal(node, Assert.Single(filter.Arguments!));
         // A delete also needs knk.admin.delete (dashboard access model, PandiO/knk-workspace#280); nothing else.
         Assert.All(filters.Where(f => f != filter), f => Assert.Equal(StaffPermissions.Delete, Assert.Single(f.Arguments!)));
         Assert.Equal(method.GetCustomAttributes<HttpDeleteAttribute>().Any() ? 1 : 0, filters.Count - 1);
+        // A create or edit of a dashboard type also needs knk.admin.content (#374); the plugin key still passes it.
+        if (change != null)
+        {
+            Assert.Equal(new[] { node, StaffPermissions.ManageContent }, DashboardAccess.Find(change.TypeName)!.ChangeNodes);
+        }
 
         async Task<IActionResult?> Run(HttpContext http)
         {

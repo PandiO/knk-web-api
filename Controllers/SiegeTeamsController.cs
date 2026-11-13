@@ -27,6 +27,7 @@ namespace KnKWebAPI.Controllers
             return team == null ? NotFound() : Ok(team);
         }
 
+        [RequireDashboardChange("SiegeTeam")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] SiegeTeamUpsertDto dto)
@@ -90,6 +91,7 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        [RequireDashboardChange("SiegeSpawnpoint")]
         [RequireServiceOrPermission(StaffPermissions.SiegeManage)]
         [HttpPost("{id:int}/spawnpoints")]
         public async Task<IActionResult> CreateSpawnpoint(int id, [FromBody] SiegeSpawnpointUpsertDto dto)
