@@ -1,7 +1,9 @@
 # Creates a release tag and a GitHub release on the default branch.
 # Started by hand or by an agent session (GitHub "run workflow"), because cloud agent sessions
 # cannot push tags themselves (PandiO/knk-workspace#327). The tag ruleset on v* still blocks
-# deleting or moving a tag once it exists.
+# deleting or moving a tag once it exists. The job runs in the `release` environment, which requires the
+# developer's approval (Settings > Environments > release > Required reviewers), so a release always waits
+# for the developer's click (developer decision 2026-11-13).
 name: Release
 
 on:
@@ -27,6 +29,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: release
     steps:
       - uses: actions/checkout@v4
         with:
