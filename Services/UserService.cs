@@ -1310,7 +1310,7 @@ namespace knkwebapi_v2.Services
                 });
                 _logger.LogInformation("Web account {UserId} linked to Minecraft UUID {Uuid} (case A)", webAppUser.Id, uuid);
                 var linked = await _repo.GetByIdAsync(webAppUser.Id);
-                NotifyLinked(linked!);
+                NotifyLinked(linked!, viaClaim);
                 return new LinkMinecraftAccountResult(await MapToUserDtoAsync(linked!), Merged: false);
             }
 
@@ -1319,7 +1319,7 @@ namespace knkwebapi_v2.Services
             await FoldWebAccountIntoMinecraftAccountAsync(minecraftUser.Id, webAppUser.Id);
             var survivor = await _repo.GetByIdAsync(minecraftUser.Id);
             await RecordLinkedAsync(survivor!, webAppUser.Id, "B", viaClaim);
-            NotifyLinked(survivor!);
+            NotifyLinked(survivor!, viaClaim);
             return new LinkMinecraftAccountResult(await MapToUserDtoAsync(survivor!), Merged: true);
         }
 
@@ -1347,11 +1347,15 @@ namespace knkwebapi_v2.Services
 
         /// <summary>The in-game notice of a new link (AccountLinked), with the web login's address masked.
         /// Queued after the change is saved; the plugin shows it on the player's next join.</summary>
-        private void NotifyLinked(User account)
+        private void NotifyLinked(User account, bool viaClaim)
         {
             _realtime.UserChanged(account, new[] { UserChangedFields.Link }, account.Id);
             _notificationQueue?.EnqueueAccountLinked(account.Id, account.Uuid, account.Username,
-                new AccountLinkedNotificationDto { MaskedEmail = EmailMask.Mask(account.Email) });
+                new AccountLinkedNotificationDto
+                {
+                    MaskedEmail = EmailMask.Mask(account.Email),
+                    Via = viaClaim ? AccountLinkedNotificationDto.ViaClaim : AccountLinkedNotificationDto.ViaLink
+                });
         }
 
         /// <inheritdoc/>
