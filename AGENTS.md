@@ -6,7 +6,7 @@ and `knk-workspace/docs/ACTIVE_SESSIONS.md` in the local workspace or
 cross-repo coordination for all agents. Refresh the tracker, check overlapping
 claims, publish a feature-scoped claim, and use the feature's standing branch
 from this repo's `next` branch once the global branch model applies (until
-then from its current default branch, `master`). If access
+then from its current default branch, `main`). If access
 is unavailable, disclose it and avoid conflicting remote edits. Recheck old
 handoffs against current code and plans. See [CLAUDE.md](CLAUDE.md) for
 repo-specific commands; its `@...` import is Claude Code syntax and may

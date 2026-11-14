@@ -7,7 +7,7 @@ list. §6 lists what the implementation settled that this spec left open. It is 
 same importer rules, same seed workflow. Where the two differ, the reason is a difference in the display model or
 renderer, and it is called out.
 
-Sources this is based on (API = knk-web-api at origin/master, WEB = knk-web-app/src):
+Sources this is based on (API = knk-web-api at origin/main, WEB = knk-web-app/src):
 `API/Models/DisplayConfiguration.cs`, `DisplaySection.cs`, `DisplayField.cs`, `API/Dtos/DisplayDtos.cs`,
 `API/Services/DisplayConfigurationService.cs`, `DisplaySectionService.cs`, `API/Repositories/DisplayConfigurationRepository.cs`,
 `API/Properties/KnKDbContext.cs` (display block), `API/Services/MetadataService.cs`;
