@@ -63,7 +63,7 @@ namespace knkwebapi_v2.Repositories
                 }
             }
 
-            queryable = query.SortDescending ? queryable.OrderByDescending(g => g.Node) : queryable.OrderBy(g => g.Node);
+            queryable = ApplySorting(queryable, query.SortBy, query.SortDescending);
 
             var totalCount = await queryable.CountAsync();
 
@@ -80,6 +80,21 @@ namespace knkwebapi_v2.Repositories
                 PageNumber = query.PageNumber,
                 PageSize = query.PageSize
             };
+        }
+
+        // The dashboard table sorts by the column it shows (PandiO/knk-workspace#408); node is the default and the
+        // tie-breaker, then id, so paging stays stable when many rows share a value.
+        private static IQueryable<PermissionGrant> ApplySorting(IQueryable<PermissionGrant> queryable, string? sortBy, bool descending)
+        {
+            IOrderedQueryable<PermissionGrant> ordered = sortBy?.ToLowerInvariant() switch
+            {
+                "id" => descending ? queryable.OrderByDescending(g => g.Id) : queryable.OrderBy(g => g.Id),
+                "holderid" or "holder" => descending ? queryable.OrderByDescending(g => g.HolderId) : queryable.OrderBy(g => g.HolderId),
+                "value" => descending ? queryable.OrderByDescending(g => g.Value) : queryable.OrderBy(g => g.Value),
+                "expiresat" => descending ? queryable.OrderByDescending(g => g.ExpiresAt) : queryable.OrderBy(g => g.ExpiresAt),
+                _ => descending ? queryable.OrderByDescending(g => g.Node) : queryable.OrderBy(g => g.Node),
+            };
+            return ordered.ThenBy(g => g.Node).ThenBy(g => g.Id);
         }
 
         public async Task<List<PermissionGrant>> GetActiveGrantsForHolderAsync(int holderId, DateTime asOf)
