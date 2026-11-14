@@ -16,7 +16,7 @@ namespace knkwebapi_v2.Dtos
         public DateTime ExpiresAt { get; set; }
 
         [JsonPropertyName("formattedCode")]
-        public string FormattedCode { get; set; } = null!;  // ABC-12XYZ format for display
+        public string FormattedCode { get; set; } = null!;  // XXXX-XXXX for display (LinkCodeService.FormatClaimCode, PandiO/knk-workspace#484)
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Services;
 
 namespace knkwebapi_v2.Mapping
 {
@@ -200,18 +201,7 @@ namespace knkwebapi_v2.Mapping
             CreateMap<LinkCode, LinkCodeResponseDto>()
                 .ForMember(dest => dest.Code, src => src.MapFrom(src => src.Code))
                 .ForMember(dest => dest.ExpiresAt, src => src.MapFrom(src => src.ExpiresAt))
-                .ForMember(dest => dest.FormattedCode, src => src.MapFrom(src => FormatLinkCode(src.Code)));
-        }
-
-        /// <summary>
-        /// Formats link code for display: ABC12XYZ → ABC-12XYZ
-        /// </summary>
-        private static string FormatLinkCode(string code)
-        {
-            if (string.IsNullOrEmpty(code) || code.Length != 8)
-                return code;
-            
-            return $"{code.Substring(0, 3)}-{code.Substring(3)}";
+                .ForMember(dest => dest.FormattedCode, src => src.MapFrom(src => LinkCodeService.FormatClaimCode(src.Code)));
         }
     }
 }
