@@ -54,6 +54,56 @@ public class RegistrationAndLoginTests : IDisposable
     }
 
     [Fact]
+    public async Task Register_WithAGameCode_QueuesTheInGameConfirmation()
+    {
+        // PandiO/knk-workspace#485: once the website account is created and linked, the player hears it in game.
+        var notifications = new InMemoryPlayerNotificationQueue();
+        var player = await _h.AddUserAsync(email: null, password: null);
+        await _h.AddLinkCodeAsync(player.Id);
+
+        var outcome = await _h.CreateAuthService(notifications: notifications).RegisterAsync(Request("ABCD-2345"));
+
+        Assert.True(outcome.Ok, outcome.Message);
+        var notice = Assert.Single(notifications.GetPending());
+        Assert.Equal(PlayerNotificationTypes.AccountLinked, notice.Type);
+        Assert.Equal(player.Id, notice.UserId);
+        Assert.Equal(player.Uuid, notice.Uuid);
+        Assert.Equal("Steve", notice.Username);
+        Assert.Equal("st***@example.com", notice.AccountLinked!.MaskedEmail);
+        Assert.Equal(AccountLinkedNotificationDto.ViaRegister, notice.AccountLinked.Via);
+    }
+
+    [Theory]
+    [InlineData("ZZZZ9999", false)] // unknown code
+    [InlineData("ABCD2345", true)]  // expired code
+    public async Task Register_WithACodeThatFails_QueuesNothing(string code, bool expired)
+    {
+        var notifications = new InMemoryPlayerNotificationQueue();
+        var player = await _h.AddUserAsync(email: null, password: null);
+        await _h.AddLinkCodeAsync(player.Id, expiresAt: expired ? DateTime.UtcNow.AddMinutes(-1) : null);
+
+        var outcome = await _h.CreateAuthService(notifications: notifications).RegisterAsync(Request(code));
+
+        Assert.False(outcome.Ok);
+        Assert.Empty(notifications.GetPending());
+    }
+
+    [Fact]
+    public async Task Register_ThatFailsAfterTheCodeCheck_QueuesNothing()
+    {
+        // A wrong password confirmation fails before the code is spent: no confirmation in game.
+        var notifications = new InMemoryPlayerNotificationQueue();
+        var player = await _h.AddUserAsync(email: null, password: null);
+        await _h.AddLinkCodeAsync(player.Id);
+
+        var outcome = await _h.CreateAuthService(notifications: notifications)
+            .RegisterAsync(Request("ABCD2345", confirmation: "Other-Horse-9"));
+
+        Assert.False(outcome.Ok);
+        Assert.Empty(notifications.GetPending());
+    }
+
+    [Fact]
     public async Task Register_WithAnUnknownCode_IsInvalidLinkCode()
     {
         await _h.AddUserAsync(email: null, password: null);

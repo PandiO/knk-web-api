@@ -120,10 +120,11 @@ namespace knkwebapi_v2.Dtos
 
         /// <summary>
         /// This player's Minecraft account was just linked to a web account (KNG-214, invitations
-        /// DESIGN § 5.5): with a claim code from the admission gate, or a /account link code. The
-        /// plugin tells the player on their next join (within the queue's 24 h window) which web
-        /// account it is, masked, so a code given away under social engineering is noticed.
-        /// Payload in AccountLinked.
+        /// DESIGN § 5.5): with a claim code from the admission gate, or a /account link code, entered
+        /// on the Account page or at registration (game-first registration, PandiO/knk-workspace#485).
+        /// The plugin tells the player right away when online, else on their next join (within the
+        /// queue's 24 h window), which web account it is, masked, so a code given away under social
+        /// engineering is noticed. Payload in AccountLinked (with how the link came about in Via).
         /// </summary>
         public const string AccountLinked = "AccountLinked";
 
@@ -143,6 +144,20 @@ namespace knkwebapi_v2.Dtos
         /// <summary>The web account's email, masked (EmailMask: "jo***@example.com").</summary>
         [JsonPropertyName("maskedEmail")]
         public string MaskedEmail { get; set; } = "***";
+
+        /// <summary>
+        /// How the link came about (PandiO/knk-workspace#485): <see cref="ViaRegister"/> when the player
+        /// registered on the website with the link code from the game (game-first registration: the
+        /// Minecraft account got its web login), <see cref="ViaLink"/> for a link code entered on the
+        /// Account page, <see cref="ViaClaim"/> for a claim code from the admission gate. The plugin picks
+        /// its wording by it; an older plugin ignores it.
+        /// </summary>
+        [JsonPropertyName("via")]
+        public string? Via { get; set; }
+
+        public const string ViaRegister = "register";
+        public const string ViaLink = "link";
+        public const string ViaClaim = "claim";
     }
 
     /// <summary>Payload of a LocationOrphanDigest notification.</summary>

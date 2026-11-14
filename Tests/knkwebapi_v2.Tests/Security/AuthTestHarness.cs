@@ -74,7 +74,8 @@ internal sealed class AuthTestHarness : IDisposable
 
     public AuthService CreateAuthService(knkwebapi_v2.Services.Invitations.IInvitationService? invitations = null,
         knkwebapi_v2.Services.IUserService? users = null,
-        knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null) => new(
+        knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null,
+        knkwebapi_v2.Services.Interfaces.IPlayerNotificationQueue? notifications = null) => new(
         Users,
         Tokens,
         Passwords,
@@ -91,7 +92,8 @@ internal sealed class AuthTestHarness : IDisposable
         null,
         invitations,
         users,
-        accessSync);
+        accessSync,
+        notifications);
 
     /// <summary>An active /account link code for <paramref name="userId"/> (8 chars, 20 min).</summary>
     public async Task<string> AddLinkCodeAsync(int? userId, string code = "ABCD2345", DateTime? expiresAt = null)

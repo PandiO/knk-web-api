@@ -132,6 +132,7 @@ public class ClaimLinkingTests : IDisposable
         Assert.Equal(Uuid, notice.Uuid);
         Assert.Equal("Steve", notice.Username);
         Assert.Equal("st***@example.com", notice.AccountLinked!.MaskedEmail);
+        Assert.Equal(AccountLinkedNotificationDto.ViaClaim, notice.AccountLinked.Via);
 
         // The same code again: spent, and nothing is granted twice.
         var again = await Controller(HttpContextKind.WebUser, shell.Id).LinkMinecraftAccount(new LinkMinecraftAccountDto { LinkCode = ClaimCode });
@@ -187,6 +188,23 @@ public class ClaimLinkingTests : IDisposable
         Assert.NotNull(survivor.AdmittedAt);
         _audit.Verify(a => a.RecordAsync(shell.Id, minecraft.Id, AuditAction.MinecraftLinked, It.IsAny<string?>()), Times.Once);
         Assert.Single(_notifications.GetPending(), n => n.Type == PlayerNotificationTypes.AccountLinked && n.UserId == minecraft.Id);
+    }
+
+    [Fact]
+    public async Task AnAccountLinkCode_OnTheAccountPage_QueuesAccountLinked_ViaLink()
+    {
+        // PandiO/knk-workspace#485: linking from the Account page with an /account link code says so in game too.
+        var shell = await _h.AddUserAsync(username: "web-1", email: "steve@example.com", uuid: null);
+        var minecraft = await _h.AddUserAsync(username: "Steve", email: null, password: null, uuid: Uuid);
+        await _h.AddLinkCodeAsync(minecraft.Id);
+
+        var result = await Controller(HttpContextKind.WebUser, shell.Id).LinkMinecraftAccount(new LinkMinecraftAccountDto { LinkCode = "ABCD-2345" });
+
+        Assert.IsType<OkObjectResult>(result);
+        var notice = Assert.Single(_notifications.GetPending(), n => n.Type == PlayerNotificationTypes.AccountLinked);
+        Assert.Equal(minecraft.Id, notice.UserId);
+        Assert.Equal(Uuid, notice.Uuid);
+        Assert.Equal(AccountLinkedNotificationDto.ViaLink, notice.AccountLinked!.Via);
     }
 
     // ===== Register with an invite and a claim code (game-first) =====
