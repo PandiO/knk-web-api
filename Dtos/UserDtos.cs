@@ -152,9 +152,9 @@ namespace knkwebapi_v2.Dtos
         public DateTime? PremiumTierExpiresAt { get; set; }
 
         /// <summary>
-        /// Chat and tab-list styles (KNG-7) as Minecraft "&amp;" formatting codes — taken from the premium tier
-        /// above, falling back field by field to the "Default" PermissionGroup's colors (for a
-        /// player without a tier, or a tier with a color left unset). Null = the plugin's built-in
+        /// Chat and tab-list styles (KNG-7) as Minecraft "&amp;" formatting codes. #260: each from the first of the
+        /// player's groups in precedence order (hierarchy, then Weight) that sets it, else the "Default"
+        /// PermissionGroup's (<see cref="knkwebapi_v2.Services.GroupDisplayStyles"/>). Null = the plugin's built-in
         /// default.
         /// </summary>
         [JsonPropertyName("chatPrimaryColor")]
@@ -165,6 +165,18 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("nameColor")]
         public string? NameColor { get; set; }
+
+        /// <summary>#260: the group whose NameColor won (its own tab-list team in game); null = the Default group's or none.</summary>
+        [JsonPropertyName("nameColorGroupId")]
+        public int? NameColorGroupId { get; set; }
+
+        /// <summary>#260: the group whose ChatPrimaryColor won; null = the Default group's or none (owner/staff keep their fixed chat style).</summary>
+        [JsonPropertyName("chatPrimaryColorGroupId")]
+        public int? ChatPrimaryColorGroupId { get; set; }
+
+        /// <summary>#260: the same for ChatSecondaryColor.</summary>
+        [JsonPropertyName("chatSecondaryColorGroupId")]
+        public int? ChatSecondaryColorGroupId { get; set; }
 
         /// <summary>
         /// The user's effective PermissionGroups - unexpired memberships plus the groups they inherit
@@ -311,9 +323,9 @@ namespace knkwebapi_v2.Dtos
         public DateTime? PremiumTierExpiresAt { get; set; }
 
         /// <summary>
-        /// Chat and tab-list styles (KNG-7) as Minecraft "&amp;" formatting codes — taken from the premium tier
-        /// above, falling back field by field to the "Default" PermissionGroup's colors (for a
-        /// player without a tier, or a tier with a color left unset). Null = the plugin's built-in
+        /// Chat and tab-list styles (KNG-7) as Minecraft "&amp;" formatting codes. #260: each from the first of the
+        /// player's groups in precedence order (hierarchy, then Weight) that sets it, else the "Default"
+        /// PermissionGroup's (<see cref="knkwebapi_v2.Services.GroupDisplayStyles"/>). Null = the plugin's built-in
         /// default.
         /// </summary>
         [JsonPropertyName("chatPrimaryColor")]
@@ -324,6 +336,18 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("nameColor")]
         public string? NameColor { get; set; }
+
+        /// <summary>#260: the group whose NameColor won (its own tab-list team in game); null = the Default group's or none.</summary>
+        [JsonPropertyName("nameColorGroupId")]
+        public int? NameColorGroupId { get; set; }
+
+        /// <summary>#260: the group whose ChatPrimaryColor won; null = the Default group's or none (owner/staff keep their fixed chat style).</summary>
+        [JsonPropertyName("chatPrimaryColorGroupId")]
+        public int? ChatPrimaryColorGroupId { get; set; }
+
+        /// <summary>#260: the same for ChatSecondaryColor.</summary>
+        [JsonPropertyName("chatSecondaryColorGroupId")]
+        public int? ChatSecondaryColorGroupId { get; set; }
 
         /// <summary>
         /// The user's effective PermissionGroups - unexpired memberships plus the groups they inherit

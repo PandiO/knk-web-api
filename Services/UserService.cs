@@ -115,11 +115,15 @@ namespace knkwebapi_v2.Services
                 dto.PremiumTierGroupId = tier?.PermissionGroupId;
                 dto.PremiumTierName = tier?.PermissionGroupName;
                 dto.PremiumTierExpiresAt = tier?.ExpiresAt;
-                var defaultGroup = await GetDefaultGroupAsync();
-                dto.ChatPrimaryColor = tier?.ChatPrimaryColor ?? defaultGroup?.ChatPrimaryColor;
-                dto.ChatSecondaryColor = tier?.ChatSecondaryColor ?? defaultGroup?.ChatSecondaryColor;
-                dto.NameColor = tier?.NameColor ?? defaultGroup?.NameColor;
-                dto.PermissionGroups = await GetPermissionGroupsInPrecedenceAsync(user.Id);
+                var ordered = await GetGroupsInPrecedenceAsync(user.Id);
+                var styles = GroupDisplayStyles.Resolve(ordered, await GetDefaultGroupAsync());
+                dto.ChatPrimaryColor = styles.ChatPrimaryColor;
+                dto.ChatSecondaryColor = styles.ChatSecondaryColor;
+                dto.NameColor = styles.NameColor;
+                dto.ChatPrimaryColorGroupId = styles.ChatPrimaryColorGroupId;
+                dto.ChatSecondaryColorGroupId = styles.ChatSecondaryColorGroupId;
+                dto.NameColorGroupId = styles.NameColorGroupId;
+                dto.PermissionGroups = ordered.Select(g => new PermissionGroupRefDto { Id = g.Id, Name = g.Name }).ToList();
             }
             return dto;
         }
@@ -129,23 +133,21 @@ namespace knkwebapi_v2.Services
         /// Settings precedence order (KNG-52), which is the teleport fee order (KNG-41). The
         /// repository returns the whole parent chain, so the parents are found among the returned groups.
         /// </summary>
-        private async Task<List<PermissionGroupRefDto>> GetPermissionGroupsInPrecedenceAsync(int userId)
+        private async Task<List<PermissionGroup>> GetGroupsInPrecedenceAsync(int userId)
         {
             var groups = await _permissionGroupRepo.GetActiveGroupsForUserAsync(userId, DateTime.UtcNow)
                 ?? new List<PermissionGroup>();
             var byId = groups.GroupBy(g => g.Id).ToDictionary(g => g.Key, g => g.First());
-            return PermissionGroupPrecedence.Order(byId.Values, byId)
-                .Select(g => new PermissionGroupRefDto { Id = g.Id, Name = g.Name })
-                .ToList();
+            return PermissionGroupPrecedence.Order(byId.Values, byId);
         }
 
         private PermissionGroup? _defaultGroup;
         private bool _defaultGroupLoaded;
 
         /// <summary>
-        /// The "Default" group supplies the chat/tab-list colors (KNG-7) for players without a
-        /// premium tier. Looked up by name, not membership, since it is the fallback look for
-        /// everyone. Loaded once per service instance (scoped = once per request) so list
+        /// The "Default" group is the last fallback for the chat/tab-list colors (KNG-7, #260): a field none of
+        /// the player's groups sets comes from it. Looked up by name, not membership, since it is the fallback look
+        /// for everyone. Loaded once per service instance (scoped = once per request) so list
         /// endpoints mapping many users don't query it per user.
         /// </summary>
         private async Task<PermissionGroup?> GetDefaultGroupAsync()
