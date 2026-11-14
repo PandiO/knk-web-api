@@ -6,7 +6,7 @@ namespace knkwebapi_v2.Services.Telemetry
 {
     /// <summary>
     /// OpenTelemetry meter "Knk.Telemetry" for the diagnostic pipeline itself (KNG-34 link 6). No
-    /// player ids in tags (OBSERVABILITY.md): only sources, rejection codes and drop reasons.
+    /// player ids in tags (knk-workspace docs/architecture/web-api-observability.md): only sources, rejection codes and drop reasons.
     /// </summary>
     public sealed class TelemetryMetrics : IDisposable
     {

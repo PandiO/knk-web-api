@@ -47,6 +47,17 @@ namespace knkwebapi_v2.Services
         /// a re-run of its world task (replaced like KNG-103). Never throws.
         /// </summary>
         Task<bool> FinalizeSubRegionAsync(DomainSubRegion subRegion, string? previousRegionId);
+
+        /// <summary>
+        /// PandiO/knk-workspace#34: gives a lootbox spawn area's region drawn through the form's region task its final name
+        /// <c>lootbox_area_&lt;id&gt;</c> after the area is saved, so the 14-day temp-region cleanup keeps it. The region
+        /// keeps the outline and Y range it was drawn with (PandiO/knk-workspace#487). Only a temp-named region is
+        /// renamed; a borrowed region (a town) or a <c>lootbox_&lt;name&gt;</c> region from the in-game command is left as it
+        /// is. <paramref name="previousRegionId"/> is the area's WgRegionId before this save: on a re-run of the region
+        /// task its previous <c>lootbox_area_&lt;id&gt;</c> is redefined in place, a previous temp-named region removed
+        /// (as KNG-103 does for domains). Never throws.
+        /// </summary>
+        Task<bool> FinalizeLootboxAreaAsync(LootboxSpawnArea area, string? previousRegionId);
     }
 
     public sealed record TempRegionFinalizeResult(int Found, int Renamed, IReadOnlyList<string> Failed);
@@ -98,6 +109,14 @@ namespace knkwebapi_v2.Services
 
         /// <summary>KNG-254: the final name of a domain's sub-region.</summary>
         public static string FinalSubRegionNameFor(int domainId, int subRegionId) => $"domain_{domainId}_sub_{subRegionId}";
+
+        /// <summary>
+        /// #34: the final name of a lootbox spawn area's drawn region. It starts with the in-game command's
+        /// <c>lootbox_</c>, so it belongs to that one area (<c>LootboxSpawnAreaService</c>'s RegionInUse rule) and an
+        /// in-game delete of the area removes it; area names <c>area_&lt;n&gt;</c> are reserved so the command's
+        /// <c>lootbox_&lt;name&gt;</c> can't take it.
+        /// </summary>
+        public static string FinalLootboxAreaNameFor(int areaId) => $"lootbox_area_{areaId}";
 
         /// <summary>The concrete type name the plugin's managed-region policy understands; null for a bare Domain.</summary>
         public static string? DomainTypeOf(Domain domain) => domain switch
@@ -202,7 +221,33 @@ namespace knkwebapi_v2.Services
                     domain.Id, previous, other.Id);
                 return null;
             }
+            // #34: a temp-named previous region is removed; a lootbox spawn area standing on it would lose its region.
+            if (IsTemporary(previous) && await LootboxAreaUsingAsync(previous, world, null) is int areaId)
+            {
+                _logger.LogWarning("Domain {DomainId}'s previous region {PreviousRegionId} is also lootbox spawn area {AreaId}'s; it is kept",
+                    domain.Id, previous, areaId);
+                return null;
+            }
             return previous;
+        }
+
+        /// <summary>
+        /// #34: the id of a lootbox spawn area (other than <paramref name="exceptAreaId"/>) standing on
+        /// <paramref name="regionId"/> in <paramref name="world"/>, or null. Without a world, an area in any world counts.
+        /// </summary>
+        private async Task<int?> LootboxAreaUsingAsync(string regionId, string? world, int? exceptAreaId)
+        {
+            string loweredRegion = regionId.Trim().ToLower();
+            string? loweredWorld = string.IsNullOrWhiteSpace(world) ? null : world.Trim().ToLower();
+            int self = exceptAreaId ?? 0;
+            var ids = await _context.LootboxSpawnAreas.AsNoTracking()
+                .Where(a => a.Id != self && a.WgRegionId.ToLower() == loweredRegion
+                    && (loweredWorld == null || a.World.ToLower() == loweredWorld))
+                .OrderBy(a => a.Id)
+                .Select(a => a.Id)
+                .Take(1)
+                .ToListAsync();
+            return ids.Count == 0 ? null : ids[0];
         }
 
         private async Task RenameBackAsync(Domain domain, string tempName, string finalName, Exception storeError)
@@ -266,7 +311,26 @@ namespace knkwebapi_v2.Services
                 }
             }
 
-            int found = domains.Count + subRegions.Count;
+            // #34: then the lootbox spawn areas still on a region drawn through their form (rename failed or the server
+            // was down at the save).
+            var areas = await _context.LootboxSpawnAreas
+                .Where(a => a.WgRegionId.StartsWith(TempRegionPrefix))
+                .OrderBy(a => a.Id)
+                .ToListAsync();
+            foreach (var area in areas)
+            {
+                string tempName = area.WgRegionId;
+                if (await FinalizeLootboxAreaAsync(area, null))
+                {
+                    renamed++;
+                }
+                else
+                {
+                    failed.Add($"{nameof(LootboxSpawnArea)} {area.Id} ({tempName})");
+                }
+            }
+
+            int found = domains.Count + subRegions.Count + areas.Count;
             _logger.LogInformation("Temp region finalize pass: found {Found}, renamed {Renamed}, failed {Failed}",
                 found, renamed, failed.Count);
             return new TempRegionFinalizeResult(found, renamed, failed);
@@ -373,9 +437,126 @@ namespace knkwebapi_v2.Services
                 return null;
             }
             string? takenBy = await DomainRegionOwnership.TakenByAsync(_context, previous, world, exceptSubRegionId: subRegion.Id);
+            if (takenBy == null && IsTemporary(previous) && await LootboxAreaUsingAsync(previous, world, null) is int areaId)
+            {
+                takenBy = $"lootbox spawn area {areaId} stands on it";
+            }
             if (takenBy != null)
             {
                 _logger.LogWarning("Sub-region {SubRegionId}'s previous region {PreviousRegionId} is kept: {TakenBy}", subRegion.Id, previous, takenBy);
+                return null;
+            }
+            return previous;
+        }
+
+        public async Task<bool> FinalizeLootboxAreaAsync(LootboxSpawnArea area, string? previousRegionId)
+        {
+            if (area == null || area.Id <= 0 || !IsTemporary(area.WgRegionId))
+            {
+                return false;
+            }
+            string tempName = area.WgRegionId.Trim();
+            string finalName = FinalLootboxAreaNameFor(area.Id);
+            string? world = string.IsNullOrWhiteSpace(area.World) ? null : area.World.Trim();
+            string? replaceRegionId = null;
+            try
+            {
+                // The temp region is renamed away; whoever else stands on it would lose it. Left on its temp name, the
+                // cleanup still keeps it (the plugin asks for lootbox areas too).
+                string? sharedWith = await DomainRegionOwnership.TakenByAsync(_context, tempName, world);
+                if (sharedWith == null && await LootboxAreaUsingAsync(tempName, world, area.Id) is int otherArea)
+                {
+                    sharedWith = $"lootbox spawn area {otherArea} stands on it too";
+                }
+                if (sharedWith != null)
+                {
+                    _logger.LogWarning("Lootbox spawn area {AreaId} keeps {TempName}: {SharedWith}", area.Id, tempName, sharedWith);
+                    return false;
+                }
+
+                replaceRegionId = await ReplaceableLootboxAreaRegionAsync(area, previousRegionId, finalName, world);
+                _logger.LogInformation("Finalizing region name for lootbox spawn area {AreaId}: {TempName} -> {FinalName} (world {World}, replacing {ReplaceRegionId})",
+                    area.Id, tempName, finalName, world, replaceRegionId ?? "nothing");
+                if (!await _regionService.RenameLootboxAreaRegionAsync(tempName, finalName, world, replaceRegionId))
+                {
+                    _logger.LogWarning("Failed to finalize region name for lootbox spawn area {AreaId}: the plugin did not rename {TempName} (see the plugin log)",
+                        area.Id, tempName);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finalizing region name for lootbox spawn area {AreaId} ({TempName})", area.Id, tempName);
+                return false;
+            }
+
+            try
+            {
+                area.WgRegionId = finalName;
+                if (_context.Entry(area).State == EntityState.Detached)
+                {
+                    var tracked = await _context.LootboxSpawnAreas.FirstOrDefaultAsync(a => a.Id == area.Id)
+                        ?? throw new InvalidOperationException($"LootboxSpawnArea {area.Id} not found.");
+                    tracked.WgRegionId = finalName;
+                }
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Finalized region name for lootbox spawn area {AreaId}: {FinalName}{Replaced}", area.Id, finalName,
+                    replaceRegionId != null ? $" (replaced {replaceRegionId})" : string.Empty);
+                return true;
+            }
+            catch (Exception storeError)
+            {
+                area.WgRegionId = tempName;
+                try
+                {
+                    if (await _regionService.RenameRegionAsync(finalName, tempName, null, null, world))
+                    {
+                        _logger.LogError(storeError, "Lootbox spawn area {AreaId} could not be updated after its region was renamed to {FinalName}; renamed back to {TempName}",
+                            area.Id, finalName, tempName);
+                        return false;
+                    }
+                }
+                catch (Exception renameBackError)
+                {
+                    _logger.LogError(renameBackError, "Renaming {FinalName} back to {TempName} failed", finalName, tempName);
+                }
+                _logger.LogError(storeError, "Region {TempName} was renamed to {FinalName} but lootbox spawn area {AreaId} could not be updated; set its WgRegionId to {FinalName} by hand",
+                    tempName, finalName, area.Id, finalName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// #34: as <see cref="ReplaceableRegionAsync"/> for a lootbox spawn area whose region task was run again. Only its
+        /// own <c>lootbox_area_&lt;id&gt;</c> (redefined in place) or a temp-named region (removed) qualify, and only when
+        /// no domain, domain sub-region or other area in the world uses it. A borrowed region or the in-game command's
+        /// <c>lootbox_&lt;name&gt;</c> is kept.
+        /// </summary>
+        public async Task<string?> ReplaceableLootboxAreaRegionAsync(LootboxSpawnArea area, string? previousRegionId, string finalName, string? world)
+        {
+            if (string.IsNullOrWhiteSpace(previousRegionId))
+            {
+                return null;
+            }
+            string previous = previousRegionId.Trim();
+            if (previous.Equals(area.WgRegionId?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            if (!previous.Equals(finalName, StringComparison.OrdinalIgnoreCase) && !IsTemporary(previous))
+            {
+                _logger.LogInformation("Lootbox spawn area {AreaId}'s previous region {PreviousRegionId} is not one the form's region task creates; it is kept",
+                    area.Id, previous);
+                return null;
+            }
+            string? takenBy = await DomainRegionOwnership.TakenByAsync(_context, previous, world);
+            if (takenBy == null && await LootboxAreaUsingAsync(previous, world, area.Id) is int otherArea)
+            {
+                takenBy = $"lootbox spawn area {otherArea} stands on it";
+            }
+            if (takenBy != null)
+            {
+                _logger.LogWarning("Lootbox spawn area {AreaId}'s previous region {PreviousRegionId} is kept: {TakenBy}", area.Id, previous, takenBy);
                 return null;
             }
             return previous;

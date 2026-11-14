@@ -91,9 +91,13 @@ namespace knkwebapi_v2.Services
             return result.ToString();
         }
 
-        /// <summary>XXXX-XXXX, the way the claim code is shown on the disconnect screen.</summary>
+        /// <summary>
+        /// XXXX-XXXX, the one display form of every 8-character code: the claim code on the disconnect
+        /// screen and the link code's <c>FormattedCode</c> shown in game (PandiO/knk-workspace#484). The web
+        /// app's code field draws the same groups (SegmentedCodeInput, [4, 4]). Anything else is returned as is.
+        /// </summary>
         public static string FormatClaimCode(string code) =>
-            code.Length == CodeLength ? $"{code[..4]}-{code[4..]}" : code;
+            code is { Length: CodeLength } ? $"{code[..4]}-{code[4..]}" : code;
 
         /// <inheritdoc/>
         public async Task<LinkCode> CreateClaimCodeAsync(string minecraftUuid, string minecraftName, TimeSpan timeToLive)

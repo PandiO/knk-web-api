@@ -6,7 +6,7 @@ namespace knkwebapi_v2.Services.Statistics
 {
     /// <summary>
     /// OpenTelemetry meter "Knk.Statistics" (KNG-34, IMPLEMENTATION_PLAN.md §4). No player ids in
-    /// tags (OBSERVABILITY.md): only rejection codes and projector names.
+    /// tags (knk-workspace docs/architecture/web-api-observability.md): only rejection codes and projector names.
     /// </summary>
     public sealed class StatisticsMetrics : IDisposable
     {

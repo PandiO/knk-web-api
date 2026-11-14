@@ -19,6 +19,9 @@ namespace knkwebapi_v2.Services
         public const int MinSpawnIntervalSeconds = 60;
         // The regions the in-game command creates (and only those are ever removed by it): lootbox_<slug>.
         public const string OwnRegionPrefix = "lootbox_";
+        // #34: a region drawn through the form's region task ends up as lootbox_area_<id>. The in-game command would make
+        // lootbox_area_<n> for an area named area_<n>, so those names are reserved (an existing one may keep its name).
+        public static readonly Regex ReservedNamePattern = new("^area_[0-9]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly ILootboxSpawnAreaRepository _repo;
         private readonly IMapper _mapper;
@@ -29,15 +32,20 @@ namespace knkwebapi_v2.Services
         // LootboxWorldChanged for a web delete's active boxes (optional: tests run without one).
         private readonly IPlayerNotificationQueue? _notifications;
 
+        // #34: renames a region drawn through the form's region task (optional: tests run without one).
+        private readonly IDomainRegionNameFinalizer? _regionNames;
+
         public LootboxSpawnAreaService(
             ILootboxSpawnAreaRepository repo,
             IMapper mapper,
             IAuditLogService audit,
             IUserRepository users,
             ILogger<LootboxSpawnAreaService> logger,
-            IPlayerNotificationQueue? notifications = null)
+            IPlayerNotificationQueue? notifications = null,
+            IDomainRegionNameFinalizer? regionNames = null)
         {
             _notifications = notifications;
+            _regionNames = regionNames;
             _repo = repo;
             _mapper = mapper;
             _audit = audit;
@@ -70,7 +78,20 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.AddAsync(entity);
+            await FinalizeDrawnRegionAsync(entity, null);
             return _mapper.Map<LootboxSpawnAreaDto>(await _repo.GetByIdAsync(entity.Id) ?? entity);
+        }
+
+        /// <summary>
+        /// #34: a region drawn through the form's region task is still <c>tempregion_worldtask_&lt;n&gt;</c>, which the
+        /// plugin's 14-day cleanup would delete; it becomes <c>lootbox_area_&lt;id&gt;</c> now (managed-worldguard-regions.md
+        /// §7). A failed rename never fails the save: the area keeps the temp name, which the cleanup keeps, and
+        /// <c>POST api/Regions/finalize-temp-names</c> or the next save tries again.
+        /// </summary>
+        private async Task FinalizeDrawnRegionAsync(LootboxSpawnArea area, string? previousRegionId)
+        {
+            if (_regionNames == null || !DomainRegionNameFinalizer.IsTemporary(area.WgRegionId)) return;
+            await _regionNames.FinalizeLootboxAreaAsync(area, previousRegionId);
         }
 
         public async Task UpdateAsync(int id, LootboxSpawnAreaDto dto)
@@ -80,7 +101,9 @@ namespace knkwebapi_v2.Services
 
             var existing = await _repo.GetByIdAsync(id) ?? throw new KeyNotFoundException($"LootboxSpawnArea with id {id} not found.");
             Normalize(dto);
-            await ValidateAsync(dto, id);
+            await ValidateAsync(dto, id, existing.Name);
+            // #34: the region before this save, replaced when the region task was run again.
+            string previousRegionId = existing.WgRegionId;
 
             existing.Name = dto.Name;
             existing.World = dto.World;
@@ -101,6 +124,7 @@ namespace knkwebapi_v2.Services
             }
 
             await _repo.UpdateAsync(existing);
+            await FinalizeDrawnRegionAsync(existing, previousRegionId);
         }
 
         public async Task DeleteAsync(int id)
@@ -234,10 +258,12 @@ namespace knkwebapi_v2.Services
             dto.AllowedTypes ??= new List<LootboxSpawnAreaTypeDto>();
         }
 
-        private async Task ValidateAsync(LootboxSpawnAreaDto dto, int? id)
+        private async Task ValidateAsync(LootboxSpawnAreaDto dto, int? id, string? currentName = null)
         {
             if (!NamePattern.IsMatch(dto.Name))
                 throw new ArgumentException("Name must be 1-32 characters of A-Z, a-z, 0-9, _ or -.", nameof(dto));
+            if (ReservedNamePattern.IsMatch(dto.Name) && !dto.Name.Equals(currentName, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Names like area_<number> are reserved for the regions drawn in this form (lootbox_area_<id>); pick another name.", nameof(dto));
             if (dto.World.Length == 0 || dto.World.Length > 64)
                 throw new ArgumentException("World is required (at most 64 characters).", nameof(dto));
             if (dto.WgRegionId.Length == 0 || dto.WgRegionId.Length > 128)

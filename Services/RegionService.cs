@@ -49,6 +49,15 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameSubRegionAsync(string oldRegionId, string newRegionId, string? domainType, string subRegionOf, string? world, string? replaceRegionId);
 
         /// <summary>
+        /// PandiO/knk-workspace#34: renames a lootbox spawn area's region drawn through the form's region task to its final
+        /// name. No domain type (a spawn area is not a managed region: priority, parent and flags stay as drawn). The
+        /// region keeps the outline and Y range it was drawn with (PandiO/knk-workspace#487: no <c>fullHeight</c>, which
+        /// stretched it to the world's full build height under #34). <paramref name="replaceRegionId"/> is as for a
+        /// domain (KNG-103).
+        /// </summary>
+        Task<bool> RenameLootboxAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId);
+
+        /// <summary>
         /// Check whether a location (x,z) lies inside the specified region.
         /// </summary>
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
@@ -279,6 +288,11 @@ namespace knkwebapi_v2.Services
             }
             // The sub-region hangs under the main region (DESIGN.md §5.2), so that is its parent too.
             return RenameAsync(oldRegionId, newRegionId, domainType, subRegionOf, world, replaceRegionId, subRegionOf);
+        }
+
+        public Task<bool> RenameLootboxAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId)
+        {
+            return RenameAsync(oldRegionId, newRegionId, null, null, world, replaceRegionId, null);
         }
 
         private async Task<bool> RenameAsync(string oldRegionId, string newRegionId, string? domainType, string? parentWgRegionId, string? world, string? replaceRegionId, string? subRegionOf)

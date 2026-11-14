@@ -268,6 +268,9 @@ namespace knkwebapi_v2.Services
                 }
             }
 
+            // PandiO/knk-workspace#88: step conditions that read a field which is not there.
+            issues.AddRange(StepConditionHealth.FindIssues(config));
+
             _logger.LogInformation("Configuration health check completed with {IssueCount} issues", issues.Count);
             
             return issues;
@@ -283,6 +286,9 @@ namespace knkwebapi_v2.Services
             {
                 return issues;
             }
+
+            // PandiO/knk-workspace#88: step conditions that read a field which is not there.
+            issues.AddRange(StepConditionHealth.FindIssues(configDto));
 
             // For draft validation, we focus on field ordering issues based on stored validation rules
             // We can't validate dependency rules from FieldValidationDto since they don't include dependency info

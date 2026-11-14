@@ -166,3 +166,18 @@ extra level" (`CooldownPerLevelSeconds`, -86400 to 86400, default -10); the stri
 "Cooldown length" (default 60). The step and cooldown descriptions say so. GUIDs: configuration uuid5(v4 configuration
 GUID, "seed-v5"), every kept step/field uuid5(v4 configuration GUID, its v4 GUID), the new fields uuid5(v5
 configuration GUID, "field:" + name).
+
+**LootboxSpawnArea seed v3 (PandiO/knk-workspace#487, 2026-11-14):** a new `configurationGuid` and name, so it imports
+next to the imported v2; make it the default and delete or keep v2 by hand. Only descriptions change: a drawn region
+is still renamed to `lootbox_area_<id>` on save, but keeps exactly the outline and Y range it was drawn with (no longer
+stretched to full build height), so the "Area and region" step and the Region field tell admins to include the layer
+of air just above the ground, where boxes stand. Needs the knk-web-api and knk-plugin change of the same issue. GUIDs:
+configuration uuid5(v2 configuration GUID, "seed-v3"), every step/field uuid5(v2 configuration GUID, its v2 GUID).
+
+**LootboxSpawnArea seed v2 (PandiO/knk-workspace#34, 2026-11-05):** a new `configurationGuid` and name, so it imports
+next to the imported v1; make it the default and delete or keep v1 by hand. Only descriptions change: a region drawn
+with Send to Minecraft is now renamed to `lootbox_area_<id>` on save and stretched to full build height (knk-web-api and
+knk-plugin of the same issue), so the "Area and region" step and the Region field no longer steer admins to
+`select <region>` or `/knk lootbox area create`; the Name field says `area_<number>` is reserved. Needs that API and
+plugin change: before it, a drawn region keeps its temp name and the server removes it after 14 days. GUIDs:
+configuration uuid5(v1 configuration GUID, "seed-v2"), every step/field uuid5(v1 configuration GUID, its v1 GUID).

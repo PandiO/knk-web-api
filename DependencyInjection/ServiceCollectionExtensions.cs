@@ -235,6 +235,8 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IWorkflowService, WorkflowService>();
             services.AddScoped<IWorldTaskRepository, WorldTaskRepository>();
             services.AddScoped<IWorldTaskService, WorldTaskService>();
+            // PandiO/knk-workspace#269: temp regions of abandoned drafts and closed tasks, released for the game server.
+            services.AddScoped<ITempRegionReleaseService, TempRegionReleaseService>();
             // PandiO/knk-workspace#180: lifetimes (section "WorldTasks", optional) and the 30 s sweep.
             services.AddOptions<knkwebapi_v2.Configuration.WorldTaskOptions>();
             if (configuration != null)

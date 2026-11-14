@@ -16,17 +16,20 @@ namespace knkwebapi_v2.Services
         private readonly IMapper _mapper;
         private readonly IFormConfigurationRepository _configRepo;
         private readonly IDisplayConditionEvaluator _displayConditionEvaluator;
+        private readonly ITempRegionReleaseService? _tempRegionReleases;
 
         public FormSubmissionProgressService(
             IFormSubmissionProgressRepository repo,
             IMapper mapper,
             IFormConfigurationRepository configRepo,
-            IDisplayConditionEvaluator displayConditionEvaluator)
+            IDisplayConditionEvaluator displayConditionEvaluator,
+            ITempRegionReleaseService? tempRegionReleases = null)
         {
             _repo = repo;
             _mapper = mapper;
             _configRepo = configRepo;
             _displayConditionEvaluator = displayConditionEvaluator;
+            _tempRegionReleases = tempRegionReleases;
         }
 
         public async Task<IEnumerable<FormSubmissionProgressDto>> GetByEntityTypeNameAsync(string entityTypeName, int? userId)
@@ -164,6 +167,14 @@ namespace knkwebapi_v2.Services
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"FormSubmissionProgress with id {id} not found.");
+
+            // PandiO/knk-workspace#269: a cancelled or discarded draft releases the temp regions its world tasks drew. First,
+            // because the delete clears world_tasks.FormSubmissionProgressId; a release whose draft still exists (the
+            // delete failed) is not offered for a Completed task, so nothing is lost.
+            if (_tempRegionReleases != null)
+            {
+                await _tempRegionReleases.QueueForDraftAsync(id);
+            }
 
             await _repo.DeleteAsync(id);
         }

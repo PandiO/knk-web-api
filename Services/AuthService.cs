@@ -8,6 +8,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services.Email;
+using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Services.Invitations;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,7 @@ namespace knkwebapi_v2.Services
         private readonly IInvitationService? _invitations;
         private readonly IUserService? _users;
         private readonly knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? _accessSync;
+        private readonly IPlayerNotificationQueue? _notifications;
 
         public AuthService(
             IUserRepository userRepository,
@@ -55,8 +57,11 @@ namespace knkwebapi_v2.Services
             IOptions<AppSettings>? app = null,
             IInvitationService? invitations = null,
             IUserService? users = null,
-            knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null)
+            knkwebapi_v2.Services.CloudflareAccess.ICloudflareAccessSync? accessSync = null,
+            IPlayerNotificationQueue? notifications = null)
         {
+            // PandiO/knk-workspace#485: the in-game confirmation after a game-first registration.
+            _notifications = notifications;
             // KNG-216: the inline Cloudflare Access add after a registration commits.
             _accessSync = accessSync;
             // KNG-214: register with a claim code links through IUserService (case A / B).
@@ -387,6 +392,15 @@ namespace knkwebapi_v2.Services
             user.PasswordHash = await _passwordService.HashPasswordAsync(request.Password!);
             user.LastPasswordChangeAt = DateTime.UtcNow;
             await _userRepository.UpdateUserAsync(user);
+
+            // PandiO/knk-workspace#485: tell the player in game that the website account is ready and
+            // linked (pushed over the realtime hub or polled; on the next join when offline). Only after the
+            // code was spent and the login saved, so a failed or expired code never says so.
+            _notifications?.EnqueueAccountLinked(user.Id, user.Uuid, user.Username, new AccountLinkedNotificationDto
+            {
+                MaskedEmail = EmailMask.Mask(user.Email),
+                Via = AccountLinkedNotificationDto.ViaRegister
+            });
 
             var (accessToken, expiresIn, session) = await IssueSessionAsync(user, false, null, clientIp, userAgent);
             _logger.LogInformation("Web login registered for Minecraft account {UserId} ({Username})", user.Id, user.Username);

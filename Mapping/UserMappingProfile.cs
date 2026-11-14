@@ -1,6 +1,7 @@
 using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
+using knkwebapi_v2.Services;
 
 namespace knkwebapi_v2.Mapping
 {
@@ -35,10 +36,13 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore())
-                // Resolved alongside the premium tier (KNG-7).
+                // Resolved from the groups in precedence order (KNG-7, #260: GroupDisplayStyles).
                 .ForMember(dest => dest.ChatPrimaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
+                .ForMember(dest => dest.NameColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatPrimaryColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatSecondaryColorGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PermissionGroups, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
                 .ForMember(dest => dest.PersonalGemBonusMultiplier, src => src.MapFrom(src => (decimal?)src.PersonalGemBonusMultiplier))
@@ -133,10 +137,13 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore())
-                // Resolved alongside the premium tier (KNG-7).
+                // Resolved from the groups in precedence order (KNG-7, #260: GroupDisplayStyles).
                 .ForMember(dest => dest.ChatPrimaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
+                .ForMember(dest => dest.NameColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatPrimaryColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatSecondaryColorGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PermissionGroups, opt => opt.Ignore())
                 .ForMember(dest => dest.Gender, src => src.MapFrom(src => src.Gender));
 
@@ -194,18 +201,7 @@ namespace knkwebapi_v2.Mapping
             CreateMap<LinkCode, LinkCodeResponseDto>()
                 .ForMember(dest => dest.Code, src => src.MapFrom(src => src.Code))
                 .ForMember(dest => dest.ExpiresAt, src => src.MapFrom(src => src.ExpiresAt))
-                .ForMember(dest => dest.FormattedCode, src => src.MapFrom(src => FormatLinkCode(src.Code)));
-        }
-
-        /// <summary>
-        /// Formats link code for display: ABC12XYZ → ABC-12XYZ
-        /// </summary>
-        private static string FormatLinkCode(string code)
-        {
-            if (string.IsNullOrEmpty(code) || code.Length != 8)
-                return code;
-            
-            return $"{code.Substring(0, 3)}-{code.Substring(3)}";
+                .ForMember(dest => dest.FormattedCode, src => src.MapFrom(src => LinkCodeService.FormatClaimCode(src.Code)));
         }
     }
 }

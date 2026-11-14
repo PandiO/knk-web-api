@@ -32,6 +32,21 @@ public class WorldTaskOptions
     /// </summary>
     public int OfferTimeoutSeconds { get; set; } = 120;
 
+    /// <summary>
+    /// PandiO/knk-workspace#269: a released temp region is offered to the game server for removal only this long after the
+    /// release (and after its task last changed), so a result in flight or a web app that still shows it has settled.
+    /// </summary>
+    public int TempRegionReleaseGraceMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// #269: a release still unsettled after this many days is dropped (something kept using the region, or no game server
+    /// answered); the plugin's 14-day temp-region cleanup has had its turn by then.
+    /// </summary>
+    public int TempRegionReleaseKeepDays { get; set; } = 30;
+
+    public TimeSpan TempRegionReleaseGrace => TimeSpan.FromMinutes(Math.Max(0, TempRegionReleaseGraceMinutes));
+    public TimeSpan TempRegionReleaseKeep => TimeSpan.FromDays(Math.Max(1, TempRegionReleaseKeepDays));
+
     public TimeSpan OfferTimeout => TimeSpan.FromSeconds(Math.Max(10, OfferTimeoutSeconds));
 
     public TimeSpan PendingTtl => TimeSpan.FromMinutes(Math.Max(1, PendingTtlMinutes));
