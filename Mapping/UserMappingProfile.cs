@@ -35,10 +35,13 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore())
-                // Resolved alongside the premium tier (KNG-7).
+                // Resolved from the groups in precedence order (KNG-7, #260: GroupDisplayStyles).
                 .ForMember(dest => dest.ChatPrimaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
+                .ForMember(dest => dest.NameColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatPrimaryColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatSecondaryColorGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PermissionGroups, opt => opt.Ignore())
                 .ForMember(dest => dest.PersonalSalaryMultiplier, src => src.MapFrom(src => src.PersonalSalaryMultiplier))
                 .ForMember(dest => dest.PersonalGemBonusMultiplier, src => src.MapFrom(src => (decimal?)src.PersonalGemBonusMultiplier))
@@ -133,10 +136,13 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.PremiumTierGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierName, opt => opt.Ignore())
                 .ForMember(dest => dest.PremiumTierExpiresAt, opt => opt.Ignore())
-                // Resolved alongside the premium tier (KNG-7).
+                // Resolved from the groups in precedence order (KNG-7, #260: GroupDisplayStyles).
                 .ForMember(dest => dest.ChatPrimaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ChatSecondaryColor, opt => opt.Ignore())
                 .ForMember(dest => dest.NameColor, opt => opt.Ignore())
+                .ForMember(dest => dest.NameColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatPrimaryColorGroupId, opt => opt.Ignore())
+                .ForMember(dest => dest.ChatSecondaryColorGroupId, opt => opt.Ignore())
                 .ForMember(dest => dest.PermissionGroups, opt => opt.Ignore())
                 .ForMember(dest => dest.Gender, src => src.MapFrom(src => src.Gender));
 
