@@ -88,9 +88,10 @@ public class RegionServiceRenameTests
     }
 
     [Fact]
-    public async Task LootboxAreaRename_AsksForFullHeight_WithoutADomainType()
+    public async Task LootboxAreaRename_KeepsTheDrawnHeight_WithoutADomainType()
     {
-        // PandiO/knk-workspace#34: a spawn area is not a managed region, but is stretched like /knk lootbox area create.
+        // PandiO/knk-workspace#34: a spawn area is not a managed region. #487: it keeps the Y range it was drawn with,
+        // so the plugin is no longer asked to stretch it to full build height.
         var (service, handler) = Create();
 
         await service.RenameLootboxAreaRegionAsync("tempregion_worldtask_5", "lootbox_area_3", "world", "lootbox_area_3");
@@ -99,7 +100,7 @@ public class RegionServiceRenameTests
         Assert.Contains("newRegionId=lootbox_area_3", query);
         Assert.Contains("world=world", query);
         Assert.Contains("replaceRegionId=lootbox_area_3", query);
-        Assert.Contains("fullHeight=true", query);
+        Assert.DoesNotContain("fullHeight", query);
         Assert.DoesNotContain("domainType", query);
     }
 

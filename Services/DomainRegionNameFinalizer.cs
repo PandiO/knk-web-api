@@ -50,8 +50,8 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// PandiO/knk-workspace#34: gives a lootbox spawn area's region drawn through the form's region task its final name
-        /// <c>lootbox_area_&lt;id&gt;</c> after the area is saved, so the 14-day temp-region cleanup keeps it, and has the
-        /// plugin stretch it to full build height like <c>/knk lootbox area create</c>. Only a temp-named region is
+        /// <c>lootbox_area_&lt;id&gt;</c> after the area is saved, so the 14-day temp-region cleanup keeps it. The region
+        /// keeps the outline and Y range it was drawn with (PandiO/knk-workspace#487). Only a temp-named region is
         /// renamed; a borrowed region (a town) or a <c>lootbox_&lt;name&gt;</c> region from the in-game command is left as it
         /// is. <paramref name="previousRegionId"/> is the area's WgRegionId before this save: on a re-run of the region
         /// task its previous <c>lootbox_area_&lt;id&gt;</c> is redefined in place, a previous temp-named region removed
