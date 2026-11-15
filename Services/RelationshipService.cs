@@ -14,12 +14,17 @@ namespace knkwebapi_v2.Services
         ForeignKey,
         /// <summary>A column on the related row (<c>Category.ChildCategories</c> → <c>ParentCategoryId</c>): Add sets it to this id.</summary>
         Children,
-        /// <summary>A hidden link table (<c>Town.Streets</c> → <c>TownStreet</c>): Add/Unlink insert or remove the link row.</summary>
+        /// <summary>A hidden link table (<c>District.Streets</c> → <c>DistrictStreet</c>): Add/Unlink insert or remove the link row.</summary>
         Many,
         /// <summary>A link entity with only the two ids (<c>ItemBlueprint.Tags</c> → <c>ItemBlueprintTag</c>).</summary>
         LinkRow,
         /// <summary>Anything else (this entity is the principal of a one-to-one): only through the Edit page.</summary>
         Other,
+        /// <summary>
+        /// A read-only collection computed from other links (<c>Town.Streets</c> from its districts' streets, #409): shown
+        /// on the page, changed elsewhere (<see cref="RelationshipCatalog.Derived"/>).
+        /// </summary>
+        Derived,
     }
 
     /// <summary>One relationship of a dashboard type: its storage, what may change and the EF metadata to change it with.</summary>
@@ -63,6 +68,7 @@ namespace knkwebapi_v2.Services
                 RelationshipStorage.Children => "children",
                 RelationshipStorage.Many => "many",
                 RelationshipStorage.LinkRow => "linkRow",
+                RelationshipStorage.Derived => "derived",
                 _ => "other",
             },
             CanLink = CanLink,
@@ -102,11 +108,21 @@ namespace knkwebapi_v2.Services
                 ["ItemBlueprint.Grade"] = (true, true),
                 ["ItemBlueprint.Tags"] = (true, true),
                 ["ItemBlueprint.IconMaterial"] = (true, false),
-                ["Town.Streets"] = (true, true),
                 ["District.Streets"] = (true, true),
                 ["Street.Districts"] = (true, true),
-                ["Street.Town"] = (true, true),
             };
+
+        /// <summary>
+        /// Read-only collections computed from other links (#409): shown on the page, changed elsewhere. Type.Property →
+        /// (related type, why it can't change here). Link and unlink answer 400 <c>RelationshipNotEditable</c> with the reason.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, (string RelatedType, string Reason)> Derived =
+            new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Town.Streets"] = ("Street", TownStreetsReason),
+            };
+
+        public const string TownStreetsReason = "Streets are managed on the district: open a district to add or remove them.";
 
         public const string EditPageReason = "Change this on the Edit page.";
         public const string IconRequiredReason = "An icon is required: select another one.";
@@ -135,6 +151,21 @@ namespace knkwebapi_v2.Services
                 var list = new List<RelationshipDescriptor>();
                 foreach (var navigation in entity.GetNavigations()) list.Add(Describe(type, entity, navigation));
                 foreach (var skip in entity.GetSkipNavigations()) list.Add(DescribeMany(type, entity, skip));
+                foreach (var derived in Derived)
+                {
+                    var dot = derived.Key.IndexOf('.');
+                    if (!string.Equals(derived.Key[..dot], type.TypeName, StringComparison.OrdinalIgnoreCase)) continue;
+                    var related = model.GetEntityTypes().FirstOrDefault(e => e.ClrType.Name == derived.Value.RelatedType && !e.IsOwned());
+                    if (related == null) continue;
+                    list.Add(new RelationshipDescriptor
+                    {
+                        OwnerType = type.TypeName, OwnerClr = entity.ClrType, Property = derived.Key[(dot + 1)..],
+                        RelatedType = related.ClrType.Name, RelatedClr = related.ClrType, IsCollection = true,
+                        Storage = RelationshipStorage.Derived, CanLink = false, CanUnlink = false,
+                        LinkReason = derived.Value.Reason, UnlinkReason = derived.Value.Reason,
+                        Nodes = type.ChangeNodes,
+                    });
+                }
                 result[type.TypeName] = list;
             }
             return result;

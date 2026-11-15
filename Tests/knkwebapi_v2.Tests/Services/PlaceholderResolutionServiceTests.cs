@@ -419,6 +419,58 @@ public class PlaceholderResolutionServiceTests : IDisposable
 
     #endregion
 
+    #region Derived collections (#409)
+
+    [Theory]
+    [InlineData(typeof(Town), "Streets", "Districts.Streets")]
+    [InlineData(typeof(District), "Town.Streets", "Town.Districts.Streets")]
+    [InlineData(typeof(Structure), "District.Town.Streets", "District.Town.Districts.Streets")]
+    [InlineData(typeof(Town), "Districts.Streets", "Districts.Streets")]
+    [InlineData(typeof(Town), "Location", "Location")]
+    [InlineData(typeof(Street), "Districts", "Districts")]
+    [InlineData(typeof(Town), "Nope.Streets", "Nope.Streets")]
+    public void RewriteDerivedIncludes_LoadsTownStreetsThroughTheDistricts(Type root, string path, string expected)
+    {
+        Assert.Equal(expected, PlaceholderResolutionService.RewriteDerivedIncludes(root, path));
+    }
+
+    private async Task LinkStreetsToTheDistrictsAsync()
+    {
+        // York: Main Street and Mill Lane; Cambridge: Main Street again.
+        _dbContext.Streets.Add(new Street { Id = 401, Name = "Mill Lane" });
+        await _dbContext.SaveChangesAsync();
+        var york = await _dbContext.Districts.Include(d => d.Streets).SingleAsync(d => d.Id == 200);
+        var cambridge = await _dbContext.Districts.Include(d => d.Streets).SingleAsync(d => d.Id == 201);
+        york.Streets.Add(_dbContext.Streets.Local.Single(s => s.Id == 400));
+        york.Streets.Add(_dbContext.Streets.Local.Single(s => s.Id == 401));
+        cambridge.Streets.Add(_dbContext.Streets.Local.Single(s => s.Id == 400));
+        await _dbContext.SaveChangesAsync();
+        // Nothing tracked: the resolver must load the streets itself.
+        _dbContext.ChangeTracker.Clear();
+    }
+
+    [Fact]
+    public async Task ResolveLayer3Async_TownStreetsCount_LoadsThemThroughTheDistricts()
+    {
+        await LinkStreetsToTheDistrictsAsync();
+
+        var result = await _service.ResolveLayer3Async(typeof(Town), 100, new List<string> { "Streets.Count" });
+
+        Assert.Equal("2", result["Streets.Count"]); // Main Street once, Mill Lane
+    }
+
+    [Fact]
+    public async Task ResolveLayer3Async_ThroughTheTownOfADistrict_CountsTheTownsStreets()
+    {
+        await LinkStreetsToTheDistrictsAsync();
+
+        var result = await _service.ResolveLayer3Async(typeof(District), 201, new List<string> { "Town.Streets.Count" });
+
+        Assert.Equal("2", result["Town.Streets.Count"]);
+    }
+
+    #endregion
+
     #region ResolveLayer3Async Tests
 
     [Fact]

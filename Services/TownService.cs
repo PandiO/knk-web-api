@@ -47,7 +47,8 @@ namespace knkwebapi_v2.Services
         public async Task<TownDto?> GetByIdAsync(int id)
         {
             if (id <= 0) return null;
-            var town = await _repo.GetByIdAsync(id);
+            // #409: the detail read loads the districts' streets, so the derived Streets list is filled.
+            var town = await _repo.GetDetailAsync(id);
             return _mapper.Map<TownDto>(town);
         }
 

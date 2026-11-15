@@ -20,11 +20,29 @@ namespace knkwebapi_v2.Repositories
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// GET api/Towns/{id} (#409): read only, with the districts' streets so <see cref="Town.Streets"/> is filled.
+        /// Split query: sub-regions, districts and streets would multiply rows in one join.
+        /// </summary>
+        public async Task<Town?> GetDetailAsync(int id)
+        {
+            return await _context.Towns
+                .AsNoTracking()
+                .Include(t => t.Location)
+                .Include(t => t.SubRegions)
+                .Include(t => t.Districts).ThenInclude(d => d.Streets)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(t => t.Id == id);
+        }
+
+        /// <summary>
+        /// Tracked, for update and delete. Without the district streets on purpose: <c>Towns.Update</c> marks every
+        /// loaded entity modified and would write each street back on a town save.
+        /// </summary>
         public async Task<Town?> GetByIdAsync(int id)
         {
             return await _context.Towns
                 .Include(t => t.Location)
-                .Include(t => t.Streets)
                 .Include(t => t.Districts)
                 .Include(t => t.SubRegions)
                 .FirstOrDefaultAsync(t => t.Id == id);
@@ -38,7 +56,9 @@ namespace knkwebapi_v2.Repositories
 
         public async Task UpdateTownAsync(Town town)
         {
-            _context.Towns.Update(town);
+            // #409: a town from GetByIdAsync is tracked already, so only what changed is saved. Update() would mark its
+            // districts (and everything else loaded with it) modified and write them back on every town save.
+            if (_context.Entry(town).State == EntityState.Detached) _context.Towns.Update(town);
             await _context.SaveChangesAsync();
         }
 
