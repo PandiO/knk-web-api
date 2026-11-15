@@ -80,29 +80,4 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("stepResults")]
         public List<TemplateStepValidationResult> StepResults { get; set; } = new();
     }
-
-    /// <summary>
-    /// Request payload for adding a reusable step or field to a configuration/step.
-    /// Specifies the source template and the reuse mode (copy or link).
-    /// </summary>
-    public class AddReusableStepRequest
-    {
-        [JsonPropertyName("sourceStepId")]
-        public int SourceStepId { get; set; }
-
-        [JsonPropertyName("linkMode")]
-        public string LinkMode { get; set; } = "Copy"; // "Copy" or "Link"
-    }
-
-    /// <summary>
-    /// Request payload for adding a reusable field to a step.
-    /// </summary>
-    public class AddReusableFieldRequest
-    {
-        [JsonPropertyName("sourceFieldId")]
-        public int SourceFieldId { get; set; }
-
-        [JsonPropertyName("linkMode")]
-        public string LinkMode { get; set; } = "Copy"; // "Copy" or "Link"
-    }
 }

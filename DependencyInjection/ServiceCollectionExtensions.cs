@@ -298,7 +298,6 @@ namespace knkwebapi_v2.DependencyInjection
             // Add FormTemplate services for reusable step/field management
             services.AddScoped<IFormTemplateValidationService, FormTemplateValidationService>();
             services.AddScoped<IDisplayConditionEvaluator, DisplayConditionEvaluator>();
-            services.AddScoped<IFormTemplateReusableService, FormTemplateReusableService>();
 
             // Register HttpClient for HTTP calls to external services
             services.AddHttpClient();

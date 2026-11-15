@@ -21,6 +21,9 @@ namespace knkwebapi_v2.Services
     /// a save ran before #71), moves the default when asked, and clears the copy.</item>
     /// <item>A configuration created in the builder or duplicated is <c>IsDraft</c> (never published) until its first
     /// Publish; the wizard never offers it. Rows from before #71 and imports are published.</item>
+    /// <item>PandiO/knk-workspace#291: field validation rules are part of the copy (<c>validationRules</c>, keyed by field
+    /// GUID, so a field that only exists in the draft can get rules); Publish adds, updates and deletes the published
+    /// rules to match. A copy without the list (saved before #291) keeps the published rules as they are.</item>
     /// </list>
     /// </summary>
     public interface IFormConfigurationDraftService
@@ -153,8 +156,20 @@ namespace knkwebapi_v2.Services
             if (working.Steps.Any(s => string.IsNullOrWhiteSpace(s.StepName)))
                 throw new InvalidOperationException("Every step needs a name before publishing.");
 
+            // #291: null = a copy saved before rules were part of it: the published rules stay as they are.
+            var rules = working.ValidationRules;
+            if (rules != null)
+            {
+                var ruleProblem = await DraftRulesProblemAsync(working, rules);
+                if (ruleProblem != null) throw new InvalidOperationException($"Can't publish: {ruleProblem}");
+            }
+
             var makeDefault = working.IsDefault;
             await using var transaction = _db.Database.IsRelational() ? await _db.Database.BeginTransactionAsync() : null;
+
+            // #291: rules dropped from the copy go first, and kept rules let go of their dependency until it is set
+            // again below, so a field the copy removes (or moves to another step) isn't held by a rule (Restrict).
+            if (rules != null) await PrepareRuleChangesAsync(row, rules);
 
             // Every check a builder save ran before #71 (metadata, many-to-many, conditions); a refusal changes nothing.
             try
@@ -178,6 +193,7 @@ namespace knkwebapi_v2.Services
                     other.UpdatedAt = DateTime.UtcNow;
                 }
             }
+            if (rules != null) await ApplyDraftRulesAsync(id, rules);
             published.IsDefault = makeDefault;
             published.IsDraft = false;
             published.DraftJson = null;
@@ -273,10 +289,20 @@ namespace knkwebapi_v2.Services
                 .Select(c => new { c.Id, c.Name })
                 .FirstOrDefaultAsync();
 
+            // #291: the copy's rules; a copy without them (none saved yet, or saved before #291) shows the published ones.
+            var publishedRules = await PublishedRulesAsync(row);
+            working.ValidationRules ??= publishedRules;
+            FormConfigurationDto? published = null;
+            if (!row.IsDraft)
+            {
+                published = _mapper.Map<FormConfigurationDto>(row);
+                published.ValidationRules = publishedRules;
+            }
+
             return new FormConfigurationBuilderStateDto
             {
                 Configuration = working,
-                Published = row.IsDraft ? null : _mapper.Map<FormConfigurationDto>(row),
+                Published = published,
                 IsPublished = !row.IsDraft,
                 HasUnpublishedChanges = row.IsDraft || row.DraftJson != null,
                 DraftSavedAt = row.DraftSavedAt?.ToString("O"),
@@ -285,6 +311,187 @@ namespace knkwebapi_v2.Services
                 CurrentDefaultId = currentDefault?.Id.ToString(),
                 CurrentDefaultName = currentDefault?.Name
             };
+        }
+
+        // ------------------------------------------------------------------ #291: validation rules in the copy
+
+        /// <summary>Every field of the published rows (steps and their child form steps).</summary>
+        private static List<FormField> PublishedFields(FormConfiguration row)
+        {
+            var fields = new List<FormField>();
+            void Visit(IEnumerable<FormStep> steps)
+            {
+                foreach (var step in steps)
+                {
+                    fields.AddRange(step.Fields);
+                    Visit(step.ChildFormSteps);
+                }
+            }
+            Visit(row.Steps);
+            return fields.GroupBy(f => f.Id).Select(g => g.First()).ToList();
+        }
+
+        /// <summary>Every field of the working copy (steps and their child form steps).</summary>
+        private static List<FormFieldDto> WorkingFields(FormConfigurationDto working)
+        {
+            var fields = new List<FormFieldDto>();
+            void Visit(IEnumerable<FormStepDto>? steps)
+            {
+                foreach (var step in steps ?? Enumerable.Empty<FormStepDto>())
+                {
+                    fields.AddRange(step.Fields ?? new List<FormFieldDto>());
+                    Visit(step.ChildFormSteps);
+                }
+            }
+            Visit(working.Steps);
+            return fields;
+        }
+
+        /// <summary>The published rules of the configuration's fields, in the copy's shape (field GUIDs).</summary>
+        private async Task<List<FormDraftValidationRuleDto>> PublishedRulesAsync(FormConfiguration row)
+        {
+            var guidById = PublishedFields(row).ToDictionary(f => f.Id, f => f.FieldGuid);
+            if (guidById.Count == 0) return new List<FormDraftValidationRuleDto>();
+            var fieldIds = guidById.Keys.ToList();
+            var rules = await _db.FieldValidationRules.AsNoTracking()
+                .Where(r => fieldIds.Contains(r.FormFieldId))
+                .OrderBy(r => r.Id)
+                .ToListAsync();
+            return rules.Select(r =>
+            {
+                var localDependency = r.DependsOnFieldId.HasValue && guidById.ContainsKey(r.DependsOnFieldId.Value);
+                return new FormDraftValidationRuleDto
+                {
+                    Id = r.Id,
+                    FieldGuid = guidById[r.FormFieldId].ToString(),
+                    DependsOnFieldGuid = localDependency ? guidById[r.DependsOnFieldId!.Value].ToString() : null,
+                    DependsOnFieldId = localDependency ? null : r.DependsOnFieldId,
+                    ValidationType = r.ValidationType,
+                    DependencyPath = r.DependencyPath,
+                    ConfigJson = r.ConfigJson,
+                    ErrorMessage = r.ErrorMessage,
+                    SuccessMessage = r.SuccessMessage,
+                    IsBlocking = r.IsBlocking,
+                    RequiresDependencyFilled = r.RequiresDependencyFilled
+                };
+            }).ToList();
+        }
+
+        /// <summary>Why the copy's rules can't be published (null when they can): every reference must resolve.</summary>
+        private async Task<string?> DraftRulesProblemAsync(FormConfigurationDto working, List<FormDraftValidationRuleDto> rules)
+        {
+            var byGuid = new Dictionary<Guid, FormFieldDto>();
+            foreach (var field in WorkingFields(working))
+            {
+                if (Guid.TryParse(field.FieldGuid, out var guid)) byGuid.TryAdd(guid, field);
+            }
+            static string NameOf(FormFieldDto f) => string.IsNullOrWhiteSpace(f.Label) ? f.FieldName : f.Label;
+
+            var dependsOn = new Dictionary<Guid, HashSet<Guid>>();
+            for (var i = 0; i < rules.Count; i++)
+            {
+                var rule = rules[i];
+                var type = string.IsNullOrWhiteSpace(rule.ValidationType) ? null : rule.ValidationType.Trim();
+                if (!Guid.TryParse(rule.FieldGuid, out var fieldGuid) || !byGuid.TryGetValue(fieldGuid, out var field))
+                    return $"validation rule {i + 1} ({type ?? "no type"}) belongs to a field that is no longer in the form. Delete the rule.";
+                var where = $"the {type ?? "untyped"} rule on '{NameOf(field)}'";
+                if (type == null) return $"{where} needs a validation type.";
+
+                if (!string.IsNullOrWhiteSpace(rule.DependsOnFieldGuid))
+                {
+                    if (!Guid.TryParse(rule.DependsOnFieldGuid, out var dependency) || !byGuid.ContainsKey(dependency))
+                        return $"{where} depends on a field that is no longer in the form. Edit or delete the rule.";
+                    if (dependency == fieldGuid) return $"{where} can't depend on its own field.";
+                    if (!dependsOn.TryGetValue(fieldGuid, out var targets)) dependsOn[fieldGuid] = targets = new HashSet<Guid>();
+                    targets.Add(dependency);
+                }
+                else if (rule.DependsOnFieldId is int dependencyId && !await _db.FormFields.AnyAsync(f => f.Id == dependencyId))
+                {
+                    return $"{where} depends on a field of another form (id {dependencyId}) that no longer exists. Edit or delete the rule.";
+                }
+            }
+
+            // Rules that depend on each other in a circle could never be checked (the old create/update refused them too).
+            var state = new Dictionary<Guid, int>(); // 1 = visiting, 2 = done
+            bool InCircle(Guid node)
+            {
+                if (state.TryGetValue(node, out var seen)) return seen == 1;
+                state[node] = 1;
+                if (dependsOn.TryGetValue(node, out var next) && next.Any(InCircle)) return true;
+                state[node] = 2;
+                return false;
+            }
+            var circular = dependsOn.Keys.FirstOrDefault(InCircle);
+            if (circular != Guid.Empty)
+                return $"validation rules depend on each other in a circle (starting at '{NameOf(byGuid[circular])}'). Remove one of the dependencies.";
+            return null;
+        }
+
+        /// <summary>
+        /// Before the rows change: deletes the published rules the copy no longer has, and clears the dependency of the
+        /// kept ones (set again by <see cref="ApplyDraftRulesAsync"/>). Runs in Publish's transaction.
+        /// </summary>
+        private async Task PrepareRuleChangesAsync(FormConfiguration row, List<FormDraftValidationRuleDto> rules)
+        {
+            var fieldIds = PublishedFields(row).Select(f => f.Id).ToList();
+            if (fieldIds.Count == 0) return;
+            var kept = rules.Where(r => r.Id.HasValue).Select(r => r.Id!.Value).ToHashSet();
+            var existing = await _db.FieldValidationRules.Where(r => fieldIds.Contains(r.FormFieldId)).ToListAsync();
+            foreach (var rule in existing)
+            {
+                if (!kept.Contains(rule.Id)) _db.FieldValidationRules.Remove(rule);
+                else rule.DependsOnFieldId = null;
+            }
+            await _db.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// After the rows changed: the published rules become the copy's (by field GUID). A kept rule whose field was
+        /// re-created (moved to another step) is created again.
+        /// </summary>
+        private async Task ApplyDraftRulesAsync(int id, List<FormDraftValidationRuleDto> rules)
+        {
+            var row = await _repo.GetByIdAsync(id)
+                      ?? throw new KeyNotFoundException($"FormConfiguration with id {id} not found.");
+            var fields = PublishedFields(row);
+            var idByGuid = fields.GroupBy(f => f.FieldGuid).ToDictionary(g => g.Key, g => g.First().Id);
+            var fieldIds = fields.Select(f => f.Id).ToList();
+            var current = await _db.FieldValidationRules.Where(r => fieldIds.Contains(r.FormFieldId)).ToDictionaryAsync(r => r.Id);
+            var used = new HashSet<int>();
+
+            foreach (var rule in rules)
+            {
+                if (!idByGuid.TryGetValue(Guid.Parse(rule.FieldGuid!), out var fieldId))
+                    throw new InvalidOperationException("Can't publish: a validation rule's field was not saved.");
+                int? dependsOnId = rule.DependsOnFieldId;
+                if (!string.IsNullOrWhiteSpace(rule.DependsOnFieldGuid))
+                {
+                    if (!idByGuid.TryGetValue(Guid.Parse(rule.DependsOnFieldGuid), out var localId))
+                        throw new InvalidOperationException("Can't publish: a validation rule's dependency field was not saved.");
+                    dependsOnId = localId;
+                }
+
+                FieldValidationRule target;
+                if (rule.Id is int ruleId && current.TryGetValue(ruleId, out var existing) && used.Add(ruleId))
+                {
+                    target = existing;
+                }
+                else
+                {
+                    target = new FieldValidationRule { CreatedAt = DateTime.UtcNow };
+                    _db.FieldValidationRules.Add(target);
+                }
+                target.FormFieldId = fieldId;
+                target.DependsOnFieldId = dependsOnId;
+                target.ValidationType = rule.ValidationType!.Trim();
+                target.DependencyPath = string.IsNullOrWhiteSpace(rule.DependencyPath) ? null : rule.DependencyPath;
+                target.ConfigJson = string.IsNullOrWhiteSpace(rule.ConfigJson) ? "{}" : rule.ConfigJson;
+                target.ErrorMessage = rule.ErrorMessage ?? string.Empty;
+                target.SuccessMessage = string.IsNullOrWhiteSpace(rule.SuccessMessage) ? null : rule.SuccessMessage;
+                target.IsBlocking = rule.IsBlocking;
+                target.RequiresDependencyFilled = rule.RequiresDependencyFilled;
+            }
+            await _db.SaveChangesAsync();
         }
 
         private static string RequireName(string? name)
