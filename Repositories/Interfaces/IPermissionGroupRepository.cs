@@ -28,5 +28,12 @@ namespace knkwebapi_v2.Repositories
         /// permanent membership never "expires soon". User is eager-loaded for the username.
         /// </summary>
         Task<List<UserPermissionGroup>> GetExpiringMembershipsAsync(int groupId, int withinDays, DateTime asOf);
+
+        /// <summary>
+        /// The blast radius of a change to the group's own grants (PandiO/knk-workspace#50): active members of the
+        /// group, distinct active members of the group and every group inheriting from it (any depth), and how many
+        /// groups inherit from it. Cycle-safe.
+        /// </summary>
+        Task<(int DirectMembers, int TotalMembers, int InheritingGroups)> CountMembersAsync(int groupId, DateTime asOf);
     }
 }

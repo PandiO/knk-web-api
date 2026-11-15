@@ -56,7 +56,8 @@ namespace knkwebapi_v2.Repositories
             yield return Scope("user_permission_groups", ids => _context.UserPermissionGroups.Where(r => ids.Contains(r.UserId)));
             // Rows about the player (target). Rows the player wrote as staff about others stay: they
             // are those players' moderation history and name only the pseudonymized id.
-            yield return Scope("audit_log_entries", ids => _context.AuditLogEntries.Where(r => ids.Contains(r.TargetUserId)));
+            yield return Scope("audit_log_entries", ids => _context.AuditLogEntries
+                .Where(r => r.TargetUserId != null && ids.Contains(r.TargetUserId.Value)));
         }
 
         private (string, Func<IReadOnlyCollection<int>, CancellationToken, Task<int>>, Func<IReadOnlyCollection<int>, CancellationToken, Task<int>>)

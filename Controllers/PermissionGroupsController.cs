@@ -165,6 +165,19 @@ namespace KnKWebAPI.Controllers
         }
 
         /// <summary>
+        /// PandiO/knk-workspace#50: the blast radius of a change to the group's own grants - active members of the group
+        /// and of every group inheriting from it, each player once - for the web app's "affects N players"
+        /// confirmation. A read, so the type's read node like GET and GET {id}.
+        /// </summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
+        [HttpGet("{id:int}/member-count")]
+        public async Task<ActionResult<PermissionGroupMemberCountDto>> GetMemberCount(int id)
+        {
+            var result = await _service.GetMemberCountAsync(id);
+            return result == null ? NotFound() : Ok(result);
+        }
+
+        /// <summary>
         /// "Premium expiring soon" moderation view (docs/specs/user-management/IMPLEMENTATION_PLAN.md
         /// Phase 3) — memberships in this group expiring within the next withinDays days.
         /// </summary>

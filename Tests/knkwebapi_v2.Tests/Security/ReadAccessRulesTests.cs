@@ -293,6 +293,7 @@ public class ReadAccessRulesTests
         ["PermissionGroupsController.GetAll"] = "U",
         ["PermissionGroupsController.GetById"] = "U",
         ["PermissionGroupsController.GetExpiringMemberships"] = "U",
+        ["PermissionGroupsController.GetMemberCount"] = "U",
         ["PermissionGroupsController.Search"] = "U",
         ["PermissionHoldersController.GetById"] = "U",
         ["PermissionHoldersController.Search"] = "U",

@@ -19,6 +19,13 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<PagedResult<AuditLogEntry>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction, int pageNumber, int pageSize);
 
         /// <summary>
+        /// The same search, also filtered on the generic audit subject (PandiO/knk-workspace#50): subjectType and
+        /// subjectId each narrow the result when given (a permission group's History: both).
+        /// </summary>
+        Task<PagedResult<AuditLogEntry>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction,
+            string? subjectType, int? subjectId, int pageNumber, int pageSize);
+
+        /// <summary>
         /// Deletes all AuditLogEntry rows with Timestamp older than beforeDate. No FK
         /// relationships exist on this table (deliberately, per AuditLogEntry's own doc comment),
         /// so this is a straight bulk delete. Returns the count of deleted rows.

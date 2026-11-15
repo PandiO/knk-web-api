@@ -22,8 +22,9 @@ public class AuditLogEntryDto
     [JsonPropertyName("actorUsername")]
     public string? ActorUsername { get; set; }
 
+    /// <summary>Null on an entry about another subject (SubjectType/SubjectId), e.g. a permission group.</summary>
     [JsonPropertyName("targetUserId")]
-    public int TargetUserId { get; set; }
+    public int? TargetUserId { get; set; }
 
     [JsonPropertyName("targetUsername")]
     public string? TargetUsername { get; set; }
@@ -34,4 +35,12 @@ public class AuditLogEntryDto
 
     [JsonPropertyName("details")]
     public string? Details { get; set; }
+
+    /// <summary>What the entry is about when that is not one player (AuditSubjectTypes, e.g. "PermissionGroup");
+    /// null on player entries (PandiO/knk-workspace#50).</summary>
+    [JsonPropertyName("subjectType")]
+    public string? SubjectType { get; set; }
+
+    [JsonPropertyName("subjectId")]
+    public int? SubjectId { get; set; }
 }
