@@ -178,6 +178,46 @@ namespace knkwebapi_v2.Dtos
         public string? PublishedAt { get; set; }
         [JsonPropertyName("steps")]
         public List<FormStepDto> Steps { get; set; } = new();
+        /// <summary>
+        /// PandiO/knk-workspace#291: the field validation rules of the builder's working copy, keyed by field GUID and
+        /// applied on Publish. Only the builder state carries it (the working copy and the published version); null in
+        /// a saved draft (one saved before #291) means "the published rules, unchanged". Ignored by every other write.
+        /// </summary>
+        [JsonPropertyName("validationRules")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<FormDraftValidationRuleDto>? ValidationRules { get; set; }
+    }
+
+    /// <summary>
+    /// PandiO/knk-workspace#291: a field validation rule in the form builder's working copy. The field it belongs to and a
+    /// dependency in the same form are field GUIDs (a field that only exists in the draft has no id yet); a dependency on
+    /// another form's field (a parent form) is that field's id. <see cref="Id"/> is the published rule it edits; null
+    /// for a rule added in the draft.
+    /// </summary>
+    public class FormDraftValidationRuleDto
+    {
+        [JsonPropertyName("id")]
+        public int? Id { get; set; }
+        [JsonPropertyName("fieldGuid")]
+        public string? FieldGuid { get; set; }
+        [JsonPropertyName("dependsOnFieldGuid")]
+        public string? DependsOnFieldGuid { get; set; }
+        [JsonPropertyName("dependsOnFieldId")]
+        public int? DependsOnFieldId { get; set; }
+        [JsonPropertyName("validationType")]
+        public string? ValidationType { get; set; }
+        [JsonPropertyName("dependencyPath")]
+        public string? DependencyPath { get; set; }
+        [JsonPropertyName("configJson")]
+        public string? ConfigJson { get; set; }
+        [JsonPropertyName("errorMessage")]
+        public string? ErrorMessage { get; set; }
+        [JsonPropertyName("successMessage")]
+        public string? SuccessMessage { get; set; }
+        [JsonPropertyName("isBlocking")]
+        public bool IsBlocking { get; set; } = true;
+        [JsonPropertyName("requiresDependencyFilled")]
+        public bool RequiresDependencyFilled { get; set; }
     }
 
     public class FormSubmissionProgressDto

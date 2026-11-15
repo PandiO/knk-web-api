@@ -253,7 +253,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.HasUnpublishedChanges, o => o.MapFrom(s => s.DraftJson != null))
                 .ForMember(d => d.DraftSavedAt, o => o.MapFrom(s => s.DraftSavedAt.HasValue ? s.DraftSavedAt.Value.ToString("O") : null))
                 .ForMember(d => d.PublishedAt, o => o.MapFrom(s => s.PublishedAt.HasValue ? s.PublishedAt.Value.ToString("O") : null))
-                .ForMember(d => d.Steps, o => o.MapFrom(s => OrderSteps(s.Steps, s.StepOrderJson)));
+                .ForMember(d => d.Steps, o => o.MapFrom(s => OrderSteps(s.Steps, s.StepOrderJson)))
+                // #291: only the builder state fills the rules (FormConfigurationDraftService).
+                .ForMember(d => d.ValidationRules, o => o.Ignore());
 
             // FormSubmissionProgress
             CreateMap<FormSubmissionProgressDto, FormSubmissionProgress>()
