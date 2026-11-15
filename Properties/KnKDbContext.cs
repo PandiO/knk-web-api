@@ -1617,14 +1617,7 @@ public partial class KnKDbContext : DbContext
             entity.ToTable("towns");
         });
 
-        // Town-Street many-to-many
-        modelBuilder.Entity<Town>()
-            .HasMany(t => t.Streets)
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "TownStreet",
-                j => j.HasOne<Street>().WithMany().HasForeignKey("StreetId"),
-                j => j.HasOne<Town>().WithMany().HasForeignKey("TownId"));
+        // #409: Town.Streets is not mapped; it is computed from District.Streets (the TownStreet table was dropped).
 
         // District configuration
         modelBuilder.Entity<District>(entity =>

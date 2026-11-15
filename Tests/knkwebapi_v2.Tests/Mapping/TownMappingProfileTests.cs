@@ -22,10 +22,10 @@ public class TownMappingProfileTests
             Name = "Rivia",
             Description = "",
             WgRegionId = "town_rivia",
-            Streets = { new Street { Id = 4, Name = "High Street" } },
             Districts =
             {
-                new District { Id = 2, Name = "Old Quarter", Description = "", WgRegionId = "d", TownId = 1 },
+                // #409: a town's streets are its districts' streets.
+                new District { Id = 2, Name = "Old Quarter", Description = "", WgRegionId = "d", TownId = 1, Streets = { new Street { Id = 4, Name = "High Street" } } },
                 new District { Id = 3, Name = "Harbour", Description = "", WgRegionId = "h", TownId = 1 }
             }
         };

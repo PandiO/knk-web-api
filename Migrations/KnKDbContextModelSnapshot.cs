@@ -39,21 +39,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("DistrictStreet");
                 });
 
-            modelBuilder.Entity("TownStreet", b =>
-                {
-                    b.Property<int>("StreetId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TownId")
-                        .HasColumnType("int");
-
-                    b.HasKey("StreetId", "TownId");
-
-                    b.HasIndex("TownId");
-
-                    b.ToTable("TownStreet");
-                });
-
             modelBuilder.Entity("gate_structure_guard_spawn_locations", b =>
                 {
                     b.Property<int>("GateStructureId")
@@ -7310,21 +7295,6 @@ namespace knkwebapi_v2.Migrations
                     b.HasOne("knkwebapi_v2.Models.Street", null)
                         .WithMany()
                         .HasForeignKey("StreetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("TownStreet", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.Street", null)
-                        .WithMany()
-                        .HasForeignKey("StreetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.Town", null)
-                        .WithMany()
-                        .HasForeignKey("TownId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
