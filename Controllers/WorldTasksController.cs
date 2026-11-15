@@ -232,12 +232,15 @@ namespace KnKWebAPI.Controllers
         /// PandiO/knk-workspace#269: the temp regions (<c>tempregion_worldtask_&lt;id&gt;</c>) this game server may remove now:
         /// their draft was deleted, their task closed without a result or its session was swept, and nothing the API knows
         /// of uses them. Releases of another server are left out; ones with no server are listed to every server.
+        /// <c>serverId</c> is required (400 when blank, as for <c>GET open</c>, #399): without it every server's releases
+        /// would be listed.
         /// </summary>
         [HttpGet("temp-region-releases")]
         [RequirePluginService]
         public async Task<IActionResult> ListTempRegionReleases([FromServices] ITempRegionReleaseService releases,
             [FromQuery] string? serverId = null, [FromQuery] int max = 50)
         {
+            if (string.IsNullOrWhiteSpace(serverId)) return BadRequest(new { error = "serverId is required." });
             return Ok(await releases.ListDueAsync(serverId, max, HttpContext.RequestAborted));
         }
 
