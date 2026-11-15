@@ -27,6 +27,7 @@ public class EntityReferencesControllerTests
     private readonly Mock<IPermissionResolutionService> _permissions = new();
     private readonly Mock<IEntityReferenceService> _references = new();
     private readonly Mock<ILookupService> _lookups = new();
+    private readonly Mock<IConfigurationReferenceLabelService> _configurationLabels = new();
 
     public EntityReferencesControllerTests()
     {
@@ -36,6 +37,11 @@ public class EntityReferencesControllerTests
                 nodes.Any(_held.Contains));
         _lookups.Setup(l => l.GetAsync(It.IsAny<DashboardTypeAccess>(), It.IsAny<int>()))
             .ReturnsAsync((DashboardTypeAccess type, int id) => new LookupItemDto { Id = id, Label = $"{type.TypeName} {id}", Detail = "d" });
+        _configurationLabels.Setup(l => l.Handles(It.IsAny<string?>()))
+            .Returns((string? type) => type is "FormField" or "FormStep");
+        _configurationLabels.Setup(l => l.LabelAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<int>>()))
+            .ReturnsAsync((string type, IReadOnlyList<int> ids) =>
+                ids.Select(id => new LookupItemDto { Id = id, Label = $"{type} {id}", Detail = "Field of the form \"Structure form\" (Structure)" }).ToList());
     }
 
     private async Task<IActionResult?> Gate(HttpContext http, string type)
@@ -55,7 +61,8 @@ public class EntityReferencesControllerTests
         _ => -1
     };
 
-    private EntityReferenceRowsService Service() => new(_references.Object, _lookups.Object, _permissions.Object, _cache.Object);
+    private EntityReferenceRowsService Service() =>
+        new(_references.Object, _lookups.Object, _permissions.Object, _cache.Object, _configurationLabels.Object);
 
     private void StreetIsUsedBy(params ReferencingRows[] groups) =>
         _references.Setup(r => r.GetReferencingRowsAsync("Street", "12", true)).ReturnsAsync(groups);
@@ -105,7 +112,112 @@ public class EntityReferencesControllerTests
     public async Task ATypeOutsideTheRegistry_Is404()
     {
         _held.Add("*");
-        Assert.Equal(404, Status(await Gate(ServiceAuthTestHelper.WebUser(Staff), "FormConfiguration")));
+        Assert.Equal(404, Status(await Gate(ServiceAuthTestHelper.WebUser(Staff), "FormStep")));
+        Assert.Equal(404, Status(await Gate(ServiceAuthTestHelper.WebUser(Staff), "DisplayConfiguration")));
+    }
+
+    // ===== #289: a form configuration (Entity setup) =====
+
+    [Fact]
+    public async Task AFormConfiguration_NeedsKnkAdminContent()
+    {
+        _held.Add(StaffPermissions.ManageWorld);
+        var refused = await Gate(ServiceAuthTestHelper.WebUser(Staff), "FormConfiguration");
+        Assert.Equal(403, Status(refused));
+        Assert.Contains(StaffPermissions.ManageContent, JsonSerializer.Serialize(((ObjectResult)refused!).Value));
+
+        _held.Add(StaffPermissions.ManageContent);
+        Assert.Equal(200, Status(await Gate(ServiceAuthTestHelper.WebUser(Staff), "formconfiguration")));
+    }
+
+    [Fact]
+    public async Task FormFieldsAndStepsThatOpenAFormConfiguration_AreNamedWithTheirForm_ButNeverLinked()
+    {
+        _held.Add(StaffPermissions.ManageContent);
+        _references.Setup(r => r.GetReferencingRowsAsync("FormConfiguration", "4", true)).ReturnsAsync(new[]
+        {
+            new ReferencingRows("FormField.SubConfigurationId", "FormField", 2, new[] { "31", "12" }),
+            new ReferencingRows("FormStep.SubConfigurationId", "FormStep", 1, new[] { "8" }),
+        });
+
+        var result = await Service().GetAsync(ReferenceRecordTypes.Find("FormConfiguration")!, 4, Staff, null, 20);
+
+        Assert.Equal("FormConfiguration", result!.EntityTypeName);
+        var fields = result.Groups[0];
+        Assert.Equal("FormField", fields.EntityType);
+        Assert.True(fields.Listed);
+        Assert.False(fields.Readable);
+        Assert.Empty(fields.Nodes);
+        Assert.Equal(new[] { 12, 31 }, fields.Rows.Select(r => r.Id));
+        Assert.Equal("Field of the form \"Structure form\" (Structure)", fields.Rows[0].Detail);
+        Assert.Equal("FormStep 8", Assert.Single(result.Groups[1].Rows).Label);
+        _lookups.Verify(l => l.GetAsync(It.IsAny<DashboardTypeAccess>(), It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task FormFieldsAndSteps_WithoutKnkAdminContent_AreOnlyCounted()
+    {
+        _held.Add(StaffPermissions.ManageWorld);
+        _references.Setup(r => r.GetReferencingRowsAsync("FormConfiguration", "4", true)).ReturnsAsync(new[]
+        {
+            new ReferencingRows("FormField.SubConfigurationId", "FormField", 2, new[] { "31", "12" }),
+        });
+
+        var group = Assert.Single((await Service().GetAsync(ReferenceRecordTypes.Find("FormConfiguration")!, 4, Staff, null, 20))!.Groups);
+
+        Assert.False(group.Listed);
+        Assert.Empty(group.Rows);
+        Assert.Equal(2, group.Count);
+        Assert.Contains(StaffPermissions.ManageContent, group.Reason);
+        _configurationLabels.Verify(l => l.LabelAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<int>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task FormFieldsBeyondTake_SetMore()
+    {
+        _held.Add(StaffPermissions.ManageContent);
+        _references.Setup(r => r.GetReferencingRowsAsync("FormConfiguration", "4", true)).ReturnsAsync(new[]
+        {
+            new ReferencingRows("FormField.SubConfigurationId", "FormField", 3, new[] { "1", "2", "3" }),
+        });
+
+        var group = Assert.Single((await Service().GetAsync(ReferenceRecordTypes.Find("FormConfiguration")!, 4, Staff, null, 2))!.Groups);
+
+        Assert.Equal(2, group.Rows.Count);
+        Assert.True(group.More);
+    }
+
+    // ===== #289: "all" for a cancelled form's created entities =====
+
+    [Fact]
+    public async Task All_AsksForEveryReference_CascadesIncluded()
+    {
+        _held.Add(StaffPermissions.ManageWorld);
+        _references.Setup(r => r.GetReferencingRowsAsync("Street", "12", false))
+            .ReturnsAsync(new[] { new ReferencingRows("District (link)", "District", 1, new[] { "5" }) });
+
+        var result = await Service().GetAsync(ReferenceRecordTypes.Find("Street")!, 12, Staff, null, 20, all: true);
+
+        Assert.Equal("District 5", Assert.Single(Assert.Single(result!.Groups).Rows).Label);
+        _references.Verify(r => r.GetReferencingRowsAsync("Street", "12", true), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TheController_PassesAllThrough(bool all)
+    {
+        var rows = new Mock<IEntityReferenceRowsService>();
+        rows.Setup(r => r.GetAsync(It.IsAny<ReferenceRecordType>(), 12, Staff, null, EntityReferenceRowsService.DefaultTake,
+                It.IsAny<HttpContext?>(), all))
+            .ReturnsAsync(new EntityReferenceRowsDto { EntityTypeName = "Street", Id = 12 });
+        var controller = new EntityReferencesController(rows.Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = ServiceAuthTestHelper.WebUser(Staff) }
+        };
+
+        Assert.IsType<OkObjectResult>(await controller.GetRows("Street", 12, null, null, all));
+        Assert.IsType<NotFoundObjectResult>(await controller.GetRows("FormStep", 12, null, null, all));
     }
 
     // ===== What the rows show =====
@@ -116,7 +228,7 @@ public class EntityReferencesControllerTests
         _held.Add(StaffPermissions.ManageWorld);
         StreetIsUsedBy(new ReferencingRows("Structure.StreetId", "Structure", 2, new[] { "9", "3" }));
 
-        var result = await Service().GetAsync(DashboardAccess.Find("Street")!, 12, Staff, null, 20);
+        var result = await Service().GetAsync(ReferenceRecordTypes.Find("Street")!, 12, Staff, null, 20);
 
         var group = Assert.Single(result!.Groups);
         Assert.Equal("Structure", group.EntityType);
@@ -136,7 +248,7 @@ public class EntityReferencesControllerTests
         _held.Add(StaffPermissions.ManageWorld);
         StreetIsUsedBy(new ReferencingRows("Kit.SomeStreetId", "Kit", 1, new[] { "4" }));
 
-        var group = Assert.Single((await Service().GetAsync(DashboardAccess.Find("Street")!, 12, Staff, null, 20))!.Groups);
+        var group = Assert.Single((await Service().GetAsync(ReferenceRecordTypes.Find("Street")!, 12, Staff, null, 20))!.Groups);
 
         Assert.True(group.Listed);
         Assert.False(group.Readable);
@@ -151,7 +263,7 @@ public class EntityReferencesControllerTests
         _held.Add(StaffPermissions.ManageDiscovery);
         StreetIsUsedBy(new ReferencingRows("Structure.StreetId", "Structure", 3, new[] { "1", "2", "3" }));
 
-        var group = Assert.Single((await Service().GetAsync(DashboardAccess.Find("Street")!, 12, Staff, null, 20))!.Groups);
+        var group = Assert.Single((await Service().GetAsync(ReferenceRecordTypes.Find("Street")!, 12, Staff, null, 20))!.Groups);
 
         Assert.False(group.Listed);
         Assert.Empty(group.Rows);
@@ -167,7 +279,7 @@ public class EntityReferencesControllerTests
         StreetIsUsedBy(new ReferencingRows("FormSubmissionProgress.StreetId", "FormSubmissionProgress", 2, new[] { "1", "2" }),
             new ReferencingRows("Thing (link)", null, 1, Array.Empty<string>()));
 
-        var groups = (await Service().GetAsync(DashboardAccess.Find("Street")!, 12, Staff, null, 20))!.Groups;
+        var groups = (await Service().GetAsync(ReferenceRecordTypes.Find("Street")!, 12, Staff, null, 20))!.Groups;
 
         Assert.All(groups, g => Assert.False(g.Listed));
         Assert.All(groups, g => Assert.Empty(g.Rows));
@@ -181,7 +293,7 @@ public class EntityReferencesControllerTests
         StreetIsUsedBy(new ReferencingRows("District (link)", "District", 1, new[] { "5" }),
             new ReferencingRows("Structure.StreetId", "Structure", 3, new[] { "1", "2", "3" }));
 
-        var result = await Service().GetAsync(DashboardAccess.Find("Street")!, 12, Staff, "structure.streetid", 2);
+        var result = await Service().GetAsync(ReferenceRecordTypes.Find("Street")!, 12, Staff, "structure.streetid", 2);
 
         var group = Assert.Single(result!.Groups);
         Assert.Equal("Structure.StreetId", group.ReferencedBy);
@@ -197,7 +309,7 @@ public class EntityReferencesControllerTests
         StreetIsUsedBy(new ReferencingRows("Structure.StreetId", "Structure", 60, Enumerable.Range(1, 60).Select(i => i.ToString()).ToArray()));
         _lookups.Setup(l => l.GetAsync(It.IsAny<DashboardTypeAccess>(), 1)).ThrowsAsync(new InvalidOperationException("boom"));
 
-        var group = Assert.Single((await Service().GetAsync(DashboardAccess.Find("Street")!, 12, Staff, null, 500))!.Groups);
+        var group = Assert.Single((await Service().GetAsync(ReferenceRecordTypes.Find("Street")!, 12, Staff, null, 500))!.Groups);
 
         Assert.Equal(EntityReferenceRowsService.MaxTake, group.Rows.Count);
         Assert.Equal("Structure #1", group.Rows[0].Label);
@@ -210,7 +322,7 @@ public class EntityReferencesControllerTests
         _held.Add(StaffPermissions.ManageWorld);
         StreetIsUsedBy();
 
-        var result = await Service().GetAsync(DashboardAccess.Find("Street")!, 12, Staff, null, 20);
+        var result = await Service().GetAsync(ReferenceRecordTypes.Find("Street")!, 12, Staff, null, 20);
 
         Assert.Empty(result!.Groups);
         _references.Verify(r => r.GetReferencingRowsAsync("Street", "12", true), Times.Once);

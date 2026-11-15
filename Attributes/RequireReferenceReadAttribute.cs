@@ -7,8 +7,9 @@ namespace knkwebapi_v2.Attributes
     /// <summary>
     /// The access rule of <c>GET api/EntityReferences/{entityType}/{id}/rows</c> (PandiO/knk-workspace#44, the #280 model):
     /// what uses a record is part of reading that record, so the caller needs one of the route type's read nodes
-    /// (<see cref="DashboardTypeAccess.ReadNodes"/>). Web users only (the game server deletes nothing through the
-    /// dashboard). Anonymous → 401, the plugin key alone → 403, a type outside the registry → 404, no read node → 403
+    /// (<see cref="DashboardTypeAccess.ReadNodes"/>; for a form configuration <c>knk.admin.content</c>, #289,
+    /// <see cref="ReferenceRecordTypes"/>). Web users only (the game server deletes nothing through the
+    /// dashboard). Anonymous → 401, the plugin key alone → 403, a type that isn't listed → 404, no read node → 403
     /// <c>NoReadAccess</c> (as <see cref="ReadAccess.Refused"/>). The rows themselves are trimmed per type by
     /// <see cref="IEntityReferenceRowsService"/>. A custom rule because the nodes depend on the route's type, so the
     /// read is category U (its own rule) in ReadAccessRulesTests.
@@ -45,10 +46,10 @@ namespace knkwebapi_v2.Attributes
                 return;
             }
 
-            var type = DashboardAccess.Find(context.RouteData.Values[TypeRouteKey]?.ToString());
+            var type = ReferenceRecordTypes.Find(context.RouteData.Values[TypeRouteKey]?.ToString());
             if (type == null)
             {
-                context.Result = new NotFoundObjectResult(new { error = "UnknownEntityType", message = "Not a dashboard entity type." });
+                context.Result = new NotFoundObjectResult(new { error = "UnknownEntityType", message = "Not a dashboard entity type or a form configuration." });
                 return;
             }
 
