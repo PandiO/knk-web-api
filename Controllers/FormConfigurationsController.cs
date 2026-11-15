@@ -21,10 +21,6 @@ namespace KnKWebAPI.Controllers
     public class FormConfigurationsController : ControllerBase
     {
         private readonly IFormConfigurationService _service;
-        private readonly IFormTemplateReusableService _reusableService;
-        private readonly IFormStepRepository _stepRepo;
-        private readonly IFormFieldRepository _fieldRepo;
-        private readonly IFormConfigurationRepository _configRepo;
         private readonly IFormStepService _stepService;
         private readonly IFormFieldService _fieldService;
         private readonly IFormConfigurationPortabilityService _portability;
@@ -32,20 +28,12 @@ namespace KnKWebAPI.Controllers
 
         public FormConfigurationsController(
             IFormConfigurationService service,
-            IFormTemplateReusableService reusableService,
-            IFormStepRepository stepRepo,
-            IFormFieldRepository fieldRepo,
-            IFormConfigurationRepository configRepo,
             IFormStepService stepService,
             IFormFieldService fieldService,
             IFormConfigurationPortabilityService portability,
             IFormConfigurationDraftService drafts)
         {
             _service = service;
-            _reusableService = reusableService;
-            _stepRepo = stepRepo;
-            _fieldRepo = fieldRepo;
-            _configRepo = configRepo;
             _stepService = stepService;
             _fieldService = fieldService;
             _portability = portability;
@@ -204,87 +192,9 @@ namespace KnKWebAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Add a reusable step template to a configuration (copy or link mode).
-        /// POST /api/form-configurations/{configId}/steps/add-from-template
-        /// </summary>
-        [HttpPost("{configId:int}/steps/add-from-template")]
-        public async Task<IActionResult> AddReusableStepToConfiguration(
-            int configId,
-            [FromBody] AddReusableStepRequest request)
-        {
-            if (request == null)
-                return BadRequest("Request body is required.");
-
-            try
-            {
-                var linkMode = request.LinkMode.Equals("link", StringComparison.OrdinalIgnoreCase)
-                    ? ReuseLinkMode.Link
-                    : ReuseLinkMode.Copy;
-
-                var newStep = await _reusableService.AddReusableStepToConfigurationAsync(
-                    configId,
-                    request.SourceStepId,
-                    linkMode,
-                    _configRepo,
-                    _stepRepo);
-
-                return Ok(newStep);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Add a reusable field template to a step (copy or link mode).
-        /// POST /api/form-configurations/steps/{stepId}/fields/add-from-template
-        /// </summary>
-        [HttpPost("steps/{stepId:int}/fields/add-from-template")]
-        public async Task<IActionResult> AddReusableFieldToStep(
-            int stepId,
-            [FromBody] AddReusableFieldRequest request)
-        {
-            if (request == null)
-                return BadRequest("Request body is required.");
-
-            try
-            {
-                var linkMode = request.LinkMode.Equals("link", StringComparison.OrdinalIgnoreCase)
-                    ? ReuseLinkMode.Link
-                    : ReuseLinkMode.Copy;
-
-                var newField = await _reusableService.AddReusableFieldToStepAsync(
-                    stepId,
-                    request.SourceFieldId,
-                    linkMode,
-                    _stepRepo,
-                    _fieldRepo);
-
-                return Ok(newField);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        // PandiO/knk-workspace#291: POST {configId}/steps/add-from-template and steps/{stepId}/fields/add-from-template
+        // were removed. They wrote a template straight into the published rows (live for the form wizard at once);
+        // since #71 the builder copies templates into its working copy (live on Publish) and nothing called them.
 
         // ---- PandiO/knk-workspace#71: the builder's draft, Publish and Duplicate (writes need knk.admin.content, class rule) ----
 

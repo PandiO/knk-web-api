@@ -293,6 +293,7 @@ public class ReadAccessRulesTests
         ["PermissionGroupsController.GetAll"] = "U",
         ["PermissionGroupsController.GetById"] = "U",
         ["PermissionGroupsController.GetExpiringMemberships"] = "U",
+        ["PermissionGroupsController.GetMemberCount"] = "U",
         ["PermissionGroupsController.Search"] = "U",
         ["PermissionHoldersController.GetById"] = "U",
         ["PermissionHoldersController.Search"] = "U",
@@ -300,6 +301,8 @@ public class ReadAccessRulesTests
         ["PrivacyController.GetRequest"] = "U",
         ["PrivacyController.GetRequests"] = "U",
         ["PrivateMessageLogController.Search"] = "U",
+        // #565: the staff timeline's game sessions (knk.admin.user.manage, like the profile summary).
+        ["StatisticsController.GetSessions"] = "U",
         ["TelemetryController.GetEnhancedTargets"] = "U",
         ["TelemetryController.GetEvent"] = "U",
         ["TelemetryController.GetHealth"] = "U",

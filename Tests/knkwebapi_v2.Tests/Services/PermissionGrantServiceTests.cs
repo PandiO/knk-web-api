@@ -14,7 +14,7 @@ namespace knkwebapi_v2.Tests.Services;
 /// Unit tests for PermissionGrantService's audit retrofit (docs/specs/user-management/
 /// IMPLEMENTATION_PLAN.md §0). The interesting case is that HolderId may belong to a User or a
 /// PermissionGroup (PermissionHolder is a TPT base for both) — only the former has one specific
-/// TargetUserId an audit entry can point at.
+/// TargetUserId an audit entry can point at; a group's change is audited with the group as subject (#50).
 /// </summary>
 public class PermissionGrantServiceTests
 {
@@ -46,16 +46,84 @@ public class PermissionGrantServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_HolderIsPermissionGroup_DoesNotRecordAuditEntry()
+    public async Task CreateAsync_HolderIsPermissionGroup_RecordsOneEntryWithTheGroupAsSubject()
     {
-        // HolderId 100 is a PermissionGroup, not a User — no single player is "the target",
-        // so this grant is intentionally not audited per-player (see the service's own doc
-        // comment on IsUserHolderAsync).
+        // HolderId 100 is a PermissionGroup, not a User: no single player is "the target", so the entry is about the
+        // group (PandiO/knk-workspace#50, generic audit subject) and names no target user.
         _mockUserRepo.Setup(r => r.GetByIdAsync(100)).ReturnsAsync((User?)null);
 
-        await _service.CreateAsync(new PermissionGrantDto { HolderId = 100, Node = "knk.mode.staff", Value = true });
+        await _service.CreateAsync(new PermissionGrantDto { HolderId = 100, Node = "knk.mode.staff", Value = true }, actorUserId: 4);
 
         _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<AuditAction>(), It.IsAny<string?>()), Times.Never);
+        _mockAuditLogService.Verify(a => a.RecordForSubjectAsync(4, AuditSubjectTypes.PermissionGroup, 100, AuditAction.GrantAdded,
+            It.Is<string?>(d => d!.Contains("\"node\":\"knk.mode.staff\"") && d.Contains("\"value\":true") && d.Contains("\"expiresAt\":null"))),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UserHolderChanges_NeverRecordASubjectEntry()
+    {
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1, Username = "alice" });
+
+        await _service.UpsertByNodeAsync(1, "knk.fly", true, null, actorUserId: 4);
+
+        _mockAuditLogService.Verify(a => a.RecordForSubjectAsync(It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<int>(),
+            It.IsAny<AuditAction>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpsertByNodeAsync_GroupHolderExistingNode_RecordsGrantUpdatedWithBeforeAndAfter()
+    {
+        var expiry = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var existing = new PermissionGrant { Id = 7, HolderId = 100, Node = "knk.gate.open", Value = true, ExpiresAt = null };
+        _mockRepo.Setup(r => r.GetGrantsForHolderNodeAsync(100, "knk.gate.open")).ReturnsAsync(new List<PermissionGrant> { existing });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(100)).ReturnsAsync((User?)null);
+        string? details = null;
+        _mockAuditLogService.Setup(a => a.RecordForSubjectAsync(4, AuditSubjectTypes.PermissionGroup, 100, AuditAction.GrantUpdated, It.IsAny<string?>()))
+            .Callback((int? _, string _, int _, AuditAction _, string? d) => details = d)
+            .Returns(Task.CompletedTask);
+
+        await _service.UpsertByNodeAsync(100, "knk.gate.open", false, expiry, actorUserId: 4);
+
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<PermissionGrant>()), Times.Never);
+        Assert.NotNull(details);
+        using var json = System.Text.Json.JsonDocument.Parse(details!);
+        Assert.True(json.RootElement.GetProperty("from").GetProperty("value").GetBoolean());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, json.RootElement.GetProperty("from").GetProperty("expiresAt").ValueKind);
+        Assert.False(json.RootElement.GetProperty("to").GetProperty("value").GetBoolean());
+        Assert.Equal(expiry, json.RootElement.GetProperty("to").GetProperty("expiresAt").GetDateTime());
+        Assert.Equal("knk.gate.open", json.RootElement.GetProperty("to").GetProperty("node").GetString());
+    }
+
+    [Fact]
+    public async Task RevokeByNodeAsync_GroupHolder_RecordsGrantRemovedWithTheExpiry()
+    {
+        var expiry = DateTime.UtcNow.AddDays(3);
+        _mockRepo.Setup(r => r.GetActiveGrantsForHolderAsync(100, It.IsAny<DateTime>())).ReturnsAsync(new List<PermissionGrant>
+        {
+            new() { Id = 8, HolderId = 100, Node = "knk.fly", Value = false, ExpiresAt = expiry }
+        });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(100)).ReturnsAsync((User?)null);
+
+        await _service.RevokeByNodeAsync(100, "knk.fly", actorUserId: 4);
+
+        _mockAuditLogService.Verify(a => a.RecordForSubjectAsync(4, AuditSubjectTypes.PermissionGroup, 100, AuditAction.GrantRemoved,
+            It.Is<string?>(d => d!.Contains("\"node\":\"knk.fly\"") && d.Contains("\"value\":false") && d.Contains("\"expiresAt\":\""))),
+            Times.Once);
+        _mockAuditLogService.Verify(a => a.RecordAsync(It.IsAny<int?>(), It.IsAny<int>(), It.IsAny<AuditAction>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAndUpdateById_GroupHolder_AreAuditedWithTheGroupAsSubject()
+    {
+        _mockRepo.Setup(r => r.GetByIdAsync(9)).ReturnsAsync(() => new PermissionGrant { Id = 9, HolderId = 100, Node = "knk.fly", Value = true });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(100)).ReturnsAsync((User?)null);
+
+        await _service.UpdateAsync(9, new PermissionGrantDto { HolderId = 100, Node = "knk.fly", Value = false }, actorUserId: 4);
+        await _service.DeleteAsync(9, actorUserId: 4);
+
+        _mockAuditLogService.Verify(a => a.RecordForSubjectAsync(4, AuditSubjectTypes.PermissionGroup, 100, AuditAction.GrantUpdated, It.IsAny<string?>()), Times.Once);
+        _mockAuditLogService.Verify(a => a.RecordForSubjectAsync(4, AuditSubjectTypes.PermissionGroup, 100, AuditAction.GrantRemoved, It.IsAny<string?>()), Times.Once);
     }
 
     [Fact]

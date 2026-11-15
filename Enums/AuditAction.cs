@@ -119,5 +119,20 @@ public enum AuditAction
 
     /// <summary>Staff exported dashboard rows (POST api/Dashboard/export). Target = the actor; Details name the type,
     /// the scope (selection or search) and the row count, never the rows.</summary>
-    DashboardExport = 62
+    DashboardExport = 62,
+
+    // Values 63-64: kick and ban from the web app (PandiO/knk-workspace#565).
+
+    /// <summary>
+    /// Staff kicked a player from the web app (POST api/Users/{id}/kick); the API published <c>PlayerKick</c> to the
+    /// game servers. Target = the player; Details: reason, the player's uuid and username, and how many game servers
+    /// were connected.
+    /// </summary>
+    PlayerKicked = 63,
+
+    /// <summary>
+    /// Staff banned a player from the web app (POST api/Users/{id}/ban): permanent, on the game server's ban list,
+    /// lifted only by <c>/pardon</c> in game. The API published <c>PlayerBan</c>. Details as <see cref="PlayerKicked"/>.
+    /// </summary>
+    PlayerBanned = 64
 }

@@ -121,7 +121,9 @@ namespace KnKWebAPI.Controllers
             }
         }
 
-        [RequireServiceOrPermission(StaffPermissions.UserPermissions)]
+        // A read, so it carries the same node as GET and GET {id}: the type's view node in DashboardAccess
+        // (knk.admin.user.manage), not the write node (PandiO/knk-workspace#408, read gating per area).
+        [RequireServiceOrPermission(StaffPermissions.ManageUsers)]
         [HttpPost("search")]
         public async Task<ActionResult<PagedResultDto<PermissionGrantListDto>>> Search([FromBody] PagedQueryDto query)
         {

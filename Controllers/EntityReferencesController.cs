@@ -24,20 +24,24 @@ namespace knkwebapi_v2.Controllers
         /// <summary>
         /// The references that stop a delete of <c>{entityType} {id}</c>, each with up to <c>take</c> rows (default 20,
         /// at most 50) as <c>{ id, label, detail? }</c>; <c>referencedBy</c> ("Structure.StreetId") narrows to one group.
+        /// <c>{entityType}</c> is a dashboard type or <c>FormConfiguration</c> (#289). With <c>all=true</c> every reference
+        /// is listed, cascades included: what the "in use" check before deleting a cancelled form's created entities counts
+        /// (KNG-162, #289); the default lists only what stops a delete.
         /// GET api/EntityReferences/Street/12/rows?referencedBy=Structure.StreetId&amp;take=20
         /// </summary>
         /// <response code="200">{ entityTypeName, id, groups: [{ referencedBy, entityType, count, listed, readable, nodes, reason?, rows, more }] }</response>
         /// <response code="403">No read node of the type (<c>NoReadAccess</c>), or the plugin key</response>
-        /// <response code="404">Not a dashboard type</response>
+        /// <response code="404">Not a dashboard type or a form configuration</response>
         [RequireReferenceRead]
         [HttpGet("{entityType}/{id:int}/rows")]
-        public async Task<IActionResult> GetRows(string entityType, int id, [FromQuery] string? referencedBy, [FromQuery] int? take)
+        public async Task<IActionResult> GetRows(string entityType, int id, [FromQuery] string? referencedBy, [FromQuery] int? take,
+            [FromQuery] bool all = false)
         {
-            var type = DashboardAccess.Find(entityType);
-            if (type == null) return NotFound(new { error = "UnknownEntityType", message = "Not a dashboard entity type." });
+            var type = ReferenceRecordTypes.Find(entityType);
+            if (type == null) return NotFound(new { error = "UnknownEntityType", message = "Not a dashboard entity type or a form configuration." });
             if (HttpContext.GetKnkCaller().WebUserId is not { } userId) return Unauthorized();
 
-            var result = await _rows.GetAsync(type, id, userId, referencedBy, take ?? EntityReferenceRowsService.DefaultTake, HttpContext);
+            var result = await _rows.GetAsync(type, id, userId, referencedBy, take ?? EntityReferenceRowsService.DefaultTake, HttpContext, all);
             return result == null
                 ? NotFound(new { error = "UnknownEntityType", message = $"{type.TypeName} has no references to list." })
                 : Ok(result);

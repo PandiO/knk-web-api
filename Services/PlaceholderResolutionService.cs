@@ -646,6 +646,49 @@ public class PlaceholderResolutionService : IPlaceholderResolutionService
     }
 
     /// <summary>
+    /// Not-mapped collections computed from mapped ones (#409): EF can't include them, so an include path through one
+    /// loads what it is computed from instead. (declaring type, property) → the include path that fills it.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<(Type Type, string Property), string> DerivedIncludes =
+        new Dictionary<(Type, string), string>
+        {
+            [(typeof(Town), nameof(Town.Streets))] = $"{nameof(Town.Districts)}.{nameof(District.Streets)}",
+        };
+
+    /// <summary>
+    /// Rewrites the segments of an include path that name a derived collection (<see cref="DerivedIncludes"/>), walking
+    /// the CLR types from <paramref name="rootType"/>: on a Town root "Streets" becomes "Districts.Streets", on a District
+    /// root "Town.Streets" becomes "Town.Districts.Streets". Unknown segments are left as they are.
+    /// </summary>
+    public static string RewriteDerivedIncludes(Type rootType, string includePath)
+    {
+        if (string.IsNullOrWhiteSpace(includePath)) return includePath;
+        var segments = includePath.Split('.');
+        var result = new List<string>(segments.Length);
+        Type? current = rootType;
+        foreach (var segment in segments)
+        {
+            var property = current?.GetProperty(segment, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            var alias = property == null ? null : DerivedIncludes
+                .Where(d => d.Key.Property == property.Name && d.Key.Type.IsAssignableFrom(current!))
+                .Select(d => d.Value)
+                .FirstOrDefault();
+            result.Add(alias ?? segment);
+            current = property == null ? null : ElementType(property.PropertyType);
+        }
+        return string.Join(".", result);
+    }
+
+    private static Type ElementType(Type type)
+    {
+        if (type == typeof(string)) return type;
+        var enumerable = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+            ? type
+            : type.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+        return enumerable?.GetGenericArguments()[0] ?? type;
+    }
+
+    /// <summary>
     /// Get entity with specified Include paths in a single query.
     /// </summary>
     private async Task<object?> GetEntityWithIncludesAsync(Type entityType, object entityId, List<string> includePaths)
@@ -658,8 +701,8 @@ public class PlaceholderResolutionService : IPlaceholderResolutionService
 
         if (queryable == null) return null;
 
-        // Apply Include paths
-        foreach (var includePath in includePaths)
+        // Apply Include paths (#409: a computed collection such as Town.Streets is loaded through what it is computed from)
+        foreach (var includePath in includePaths.Select(p => RewriteDerivedIncludes(entityType, p)).Distinct())
         {
             var includeMethod = typeof(EntityFrameworkQueryableExtensions)
                 .GetMethods()

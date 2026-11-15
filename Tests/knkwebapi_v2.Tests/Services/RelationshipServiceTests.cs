@@ -31,7 +31,7 @@ public class RelationshipServiceTests
         using var db = NewDb();
         var supported = DashboardAccess.All
             .SelectMany(t => RelationshipCatalog.For(db.Model, t.TypeName))
-            .Where(r => r.CanLink || r.CanUnlink)
+            .Where(r => r.CanLink || r.CanUnlink || r.Storage == RelationshipStorage.Derived)
             .Select(r => $"{r.OwnerType}.{r.Property} {r.Storage} {r.RelatedType} link={r.CanLink} unlink={r.CanUnlink}")
             .OrderBy(s => s, StringComparer.Ordinal)
             .ToList();
@@ -48,11 +48,11 @@ public class RelationshipServiceTests
             "ItemBlueprint.IconMaterial ForeignKey MinecraftMaterialRef link=True unlink=False",
             "ItemBlueprint.Tags LinkRow Tag link=True unlink=True",
             "Street.Districts Many District link=True unlink=True",
-            "Street.Town Many Town link=True unlink=True",
-            "Town.Streets Many Street link=True unlink=True",
+            // #409: computed from the districts' streets; the TownStreet table (and its Street.Town side) is gone.
+            "Town.Streets Derived Street link=False unlink=False",
         }, supported);
         // Every reviewed pair exists in the model (a renamed navigation would silently drop out otherwise).
-        Assert.Equal(RelationshipCatalog.Supported.Count, supported.Count);
+        Assert.Equal(RelationshipCatalog.Supported.Count + RelationshipCatalog.Derived.Count, supported.Count);
     }
 
     [Fact]
@@ -262,24 +262,75 @@ public class RelationshipServiceTests
     // ===== hidden link table =====
 
     [Fact]
-    public async Task Streets_AddAndUnlink_OnATown_TheStreetStays()
+    public async Task Streets_AddAndUnlink_OnADistrict_TheStreetStays()
     {
         using var db = NewDb();
         db.Streets.AddRange(new Street { Id = 11, Name = "Main Street" }, new Street { Id = 12, Name = "Harbour Road" });
         db.Towns.Add(new Town { Id = 1, Name = "Cinix", Description = "", WgRegionId = "town_cinix" });
+        db.Districts.Add(new District { Id = 2, Name = "Old Quarter", Description = "", WgRegionId = "district_old", TownId = 1 });
         await db.SaveChangesAsync();
         var service = Service(db);
 
-        await service.LinkAsync("Town", 1, "streets", 11, false);
-        await service.LinkAsync("Town", 1, "streets", 12, false);
-        Assert.False((await service.LinkAsync("Town", 1, "streets", 12, false)).Changed);
-        Assert.Equal(2, (await db.Towns.Include(t => t.Streets).SingleAsync(t => t.Id == 1)).Streets.Count);
+        await service.LinkAsync("District", 2, "streets", 11, false);
+        await service.LinkAsync("District", 2, "streets", 12, false);
+        Assert.False((await service.LinkAsync("District", 2, "streets", 12, false)).Changed);
+        Assert.Equal(2, (await db.Districts.Include(d => d.Streets).SingleAsync(d => d.Id == 2)).Streets.Count);
 
-        await service.UnlinkAsync("Town", 1, "streets", 11);
+        await service.UnlinkAsync("District", 2, "streets", 11);
         db.ChangeTracker.Clear();
-        var town = await db.Towns.Include(t => t.Streets).SingleAsync(t => t.Id == 1);
-        Assert.Equal(new[] { 12 }, town.Streets.Select(s => s.Id));
+        var district = await db.Districts.Include(d => d.Streets).SingleAsync(d => d.Id == 2);
+        Assert.Equal(new[] { 12 }, district.Streets.Select(s => s.Id));
         Assert.Equal(2, await db.Streets.CountAsync());
+    }
+
+    // ===== derived (#409) =====
+
+    [Fact]
+    public async Task Streets_OnATown_AreDerived_LinkAndUnlinkRefused()
+    {
+        using var db = NewDb();
+        db.Streets.AddRange(new Street { Id = 11, Name = "Main Street" }, new Street { Id = 12, Name = "Harbour Road" });
+        db.Towns.Add(new Town { Id = 1, Name = "Cinix", Description = "", WgRegionId = "town_cinix" });
+        db.Districts.Add(new District { Id = 2, Name = "Old Quarter", Description = "", WgRegionId = "district_old", TownId = 1, Streets = { db.Streets.Local.First(s => s.Id == 12) } });
+        await db.SaveChangesAsync();
+        var service = Service(db);
+
+        var relationship = service.Find("Town", "streets")!;
+        Assert.Equal(RelationshipStorage.Derived, relationship.Storage);
+        Assert.Equal("Street", relationship.RelatedType);
+        Assert.True(relationship.IsCollection);
+
+        var link = await Refused(() => service.LinkAsync("Town", 1, "streets", 11, false));
+        Assert.Equal(400, link.Status);
+        Assert.Equal("RelationshipNotEditable", link.Code);
+        Assert.Equal("Streets are managed on the district: open a district to add or remove them.", link.Message);
+
+        var unlink = await Refused(() => service.UnlinkAsync("Town", 1, "streets", 12));
+        Assert.Equal(400, unlink.Status);
+        Assert.Equal("RelationshipNotEditable", unlink.Code);
+        Assert.Equal(RelationshipCatalog.TownStreetsReason, unlink.Message);
+
+        // Nothing written: the district keeps its street, no street was added anywhere.
+        db.ChangeTracker.Clear();
+        Assert.Equal(new[] { 12 }, (await db.Districts.Include(d => d.Streets).SingleAsync(d => d.Id == 2)).Streets.Select(s => s.Id));
+        Assert.Equal(2, await db.Streets.CountAsync());
+    }
+
+    [Fact]
+    public void Metadata_DescribesADerivedRelationship_ReadOnly_WithTheReason()
+    {
+        using var db = NewDb();
+        var streets = RelationshipCatalog.Find(db.Model, "Town", "Streets")!.ToDto();
+
+        Assert.Equal("streets", streets.Property);
+        Assert.Equal("Street", streets.RelatedType);
+        Assert.Equal("collection", streets.Kind);
+        Assert.Equal("derived", streets.Storage);
+        Assert.False(streets.CanLink);
+        Assert.False(streets.CanUnlink);
+        Assert.Equal(RelationshipCatalog.TownStreetsReason, streets.LinkReason);
+        Assert.Equal(RelationshipCatalog.TownStreetsReason, streets.UnlinkReason);
+        Assert.Null(streets.RelatedIdField);
     }
 
     // ===== not found =====

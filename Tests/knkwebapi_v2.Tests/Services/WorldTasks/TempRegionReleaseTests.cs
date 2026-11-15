@@ -388,6 +388,60 @@ public class TempRegionReleaseTests
     }
 
     [Fact]
+    public async Task ListDue_MoreThanAPageOfWaitingRows_DoesNotHideALaterRelease()
+    {
+        // #399: more than ScanLimit due rows whose region a live domain uses (they wait), then one free release.
+        int waiting = TempRegionReleaseService.ScanLimit + 5;
+        var free = RegionTask("Cancelled");
+        await SeedAsync(true, free);
+        await using (var db = NewContext())
+        {
+            var town = new Town { Name = "Rivia", Description = "", WgRegionId = "town_rivia" };
+            db.Towns.Add(town);
+            for (int i = 0; i < waiting; i++)
+            {
+                string region = TempRegionReleases.RegionIdFor(100_000 + i);
+                db.DomainSubRegions.Add(new DomainSubRegion { Domain = town, WgRegionId = region });
+                db.TempRegionReleases.Add(new TempRegionRelease
+                {
+                    WorldTaskId = 100_000 + i, RegionId = region, ServerId = i % 2 == 0 ? "survival-1" : null,
+                    Reason = TempRegionReleaseReasons.SessionRemoved, RequestedAt = _now.AddHours(-1)
+                });
+            }
+            await db.SaveChangesAsync();
+            await TempRegionReleases.AddIfNewAsync(db, await db.WorldTasks.SingleAsync(t => t.Id == free.Id),
+                TempRegionReleaseReasons.TaskCancelled, _now);
+            await db.SaveChangesAsync();
+        }
+
+        var due = Assert.Single(await DueAsync());
+
+        Assert.Equal(free.Id, due.WorldTaskId);
+        Assert.Equal(waiting + 1, (await RowsAsync()).Count);
+    }
+
+    [Fact]
+    public async Task ListDue_StopsAtMax_AcrossPages()
+    {
+        var tasks = Enumerable.Range(0, 3).Select(_ => RegionTask("Cancelled")).ToArray();
+        await SeedAsync(true, tasks);
+        await using (var db = NewContext())
+        {
+            foreach (var task in await db.WorldTasks.OrderBy(t => t.Id).ToListAsync())
+            {
+                await TempRegionReleases.AddIfNewAsync(db, task, TempRegionReleaseReasons.TaskCancelled, _now);
+            }
+            await db.SaveChangesAsync();
+        }
+        _now = _now.AddMinutes(10);
+
+        await using var read = NewContext();
+        var due = await Releases(read).ListDueAsync("survival-1", max: 2);
+
+        Assert.Equal(tasks.Take(2).Select(t => t.Id), due.Select(d => d.WorldTaskId));
+    }
+
+    [Fact]
     public async Task ListDue_DropsReleasesPastTheKeepPeriod()
     {
         var drawn = RegionTask("Cancelled");

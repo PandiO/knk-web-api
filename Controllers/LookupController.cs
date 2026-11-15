@@ -22,7 +22,11 @@ namespace knkwebapi_v2.Controllers
             _lookups = lookups;
         }
 
-        /// <summary>One page of matches: <c>{ items: [{ id, label, detail? }], total }</c>; at most 50 per page.</summary>
+        /// <summary>
+        /// One page of matches: <c>{ items: [{ id, label, detail? }], total }</c>; at most 50 per page. <c>filters</c>
+        /// narrow it where the type's lookup takes them (PandiO/knk-workspace#288); another filter answers 400
+        /// <c>LookupFilterNotAllowed</c>, an unusable value 400 <c>LookupFilterInvalid</c>, both with <c>filters</c>.
+        /// </summary>
         [RequireServiceOrAnyAreaNode(ReadCategory.Lookup)]
         [HttpPost("{entityType}/search")]
         public async Task<IActionResult> Search(string entityType, [FromBody] LookupSearchRequestDto? request)
@@ -30,7 +34,15 @@ namespace knkwebapi_v2.Controllers
             var type = DashboardAccess.Find(entityType);
             if (type == null) return UnknownType();
             if (!type.LookupSearchable) return NotAvailable(type);
-            return Ok(await _lookups.SearchAsync(type, request ?? new LookupSearchRequestDto()));
+            try
+            {
+                return Ok(await _lookups.SearchAsync(type, request ?? new LookupSearchRequestDto()));
+            }
+            catch (LookupFilterException ex)
+            {
+                // A filter the type's lookup doesn't take, or a value its search would skip (#288): never a wider list.
+                return BadRequest(new { error = ex.Code, message = ex.Message, filters = ex.Filters });
+            }
         }
 
         /// <summary>One record as a label: <c>{ id, label, detail? }</c>.</summary>

@@ -71,9 +71,21 @@ namespace knkwebapi_v2.Services
                 NextEligibleAt = account.LastSalaryPayoutAt + MinimumPayoutInterval
             };
 
+            // #565: who froze the player and when, so the profile needs no second read of the user and the audit log.
+            var profileAccount = ProfileAccountDto.From(account);
+            if (user != null && user.IsFrozen)
+            {
+                profileAccount.FrozenAt = user.FrozenAt.HasValue ? DateTime.SpecifyKind(user.FrozenAt.Value, DateTimeKind.Utc) : null;
+                profileAccount.FrozenByUserId = user.FrozenByUserId;
+                if (user.FrozenByUserId is int byId && _users != null)
+                {
+                    profileAccount.FrozenByUsername = (await _users.GetByIdAsync(byId))?.Username;
+                }
+            }
+
             return new UserProfileSummaryDto
             {
-                Account = account,
+                Account = profileAccount,
                 // GetEffectiveAsync/GetByIdAsync just succeeded for this same id, so a null here
                 // would mean the user was deleted between those two calls - treat that the same
                 // as "not found" rather than surfacing a confusing partial response.

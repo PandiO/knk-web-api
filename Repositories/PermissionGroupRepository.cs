@@ -174,6 +174,37 @@ namespace knkwebapi_v2.Repositories
                 .ToList();
         }
 
+        public async Task<(int DirectMembers, int TotalMembers, int InheritingGroups)> CountMembersAsync(int groupId, DateTime asOf)
+        {
+            // Group trees are small (a handful of ranks): load the parent links once and walk down in memory.
+            var links = await _context.PermissionGroups
+                .Select(g => new { g.Id, g.ParentGroupId })
+                .ToListAsync();
+            var childrenOf = links
+                .Where(l => l.ParentGroupId.HasValue)
+                .GroupBy(l => l.ParentGroupId!.Value)
+                .ToDictionary(g => g.Key, g => g.Select(l => l.Id).ToList());
+
+            var reached = new HashSet<int> { groupId };
+            var frontier = new Queue<int>();
+            frontier.Enqueue(groupId);
+            while (frontier.Count > 0)
+            {
+                if (!childrenOf.TryGetValue(frontier.Dequeue(), out var children)) continue;
+                foreach (var child in children)
+                {
+                    if (reached.Add(child)) frontier.Enqueue(child);
+                }
+            }
+
+            var groupIds = reached.ToList();
+            var active = _context.UserPermissionGroups
+                .Where(m => groupIds.Contains(m.PermissionGroupId) && (m.ExpiresAt == null || m.ExpiresAt > asOf));
+            var direct = await active.CountAsync(m => m.PermissionGroupId == groupId);
+            var total = await active.Select(m => m.UserId).Distinct().CountAsync();
+            return (direct, total, groupIds.Count - 1);
+        }
+
         public async Task<List<UserPermissionGroup>> GetExpiringMembershipsAsync(int groupId, int withinDays, DateTime asOf)
         {
             var cutoff = asOf.AddDays(withinDays);

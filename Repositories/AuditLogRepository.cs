@@ -25,9 +25,23 @@ namespace knkwebapi_v2.Repositories
         public Task<PagedResult<AuditLogEntry>> SearchAsync(int? targetUserId, int? actorUserId, int pageNumber, int pageSize)
             => SearchAsync(targetUserId, actorUserId, null, null, pageNumber, pageSize);
 
-        public async Task<PagedResult<AuditLogEntry>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction, int pageNumber, int pageSize)
+        public Task<PagedResult<AuditLogEntry>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction, int pageNumber, int pageSize)
+            => SearchAsync(targetUserId, actorUserId, action, direction, null, null, pageNumber, pageSize);
+
+        public async Task<PagedResult<AuditLogEntry>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction,
+            string? subjectType, int? subjectId, int pageNumber, int pageSize)
         {
             var queryable = _context.AuditLogEntries.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(subjectType))
+            {
+                queryable = queryable.Where(e => e.SubjectType == subjectType);
+            }
+
+            if (subjectId.HasValue)
+            {
+                queryable = queryable.Where(e => e.SubjectId == subjectId.Value);
+            }
 
             if (targetUserId.HasValue)
             {
@@ -53,7 +67,8 @@ namespace knkwebapi_v2.Repositories
                 queryable = queryable.Where(e => e.Details != null && e.Details.Contains(needle));
             }
 
-            queryable = queryable.OrderByDescending(e => e.Timestamp);
+            // Id breaks ties: two changes in the same instant (one request) keep their order.
+            queryable = queryable.OrderByDescending(e => e.Timestamp).ThenByDescending(e => e.Id);
 
             var totalCount = await queryable.CountAsync();
 

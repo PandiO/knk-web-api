@@ -152,4 +152,32 @@ public class RelationshipsControllerTests
         Assert.Equal(400, required.StatusCode);
         Assert.Contains("always belongs to one Town", JsonSerializer.Serialize(required.Value));
     }
+
+    [Fact]
+    public async Task TownStreets_AreDerived_400WithTheReason_ForStaffWithTheNodes_403Without()
+    {
+        // #409: the gate still finds the relationship and checks the nodes (403 without them).
+        Assert.Equal(403, Status(await Gate(ServiceAuthTestHelper.WebUser(Staff), "Town", "streets")));
+
+        _held.Add(StaffPermissions.ManageWorld);
+        _held.Add(StaffPermissions.ManageContent);
+        Assert.Equal(200, Status(await Gate(ServiceAuthTestHelper.WebUser(Staff), "Town", "streets")));
+
+        _db.Towns.Add(new Town { Id = 4, Name = "Cinix", Description = "", WgRegionId = "town_cinix" });
+        _db.Streets.Add(new Street { Id = 9, Name = "Main Street" });
+        await _db.SaveChangesAsync();
+        var controller = new RelationshipsController(new RelationshipService(_db));
+
+        foreach (var refused in new[]
+        {
+            (ObjectResult)await controller.Link("Town", 4, "streets", new RelationshipLinkRequestDto { RelatedId = 9 }),
+            (ObjectResult)await controller.Unlink("Town", 4, "streets", new RelationshipUnlinkRequestDto { RelatedId = 9 }),
+        })
+        {
+            Assert.Equal(400, refused.StatusCode);
+            Assert.Equal("{\"error\":\"RelationshipNotEditable\",\"message\":\"Streets are managed on the district: open a district to add or remove them.\"}",
+                JsonSerializer.Serialize(refused.Value));
+        }
+        Assert.Equal(0, await _db.Set<District>().CountAsync());
+    }
 }

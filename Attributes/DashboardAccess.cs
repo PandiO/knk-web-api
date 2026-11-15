@@ -106,12 +106,14 @@ namespace knkwebapi_v2.Attributes
     public sealed class DashboardLookup
     {
         internal DashboardLookup(Func<IServiceProvider, int, Task<object?>>? get, Func<object, string?> label,
-            Func<object, string?>? detail, Func<string?, PagedQueryDto, PagedQueryDto>? query)
+            Func<object, string?>? detail, Func<string?, PagedQueryDto, PagedQueryDto>? query,
+            IReadOnlyList<LookupFilter>? filters = null)
         {
             Get = get;
             Label = label;
             Detail = detail;
             Query = query;
+            Filters = filters ?? Array.Empty<LookupFilter>();
         }
 
         /// <summary>The type's own get by id (the same service call as its <c>GET {id}</c>); null = search only.</summary>
@@ -126,7 +128,35 @@ namespace knkwebapi_v2.Attributes
         /// the username filter, so a lookup can't find a user by an email fragment). Null = the term as is.
         /// </summary>
         public Func<string?, PagedQueryDto, PagedQueryDto>? Query { get; }
+
+        /// <summary>
+        /// The <c>pickerFilters</c> a lookup search passes on to the type's own search (PandiO/knk-workspace#288,
+        /// developer 2026-11-15): a subset of the keys that search reads, spelled as it reads them. The search applies
+        /// them, as it does for its own <c>POST …/search</c>; the lookup only checks the key and the value. Empty =
+        /// the lookup takes no filters.
+        /// </summary>
+        public IReadOnlyList<LookupFilter> Filters { get; }
+
+        /// <summary>The filter for a key (case-insensitive), or null when the lookup doesn't take it.</summary>
+        public LookupFilter? FilterFor(string key) =>
+            Filters.FirstOrDefault(f => string.Equals(f.Key, key.Trim(), StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>What a lookup filter's value must look like, so the type's search can't skip it and list more.</summary>
+    public enum LookupFilterKind
+    {
+        /// <summary>A record id: a positive whole number (the searches skip a non-positive or non-numeric id).</summary>
+        Id,
+
+        /// <summary><c>true</c> or <c>false</c>.</summary>
+        Flag,
+
+        /// <summary>A <c>prefer…</c> id: only orders the results, so an unusable value is left out instead of refused.</summary>
+        Prefer,
+    }
+
+    /// <summary>One filter a type's lookup passes on to its search (PandiO/knk-workspace#288).</summary>
+    public sealed record LookupFilter(string Key, LookupFilterKind Kind);
 
     /// <summary>
     /// The single source of truth for who may do what with each dashboard type (knk-workspace

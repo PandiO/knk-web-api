@@ -30,6 +30,11 @@ namespace knkwebapi_v2.Controllers
         /// For action=TitleChanged only: "promotion" or "demotion" — the moderation view's
         /// "recently demoted players" filter (IMPLEMENTATION_PLAN.md Phase 3).
         /// </param>
+        /// <param name="subjectType">
+        /// Filter to entries about one kind of subject that is not a player (PandiO/knk-workspace#50), e.g.
+        /// "PermissionGroup"; with subjectId, one record's history (a group's History list).
+        /// </param>
+        /// <param name="subjectId">Filter to entries about the subject with this id.</param>
         /// <param name="pageNumber">1-based page number.</param>
         /// <param name="pageSize">Page size, capped at 100.</param>
         [HttpGet]
@@ -38,6 +43,8 @@ namespace knkwebapi_v2.Controllers
             [FromQuery] int? actorUserId,
             [FromQuery] AuditAction? action,
             [FromQuery] string? direction,
+            [FromQuery] string? subjectType,
+            [FromQuery] int? subjectId,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20)
         {
@@ -45,7 +52,12 @@ namespace knkwebapi_v2.Controllers
             if (pageSize < 1) pageSize = 20;
             if (pageSize > 100) pageSize = 100;
 
-            var result = await _service.SearchAsync(targetUserId, actorUserId, action, direction, pageNumber, pageSize);
+            if (subjectType != null && (string.IsNullOrWhiteSpace(subjectType) || subjectType.Length > AuditSubjectTypes.MaxLength))
+                return BadRequest(new { message = "subjectType is invalid." });
+
+            var result = subjectType == null && subjectId == null
+                ? await _service.SearchAsync(targetUserId, actorUserId, action, direction, pageNumber, pageSize)
+                : await _service.SearchAsync(targetUserId, actorUserId, action, direction, subjectType?.Trim(), subjectId, pageNumber, pageSize);
             return Ok(result);
         }
     }

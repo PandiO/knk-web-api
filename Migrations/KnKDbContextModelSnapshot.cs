@@ -39,21 +39,6 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("DistrictStreet");
                 });
 
-            modelBuilder.Entity("TownStreet", b =>
-                {
-                    b.Property<int>("StreetId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TownId")
-                        .HasColumnType("int");
-
-                    b.HasKey("StreetId", "TownId");
-
-                    b.HasIndex("TownId");
-
-                    b.ToTable("TownStreet");
-                });
-
             modelBuilder.Entity("gate_structure_guard_spawn_locations", b =>
                 {
                     b.Property<int>("GateStructureId")
@@ -156,7 +141,14 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Details")
                         .HasColumnType("longtext");
 
-                    b.Property<int>("TargetUserId")
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubjectType")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int?>("TargetUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("Timestamp")
@@ -168,6 +160,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("ActorUserId", "Timestamp");
 
                     b.HasIndex("TargetUserId", "Timestamp");
+
+                    b.HasIndex("SubjectType", "SubjectId", "Timestamp");
 
                     b.ToTable("audit_log_entries", (string)null);
                 });
@@ -7310,21 +7304,6 @@ namespace knkwebapi_v2.Migrations
                     b.HasOne("knkwebapi_v2.Models.Street", null)
                         .WithMany()
                         .HasForeignKey("StreetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("TownStreet", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.Street", null)
-                        .WithMany()
-                        .HasForeignKey("StreetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("knkwebapi_v2.Models.Town", null)
-                        .WithMany()
-                        .HasForeignKey("TownId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

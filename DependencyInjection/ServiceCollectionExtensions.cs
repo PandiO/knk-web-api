@@ -81,6 +81,12 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddHostedService<LinkCodeCleanupService>();
             // Closed-alpha WP3: staff can't hand out nodes or groups they don't hold.
             services.AddScoped<IPermissionEscalationGuard, PermissionEscalationGuard>();
+            // PandiO/knk-workspace#565: kick and ban from the web app (audited, sent to the game servers over the hub).
+            services.AddScoped<IPlayerModerationService>(sp => new PlayerModerationService(
+                sp.GetRequiredService<IUserRepository>(), sp.GetRequiredService<IAuditLogService>(),
+                sp.GetRequiredService<IPermissionEscalationGuard>(),
+                sp.GetRequiredService<knkwebapi_v2.Realtime.RealtimeConnections>(),
+                sp.GetService<knkwebapi_v2.Realtime.IRealtimeEventSink>()));
             // PandiO/knk-workspace#280 AM2: dashboard read checks, 30 s per user and node, dropped when grants change.
             services.AddSingleton<IPermissionReadCache>(_ => new PermissionReadCache());
             // KNG-212: invitations and invite-based registration (Security:Registration:Mode).
@@ -298,7 +304,6 @@ namespace knkwebapi_v2.DependencyInjection
             // Add FormTemplate services for reusable step/field management
             services.AddScoped<IFormTemplateValidationService, FormTemplateValidationService>();
             services.AddScoped<IDisplayConditionEvaluator, DisplayConditionEvaluator>();
-            services.AddScoped<IFormTemplateReusableService, FormTemplateReusableService>();
 
             // Register HttpClient for HTTP calls to external services
             services.AddHttpClient();

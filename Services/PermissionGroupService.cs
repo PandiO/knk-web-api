@@ -153,6 +153,20 @@ namespace knkwebapi_v2.Services
             });
         }
 
+        public async Task<PermissionGroupMemberCountDto?> GetMemberCountAsync(int groupId)
+        {
+            if (groupId <= 0) return null;
+            if (await _repo.GetByIdAsync(groupId) == null) return null;
+            var (direct, total, inheriting) = await _repo.CountMembersAsync(groupId, DateTime.UtcNow);
+            return new PermissionGroupMemberCountDto
+            {
+                GroupId = groupId,
+                DirectMembers = direct,
+                TotalMembers = total,
+                InheritingGroups = inheriting
+            };
+        }
+
         /// <summary>Validates the KNG-7 style fields and stores them in canonical form ("&amp;6&amp;L"
         /// → "&amp;6&amp;l", blank → null), so the plugin only ever sees codes it can parse.</summary>
         private static void NormalizeColors(PermissionGroupDto dto)

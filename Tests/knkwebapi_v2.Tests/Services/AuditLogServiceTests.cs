@@ -106,4 +106,52 @@ public class AuditLogServiceTests
         Assert.Equal("demoted1", result.Items[0].TargetUsername);
         Assert.Equal("TitleChanged", result.Items[0].Action);
     }
+    [Fact]
+    public async Task RecordForSubjectAsync_WritesASubjectEntryWithoutTarget()
+    {
+        AuditLogEntry? captured = null;
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<AuditLogEntry>()))
+            .Callback<AuditLogEntry>(e => captured = e)
+            .Returns(Task.CompletedTask);
+
+        await _service.RecordForSubjectAsync(5, AuditSubjectTypes.PermissionGroup, 50, AuditAction.GrantAdded, "{\"node\":\"knk.a\"}");
+
+        Assert.NotNull(captured);
+        Assert.Equal((int?)5, captured!.ActorUserId);
+        Assert.Null(captured.TargetUserId);
+        Assert.Equal(("PermissionGroup", (int?)50), (captured.SubjectType, captured.SubjectId));
+        Assert.Equal(AuditAction.GrantAdded, captured.Action);
+    }
+
+    [Theory]
+    [InlineData("", 50)]
+    [InlineData("PermissionGroup", 0)]
+    public async Task RecordForSubjectAsync_InvalidSubject_Throws(string subjectType, int subjectId)
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.RecordForSubjectAsync(5, subjectType, subjectId, AuditAction.GrantAdded));
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<AuditLogEntry>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SearchAsync_BySubject_PassesTheFilterAndMapsTheSubject()
+    {
+        _mockRepo.Setup(r => r.SearchAsync(null, null, null, null, "PermissionGroup", 50, 1, 20))
+            .ReturnsAsync(new PagedResult<AuditLogEntry>
+            {
+                Items = new List<AuditLogEntry>
+                {
+                    new() { Id = 3, Timestamp = DateTime.UtcNow, ActorUserId = 5, TargetUserId = null, SubjectType = "PermissionGroup", SubjectId = 50, Action = AuditAction.GrantRemoved }
+                },
+                TotalCount = 1, PageNumber = 1, PageSize = 20
+            });
+        _mockUserRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(new User { Id = 5, Username = "staff" });
+
+        var result = await _service.SearchAsync(null, null, null, null, "PermissionGroup", 50, 1, 20);
+
+        var entry = Assert.Single(result.Items);
+        Assert.Null(entry.TargetUserId);
+        Assert.Null(entry.TargetUsername);
+        Assert.Equal(("PermissionGroup", (int?)50, "staff"), (entry.SubjectType, entry.SubjectId, entry.ActorUsername));
+        _mockUserRepo.Verify(r => r.GetByIdAsync(It.Is<int>(id => id != 5)), Times.Never);
+    }
 }

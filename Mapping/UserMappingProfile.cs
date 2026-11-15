@@ -162,7 +162,11 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ExperiencePoints, src => src.MapFrom(src => src.ExperiencePoints))
                 .ForMember(dest => dest.IsActive, src => src.MapFrom(src => src.IsActive))
                 .ForMember(dest => dest.IsOnline, src => src.MapFrom(src => src.IsOnline))
-                .ForMember(dest => dest.LastSeenAt, src => src.MapFrom(src => src.LastSeenAt.HasValue ? DateTime.SpecifyKind(src.LastSeenAt.Value, DateTimeKind.Utc) : (DateTime?)null));
+                .ForMember(dest => dest.LastSeenAt, src => src.MapFrom(src => src.LastSeenAt.HasValue ? DateTime.SpecifyKind(src.LastSeenAt.Value, DateTimeKind.Utc) : (DateTime?)null))
+                // #565: the moderation list's state columns.
+                .ForMember(dest => dest.IsFrozen, src => src.MapFrom(src => src.IsFrozen))
+                .ForMember(dest => dest.PaymentsLocked, src => src.MapFrom(src => src.TransferLockedAt != null))
+                .ForMember(dest => dest.CreatedAt, src => src.MapFrom(src => DateTime.SpecifyKind(src.CreatedAt, DateTimeKind.Utc)));
 
             // ===== UserCreateDto → User =====
             // CRITICAL: Ignore PasswordHash - passwords are hashed separately in the service layer

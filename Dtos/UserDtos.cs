@@ -402,11 +402,49 @@ namespace knkwebapi_v2.Dtos
         public bool IsOnline { get; set; }
     }
 
-    /// <summary>Body for PUT /api/users/{id}/freeze — required. /unfreeze takes no body.</summary>
+    /// <summary>Body for PUT /api/users/{id}/freeze — required.</summary>
     public class FreezePlayerDto
     {
         [JsonPropertyName("reason")]
         public string Reason { get; set; } = null!;
+    }
+
+    /// <summary>
+    /// Optional body for PUT /api/users/{id}/unfreeze (PandiO/knk-workspace#565): the reason goes into the
+    /// PlayerUnfrozen audit entry only. No body, or a blank reason, unfreezes without one.
+    /// </summary>
+    public class UnfreezePlayerDto
+    {
+        [JsonPropertyName("reason")]
+        public string? Reason { get; set; }
+    }
+
+    /// <summary>
+    /// Body for POST /api/users/{id}/kick and /ban (PandiO/knk-workspace#565). Kick: reason optional. Ban: reason
+    /// required (the game server shows it on the ban screen). At most 200 characters.
+    /// </summary>
+    public class PlayerModerationRequestDto
+    {
+        [JsonPropertyName("reason")]
+        public string? Reason { get; set; }
+    }
+
+    /// <summary>
+    /// Answer of POST /api/users/{id}/kick and /ban (202 Accepted): the API audited the action and handed the event to
+    /// the game servers, which carry it out (knk-plugin, PandiO/knk-workspace#574).
+    /// </summary>
+    public class PlayerModerationResultDto
+    {
+        /// <summary>Unique id of this action; also in the audit entry and the realtime payload.</summary>
+        [JsonPropertyName("actionId")]
+        public string ActionId { get; set; } = "";
+
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
+
+        /// <summary>How many game servers were connected to the realtime hub when the event was sent.</summary>
+        [JsonPropertyName("gameServers")]
+        public int GameServers { get; set; }
     }
 
     /// <summary>
@@ -512,6 +550,18 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("lastSeenAt")]
         public DateTime? LastSeenAt { get; set; }
+
+        /// <summary>#565: admin-frozen (PUT api/Users/{id}/freeze).</summary>
+        [JsonPropertyName("isFrozen")]
+        public bool IsFrozen { get; set; }
+
+        /// <summary>#565: payments (transfers) locked by staff (User.TransferLockedAt set).</summary>
+        [JsonPropertyName("paymentsLocked")]
+        public bool PaymentsLocked { get; set; }
+
+        /// <summary>#565: when the account was created (UTC).</summary>
+        [JsonPropertyName("createdAt")]
+        public DateTime CreatedAt { get; set; }
     }
 
     /// <summary>

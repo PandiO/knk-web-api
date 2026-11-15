@@ -32,12 +32,36 @@ namespace knkwebapi_v2.Services
             });
         }
 
+        public async Task RecordForSubjectAsync(int? actorUserId, string subjectType, int subjectId, AuditAction action, string? details = null)
+        {
+            if (string.IsNullOrWhiteSpace(subjectType) || subjectType.Length > AuditSubjectTypes.MaxLength)
+                throw new ArgumentException("Invalid subject type.", nameof(subjectType));
+            if (subjectId <= 0) throw new ArgumentException("Invalid subject id.", nameof(subjectId));
+
+            await _repo.AddAsync(new AuditLogEntry
+            {
+                Timestamp = DateTime.UtcNow,
+                ActorUserId = actorUserId,
+                TargetUserId = null,
+                SubjectType = subjectType,
+                SubjectId = subjectId,
+                Action = action,
+                Details = details
+            });
+        }
+
         public Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, int pageNumber, int pageSize)
             => SearchAsync(targetUserId, actorUserId, null, null, pageNumber, pageSize);
 
-        public async Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction, int pageNumber, int pageSize)
+        public Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction, int pageNumber, int pageSize)
+            => SearchAsync(targetUserId, actorUserId, action, direction, null, null, pageNumber, pageSize);
+
+        public async Task<PagedResultDto<AuditLogEntryDto>> SearchAsync(int? targetUserId, int? actorUserId, AuditAction? action, string? direction,
+            string? subjectType, int? subjectId, int pageNumber, int pageSize)
         {
-            var result = await _repo.SearchAsync(targetUserId, actorUserId, action, direction, pageNumber, pageSize);
+            var result = subjectType == null && subjectId == null
+                ? await _repo.SearchAsync(targetUserId, actorUserId, action, direction, pageNumber, pageSize)
+                : await _repo.SearchAsync(targetUserId, actorUserId, action, direction, subjectType, subjectId, pageNumber, pageSize);
 
             // Small per-page dataset (pageSize is admin-view sized) — a plain per-id lookup is
             // simpler than adding a batch-get-by-ids method to IUserRepository for this one caller.
@@ -64,7 +88,9 @@ namespace knkwebapi_v2.Services
                     TargetUserId = entry.TargetUserId,
                     TargetUsername = await ResolveUsernameAsync(entry.TargetUserId),
                     Action = entry.Action.ToString(),
-                    Details = entry.Details
+                    Details = entry.Details,
+                    SubjectType = entry.SubjectType,
+                    SubjectId = entry.SubjectId
                 });
             }
 

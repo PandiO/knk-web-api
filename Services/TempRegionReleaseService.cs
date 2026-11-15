@@ -31,6 +31,8 @@ namespace knkwebapi_v2.Services
         /// The releases game server <paramref name="serverId"/> may act on now: past the grace period, their task closed
         /// (or gone), not a Completed task of a draft that still exists, and no domain, domain sub-region, lootbox area
         /// (its region or exclusions), road edge or draft names the region. Drops releases older than the keep period.
+        /// The due rows are read in pages of <c>ScanLimit</c> (oldest first) until <paramref name="max"/> are listed or no due
+        /// row is left, so rows that keep waiting (#399) never hide later releases.
         /// </summary>
         Task<List<TempRegionReleaseDto>> ListDueAsync(string? serverId, int max = 50, CancellationToken ct = default);
 
@@ -158,8 +160,11 @@ namespace knkwebapi_v2.Services
     /// <summary>#269: see <see cref="ITempRegionReleaseService"/>.</summary>
     public class TempRegionReleaseService : ITempRegionReleaseService
     {
-        /// <summary>Rows looked at per list call (most are listed; the others wait or are kept by a use).</summary>
-        private const int ScanLimit = 200;
+        /// <summary>
+        /// Rows read per page of a list call (most are listed; the others wait or are kept by a use). A list call reads
+        /// further pages past waiting rows (#399); the keep period bounds how many rows there can be.
+        /// </summary>
+        public const int ScanLimit = 200;
 
         private readonly KnKDbContext _db;
         private readonly WorldTaskOptions _options;
@@ -240,34 +245,50 @@ namespace knkwebapi_v2.Services
 
             string? server = string.IsNullOrWhiteSpace(serverId) ? null : serverId.Trim();
             var dueBy = now - _options.TempRegionReleaseGrace;
-            var rows = await _db.TempRegionReleases.AsNoTracking()
-                .Where(r => r.RequestedAt <= dueBy && (server == null || r.ServerId == null || r.ServerId == server))
-                .OrderBy(r => r.Id)
-                .Take(ScanLimit)
-                .ToListAsync(ct);
-
+            int limit = Math.Clamp(max, 1, 200);
             var due = new List<TempRegionReleaseDto>();
-            foreach (var row in rows)
+            int afterId = 0;
+            int waiting = 0;
+            while (due.Count < limit)
             {
-                if (due.Count >= Math.Clamp(max, 1, 200))
+                // #399: page by id past the rows looked at, so rows that keep waiting don't hide later releases.
+                var rows = await _db.TempRegionReleases.AsNoTracking()
+                    .Where(r => r.Id > afterId && r.RequestedAt <= dueBy && (server == null || r.ServerId == null || r.ServerId == server))
+                    .OrderBy(r => r.Id)
+                    .Take(ScanLimit)
+                    .ToListAsync(ct);
+                foreach (var row in rows)
+                {
+                    afterId = row.Id;
+                    if (due.Count >= limit)
+                    {
+                        break;
+                    }
+                    string? wait = await WaitReasonAsync(row, dueBy, ct);
+                    if (wait != null)
+                    {
+                        waiting++;
+                        _logger.LogDebug("Temp region release {Id} ({RegionId}) waits: {Why}", row.Id, row.RegionId, wait);
+                        continue;
+                    }
+                    due.Add(new TempRegionReleaseDto
+                    {
+                        Id = row.Id,
+                        WorldTaskId = row.WorldTaskId,
+                        RegionId = row.RegionId,
+                        World = row.World,
+                        Reason = row.Reason,
+                        RequestedAt = row.RequestedAt
+                    });
+                }
+                if (rows.Count < ScanLimit)
                 {
                     break;
                 }
-                string? wait = await WaitReasonAsync(row, dueBy, ct);
-                if (wait != null)
-                {
-                    _logger.LogDebug("Temp region release {Id} ({RegionId}) waits: {Why}", row.Id, row.RegionId, wait);
-                    continue;
-                }
-                due.Add(new TempRegionReleaseDto
-                {
-                    Id = row.Id,
-                    WorldTaskId = row.WorldTaskId,
-                    RegionId = row.RegionId,
-                    World = row.World,
-                    Reason = row.Reason,
-                    RequestedAt = row.RequestedAt
-                });
+            }
+            if (waiting >= ScanLimit)
+            {
+                _logger.LogInformation("{Waiting} temp region release(s) wait (in use or not settled yet); listed {Due}", waiting, due.Count);
             }
             return due;
         }

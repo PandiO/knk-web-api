@@ -88,6 +88,33 @@ public class WorldTasksControllerTests
         Assert.IsType<OkObjectResult>(await Controller().ListOpenForServer("survival-1"));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task ListTempRegionReleases_NeedsAServerId(string? serverId)
+    {
+        // #399: as GET open; the plugin always sends realtime.server-id.
+        var releases = new Mock<ITempRegionReleaseService>(MockBehavior.Strict);
+
+        var result = await Controller().ListTempRegionReleases(releases.Object, serverId);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        releases.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task ListTempRegionReleases_PassesTheServerAndMax()
+    {
+        var listed = new List<TempRegionReleaseDto> { new() { Id = 3, RegionId = "tempregion_worldtask_9" } };
+        var releases = new Mock<ITempRegionReleaseService>();
+        releases.Setup(r => r.ListDueAsync("survival-1", 20, It.IsAny<CancellationToken>())).ReturnsAsync(listed);
+
+        var result = await Controller().ListTempRegionReleases(releases.Object, "survival-1", 20);
+
+        Assert.Same(listed, Assert.IsType<OkObjectResult>(result).Value);
+    }
+
     [Fact]
     public async Task DraftWorldTasks_UnknownDraftIs404_ElseTheLatestPerField()
     {

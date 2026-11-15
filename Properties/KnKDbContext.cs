@@ -1,4 +1,5 @@
 using System;
+using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -1617,14 +1618,7 @@ public partial class KnKDbContext : DbContext
             entity.ToTable("towns");
         });
 
-        // Town-Street many-to-many
-        modelBuilder.Entity<Town>()
-            .HasMany(t => t.Streets)
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "TownStreet",
-                j => j.HasOne<Street>().WithMany().HasForeignKey("StreetId"),
-                j => j.HasOne<Town>().WithMany().HasForeignKey("TownId"));
+        // #409: Town.Streets is not mapped; it is computed from District.Streets (the TownStreet table was dropped).
 
         // District configuration
         modelBuilder.Entity<District>(entity =>
@@ -2392,6 +2386,10 @@ public partial class KnKDbContext : DbContext
             // Timestamp descending — see DESIGN.md §4/IMPLEMENTATION_PLAN.md Phase 2.
             entity.HasIndex(e => new { e.TargetUserId, e.Timestamp });
             entity.HasIndex(e => new { e.ActorUserId, e.Timestamp });
+
+            // Generic audit subject (PandiO/knk-workspace#50): a group's History list filters on the pair.
+            entity.Property(e => e.SubjectType).HasMaxLength(AuditSubjectTypes.MaxLength);
+            entity.HasIndex(e => new { e.SubjectType, e.SubjectId, e.Timestamp });
         });
 
         // Domain discovery (docs/specs/domain-discovery/DESIGN.md §3.1). The unique
