@@ -490,7 +490,7 @@ namespace knkwebapi_v2.Services
         /// - C# has multiple collection interfaces (ICollection, IEnumerable, List)
         /// - Related entity collections (marked with [RelatedEntityField]) are also valid
         /// 
-        /// For example, Town.Streets is ICollection<Street>:
+        /// For example, Town.Districts is ICollection<District> (Town.Streets, #409, is a computed read-only list):
         /// - FieldType contains "Collection" → passes
         /// - IsRelatedEntity = true → also passes
         /// </summary>
