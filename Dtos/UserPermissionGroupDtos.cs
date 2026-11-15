@@ -78,4 +78,27 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("expiresAt")]
         public DateTime ExpiresAt { get; set; }
     }
+
+    /// <summary>
+    /// GET /api/PermissionGroups/{id}/member-count (PandiO/knk-workspace#50): how many players a change to the group's
+    /// own grants reaches, for the web app's "affects N players" confirmation. Active memberships only.
+    /// </summary>
+    public class PermissionGroupMemberCountDto
+    {
+        [JsonPropertyName("groupId")]
+        public int GroupId { get; set; }
+
+        /// <summary>Players with an active membership in this group itself.</summary>
+        [JsonPropertyName("directMembers")]
+        public int DirectMembers { get; set; }
+
+        /// <summary>Distinct players reached: members of this group and of every group that inherits from it (any
+        /// depth), each player counted once.</summary>
+        [JsonPropertyName("totalMembers")]
+        public int TotalMembers { get; set; }
+
+        /// <summary>How many groups inherit from this one (children, grandchildren, ...).</summary>
+        [JsonPropertyName("inheritingGroups")]
+        public int InheritingGroups { get; set; }
+    }
 }

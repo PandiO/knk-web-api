@@ -156,7 +156,14 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Details")
                         .HasColumnType("longtext");
 
-                    b.Property<int>("TargetUserId")
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubjectType")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int?>("TargetUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("Timestamp")
@@ -168,6 +175,8 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("ActorUserId", "Timestamp");
 
                     b.HasIndex("TargetUserId", "Timestamp");
+
+                    b.HasIndex("SubjectType", "SubjectId", "Timestamp");
 
                     b.ToTable("audit_log_entries", (string)null);
                 });

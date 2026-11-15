@@ -33,11 +33,25 @@ namespace knkwebapi_v2.Services
         /// <summary>
         /// A grant's HolderId is a User's own id only when the holder is actually a User (it may
         /// instead be a PermissionGroup — see PermissionHolder's own doc comment on the two
-        /// possible holder types). Audit entries need one specific TargetUserId, so group-level
-        /// grants (which affect every member indirectly, not one player) are intentionally not
-        /// audited per-grant here — see this file's retrofit notes in ACTIVE_SESSIONS.md.
+        /// possible holder types). A user holder's change is audited against that player (TargetUserId);
+        /// a group holder's once per change with the group as the audit subject (PandiO/knk-workspace#50).
         /// </summary>
         private async Task<bool> IsUserHolderAsync(int holderId) => await _userRepo.GetByIdAsync(holderId) != null;
+
+        /// <summary>
+        /// One audit entry for a grant change: about the player for a user holder (as before), else about the
+        /// permission group as subject, with no target user (#50, developer decision 2026-11-15). PermissionHolder
+        /// has two kinds, so a holder that exists and is not a user is a group. <paramref name="groupDetails"/>
+        /// replaces the details for a group entry when given (a removal also names the expiry there).
+        /// </summary>
+        private Task AuditGrantChangeAsync(bool isUserHolder, int holderId, int? actorUserId, AuditAction action,
+            object details, object? groupDetails = null)
+        {
+            return isUserHolder
+                ? _auditLogService.RecordAsync(actorUserId, holderId, action, JsonSerializer.Serialize(details))
+                : _auditLogService.RecordForSubjectAsync(actorUserId, AuditSubjectTypes.PermissionGroup, holderId, action,
+                    JsonSerializer.Serialize(groupDetails ?? details));
+        }
 
         /// <summary>
         /// Tells the game server after a grant write (PandiO/knk-workspace#179, DESIGN §6.1): a user holder gets
@@ -119,15 +133,12 @@ namespace knkwebapi_v2.Services
 
             await _repo.UpdateAsync(existing);
 
-            if (await IsUserHolderAsync(dto.HolderId))
+            await AuditGrantChangeAsync(await IsUserHolderAsync(dto.HolderId), dto.HolderId, actorUserId, AuditAction.GrantUpdated, new
             {
-                await _auditLogService.RecordAsync(actorUserId, dto.HolderId, AuditAction.GrantUpdated, JsonSerializer.Serialize(new
-                {
-                    grantId = id,
-                    from = new { node = previousNode, value = previousValue, expiresAt = previousExpiresAt },
-                    to = new { node = dto.Node, value = dto.Value, expiresAt = dto.ExpiresAt }
-                }));
-            }
+                grantId = id,
+                from = new { node = previousNode, value = previousValue, expiresAt = previousExpiresAt },
+                to = new { node = dto.Node, value = dto.Value, expiresAt = dto.ExpiresAt }
+            });
 
             await NotifyHolderAsync(dto.HolderId, actorUserId);
             if (previousHolderId != dto.HolderId)
@@ -143,18 +154,13 @@ namespace knkwebapi_v2.Services
             var holderId = existing.HolderId;
             var node = existing.Node;
             var value = existing.Value;
+            var expiresAt = existing.ExpiresAt;
 
             await _repo.DeleteAsync(id);
 
-            if (await IsUserHolderAsync(holderId))
-            {
-                await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
-                {
-                    grantId = id,
-                    node,
-                    value
-                }));
-            }
+            await AuditGrantChangeAsync(await IsUserHolderAsync(holderId), holderId, actorUserId, AuditAction.GrantRemoved,
+                new { grantId = id, node, value },
+                new { grantId = id, node, value, expiresAt });
 
             await NotifyHolderAsync(holderId, actorUserId);
         }
@@ -187,14 +193,11 @@ namespace knkwebapi_v2.Services
                 await _repo.DeleteAsync(duplicate.Id);
 
                 // An expired duplicate was already out of effect; only an active one is a removal.
-                if (isUserHolder && (duplicate.ExpiresAt == null || duplicate.ExpiresAt > now))
+                if (duplicate.ExpiresAt == null || duplicate.ExpiresAt > now)
                 {
-                    await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
-                    {
-                        grantId = duplicate.Id,
-                        node,
-                        value = duplicate.Value
-                    }));
+                    await AuditGrantChangeAsync(isUserHolder, holderId, actorUserId, AuditAction.GrantRemoved,
+                        new { grantId = duplicate.Id, node, value = duplicate.Value },
+                        new { grantId = duplicate.Id, node, value = duplicate.Value, expiresAt = duplicate.ExpiresAt });
                 }
             }
 
@@ -206,15 +209,12 @@ namespace knkwebapi_v2.Services
                 existing.ExpiresAt = expiresAt;
                 await _repo.UpdateAsync(existing);
 
-                if (isUserHolder)
+                await AuditGrantChangeAsync(isUserHolder, holderId, actorUserId, AuditAction.GrantUpdated, new
                 {
-                    await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantUpdated, JsonSerializer.Serialize(new
-                    {
-                        grantId = existing.Id,
-                        from = new { node, value = previousValue, expiresAt = previousExpiresAt },
-                        to = new { node, value, expiresAt }
-                    }));
-                }
+                    grantId = existing.Id,
+                    from = new { node, value = previousValue, expiresAt = previousExpiresAt },
+                    to = new { node, value, expiresAt }
+                });
 
                 await NotifyHolderAsync(holderId, actorUserId);
                 return _mapper.Map<PermissionGrantDto>(existing);
@@ -223,16 +223,13 @@ namespace knkwebapi_v2.Services
             var grant = new PermissionGrant { HolderId = holderId, Node = node, Value = value, ExpiresAt = expiresAt };
             await _repo.AddAsync(grant);
 
-            if (isUserHolder)
+            await AuditGrantChangeAsync(isUserHolder, holderId, actorUserId, AuditAction.GrantAdded, new
             {
-                await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantAdded, JsonSerializer.Serialize(new
-                {
-                    grantId = grant.Id,
-                    node,
-                    value,
-                    expiresAt
-                }));
-            }
+                grantId = grant.Id,
+                node,
+                value,
+                expiresAt
+            });
 
             await NotifyHolderAsync(holderId, actorUserId);
             return _mapper.Map<PermissionGrantDto>(grant);
@@ -257,15 +254,9 @@ namespace knkwebapi_v2.Services
             {
                 await _repo.DeleteAsync(grant.Id);
 
-                if (isUserHolder)
-                {
-                    await _auditLogService.RecordAsync(actorUserId, holderId, AuditAction.GrantRemoved, JsonSerializer.Serialize(new
-                    {
-                        grantId = grant.Id,
-                        node,
-                        value = grant.Value
-                    }));
-                }
+                await AuditGrantChangeAsync(isUserHolder, holderId, actorUserId, AuditAction.GrantRemoved,
+                    new { grantId = grant.Id, node, value = grant.Value },
+                    new { grantId = grant.Id, node, value = grant.Value, expiresAt = grant.ExpiresAt });
             }
 
             await NotifyHolderAsync(holderId, actorUserId);
