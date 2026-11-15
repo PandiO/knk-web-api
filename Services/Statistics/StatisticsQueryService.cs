@@ -384,6 +384,29 @@ namespace knkwebapi_v2.Services.Statistics
             };
         }
 
+        public async Task<PagedResultDto<PlayerSessionDto>?> GetSessionsAsync(int userId, int page, int pageSize, CancellationToken ct = default)
+        {
+            if (userId <= 0 || await _repo.GetUserAsync(userId, ct) == null) return null;
+            var (pageNumber, size) = Paging(page, pageSize);
+            var ids = await IdentityIdsAsync(userId, ct);
+            var (items, total) = await _repo.GetSessionsAsync(ids, (pageNumber - 1) * size, size, ct);
+            return new PagedResultDto<PlayerSessionDto>
+            {
+                Items = items.Select(s => new PlayerSessionDto
+                {
+                    SessionKey = s.SessionKey.ToString(),
+                    StartedAt = DateTime.SpecifyKind(s.StartedAt, DateTimeKind.Utc),
+                    EndedAt = s.EndedAt.HasValue ? DateTime.SpecifyKind(s.EndedAt.Value, DateTimeKind.Utc) : null,
+                    EndReason = s.EndedAt.HasValue ? s.EndReason?.ToString() : null,
+                    ServerId = s.ServerName,
+                    ActiveSeconds = s.ActiveSeconds
+                }).ToList(),
+                TotalCount = total,
+                PageNumber = pageNumber,
+                PageSize = size
+            };
+        }
+
         public async Task<PagedResultDto<DiscoveryListItemDto>?> GetDiscoveriesAsync(int userId, StatisticsViewer viewer, int page, int pageSize,
             CancellationToken ct = default)
         {

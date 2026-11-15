@@ -414,6 +414,37 @@ public class TitleChangeDto
     public TitleChangeDirection Direction { get; set; }
 }
 
+/// <summary>
+/// One game session of a player for the staff timeline (GET api/statistics/users/{id}/sessions,
+/// PandiO/knk-workspace#565), newest first.
+/// </summary>
+public class PlayerSessionDto
+{
+    /// <summary>The plugin's session id (a GUID).</summary>
+    [JsonPropertyName("sessionKey")]
+    public string SessionKey { get; set; } = "";
+
+    [JsonPropertyName("startedAt")]
+    public DateTime StartedAt { get; set; }
+
+    /// <summary>Null while the session is open (the player is on, or the timeout sweep has not closed it yet).</summary>
+    [JsonPropertyName("endedAt")]
+    public DateTime? EndedAt { get; set; }
+
+    /// <summary><c>Quit</c>, <c>ServerStop</c>, <c>Kick</c> or <c>Timeout</c> (closed by the API without a heartbeat);
+    /// null while open.</summary>
+    [JsonPropertyName("endReason")]
+    public string? EndReason { get; set; }
+
+    /// <summary>The game server the session ran on (the plugin's server name, as reported in the batch).</summary>
+    [JsonPropertyName("serverId")]
+    public string ServerId { get; set; } = "";
+
+    /// <summary>Seconds not AFK, as of the last heartbeat or the end.</summary>
+    [JsonPropertyName("activeSeconds")]
+    public int ActiveSeconds { get; set; }
+}
+
 public class DiscoveryListItemDto
 {
     [JsonPropertyName("domainId")]

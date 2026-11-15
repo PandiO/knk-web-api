@@ -170,6 +170,26 @@ public class StatisticsController : ControllerBase
         [FromQuery] int pageSize = 20, CancellationToken ct = default) =>
         Run(userId, viewer => _query.GetTitleHistoryAsync(userId, viewer, page, pageSize, ct));
 
+    /// <summary>
+    /// The player's game sessions for the staff timeline (PandiO/knk-workspace#565): newest first,
+    /// <c>{ items, totalCount, pageNumber, pageSize }</c>, page size 1-100 (default 20). Staff with
+    /// knk.admin.user.manage only (the player profile's node); the player's visibility settings don't apply.
+    /// </summary>
+    /// <response code="200">One page of sessions</response>
+    /// <response code="401">Not logged in</response>
+    /// <response code="403">No knk.admin.user.manage</response>
+    /// <response code="404">UserNotFound</response>
+    [RequirePermission(StaffPermissions.ManageUsers)]
+    [HttpGet("users/{userId:int}/sessions")]
+    [ProducesResponseType(typeof(PagedResultDto<PlayerSessionDto>), 200)]
+    [ProducesResponseType(404)]
+    public async Task<ActionResult<PagedResultDto<PlayerSessionDto>>> GetSessions(int userId, [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        var result = await _query.GetSessionsAsync(userId, page, pageSize, ct);
+        return result == null ? UserNotFound(userId) : Ok(result);
+    }
+
     /// <summary>Named discovered places, newest first (setting discoveries.list).</summary>
     // Public by design (KNG-34): the service filters every field for the viewer, so signed-out
     // visitors see only the always-public data. Pinned in EndpointAccessRulesTests.

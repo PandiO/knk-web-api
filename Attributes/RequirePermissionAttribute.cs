@@ -43,6 +43,13 @@ namespace knkwebapi_v2.Attributes
         public const string UserPremiumGroups = "knk.admin.user.group.premium";
         public const string Freeze = "knk.freeze";
         public const string Unfreeze = "knk.unfreeze";
+        // Kick and ban from the web app (PandiO/knk-workspace#565, developer decision 2026-11-15): the API audits the
+        // action and publishes PlayerKick / PlayerBan to the game servers, which carry it out (knk-plugin, #574).
+        // Seeded on Staff (SeedStaffKickBanNodes) like knk.freeze; the ranks above Staff get them by inheriting from
+        // Staff (alpha: Staff -> Moderator -> Admin) or through *. Not children of knk.admin, so knk.admin.* does not
+        // match them.
+        public const string Kick = "knk.kick";
+        public const string Ban = "knk.ban";
 
         // Kits (docs/specs/kits/DESIGN.md §4.3): knk.kit.manage gates Kit CRUD, knk.kit.give a
         // staff grant.

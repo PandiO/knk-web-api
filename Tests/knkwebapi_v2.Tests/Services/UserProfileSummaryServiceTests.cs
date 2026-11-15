@@ -79,7 +79,9 @@ public class UserProfileSummaryServiceTests
         var result = await _service.GetAsync(1);
 
         Assert.NotNull(result);
-        Assert.Same(account, result!.Account);
+        Assert.Equal(account.Id, result!.Account.Id); // #565: a ProfileAccountDto copy of the account
+        Assert.Equal(account.Username, result.Account.Username);
+        Assert.Equal(account.PersonalSalaryMultiplier, result.Account.PersonalSalaryMultiplier);
         Assert.Equal(3, result.Title.TitleBracketId);
         Assert.Equal(2000, result.Salary.TitleSalary);
         Assert.Equal(10.0m, result.Salary.GlobalMultiplier);

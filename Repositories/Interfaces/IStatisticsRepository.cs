@@ -78,6 +78,10 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task<(List<PlayerTitleChange> Items, int Total)> GetTitleChangesAsync(IReadOnlyCollection<int> userIds, int skip, int take,
             CancellationToken ct = default);
 
+        /// <summary>Sessions of <paramref name="userIds"/>, newest start first (#565); uses the (UserId, StartedAt) index.</summary>
+        Task<(List<PlayerStatSession> Items, int Total)> GetSessionsAsync(IReadOnlyCollection<int> userIds, int skip, int take,
+            CancellationToken ct = default);
+
         Task<List<UserDomainDiscovery>> GetDiscoveriesAsync(IReadOnlyCollection<int> userIds, CancellationToken ct = default);
 
         /// <summary>Stored kill counts of the given pairs (missing pairs are absent).</summary>

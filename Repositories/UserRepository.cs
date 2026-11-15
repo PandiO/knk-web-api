@@ -231,9 +231,12 @@ namespace knkwebapi_v2.Repositories
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
             {
                 var searchLower = query.SearchTerm.ToLower();
+                // #565: a UUID matches with or without its dashes.
+                var uuidTerm = NormalizeUuidTerm(query.SearchTerm);
                 queryable = queryable.Where(u => u.Username.ToLower().Contains(searchLower) ||
                                                   (u.Email != null && u.Email.ToLower().Contains(searchLower)) ||
-                                                  (u.Uuid != null && u.Uuid.ToLower().Contains(searchLower)));
+                                                  (u.Uuid != null && (u.Uuid.ToLower().Contains(searchLower)
+                                                      || (uuidTerm.Length > 0 && u.Uuid.Replace("-", "").ToLower().Contains(uuidTerm)))));
             }
 
             if (query.Filters != null)
@@ -243,9 +246,31 @@ namespace knkwebapi_v2.Repositories
                     queryable = queryable.Where(u => u.Id == id);
                 }
 
-                if (query.Filters.TryGetValue("uuid", out var uuid) && uuid != null)
+                if (query.Filters.TryGetValue("uuid", out var uuid) && !string.IsNullOrWhiteSpace(uuid))
                 {
-                    queryable = queryable.Where(u => u.Uuid != null && u.Uuid.ToLower().Contains(uuid.ToLower()));
+                    // #565: with or without dashes ("069a79f4-44e9-4726-…" and "069a79f444e94726…" both match).
+                    var uuidTerm = NormalizeUuidTerm(uuid);
+                    queryable = uuidTerm.Length == 0
+                        ? queryable.Where(u => false)
+                        : queryable.Where(u => u.Uuid != null && u.Uuid.Replace("-", "").ToLower().Contains(uuidTerm));
+                }
+
+                // #565: the moderation search's state filters ("true" / "false"; anything else is ignored).
+                if (TryFlag(query.Filters, "online", out var online))
+                {
+                    queryable = queryable.Where(u => u.IsOnline == online);
+                }
+
+                if (TryFlag(query.Filters, "frozen", out var frozen))
+                {
+                    queryable = queryable.Where(u => u.IsFrozen == frozen);
+                }
+
+                if (TryFlag(query.Filters, "paymentsLocked", out var paymentsLocked))
+                {
+                    queryable = paymentsLocked
+                        ? queryable.Where(u => u.TransferLockedAt != null)
+                        : queryable.Where(u => u.TransferLockedAt == null);
                 }
 
                 if (query.Filters.TryGetValue("username", out var username) && username != null)
@@ -277,6 +302,16 @@ namespace knkwebapi_v2.Repositories
             };
         }
 
+        /// <summary>A UUID search term without dashes or spaces, lower case.</summary>
+        public static string NormalizeUuidTerm(string term) =>
+            new string(term.Where(c => c != '-' && !char.IsWhiteSpace(c)).ToArray()).ToLowerInvariant();
+
+        private static bool TryFlag(IReadOnlyDictionary<string, string> filters, string key, out bool value)
+        {
+            value = false;
+            return filters.TryGetValue(key, out var text) && bool.TryParse(text?.Trim(), out value);
+        }
+
         private IQueryable<User> ApplySorting(IQueryable<User> queryable, string? sortBy, bool sortDescending)
         {
             if (string.IsNullOrWhiteSpace(sortBy))
@@ -290,6 +325,14 @@ namespace knkwebapi_v2.Repositories
                 "uuid" => sortDescending ? queryable.OrderByDescending(u => u.Uuid) : queryable.OrderBy(u => u.Uuid),
                 "coins" => sortDescending ? queryable.OrderByDescending(u => u.Coins) : queryable.OrderBy(u => u.Coins),
                 "createdat" => sortDescending ? queryable.OrderByDescending(u => u.CreatedAt) : queryable.OrderBy(u => u.CreatedAt),
+                // #565: moderation search sort keys. Never-seen players sort last when descending (MySQL puts NULL first
+                // ascending), with the id as a stable tie-break.
+                "lastseenat" => sortDescending
+                    ? queryable.OrderByDescending(u => u.LastSeenAt).ThenByDescending(u => u.Id)
+                    : queryable.OrderBy(u => u.LastSeenAt).ThenBy(u => u.Id),
+                "experiencepoints" => sortDescending
+                    ? queryable.OrderByDescending(u => u.ExperiencePoints).ThenBy(u => u.Id)
+                    : queryable.OrderBy(u => u.ExperiencePoints).ThenBy(u => u.Id),
                 _ => queryable.OrderBy(u => u.Username)
             };
         }
