@@ -29,6 +29,12 @@ namespace knkwebapi_v2.Services.Interfaces
         Task<PagedResultDto<TitleChangeDto>?> GetTitleHistoryAsync(int userId, StatisticsViewer viewer, int page, int pageSize,
             CancellationToken ct = default);
 
+        /// <summary>
+        /// The player's game sessions, newest first, merged accounts included (staff timeline, #565). No visibility
+        /// rules: the endpoint is gated by knk.admin.user.manage. Null = unknown user.
+        /// </summary>
+        Task<PagedResultDto<PlayerSessionDto>?> GetSessionsAsync(int userId, int page, int pageSize, CancellationToken ct = default);
+
         Task<PagedResultDto<DiscoveryListItemDto>?> GetDiscoveriesAsync(int userId, StatisticsViewer viewer, int page, int pageSize,
             CancellationToken ct = default);
     }

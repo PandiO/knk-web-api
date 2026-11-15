@@ -43,8 +43,9 @@ namespace knkwebapi_v2.Dtos
     /// </summary>
     public class UserProfileSummaryDto
     {
+        /// <summary>The account (<see cref="UserDto"/>) plus who froze the player and when (#565).</summary>
         [JsonPropertyName("account")]
-        public UserDto Account { get; set; } = null!;
+        public ProfileAccountDto Account { get; set; } = null!;
 
         [JsonPropertyName("permissions")]
         public PermissionEffectiveResponseDto Permissions { get; set; } = null!;
@@ -64,6 +65,42 @@ namespace knkwebapi_v2.Dtos
         /// </summary>
         [JsonPropertyName("presence")]
         public ProfilePresenceDto? Presence { get; set; }
+    }
+
+    /// <summary>
+    /// PandiO/knk-workspace#565: the profile's account, i.e. <see cref="UserDto"/> plus the freeze details only staff
+    /// see (when and by whom). <c>isFrozen</c> and <c>frozenReason</c> come from <see cref="UserDto"/>; the three
+    /// fields here are always written (null while not frozen), so a client can tell this API from an older one.
+    /// </summary>
+    public class ProfileAccountDto : UserDto
+    {
+        /// <summary>When the current freeze was set (UTC); null while not frozen.</summary>
+        [JsonPropertyName("frozenAt")]
+        public DateTime? FrozenAt { get; set; }
+
+        /// <summary>The staff member who set the current freeze; null while not frozen or when the game server froze
+        /// the player without an acting user.</summary>
+        [JsonPropertyName("frozenByUserId")]
+        public int? FrozenByUserId { get; set; }
+
+        /// <summary>That staff member's username now (null when unknown or deleted).</summary>
+        [JsonPropertyName("frozenByUsername")]
+        public string? FrozenByUsername { get; set; }
+
+        /// <summary>A copy of <paramref name="account"/> with every public read/write property of <see cref="UserDto"/>.</summary>
+        public static ProfileAccountDto From(UserDto account)
+        {
+            var copy = new ProfileAccountDto();
+            foreach (var property in typeof(UserDto).GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public))
+            {
+                if (property.GetIndexParameters().Length > 0 || property.GetGetMethod() == null || property.GetSetMethod() == null)
+                {
+                    continue;
+                }
+                property.SetValue(copy, property.GetValue(account));
+            }
+            return copy;
+        }
     }
 
     /// <summary>PandiO/knk-workspace#183: the player profile's online badge.</summary>

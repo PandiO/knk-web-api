@@ -50,6 +50,23 @@ public static class RealtimeEventTypes
     /// <summary>Other cached user fields changed (multipliers, gate method, link, merge). Payload <see cref="UserChangedPayload"/>.</summary>
     public const string UserChanged = "UserChanged";
 
+    // ---- Kick and ban from the web app (PandiO/knk-workspace#565; game server handler: knk-plugin, #574). ----
+
+    /// <summary>
+    /// Staff kicked a player from the web app: every game server that has the player online kicks them with the
+    /// reason. Payload <see cref="PlayerModerationPayload"/>, v1. Sent only while at least one game server is
+    /// connected (the API answers 503 otherwise); not replayed after a reconnect.
+    /// </summary>
+    public const string PlayerKick = "PlayerKick";
+
+    /// <summary>
+    /// Staff banned a player from the web app, like in-game <c>/ban</c>: every game server adds the player's profile
+    /// to Paper's ban list (permanent, with the reason, the staff member as source) and kicks them when online. Unban
+    /// is <c>/pardon</c> in game. Payload <see cref="PlayerModerationPayload"/>, v1. Delivery as
+    /// <see cref="PlayerKick"/>.
+    /// </summary>
+    public const string PlayerBan = "PlayerBan";
+
     /// <summary>
     /// One queued player notification (the hub-backed <c>IPlayerNotificationQueue</c>, DESIGN §4.3). Payload: the
     /// same <c>PlayerNotificationDto</c> <c>GET api/PlayerNotifications/pending</c> returns; the plugin acknowledges it
@@ -104,3 +121,20 @@ public sealed record UserChangedPayload(int UserId, string Uuid, IReadOnlyList<s
 /// <param name="ServerId">The id from the <c>X-Knk-Server-Id</c> header, as the API stored it.</param>
 /// <param name="PresenceGraceSeconds">How long the API keeps this server's players online after a disconnect.</param>
 public sealed record WelcomePayload(string ServerId, int PresenceGraceSeconds);
+
+/// <summary>
+/// Payload of <see cref="RealtimeEventTypes.PlayerKick"/> and <see cref="RealtimeEventTypes.PlayerBan"/> (v1,
+/// PandiO/knk-workspace#565). The receiver acts on <paramref name="Uuid"/>; the rest is for the message and the logs.
+/// </summary>
+/// <param name="ActionId">Unique per staff action (a GUID, also in the audit entry): a receiver that sees the same id
+/// twice acts once.</param>
+/// <param name="UserId">The knk user.</param>
+/// <param name="Uuid">Their Minecraft UUID with dashes, as stored on the user.</param>
+/// <param name="Username">Their username.</param>
+/// <param name="Reason">Shown to the player. Required for a ban; null for a kick without one (the receiver then uses
+/// its default kick message).</param>
+/// <param name="StaffUserId">The staff member who did it.</param>
+/// <param name="StaffUsername">Their username (the ban list's source).</param>
+/// <param name="At">When the API accepted it (UTC).</param>
+public sealed record PlayerModerationPayload(string ActionId, int UserId, string Uuid, string Username, string? Reason,
+    int StaffUserId, string StaffUsername, DateTime At);

@@ -341,6 +341,16 @@ namespace knkwebapi_v2.Repositories
             return (items, total);
         }
 
+        public async Task<(List<PlayerStatSession> Items, int Total)> GetSessionsAsync(IReadOnlyCollection<int> userIds, int skip, int take,
+            CancellationToken ct = default)
+        {
+            var ids = userIds.Distinct().ToList();
+            var query = _context.PlayerStatSessions.AsNoTracking().Where(s => ids.Contains(s.UserId));
+            var total = await query.CountAsync(ct);
+            var items = await query.OrderByDescending(s => s.StartedAt).ThenByDescending(s => s.Id).Skip(skip).Take(take).ToListAsync(ct);
+            return (items, total);
+        }
+
         public Task<List<UserDomainDiscovery>> GetDiscoveriesAsync(IReadOnlyCollection<int> userIds, CancellationToken ct = default)
         {
             var ids = userIds.Distinct().ToList();

@@ -472,8 +472,10 @@ namespace knkwebapi_v2.Services
             user.FrozenAt = frozen ? DateTime.UtcNow : null;
             await _repo.UpdateUserAsync(user);
 
+            // #565: an unfreeze may carry a reason too; it is only audited (the user row keeps none once unfrozen).
+            var auditedReason = frozen ? reason : string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
             await _auditLogService.RecordAsync(actorUserId, userId, frozen ? AuditAction.PlayerFrozen : AuditAction.PlayerUnfrozen,
-                JsonSerializer.Serialize(new { reason }));
+                JsonSerializer.Serialize(new { reason = auditedReason }));
             // Before #179 a freeze set in the web app only applied on the player's next join.
             _realtime.FrozenChanged(user, actorUserId);
         }

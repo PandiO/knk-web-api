@@ -772,13 +772,18 @@ namespace knkwebapi_v2.Controllers
             }
         }
 
+        /// <summary>
+        /// Unfreeze a player. The optional body <c>{ "reason" }</c> (PandiO/knk-workspace#565) is written into the
+        /// PlayerUnfrozen audit entry; without a body (the plugin's /unfreeze) there is no reason.
+        /// </summary>
         [RequireServiceOrPermission(StaffPermissions.Unfreeze)]
         [HttpPut("{id:int}/unfreeze")]
-        public async Task<IActionResult> Unfreeze(int id)
+        public async Task<IActionResult> Unfreeze(int id,
+            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] UnfreezePlayerDto? request = null)
         {
             try
             {
-                await _service.SetFrozenAsync(id, false, null, GetActorUserId());
+                await _service.SetFrozenAsync(id, false, request?.Reason, GetActorUserId());
                 return NoContent();
             }
             catch (KeyNotFoundException)

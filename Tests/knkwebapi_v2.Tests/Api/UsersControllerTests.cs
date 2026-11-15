@@ -481,7 +481,7 @@ public class UsersControllerTests
     {
         var summary = new UserProfileSummaryDto
         {
-            Account = new UserDto { Id = 1, Username = "alice" },
+            Account = new ProfileAccountDto { Id = 1, Username = "alice" },
             Permissions = new PermissionEffectiveResponseDto { UserId = 1 },
             Title = new TitleResolutionDto(),
             Salary = new SalaryStateDto()

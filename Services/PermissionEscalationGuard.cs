@@ -44,6 +44,14 @@ namespace knkwebapi_v2.Services
         /// (<paramref name="groupId"/>, null for a new one) and as it will be (<paramref name="newWeight"/>, null when
         /// deleting) must both rank below the actor's own highest group.</summary>
         Task<EscalationCheck> CanChangeGroupAsync(int actorId, int? groupId, int? newWeight);
+
+        /// <summary>
+        /// May <paramref name="actorId"/> kick or ban <paramref name="targetUserId"/> (PandiO/knk-workspace#565)? Only
+        /// players ranked below the actor's own highest group (a player in no group has no rank and can always be
+        /// acted on), never a holder of <c>*</c>; an actor holding <c>*</c> may act on anyone. Acting on oneself is
+        /// the caller's 400, not checked here.
+        /// </summary>
+        Task<EscalationCheck> CanModerateUserAsync(int actorId, int targetUserId);
     }
 
     public class PermissionEscalationGuard : IPermissionEscalationGuard
@@ -55,6 +63,7 @@ namespace knkwebapi_v2.Services
         public const string RankMessage = "You can only hand out or remove groups ranked below your own.";
         public const string GroupRankMessage = "You can only change groups ranked below your own.";
         public const string OwnerOnlyMessage = "Only the owner can hand out bulk delete.";
+        public const string ModerateRankMessage = "You can only kick or ban players ranked below you.";
 
         /// <summary>
         /// Nodes only <c>*</c> may grant, deny or revoke (decision 4 of #280), directly, through a wildcard that covers
@@ -177,6 +186,22 @@ namespace knkwebapi_v2.Services
             }
             return newWeight is int weight && weight >= rank
                 ? EscalationCheck.Refused(GroupRankMessage)
+                : EscalationCheck.Ok;
+        }
+
+        public async Task<EscalationCheck> CanModerateUserAsync(int actorId, int targetUserId)
+        {
+            if (await HoldsAsync(actorId, Wildcard))
+            {
+                return EscalationCheck.Ok;
+            }
+            if (await HoldsAsync(targetUserId, Wildcard))
+            {
+                return EscalationCheck.Refused(ModerateRankMessage);
+            }
+            var targetRank = await HighestRankAsync(targetUserId);
+            return targetRank != int.MinValue && targetRank >= await HighestRankAsync(actorId)
+                ? EscalationCheck.Refused(ModerateRankMessage)
                 : EscalationCheck.Ok;
         }
 
