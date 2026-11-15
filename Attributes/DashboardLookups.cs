@@ -20,16 +20,18 @@ namespace knkwebapi_v2.Attributes
         private static readonly IReadOnlyDictionary<string, DashboardLookup> ByType = new Dictionary<string, DashboardLookup>(StringComparer.Ordinal)
         {
             // Content.
-            ["Category"] = Of<ICategoryService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "ParentCategoryName", "ParentCategory")),
+            ["Category"] = Of<ICategoryService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "ParentCategoryName", "ParentCategory"),
+                filters: new[] { IdFilter("parentCategoryId") }),
             ["Tag"] = Of<ITagService>((s, id) => s.GetByIdAsync(id), Name),
             ["Grade"] = Of<IGradeService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "Stars") is { } stars ? $"{stars} stars" : null),
             ["ItemBlueprint"] = Of<IItemBlueprintService>((s, id) => s.GetByIdAsync(id), o => Text(o, "Name", "DefaultDisplayName"),
-                o => Join(Text(o, "CategoryName", "Category"), Text(o, "GradeName", "Grade"))),
+                o => Join(Text(o, "CategoryName", "Category"), Text(o, "GradeName", "Grade")), filters: new[] { IdFilter("CategoryId") }),
             ["EnchantmentDefinition"] = Of<IEnchantmentDefinitionService>((s, id) => s.GetByIdAsync(id), o => Text(o, "DisplayName", "Key"),
                 o => Text(o, "Key")),
             ["BannerDesign"] = Of<IBannerDesignService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "BaseColor")),
             ["BannerLayer"] = Of<IBannerDesignService>((s, id) => s.GetLayerByIdAsync(id), o => Text(o, "PatternKey"), o => Text(o, "Color")),
-            ["Clan"] = Of<IClanService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "DefaultForTownName")),
+            ["Clan"] = Of<IClanService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "DefaultForTownName"),
+                filters: new[] { PreferFilter("preferTownId") }),
             ["MinecraftBlockRef"] = Of<IMinecraftBlockRefService>((s, id) => s.GetByIdAsync(id), o => Text(o, "DisplayName", "NamespaceKey"),
                 o => Text(o, "NamespaceKey")),
             ["MinecraftMaterialRef"] = Of<IMinecraftMaterialRefService>((s, id) => s.GetByIdAsync(id), o => Text(o, "DisplayName", "NamespaceKey"),
@@ -41,14 +43,22 @@ namespace knkwebapi_v2.Attributes
             ["Domain"] = Of<IDomainService>((s, id) => s.GetByIdAsync(id), Name,
                 o => Join(Text(o, "ParentDomainName", "ParentDomain"), Text(o, "WorldName"))),
             ["Town"] = Of<ITownService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "WorldName")),
-            ["District"] = Of<IDistrictService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "TownName", "Town")),
+            ["District"] = Of<IDistrictService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "TownName", "Town"),
+                filters: new[] { IdFilter("townId") }),
             ["Structure"] = Of<IStructureService>((s, id) => s.GetByIdAsync(id), Name,
-                o => Join(Text(o, "StreetName", "Street"), Text(o, "HouseNumber"), Text(o, "DistrictName", "District"))),
+                o => Join(Text(o, "StreetName", "Street"), Text(o, "HouseNumber"), Text(o, "DistrictName", "District")),
+                filters: new[] { IdFilter("streetId"), IdFilter("districtId") }),
             ["Street"] = Of<IStreetService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "TownNames", "DistrictNames", "Districts")),
             ["Location"] = Of<ILocationService>((s, id) => s.GetByIdAsync(id), o => Text(o, "Name") ?? Coordinates(o), Coordinates),
             ["GateStructure"] = Of<IGateStructureService>((s, id) => s.GetByIdAsync(id), Name,
-                o => Join(Text(o, "DistrictName", "District"), Text(o, "TownName"))),
-            ["GateDoor"] = Of<IGateDoorService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "GateStructureName")),
+                o => Join(Text(o, "DistrictName", "District"), Text(o, "TownName")),
+                filters: new[]
+                {
+                    IdFilter("streetId"), IdFilter("districtId"), IdFilter("townId"), IdFilter("siegeScenarioId"),
+                    FlagFilter("isActive"), FlagFilter("isOpened"),
+                }),
+            ["GateDoor"] = Of<IGateDoorService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "GateStructureName"),
+                filters: new[] { IdFilter("gateStructureId"), FlagFilter("isActive") }),
             ["DomainSubRegion"] = Of<IDomainSubRegionService>((s, id) => s.GetByIdAsync(id), o => Text(o, "Name", "WgRegionId"),
                 o => Text(o, "WgRegionId")),
 
@@ -58,9 +68,10 @@ namespace knkwebapi_v2.Attributes
             ["LootboxSpecialEntry"] = Of<ILootboxSpecialEntryService>((s, id) => s.GetByIdAsync(id), o => Text(o, "ItemBlueprint"),
                 o => Text(o, "LootboxType")),
             ["LootboxSpawnArea"] = Of<ILootboxSpawnAreaService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "World")),
-            ["SiegeScenario"] = Of<ISiegeScenarioService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "TownName")),
+            ["SiegeScenario"] = Of<ISiegeScenarioService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "TownName"),
+                filters: new[] { IdFilter("townId") }),
             ["SiegeTeam"] = Of<ISiegeScenarioService>((s, id) => s.GetTeamByIdAsync(id), o => Text(o, "ResolvedName", "Name", "ClanName"),
-                o => Text(o, "Role")),
+                o => Text(o, "Role"), filters: new[] { IdFilter("siegeScenarioId") }),
             ["SiegeLobby"] = Of<ISiegeLobbyService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "Key")),
             ["SiegeObjective"] = Of<ISiegeScenarioService>((s, id) => s.GetObjectiveByIdAsync(id), Name, o => Text(o, "GateStructureName")),
             ["SiegeSpawnpoint"] = Of<ISiegeScenarioService>((s, id) => s.GetSpawnpointByIdAsync(id), Name),
@@ -69,7 +80,8 @@ namespace knkwebapi_v2.Attributes
             // Players: the username and nothing else; the search matches the username only (never the email).
             ["User"] = Of<IUserService>((s, id) => s.GetByIdAsync(id), o => Text(o, "Username"), null, UsernameOnly),
             ["PermissionGroup"] = Of<IPermissionGroupService>((s, id) => s.GetByIdAsync(id), Name,
-                o => Text(o, "Weight") is { } weight ? $"weight {weight}" : null),
+                o => Text(o, "Weight") is { } weight ? $"weight {weight}" : null,
+                filters: new[] { IdFilter("parentGroupId"), FlagFilter("isPremiumTier") }),
             ["PermissionHolder"] = Of<IPermissionHolderService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "HolderType")),
         };
 
@@ -79,13 +91,23 @@ namespace knkwebapi_v2.Attributes
         public static IEnumerable<string> Types => ByType.Keys;
 
         private static DashboardLookup Of<TService>(Func<TService, int, Task> get, Func<object, string?> label,
-            Func<object, string?>? detail = null, Func<string?, PagedQueryDto, PagedQueryDto>? query = null) where TService : notnull =>
+            Func<object, string?>? detail = null, Func<string?, PagedQueryDto, PagedQueryDto>? query = null,
+            IReadOnlyList<LookupFilter>? filters = null) where TService : notnull =>
             new(async (services, id) =>
             {
                 var task = get(services.GetRequiredService<TService>(), id);
                 await task;
                 return task.GetType().GetProperty(nameof(Task<object>.Result))?.GetValue(task);
-            }, label, detail, query);
+            }, label, detail, query, filters);
+
+        // Lookup filters (PandiO/knk-workspace#288): only keys the type's own search reads, spelled as it reads them
+        // (its repository's Filters lookups), and only ones that narrow by a parent or a flag. Never a key that matches
+        // on something a label doesn't show (a user's email or UUID).
+        private static LookupFilter IdFilter(string key) => new(key, LookupFilterKind.Id);
+
+        private static LookupFilter FlagFilter(string key) => new(key, LookupFilterKind.Flag);
+
+        private static LookupFilter PreferFilter(string key) => new(key, LookupFilterKind.Prefer);
 
         private static string? Name(object row) => Text(row, "Name");
 
