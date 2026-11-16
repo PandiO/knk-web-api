@@ -1,6 +1,8 @@
 # Build and unit tests on every push and pull request.
-# The requires-mysql tests skip themselves when KNK_TEST_MYSQL is unset, which it is here: this job has no
-# database. Fresh-database migration checks run separately in migrations.yml.
+# build-and-test has no database, so the requires-mysql tests skip themselves there (KNK_TEST_MYSQL is unset).
+# mysql-tests runs exactly those tests against a throwaway MySQL 8.0 service container, in parallel, so the
+# slow migrate-per-test-class fixtures don't lengthen build-and-test (PandiO/knk-workspace#419).
+# Fresh-database migration checks run separately in migrations.yml.
 # Tests marked [Trait("Category", "KnownFailure")] are excluded; each mark names the issue that tracks it.
 name: Build and test
 
@@ -50,5 +52,79 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: api-test-results
+          path: Tests/knkwebapi_v2.Tests/TestResults/*.trx
+          if-no-files-found: ignore
+
+  mysql-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        # The data directory on tmpfs: every test class migrates its own database from empty, and that is
+        # disk-bound. The database is thrown away with the job anyway.
+        options: >-
+          --tmpfs /var/lib/mysql
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+      # A server connection without Database=: each test class creates and drops its own knk_test_* database
+      # (Tests/knkwebapi_v2.Tests/MySql/MySqlTestDatabase.cs). Root may create the ledger triggers with binary
+      # logging on, so KNK_SKIP_LEDGER_TRIGGERS stays unset and the triggers are tested too.
+      KNK_TEST_MYSQL: "Server=127.0.0.1;Port=3306;User=root;Password=root;Allow User Variables=True;"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj
+
+      - name: Build
+        run: dotnet build Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj --no-restore
+
+      # xUnit runs the test classes in parallel, each with its own database and connection pool, and the
+      # concurrency tests open dozens of connections at once: MySQL's default of 151 runs out ("Too many
+      # connections"). A service container takes no server arguments, so raise it at runtime.
+      - name: Raise MySQL max_connections
+        run: docker exec ${{ job.services.mysql.id }} mysql -uroot -proot -e "SET GLOBAL max_connections = 1000"
+
+      - name: Test (requires-mysql)
+        run: >-
+          dotnet test Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj
+          --no-build
+          --filter "Category=requires-mysql&Category!=KnownFailure"
+          --logger "trx;LogFileName=mysql-test-results.trx"
+          --logger "console;verbosity=normal"
+
+      # A requires-mysql test that skips here (no database reached, a new skip condition) would otherwise
+      # pass unnoticed.
+      - name: No requires-mysql test skipped
+        run: |
+          trx=Tests/knkwebapi_v2.Tests/TestResults/mysql-test-results.trx
+          if grep -q 'outcome="NotExecuted"' "$trx"; then
+            echo "::error::Some requires-mysql tests were skipped although MySQL is available:"
+            grep -o 'testName="[^"]*"[^>]*outcome="NotExecuted"' "$trx" | sed 's/" .*//; s/testName="//'
+            exit 1
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-mysql-test-results
           path: Tests/knkwebapi_v2.Tests/TestResults/*.trx
           if-no-files-found: ignore
