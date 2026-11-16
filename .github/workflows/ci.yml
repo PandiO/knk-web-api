@@ -96,6 +96,12 @@ jobs:
       - name: Build
         run: dotnet build Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj --no-restore
 
+      # xUnit runs the test classes in parallel, each with its own database and connection pool, and the
+      # concurrency tests open dozens of connections at once: MySQL's default of 151 runs out ("Too many
+      # connections"). A service container takes no server arguments, so raise it at runtime.
+      - name: Raise MySQL max_connections
+        run: docker exec ${{ job.services.mysql.id }} mysql -uroot -proot -e "SET GLOBAL max_connections = 1000"
+
       - name: Test (requires-mysql)
         run: >-
           dotnet test Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj
