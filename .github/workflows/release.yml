@@ -21,8 +21,10 @@ on:
 permissions:
   contents: write
 
+# One group per tag: runs for different tags all queue (a single shared group keeps only one pending run, so a
+# third dispatch would replace the second), and two runs for the same tag run one after the other.
 concurrency:
-  group: release
+  group: release-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -35,7 +37,7 @@ jobs:
     timeout-minutes: 10
     environment: release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -56,9 +58,35 @@ jobs:
           TAG: ${{ inputs.tag }}
           SHA: ${{ inputs.sha }}
         run: |
-          # Create-only: the API refuses (422) when the tag already exists, so an existing or concurrently created
-          # tag fails the run instead of being reused.
-          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$SHA" >/dev/null \
-            || { echo "::error::Could not create tag $TAG at $SHA (does it already exist?)"; exit 1; }
+          # The commit an existing tag points at (annotated tags are followed to their commit), or nothing.
+          tag_commit() {
+            local ref type obj
+            ref=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" 2>/dev/null) || return 0
+            type=$(jq -r '.object.type' <<<"$ref")
+            obj=$(jq -r '.object.sha' <<<"$ref")
+            if [ "$type" = tag ]; then
+              obj=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$obj" --jq '.object.sha')
+            fi
+            echo "$obj"
+          }
+
+          # Create-only: the API refuses (422) when the tag already exists, so a tag is never moved. An existing tag
+          # (from an earlier run that stopped before the release, or a concurrent one) is reused only when it points at
+          # exactly the requested commit and has no release yet (PandiO/knk-workspace#426).
+          if create_error=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$SHA" 2>&1 >/dev/null); then
+            echo "Created tag $TAG at $SHA."
+          else
+            existing=$(tag_commit)
+            if [ -z "$existing" ]; then
+              echo "::error::Could not create tag $TAG at $SHA, and no such tag exists: $create_error"; exit 1
+            fi
+            if [ "$existing" != "$SHA" ]; then
+              echo "::error::Tag $TAG already exists at $existing, not at $SHA"; exit 1
+            fi
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "::error::Tag $TAG at $SHA already has a release"; exit 1
+            fi
+            echo "Tag $TAG already exists at $SHA without a release; creating the release."
+          fi
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" --generate-notes
           echo "Released $TAG at $SHA: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"

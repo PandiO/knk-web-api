@@ -34,9 +34,9 @@ jobs:
       ConnectionStrings__MySqlDbConnection: "Server=127.0.0.1;Port=3306;Database=knk_ci;User=root;Password=root;Allow User Variables=True;"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
 
