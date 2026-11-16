@@ -17,6 +17,10 @@ This is the ASP.NET Core API with EF Core/MySQL. Check the actual
 Build with `dotnet build`; test with
 `dotnet test Tests/knkwebapi_v2.Tests/knkwebapi_v2.Tests.csproj`.
 
+Skills for common tasks are in knk-workspace `.claude/skills/`: `knk-api-endpoint`
+(an endpoint, controller action or service method), `knk-entity-scaffold` (a new
+entity across API, web app and plugin) and `knk-test-writer` (xUnit tests, smoke guides).
+
 ## Shipping a change
 
 All documentation lives in `knk-workspace/docs/`; this repo keeps only its README, `AGENTS.md`,
