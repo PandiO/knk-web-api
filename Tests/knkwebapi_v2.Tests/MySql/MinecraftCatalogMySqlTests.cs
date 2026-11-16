@@ -36,7 +36,9 @@ public class MinecraftCatalogMySqlTests : IClassFixture<MySqlTestDatabase>
     /// keeps the rows (Unverified), the constraints migration refuses until the backfill has linked and keyed
     /// the block refs, and after backfill and a merge it applies.
     /// </summary>
+    // KnownFailure: PandiO/knk-workspace#285 (saves through the current EF model on an older schema: Unknown column 'ArmorTrimMaterial').
     [MySqlFact]
+    [Trait("Category", "KnownFailure")]
     public async Task UpgradePath_PhaseTwoKeepsRows_ConstraintsWaitForTheBackfill_ThenApply()
     {
         await using (var context = _db.NewContext())
