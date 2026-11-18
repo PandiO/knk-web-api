@@ -159,6 +159,8 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IDomainRepository, DomainRepository>();
             services.AddScoped<IDomainService, DomainService>();
             services.AddScoped<IDomainSubRegionService, DomainSubRegionService>();
+            // Overview map L1 (PandiO/knk-workspace#735): outlines the game server reports over the hub.
+            services.AddScoped<knkwebapi_v2.Services.Map.IMapRegionOutlineService, knkwebapi_v2.Services.Map.MapRegionOutlineService>();
             services.AddScoped<IMinecraftMaterialRefRepository, MinecraftMaterialRefRepository>();
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();
