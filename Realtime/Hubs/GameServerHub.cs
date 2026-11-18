@@ -12,7 +12,7 @@ namespace knkwebapi_v2.Realtime.Hubs;
 /// <c>/api/hubs/game</c> (DESIGN §4.1): one connection per game server, authenticated with the plugin key
 /// (<c>X-API-Key</c> = <c>Security:PluginApiKey</c>, the <see cref="RealtimeSetup.GameServerPolicy"/> on the endpoint)
 /// and named by <c>X-Knk-Server-Id</c>. Groups <c>servers</c> and <c>server:{id}</c>. Client-to-server methods are
-/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>; nothing else is written over the hub
+/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>, since overview map L1 (#735) <see cref="ReportRegionOutlines"/>; nothing else is written over the hub
 /// (P1). A joining player's waiting notifications are pushed to their server (S2, #179), and tasks still offered or queued
 /// for them are offered again (WT2, DESIGN §8.4).
 /// </summary>
@@ -190,6 +190,34 @@ public sealed partial class GameServerHub : Hub
         {
             // The REST report is the fallback: the plugin reports there again while the hub is down.
             _logger.LogWarning(ex, "Recording the worlds reported by game server {ServerId} failed", serverId);
+        }
+    }
+
+    /// <summary>
+    /// Overview map L1 (PandiO/knk-workspace#735, OVERVIEW_MAP_DESIGN § 6.2.6, O28): domain region outlines. The plugin
+    /// sends them only with its <c>map.reporting.enabled</c> on: every domain region after its startup reconcile, one
+    /// region after it is created, redefined or renamed (the old name in <c>Removed</c>). Access: like every method on
+    /// this hub, only a connection holding the plugin key (<see cref="RealtimeSetup.GameServerPolicy"/>) and a valid
+    /// server id reaches it. Nothing is answered; a failure is logged and the next report repeats the data.
+    /// </summary>
+    public async Task ReportRegionOutlines(RegionOutlineReportDto? report)
+    {
+        if (ServerId is not { } serverId || report == null) return;
+        var outlines = _services?.GetService<knkwebapi_v2.Services.Map.IMapRegionOutlineService>();
+        if (outlines == null) return;
+        try
+        {
+            var result = await outlines.ApplyReportAsync(report);
+            _logger.LogInformation("Game server {ServerId} reported region outlines: {Stored} stored, {Unchanged} unchanged, {Removed} removed, {Rejected} rejected",
+                serverId, result.Stored, result.Unchanged, result.Removed, result.Rejected.Count);
+            foreach (var reason in result.Rejected.Take(10))
+            {
+                _logger.LogWarning("Region outline from game server {ServerId} not stored: {Reason}", serverId, reason);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Storing the region outlines reported by game server {ServerId} failed", serverId);
         }
     }
 
