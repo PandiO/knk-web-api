@@ -18,10 +18,15 @@ namespace knkwebapi_v2.Configuration
         /// <summary>validate-link-code, check-duplicate, link-minecraft-account.</summary>
         public const string LookupPolicy = "lookup";
 
+        /// <summary>The public overview map endpoints, api/Map (PandiO/knk-workspace#736, O29): 120 per minute by
+        /// default, room for one map polling players every 2 s (30 per minute) plus its panels.</summary>
+        public const string MapPolicy = "map";
+
         public static IServiceCollection AddKnkRateLimiting(this IServiceCollection services, IConfiguration configuration)
         {
             var authPermit = Math.Max(1, configuration.GetValue("RateLimiting:Auth:PermitPerMinute", 10));
             var lookupPermit = Math.Max(1, configuration.GetValue("RateLimiting:Lookup:PermitPerMinute", 20));
+            var mapPermit = Math.Max(1, configuration.GetValue("RateLimiting:Map:PermitPerMinute", 120));
 
             services.AddRateLimiter(options =>
             {
@@ -41,6 +46,7 @@ namespace knkwebapi_v2.Configuration
                 };
                 options.AddPolicy(AuthPolicy, http => PerIp(http, AuthPolicy, authPermit));
                 options.AddPolicy(LookupPolicy, http => PerIp(http, LookupPolicy, lookupPermit));
+                options.AddPolicy(MapPolicy, http => PerIp(http, MapPolicy, mapPermit));
             });
             return services;
         }
