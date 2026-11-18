@@ -122,6 +122,12 @@ namespace knkwebapi_v2.Dtos
         // Part C, KNG-92): "Applies" or "Ignored" - the domain's own override, else its type's default.
         [JsonPropertyName("roadAccess")]
         public string RoadAccess { get; set; } = "Applies";
+        // The domain's own Location (its spawn point), null when it has none (destination engine E12, DESIGN § 10.3,
+        // PandiO/knk-workspace#103): one paged search fills the game server's navigation model, no lookup per domain.
+        // Always sent (null included), so a client can tell "no Location" from an older API without the field.
+        [JsonPropertyName("location")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+        public LocationDto? Location { get; set; }
     }
 
     public class DomainRegionDecisionDto
