@@ -161,6 +161,14 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IDomainSubRegionService, DomainSubRegionService>();
             // Overview map L1 (PandiO/knk-workspace#735): outlines the game server reports over the hub.
             services.AddScoped<knkwebapi_v2.Services.Map.IMapRegionOutlineService, knkwebapi_v2.Services.Map.MapRegionOutlineService>();
+            // Overview map L2 (PandiO/knk-workspace#736): the public map endpoints, off by default (Map:Enabled).
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.MapOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.MapOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.Map.MapMarkerCache>();
+            services.AddScoped<knkwebapi_v2.Services.Map.IMapPublicService, knkwebapi_v2.Services.Map.MapPublicService>();
             services.AddScoped<IMinecraftMaterialRefRepository, MinecraftMaterialRefRepository>();
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();
