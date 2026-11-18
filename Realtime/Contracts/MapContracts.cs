@@ -86,3 +86,97 @@ public sealed class MapPlayerReportDto
     /// <summary>The API id of that match (a <c>SiegeMatch</c> for a siege), or null while the plugin does not know it.</summary>
     public long? MatchId { get; set; }
 }
+
+/// <summary>
+/// Overview map L7 (PandiO/knk-workspace#741, OVERVIEW_MAP_DESIGN § 5 rule 11, § 6.2.5–6.2.6, O17): live gate commands.
+/// API → game server <see cref="GateCommand"/> (payload <see cref="GateCommandPayload"/>, v1); game server → API the hub
+/// method <c>GameServerHub.GateCommandResult</c> (argument <see cref="GateCommandResultDto"/>).
+/// </summary>
+public static class GateCommandEventTypes
+{
+    /// <summary>Run a gate command now with the normal animation. Sent to every connected game server.</summary>
+    public const string GateCommand = "GateCommand";
+
+    /// <summary><c>GameServerHub.GateCommandResult</c>: what the game server did.</summary>
+    public const string GateCommandResult = "GateCommandResult";
+}
+
+/// <summary>The actions of a gate command (lower case on the wire).</summary>
+public static class GateCommandActions
+{
+    public const string Open = "open";
+    public const string Close = "close";
+    public const string Toggle = "toggle";
+    public const string Repair = "repair";
+
+    public static readonly IReadOnlyList<string> All = new[] { Open, Close, Toggle, Repair };
+
+    /// <summary>The action in lower case, or null when it is not one of <see cref="All"/>.</summary>
+    public static string? Normalize(string? action)
+    {
+        var lower = action?.Trim().ToLowerInvariant();
+        return lower != null && All.Contains(lower) ? lower : null;
+    }
+}
+
+/// <summary>What a gate command ended with (the <c>result</c> of the endpoint and of the hub result).</summary>
+public static class GateCommandOutcomes
+{
+    /// <summary>The game server ran it (doors already in the asked state count as done).</summary>
+    public const string Done = "done";
+    /// <summary>The game server refused it (for example a destroyed door can't open, the gate isn't loaded); see the message.</summary>
+    public const string Refused = "refused";
+    /// <summary>A siege match runs on the gate (API or game server check); nothing changed.</summary>
+    public const string Siege = "siege";
+    /// <summary>No game server was connected; nothing was sent.</summary>
+    public const string NoGameServer = "no-game-server";
+    /// <summary>No result within <c>Map:GateCommands:TimeoutSeconds</c>; the game server may still have run it.</summary>
+    public const string Timeout = "timeout";
+}
+
+/// <param name="CommandId">Unique per command (a GUID, also in the audit entry): the result names it; a receiver acts
+/// once per id.</param>
+/// <param name="GateId">The gate structure.</param>
+/// <param name="DoorId">One door of that gate, or null for every door of the gate.</param>
+/// <param name="Action">See <see cref="GateCommandActions"/>.</param>
+/// <param name="StaffUserId">Who sent it.</param>
+/// <param name="StaffUsername">Their username, for the game server's log.</param>
+public sealed record GateCommandPayload(string CommandId, int GateId, int? DoorId, string Action, int StaffUserId,
+    string StaffUsername);
+
+/// <summary>The argument of <c>GameServerHub.GateCommandResult</c>.</summary>
+public sealed class GateCommandResultDto
+{
+    public string CommandId { get; set; } = string.Empty;
+
+    /// <summary><see cref="GateCommandOutcomes.Done"/>, <see cref="GateCommandOutcomes.Refused"/> or
+    /// <see cref="GateCommandOutcomes.Siege"/>.</summary>
+    public string Result { get; set; } = string.Empty;
+
+    /// <summary>A short human-readable line (shown in the panel and audited).</summary>
+    public string? Message { get; set; }
+
+    /// <summary>The doors the command acted on, with their state right after it (an animation may still run).</summary>
+    public List<GateCommandDoorStateDto>? Doors { get; set; }
+}
+
+/// <summary>One door's state as the game server sees it right after the command.</summary>
+public sealed class GateCommandDoorStateDto
+{
+    public int DoorId { get; set; }
+
+    /// <summary><c>open</c>, <c>closed</c>, <c>opening</c>, <c>closing</c> (lower case).</summary>
+    public string? State { get; set; }
+
+    public double HealthCurrent { get; set; }
+
+    public double HealthMax { get; set; }
+
+    public bool Destroyed { get; set; }
+
+    /// <summary>What happened to this door: <c>started</c>, <c>already</c>, <c>repaired</c> or <c>skipped</c>.</summary>
+    public string? Outcome { get; set; }
+
+    /// <summary>Why it was skipped, when it was.</summary>
+    public string? Reason { get; set; }
+}

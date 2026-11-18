@@ -27,7 +27,7 @@ public class MapConfigDto
     [JsonPropertyName("livePlayers")]
     public MapLivePlayersConfigDto LivePlayers { get; set; } = new();
 
-    /// <summary>Gate commands (phase 6a, #741, <c>Map:GateCommands:Enabled</c>); always off until that phase wires it.</summary>
+    /// <summary>Gate commands (phase 6a, #741): follows <c>Map:GateCommands:Enabled</c>.</summary>
     [JsonPropertyName("gateCommands")]
     public MapPartConfigDto GateCommands { get; set; } = new();
 }
