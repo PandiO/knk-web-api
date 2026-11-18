@@ -20,6 +20,8 @@ public partial class KnKDbContext : DbContext
 
     public virtual DbSet<Domain> Domains { get; set; } = null!;
     public virtual DbSet<DomainSubRegion> DomainSubRegions { get; set; } = null!;
+    // Overview map L1 (PandiO/knk-workspace#735): region outlines reported by the game server.
+    public virtual DbSet<MapRegionOutline> MapRegionOutlines { get; set; } = null!;
     public virtual DbSet<User> Users { get; set; } = null!;
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
@@ -229,6 +231,21 @@ public partial class KnKDbContext : DbContext
                 .WithMany(d => d.SubRegions)
                 .HasForeignKey(e => e.DomainId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Overview map L1 (PandiO/knk-workspace#735, O28): one outline per world and region id; the domain link is a hint
+        // that is cleared when the domain is deleted.
+        modelBuilder.Entity<MapRegionOutline>(entity =>
+        {
+            entity.ToTable("map_region_outlines");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasIndex(e => new { e.WorldName, e.WgRegionId }).IsUnique();
+            entity.HasIndex(e => e.DomainId);
+            entity.Property(e => e.PointsJson).HasColumnType("longtext").IsRequired();
+            entity.HasOne(e => e.Domain)
+                .WithMany()
+                .HasForeignKey(e => e.DomainId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // PermissionHolder TPT base — User/PermissionGroup : PermissionHolder, sharing this table's Id

@@ -79,6 +79,7 @@ public sealed class RealtimeHubTests : IAsyncLifetime
         });
         builder.Services.AddKnkRealtime(builder.Configuration);
         builder.Services.AddSingleton(_gameSettings.Object);
+        builder.Services.AddScoped<knkwebapi_v2.Services.Map.IMapRegionOutlineService, knkwebapi_v2.Services.Map.MapRegionOutlineService>();
         _app = builder.Build();
         _app.UseRouting();
         _app.UseAuthentication();
@@ -442,5 +443,48 @@ public sealed class RealtimeHubTests : IAsyncLifetime
         Assert.Equal("world", world.WorldName);
         Assert.Equal(2, world.PlayerCount);
         Assert.True(world.IsPrimary);
+    }
+
+    // Overview map L1 (#735, OVERVIEW_MAP_DESIGN § 6.2.6, A01): outlines over the game hub reach map_region_outlines.
+    [Fact]
+    public async Task GameHub_ReportRegionOutlines_StoresOneRowPerRegion()
+    {
+        await using var connection = GameConnection();
+        await connection.StartAsync();
+        var square = new[] { new { x = 0, z = 0 }, new { x = 10, z = 0 }, new { x = 10, z = 10 }, new { x = 0, z = 10 } };
+
+        await connection.InvokeAsync("ReportRegionOutlines", new
+        {
+            outlines = new[]
+            {
+                new { wgRegionId = "domain_1", worldName = "world", points = square, minY = 60, maxY = 90 },
+                new { wgRegionId = "domain_2", worldName = "world", points = square, minY = 0, maxY = 255 },
+            },
+        });
+        await connection.InvokeAsync("ReportRegionOutlines", new
+        {
+            outlines = new[] { new { wgRegionId = "domain_1", worldName = "world", points = square, minY = 62, maxY = 90 } },
+            removed = new[] { new { wgRegionId = "domain_2", worldName = "world" } },
+        });
+
+        using var scope = _app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<KnKDbContext>();
+        var row = Assert.Single(await db.MapRegionOutlines.AsNoTracking().ToListAsync());
+        Assert.Equal(("domain_1", "world", 62, 90), (row.WgRegionId, row.WorldName, row.MinY, row.MaxY));
+        Assert.Equal("[[0,0],[10,0],[10,10],[0,10]]", row.PointsJson);
+    }
+
+    // Access rule (#735): only the plugin-key game hub has the method; a web login cannot write outlines.
+    [Fact]
+    public async Task WebHub_CannotReportRegionOutlines()
+    {
+        await using var connection = WebConnection(bearer: Jwt(42));
+        await connection.StartAsync();
+
+        await Assert.ThrowsAsync<Microsoft.AspNetCore.SignalR.HubException>(() => connection.InvokeAsync("ReportRegionOutlines",
+            new { outlines = new[] { new { wgRegionId = "domain_1", worldName = "world" } } }));
+
+        using var scope = _app.Services.CreateScope();
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<KnKDbContext>().MapRegionOutlines);
     }
 }
