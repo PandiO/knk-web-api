@@ -173,6 +173,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddSingleton<knkwebapi_v2.Services.Map.MapPlayerRegistry>();
             services.AddSingleton<knkwebapi_v2.Services.Map.MapPlayerSnapshots>();
             services.AddScoped<knkwebapi_v2.Services.Map.IMapLivePlayerData, knkwebapi_v2.Services.Map.MapLivePlayerData>();
+            // Overview map L7 (#741): live gate commands (Map:GateCommands:Enabled, off by default); results wait in the singleton.
+            services.AddSingleton<knkwebapi_v2.Services.Map.GateCommandWaiter>();
+            services.AddScoped<knkwebapi_v2.Services.Map.IGateCommandService, knkwebapi_v2.Services.Map.GateCommandService>();
             services.AddScoped<IMinecraftMaterialRefRepository, MinecraftMaterialRefRepository>();
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();

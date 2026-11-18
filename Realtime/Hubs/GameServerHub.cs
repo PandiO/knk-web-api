@@ -12,7 +12,7 @@ namespace knkwebapi_v2.Realtime.Hubs;
 /// <c>/api/hubs/game</c> (DESIGN §4.1): one connection per game server, authenticated with the plugin key
 /// (<c>X-API-Key</c> = <c>Security:PluginApiKey</c>, the <see cref="RealtimeSetup.GameServerPolicy"/> on the endpoint)
 /// and named by <c>X-Knk-Server-Id</c>. Groups <c>servers</c> and <c>server:{id}</c>. Client-to-server methods are
-/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>, since overview map L1 (#735) <see cref="ReportRegionOutlines"/>, since L4 (#738) <see cref="ReportMapPlayers"/>; nothing else is written over the hub
+/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>, since overview map L1 (#735) <see cref="ReportRegionOutlines"/>, since L4 (#738) <see cref="ReportMapPlayers"/>, since L7 (#741) <see cref="GateCommandResult"/>; nothing else is written over the hub
 /// (P1). A joining player's waiting notifications are pushed to their server (S2, #179), and tasks still offered or queued
 /// for them are offered again (WT2, DESIGN §8.4).
 /// </summary>
@@ -238,6 +238,25 @@ public sealed partial class GameServerHub : Hub
         var stored = registry.Apply(serverId, report);
         _logger.LogDebug("Game server {ServerId} reported {Stored} of {Count} map player(s)", serverId, stored,
             report.Players?.Count ?? 0);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Overview map L7 (PandiO/knk-workspace#741, OVERVIEW_MAP_DESIGN § 6.2.5–6.2.6): the game server's answer to a
+    /// <c>GateCommand</c>. Handed to the waiting <c>POST api/GateStructures/{id}/commands</c> request through
+    /// <see cref="knkwebapi_v2.Services.Map.GateCommandWaiter"/>; the first answer per command id wins, a late one (after the
+    /// timeout) or one for an unknown id is ignored. Ignored while <c>Map:GateCommands:Enabled</c> is off. Access: like
+    /// every method on this hub, only a connection holding the plugin key reaches it. Nothing is answered.
+    /// </summary>
+    public Task GateCommandResult(GateCommandResultDto? result)
+    {
+        if (ServerId is not { } serverId || result == null) return Task.CompletedTask;
+        var options = _services?.GetService<IOptionsMonitor<knkwebapi_v2.Configuration.MapOptions>>();
+        if (options?.CurrentValue.GateCommands.Enabled != true) return Task.CompletedTask;
+        var waiter = _services?.GetService<knkwebapi_v2.Services.Map.GateCommandWaiter>();
+        var matched = waiter?.Complete(result) == true;
+        _logger.LogInformation("Game server {ServerId} answered gate command {CommandId}: {Result}{Ignored}", serverId,
+            result.CommandId, result.Result, matched ? string.Empty : " (nothing waits for it; ignored)");
         return Task.CompletedTask;
     }
 
