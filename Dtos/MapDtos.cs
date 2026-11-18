@@ -295,3 +295,116 @@ public class MapGateDoorPanelDto
     [JsonPropertyName("healthMax")]
     public double HealthMax { get; set; }
 }
+
+/// <summary>
+/// <c>GET api/Map/players</c> (PandiO/knk-workspace#738, spec § 6.2.4, § 5 rules 6-9, O07, O13, O21-O24, O31): the
+/// caller's audience snapshot. Anonymous and plain logged-in callers never receive a player in staff or owner mode or in
+/// a running match, not even in this body; a viewer who may see hidden players gets them with their tags.
+/// </summary>
+public class MapPlayersDto
+{
+    /// <summary>How often the page should poll, in milliseconds (<c>Map:LivePlayers:PollIntervalMs</c>).</summary>
+    [JsonPropertyName("intervalMs")]
+    public int IntervalMs { get; set; }
+
+    [JsonPropertyName("players")]
+    public List<MapPlayerDto> Players { get; set; } = new();
+
+    /// <summary>One pin per running minigame match (O13, O24, O31), the same for every audience.</summary>
+    [JsonPropertyName("arenas")]
+    public List<MapArenaDto> Arenas { get; set; } = new();
+}
+
+/// <summary>
+/// One live player (O07): head (by UUID) and name label, position and tags. The UUID is the public Minecraft account
+/// id the head is drawn from; no account id, email or other user field is served.
+/// </summary>
+public class MapPlayerDto
+{
+    [JsonPropertyName("uuid")]
+    public string Uuid { get; set; } = string.Empty;
+
+    [JsonPropertyName("world")]
+    public string World { get; set; } = string.Empty;
+
+    [JsonPropertyName("x")]
+    public double X { get; set; }
+
+    [JsonPropertyName("y")]
+    public double Y { get; set; }
+
+    [JsonPropertyName("z")]
+    public double Z { get; set; }
+
+    /// <summary>Facing in whole degrees, Minecraft convention (0 = south, 90 = west).</summary>
+    [JsonPropertyName("yaw")]
+    public int Yaw { get; set; }
+
+    [JsonPropertyName("label")]
+    public MapPlayerLabelDto Label { get; set; } = new();
+
+    /// <summary>The AFK tag (O07).</summary>
+    [JsonPropertyName("afk")]
+    public bool Afk { get; set; }
+
+    /// <summary>
+    /// The mode tag: <c>staff</c> or <c>owner</c> (an unknown mode reads <c>hidden</c>); null outside a mode. Only ever
+    /// set in the "may see hidden" snapshot.
+    /// </summary>
+    [JsonPropertyName("mode")]
+    public string? Mode { get; set; }
+
+    /// <summary>The short minigame tag (<c>Siege</c>) of a player in a running match; only in the "may see hidden" snapshot.</summary>
+    [JsonPropertyName("minigame")]
+    public string? Minigame { get; set; }
+}
+
+/// <summary>
+/// A player's name label as their in-game chat line (O23, <c>ChatLineFormat</c>): <c>[OWNER]</c> / <c>[STAFF]</c> for
+/// holders of <c>knk.mode.owner</c> / <c>knk.mode.staff</c>, then <c>-{title}-</c> (members: premium tier and title),
+/// then the name. Colours are Minecraft <c>&amp;</c> codes (one colour, optionally formats or a hex colour); the web
+/// app turns them into CSS.
+/// </summary>
+public class MapPlayerLabelDto
+{
+    /// <summary><c>OWNER</c>, <c>STAFF</c> or null.</summary>
+    [JsonPropertyName("rankTag")]
+    public string? RankTag { get; set; }
+
+    /// <summary>The text inside <c>-{ }-</c>, or null to leave the segment out.</summary>
+    [JsonPropertyName("braced")]
+    public string? Braced { get; set; }
+
+    /// <summary>The braced text is bold (owner and staff, as in game).</summary>
+    [JsonPropertyName("bracedBold")]
+    public bool BracedBold { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Colour codes of the brackets (<c>[ ]</c>, <c>-{ }-</c>).</summary>
+    [JsonPropertyName("bracketColor")]
+    public string BracketColor { get; set; } = string.Empty;
+
+    /// <summary>Colour codes of the rank tag, the braced text and the name.</summary>
+    [JsonPropertyName("textColor")]
+    public string TextColor { get; set; } = string.Empty;
+}
+
+/// <summary>A running minigame match's pin (O24, O31): at its objective, with the in-game tag and the participant count.</summary>
+public class MapArenaDto
+{
+    /// <summary>The minigame tag, e.g. <c>Siege</c>.</summary>
+    [JsonPropertyName("minigame")]
+    public string Minigame { get; set; } = string.Empty;
+
+    /// <summary>The pin label, e.g. <c>[Siege] 12 players</c>.</summary>
+    [JsonPropertyName("label")]
+    public string Label { get; set; } = string.Empty;
+
+    [JsonPropertyName("playerCount")]
+    public int PlayerCount { get; set; }
+
+    [JsonPropertyName("pin")]
+    public MapPinDto Pin { get; set; } = new();
+}

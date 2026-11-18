@@ -213,6 +213,7 @@ public class ReadAccessRulesTests
         ["MapController.GetConfig"] = "P",
         ["MapController.GetDistrict"] = "P",
         ["MapController.GetMarkers"] = "P",
+        ["MapController.GetPlayers"] = "P",
         ["MapController.GetStructure"] = "P",
         ["MapController.GetTown"] = "P",
         ["PlayersController.GetByName"] = "P",

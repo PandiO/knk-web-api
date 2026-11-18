@@ -68,6 +68,9 @@ public class EndpointAccessRulesTests
         "MapController.GetTown",
         "MapController.GetDistrict",
         "MapController.GetStructure",
+        // Overview map L4 (#738): live players, the caller's audience snapshot (spec § 6.2.4); 404 while
+        // Map:LivePlayers:Enabled is off.
+        "MapController.GetPlayers",
     };
 
     private sealed record Endpoint(Type Controller, MethodInfo Action, IReadOnlyList<string> Verbs)

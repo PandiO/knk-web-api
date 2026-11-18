@@ -133,8 +133,12 @@ public sealed class MapPublicService : IMapPublicService
                 Count = Math.Clamp(o.Flash.Count, 1, 10),
                 DurationMs = Math.Clamp(o.Flash.DurationMs, 50, 5000),
             },
-            // Phases 4a (#738) and 6a (#741) wire their own flags (O27); until then both parts are off.
-            LivePlayers = new MapLivePlayersConfigDto { Enabled = false, PollIntervalMs = 2000 },
+            // Phase 4a (#738): Map:LivePlayers (O27, off by default). Phase 6a (#741) wires gate commands; until then off.
+            LivePlayers = new MapLivePlayersConfigDto
+            {
+                Enabled = o.LivePlayers.Enabled,
+                PollIntervalMs = o.LivePlayers.EffectivePollIntervalMs,
+            },
             GateCommands = new MapPartConfigDto { Enabled = false },
         };
     }
