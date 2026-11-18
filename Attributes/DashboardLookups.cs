@@ -59,6 +59,8 @@ namespace knkwebapi_v2.Attributes
                 }),
             ["GateDoor"] = Of<IGateDoorService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "GateStructureName"),
                 filters: new[] { IdFilter("gateStructureId"), FlagFilter("isActive") }),
+            ["Landmark"] = Of<ILandmarkService>((s, id) => s.GetByIdAsync(id), Name,
+                o => Join(Text(o, "DomainName"), Text(o, "World")), filters: new[] { IdFilter("domainId") }),
             ["DomainSubRegion"] = Of<IDomainSubRegionService>((s, id) => s.GetByIdAsync(id), o => Text(o, "Name", "WgRegionId"),
                 o => Text(o, "WgRegionId")),
 

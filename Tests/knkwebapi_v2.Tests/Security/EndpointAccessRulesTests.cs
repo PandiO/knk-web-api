@@ -71,6 +71,10 @@ public class EndpointAccessRulesTests
         // Overview map L4 (#738): live players, the caller's audience snapshot (spec § 6.2.4); 404 while
         // Map:LivePlayers:Enabled is off.
         "MapController.GetPlayers",
+        // Off-road navigation phase 5.1 (PandiO/knk-workspace#708, DESIGN § 6.4): landmarks are public place names,
+        // read by world and by id; map rate limit.
+        "LandmarksController.GetAll",
+        "LandmarksController.GetById",
     };
 
     private sealed record Endpoint(Type Controller, MethodInfo Action, IReadOnlyList<string> Verbs)

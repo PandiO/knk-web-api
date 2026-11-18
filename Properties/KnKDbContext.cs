@@ -22,6 +22,8 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<DomainSubRegion> DomainSubRegions { get; set; } = null!;
     // Overview map L1 (PandiO/knk-workspace#735): region outlines reported by the game server.
     public virtual DbSet<MapRegionOutline> MapRegionOutlines { get; set; } = null!;
+    // Off-road navigation phase 5.1 (PandiO/knk-workspace#708): staff-made landmarks.
+    public virtual DbSet<Landmark> Landmarks { get; set; } = null!;
     public virtual DbSet<User> Users { get; set; } = null!;
     public virtual DbSet<LinkCode> LinkCodes { get; set; } = null!;
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
@@ -242,6 +244,31 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => new { e.WorldName, e.WgRegionId }).IsUnique();
             entity.HasIndex(e => e.DomainId);
             entity.Property(e => e.PointsJson).HasColumnType("longtext").IsRequired();
+            entity.HasOne(e => e.Domain)
+                .WithMany()
+                .HasForeignKey(e => e.DomainId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Off-road navigation phase 5.1 (PandiO/knk-workspace#708, DESIGN § 6.3): staff-made landmarks. Additive table; the
+        // pin's Location can't be deleted while a landmark uses it (like a domain's, KNG-118 D3); deleting the domain
+        // only drops the link. The name is unique per world (the Location's), checked by LandmarkService.
+        modelBuilder.Entity<Landmark>(entity =>
+        {
+            entity.ToTable("landmarks", t =>
+                t.HasCheckConstraint("CK_landmarks_Preference_Range",
+                    $"`Preference` >= {Landmark.PreferenceMin.ToString(System.Globalization.CultureInfo.InvariantCulture)} AND `Preference` <= {Landmark.PreferenceMax.ToString(System.Globalization.CultureInfo.InvariantCulture)}"));
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.Property(e => e.Name).HasMaxLength(Landmark.NameMaxLength).IsRequired();
+            entity.Property(e => e.RegionId).HasMaxLength(Landmark.RegionIdMaxLength);
+            entity.Property(e => e.ExtentKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.DomainId);
+            entity.HasOne(e => e.Location)
+                .WithMany()
+                .HasForeignKey(e => e.LocationId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Domain)
                 .WithMany()
                 .HasForeignKey(e => e.DomainId)

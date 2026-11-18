@@ -36,6 +36,7 @@ public class DeleteAccessRulesTests
         ["GateStructure"] = "GateStructuresController.Delete",
         ["GateDoor"] = "GateDoorsController.Delete",
         ["DomainSubRegion"] = "DomainSubRegionsController.Delete",
+        ["Landmark"] = "LandmarksController.Delete",
         ["Kit"] = "KitsController.Delete",
         ["LootboxType"] = "LootboxTypesController.Delete",
         ["LootboxSpecialEntry"] = "LootboxSpecialEntriesController.Delete",

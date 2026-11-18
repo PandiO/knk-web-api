@@ -1,0 +1,114 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "33de13e6-579c-5860-9976-f01e9d638219",
+  "entityTypeName": "Landmark",
+  "name": "Landmark - Default (seed v1)",
+  "description": "A named place for /navigate, made by staff: a pin with a name, optionally in a domain and with an area (off-road navigation, phase 5.1).",
+  "steps": [
+    {
+      "stepGuid": "c6260c69-5f72-5eef-9d3e-a46400e7d9c1",
+      "stepName": "Landmark",
+      "description": "Name the place, as players will type it after /navigate (\"Throne room\", \"Northern gate\").",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "9f1a0055-711a-52ea-b8f1-31373e84b74a",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique in its world, at most 100 characters. Players see it in /navigate and its tab completion.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5652ab66-a516-59cf-ba2c-6b06fa263c3f",
+          "fieldName": "DomainId",
+          "label": "Domain",
+          "description": "Optional. The town, district or structure the place is in; /navigate shows \"in <domain>\" next to the name. Deleting the domain only removes this link.",
+          "fieldType": "Object",
+          "objectType": "Domain",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "46fc75f6-78ee-59e6-9650-785ec947cac2",
+          "fieldName": "NavigationEnabled",
+          "label": "Offer in /navigate",
+          "description": "Off keeps the landmark without offering it as a destination.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "e2acb2ac-dcb2-52ab-8cc7-2bbdfc9e3465",
+      "stepName": "Location",
+      "description": "Stand on the spot in game and use Send to Minecraft. Without an area, navigation ends within the arrival distance of this point.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "fe6a35f6-a752-5471-88c8-876644ea714d",
+          "fieldName": "LocationId",
+          "label": "Location",
+          "description": "The landmark's point and world.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "f92c3cf0-67ae-5198-a56f-ee956e870ffe",
+      "stepName": "Area",
+      "description": "Optional. Where the landmark counts as reached: inside a WorldGuard region, or within a radius of the point.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "6738435b-c515-5df7-a174-f682cfac8dc2",
+          "fieldName": "ExtentKind",
+          "label": "Area",
+          "description": "None = the point only; Region = inside the region below; Radius = within the radius below (a cylinder).",
+          "fieldType": "Enum",
+          "enumType": "LandmarkExtentKind",
+          "defaultValue": "None",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"None\", \"Region\", \"Radius\"]}"
+        },
+        {
+          "fieldGuid": "2c6887da-3d3f-5bbd-a917-74fa4bf69b6a",
+          "fieldName": "RegionId",
+          "label": "Region id",
+          "description": "The WorldGuard region id, for Area = Region (at most 128 characters).",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f7efe92a-a360-5c2e-b5f6-d3f0b09826f9",
+          "fieldName": "Radius",
+          "label": "Radius (blocks)",
+          "description": "For Area = Radius: above 0, at most 512.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "424cf354-1e98-5391-a557-404a9ab11b62",
+          "fieldName": "Preference",
+          "label": "Route preference",
+          "description": "0.25 to 4.0, default 1. Below 1 routes prefer walking through the area, above 1 they avoid it (used once landmark weights are on).",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

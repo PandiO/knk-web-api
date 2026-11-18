@@ -188,6 +188,8 @@ namespace knkwebapi_v2.Attributes
             ["Structure"] = new[] { StaffPermissions.ServerConfig },
             ["Domain"] = new[] { StaffPermissions.ManageDiscovery },
             ["Street"] = new[] { StaffPermissions.RoadManage },
+            // Off-road #708: landmark staff without the World area node still list landmarks.
+            ["Landmark"] = new[] { StaffPermissions.LandmarkManage },
             ["MinecraftMaterialRef"] = new[] { StaffPermissions.RoadManage },
             ["ItemBlueprint"] = new[] { StaffPermissions.ManageKits, StaffPermissions.ManageLootboxes },
             ["EnchantmentDefinition"] = new[] { StaffPermissions.ManageKits, StaffPermissions.ManageLootboxes },
@@ -249,6 +251,10 @@ namespace knkwebapi_v2.Attributes
             Type("GateDoor", DashboardArea.World, World,
                 Del<IGateDoorService>((s, id) => s.DeleteAsync(id)), Lists<IGateDoorService, GateDoorListDto>((s, q) => s.SearchAsync(q))),
             Type("DomainSubRegion", DashboardArea.World, World, Del<IDomainSubRegionService>((s, id) => s.DeleteAsync(id))),
+            // Off-road navigation #708: viewed with the World area node, changed with knk.admin.world.landmark (O26).
+            Type("Landmark", DashboardArea.World, World,
+                Del<ILandmarkService>((s, id) => s.DeleteAsync(id)), Lists<ILandmarkService, LandmarkListDto>((s, q) => s.SearchAsync(q)),
+                writeNode: StaffPermissions.LandmarkManage),
             ViewOnly("GateBlockSnapshot", DashboardArea.World, World),
             ViewOnly("GateOpenedBlockSnapshot", DashboardArea.World, World),
 

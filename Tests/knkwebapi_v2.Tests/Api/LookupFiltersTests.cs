@@ -216,6 +216,7 @@ public class LookupFiltersTests : IAsyncLifetime
             ["Structure"] = "streetId:Id, districtId:Id",
             ["GateStructure"] = "streetId:Id, districtId:Id, townId:Id, siegeScenarioId:Id, isActive:Flag, isOpened:Flag",
             ["GateDoor"] = "gateStructureId:Id, isActive:Flag",
+            ["Landmark"] = "domainId:Id",
             ["SiegeScenario"] = "townId:Id",
             ["SiegeTeam"] = "siegeScenarioId:Id",
             ["PermissionGroup"] = "parentGroupId:Id, isPremiumTier:Flag",

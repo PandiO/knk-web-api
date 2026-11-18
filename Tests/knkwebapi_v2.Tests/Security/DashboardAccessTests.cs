@@ -17,7 +17,7 @@ public class DashboardAccessTests
     private static readonly string[] WebAppDeletes =
     {
         "Category", "Domain", "Grade", "Tag", "Street", "Town", "District", "Structure", "GateStructure", "GateDoor",
-        "DomainSubRegion", "Location", "ItemBlueprint", "Kit", "EnchantmentDefinition", "MinecraftBlockRef",
+        "DomainSubRegion", "Landmark", "Location", "ItemBlueprint", "Kit", "EnchantmentDefinition", "MinecraftBlockRef",
         "MinecraftMaterialRef", "User", "PermissionGroup", "LootboxType", "LootboxSpecialEntry", "LootboxSpawnArea",
         "BannerDesign", "BannerLayer", "Clan", "SiegeScenario", "SiegeTeam", "SiegeSpawnpoint", "SiegeObjective", "SiegeLobby",
     };
@@ -60,6 +60,7 @@ public class DashboardAccessTests
     [InlineData("MinecraftEnchantmentRef", DashboardArea.Content, "knk.admin.content")]
     [InlineData("Town", DashboardArea.World, "knk.admin.world")]
     [InlineData("GateDoor", DashboardArea.World, "knk.admin.world")]
+    [InlineData("Landmark", DashboardArea.World, "knk.admin.world")]
     [InlineData("Kit", DashboardArea.Kits, "knk.kit.manage")]
     [InlineData("LootboxSpawnArea", DashboardArea.Lootboxes, "knk.admin.lootbox.manage")]
     [InlineData("SiegeTeam", DashboardArea.Siege, "knk.siege.admin.manage")]
@@ -87,6 +88,7 @@ public class DashboardAccessTests
     [InlineData("Street", "knk.admin.road")]
     [InlineData("ItemBlueprint", "knk.kit.manage")]
     [InlineData("Kit", "knk.admin.user.manage")]
+    [InlineData("Landmark", "knk.admin.world.landmark")]
     public void CrossAreaPages_AreReadNodes(string typeName, string node)
     {
         Assert.Contains(node, DashboardAccess.Find(typeName)!.ReadNodes);
@@ -187,6 +189,7 @@ public class DashboardAccessTests
     [Theory]
     [InlineData("Town", new[] { "knk.admin.world", "knk.admin.content" })]
     [InlineData("Kit", new[] { "knk.kit.manage", "knk.admin.content" })]
+    [InlineData("Landmark", new[] { "knk.admin.world.landmark", "knk.admin.content" })]
     [InlineData("LootboxType", new[] { "knk.admin.lootbox.manage", "knk.admin.content" })]
     [InlineData("SiegeSpawnpoint", new[] { "knk.siege.admin.manage", "knk.admin.content" })]
     [InlineData("ItemBlueprint", new[] { "knk.admin.content" })]
