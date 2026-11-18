@@ -80,6 +80,10 @@ public sealed class RealtimeHubTests : IAsyncLifetime
         builder.Services.AddKnkRealtime(builder.Configuration);
         builder.Services.AddSingleton(_gameSettings.Object);
         builder.Services.AddScoped<knkwebapi_v2.Services.Map.IMapRegionOutlineService, knkwebapi_v2.Services.Map.MapRegionOutlineService>();
+        // Overview map L4 (#738): live player reports.
+        builder.Configuration["Map:LivePlayers:Enabled"] = "true";
+        builder.Services.Configure<knkwebapi_v2.Configuration.MapOptions>(builder.Configuration.GetSection("Map"));
+        builder.Services.AddSingleton<knkwebapi_v2.Services.Map.MapPlayerRegistry>();
         _app = builder.Build();
         _app.UseRouting();
         _app.UseAuthentication();
@@ -486,5 +490,64 @@ public sealed class RealtimeHubTests : IAsyncLifetime
 
         using var scope = _app.Services.CreateScope();
         Assert.Empty(scope.ServiceProvider.GetRequiredService<KnKDbContext>().MapRegionOutlines);
+    }
+
+    // Overview map L4 (#738, OVERVIEW_MAP_DESIGN § 5 rule 6, § 6.2.6, A11, A16): player reports over the game hub are kept
+    // per player; PlayerLeft drops the player at once.
+    [Fact]
+    public async Task GameHub_ReportMapPlayers_KeepsThePlayers_PlayerLeftDropsThem()
+    {
+        await using var connection = GameConnection();
+        await connection.StartAsync();
+
+        await connection.InvokeAsync("ReportMapPlayers", new
+        {
+            intervalMs = 2000,
+            players = new[]
+            {
+                new { uuid = A, world = "world", x = 1.5, y = 64.0, z = -3.0, yaw = 90, afk = false, mode = "none", minigame = (string?)null, matchId = (long?)null },
+                new { uuid = B, world = "world", x = 2.0, y = 70.0, z = 5.0, yaw = 0, afk = true, mode = "staff", minigame = (string?)null, matchId = (long?)null },
+            },
+        });
+
+        var registry = _app.Services.GetRequiredService<knkwebapi_v2.Services.Map.MapPlayerRegistry>();
+        var live = registry.Live().OrderBy(p => p.Uuid).ToList();
+        Assert.Equal(2, live.Count);
+        Assert.Equal((1.5, knkwebapi_v2.Services.Map.MapPlayerMode.None), (live[0].X, live[0].Mode));
+        Assert.Equal((true, knkwebapi_v2.Services.Map.MapPlayerMode.Staff), (live[1].Afk, live[1].Mode));
+
+        await connection.InvokeAsync("PlayerLeft", new { uuid = A });
+        Assert.Equal(new[] { B }, registry.Live().Select(p => p.Uuid));
+    }
+
+    // O27: with Map:LivePlayers:Enabled off the reports are ignored, nothing is kept.
+    [Fact]
+    public async Task GameHub_ReportMapPlayers_IgnoredWhileLivePlayersOff()
+    {
+        var options = _app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<knkwebapi_v2.Configuration.MapOptions>>();
+        options.CurrentValue.LivePlayers.Enabled = false;
+        await using var connection = GameConnection();
+        await connection.StartAsync();
+
+        await connection.InvokeAsync("ReportMapPlayers", new
+        {
+            intervalMs = 2000,
+            players = new[] { new { uuid = A, world = "world", x = 1.5, y = 64.0, z = -3.0, yaw = 90, afk = false, mode = "none" } },
+        });
+
+        Assert.Equal(0, _app.Services.GetRequiredService<knkwebapi_v2.Services.Map.MapPlayerRegistry>().Count);
+    }
+
+    // Access rule (#738): only the plugin-key game hub has the method; a web login cannot report players.
+    [Fact]
+    public async Task WebHub_CannotReportMapPlayers()
+    {
+        await using var connection = WebConnection(bearer: Jwt(42));
+        await connection.StartAsync();
+
+        await Assert.ThrowsAsync<Microsoft.AspNetCore.SignalR.HubException>(() => connection.InvokeAsync("ReportMapPlayers",
+            new { intervalMs = 2000, players = new[] { new { uuid = A, world = "world" } } }));
+
+        Assert.Equal(0, _app.Services.GetRequiredService<knkwebapi_v2.Services.Map.MapPlayerRegistry>().Count);
     }
 }

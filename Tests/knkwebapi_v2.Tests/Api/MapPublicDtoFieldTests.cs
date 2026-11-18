@@ -39,6 +39,20 @@ public sealed class MapPublicDtoFieldTests
         [typeof(MapFlashDto)] = new[] { "count", "durationMs" },
         [typeof(MapPartConfigDto)] = new[] { "enabled" },
         [typeof(MapLivePlayersConfigDto)] = new[] { "enabled", "pollIntervalMs" },
+        // Live players (L4, #738, spec § 6.2.4, O07, O23, O24, O31): no account id, no user field beyond the label parts.
+        [typeof(MapPlayersDto)] = new[] { "intervalMs", "players", "arenas" },
+        [typeof(MapPlayerDto)] = new[] { "uuid", "world", "x", "y", "z", "yaw", "label", "afk", "mode", "minigame" },
+        [typeof(MapPlayerLabelDto)] = new[] { "rankTag", "braced", "bracedBold", "name", "bracketColor", "textColor" },
+        [typeof(MapArenaDto)] = new[] { "minigame", "label", "playerCount", "pin" },
+    };
+
+    /// <summary>
+    /// Reviewed exceptions to <see cref="NoPublicMapDto_NamesARegionOwnerOrPermission"/>: a live player's Minecraft UUID
+    /// (public account id the head is drawn from, O07; L4 #738).
+    /// </summary>
+    public static readonly IReadOnlySet<(Type Type, string Name)> ReviewedNames = new HashSet<(Type, string)>
+    {
+        (typeof(MapPlayerDto), "uuid"),
     };
 
     public static string[] JsonNames(Type type) => type
@@ -71,7 +85,7 @@ public sealed class MapPublicDtoFieldTests
         var forbidden = new[] { "region", "wg", "owner", "user", "uuid", "permission", "location", "street" + "Id", "siege" + "Id" };
         foreach (var type in Pinned.Keys)
         {
-            foreach (var name in JsonNames(type))
+            foreach (var name in JsonNames(type).Where(n => !ReviewedNames.Contains((type, n))))
             {
                 Assert.DoesNotContain(forbidden, f => name.Contains(f, StringComparison.OrdinalIgnoreCase));
             }

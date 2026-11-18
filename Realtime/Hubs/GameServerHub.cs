@@ -12,7 +12,7 @@ namespace knkwebapi_v2.Realtime.Hubs;
 /// <c>/api/hubs/game</c> (DESIGN §4.1): one connection per game server, authenticated with the plugin key
 /// (<c>X-API-Key</c> = <c>Security:PluginApiKey</c>, the <see cref="RealtimeSetup.GameServerPolicy"/> on the endpoint)
 /// and named by <c>X-Knk-Server-Id</c>. Groups <c>servers</c> and <c>server:{id}</c>. Client-to-server methods are
-/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>, since overview map L1 (#735) <see cref="ReportRegionOutlines"/>; nothing else is written over the hub
+/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>, since overview map L1 (#735) <see cref="ReportRegionOutlines"/>, since L4 (#738) <see cref="ReportMapPlayers"/>; nothing else is written over the hub
 /// (P1). A joining player's waiting notifications are pushed to their server (S2, #179), and tasks still offered or queued
 /// for them are offered again (WT2, DESIGN §8.4).
 /// </summary>
@@ -221,9 +221,31 @@ public sealed partial class GameServerHub : Hub
         }
     }
 
+    /// <summary>
+    /// Overview map L4 (PandiO/knk-workspace#738, OVERVIEW_MAP_DESIGN § 5 rule 6, § 6.2.6): the live player report. The
+    /// plugin sends it (only with its <c>map.reporting.enabled</c> on) every <c>map.reporting.interval-ticks</c>. Kept in
+    /// <see cref="knkwebapi_v2.Services.Map.MapPlayerRegistry"/> only while <c>Map:LivePlayers:Enabled</c> is on;
+    /// otherwise ignored, so nothing is held. Access: like every method on this hub, only a connection holding the
+    /// plugin key reaches it. Nothing is answered.
+    /// </summary>
+    public Task ReportMapPlayers(MapPlayersReportDto? report)
+    {
+        if (ServerId is not { } serverId || report == null) return Task.CompletedTask;
+        var options = _services?.GetService<IOptionsMonitor<knkwebapi_v2.Configuration.MapOptions>>();
+        if (options?.CurrentValue.LivePlayers.Enabled != true) return Task.CompletedTask;
+        var registry = _services?.GetService<knkwebapi_v2.Services.Map.MapPlayerRegistry>();
+        if (registry == null) return Task.CompletedTask;
+        var stored = registry.Apply(serverId, report);
+        _logger.LogDebug("Game server {ServerId} reported {Stored} of {Count} map player(s)", serverId, stored,
+            report.Players?.Count ?? 0);
+        return Task.CompletedTask;
+    }
+
     public async Task PlayerLeft(PlayerLeftDto? player)
     {
         if (ServerId is not { } serverId || player == null) return;
+        // Overview map L4 (#738, spec § 5 rule 6): the player leaves the map at once.
+        _services?.GetService<knkwebapi_v2.Services.Map.MapPlayerRegistry>()?.Remove(player.Uuid);
         if (_presence.PlayerLeft(serverId, player.Uuid))
         {
             await _store.SetOfflineAsync(new[] { player.Uuid }, Now);

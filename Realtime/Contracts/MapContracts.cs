@@ -45,3 +45,44 @@ public sealed class RegionOutlineRefDto
 
     public string WorldName { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Overview map L4 (PandiO/knk-workspace#738, OVERVIEW_MAP_DESIGN § 5 rule 6, § 6.2.6): the argument of the game hub's
+/// <c>ReportMapPlayers</c>. The plugin sends it (only with its <c>map.reporting.enabled</c> on) every
+/// <c>map.reporting.interval-ticks</c> with its online players; a large server splits it into several messages. The API
+/// keeps each player's latest entry and drops it on <c>PlayerLeft</c> or after three missed intervals.
+/// </summary>
+public sealed class MapPlayersReportDto
+{
+    /// <summary>The plugin's report interval in milliseconds (the "three missed intervals" rule).</summary>
+    public int IntervalMs { get; set; }
+
+    public List<MapPlayerReportDto>? Players { get; set; }
+}
+
+/// <summary>One online player as reported. Never served as is: <c>GET api/Map/players</c> builds its own DTOs.</summary>
+public sealed class MapPlayerReportDto
+{
+    public string Uuid { get; set; } = string.Empty;
+
+    public string World { get; set; } = string.Empty;
+
+    public double X { get; set; }
+
+    public double Y { get; set; }
+
+    public double Z { get; set; }
+
+    public double Yaw { get; set; }
+
+    public bool Afk { get; set; }
+
+    /// <summary><c>none</c>, <c>staff</c> or <c>owner</c>; anything else counts as hidden.</summary>
+    public string? Mode { get; set; }
+
+    /// <summary>The short key of the running minigame the player plays in (<c>siege</c>), or null.</summary>
+    public string? Minigame { get; set; }
+
+    /// <summary>The API id of that match (a <c>SiegeMatch</c> for a siege), or null while the plugin does not know it.</summary>
+    public long? MatchId { get; set; }
+}
