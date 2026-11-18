@@ -21,7 +21,20 @@ public class DomainMappingProfile : Profile
             .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name))
             // Needs the type defaults: DomainService.SearchAsync fills it (KNG-73).
             .ForMember(dest => dest.NavigationDefault, opt => opt.Ignore())
-            .ForMember(dest => dest.RoadAccess, opt => opt.Ignore());
+            .ForMember(dest => dest.RoadAccess, opt => opt.Ignore())
+            // Destination engine E12 (PandiO/knk-workspace#103): the domain's own Location, loaded by
+            // DomainRepository.SearchAsync; null when it has none. Mapped here so the search needs no other profile.
+            .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.Location == null ? null : new LocationDto
+            {
+                Id = src.Location.Id,
+                Name = src.Location.Name,
+                X = src.Location.X,
+                Y = src.Location.Y,
+                Z = src.Location.Z,
+                Yaw = src.Location.Yaw,
+                Pitch = src.Location.Pitch,
+                World = src.Location.World
+            }));
 
         CreateMap<Domain, DomainRegionDecisionDto>()
             .ForMember(dest => dest.DomainType, opt => opt.MapFrom(src => src.GetType().Name))

@@ -149,9 +149,9 @@ namespace knkwebapi_v2.Repositories
         {
             // Domain is a TPT base (Town/District/Structure/...); querying the base DbSet already
             // materializes each row into its concrete runtime subtype, which is all DomainMappingProfile's
-            // GetType().Name convention (DomainListDto.DomainType) needs - no discriminator column, no
-            // extra Include.
-            var queryable = _context.Domains.AsQueryable();
+            // GetType().Name convention (DomainListDto.DomainType) needs - no discriminator column.
+            // The Location is included for DomainListDto.Location (destination engine E12, PandiO/knk-workspace#103).
+            var queryable = _context.Domains.Include(d => d.Location).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
             {
