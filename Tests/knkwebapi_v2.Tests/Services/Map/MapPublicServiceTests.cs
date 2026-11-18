@@ -231,6 +231,14 @@ public sealed class MapPublicServiceTests : IDisposable
         Assert.Matches("^[0-9a-f]{16}$", config.MarkerVersion);
     }
 
+    // Phase 6a (#741, O27): config.gateCommands follows Map:GateCommands:Enabled (L8's buttons read it).
+    [Fact]
+    public async Task Config_GateCommands_FollowsItsFlag()
+    {
+        _options.GateCommands.Enabled = true;
+        Assert.True((await Service().GetConfigAsync()).GateCommands.Enabled);
+    }
+
     // ===== Panels (A05, O32) =====
 
     [Fact]

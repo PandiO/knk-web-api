@@ -24,6 +24,30 @@ public class MapOptions
 
     /// <summary><c>Map:LivePlayers</c>: live players and arena pins (phase 4a, #738). Off by default (O27).</summary>
     public MapLivePlayersOptions LivePlayers { get; set; } = new();
+
+    /// <summary><c>Map:GateCommands</c>: live gate commands from the web app (phase 6a, #741). Off by default (O27).</summary>
+    public MapGateCommandsOptions GateCommands { get; set; } = new();
+}
+
+/// <summary>
+/// <c>Map:GateCommands</c> (PandiO/knk-workspace#741, OVERVIEW_MAP_DESIGN § 5 rule 11, § 6.2.5, O17, O27). With
+/// <see cref="Enabled"/> false (the default) <c>POST api/GateStructures/{id}/commands</c> answers 404
+/// (<c>GateCommandsOff</c>), sends nothing to the game server and writes no audit entry; the game hub ignores late
+/// results.
+/// </summary>
+public class MapGateCommandsOptions
+{
+    /// <summary><c>Map:GateCommands:Enabled</c>: the gate command endpoint. Off by default (O27).</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// <c>Map:GateCommands:TimeoutSeconds</c>: how long the endpoint waits for the game server's
+    /// <c>GateCommandResult</c> (spec: 5 s). Clamped to 1..30.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 5;
+
+    /// <summary>The wait as used.</summary>
+    public TimeSpan EffectiveTimeout => TimeSpan.FromSeconds(Math.Clamp(TimeoutSeconds, 1, 30));
 }
 
 /// <summary>
