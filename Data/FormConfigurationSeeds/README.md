@@ -181,3 +181,10 @@ knk-plugin of the same issue), so the "Area and region" step and the Region fiel
 `select <region>` or `/knk lootbox area create`; the Name field says `area_<number>` is reserved. Needs that API and
 plugin change: before it, a drawn region keeps its temp name and the server removes it after 14 days. GUIDs:
 configuration uuid5(v1 configuration GUID, "seed-v2"), every step/field uuid5(v1 configuration GUID, its v1 GUID).
+
+**Landmark seed v1 (off-road navigation phase 5.1, PandiO/knk-workspace#708, 2026-11-18):** new seed `Landmark` (no
+dependency, import any time; it becomes the default when Landmark has none). Steps: "Landmark" (`Name`, `DomainId`,
+`NavigationEnabled`), "Location" (`LocationId`, captured in game with Send to Minecraft) and "Area"
+(`ExtentKind` None/Region/Radius, `RegionId`, `Radius`, `Preference`). The API checks the rules (name unique per world,
+region id for Region, radius above 0 and at most 512 for Radius, preference 0.25-4.0). GUIDs: configuration uuid5(URL
+namespace, "knk-formconfig:Landmark:seed-v1"), every step/field uuid5(that, "step:"/"field:" + name).

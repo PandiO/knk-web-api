@@ -231,6 +231,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IGradeService, GradeService>();
             services.AddScoped<ITagRepository, TagRepository>();
             services.AddScoped<ITagService, TagService>();
+            // Off-road navigation phase 5.1 (PandiO/knk-workspace#708): landmarks.
+            services.AddScoped<ILandmarkRepository, LandmarkRepository>();
+            services.AddScoped<ILandmarkService, LandmarkService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
             services.AddScoped<IBannerDesignService, BannerDesignService>();

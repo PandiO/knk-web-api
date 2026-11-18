@@ -47,6 +47,7 @@ public class DashboardChangeAccessRulesTests
         ("GateStructuresController", "Create", "GateStructure"), ("GateStructuresController", "Update", "GateStructure"),
         ("GateDoorsController", "Create", "GateDoor"), ("GateDoorsController", "Update", "GateDoor"),
         ("DomainSubRegionsController", "Create", "DomainSubRegion"), ("DomainSubRegionsController", "Update", "DomainSubRegion"),
+        ("LandmarksController", "Create", "Landmark"), ("LandmarksController", "Update", "Landmark"),
         ("KitsController", "Create", "Kit"), ("KitsController", "Update", "Kit"),
         ("LootboxTypesController", "Create", "LootboxType"), ("LootboxTypesController", "Update", "LootboxType"),
         ("LootboxSpecialEntriesController", "Create", "LootboxSpecialEntry"), ("LootboxSpecialEntriesController", "Update", "LootboxSpecialEntry"),

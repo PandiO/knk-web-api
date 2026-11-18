@@ -2900,6 +2900,66 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("kit_purchases", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Landmark", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExtentKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("LocationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("NavigationEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<double>("Preference")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("Radius")
+                        .HasColumnType("double");
+
+                    b.Property<string>("RegionId")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("DomainId");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("landmarks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_landmarks_Preference_Range", "`Preference` >= 0.25 AND `Preference` <= 4");
+                        });
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshot", b =>
                 {
                     b.Property<long>("Id")
@@ -8115,6 +8175,24 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Kit");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Landmark", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
+                        .WithMany()
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Domain");
+
+                    b.Navigation("Location");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshotEntry", b =>

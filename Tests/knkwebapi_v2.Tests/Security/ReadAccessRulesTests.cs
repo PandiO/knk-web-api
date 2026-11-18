@@ -90,6 +90,7 @@ public class ReadAccessRulesTests
         ["KitsController.GetAvailable"] = "F Kit",
         ["KitsController.GetById"] = "F Kit",
         ["KitsController.Search"] = "F Kit",
+        ["LandmarksController.Search"] = "F Landmark",
         ["LocationsController.GetAll"] = "F Location",
         ["LocationsController.GetLocationById"] = "F Location",
         ["LocationsController.SearchLocations"] = "F Location",
@@ -208,6 +209,8 @@ public class ReadAccessRulesTests
         ["HealthCheckController.GetLiveness"] = "P",
         ["HealthCheckController.GetReadiness"] = "P",
         ["HealthController.GetHealth"] = "P",
+        ["LandmarksController.GetAll"] = "P", // off-road #708: public place names, map rate limit
+        ["LandmarksController.GetById"] = "P",
         ["LeaderboardsController.GetBoard"] = "P",
         ["LeaderboardsController.GetBoards"] = "P",
         ["MapController.GetConfig"] = "P",
@@ -382,6 +385,8 @@ public class ReadAccessRulesTests
         "TownsController.SearchTowns", "TownsController.GetTownById", "LocationsController.SearchLocations",
         "LocationsController.GetLocationById", "GateStructuresController.GetAll", "GateStructuresController.GetById",
         "GateDoorsController.GetByStructure", "GateDoorsController.GetById",
+        // The landmark provider of off-road #708 step B (the navigation model's landmarks section).
+        "LandmarksController.GetAll", "LandmarksController.GetById",
         "WorldTasksController.ListByStatus", "WorldTasksController.GetByLinkCode", "WorldTasksController.GetById",
         "WorldTasksController.ListOpenForServer", "WorldTasksController.ListTempRegionReleases",
         "KitsController.Search", "KitsController.GetById", "KitsController.GetAvailable", "KitsController.GetPendingDeliveries",

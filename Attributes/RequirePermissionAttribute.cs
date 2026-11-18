@@ -135,6 +135,12 @@ namespace knkwebapi_v2.Attributes
         /// /knk road subcommand; also matched by knk.admin.* and *.</summary>
         public const string RoadManage = "knk.admin.road";
 
+        /// <summary>Create, edit and delete landmarks, the staff-made named places of off-road navigation (web app and
+        /// the in-game /knk landmark command; knk-workspace docs/specs/navigation-offroad/DESIGN.md § 6, decision O26,
+        /// PandiO/knk-workspace#708). A child of the world model's node: matched by knk.admin.world.*, knk.admin.* and *
+        /// (a bare knk.admin.world grant does not match a child node).</summary>
+        public const string LandmarkManage = "knk.admin.world.landmark";
+
         // Location retention (KNG-80). Laid out like the currency umbrella: one knk.admin.location
         // tree (the existing knk.admin.location node keeps /knk location here), every node a child
         // of knk.admin so knk.admin.* and * match too. Delete is its own, higher-privilege node.
