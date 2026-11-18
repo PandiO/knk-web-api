@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace knkwebapi_v2.Controllers
 {
     /// <summary>
-    /// The public overview map (PandiO/knk-workspace#736; OVERVIEW_MAP_DESIGN § 6.2.1-6.2.3, O02, O03, O16, O27, O29).
+    /// The public overview map (PandiO/knk-workspace#736, live players #738; OVERVIEW_MAP_DESIGN § 6.2.1-6.2.4, O02, O03, O16, O27, O29).
     /// Anonymous by design (O02): the map is public and every response is an allow-list DTO (O32). Each route is in
     /// <c>EndpointAccessRulesTests.AnonymousAllowList</c>, under the per-IP <c>map</c> rate limit, and answers 404 while
     /// <c>Map:Enabled</c> is off (the default; spec § 5 rule 15, A03).
@@ -71,6 +71,32 @@ namespace knkwebapi_v2.Controllers
         {
             var dto = await _map.GetStructureAsync(id, ct);
             return dto == null ? NotFound() : Ok(dto);
+        }
+
+        /// <summary>
+        /// Live players and arena pins (PandiO/knk-workspace#738, spec § 6.2.4, O07, O21, O22): the caller's audience
+        /// snapshot. Anonymous allowed; a valid JWT selects the logged-in snapshot, or the "may see hidden" one for a
+        /// holder of <c>knk.mode.staff</c> / <c>knk.mode.owner</c>. 404 while <c>Map:LivePlayers:Enabled</c> is off.
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet("players")]
+        [ProducesResponseType(typeof(MapPlayersDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetPlayers(CancellationToken ct)
+        {
+            var services = HttpContext.RequestServices;
+            if (services.GetService<IOptionsMonitor<MapOptions>>()?.CurrentValue.LivePlayers.Enabled != true
+                || services.GetService<MapPlayerSnapshots>() is not { } players)
+            {
+                return NotFound();
+            }
+            var permissions = services.GetRequiredService<knkwebapi_v2.Services.IPermissionResolutionService>();
+            var cache = services.GetRequiredService<knkwebapi_v2.Services.IPermissionReadCache>();
+            var audience = await MapPlayerSnapshots.AudienceOfAsync(User, HttpContext, permissions, cache);
+            // The body differs per viewer: no shared cache may keep it.
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers.Vary = "Authorization";
+            return Ok(await players.GetAsync(audience, ct));
         }
     }
 

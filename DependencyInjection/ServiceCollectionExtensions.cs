@@ -169,6 +169,10 @@ namespace knkwebapi_v2.DependencyInjection
             }
             services.AddSingleton<knkwebapi_v2.Services.Map.MapMarkerCache>();
             services.AddScoped<knkwebapi_v2.Services.Map.IMapPublicService, knkwebapi_v2.Services.Map.MapPublicService>();
+            // Overview map L4 (#738): live players (registry and audience snapshots in memory, reads per tick in a scope).
+            services.AddSingleton<knkwebapi_v2.Services.Map.MapPlayerRegistry>();
+            services.AddSingleton<knkwebapi_v2.Services.Map.MapPlayerSnapshots>();
+            services.AddScoped<knkwebapi_v2.Services.Map.IMapLivePlayerData, knkwebapi_v2.Services.Map.MapLivePlayerData>();
             services.AddScoped<IMinecraftMaterialRefRepository, MinecraftMaterialRefRepository>();
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();

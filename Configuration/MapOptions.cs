@@ -21,6 +21,35 @@ public class MapOptions
 
     /// <summary><c>Map:Markers</c>: caching of <c>GET api/Map/markers</c>.</summary>
     public MapMarkerOptions Markers { get; set; } = new();
+
+    /// <summary><c>Map:LivePlayers</c>: live players and arena pins (phase 4a, #738). Off by default (O27).</summary>
+    public MapLivePlayersOptions LivePlayers { get; set; } = new();
+}
+
+/// <summary>
+/// <c>Map:LivePlayers</c> (PandiO/knk-workspace#738, OVERVIEW_MAP_DESIGN § 5 rules 6-9, O07, O21, O27). With
+/// <see cref="Enabled"/> false (the default) <c>GET api/Map/players</c> answers 404 and the game hub ignores the
+/// plugin's player reports, so nothing is kept.
+/// </summary>
+public class MapLivePlayersOptions
+{
+    /// <summary><c>Map:LivePlayers:Enabled</c>: the live player layer. Off by default (O27).</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// <c>Map:LivePlayers:PollIntervalMs</c>: how often the page polls, and the snapshot tick: the three audience
+    /// snapshots are built at most once per interval (O21). Default 2000; clamped to 500..60000.
+    /// </summary>
+    public int PollIntervalMs { get; set; } = 2000;
+
+    /// <summary>
+    /// <c>Map:LivePlayers:LabelCacheSeconds</c>: how long a player's name label (rank tag, title, colours) is reused
+    /// before it is read again. Default 60; 0 reads it at every snapshot.
+    /// </summary>
+    public int LabelCacheSeconds { get; set; } = 60;
+
+    /// <summary>The poll interval and snapshot tick as used.</summary>
+    public int EffectivePollIntervalMs => Math.Clamp(PollIntervalMs, 500, 60_000);
 }
 
 public class MapLabelOptions
