@@ -61,6 +61,13 @@ public class EndpointAccessRulesTests
         "InvitationsController.Check",
         // /link checks a claim code before login (KNG-214); lookup rate limit.
         "AdmissionController.CheckClaim",
+        // The public overview map (PandiO/knk-workspace#736, O02): allow-list DTOs (O32), map rate limit, 404 while
+        // Map:Enabled is off.
+        "MapController.GetConfig",
+        "MapController.GetMarkers",
+        "MapController.GetTown",
+        "MapController.GetDistrict",
+        "MapController.GetStructure",
     };
 
     private sealed record Endpoint(Type Controller, MethodInfo Action, IReadOnlyList<string> Verbs)
