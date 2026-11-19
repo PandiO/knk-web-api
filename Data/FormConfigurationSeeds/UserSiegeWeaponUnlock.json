@@ -1,0 +1,47 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "80665704-e195-59b1-919e-fe495e842443",
+  "entityTypeName": "UserSiegeWeaponUnlock",
+  "name": "UserSiegeWeaponUnlock - Default (seed v1)",
+  "description": "A player's permanent unlock of a siege weapon type: needed to buy that weapon in a match, not to operate one.",
+  "steps": [
+    {
+      "stepGuid": "7c9c5ad2-22e7-50f9-afe5-7e429fdb6b8c",
+      "stepName": "Unlock",
+      "description": "Grant a player a weapon type. Normally players pay for it with coins; staff use this for corrections and tests.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "781d2b26-4451-5cd6-8cfc-fc7184988c6e",
+          "fieldName": "UserId",
+          "label": "Player",
+          "description": "The player who may buy this weapon type.",
+          "fieldType": "Object",
+          "objectType": "User",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "56035c12-46f1-54d9-864d-484b854700b8",
+          "fieldName": "SiegeWeaponTemplateId",
+          "label": "Weapon type",
+          "description": "One unlock per player and type.",
+          "fieldType": "Object",
+          "objectType": "SiegeWeaponTemplate",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e2a7271a-4938-5974-a627-b72f35901418",
+          "fieldName": "UnlockedAt",
+          "label": "Unlocked at",
+          "description": "Empty = now.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

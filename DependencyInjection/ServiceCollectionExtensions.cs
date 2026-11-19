@@ -247,6 +247,9 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<ISiegeLobbyService, SiegeLobbyService>();
             services.AddScoped<ISiegeConfigurationRepository, SiegeConfigurationRepository>();
             services.AddScoped<ISiegeConfigurationService, SiegeConfigurationService>();
+            // Siege weapons phase 1 (PandiO/knk-workspace#782): templates, ammo types, weapon spots, unlocks
+            services.AddScoped<ISiegeWeaponRepository, SiegeWeaponRepository>();
+            services.AddScoped<ISiegeWeaponService, SiegeWeaponService>();
             // Siege Phase 6 — match lifecycle + server-side rewards
             services.AddScoped<ISiegeMatchRepository, SiegeMatchRepository>();
             services.AddScoped<ISiegeMatchService, SiegeMatchService>();

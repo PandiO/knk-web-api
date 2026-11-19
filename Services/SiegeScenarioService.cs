@@ -462,6 +462,12 @@ namespace knkwebapi_v2.Services
             target.EnchantDropsEnabled = dto.EnchantDropsEnabled;
             target.NavigationItem = dto.NavigationItem;
 
+            // Siege weapons (PandiO/knk-workspace#782, W11, W23).
+            if (dto.WeaponSpotCooldownOverrideSeconds is < 0)
+                throw new ArgumentException("weaponSpotCooldownOverrideSeconds can't be negative (leave it empty for the templates' own cooldown).");
+            target.FriendlyFire = dto.FriendlyFire;
+            target.WeaponSpotCooldownOverrideSeconds = dto.WeaponSpotCooldownOverrideSeconds;
+
             if (dto.Districts != null) SyncDistricts(target, districtIds);
             if (gateDtos != null) SyncGates(target, gateDtos);
         }
@@ -530,6 +536,10 @@ namespace knkwebapi_v2.Services
             target.ChatColor = chatColor;
             target.BannerDesignId = bannerDesignId;
             target.StartMessage = OptionalText(dto.StartMessage, "startMessage", 255);
+
+            // Siege weapons (W30, PandiO/knk-workspace#782).
+            if (dto.ActiveWeaponSpots < 0) throw new ArgumentException("activeWeaponSpots can't be negative.");
+            target.ActiveWeaponSpots = dto.ActiveWeaponSpots;
         }
 
         private async Task ApplySpawnpointAsync(SiegeSpawnpoint target, SiegeSpawnpointUpsertDto dto)

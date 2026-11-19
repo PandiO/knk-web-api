@@ -33,7 +33,8 @@ namespace knkwebapi_v2.Mapping
             CreateMap<SiegeScenario, SiegeScenarioReadDto>()
                 .ForMember(d => d.TownName, o => o.MapFrom(s => s.Town != null ? s.Town.Name : null))
                 .ForMember(d => d.Teams, o => o.MapFrom(s => s.Teams.OrderBy(t => t.SortOrder).ThenBy(t => t.Id)))
-                .ForMember(d => d.Objectives, o => o.MapFrom(s => s.Objectives.OrderBy(t => t.SortOrder).ThenBy(t => t.Id)));
+                .ForMember(d => d.Objectives, o => o.MapFrom(s => s.Objectives.OrderBy(t => t.SortOrder).ThenBy(t => t.Id)))
+                .ForMember(d => d.WeaponSpots, o => o.MapFrom(s => s.WeaponSpots.OrderBy(w => w.SortOrder).ThenBy(w => w.Id)));
 
             CreateMap<SiegeScenario, SiegeScenarioListDto>()
                 .ForMember(d => d.TownName, o => o.MapFrom(s => s.Town != null ? s.Town.Name : null))

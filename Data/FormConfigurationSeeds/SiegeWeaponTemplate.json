@@ -1,0 +1,327 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "07a8df64-31f7-5c66-b462-cff3ccc9c64c",
+  "entityTypeName": "SiegeWeaponTemplate",
+  "name": "SiegeWeaponTemplate - Default (seed v1)",
+  "description": "One siege weapon type (trebuchet, catapult, ballista): its build, firing, range, damage multipliers, prices and the ammo it may fire.",
+  "steps": [
+    {
+      "stepGuid": "a36c4b20-a32c-58a4-9aff-f36410afa001",
+      "stepName": "General",
+      "description": "Name the weapon and say how it is aimed and how much room it needs.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "69e9e151-3ee0-57c3-bee2-8d56b5aec697",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in the siege shop and on the targeting page, e.g. 'Trebuchet'. Must be unique.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "406c9dba-4ec4-592a-ac92-7af3a9dc5d0f",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Optional; a line for players.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "483fbe82-da7b-5a7e-a980-fdc876464391",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "Indirect: aimed at a target on the map page or in game, the shot lands randomly inside a circle (trebuchet, catapult). Direct: the operator mounts it and fires where they look, inside a cone (ballista).",
+          "fieldType": "Enum",
+          "defaultValue": "Indirect",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Indirect\", \"Direct\"]}"
+        },
+        {
+          "fieldGuid": "6ad6b47c-210f-5634-bb97-f12596696cfb",
+          "fieldName": "SizeClass",
+          "label": "Size class",
+          "description": "The spot size it needs: Small 7 x 9 x 5, Medium 7 x 9 x 8, Large 9 x 15 x 16 blocks (width x length x height, measured across and along the spot's facing). A larger spot also takes a smaller weapon.",
+          "fieldType": "Enum",
+          "defaultValue": "Medium",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Small\", \"Medium\", \"Large\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "8a2cf6c5-767b-5b18-ac1f-3920deb777cd",
+      "stepName": "Health and timing",
+      "description": "Health, build time and reload.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "d9b69108-e690-5f00-9c63-93c1895041d1",
+          "fieldName": "MaxHealth",
+          "label": "Max health",
+          "description": "HP once built. During the build HP rises evenly from 0, and the weapon can be attacked.",
+          "fieldType": "Integer",
+          "defaultValue": "300",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "55f28653-69db-5abc-ba24-17ec26aa2035",
+          "fieldName": "BuildTimeSeconds",
+          "label": "Build time (seconds)",
+          "description": "From placing to full HP; it can't fire before.",
+          "fieldType": "Integer",
+          "defaultValue": "60",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2932d477-243f-57c5-8108-5aae1d753799",
+          "fieldName": "ReloadSeconds",
+          "label": "Reload (seconds)",
+          "description": "Between two shots, for every ammo type.",
+          "fieldType": "Integer",
+          "defaultValue": "20",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "305b2c92-85d3-549c-aa11-3469a7ed536e",
+          "fieldName": "LeaseIdleTimeoutSeconds",
+          "label": "Idle timeout (seconds)",
+          "description": "The operator loses the weapon after this long without a shot, so a teammate can take it. Empty = the global default.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "03453656-bb7b-5eb7-a08d-7955c6c0fb5d",
+      "stepName": "Range",
+      "description": "How far it reaches, shown as rings on the targeting map.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e48bcc70-caa0-5328-8529-dcc888dc917d",
+          "fieldName": "MaxRange",
+          "label": "Max range (blocks)",
+          "description": "Farthest target from the spot.",
+          "fieldType": "Decimal",
+          "defaultValue": "100",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "865bbc65-65d5-5862-9086-1d119357c4d7",
+          "fieldName": "MinRange",
+          "label": "Min range (blocks)",
+          "description": "Optional: nearest target. Must be below the max range.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "9918ec78-9c6e-5764-b5d4-35cc784965a9",
+      "stepName": "Spread and flight",
+      "description": "Indirect weapons only. Every shot lands randomly inside a targeting circle that shrinks while the same operator keeps firing at about the same point.",
+      "isManyToManyRelationship": false,
+      "displayConditionGroups": [
+        {
+          "innerLogic": "And",
+          "combineWithPreviousLogic": "And",
+          "isActive": true,
+          "conditions": [
+            {
+              "sourceFieldGuid": "483fbe82-da7b-5a7e-a980-fdc876464391",
+              "operator": "Equals",
+              "valueJson": "\"Indirect\""
+            }
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "fieldGuid": "7cd18366-86b4-5db3-9606-8e404286c427",
+          "fieldName": "StartSpreadRadius",
+          "label": "Start spread (blocks)",
+          "description": "Circle radius for the first shot at a new target.",
+          "fieldType": "Decimal",
+          "defaultValue": "8",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "34ae817b-7162-5ad8-be0e-c207895e385c",
+          "fieldName": "MinSpreadRadius",
+          "label": "Minimum spread (blocks)",
+          "description": "The circle never gets smaller than this; at most the start spread.",
+          "fieldType": "Decimal",
+          "defaultValue": "3",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "463641c4-71b9-5674-84b6-123fcdd07ca3",
+          "fieldName": "RangingStep",
+          "label": "Ranging step (blocks)",
+          "description": "Taken off the radius by each consecutive shot at about the same point.",
+          "fieldType": "Decimal",
+          "defaultValue": "1.5",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "63332254-b568-557c-a444-972b20fedf4a",
+          "fieldName": "FlightTimeAtMaxRangeSeconds",
+          "label": "Flight time at max range (seconds)",
+          "description": "Shorter shots fly for less, never under 1.5 s. At least 1.5.",
+          "fieldType": "Decimal",
+          "defaultValue": "4",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "531ab0bc-f2db-5a31-8e20-e22d14d1823c",
+          "fieldName": "ArcHeight",
+          "label": "Arc height (blocks)",
+          "description": "How high the projectile flies above the straight line; the trebuchet's arc is higher.",
+          "fieldType": "Decimal",
+          "defaultValue": "20",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "52c5de74-1d84-5c23-83c1-f9b8e3664f1a",
+      "stepName": "Firing cone",
+      "description": "Direct weapons only.",
+      "isManyToManyRelationship": false,
+      "displayConditionGroups": [
+        {
+          "innerLogic": "And",
+          "combineWithPreviousLogic": "And",
+          "isActive": true,
+          "conditions": [
+            {
+              "sourceFieldGuid": "483fbe82-da7b-5a7e-a980-fdc876464391",
+              "operator": "Equals",
+              "valueJson": "\"Direct\""
+            }
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "fieldGuid": "8c73168b-622e-5e06-a953-0bca77e47276",
+          "fieldName": "ConeHalfAngleDegrees",
+          "label": "Cone half-angle (degrees)",
+          "description": "Shots must stay within this angle either side of the spot's facing; 60 = a 120 degree cone.",
+          "fieldType": "Decimal",
+          "defaultValue": "60",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "51188b7d-2a87-5007-ad7a-ec600982b757",
+      "stepName": "Damage multipliers",
+      "description": "Factors on each ammo type's structure damage. The ballista is the gate-breaker.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b3516a27-713d-5726-9074-ae0c3654073f",
+          "fieldName": "GateDamageMultiplier",
+          "label": "Gate damage multiplier",
+          "description": "Against gates, e.g. 3 for a ballista.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2f948402-1030-58a9-9f00-64c435c086ef",
+          "fieldName": "WeaponDamageMultiplier",
+          "label": "Weapon damage multiplier",
+          "description": "Against enemy siege weapons.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6063a546-8c75-5108-b0ad-65c11b9c1e4b",
+          "fieldName": "SpotCooldownSeconds",
+          "label": "Spot cooldown (seconds)",
+          "description": "After this weapon is destroyed its spot stays locked this long. A scenario can override it.",
+          "fieldType": "Integer",
+          "defaultValue": "120",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b347ac1e-9ae0-5018-adb4-b2c6d4a977ac",
+      "stepName": "Prices",
+      "description": "Prices are tuned in the alpha; think in minutes of good play.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b74e268c-84c9-522c-8c40-36604c1b2f87",
+          "fieldName": "MatchPrice",
+          "label": "Match price (siege points)",
+          "description": "Paid in a match to place one.",
+          "fieldType": "Integer",
+          "defaultValue": "200",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b0b66ba5-174d-5756-8b9f-2c69bf8332e0",
+          "fieldName": "UnlockPrice",
+          "label": "Unlock price (coins)",
+          "description": "Personal coins a player pays once to be allowed to buy this type.",
+          "fieldType": "Integer",
+          "defaultValue": "1000",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "89cae8b8-bab7-50fb-bc03-16effb8e0eea",
+      "stepName": "Ammo",
+      "description": "The ammo types this weapon may fire. Add each with Create New Join Entry.",
+      "isManyToManyRelationship": true,
+      "relatedEntityPropertyName": "AllowedAmmoTypes",
+      "joinEntityType": "SiegeWeaponTemplateAmmoType",
+      "subConfigurationRef": {
+        "configurationGuid": "98b2c620-5fd6-5766-a576-ff9d2a7b0981",
+        "entityTypeName": "SiegeWeaponTemplateAmmoType",
+        "name": "SiegeWeaponTemplateAmmoType - Join Entry (seed v1)"
+      },
+      "fields": [
+        {
+          "fieldGuid": "97a7cfe4-7b72-535d-8239-1a21c93f07c1",
+          "fieldName": "AllowedAmmoTypes",
+          "label": "Allowed ammo",
+          "description": "One entry per ammo type.",
+          "fieldType": "List",
+          "objectType": "SiegeWeaponTemplateAmmoType",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

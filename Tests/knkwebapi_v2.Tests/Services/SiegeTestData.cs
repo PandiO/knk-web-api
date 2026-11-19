@@ -44,6 +44,7 @@ public static class SiegeTestData
     public static IMapper Mapper() => new MapperConfiguration(cfg =>
     {
         cfg.AddProfile<SiegeMappingProfile>();
+        cfg.AddProfile<SiegeWeaponMappingProfile>(); // the scenario's weapon spots (PandiO/knk-workspace#782)
         cfg.AddProfile<ClanMappingProfile>();
         cfg.AddProfile<LocationMappingProfile>();
         cfg.AddProfile<PagedQueryMappingProfile>();
