@@ -337,3 +337,14 @@ fields uuid5(that, "field:<section>:<label>").
 (`productionKind.name`) instead of its id. GUIDs: configuration uuid5(v1 configuration GUID, "seed-v2"), kept
 sections/fields uuid5(v1 configuration GUID, their v1 GUID), the new field uuid5(v2 configuration GUID,
 "field:<section>:<label>").
+
+**Yield areas P4 display seeds (PandiO/knk-workspace#138, 2026-11-19):** new v1 seeds `ProductionArea` (shape, bounding
+box and size, survey state), `ProductionYieldOverride` (the Hybrid override of one output) and `AreaSurvey` (a reported
+survey with its units as a collection; read only, the game server reports surveys); new versions `ProductionKind`
+(seed v2: survey profile and version, primary multiplier, the yield table and the primary outputs as collections) and
+`ProductionStructure` (seed v3: the yield source after the kind, the areas as a collection). Make the new versions the
+default. The rate explanation (`GET api/ProductionStructures/{id}/yield`) and the trend (`GET api/AreaSurveys/trend`)
+are API views for the web app link #680, like the production view. GUIDs: new seeds as for P3 (fields
+uuid5(configuration, "field:<field>") or "field:<section>:<field>" in collections); new versions as for v2 above
+(configuration uuid5(previous configuration GUID, "seed-vN"), kept sections/fields uuid5(previous configuration GUID,
+their previous GUID)).

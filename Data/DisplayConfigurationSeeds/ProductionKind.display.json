@@ -1,17 +1,17 @@
 {
   "format": "knk-displayconfig/1",
-  "configurationGuid": "d70670ab-c745-5545-b25a-6b18ebb30d69",
+  "configurationGuid": "1def3e12-817f-515f-b471-8385bee005fc",
   "entityTypeName": "ProductionKind",
-  "name": "ProductionKind - Default (seed v1)",
+  "name": "ProductionKind - Default (seed v2)",
   "description": "A production kind of the catalogue and its ten levels (production engine P3, #86).",
   "sections": [
     {
-      "sectionGuid": "32ab703d-a11e-5867-be1e-5c8630f7b474",
+      "sectionGuid": "2d955f9a-8376-5ff8-926a-48126637d777",
       "sectionName": "General information",
       "description": "The kind.",
       "fields": [
         {
-          "fieldGuid": "d6c5be14-2caf-5ad6-8f06-f20a8bc4bd33",
+          "fieldGuid": "6a4a9e39-f6c8-55a6-904e-13b6f5cb8d90",
           "fieldName": "Name",
           "label": "Name",
           "description": "The kind's name.",
@@ -19,7 +19,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "ed058835-dee9-53cb-b548-18098ed5a616",
+          "fieldGuid": "c8900442-b582-5870-aec6-0142fcc774af",
           "fieldName": "Description",
           "label": "Description",
           "description": "What it produces.",
@@ -27,35 +27,35 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "6979a95e-0c33-5992-b3fc-a0cea3664109",
+          "fieldGuid": "9fde776f-a52f-5592-b140-60367e0f7314",
           "fieldName": "Icon",
           "label": "Icon",
           "description": "Material for menus.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "f4bf3008-ab59-53fd-9edd-323678eea5ce",
+          "fieldGuid": "729b66ec-9832-5388-a202-853c5e043cb0",
           "fieldName": "AreaModel",
           "label": "Area model",
           "description": "Where its resources come from.",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "23df7b5d-30bf-5a29-afe6-aed891670e52",
+          "fieldGuid": "38656fd3-ae6b-51e6-ac8e-c71d82235442",
           "fieldName": "ExclusiveAreas",
           "label": "Exclusive areas",
           "description": "Areas may not overlap.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "1855a772-2f3e-52f2-b798-a3da855e4017",
+          "fieldGuid": "70336d10-5d92-56af-be3c-774f7304e3b6",
           "fieldName": "ResourceCategory",
           "label": "Resource category",
           "description": "What weather and category modifiers target.",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "db050e3f-abfd-51c6-a79d-5a610eb73581",
+          "fieldGuid": "12786fdf-3191-5ccf-b0ea-b2a8ff54dfc4",
           "fieldName": "IsActive",
           "label": "Active",
           "description": "Offered for new structures.",
@@ -64,47 +64,47 @@
       ]
     },
     {
-      "sectionGuid": "0fdb62d6-9580-5b3c-812a-6f6b2ade5a53",
+      "sectionGuid": "dba10171-6519-514b-b4ef-d17bceea369d",
       "sectionName": "Yield sources and workers",
       "description": "Allowed yield sources, workers and default storages.",
       "fields": [
         {
-          "fieldGuid": "b4a7454f-873c-5bd6-b9d0-61d3377f7551",
+          "fieldGuid": "f6f24495-fbff-536c-8806-7712b722b5c5",
           "fieldName": "AllowsDerived",
           "label": "Allows Derived",
           "description": "Survey-based rates (P4).",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "84cc3918-6665-5039-a113-42d340cd4351",
+          "fieldGuid": "a4d3c70d-adcd-5449-833c-f5486e13e364",
           "fieldName": "AllowsConfigured",
           "label": "Allows Configured",
           "description": "Admin-entered rates.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "ee62c51f-10a6-5b6a-97f5-01eba24223f5",
+          "fieldGuid": "741ac360-a45a-5303-96df-b203cc21feb7",
           "fieldName": "AllowsHybrid",
           "label": "Allows Hybrid",
           "description": "Survey plus admin pins (P4).",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "ab69e508-4bdd-5d92-b78d-4fe2a0353ac8",
+          "fieldGuid": "730c5655-09d9-5d45-854c-5d502941a23d",
           "fieldName": "DefaultWorkers",
           "label": "Default workers",
           "description": "Workers of a new structure.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "83fdf1dd-2dd5-5f99-b25d-93d79972892c",
+          "fieldGuid": "90b68a15-46a6-582b-8b88-bf89735b2e1f",
           "fieldName": "CycleVariation",
           "label": "Cycle variation",
           "description": "±10% per cycle (P4).",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "7a34e1f2-7b58-50a7-83bb-077117826467",
+          "fieldGuid": "35d931a6-24be-5159-8e1f-2b56e702570c",
           "fieldName": "DefaultStoragesJson",
           "label": "Default storages",
           "description": "Storages next to Output.",
@@ -113,7 +113,7 @@
       ]
     },
     {
-      "sectionGuid": "162974b0-6d3f-51a5-ac53-fd51576ed3a8",
+      "sectionGuid": "84b0baef-3c4d-58b6-8313-ba73e22fe080",
       "sectionName": "Levels",
       "description": "Ten levels (G8): yield multiplier, cycle speed and upgrade cost.",
       "relatedEntityPropertyName": "Levels",
@@ -122,46 +122,140 @@
       "actionButtonsConfigJson": "{\"showViewButton\":true,\"showEditButton\":true}",
       "fields": [
         {
-          "fieldGuid": "9f7ba624-b56f-515a-82ba-e9128548e71c",
+          "fieldGuid": "f164a15b-9bf6-5790-a598-5175ef14cca7",
           "fieldName": "Level",
           "label": "Level",
           "description": "1-10.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "9d6ddc46-a272-54ed-b8d2-ef4cbe809e7e",
+          "fieldGuid": "05f31794-62a8-5d8f-8a8d-6f838b07d023",
           "fieldName": "YieldMultiplier",
           "label": "Yield multiplier",
           "description": "The level modifier.",
           "fieldType": "Decimal"
         },
         {
-          "fieldGuid": "4ae153fd-c286-5b65-ad76-e5b4a3aec31c",
+          "fieldGuid": "bd7a7e54-9c09-5f19-85a6-8f2bffedf0f7",
           "fieldName": "CycleSpeedMultiplier",
           "label": "Cycle speed",
           "description": "Cycles per base cycle.",
           "fieldType": "Decimal"
         },
         {
-          "fieldGuid": "20a80472-0008-5df5-9a38-cdede2203da5",
+          "fieldGuid": "7869b2ed-7ca7-5a88-8359-21f1644f8069",
           "fieldName": "MaxAreaSize",
           "label": "Max area size",
           "description": "Area cap (P4).",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "40c271fe-d2ab-5cc8-a056-be31186bc82b",
+          "fieldGuid": "16ce474e-b2c4-52ef-823c-e16be0edc6a2",
           "fieldName": "OutputMaxUnits",
           "label": "Output storage cap",
           "description": "Written on level change.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "2762f45d-ec25-5313-8f06-0c55ba8a09ee",
+          "fieldGuid": "36444f72-ea20-52b6-8be7-766aef285a21",
           "fieldName": "UpgradeCoins",
           "label": "Upgrade coins",
           "description": "Coins to reach the level.",
           "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "1e9fe68d-8ff5-5e32-a2df-633e8f6a4c2b",
+      "sectionName": "Yield",
+      "description": "Survey profile and primary factor (P4).",
+      "fields": [
+        {
+          "fieldGuid": "4c2fd5e8-4322-57af-a215-c06df23fbc3b",
+          "fieldName": "SurveyProfileJson",
+          "label": "Survey profile",
+          "description": "What the survey counts.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b7cf4226-1bb1-560d-9d8d-92158e469446",
+          "fieldName": "SurveyProfileVersion",
+          "label": "Profile version",
+          "description": "Raised on every change.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "bfdd7a92-8082-5820-aaad-c78c4734e9f0",
+          "fieldName": "PrimaryMultiplier",
+          "label": "Primary multiplier",
+          "description": "For the primary outputs.",
+          "fieldType": "Decimal"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "b4212c3f-94f5-506e-9ff3-007661fc0e51",
+      "sectionName": "Yield table",
+      "description": "Survey units → output: rate per unit per hour, byproduct chance, from which level.",
+      "relatedEntityPropertyName": "YieldTable",
+      "relatedEntityTypeName": "ProductionYieldRow",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "0769271f-6e29-5397-bea8-7c76e31c45d8",
+          "fieldName": "UnitKey",
+          "label": "Unit",
+          "description": "A unit key or a prefix ending in *.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "997466a9-67ae-5e14-9fa9-be9fa908fc82",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Output",
+          "description": "The item blueprint.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "fd8abcea-4571-51fd-aab3-83bff44fc0cc",
+          "fieldName": "RatePerUnitPerHour",
+          "label": "Per unit per hour",
+          "description": "Base rate.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "b693286b-68ee-543e-b44f-b71057bc4fae",
+          "fieldName": "ByproductChance",
+          "label": "Chance",
+          "description": "1 = main output; below 1 = byproduct share.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "360583f0-ad5c-51de-8641-bd2f6226d8e7",
+          "fieldName": "MinLevel",
+          "label": "From level",
+          "description": "Counts from this level on.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "646afb44-7b72-552e-a4c7-db199233afd1",
+      "sectionName": "Primary outputs",
+      "description": "Outputs the kind is designed for (they get the primary multiplier).",
+      "relatedEntityPropertyName": "PrimaryOutputs",
+      "relatedEntityTypeName": "ProductionKindPrimaryOutput",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "cab2a1be-99de-5e37-b147-b4f7a60533d0",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Output",
+          "description": "The item blueprint.",
+          "fieldType": "String"
         }
       ]
     }

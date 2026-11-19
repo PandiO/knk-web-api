@@ -1,0 +1,172 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "099b51a9-5dd0-59cc-8b00-7876c125907e",
+  "entityTypeName": "ProductionArea",
+  "name": "ProductionArea - Default (seed v1)",
+  "description": "A yield area: its shape, size against the level's cap and its survey state (yield areas P4, #138). The survey history and the rate explanation are on the structure's yield view.",
+  "sections": [
+    {
+      "sectionGuid": "93d45b3f-069a-5785-b254-9e7228a086d8",
+      "sectionName": "Area",
+      "description": "What and where.",
+      "fields": [
+        {
+          "fieldGuid": "8800e61c-f632-5afb-9cad-bce7e0b68fb9",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionStructure",
+          "relatedEntityTypeName": "ProductionStructure",
+          "label": "Production structure",
+          "description": "The structure it belongs to.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "ffa6cdc7-ca1d-5221-9bef-6e511fa1f3bf",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique per structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "2cdf611d-9854-5190-9b13-ecec1ceb0431",
+          "fieldName": "Model",
+          "label": "Area model",
+          "description": "From the structure's kind.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "ca181e6c-6225-5dd9-8a4e-2b9e4601d4ad",
+          "fieldName": "Shape",
+          "label": "Shape",
+          "description": "Region, Cuboid, Polygon or Radius.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "55c7ce38-6e3a-5757-b456-a4692c2ce565",
+          "fieldName": "Exclusive",
+          "label": "Exclusive",
+          "description": "May not overlap other exclusive areas of the same model.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "6a31e0a1-b49a-5a13-a725-5d01b26e6ee7",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off = not surveyed.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "de0bc727-27eb-5129-b55d-2ad04c5766fd",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The area's world.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6f65d886-e70e-53ba-84ce-1c23322c1e04",
+          "fieldName": "WgRegionId",
+          "label": "WorldGuard region",
+          "description": "Shape Region.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "f2b9bdca-f8cb-5bcf-8165-c5c95eafa064",
+          "fieldName": "Radius",
+          "label": "Radius",
+          "description": "Shape Radius.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "c62f26a1-b1f2-5b20-8a29-79ac5548c219",
+      "sectionName": "Size",
+      "description": "The bounding box; the size is blocks, volume or radius by the model (the API's area answer also gives the level's cap).",
+      "fields": [
+        {
+          "fieldGuid": "54c768ab-96d6-558b-ab04-10792e19f910",
+          "fieldName": "Size",
+          "label": "Size",
+          "description": "Blocks, volume or radius by the model.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "221db069-545e-5aaa-8c5a-d5ea2860b7a3",
+          "fieldName": "MinX",
+          "label": "Min X",
+          "description": "Bounding box.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "8b23b565-badd-5263-b0c5-027fd6cca536",
+          "fieldName": "MinY",
+          "label": "Min Y",
+          "description": "Bounding box.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "b442ecc8-5e7a-5e2f-90d7-91d8c1024b3a",
+          "fieldName": "MinZ",
+          "label": "Min Z",
+          "description": "Bounding box.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "8eed9e26-8924-5d5d-b046-4609d79f3d8b",
+          "fieldName": "MaxX",
+          "label": "Max X",
+          "description": "Bounding box.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "2ce6f256-9a1d-5bd5-aa59-1f5c8faf3db2",
+          "fieldName": "MaxY",
+          "label": "Max Y",
+          "description": "Bounding box.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "1b817f63-b50f-51b7-895e-d3b25249efaa",
+          "fieldName": "MaxZ",
+          "label": "Max Z",
+          "description": "Bounding box.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "f27c5a05-5ae7-52cd-9805-8d1681697287",
+      "sectionName": "Survey",
+      "description": "Surveys run only for Derived and Hybrid structures (G5).",
+      "fields": [
+        {
+          "fieldGuid": "d37b5b24-9e66-5a54-a3f1-eddc7838541d",
+          "fieldName": "LastSurveyedAt",
+          "label": "Last surveyed",
+          "description": "When the latest survey was taken.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "b249e8f0-aa7f-5670-8591-bec13af50453",
+          "fieldName": "LastSurveyId",
+          "label": "Latest survey",
+          "description": "Its id in the survey history.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "2672ffc4-1767-5c13-a348-f437536bb215",
+          "fieldName": "SurveyRequestedAt",
+          "label": "Survey requested",
+          "description": "A survey is waiting for the game server.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "9905599e-1a59-5133-a91d-3462c02a5c26",
+          "fieldName": "SurveyRequestTrigger",
+          "label": "Requested by",
+          "description": "Creation or Admin.",
+          "fieldType": "Enum"
+        }
+      ]
+    }
+  ]
+}

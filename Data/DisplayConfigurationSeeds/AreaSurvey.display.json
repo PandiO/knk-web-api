@@ -1,0 +1,98 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "d011b9f8-3cbe-53a3-9c35-5fa8cb563d0e",
+  "entityTypeName": "AreaSurvey",
+  "name": "AreaSurvey - Default (seed v1)",
+  "description": "One survey of a yield area as the game server reported it (yield areas P4, #138): the units it counted. Read only; the trend over surveys is GET api/AreaSurveys/trend.",
+  "sections": [
+    {
+      "sectionGuid": "c9d318d9-af32-535d-98ca-80b77e176993",
+      "sectionName": "Survey",
+      "description": "When and why.",
+      "fields": [
+        {
+          "fieldGuid": "018320bc-15a6-5f3f-ad21-6c9fb103ace5",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionArea",
+          "relatedEntityTypeName": "ProductionArea",
+          "label": "Area",
+          "description": "The surveyed area.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "48349938-c8e4-53c7-80cd-bb5cdee6e055",
+          "fieldName": "SurveyedAt",
+          "label": "Surveyed",
+          "description": "When the game server took it.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "1d2bdfe9-ebe5-5455-8ff3-b3e7f6f58102",
+          "fieldName": "Trigger",
+          "label": "Trigger",
+          "description": "Creation, Admin, Scheduled or NotableChange.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "900d46b6-7d92-5a19-bf18-2996d03189b7",
+          "fieldName": "ProfileVersion",
+          "label": "Profile version",
+          "description": "The kind's survey profile version used.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "723d9f7a-cc85-53d8-9780-50e2740958a9",
+          "fieldName": "ContentHash",
+          "label": "Content hash",
+          "description": "The same world gives the same hash.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "68ea68fd-29c2-5970-a785-043ece7fb517",
+          "fieldName": "TotalUnits",
+          "label": "Total units",
+          "description": "The sum of all counts.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c5834b57-10dd-536a-bcb7-24046faa3a00",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "From the game server.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "3f6adbba-5832-55ee-910c-7cf09c21cd43",
+      "sectionName": "Units",
+      "description": "What it counted; units shared with other structures' areas count for an equal part (G7).",
+      "relatedEntityPropertyName": "Units",
+      "relatedEntityTypeName": "AreaSurveyUnit",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "ac0c7998-4413-562c-bf06-67f5e1a053ed",
+          "fieldName": "UnitKey",
+          "label": "Unit",
+          "description": "e.g. TREE:OAK:LARGE.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "e856cdfd-a74d-588a-ba17-4e1c1876befd",
+          "fieldName": "Count",
+          "label": "Count",
+          "description": "Units counted.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "2da94873-d417-5308-b908-d160921181a3",
+          "fieldName": "SharedBy",
+          "label": "Shared by",
+          "description": "Structures whose areas contain these units.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

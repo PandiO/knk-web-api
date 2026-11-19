@@ -19,7 +19,8 @@ namespace knkwebapi_v2.Services.Production
         Task<IEnumerable<WarehouseDto>> GetAllAsync();
         Task<WarehouseDto?> GetByIdAsync(int id);
         Task<WarehouseDto> CreateAsync(WarehouseDto dto);
-        Task UpdateAsync(int id, WarehouseDto dto);
+        /// <summary>Returns the saved structure with the placement rules' warnings, as create does (#831).</summary>
+        Task<WarehouseDto> UpdateAsync(int id, WarehouseDto dto);
         Task DeleteAsync(int id);
         Task<PagedResultDto<ProductionWorldListDto>> SearchAsync(PagedQueryDto query);
     }
@@ -29,7 +30,8 @@ namespace knkwebapi_v2.Services.Production
         Task<IEnumerable<ProductionStructureDto>> GetAllAsync();
         Task<ProductionStructureDto?> GetByIdAsync(int id);
         Task<ProductionStructureDto> CreateAsync(ProductionStructureDto dto);
-        Task UpdateAsync(int id, ProductionStructureDto dto);
+        /// <summary>Returns the saved structure with the placement rules' warnings, as create does (#831).</summary>
+        Task<ProductionStructureDto> UpdateAsync(int id, ProductionStructureDto dto);
         Task DeleteAsync(int id);
         Task<PagedResultDto<ProductionWorldListDto>> SearchAsync(PagedQueryDto query);
         /// <summary>The game server's road measurement (DESIGN § 7.6); not gated by <c>Production:Enabled</c>.</summary>
@@ -133,7 +135,7 @@ namespace knkwebapi_v2.Services.Production
             return result;
         }
 
-        public async Task UpdateAsync(int id, TDto dto)
+        public async Task<TDto> UpdateAsync(int id, TDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
@@ -143,10 +145,15 @@ namespace knkwebapi_v2.Services.Production
             string previousRegionId = existing.WgRegionId;
             await Writer.ApplyAsync(existing, dto, TypeName, isCreate: false);
             await ApplyOwnAsync(existing, dto, isCreate: false);
-            await Writer.Placement.CheckRulesAsync(TypeName, existing);
+            var warnings = await Writer.Placement.CheckRulesAsync(TypeName, existing);
             await Db.SaveChangesAsync();
             await Writer.FinalizeRegionAsync(existing, previousRegionId);
             await AfterUpdateAsync(id, dto);
+            // The placement warnings go back to the caller, as on create (PandiO/knk-workspace#831).
+            Db.ChangeTracker.Clear();
+            var result = (await GetByIdAsync(id))!;
+            result.PlacementWarnings = warnings;
+            return result;
         }
 
         public async Task DeleteAsync(int id)
@@ -445,7 +452,17 @@ namespace knkwebapi_v2.Services.Production
 
         protected override void Fill(ProductionStructure entity, ProductionStructureDto dto) => dto.Warnings = Warnings(entity);
 
-        protected override async Task FillStoragesAsync(int id, ProductionStructureDto dto) => dto.Storages = await StoragesOfAsync(id);
+        protected override async Task FillStoragesAsync(int id, ProductionStructureDto dto)
+        {
+            dto.Storages = await StoragesOfAsync(id);
+            dto.Areas = await Db.ProductionAreas.AsNoTracking().Where(a => a.ProductionStructureId == id).OrderBy(a => a.Id)
+                .Select(a => new ProductionAreaListDto
+                {
+                    Id = a.Id, Name = a.Name, ProductionStructureId = a.ProductionStructureId, ProductionStructureName = dto.Name ?? string.Empty,
+                    Model = a.Model.ToString(), Shape = a.Shape.ToString(), Exclusive = a.Exclusive, Size = a.Size, Enabled = a.Enabled,
+                    LastSurveyedAt = a.LastSurveyedAt,
+                }).ToListAsync();
+        }
 
         /// <summary>The dashboard warnings of DESIGN § 3.4 (R3) and § 7.6 (D5). A full output storage and blocked lines are
         /// in the production view (<c>GET api/ProductionStructures/{id}/production</c>, P3).</summary>

@@ -1,0 +1,68 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "7914579b-4486-5018-b47d-1ca40397c6e6",
+  "entityTypeName": "ProductionYieldOverride",
+  "name": "ProductionYieldOverride - Default (seed v1)",
+  "description": "A Hybrid override of one output of a production structure (yield areas P4, #138): pin it at a fixed base rate, exclude it, or scale the survey's rate. Used only while the structure's yield source is Hybrid; a change re-makes the structure's lines.",
+  "steps": [
+    {
+      "stepGuid": "fc5c0c1c-d4c3-5d56-83b0-f6c960de875b",
+      "stepName": "Override",
+      "description": "Which output and what to do with it.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4a29c74c-dd5b-5f20-be09-ca21bfaea41a",
+          "fieldName": "ProductionStructureId",
+          "label": "Production structure",
+          "description": "The structure (one override per output).",
+          "fieldType": "Object",
+          "objectType": "ProductionStructure",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "abe3de6f-a4c3-5ba1-9203-f6bb48aad526",
+          "fieldName": "ItemBlueprintId",
+          "label": "Output",
+          "description": "The item blueprint.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "43c9a6e0-d1fc-57f3-9baf-7e455f4d0f36",
+          "fieldName": "Kind",
+          "label": "Override",
+          "description": "Pin: always produce at Value per hour; Exclude: never produce; Scale: multiply the survey's rate by Value.",
+          "fieldType": "Enum",
+          "enumType": "ProductionYieldOverrideKind",
+          "defaultValue": "Pin",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Pin\", \"Exclude\", \"Scale\"]}"
+        },
+        {
+          "fieldGuid": "9b5001ea-d7f1-5c2c-b46c-b110a7fae83c",
+          "fieldName": "Value",
+          "label": "Value",
+          "description": "Pin: the base rate per hour (above 0); Scale: the factor (0 to 100); Exclude: ignored.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5fce8142-c49b-5ab4-a5bb-b49ca43c39f8",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Why (for other staff).",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

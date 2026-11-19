@@ -24,6 +24,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.ProductionKind, o => o.MapFrom(s => s.ProductionKind == null ? null
                     : new ProductionKindNavDto { Id = s.ProductionKind.Id, Name = s.ProductionKind.Name }))
                 .ForMember(d => d.Warnings, o => o.Ignore())
+                .ForMember(d => d.Areas, o => o.Ignore())
                 .ForMember(d => d.Storages, o => o.Ignore());
 
             CreateMap<Warehouse, ProductionWorldListDto>()

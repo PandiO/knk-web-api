@@ -88,6 +88,45 @@ public class PlacementRulesTests : IDisposable
     }
 
     [Fact]
+    public async Task AnUpdate_ReturnsThePlacementWarnings_AsCreateDoes()
+    {
+        // PandiO/knk-workspace#831: an update used to answer 204 and drop the warnings.
+        await ImportSeedAsync("ProductionStructure");
+        Territory(inside: true);
+        var producers = Producers(_db, Rules());
+        var created = await producers.CreateAsync(Rural());
+        Assert.Empty(created.PlacementWarnings!);
+
+        Territory(inside: false);
+        created.Description = "moved";
+        var updated = await producers.UpdateAsync(created.Id!.Value, created);
+        Assert.Contains(updated.PlacementWarnings!, w => w.Contains("territory"));
+        Assert.Equal("moved", updated.Description);
+    }
+
+    [Fact]
+    public async Task TheStructureSeedV3_HasATownField_SoARuralStructureCanBeMadeFromIt()
+    {
+        // PandiO/knk-workspace#831: the generic Structure form had only the district fields.
+        await ImportSeedAsync("Structure");
+        var config = _db.FormConfigurations.Include(c => c.Steps).ThenInclude(s => s.Fields).Single(c => c.EntityTypeName == "Structure");
+        Assert.Equal("Structure - Default (seed v3)", config.Name);
+        var fields = config.Steps.SelectMany(s => s.Fields).ToList();
+        Assert.Equal("Town", fields.Single(f => f.FieldName == "TownId").ObjectType);
+        Assert.False(fields.Single(f => f.FieldName == "DistrictId").Required);
+    }
+
+    [Fact]
+    public void PlainMessage_DropsTheParameterSuffix_OnlyWhenThereIsOne()
+    {
+        // PandiO/knk-workspace#831: the web app showed "... (Parameter 'dto')".
+        Assert.Equal("level must be 1 to 10.",
+            knkwebapi_v2.Extensions.ArgumentExceptionExtensions.PlainMessage(new ArgumentException("level must be 1 to 10.", "dto")));
+        Assert.Equal("no parameter",
+            knkwebapi_v2.Extensions.ArgumentExceptionExtensions.PlainMessage(new ArgumentException("no parameter")));
+    }
+
+    [Fact]
     public async Task P2_SetToBlocking_RefusesTheSave()
     {
         await ImportSeedAsync("ProductionStructure");

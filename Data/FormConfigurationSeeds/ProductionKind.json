@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "9ea64a55-d524-50d2-b6ed-3640d0bc713d",
+  "configurationGuid": "e723d1a6-6116-5695-936f-4c9ed4610729",
   "entityTypeName": "ProductionKind",
-  "name": "ProductionKind - Default (seed v1)",
+  "name": "ProductionKind - Default (seed v2)",
   "description": "A production kind of the catalogue (production engine P3, #86): area model, yield sources, resource category, workers and default storages. Its ten levels are created with it and edited on their own form.",
   "steps": [
     {
-      "stepGuid": "841bcccf-1fea-5e9b-8332-7c4eca7e4c13",
+      "stepGuid": "0c5966b0-f75a-5e31-8ba5-f3662d02ff09",
       "stepName": "Kind",
       "description": "Name the kind and say where its resources come from.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "ef14cc59-4d78-5468-bdf6-842d619a9084",
+          "fieldGuid": "29e071d7-6a88-557a-b604-01fa03c43837",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in the web app and in game menus, e.g. \"Quarry\". Unique.",
@@ -21,7 +21,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "5140d542-f633-5b90-828b-75b3cf4fe6e4",
+          "fieldGuid": "30d4e7a6-764d-5597-9ccf-a8e4a75be8d8",
           "fieldName": "Description",
           "label": "Description",
           "description": "A line about what the kind produces, for admins and players.",
@@ -30,7 +30,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "4ac8cf6d-e051-5583-b68d-25ffa9ad9989",
+          "fieldGuid": "da08e193-aaba-59c5-9834-31d0db7b18f4",
           "fieldName": "Icon",
           "label": "Icon",
           "description": "A Minecraft material name for menus, e.g. IRON_PICKAXE. Optional.",
@@ -39,7 +39,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "c4002ec7-4bb7-59cf-ba58-06aaaf4774b2",
+          "fieldGuid": "01427ae4-31d3-5f21-b2b5-f239c750e7dc",
           "fieldName": "AreaModel",
           "label": "Area model",
           "description": "Where the resources come from (used by the yield areas, P4): BorderedField (a farm field), ExclusiveVolume (a quarry or mine), SharedRadius (a logger or fishery), Pasture (animals) or HuntingGround (hunters, not in V1).",
@@ -50,7 +50,7 @@
           "settingsJson": "{\"enumValues\": [\"BorderedField\", \"ExclusiveVolume\", \"SharedRadius\", \"Pasture\", \"HuntingGround\"]}"
         },
         {
-          "fieldGuid": "ea73e82a-a05e-55d2-96af-cd6c3fc74307",
+          "fieldGuid": "9814ab13-722e-5393-bd70-6c62ef538bbc",
           "fieldName": "ExclusiveAreas",
           "label": "Exclusive areas",
           "description": "Areas of this kind may not overlap each other. Empty on create = from the area model (fields, volumes and pastures are exclusive).",
@@ -59,7 +59,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "fd00b9af-62ec-5521-affb-1bf9d9a84af3",
+          "fieldGuid": "0c336b3c-3a9f-5a8d-a3f8-37b5223d8129",
           "fieldName": "ResourceCategory",
           "label": "Resource category",
           "description": "What weather and category modifiers target: crops, wood, stone, ore, fish, flowers or animals. A production line can override it.",
@@ -70,7 +70,7 @@
           "settingsJson": "{\"enumValues\": [\"Crops\", \"Wood\", \"Stone\", \"Ore\", \"Fish\", \"Flowers\", \"Animals\"]}"
         },
         {
-          "fieldGuid": "4342ddc1-b00d-5a32-bc10-4404875a04bc",
+          "fieldGuid": "1fe53bc9-44a1-56f3-a87d-47c7f2b89208",
           "fieldName": "IsActive",
           "label": "Active",
           "description": "Inactive kinds stay on their structures but are not offered for new ones (the web app filters on it).",
@@ -82,13 +82,13 @@
       ]
     },
     {
-      "stepGuid": "b4126ca4-eb8e-55d7-bc36-942547248405",
+      "stepGuid": "44e3048e-e5cc-591a-8ff0-77f4b7062ea7",
       "stepName": "Yield sources and workers",
       "description": "Which yield sources a structure of this kind may use (P3 builds Configured; Derived and Hybrid come with the yield areas) and how many workers it gets.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "6100ef7f-6a32-5dea-a0f2-f446f23f0ddc",
+          "fieldGuid": "e5aa2209-f3b3-57d9-91ae-ef09cfd2c28c",
           "fieldName": "AllowsDerived",
           "label": "Allows Derived",
           "description": "Rates from a survey of the structure's area (P4).",
@@ -98,7 +98,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "51bd094e-153e-5660-99b1-02a7f9c08009",
+          "fieldGuid": "1234691a-6df9-56a1-af3a-e3965f992c60",
           "fieldName": "AllowsConfigured",
           "label": "Allows Configured",
           "description": "Rates an admin enters on the production lines.",
@@ -108,7 +108,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "808905d7-4e05-5b17-8e38-55fbcf46a02b",
+          "fieldGuid": "b01cc6cb-f827-55ab-86a7-fc799ce97b64",
           "fieldName": "AllowsHybrid",
           "label": "Allows Hybrid",
           "description": "The survey plus admin pins, exclusions and scales; the default yield source (P-D1).",
@@ -118,7 +118,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "b6675003-c4d8-5411-931d-071479f37ac4",
+          "fieldGuid": "603267d0-5a4c-54ef-9569-cb92717a90fa",
           "fieldName": "DefaultWorkers",
           "label": "Default workers",
           "description": "Producer workers a new structure of this kind gets (0-100, default 2). Output scales with the workers present.",
@@ -128,7 +128,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "ba3d03b8-bbf6-5b72-b77e-6a2d9f72479f",
+          "fieldGuid": "bac8884d-51a6-5e6a-9586-870879605cc9",
           "fieldName": "CycleVariation",
           "label": "Cycle variation",
           "description": "An optional ±10% variation per cycle (P-D9), used with byproducts from P4. Stored now.",
@@ -140,17 +140,44 @@
       ]
     },
     {
-      "stepGuid": "9b5c9148-2b53-55ff-b539-49b61d8a4fc4",
+      "stepGuid": "839fe101-2a8a-58da-99b1-ddf457235bd7",
       "stepName": "Default storages",
       "description": "Storages a new structure of this kind gets next to its Output storage.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "d2b4efa6-72ee-5ee6-afb2-45d33b860934",
+          "fieldGuid": "6709f792-f34f-5fb0-b2cd-15fe4dd949b7",
           "fieldName": "DefaultStoragesJson",
           "label": "Default storages",
           "description": "A JSON list, e.g. [{\"purpose\":\"Input\",\"name\":\"inputs\",\"maxUnits\":500}]. Purposes: General, Input, Delivery, Merchandise (Output is always created). maxUnits is optional (empty = no cap). Leave empty for only the Output storage.",
           "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "59b90162-0cd3-5264-91e4-f826ab5fb292",
+      "stepName": "Yield",
+      "description": "What the plugin's survey counts and the primary outputs' factor (yield areas P4, #138). The yield table and the primary outputs are lists in the kind's API body (the web app's kind editor, #680).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a220b9e8-d068-5301-9b75-27ca5678731e",
+          "fieldName": "SurveyProfileJson",
+          "label": "Survey profile",
+          "description": "A JSON object the game server's survey reads, e.g. {\"unitTypes\":[\"TREE\",\"SAPLING\"]}. A change raises the profile version.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "dd19f02d-ec17-5bd9-ac49-cc87918679aa",
+          "fieldName": "PrimaryMultiplier",
+          "label": "Primary multiplier",
+          "description": "The factor the kind's primary outputs get on Derived and Hybrid lines (a coal mine's coal). 0 to 100, default 1.5.",
+          "fieldType": "Decimal",
+          "defaultValue": "1.5",
           "isRequired": false,
           "isReadOnly": false
         }

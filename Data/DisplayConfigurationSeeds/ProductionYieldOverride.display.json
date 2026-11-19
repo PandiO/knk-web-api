@@ -1,0 +1,62 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "dd82377c-334b-5710-b2e8-801414c6f9ce",
+  "entityTypeName": "ProductionYieldOverride",
+  "name": "ProductionYieldOverride - Default (seed v1)",
+  "description": "A Hybrid override of one output (yield areas P4, #138). The structure's yield view shows the rate before and after it.",
+  "sections": [
+    {
+      "sectionGuid": "19514f80-4089-5c02-a8d0-b97f75f4594e",
+      "sectionName": "Override",
+      "description": "Which output and what to do with it.",
+      "fields": [
+        {
+          "fieldGuid": "4008dfc0-fd2e-5d3c-a3ea-435bb757f6c9",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionStructure",
+          "relatedEntityTypeName": "ProductionStructure",
+          "label": "Production structure",
+          "description": "The structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "917ab61b-bdea-530d-99e9-44a8ce721eab",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Output",
+          "description": "The item blueprint.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "33046dd2-fd76-5a2f-a349-8437314fe4e0",
+          "fieldName": "Kind",
+          "label": "Override",
+          "description": "Pin, Exclude or Scale.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "65302040-29a6-5779-ad45-1dbf0455ff25",
+          "fieldName": "Value",
+          "label": "Value",
+          "description": "Pin: base rate per hour; Scale: factor.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "8c56c65a-962c-5a7e-8cb4-01121aab091d",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Why.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "594b338e-044e-5bf4-9915-c83ec0e06bc1",
+          "fieldName": "CreatedAt",
+          "label": "Created",
+          "description": "When it was made.",
+          "fieldType": "DateTime"
+        }
+      ]
+    }
+  ]
+}

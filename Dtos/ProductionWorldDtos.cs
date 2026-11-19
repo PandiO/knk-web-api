@@ -91,6 +91,10 @@ namespace knkwebapi_v2.Dtos
         /// <summary>Read only: the storages the structure holds (Kind Domain).</summary>
         [JsonPropertyName("storages")]
         public List<StructureStorageNavDto>? Storages { get; set; }
+
+        /// <summary>Read only: the yield areas (P4, #138); edited through <c>api/ProductionAreas</c>.</summary>
+        [JsonPropertyName("areas")]
+        public List<ProductionAreaListDto>? Areas { get; set; }
     }
 
     /// <summary>A storage or warehouse row on a structure page.</summary>

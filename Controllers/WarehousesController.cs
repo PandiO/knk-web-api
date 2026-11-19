@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using knkwebapi_v2.Attributes;
+using knkwebapi_v2.Extensions;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services.Production;
 using Microsoft.AspNetCore.Mvc;
@@ -45,7 +46,7 @@ namespace KnKWebAPI.Controllers
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(new { error = ex.PlainMessage() });
             }
         }
 
@@ -56,8 +57,8 @@ namespace KnKWebAPI.Controllers
             if (dto == null) return BadRequest();
             try
             {
-                await _service.UpdateAsync(id, dto);
-                return NoContent();
+                // 200 with the saved structure and its placement warnings, as create (#831).
+                return Ok(await _service.UpdateAsync(id, dto));
             }
             catch (KeyNotFoundException)
             {
@@ -65,7 +66,7 @@ namespace KnKWebAPI.Controllers
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(new { error = ex.PlainMessage() });
             }
         }
 
