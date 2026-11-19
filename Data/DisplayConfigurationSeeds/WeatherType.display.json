@@ -1,0 +1,63 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "a37eebb4-d412-5dbb-957e-5934dda55628",
+  "entityTypeName": "WeatherType",
+  "name": "WeatherType - Default (seed v1)",
+  "description": "A weather type and its modifiers per resource category (production engine P3, #86).",
+  "sections": [
+    {
+      "sectionGuid": "a887e36b-11bd-5d66-9ca7-ea841b9524de",
+      "sectionName": "General information",
+      "description": "The weather type.",
+      "fields": [
+        {
+          "fieldGuid": "0692600a-06fc-5910-a089-79129a70c4e2",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The weather's name.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "58f34842-b39b-55c4-880e-09ffeed3ee10",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "What it does.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        }
+      ]
+    },
+    {
+      "sectionGuid": "82284c4f-d447-5e0a-a882-894497002869",
+      "sectionName": "Effects",
+      "description": "A pipeline modifier for the zone's towns on the day it is rolled.",
+      "relatedEntityPropertyName": "Effects",
+      "relatedEntityTypeName": "WeatherTypeEffect",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "7d3a9bae-2930-59cd-8b9c-94bfac5daf82",
+          "fieldName": "Category",
+          "label": "Category",
+          "description": "The resource category.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "cf68164a-5975-5684-9395-5ba5ab7090da",
+          "fieldName": "Effect",
+          "label": "Effect",
+          "description": "Add or Multiply.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "a987d45c-30d2-56ed-bb7d-24e41f01a7be",
+          "fieldName": "Value",
+          "label": "Value",
+          "description": "Addition or factor.",
+          "fieldType": "Decimal"
+        }
+      ]
+    }
+  ]
+}

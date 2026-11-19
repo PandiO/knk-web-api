@@ -1,0 +1,160 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "9ea64a55-d524-50d2-b6ed-3640d0bc713d",
+  "entityTypeName": "ProductionKind",
+  "name": "ProductionKind - Default (seed v1)",
+  "description": "A production kind of the catalogue (production engine P3, #86): area model, yield sources, resource category, workers and default storages. Its ten levels are created with it and edited on their own form.",
+  "steps": [
+    {
+      "stepGuid": "841bcccf-1fea-5e9b-8332-7c4eca7e4c13",
+      "stepName": "Kind",
+      "description": "Name the kind and say where its resources come from.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ef14cc59-4d78-5468-bdf6-842d619a9084",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in the web app and in game menus, e.g. \"Quarry\". Unique.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5140d542-f633-5b90-828b-75b3cf4fe6e4",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "A line about what the kind produces, for admins and players.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4ac8cf6d-e051-5583-b68d-25ffa9ad9989",
+          "fieldName": "Icon",
+          "label": "Icon",
+          "description": "A Minecraft material name for menus, e.g. IRON_PICKAXE. Optional.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c4002ec7-4bb7-59cf-ba58-06aaaf4774b2",
+          "fieldName": "AreaModel",
+          "label": "Area model",
+          "description": "Where the resources come from (used by the yield areas, P4): BorderedField (a farm field), ExclusiveVolume (a quarry or mine), SharedRadius (a logger or fishery), Pasture (animals) or HuntingGround (hunters, not in V1).",
+          "fieldType": "Enum",
+          "enumType": "ProductionAreaModel",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"BorderedField\", \"ExclusiveVolume\", \"SharedRadius\", \"Pasture\", \"HuntingGround\"]}"
+        },
+        {
+          "fieldGuid": "ea73e82a-a05e-55d2-96af-cd6c3fc74307",
+          "fieldName": "ExclusiveAreas",
+          "label": "Exclusive areas",
+          "description": "Areas of this kind may not overlap each other. Empty on create = from the area model (fields, volumes and pastures are exclusive).",
+          "fieldType": "Boolean",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fd00b9af-62ec-5521-affb-1bf9d9a84af3",
+          "fieldName": "ResourceCategory",
+          "label": "Resource category",
+          "description": "What weather and category modifiers target: crops, wood, stone, ore, fish, flowers or animals. A production line can override it.",
+          "fieldType": "Enum",
+          "enumType": "ResourceCategory",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Crops\", \"Wood\", \"Stone\", \"Ore\", \"Fish\", \"Flowers\", \"Animals\"]}"
+        },
+        {
+          "fieldGuid": "4342ddc1-b00d-5a32-bc10-4404875a04bc",
+          "fieldName": "IsActive",
+          "label": "Active",
+          "description": "Inactive kinds stay on their structures but are not offered for new ones (the web app filters on it).",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b4126ca4-eb8e-55d7-bc36-942547248405",
+      "stepName": "Yield sources and workers",
+      "description": "Which yield sources a structure of this kind may use (P3 builds Configured; Derived and Hybrid come with the yield areas) and how many workers it gets.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "6100ef7f-6a32-5dea-a0f2-f446f23f0ddc",
+          "fieldName": "AllowsDerived",
+          "label": "Allows Derived",
+          "description": "Rates from a survey of the structure's area (P4).",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "51bd094e-153e-5660-99b1-02a7f9c08009",
+          "fieldName": "AllowsConfigured",
+          "label": "Allows Configured",
+          "description": "Rates an admin enters on the production lines.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "808905d7-4e05-5b17-8e38-55fbcf46a02b",
+          "fieldName": "AllowsHybrid",
+          "label": "Allows Hybrid",
+          "description": "The survey plus admin pins, exclusions and scales; the default yield source (P-D1).",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b6675003-c4d8-5411-931d-071479f37ac4",
+          "fieldName": "DefaultWorkers",
+          "label": "Default workers",
+          "description": "Producer workers a new structure of this kind gets (0-100, default 2). Output scales with the workers present.",
+          "fieldType": "Integer",
+          "defaultValue": "2",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ba3d03b8-bbf6-5b72-b77e-6a2d9f72479f",
+          "fieldName": "CycleVariation",
+          "label": "Cycle variation",
+          "description": "An optional ±10% variation per cycle (P-D9), used with byproducts from P4. Stored now.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "9b5c9148-2b53-55ff-b539-49b61d8a4fc4",
+      "stepName": "Default storages",
+      "description": "Storages a new structure of this kind gets next to its Output storage.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "d2b4efa6-72ee-5ee6-afb2-45d33b860934",
+          "fieldName": "DefaultStoragesJson",
+          "label": "Default storages",
+          "description": "A JSON list, e.g. [{\"purpose\":\"Input\",\"name\":\"inputs\",\"maxUnits\":500}]. Purposes: General, Input, Delivery, Merchandise (Output is always created). maxUnits is optional (empty = no cap). Leave empty for only the Output storage.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

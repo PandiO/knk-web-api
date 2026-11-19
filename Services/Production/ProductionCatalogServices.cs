@@ -367,6 +367,7 @@ namespace knkwebapi_v2.Services.Production
             Items = l.Items.OrderBy(i => i.Role).ThenBy(i => i.Id).Select(i => new ProductionKindLevelItemDto
             {
                 Id = i.Id, Role = i.Role.ToString(), ItemBlueprintId = i.ItemBlueprintId, ItemBlueprintName = i.ItemBlueprint?.Name,
+                ItemBlueprint = i.ItemBlueprint == null ? null : new NamedRefDto { Id = i.ItemBlueprint.Id, Name = i.ItemBlueprint.Name },
                 Amount = i.Amount,
             }).ToList(),
         };
@@ -839,6 +840,7 @@ namespace knkwebapi_v2.Services.Production
         {
             Id = r.Id, ClimateZoneId = r.ClimateZoneId, ClimateZoneName = zoneName, Day = r.Day, DayStartsAt = r.DayStartsAt,
             DayEndsAt = r.DayEndsAt, WeatherTypeId = r.WeatherTypeId, WeatherTypeName = r.WeatherType?.Name ?? "Clear",
+            WeatherType = r.WeatherType == null ? null : new NamedRefDto { Id = r.WeatherType.Id, Name = r.WeatherType.Name },
             RollValue = r.RollValue, RolledAt = r.RolledAt,
         };
 
@@ -848,9 +850,13 @@ namespace knkwebapi_v2.Services.Production
             WeatherOdds = z.WeatherOdds.OrderBy(o => o.WeatherTypeId).Select(o => new ClimateZoneWeatherDto
             {
                 Id = o.Id, WeatherTypeId = o.WeatherTypeId, WeatherTypeName = o.WeatherType?.Name, ChancePercent = o.ChancePercent,
+                WeatherType = o.WeatherType == null ? null : new NamedRefDto { Id = o.WeatherType.Id, Name = o.WeatherType.Name },
             }).ToList(),
-            Towns = z.Towns.OrderBy(t => t.TownId).Select(t => new ClimateZoneTownDto { TownId = t.TownId, TownName = t.Town?.Name }).ToList(),
-            RecentRolls = rolls,
+            Towns = z.Towns.OrderBy(t => t.TownId).Select(t => new ClimateZoneTownDto
+            {
+                TownId = t.TownId, TownName = t.Town?.Name, Town = t.Town == null ? null : new NamedRefDto { Id = t.Town.Id, Name = t.Town.Name },
+            }).ToList(),
+            Rolls = rolls,
         };
     }
 

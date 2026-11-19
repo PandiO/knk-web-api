@@ -1,0 +1,161 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "3c1d1fb8-d9e9-5838-a6e2-8019a7d0e68b",
+  "entityTypeName": "ProductionModifier",
+  "name": "ProductionModifier - Default (seed v1)",
+  "description": "A production modifier (production engine P3, #86; PRODUCTION_KINDS § 4.2): adds to or multiplies the rate of the outputs in its scope and target while active. Additions apply before multiplications.",
+  "steps": [
+    {
+      "stepGuid": "e473d81f-20b9-57ad-a789-fcb014c2b549",
+      "stepName": "Modifier",
+      "description": "What it does.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "9a52bc80-5b7a-594b-9307-de4681f22bb4",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in the cycle trace, e.g. \"Harvest festival\".",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9ff6ce8a-be12-5863-bee9-faf01c060045",
+          "fieldName": "Effect",
+          "label": "Effect",
+          "description": "Add (units per hour to the base) or Multiply (a factor). Additions apply first, then multiplications.",
+          "fieldType": "Enum",
+          "enumType": "ProductionModifierEffect",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Add\", \"Multiply\"]}"
+        },
+        {
+          "fieldGuid": "10d4840d-bc96-5a6e-869d-5f1d954c6bd0",
+          "fieldName": "Value",
+          "label": "Value",
+          "description": "The addition (may be negative) or the factor (0 or more; 1.2 = 20% more).",
+          "fieldType": "Decimal",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e16ae996-3ac3-5ffd-ba54-3aeff54030bf",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off keeps the modifier without applying it.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "12ed0084-61b9-5742-a2a7-19e477c7af6c",
+      "stepName": "Scope",
+      "description": "Where it applies.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "53eda96a-3b03-590d-b494-c2c737448b07",
+          "fieldName": "Scope",
+          "label": "Scope",
+          "description": "Global; Kingdom, Town or Territory (the town's rural structures); Structure; Output (one production line); MapArea is stored but not matched in V1.",
+          "fieldType": "Enum",
+          "enumType": "ProductionModifierScope",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Global\", \"Kingdom\", \"Town\", \"Territory\", \"MapArea\", \"Structure\", \"Output\"]}"
+        },
+        {
+          "fieldGuid": "2b4fe976-8228-5cfd-8917-54a3cbdfeceb",
+          "fieldName": "ScopeRefId",
+          "label": "Scope id",
+          "description": "The id of the kingdom, town, production structure or production line of the scope. Empty for Global.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "59427280-f394-542d-93d7-59f8f6617dab",
+      "stepName": "Target",
+      "description": "Which outputs in the scope it touches.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "056adb25-6776-5663-aece-72b3e43aed44",
+          "fieldName": "Target",
+          "label": "Target",
+          "description": "Any output, one Blueprint, a resource Category, or a production Kind.",
+          "fieldType": "Enum",
+          "enumType": "ProductionModifierTarget",
+          "defaultValue": "Any",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Any\", \"Blueprint\", \"Category\", \"Kind\"]}"
+        },
+        {
+          "fieldGuid": "f3debe16-b2e5-527b-9a2e-79fcb9306abd",
+          "fieldName": "TargetItemBlueprintId",
+          "label": "Target blueprint",
+          "description": "With target Blueprint.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "29529656-ed86-5cf6-99f2-090697136fa3",
+          "fieldName": "TargetCategory",
+          "label": "Target category",
+          "description": "With target Category.",
+          "fieldType": "Enum",
+          "enumType": "ResourceCategory",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Crops\", \"Wood\", \"Stone\", \"Ore\", \"Fish\", \"Flowers\", \"Animals\"]}"
+        },
+        {
+          "fieldGuid": "37be6341-8de6-5d43-b84c-3e5af14b44a5",
+          "fieldName": "TargetProductionKindId",
+          "label": "Target kind",
+          "description": "With target Kind.",
+          "fieldType": "Object",
+          "objectType": "ProductionKind",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "bd93b13c-16c1-5d3c-bc03-2556b1caec6f",
+      "stepName": "Active window",
+      "description": "When it applies (UTC). Both empty = always.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "00735d84-0b09-5b1e-ac9c-a40886c55e73",
+          "fieldName": "ActiveFrom",
+          "label": "Active from",
+          "description": "Applies from this moment (inclusive). Empty = already started.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2afbaea3-3657-5241-9970-fde1edfb5150",
+          "fieldName": "ActiveUntil",
+          "label": "Active until",
+          "description": "Applies until this moment (exclusive). Empty = no expiry.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

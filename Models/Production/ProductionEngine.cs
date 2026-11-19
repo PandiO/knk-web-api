@@ -126,12 +126,18 @@ public class ProductionKindLevelItem
 {
     public int Id { get; set; }
 
+    [NavigationPair(nameof(ProductionKindLevel))]
+    [RelatedEntityField(typeof(ProductionKindLevel))]
     public int ProductionKindLevelId { get; set; }
+    [RelatedEntityField(typeof(ProductionKindLevel))]
     public ProductionKindLevel ProductionKindLevel { get; set; } = null!;
 
     public ProductionKindLevelItemRole Role { get; set; }
 
+    [NavigationPair(nameof(ItemBlueprint))]
+    [RelatedEntityField(typeof(ItemBlueprint))]
     public int ItemBlueprintId { get; set; }
+    [RelatedEntityField(typeof(ItemBlueprint))]
     public ItemBlueprint ItemBlueprint { get; set; } = null!;
 
     /// <summary>Units of an upgrade cost; 0 for an unlock.</summary>
@@ -204,10 +210,16 @@ public class ProductionLineInput
 {
     public int Id { get; set; }
 
+    [NavigationPair(nameof(ProductionLine))]
+    [RelatedEntityField(typeof(ProductionLine))]
     public int ProductionLineId { get; set; }
+    [RelatedEntityField(typeof(ProductionLine))]
     public ProductionLine ProductionLine { get; set; } = null!;
 
+    [NavigationPair(nameof(ItemBlueprint))]
+    [RelatedEntityField(typeof(ItemBlueprint))]
     public int ItemBlueprintId { get; set; }
+    [RelatedEntityField(typeof(ItemBlueprint))]
     public ItemBlueprint ItemBlueprint { get; set; } = null!;
 
     public decimal AmountPerHour { get; set; }
@@ -245,13 +257,21 @@ public class ProductionModifier
     public ProductionModifierTarget Target { get; set; }
 
     /// <summary>With target Blueprint.</summary>
+    [NavigationPair(nameof(TargetItemBlueprint))]
+    [RelatedEntityField(typeof(ItemBlueprint))]
     public int? TargetItemBlueprintId { get; set; }
+    [RelatedEntityField(typeof(ItemBlueprint))]
+    public ItemBlueprint? TargetItemBlueprint { get; set; }
 
     /// <summary>With target Category.</summary>
     public ResourceCategory? TargetCategory { get; set; }
 
     /// <summary>With target Kind.</summary>
+    [NavigationPair(nameof(TargetProductionKind))]
+    [RelatedEntityField(typeof(ProductionKind))]
     public int? TargetProductionKindId { get; set; }
+    [RelatedEntityField(typeof(ProductionKind))]
+    public ProductionKind? TargetProductionKind { get; set; }
 
     public ProductionModifierEffect Effect { get; set; }
 
@@ -297,6 +317,10 @@ public class ClimateZone
 
     [RelatedEntityField(typeof(ClimateZoneTown))]
     public ICollection<ClimateZoneTown> Towns { get; set; } = new List<ClimateZoneTown>();
+
+    /// <summary>The stored daily rolls (the API lists the latest ones on the zone).</summary>
+    [RelatedEntityField(typeof(WeatherRoll))]
+    public ICollection<WeatherRoll> Rolls { get; set; } = new List<WeatherRoll>();
 }
 
 /// <summary>The chance of one weather type in a zone, in percent; the rest of 100 is clear weather.</summary>
@@ -305,10 +329,16 @@ public class ClimateZoneWeather
 {
     public int Id { get; set; }
 
+    [NavigationPair(nameof(ClimateZone))]
+    [RelatedEntityField(typeof(ClimateZone))]
     public int ClimateZoneId { get; set; }
+    [RelatedEntityField(typeof(ClimateZone))]
     public ClimateZone ClimateZone { get; set; } = null!;
 
+    [NavigationPair(nameof(WeatherType))]
+    [RelatedEntityField(typeof(WeatherType))]
     public int WeatherTypeId { get; set; }
+    [RelatedEntityField(typeof(WeatherType))]
     public WeatherType WeatherType { get; set; } = null!;
 
     public decimal ChancePercent { get; set; }
@@ -320,10 +350,16 @@ public class ClimateZoneTown
 {
     public int Id { get; set; }
 
+    [NavigationPair(nameof(ClimateZone))]
+    [RelatedEntityField(typeof(ClimateZone))]
     public int ClimateZoneId { get; set; }
+    [RelatedEntityField(typeof(ClimateZone))]
     public ClimateZone ClimateZone { get; set; } = null!;
 
+    [NavigationPair(nameof(Town))]
+    [RelatedEntityField(typeof(Town))]
     public int TownId { get; set; }
+    [RelatedEntityField(typeof(Town))]
     public Town Town { get; set; } = null!;
 }
 
@@ -354,7 +390,10 @@ public class WeatherTypeEffect
 {
     public int Id { get; set; }
 
+    [NavigationPair(nameof(WeatherType))]
+    [RelatedEntityField(typeof(WeatherType))]
     public int WeatherTypeId { get; set; }
+    [RelatedEntityField(typeof(WeatherType))]
     public WeatherType WeatherType { get; set; } = null!;
 
     public ResourceCategory Category { get; set; }
@@ -373,7 +412,10 @@ public class WeatherRoll
 {
     public long Id { get; set; }
 
+    [NavigationPair(nameof(ClimateZone))]
+    [RelatedEntityField(typeof(ClimateZone))]
     public int ClimateZoneId { get; set; }
+    [RelatedEntityField(typeof(ClimateZone))]
     public ClimateZone ClimateZone { get; set; } = null!;
 
     /// <summary>The in-game day number (minutes since the Unix epoch ÷ the day length).</summary>
@@ -384,7 +426,10 @@ public class WeatherRoll
     public DateTime DayEndsAt { get; set; }
 
     /// <summary>Null = clear (no weather modifiers).</summary>
+    [NavigationPair(nameof(WeatherType))]
+    [RelatedEntityField(typeof(WeatherType))]
     public int? WeatherTypeId { get; set; }
+    [RelatedEntityField(typeof(WeatherType))]
     public WeatherType? WeatherType { get; set; }
 
     /// <summary>The roll in [0, 100).</summary>
@@ -404,7 +449,10 @@ public class ProductionCycleRecord
 
     public long Id { get; set; }
 
+    [NavigationPair(nameof(ProductionLine))]
+    [RelatedEntityField(typeof(ProductionLine))]
     public int ProductionLineId { get; set; }
+    [RelatedEntityField(typeof(ProductionLine))]
     public ProductionLine ProductionLine { get; set; } = null!;
 
     public int ProductionStructureId { get; set; }

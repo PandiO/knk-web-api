@@ -59,6 +59,7 @@ namespace knkwebapi_v2.Services.Stock
                     StorageId = l.StorageId,
                     ItemBlueprintId = l.ItemBlueprintId,
                     ItemBlueprintName = l.ItemBlueprint.Name,
+                    ItemBlueprint = new NamedRefDto { Id = l.ItemBlueprintId, Name = l.ItemBlueprint.Name },
                     Amount = l.Amount,
                     StorageWeight = l.ItemBlueprint.StorageWeight,
                     UpdatedAt = l.UpdatedAt,

@@ -311,7 +311,7 @@ namespace knkwebapi_v2.Services.Production
         protected override DbSet<ProductionStructure> Set => Db.ProductionStructures;
 
         protected override IQueryable<ProductionStructure> WithDetails(IQueryable<ProductionStructure> q) =>
-            q.Include(p => p.PreferredWarehouse);
+            q.Include(p => p.PreferredWarehouse).Include(p => p.ProductionKind);
 
         protected override async Task ApplyOwnAsync(ProductionStructure target, ProductionStructureDto dto, bool isCreate)
         {

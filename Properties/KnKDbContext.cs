@@ -3179,6 +3179,10 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.ActiveUntil).HasColumnType("datetime(6)");
             entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
             entity.HasIndex(e => new { e.Enabled, e.Scope });
+            entity.HasOne(e => e.TargetItemBlueprint).WithMany().HasForeignKey(e => e.TargetItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.TargetProductionKind).WithMany().HasForeignKey(e => e.TargetProductionKindId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ClimateZone>(entity =>
@@ -3241,7 +3245,7 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.DayEndsAt).HasColumnType("datetime(6)");
             entity.Property(e => e.RolledAt).HasColumnType("datetime(6)");
             entity.HasIndex(e => new { e.ClimateZoneId, e.Day }).IsUnique();
-            entity.HasOne(e => e.ClimateZone).WithMany().HasForeignKey(e => e.ClimateZoneId)
+            entity.HasOne(e => e.ClimateZone).WithMany(z => z.Rolls).HasForeignKey(e => e.ClimateZoneId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.WeatherType).WithMany().HasForeignKey(e => e.WeatherTypeId)
                 .OnDelete(DeleteBehavior.SetNull);

@@ -1,17 +1,17 @@
 {
   "format": "knk-displayconfig/1",
-  "configurationGuid": "30ccd73e-6d6e-509e-b521-bff741f87fa2",
+  "configurationGuid": "1a838ec8-bca3-58eb-9980-180fa7f1e91b",
   "entityTypeName": "ProductionStructure",
-  "name": "ProductionStructure - Default (seed v1)",
-  "description": "A production structure: placement, territory flag, road connection and settings (production P2, #91).",
+  "name": "ProductionStructure - Default (seed v2)",
+  "description": "A production structure: placement, territory flag, road connection and settings (production P2, #91). v2 (P3, #86): shows the production kind's name.",
   "sections": [
     {
-      "sectionGuid": "d1963b16-2e75-55ae-98c6-a2ac14dfd61d",
+      "sectionGuid": "b43dbe1e-fc43-5823-b448-58e57f64087a",
       "sectionName": "General information",
       "description": "What it is.",
       "fields": [
         {
-          "fieldGuid": "52411bc7-87ca-5f58-b45c-c2b10c0fd792",
+          "fieldGuid": "6bc67c38-82a2-538d-aa34-5a82947ed2b3",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in game and in the web app.",
@@ -19,7 +19,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "6b670d6b-d62f-55db-9588-8e23fd958ffc",
+          "fieldGuid": "1c8327cc-4909-54da-85db-c045328defaf",
           "fieldName": "Description",
           "label": "Description",
           "description": "For admins.",
@@ -29,12 +29,12 @@
       ]
     },
     {
-      "sectionGuid": "d10704bf-1107-5484-85ae-adae7ca0c47d",
+      "sectionGuid": "5541c397-39e7-5772-934b-bdd016c2ae8c",
       "sectionName": "Placement",
       "description": "In a district, or rural with a town (exactly one).",
       "fields": [
         {
-          "fieldGuid": "eb7f93d4-f02b-5a37-a181-285a9d9c4448",
+          "fieldGuid": "434e7005-e062-5b7c-a212-3d072eb05921",
           "fieldName": "Name",
           "relatedEntityPropertyName": "District",
           "relatedEntityTypeName": "District",
@@ -43,7 +43,7 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "6d57482e-a0d3-5a63-a38f-f09e23206870",
+          "fieldGuid": "d1af430c-eeff-5fe1-8500-67d14dc7610a",
           "fieldName": "Name",
           "relatedEntityPropertyName": "Street",
           "relatedEntityTypeName": "Street",
@@ -52,14 +52,14 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "7c623c51-1249-56ed-bba5-b83c4fff6e15",
+          "fieldGuid": "52af929c-cbe8-5e59-8b79-f60e31db10f5",
           "fieldName": "HouseNumber",
           "label": "House number",
           "description": "0 for a rural structure.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "dc9e7916-d7d9-54a2-8570-624cac8065c7",
+          "fieldGuid": "6cfc4909-2c16-54c8-b43a-c0526caaf893",
           "fieldName": "Name",
           "relatedEntityPropertyName": "Town",
           "relatedEntityTypeName": "Town",
@@ -68,21 +68,21 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "deca96d9-72d1-570d-8b90-f8fe7eaa9caa",
+          "fieldGuid": "b7ffd25f-5a78-53ec-9eed-5427abd42e42",
           "fieldName": "TerritoryFlag",
           "label": "Territory flag",
           "description": "OutsideTerritory or Contested from the game server's territory report: it keeps its town (R3).",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "933a6792-4218-58ea-8f69-b6c0f12e6da5",
+          "fieldGuid": "8fb06db9-aed0-554c-9407-ab0f7fddcff7",
           "fieldName": "TerritoryFlaggedAt",
           "label": "Flagged at",
           "description": "When the flag was set.",
           "fieldType": "DateTime"
         },
         {
-          "fieldGuid": "b463867d-7a42-5a92-9a1a-5fb1fe029d08",
+          "fieldGuid": "8d3dd8a8-54d3-5d69-8b37-feae585eae3e",
           "fieldName": "Id",
           "relatedEntityPropertyName": "TerritoryConflict",
           "relatedEntityTypeName": "TerritoryConflict",
@@ -91,7 +91,7 @@
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "ba0d41b3-b87b-521d-b599-a11eaef5154e",
+          "fieldGuid": "fb622a6e-b2f8-5694-bea7-e03f9e08faf1",
           "fieldName": "Name",
           "relatedEntityPropertyName": "LoyaltyTown",
           "relatedEntityTypeName": "Town",
@@ -102,19 +102,21 @@
       ]
     },
     {
-      "sectionGuid": "6af9c097-4fb5-5ca3-ab93-23d7b542fe53",
+      "sectionGuid": "fa923e06-5346-5ab9-897a-b9d8cff17d16",
       "sectionName": "Production",
       "description": "Settings, road connection and workers.",
       "fields": [
         {
-          "fieldGuid": "0caef56f-0daa-5fa6-bb1c-2e27eef04e9d",
-          "fieldName": "ProductionKindId",
+          "fieldGuid": "fe56a0f4-2e6f-5447-82a1-c5ae32a24776",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionKind",
+          "relatedEntityTypeName": "ProductionKind",
           "label": "Production kind",
-          "description": "Chosen once kinds exist (P3).",
-          "fieldType": "Integer"
+          "description": "The kind from the catalogue (P3).",
+          "fieldType": "String"
         },
         {
-          "fieldGuid": "855555a6-9fea-563c-a577-47c90d58694d",
+          "fieldGuid": "f4c84333-5df4-5be7-9fdf-3986f984629f",
           "fieldName": "Level",
           "label": "Level",
           "description": "1-10.",
@@ -122,7 +124,7 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "73d4b85d-a8ab-56b3-bbc9-22f142b83c18",
+          "fieldGuid": "2ff2aa5c-29d3-5fcd-a170-0c4f3eb1dfd7",
           "fieldName": "ProductionEnabled",
           "label": "Production on",
           "description": "The structure's own switch.",
@@ -130,49 +132,49 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "89d85813-d3c0-5ab2-8ca5-3b1e15298c03",
+          "fieldGuid": "22cc42d2-0da1-57b1-b84e-64a79fdebf2f",
           "fieldName": "RoadConnection",
           "label": "Road connection",
           "description": "Measured by the game server: Unmeasured, Connected or Unconnected (no automatic transport).",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "1cc1f921-017c-58b4-9a77-7b98ed89c9cb",
+          "fieldGuid": "bd1bda75-7204-5452-8171-c3cda660de2e",
           "fieldName": "RoadConnectionMeasuredAt",
           "label": "Measured at",
           "description": "When the road connection was measured.",
           "fieldType": "DateTime"
         },
         {
-          "fieldGuid": "7466b446-5047-56dc-bce4-197aaef24a30",
+          "fieldGuid": "766533ee-46a3-53e7-ad48-89e91b3dd982",
           "fieldName": "AutomaticTransport",
           "label": "Automatic transport",
           "description": "Held while not connected.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "d71aeb4e-6fa1-5f13-8ebd-592da7f00e17",
+          "fieldGuid": "7848297c-2502-578a-a251-e4b874499f9b",
           "fieldName": "TransportThreshold",
           "label": "Transport threshold",
           "description": "Empty = the planner's default.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "ee2ae121-8c98-5e99-82f6-57d8336c7099",
+          "fieldGuid": "442ef70b-ecd7-5516-beb6-f745f4f97ffb",
           "fieldName": "TransportCapacity",
           "label": "Transport capacity",
           "description": "Empty = the planner's default.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "ed12cef4-57c1-5a0b-b028-da50fcbe5d72",
+          "fieldGuid": "075a7898-7c11-5818-ae39-b4ed2ce4d9ae",
           "fieldName": "WarehousePreference",
           "label": "Deliver to",
           "description": "Nearest or Preferred.",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "1c8695c6-23eb-5542-a4cf-f9d247196727",
+          "fieldGuid": "e6712028-c803-51a4-be0a-7328a3336167",
           "fieldName": "Name",
           "relatedEntityPropertyName": "PreferredWarehouse",
           "relatedEntityTypeName": "Warehouse",
@@ -181,14 +183,14 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "d9674433-20e2-5ee5-beac-01279ad25d8c",
+          "fieldGuid": "30132bc1-30e6-52b5-8c4e-3739a4f9ad17",
           "fieldName": "WorkersTotal",
           "label": "Workers",
           "description": "Workers the structure has.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "8aaf456a-b9a9-500f-9e1a-35fa0260eceb",
+          "fieldGuid": "ca950356-6a26-5a70-b2c1-8c2b0a13a2b0",
           "fieldName": "WorkersPresent",
           "label": "Workers present",
           "description": "The rest are carrying goods.",
@@ -197,33 +199,33 @@
       ]
     },
     {
-      "sectionGuid": "47cf9fdf-2535-5c23-bfa6-50342089ff44",
+      "sectionGuid": "fa0a6e93-c3be-5460-8383-f1e7271644f8",
       "sectionName": "Region and access",
       "description": "The structure's region in game.",
       "fields": [
         {
-          "fieldGuid": "486cd755-7219-513c-b3a0-afc5c2b104e6",
+          "fieldGuid": "77354580-d181-5529-82d7-b5a88743bb7f",
           "fieldName": "WgRegionId",
           "label": "Region",
           "description": "The WorldGuard region; a rural one has no parent.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "0350ef32-986f-5b73-b17c-2e3c23491011",
+          "fieldGuid": "6eb21617-1398-57b4-9cf0-8027a5c5e551",
           "fieldName": "WorldName",
           "label": "World",
           "description": "The world the region is in.",
           "fieldType": "String"
         },
         {
-          "fieldGuid": "698e7cf7-2b59-57d9-9b4f-6f0c9df84ec7",
+          "fieldGuid": "c1330394-a44a-5da5-bd9d-c5885828a5a0",
           "fieldName": "AllowEntry",
           "label": "Allow entry",
           "description": "Players may walk into the region.",
           "fieldType": "Boolean"
         },
         {
-          "fieldGuid": "2559d7b0-25e8-586b-af0d-13bcce9858c2",
+          "fieldGuid": "c5c9ac9d-1a04-5665-a062-c27693f07ac0",
           "fieldName": "AllowExit",
           "label": "Allow exit",
           "description": "Players may walk out of the region.",

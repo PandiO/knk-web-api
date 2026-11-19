@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "69dd8fe5-c419-5a3f-bab6-bbc7b414b836",
+  "configurationGuid": "abf8202e-9179-5656-b44c-ed0fa84951ce",
   "entityTypeName": "ItemBlueprint",
-  "name": "ItemBlueprint - Default (seed v1)",
-  "description": "A catalog item: what it looks like in game, its category, grade and price, default enchantments, origin and tags. Kits, lootboxes, enchantment books and the item catalogue hand out items made from blueprints.",
+  "name": "ItemBlueprint - Default (seed v2)",
+  "description": "A catalog item: what it looks like in game, its category, grade and price, default enchantments, origin and tags. Kits, lootboxes, enchantment books and the item catalogue hand out items made from blueprints. v2 (#819): adds the storage weight.",
   "steps": [
     {
-      "stepGuid": "099916ba-834e-5152-9b1a-892198640eba",
+      "stepGuid": "db939e1d-7198-5d56-bfde-99d3589dd2f3",
       "stepName": "Item in game",
       "description": "How the item looks in game. Quickest: hold the item in your main hand, use Send to Minecraft on Display name and claim the task in game (the code in chat, or /knk itemscan claim <code>); the scan fills this step (shield banner and armour trim included) and Default enchantments. You can also fill everything by hand.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "8ff5a4f6-6f07-5e93-8068-1b39621862b7",
+          "fieldGuid": "3b738a57-7f03-5ae9-b4f7-cbce1113df44",
           "fieldName": "DefaultDisplayName",
           "label": "Display name",
           "placeholder": "&9Steel Sword",
@@ -23,7 +23,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ItemScan\"}, \"minecraft-text-color\": {\"enabled\": true}}"
         },
         {
-          "fieldGuid": "ec366652-10a9-5ea9-9beb-ac4b5261647b",
+          "fieldGuid": "0ac541af-b19b-5a9c-a49e-a0a8b5e442a8",
           "fieldName": "DefaultDisplayDescription",
           "label": "Display description",
           "description": "Lore under the enchantments in the item's tooltip, one line per row. Lines without a colour code of their own are dark grey. The grade stars and origin lines are added below it automatically. Optional.",
@@ -33,7 +33,7 @@
           "settingsJson": "{\"minecraft-text-color\": {\"enabled\": true}}"
         },
         {
-          "fieldGuid": "f350d85a-5b21-52db-b1d2-27d46b80d139",
+          "fieldGuid": "790f43e5-ff6a-5185-954a-db7f53821075",
           "fieldName": "IconMaterialRefId",
           "label": "Material",
           "description": "The Minecraft item type the item is made as (e.g. diamond_sword): its look and vanilla behaviour. Without a material the item can't be handed out in game. Material enchanted_book makes a permanent enchantment book that teaches its default enchantment.",
@@ -42,7 +42,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "9133e790-84ac-5632-9d53-2a8ca6940262",
+          "fieldGuid": "77987157-19a5-5d2f-8de2-bd875b79dcd6",
           "fieldName": "DefaultQuantity",
           "label": "Default quantity",
           "description": "How many items one stack has when the blueprint is handed out without a quantity of its own (e.g. a lootbox drop or the give command); kit contents set their own. 1 for almost everything; never more than the max stack size.",
@@ -52,7 +52,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "f1bb5058-17a4-559c-a998-0159f4d58fd2",
+          "fieldGuid": "a65cb76c-3daf-5f74-a940-f536c88cdb90",
           "fieldName": "MaxStackSize",
           "label": "Max stack size",
           "description": "Largest stack of this item when it is handed out. Normally the material's own: 64, 16 (snowballs, ender pearls) or 1 (tools, weapons, armour). 0 = use the material's.",
@@ -62,7 +62,17 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "9de9193d-5eb8-57d3-97bd-687a1c841d2a",
+          "fieldGuid": "a30684fd-783f-552c-8c30-af090e962df9",
+          "fieldName": "StorageWeight",
+          "label": "Storage weight",
+          "description": "Capacity units one item takes in a storage (raw units × weight, production DESIGN § 4.4). Default 1; heavy goods more, light goods less. Above 0.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2f84b79a-9c4f-56d5-9ee7-e9c395d39375",
           "fieldName": "ShieldBannerBaseColor",
           "label": "Shield base colour",
           "description": "Shields only: the colour of the shield itself under the banner pattern. An item scan of a shield fills this and the layers below. Leave empty for a plain shield or any other item.",
@@ -73,7 +83,7 @@
           "settingsJson": "{\"enumValues\": [\"WHITE\", \"ORANGE\", \"MAGENTA\", \"LIGHT_BLUE\", \"YELLOW\", \"LIME\", \"PINK\", \"GRAY\", \"LIGHT_GRAY\", \"CYAN\", \"PURPLE\", \"BLUE\", \"BROWN\", \"GREEN\", \"RED\", \"BLACK\"]}"
         },
         {
-          "fieldGuid": "0cb4763c-f3d7-5363-8a73-c039a21daca8",
+          "fieldGuid": "59b3b924-2f73-5df3-a3b5-495cbc8fd2f0",
           "fieldName": "ShieldBannerLayers",
           "label": "Shield banner pattern",
           "description": "Shields only: the banner pattern layers, bottom to top, each a pattern and a dye colour (the same layers a loom adds). Empty = no pattern.",
@@ -82,7 +92,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "d266631b-30c4-55dd-be7f-d72222894afb",
+          "fieldGuid": "ea428245-9300-5329-8f71-fddbf2151962",
           "fieldName": "ArmorTrimPattern",
           "label": "Armour trim pattern",
           "description": "Armour only: the smithing-template trim pattern, e.g. silence, sentry, wayfinder (minecraft: prefix optional). Set together with the trim material; a scan of trimmed armour fills both.",
@@ -91,7 +101,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "a568c050-c49c-5669-b99f-24a7aa3a9476",
+          "fieldGuid": "97ee4537-d422-57d5-bfdd-571ee2b7ecb5",
           "fieldName": "ArmorTrimMaterial",
           "label": "Armour trim material",
           "description": "Armour only: the trim's material, e.g. netherite, gold, amethyst (minecraft: prefix optional). Set together with the trim pattern.",
@@ -102,13 +112,13 @@
       ]
     },
     {
-      "stepGuid": "4bee2a77-f1e8-5cb0-907e-41864b4880df",
+      "stepGuid": "05397a2d-3f6d-5afb-a264-0687adc57cb2",
       "stepName": "Catalog and price",
       "description": "How admins find the item, and what kind of item it is. Create a missing category or grade on its own form first.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "1863e1cb-e898-5fb6-b9e1-f521a374023f",
+          "fieldGuid": "0542a0ee-007d-5d96-b00c-650ee43ce534",
           "fieldName": "Name",
           "label": "Name",
           "description": "The blueprint's catalog name, used in lists, pickers (kits, lootboxes) and /knk itemblueprints search. Usually the display name without colour codes.",
@@ -117,7 +127,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "4a4af5c9-aec0-5fdc-b5ff-dcbd79935bfb",
+          "fieldGuid": "d9b2defb-dfff-5fa1-9422-38c6c649df5a",
           "fieldName": "Description",
           "label": "Description",
           "description": "Admin note on what the item is for. Not shown in game: the tooltip text is the display description. Optional.",
@@ -126,7 +136,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "1de21a14-dfbc-5bf6-92e9-ff68f9710507",
+          "fieldGuid": "d3a2fe59-f53f-5fc1-9b4f-38c1cbcf77ba",
           "fieldName": "CategoryId",
           "label": "Category",
           "description": "Groups the item in the in-game item catalogue and puts it in the drop pool of the lootbox type for that category. Leave empty to keep it out of category-based lootboxes.",
@@ -136,7 +146,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "b57e25c1-16f3-54c8-ab68-0f7f1661454a",
+          "fieldGuid": "18c94d36-d79b-518f-9020-8c053f6c3bf5",
           "fieldName": "GradeId",
           "label": "Grade",
           "description": "The item's rarity: adds the star line to its lore and limits how far enchantment books can raise it. Lootbox pools only take graded items. Leave empty for items without a rarity, such as trade goods and books.",
@@ -146,7 +156,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "1aa62904-768f-5dea-a631-23a5ca471872",
+          "fieldGuid": "c23c58c3-2324-5dae-b84d-3520224bed90",
           "fieldName": "BasePriceMin",
           "label": "Lowest price",
           "description": "Bottom of the item's price range for the planned supply-and-demand economy, which will move the price between the lowest and highest price. Not used in game yet; 0 = no price.",
@@ -156,7 +166,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "70aa6f25-b040-5ac8-bc0d-0117851efdcc",
+          "fieldGuid": "7a08bfd2-c531-55b3-a510-65cd6e739e5f",
           "fieldName": "BasePriceMax",
           "label": "Highest price",
           "description": "Top of the price range; at least the lowest price. 0 = no price.",
@@ -168,7 +178,7 @@
       ]
     },
     {
-      "stepGuid": "0991986c-60af-56ca-8b41-e70bd15b6435",
+      "stepGuid": "8cdf099e-89e6-5f08-ad10-47cf8f3fb4a4",
       "stepName": "Default enchantments",
       "description": "Enchantments every item made from this blueprint starts with. An item scan fills this list; add more with Create New Join Entry. On an enchantment-book blueprint this is the enchantment the book teaches.",
       "isManyToManyRelationship": true,
@@ -181,7 +191,7 @@
       },
       "fields": [
         {
-          "fieldGuid": "38df9958-150a-59bf-a0ac-af205cfc85bd",
+          "fieldGuid": "e616d8b3-4b82-5657-95de-720c7a96f171",
           "fieldName": "DefaultEnchantments",
           "label": "Default enchantments",
           "description": "One entry per enchantment, with its level. Lootbox rolls can add enchantments or raise these levels, never lower them.",
@@ -193,7 +203,7 @@
       ]
     },
     {
-      "stepGuid": "8dc61c9b-e679-5704-b31c-9634eccda789",
+      "stepGuid": "b62f28ee-6541-581b-bcd8-0619d40f20ab",
       "stepName": "Origin",
       "description": "Where the item comes from: the town, district or structure that produces it. Most items need one entry; add it with Create New Join Entry.",
       "isManyToManyRelationship": true,
@@ -206,7 +216,7 @@
       },
       "fields": [
         {
-          "fieldGuid": "3636f3f5-8a2b-5466-9823-6413d92be76a",
+          "fieldGuid": "96b73ac3-1528-5bd8-98a4-525fcd7f7706",
           "fieldName": "Origins",
           "label": "Origins",
           "description": "The entry with the lowest order number is shown in the item's lore as \"Origin: <place> (<type>)\". Later entries record places that altered the item. Optional.",
@@ -218,7 +228,7 @@
       ]
     },
     {
-      "stepGuid": "90bc5ba3-e57f-5c1a-8d1c-5ee1e86e1498",
+      "stepGuid": "a532c38d-0408-5b0e-b890-8bad6fe33fab",
       "stepName": "Tags",
       "description": "Labels on this item itself, on top of its category's tags. Add each with Create New Join Entry; create the tag on the tag form first.",
       "isManyToManyRelationship": true,
@@ -231,7 +241,7 @@
       },
       "fields": [
         {
-          "fieldGuid": "95dd521b-b4fd-50e0-967a-a0c8386bcc7f",
+          "fieldGuid": "f6d6b965-96cc-5e1b-965a-fe2c0d0447a7",
           "fieldName": "Tags",
           "label": "Tags",
           "description": "Tag an item \"Lootbox Special\" to keep it out of normal lootbox pools; it then drops only through a lootbox special entry.",

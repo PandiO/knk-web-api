@@ -898,6 +898,7 @@ namespace knkwebapi_v2.Services.Production
             Inputs = l.Inputs.OrderBy(i => i.Id).Select(i => new ProductionLineInputDto
             {
                 Id = i.Id, ItemBlueprintId = i.ItemBlueprintId, ItemBlueprintName = i.ItemBlueprint?.Name,
+                ItemBlueprint = i.ItemBlueprint == null ? null : new NamedRefDto { Id = i.ItemBlueprint.Id, Name = i.ItemBlueprint.Name },
                 AmountPerHour = i.AmountPerHour, Accrued = i.Accrued,
             }).ToList(),
         };

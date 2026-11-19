@@ -14,6 +14,13 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
     }
 
+    /// <summary>A related row's id and name (for display seeds that read <c>item.itemBlueprint.name</c> and the like).</summary>
+    public class NamedRefDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
+    }
+
     public class ProductionKindNavDto
     {
         [JsonPropertyName("id")] public int Id { get; set; }
@@ -68,6 +75,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("role")] public string Role { get; set; } = string.Empty;
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
         [JsonPropertyName("itemBlueprintName")] public string? ItemBlueprintName { get; set; }
+        [JsonPropertyName("itemBlueprint")] public NamedRefDto? ItemBlueprint { get; set; }
 
         /// <summary>Units of an upgrade cost; ignored (0) for an unlock.</summary>
         [JsonPropertyName("amount")] public long Amount { get; set; }
@@ -120,6 +128,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("id")] public int Id { get; set; }
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
         [JsonPropertyName("itemBlueprintName")] public string? ItemBlueprintName { get; set; }
+        [JsonPropertyName("itemBlueprint")] public NamedRefDto? ItemBlueprint { get; set; }
         [JsonPropertyName("amountPerHour")] public decimal AmountPerHour { get; set; }
         [JsonPropertyName("accrued")] public decimal Accrued { get; set; }
     }
@@ -217,6 +226,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("id")] public int Id { get; set; }
         [JsonPropertyName("weatherTypeId")] public int WeatherTypeId { get; set; }
         [JsonPropertyName("weatherTypeName")] public string? WeatherTypeName { get; set; }
+        [JsonPropertyName("weatherType")] public NamedRefDto? WeatherType { get; set; }
         [JsonPropertyName("chancePercent")] public decimal ChancePercent { get; set; }
     }
 
@@ -224,6 +234,7 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("townId")] public int TownId { get; set; }
         [JsonPropertyName("townName")] public string? TownName { get; set; }
+        [JsonPropertyName("town")] public NamedRefDto? Town { get; set; }
     }
 
     /// <summary>A climate zone: <c>api/ClimateZones</c>.</summary>
@@ -244,8 +255,8 @@ namespace knkwebapi_v2.Dtos
         /// <summary>The towns in this zone; a town moves here from its previous zone.</summary>
         [JsonPropertyName("towns")] public List<ClimateZoneTownDto>? Towns { get; set; }
 
-        /// <summary>Read only: the latest stored rolls (newest first).</summary>
-        [JsonPropertyName("recentRolls")] public List<WeatherRollDto>? RecentRolls { get; set; }
+        /// <summary>Read only: the latest stored rolls (newest first; all of them: <c>POST api/ClimateZones/rolls/search</c>).</summary>
+        [JsonPropertyName("rolls")] public List<WeatherRollDto>? Rolls { get; set; }
     }
 
     public class ClimateZoneListDto
@@ -294,6 +305,8 @@ namespace knkwebapi_v2.Dtos
 
         /// <summary>"Clear" when no weather type was rolled.</summary>
         [JsonPropertyName("weatherTypeName")] public string WeatherTypeName { get; set; } = "Clear";
+        /// <summary>Null when clear.</summary>
+        [JsonPropertyName("weatherType")] public NamedRefDto? WeatherType { get; set; }
         [JsonPropertyName("rollValue")] public decimal RollValue { get; set; }
         [JsonPropertyName("rolledAt")] public DateTime RolledAt { get; set; }
     }

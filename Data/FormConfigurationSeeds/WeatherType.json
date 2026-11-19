@@ -1,0 +1,35 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "576e7dfe-c33f-5217-80a5-e6aa60a26ea8",
+  "entityTypeName": "WeatherType",
+  "name": "WeatherType - Default (seed v1)",
+  "description": "A weather type (production engine P3, #86; PRODUCTION_KINDS § 4.4). Its modifiers per resource category are edited in the web app's weather editor or through the API.",
+  "steps": [
+    {
+      "stepGuid": "93d49477-9982-5602-b7ce-336f643a574a",
+      "stepName": "Weather type",
+      "description": "Name the weather.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "d2af9370-50fb-5546-bc21-a9175be887dc",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "e.g. \"Storm\". Unique; \"Clear\" is reserved for no weather.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "bade1571-4e56-5026-85b1-da5d16ab2730",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "What it does, e.g. \"Hits fisheries hard and farms a little\".",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

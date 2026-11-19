@@ -1,0 +1,135 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "6382ff0b-ceba-5980-b831-fea473933750",
+  "entityTypeName": "ProductionKindLevel",
+  "name": "ProductionKindLevel - Default (seed v1)",
+  "description": "One level of a production kind: multipliers, caps, unlocks and upgrade cost (production engine P3, #86).",
+  "sections": [
+    {
+      "sectionGuid": "9511e9f3-7611-54bb-ac86-2a2958b1fa8a",
+      "sectionName": "Level",
+      "description": "The level and its multipliers.",
+      "fields": [
+        {
+          "fieldGuid": "5e8b4ab2-590e-5ec0-bbf6-2e9c03a4ad74",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionKind",
+          "relatedEntityTypeName": "ProductionKind",
+          "label": "Production kind",
+          "description": "The kind.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "604bd35c-d9a8-5383-be91-fca120b4a3af",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "1-10.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "ddca7d0f-e4db-5d0d-b4d2-3f5684a24edc",
+          "fieldName": "YieldMultiplier",
+          "label": "Yield multiplier",
+          "description": "Multiplies every output.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "81dd4e0b-4e1b-55f4-a09f-d499bb52bae0",
+          "fieldName": "CycleSpeedMultiplier",
+          "label": "Cycle speed",
+          "description": "Cycles per base cycle.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "89dc4ade-bc4c-5fcf-971d-edbbeb976cb0",
+          "fieldName": "MaxAreaSize",
+          "label": "Max area size",
+          "description": "Area cap (P4).",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "3f20c208-502d-54a8-95e4-f727869d1540",
+      "sectionName": "Caps and upgrade",
+      "description": "Written to the structure on level change; the upgrade cost.",
+      "fields": [
+        {
+          "fieldGuid": "b0cee174-9dbd-5866-9198-2a412e256a10",
+          "fieldName": "OutputMaxUnits",
+          "label": "Output storage cap",
+          "description": "Empty = leave it.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "cc393ad0-6481-5ed6-b83d-6ff5fd274457",
+          "fieldName": "UnitsPerSlot",
+          "label": "Units per slot",
+          "description": "Empty = leave it.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c3921c9d-9379-5d77-93d4-0e7e85b55583",
+          "fieldName": "TransportCapacity",
+          "label": "Transport capacity",
+          "description": "Empty = leave it.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "3f3f121a-9096-5488-8e0d-dd026a166cf1",
+          "fieldName": "UpkeepReduction",
+          "label": "Upkeep reduction",
+          "description": "No effect in V1.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "7a3f19f9-ee54-5b03-b6c2-2b3f221e4371",
+          "fieldName": "UpgradeCoins",
+          "label": "Upgrade coins",
+          "description": "Coins to reach this level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "04251f95-c2e2-5cc6-abb6-fc6265a1aa2d",
+          "fieldName": "UpgradeDurationMinutes",
+          "label": "Upgrade duration",
+          "description": "Minutes; not enforced in V1.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "31785623-542e-55f4-b09e-3ef9db760143",
+      "sectionName": "Unlocks and costs",
+      "description": "Blueprints produced only from this level on (Unlock) and resources paid to reach it (UpgradeCost).",
+      "relatedEntityPropertyName": "Items",
+      "relatedEntityTypeName": "ProductionKindLevelItem",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "1d30bc7b-f681-5d59-95ad-43dab6439804",
+          "fieldName": "Role",
+          "label": "Role",
+          "description": "Unlock or UpgradeCost.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "abb17e45-00d0-5039-b2a8-22c37fc6b42b",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Blueprint",
+          "description": "The item blueprint.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "5f40c3a0-333d-5d9e-b8e5-4ff23127ec73",
+          "fieldName": "Amount",
+          "label": "Amount",
+          "description": "Units of an upgrade cost.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

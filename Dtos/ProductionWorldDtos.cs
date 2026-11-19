@@ -32,6 +32,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("productionKindId")]
         public int? ProductionKindId { get; set; }
 
+        /// <summary>Read only: the kind's id and name (P3).</summary>
+        [JsonPropertyName("productionKind")]
+        public ProductionKindNavDto? ProductionKind { get; set; }
+
         [JsonPropertyName("level")]
         public int? Level { get; set; }
 

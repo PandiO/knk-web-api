@@ -20,6 +20,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.RoadConnection, o => o.MapFrom(s => s.RoadConnection.ToString()))
                 .ForMember(d => d.PreferredWarehouse, o => o.MapFrom(s => s.PreferredWarehouse == null ? null
                     : new StructureStorageNavDto { Id = s.PreferredWarehouse.Id, Name = s.PreferredWarehouse.Name }))
+                .ForMember(d => d.ProductionKind, o => o.MapFrom(s => s.ProductionKind == null ? null
+                    : new ProductionKindNavDto { Id = s.ProductionKind.Id, Name = s.ProductionKind.Name }))
                 .ForMember(d => d.Warnings, o => o.Ignore())
                 .ForMember(d => d.Storages, o => o.Ignore());
 

@@ -1,0 +1,137 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "71578e24-349c-5c97-93fa-761cd170fc4a",
+  "entityTypeName": "ProductionLine",
+  "name": "ProductionLine - Default (seed v1)",
+  "description": "One output of a production structure: rate, status, accrual and inputs (production engine P3, #86). The cycle trace is on the structure's production view.",
+  "sections": [
+    {
+      "sectionGuid": "f941f6b7-5ec8-5e3d-8837-0693a33d039f",
+      "sectionName": "Output",
+      "description": "What is produced and how fast.",
+      "fields": [
+        {
+          "fieldGuid": "fd2a788c-b0a9-5494-b7cb-105a396851c1",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionStructure",
+          "relatedEntityTypeName": "ProductionStructure",
+          "label": "Production structure",
+          "description": "The producing structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d90bff94-d5b0-5ae4-8286-d4066097b344",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Output",
+          "description": "The item blueprint produced.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "78766123-6e4a-5d95-a905-1ae36191e59f",
+          "fieldName": "RateSource",
+          "label": "Rate source",
+          "description": "Configured in P3.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "eebcb0d1-f676-53b9-b024-3fddf710fc2d",
+          "fieldName": "ConfiguredRatePerHour",
+          "label": "Rate per hour",
+          "description": "Base units per hour.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "6e8dce09-3635-5760-afb9-f64cd7eea15d",
+          "fieldName": "ResourceCategory",
+          "label": "Resource category",
+          "description": "Empty = the kind's.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "2d4ed0d4-7bb3-5acb-b017-487e6b84abd3",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off = paused.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "6a0287b8-a205-5c36-a2e3-150be9ad2b63",
+      "sectionName": "Status",
+      "description": "Kept by the engine.",
+      "fields": [
+        {
+          "fieldGuid": "3be705c0-d4d5-577b-8b15-9f8451824358",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Running, Paused, BlockedFull, BlockedInputs or Error.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "fac131b4-aafd-5459-98c6-c2f0dc63909e",
+          "fieldName": "StatusReason",
+          "label": "Why",
+          "description": "Why the line is not running.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "3070c216-14f4-54ab-97be-475c14fff739",
+          "fieldName": "Accrued",
+          "label": "Accrued",
+          "description": "Fraction not emitted yet.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "10ae88b0-7b84-5651-ba85-f4258c5fb6b6",
+          "fieldName": "LastSettledAt",
+          "label": "Last settled",
+          "description": "End of the last settled period.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "b50297b1-d7f9-51af-bed2-f01eda518817",
+          "fieldName": "NextSettleAt",
+          "label": "Next settle",
+          "description": "The next due time on the line's grid.",
+          "fieldType": "DateTime"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "a21e23fd-0d0c-50df-aa5c-3520ed12a492",
+      "sectionName": "Inputs",
+      "description": "Consumed from the structure's Input storage while the line runs.",
+      "relatedEntityPropertyName": "Inputs",
+      "relatedEntityTypeName": "ProductionLineInput",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "040596e3-fe7e-5429-80d3-86dbe096b2fc",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Input",
+          "description": "The item blueprint.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "248dc14d-7b93-5107-be22-c97219f5d64a",
+          "fieldName": "AmountPerHour",
+          "label": "Per hour",
+          "description": "Units per hour of running time.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "6d70202b-b7da-563a-ba0c-d38483664a03",
+          "fieldName": "Accrued",
+          "label": "Accrued",
+          "description": "Fraction not taken yet.",
+          "fieldType": "Decimal"
+        }
+      ]
+    }
+  ]
+}
