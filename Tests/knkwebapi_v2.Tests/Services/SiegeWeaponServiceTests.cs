@@ -241,9 +241,88 @@ public class SiegeWeaponServiceTests : IAsyncLifetime
 
     private static SiegeWeaponSpotUpsertDto Spot(int teamId = 202) => new()
     {
-        SiegeTeamId = teamId, Name = "North wall", Facing = SiegeWeaponFacing.East, SizeClass = SiegeWeaponSizeClass.Large,
+        // 9 along x, 17 high, 15 along z: large facing north (phase 2 works the class out from bounds and facing).
+        SiegeTeamId = teamId, Name = "North wall", Facing = SiegeWeaponFacing.North, SizeClass = SiegeWeaponSizeClass.Large,
         MinX = 0, MinY = 64, MinZ = 0, MaxX = 8, MaxY = 80, MaxZ = 14
     };
+
+    // ---- Phase 2 (#783): size class from bounds and facing (W70, A02-A03) ----
+
+    [Fact]
+    public async Task Spot_SizeClass_IsWorkedOutFromTheBoundsAndFacing_NotTheTypedValue()
+    {
+        // 7 along x, 5 high, 9 along z: small facing north, whatever was typed.
+        var small = Spot();
+        small.MaxX = 6; small.MaxY = 68; small.MaxZ = 8;
+        small.SizeClass = SiegeWeaponSizeClass.Large;
+        Assert.Equal(SiegeWeaponSizeClass.Small, (await Service().CreateSpotAsync(100, small)).SizeClass);
+
+        // The large footprint turned east is 15 wide x 9 long: medium.
+        var east = Spot();
+        east.Facing = SiegeWeaponFacing.East;
+        Assert.Equal(SiegeWeaponSizeClass.Medium, (await Service().CreateSpotAsync(100, east)).SizeClass);
+        Assert.Equal(SiegeWeaponSizeClass.Large, (await Service().CreateSpotAsync(100, Spot())).SizeClass);
+    }
+
+    [Fact]
+    public async Task Spot_ChangingTheFacing_WorksTheClassOutAgain()
+    {
+        var created = await Service().CreateSpotAsync(100, Spot());
+        _context.ChangeTracker.Clear();
+        var turned = Spot();
+        turned.Facing = SiegeWeaponFacing.West;
+        await Service().UpdateSpotAsync(created.Id, turned);
+        _context.ChangeTracker.Clear();
+        var read = (await Service().GetSpotByIdAsync(created.Id))!;
+        Assert.Equal(SiegeWeaponFacing.West, read.Facing);
+        Assert.Equal(SiegeWeaponSizeClass.Medium, read.SizeClass);
+    }
+
+    [Fact]
+    public async Task Spot_BoundsSmallerThanTheSmallClass_AreRefused()
+    {
+        var tiny = Spot();
+        tiny.MaxX = 4; tiny.MaxY = 68; tiny.MaxZ = 4;
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => Service().CreateSpotAsync(100, tiny));
+        Assert.Equal("The bounds are too small for a weapon facing North: 5 wide x 5 long x 5 high, the small class "
+            + "needs at least 7 wide x 9 long x 5 high.", error.Message);
+
+        // 7 x 9 facing east is 9 wide x 7 long: too short along the facing.
+        var sideways = Spot();
+        sideways.MaxX = 6; sideways.MaxY = 68; sideways.MaxZ = 8; sideways.Facing = SiegeWeaponFacing.East;
+        await Assert.ThrowsAsync<ArgumentException>(() => Service().CreateSpotAsync(100, sideways));
+        _context.ChangeTracker.Clear();
+        Assert.Empty(_context.SiegeWeaponSpots);
+    }
+
+    [Fact]
+    public async Task Spot_WithoutBounds_KeepsTheTypedClass()
+    {
+        var none = Spot();
+        none.MinX = none.MinY = none.MinZ = none.MaxX = none.MaxY = none.MaxZ = null;
+        none.SizeClass = SiegeWeaponSizeClass.Medium;
+        none.Facing = SiegeWeaponFacing.East;
+        Assert.Equal(SiegeWeaponSizeClass.Medium, (await Service().CreateSpotAsync(100, none)).SizeClass);
+    }
+
+    [Theory]
+    [InlineData(SiegeWeaponFacing.North, 0, 64, 0, 6, 68, 8, SiegeWeaponSizeClass.Small)]
+    [InlineData(SiegeWeaponFacing.South, 0, 64, 0, 6, 71, 8, SiegeWeaponSizeClass.Medium)]
+    [InlineData(SiegeWeaponFacing.West, 0, 64, 0, 8, 68, 6, SiegeWeaponSizeClass.Small)]
+    [InlineData(SiegeWeaponFacing.North, 0, 64, 0, 20, 71, 20, SiegeWeaponSizeClass.Medium)]
+    [InlineData(SiegeWeaponFacing.East, 0, 64, 0, 14, 79, 8, SiegeWeaponSizeClass.Large)]
+    public void Sizing_LargestClassThatFits(SiegeWeaponFacing facing, int minX, int minY, int minZ, int maxX, int maxY,
+        int maxZ, SiegeWeaponSizeClass expected)
+    {
+        Assert.Equal(expected, SiegeWeaponSpotSizing.ClassFor(minX, minY, minZ, maxX, maxY, maxZ, facing));
+    }
+
+    [Fact]
+    public void Sizing_TooLowOrTooShort_HasNoClass()
+    {
+        Assert.Null(SiegeWeaponSpotSizing.ClassFor(0, 64, 0, 6, 67, 8, SiegeWeaponFacing.North));
+        Assert.Null(SiegeWeaponSpotSizing.ClassFor(0, 64, 0, 6, 68, 8, SiegeWeaponFacing.West));
+    }
 
     [Fact]
     public async Task Spot_IsCreatedUnderItsScenario_AndShowsOnTheScenario()
@@ -260,7 +339,7 @@ public class SiegeWeaponServiceTests : IAsyncLifetime
         var scenario = (await ScenarioService().GetByIdAsync(100))!;
         Assert.Equal(new[] { created.Id, second.Id }, scenario.WeaponSpots.Select(w => w.Id));
         var spot = scenario.WeaponSpots[0];
-        Assert.Equal(SiegeWeaponFacing.East, spot.Facing);
+        Assert.Equal(SiegeWeaponFacing.North, spot.Facing);
         Assert.Equal(SiegeWeaponSizeClass.Large, spot.SizeClass);
         Assert.Equal(202, spot.SiegeTeamId);
         Assert.Equal(14, spot.MaxZ);
