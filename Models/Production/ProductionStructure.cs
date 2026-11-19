@@ -16,9 +16,16 @@ public class ProductionStructure : Structure
     public const int MaxLevel = 10;
     public const int MaxWorkers = 100;
 
-    /// <summary>The production kind (Farm, Logger, ...). A plain id until P3 adds the <c>ProductionKind</c> catalogue
-    /// and its foreign key; null = not chosen yet.</summary>
+    /// <summary>The production kind (Farm, Logger, ...; P3 catalogue, FK Restrict); null = not chosen yet.</summary>
+    [NavigationPair(nameof(ProductionKind))]
+    [RelatedEntityField(typeof(ProductionKind))]
     public int? ProductionKindId { get; set; }
+    [RelatedEntityField(typeof(ProductionKind))]
+    public ProductionKind? ProductionKind { get; set; }
+
+    /// <summary>The structure's production lines, one per output (P3).</summary>
+    [RelatedEntityField(typeof(ProductionLine))]
+    public ICollection<ProductionLine> Lines { get; set; } = new List<ProductionLine>();
 
     /// <summary>1-10 per kind (G8).</summary>
     public int Level { get; set; } = MinLevel;
@@ -54,6 +61,6 @@ public class ProductionStructure : Structure
     /// <summary>Workers the structure has (DESIGN § 7.7, default 2).</summary>
     public int WorkersTotal { get; set; } = 2;
 
-    /// <summary>Workers present at the structure right now (the rest are carrying goods, § 7.7). Written by P3/P5.</summary>
+    /// <summary>Workers present at the structure right now (the rest are carrying goods, § 7.7). Written through <c>PUT api/ProductionStructures/{id}/workers</c> (P3; P5 sends workers away).</summary>
     public int WorkersPresent { get; set; } = 2;
 }

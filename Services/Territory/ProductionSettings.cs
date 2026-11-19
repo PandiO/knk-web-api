@@ -24,6 +24,7 @@ namespace knkwebapi_v2.Services.Territory
         {
             var dto = JsonColumn.Deserialize<ProductionSettingsDto>(settings?.ProductionSettingsJson) ?? new ProductionSettingsDto();
             dto.Territory ??= new TerritorySettingsDto();
+            dto.Engine ??= new ProductionEngineSettingsDto();
             return dto;
         }
 
@@ -32,7 +33,25 @@ namespace knkwebapi_v2.Services.Territory
         {
             Enabled = dto.Enabled,
             Territory = TerritoryRules.Validate(dto.Territory),
+            Engine = ValidateEngine(dto.Engine),
         };
+
+        private static ProductionEngineSettingsDto ValidateEngine(ProductionEngineSettingsDto? e)
+        {
+            e ??= new ProductionEngineSettingsDto();
+            if (e.BaseCycleMinutes is < ProductionEngineSettingsDto.MinCycleMinutes or > ProductionEngineSettingsDto.MaxCycleMinutes)
+                throw new System.ArgumentException($"production.engine.baseCycleMinutes must be {ProductionEngineSettingsDto.MinCycleMinutes} to {ProductionEngineSettingsDto.MaxCycleMinutes}.");
+            if (e.CatchUpCapHours is < ProductionEngineSettingsDto.MinCatchUpHours or > ProductionEngineSettingsDto.MaxCatchUpHours)
+                throw new System.ArgumentException($"production.engine.catchUpCapHours must be {ProductionEngineSettingsDto.MinCatchUpHours} to {ProductionEngineSettingsDto.MaxCatchUpHours}.");
+            if (e.WeatherDayMinutes is < ProductionEngineSettingsDto.MinWeatherDayMinutes or > ProductionEngineSettingsDto.MaxWeatherDayMinutes)
+                throw new System.ArgumentException($"production.engine.weatherDayMinutes must be {ProductionEngineSettingsDto.MinWeatherDayMinutes} to {ProductionEngineSettingsDto.MaxWeatherDayMinutes}.");
+            return new ProductionEngineSettingsDto
+            {
+                BaseCycleMinutes = e.BaseCycleMinutes,
+                CatchUpCapHours = e.CatchUpCapHours,
+                WeatherDayMinutes = e.WeatherDayMinutes,
+            };
+        }
     }
 
     public sealed class ProductionSettingsReader : IProductionSettingsReader

@@ -82,6 +82,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("storageId")] public int StorageId { get; set; }
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
         [JsonPropertyName("itemBlueprintName")] public string? ItemBlueprintName { get; set; }
+        /// <summary>The blueprint's id and name, for the Storage display seed's Stock section (#819).</summary>
+        [JsonPropertyName("itemBlueprint")] public NamedRefDto? ItemBlueprint { get; set; }
         [JsonPropertyName("amount")] public long Amount { get; set; }
         [JsonPropertyName("storageWeight")] public decimal StorageWeight { get; set; }
         [JsonPropertyName("updatedAt")] public DateTime UpdatedAt { get; set; }

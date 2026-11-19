@@ -1,0 +1,122 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "5106b600-10b7-50d4-9a07-fb6be9bc21b9",
+  "entityTypeName": "ProductionModifier",
+  "name": "ProductionModifier - Default (seed v1)",
+  "description": "A production modifier: effect, scope, target and active window (production engine P3, #86).",
+  "sections": [
+    {
+      "sectionGuid": "e0433b5a-6777-5695-b372-b184e76121d4",
+      "sectionName": "Modifier",
+      "description": "What it does.",
+      "fields": [
+        {
+          "fieldGuid": "6d494354-dfe6-5491-ae1a-4f0e62e5779d",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in the cycle trace.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "03d91b24-0541-5bd8-a723-b5752d068c28",
+          "fieldName": "Source",
+          "label": "Source",
+          "description": "Admin for staff-made modifiers.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "8575e2ec-a497-550e-9cfa-ab7b84c041bf",
+          "fieldName": "Effect",
+          "label": "Effect",
+          "description": "Add or Multiply.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "2b3c767d-b1d7-55b3-80b8-6112f2d83cb4",
+          "fieldName": "Value",
+          "label": "Value",
+          "description": "Addition or factor.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "7e7f7af5-9440-5bd6-a5cf-6e3670a53a31",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off = kept, not applied.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "3eddde18-5805-5283-8956-383f76070bb5",
+      "sectionName": "Scope and target",
+      "description": "Where and to what it applies.",
+      "fields": [
+        {
+          "fieldGuid": "bd86fe47-a32c-5d03-a8ff-dbad698cf222",
+          "fieldName": "Scope",
+          "label": "Scope",
+          "description": "Global, Kingdom, Town, Territory, MapArea, Structure or Output.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "16c3b5d0-5313-57cd-a9d3-274b303f0c95",
+          "fieldName": "ScopeRefId",
+          "label": "Scope id",
+          "description": "Kingdom, town, structure or line id.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "018eb741-7efc-5127-b8bc-42c59e46dd80",
+          "fieldName": "Target",
+          "label": "Target",
+          "description": "Any, Blueprint, Category or Kind.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "d8f2d903-df37-5b63-ad6a-226fa6c68e84",
+          "fieldName": "TargetItemBlueprintId",
+          "label": "Target blueprint id",
+          "description": "With target Blueprint.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "48d97734-ccbb-5835-b801-7cdbb2a08cce",
+          "fieldName": "TargetCategory",
+          "label": "Target category",
+          "description": "With target Category.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "176d7244-bc0c-5bde-bbaa-1c6093efbd91",
+          "fieldName": "TargetProductionKindId",
+          "label": "Target kind id",
+          "description": "With target Kind.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "1de8c809-c2fc-596d-bdea-e69e4abb919b",
+      "sectionName": "Active window",
+      "description": "UTC; both empty = always.",
+      "fields": [
+        {
+          "fieldGuid": "934a8891-9579-5342-a352-8f9460bdfd92",
+          "fieldName": "ActiveFrom",
+          "label": "Active from",
+          "description": "Inclusive.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "080dbef0-fd3a-5d35-a80e-91f6dece0ff9",
+          "fieldName": "ActiveUntil",
+          "label": "Active until",
+          "description": "Exclusive.",
+          "fieldType": "DateTime"
+        }
+      ]
+    }
+  ]
+}

@@ -94,6 +94,61 @@ namespace KnKWebAPI.Controllers
         public async Task<ActionResult<PagedResultDto<ProductionWorldListDto>>> Search([FromBody] PagedQueryDto query) =>
             Ok(await _service.SearchAsync(query));
 
+        /// <summary>The structure's production (P3, #86): lines with their current rate and modifiers, "why not
+        /// producing" reasons and the latest cycles. Settles the structure first while Production:Enabled is on.</summary>
+        [HttpGet("{id:int}/production")]
+        public async Task<IActionResult> GetProduction(int id, [FromServices] IProductionEngine engine)
+        {
+            var overview = await engine.OverviewAsync(id);
+            return overview == null ? NotFound() : Ok(overview);
+        }
+
+        /// <summary>The workers at the structure now (P3; P5 and the game server send workers away): plugin key or
+        /// knk.admin.world. Settles first, so the time before counts at the old worker factor.</summary>
+        [HttpPut("{id:int}/workers")]
+        public async Task<IActionResult> SetWorkers(int id, [FromBody] WorkersPresentUpdateDto dto, [FromServices] IProductionEngine engine)
+        {
+            if (dto == null) return BadRequest();
+            try
+            {
+                return Ok(await engine.SetWorkersPresentAsync(id, dto.WorkersPresent));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>Raises the level by one (PRODUCTION_KINDS § 5): the next level's resources move from a storage to
+        /// SYS_CONSUMPTION and its coins are spent from the payer, in one transaction. Area node AND knk.economy.admin
+        /// (it spends stock and coins). 409 when the cost can't be paid or the structure is at level 10.</summary>
+        [RequireServiceOrPermission(StaffPermissions.EconomyAdmin)]
+        [HttpPost("{id:int}/upgrade")]
+        public async Task<IActionResult> Upgrade(int id, [FromBody] ProductionUpgradeRequestDto? dto, [FromServices] IProductionEngine engine)
+        {
+            try
+            {
+                var caller = HttpContext.GetKnkCaller();
+                return Ok(await engine.UpgradeAsync(id, dto ?? new ProductionUpgradeRequestDto(), caller.ActorUserId));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { error = ex.Message });
+            }
+        }
+
         /// <summary>The road connection the game server measured (DESIGN § 7.6, P5b): plugin key or knk.admin.world.</summary>
         [HttpPut("{id:int}/road-connection")]
         public async Task<IActionResult> SetRoadConnection(int id, [FromBody] RoadConnectionUpdateDto dto)

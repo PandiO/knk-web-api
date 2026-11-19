@@ -19,6 +19,32 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("territory")]
         public TerritorySettingsDto Territory { get; set; } = new();
+
+        /// <summary>The production engine's timing (P3, PandiO/knk-workspace#86). Null in stored JSON = the defaults.</summary>
+        [JsonPropertyName("engine")]
+        public ProductionEngineSettingsDto Engine { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Production engine timing (P3, PRODUCTION_KINDS § 4.3-4.4). A line settles every base cycle ÷ the level's cycle
+    /// speed, on a grid anchored at the line's creation (no drift); a settle after a long pause accrues at most the
+    /// catch-up cap. The weather is rolled once per in-game day of <see cref="WeatherDayMinutes"/> real minutes.
+    /// </summary>
+    public class ProductionEngineSettingsDto
+    {
+        public const int MinCycleMinutes = 1, MaxCycleMinutes = 1440;
+        public const int MinCatchUpHours = 1, MaxCatchUpHours = 720;
+        public const int MinWeatherDayMinutes = 1, MaxWeatherDayMinutes = 10080;
+
+        [JsonPropertyName("baseCycleMinutes")]
+        public int BaseCycleMinutes { get; set; } = 10;
+
+        [JsonPropertyName("catchUpCapHours")]
+        public int CatchUpCapHours { get; set; } = 24;
+
+        /// <summary>20 = a vanilla Minecraft day.</summary>
+        [JsonPropertyName("weatherDayMinutes")]
+        public int WeatherDayMinutes { get; set; } = 20;
     }
 
     /// <summary>Range = (base range + power × factor) × capital multiplier for a capital district (G11).</summary>

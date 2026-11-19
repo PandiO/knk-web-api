@@ -53,6 +53,8 @@ namespace knkwebapi_v2.Enums
         PlayerHarvest,
         Spoilage,
         AdminAdjust,
+        /// <summary>Resources paid for a production structure's level upgrade (PRODUCTION_KINDS § 5), to <c>SYS_CONSUMPTION</c>.</summary>
+        Upgrade,
         /// <summary>A compensating transaction that undoes another one (corrections are new moves, never edits).</summary>
         Correction,
     }

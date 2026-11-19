@@ -130,7 +130,10 @@ public class StockLine
     public int StorageId { get; set; }
     public Storage Storage { get; set; } = null!;
 
+    [NavigationPair(nameof(ItemBlueprint))]
+    [RelatedEntityField(typeof(ItemBlueprint))]
     public int ItemBlueprintId { get; set; }
+    [RelatedEntityField(typeof(ItemBlueprint))]
     public ItemBlueprint ItemBlueprint { get; set; } = null!;
 
     public long Amount { get; set; }

@@ -1,0 +1,169 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "d70670ab-c745-5545-b25a-6b18ebb30d69",
+  "entityTypeName": "ProductionKind",
+  "name": "ProductionKind - Default (seed v1)",
+  "description": "A production kind of the catalogue and its ten levels (production engine P3, #86).",
+  "sections": [
+    {
+      "sectionGuid": "32ab703d-a11e-5867-be1e-5c8630f7b474",
+      "sectionName": "General information",
+      "description": "The kind.",
+      "fields": [
+        {
+          "fieldGuid": "d6c5be14-2caf-5ad6-8f06-f20a8bc4bd33",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The kind's name.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "ed058835-dee9-53cb-b548-18098ed5a616",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "What it produces.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "6979a95e-0c33-5992-b3fc-a0cea3664109",
+          "fieldName": "Icon",
+          "label": "Icon",
+          "description": "Material for menus.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "f4bf3008-ab59-53fd-9edd-323678eea5ce",
+          "fieldName": "AreaModel",
+          "label": "Area model",
+          "description": "Where its resources come from.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "23df7b5d-30bf-5a29-afe6-aed891670e52",
+          "fieldName": "ExclusiveAreas",
+          "label": "Exclusive areas",
+          "description": "Areas may not overlap.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "1855a772-2f3e-52f2-b798-a3da855e4017",
+          "fieldName": "ResourceCategory",
+          "label": "Resource category",
+          "description": "What weather and category modifiers target.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "db050e3f-abfd-51c6-a79d-5a610eb73581",
+          "fieldName": "IsActive",
+          "label": "Active",
+          "description": "Offered for new structures.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "0fdb62d6-9580-5b3c-812a-6f6b2ade5a53",
+      "sectionName": "Yield sources and workers",
+      "description": "Allowed yield sources, workers and default storages.",
+      "fields": [
+        {
+          "fieldGuid": "b4a7454f-873c-5bd6-b9d0-61d3377f7551",
+          "fieldName": "AllowsDerived",
+          "label": "Allows Derived",
+          "description": "Survey-based rates (P4).",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "84cc3918-6665-5039-a113-42d340cd4351",
+          "fieldName": "AllowsConfigured",
+          "label": "Allows Configured",
+          "description": "Admin-entered rates.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "ee62c51f-10a6-5b6a-97f5-01eba24223f5",
+          "fieldName": "AllowsHybrid",
+          "label": "Allows Hybrid",
+          "description": "Survey plus admin pins (P4).",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "ab69e508-4bdd-5d92-b78d-4fe2a0353ac8",
+          "fieldName": "DefaultWorkers",
+          "label": "Default workers",
+          "description": "Workers of a new structure.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "83fdf1dd-2dd5-5f99-b25d-93d79972892c",
+          "fieldName": "CycleVariation",
+          "label": "Cycle variation",
+          "description": "±10% per cycle (P4).",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "7a34e1f2-7b58-50a7-83bb-077117826467",
+          "fieldName": "DefaultStoragesJson",
+          "label": "Default storages",
+          "description": "Storages next to Output.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "162974b0-6d3f-51a5-ac53-fd51576ed3a8",
+      "sectionName": "Levels",
+      "description": "Ten levels (G8): yield multiplier, cycle speed and upgrade cost.",
+      "relatedEntityPropertyName": "Levels",
+      "relatedEntityTypeName": "ProductionKindLevel",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showViewButton\":true,\"showEditButton\":true}",
+      "fields": [
+        {
+          "fieldGuid": "9f7ba624-b56f-515a-82ba-e9128548e71c",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "1-10.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "9d6ddc46-a272-54ed-b8d2-ef4cbe809e7e",
+          "fieldName": "YieldMultiplier",
+          "label": "Yield multiplier",
+          "description": "The level modifier.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "4ae153fd-c286-5b65-ad76-e5b4a3aec31c",
+          "fieldName": "CycleSpeedMultiplier",
+          "label": "Cycle speed",
+          "description": "Cycles per base cycle.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "20a80472-0008-5df5-9a38-cdede2203da5",
+          "fieldName": "MaxAreaSize",
+          "label": "Max area size",
+          "description": "Area cap (P4).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "40c271fe-d2ab-5cc8-a056-be31186bc82b",
+          "fieldName": "OutputMaxUnits",
+          "label": "Output storage cap",
+          "description": "Written on level change.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "2762f45d-ec25-5313-8f06-0c55ba8a09ee",
+          "fieldName": "UpgradeCoins",
+          "label": "Upgrade coins",
+          "description": "Coins to reach the level.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

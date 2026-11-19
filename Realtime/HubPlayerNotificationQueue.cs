@@ -47,6 +47,9 @@ public sealed class HubPlayerNotificationQueue : IPlayerNotificationQueue
     public long EnqueueLootboxWorldChanged(LootboxWorldChangedNotificationDto change) =>
         Pushed(_inner.EnqueueLootboxWorldChanged(change));
 
+    public long EnqueueProductionLineStatus(ProductionLineStatusNotificationDto change) =>
+        Pushed(_inner.EnqueueProductionLineStatus(change));
+
     public long EnqueueDiscoveryReset(int userId, string? uuid, string username, DiscoveryResetNotificationDto reset) =>
         Pushed(_inner.EnqueueDiscoveryReset(userId, uuid, username, reset));
 

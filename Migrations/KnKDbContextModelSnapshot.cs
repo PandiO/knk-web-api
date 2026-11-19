@@ -328,6 +328,99 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("clans", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ClimateZone", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("climate_zones", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Every town without a zone of its own. No weather odds until staff set them, so the weather is clear.",
+                            IsDefault = true,
+                            Name = "Default climate"
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ClimateZoneTown", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClimateZoneId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TownId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClimateZoneId");
+
+                    b.HasIndex("TownId")
+                        .IsUnique();
+
+                    b.ToTable("climate_zone_towns", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ClimateZoneWeather", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ChancePercent")
+                        .HasPrecision(7, 3)
+                        .HasColumnType("decimal(7,3)");
+
+                    b.Property<int>("ClimateZoneId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WeatherTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeatherTypeId");
+
+                    b.HasIndex("ClimateZoneId", "WeatherTypeId")
+                        .IsUnique();
+
+                    b.ToTable("climate_zone_weathers", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ConditionBinding", b =>
                 {
                     b.Property<int>("Id")
@@ -5072,6 +5165,1450 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("private_message_log_entries", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionCycleRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("Accepted")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("AccruedAfter")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("AccruedBefore")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("BaseRatePerHour")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("EffectiveRatePerHour")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<long>("ElapsedSeconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Emitted")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("InputsJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ModifiersJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("PeriodEnd")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ProductionLineId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RateSource")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("SettledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ShortfallReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<long>("SkippedSeconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StatusAfter")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long?>("StockTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("UnlockFactor")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("WorkerFactor")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("WorkersPresent")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkersTotal")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductionLineId", "SettledAt");
+
+                    b.HasIndex("ProductionStructureId", "SettledAt");
+
+                    b.ToTable("production_cycle_records", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKind", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AllowsConfigured")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowsDerived")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowsHybrid")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("AreaModel")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("CycleVariation")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("DefaultStoragesJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<int>("DefaultWorkers")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<bool>("ExclusiveAreas")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("ResourceCategory")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("production_kinds", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AllowsConfigured = true,
+                            AllowsDerived = true,
+                            AllowsHybrid = true,
+                            AreaModel = "BorderedField",
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CycleVariation = false,
+                            DefaultWorkers = 2,
+                            Description = "Crops on bordered farmland; the crop mix follows the field.",
+                            ExclusiveAreas = true,
+                            Icon = "WHEAT",
+                            IsActive = true,
+                            Name = "Farm",
+                            ResourceCategory = "Crops"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            AllowsConfigured = true,
+                            AllowsDerived = true,
+                            AllowsHybrid = true,
+                            AreaModel = "SharedRadius",
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CycleVariation = false,
+                            DefaultWorkers = 2,
+                            Description = "Trees in a shared radius around the structure; the yield follows the forest.",
+                            ExclusiveAreas = false,
+                            Icon = "IRON_AXE",
+                            IsActive = true,
+                            Name = "Logger",
+                            ResourceCategory = "Wood"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            AllowsConfigured = true,
+                            AllowsDerived = true,
+                            AllowsHybrid = true,
+                            AreaModel = "ExclusiveVolume",
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CycleVariation = false,
+                            DefaultWorkers = 2,
+                            Description = "Rock types in an exclusive volume; ores are byproducts.",
+                            ExclusiveAreas = true,
+                            Icon = "STONE",
+                            IsActive = true,
+                            Name = "Quarry",
+                            ResourceCategory = "Stone"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            AllowsConfigured = true,
+                            AllowsDerived = true,
+                            AllowsHybrid = true,
+                            AreaModel = "ExclusiveVolume",
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CycleVariation = false,
+                            DefaultWorkers = 2,
+                            Description = "Ore in an exclusive mineshaft; the designed ore gets the primary boost.",
+                            ExclusiveAreas = true,
+                            Icon = "IRON_PICKAXE",
+                            IsActive = true,
+                            Name = "Mine",
+                            ResourceCategory = "Ore"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            AllowsConfigured = true,
+                            AllowsDerived = true,
+                            AllowsHybrid = true,
+                            AreaModel = "SharedRadius",
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CycleVariation = false,
+                            DefaultWorkers = 2,
+                            Description = "Fish from the water in a shared radius, by biome.",
+                            ExclusiveAreas = false,
+                            Icon = "FISHING_ROD",
+                            IsActive = true,
+                            Name = "Fishery",
+                            ResourceCategory = "Fish"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            AllowsConfigured = true,
+                            AllowsDerived = true,
+                            AllowsHybrid = true,
+                            AreaModel = "BorderedField",
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CycleVariation = false,
+                            DefaultWorkers = 2,
+                            Description = "Flowers in bordered beds.",
+                            ExclusiveAreas = true,
+                            Icon = "POPPY",
+                            IsActive = true,
+                            Name = "Flower farm",
+                            ResourceCategory = "Flowers"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            AllowsConfigured = true,
+                            AllowsDerived = true,
+                            AllowsHybrid = true,
+                            AreaModel = "SharedRadius",
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CycleVariation = false,
+                            DefaultWorkers = 2,
+                            Description = "Flowers growing in a shared radius.",
+                            ExclusiveAreas = false,
+                            Icon = "SUNFLOWER",
+                            IsActive = true,
+                            Name = "Florist",
+                            ResourceCategory = "Flowers"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            AllowsConfigured = true,
+                            AllowsDerived = true,
+                            AllowsHybrid = true,
+                            AreaModel = "Pasture",
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CycleVariation = false,
+                            DefaultWorkers = 2,
+                            Description = "Drops of the animals in a pasture.",
+                            ExclusiveAreas = true,
+                            Icon = "WHITE_WOOL",
+                            IsActive = true,
+                            Name = "Animal farm",
+                            ResourceCategory = "Animals"
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKindLevel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CycleSpeedMultiplier")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxAreaSize")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OutputMaxUnits")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionKindId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TransportCapacity")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UnitsPerSlot")
+                        .HasColumnType("int");
+
+                    b.Property<long>("UpgradeCoins")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("UpgradeDurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UpkeepReduction")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.Property<decimal>("YieldMultiplier")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductionKindId", "Level")
+                        .IsUnique();
+
+                    b.ToTable("production_kind_levels", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CycleSpeedMultiplier = 1.00m,
+                            Level = 1,
+                            MaxAreaSize = 1024,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 0L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.00m
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CycleSpeedMultiplier = 1.05m,
+                            Level = 2,
+                            MaxAreaSize = 1280,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.15m
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CycleSpeedMultiplier = 1.10m,
+                            Level = 3,
+                            MaxAreaSize = 1536,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 1000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.30m
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CycleSpeedMultiplier = 1.15m,
+                            Level = 4,
+                            MaxAreaSize = 1792,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 2250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.45m
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CycleSpeedMultiplier = 1.20m,
+                            Level = 5,
+                            MaxAreaSize = 2048,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 4000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.60m
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CycleSpeedMultiplier = 1.25m,
+                            Level = 6,
+                            MaxAreaSize = 2304,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 6250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.75m
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CycleSpeedMultiplier = 1.30m,
+                            Level = 7,
+                            MaxAreaSize = 2560,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 9000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.90m
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CycleSpeedMultiplier = 1.35m,
+                            Level = 8,
+                            MaxAreaSize = 2816,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 12250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.05m
+                        },
+                        new
+                        {
+                            Id = 9,
+                            CycleSpeedMultiplier = 1.40m,
+                            Level = 9,
+                            MaxAreaSize = 3072,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 16000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.20m
+                        },
+                        new
+                        {
+                            Id = 10,
+                            CycleSpeedMultiplier = 1.45m,
+                            Level = 10,
+                            MaxAreaSize = 3328,
+                            ProductionKindId = 1,
+                            UpgradeCoins = 20250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.35m
+                        },
+                        new
+                        {
+                            Id = 11,
+                            CycleSpeedMultiplier = 1.00m,
+                            Level = 1,
+                            MaxAreaSize = 32,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 0L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.00m
+                        },
+                        new
+                        {
+                            Id = 12,
+                            CycleSpeedMultiplier = 1.05m,
+                            Level = 2,
+                            MaxAreaSize = 36,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.15m
+                        },
+                        new
+                        {
+                            Id = 13,
+                            CycleSpeedMultiplier = 1.10m,
+                            Level = 3,
+                            MaxAreaSize = 40,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 1000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.30m
+                        },
+                        new
+                        {
+                            Id = 14,
+                            CycleSpeedMultiplier = 1.15m,
+                            Level = 4,
+                            MaxAreaSize = 44,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 2250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.45m
+                        },
+                        new
+                        {
+                            Id = 15,
+                            CycleSpeedMultiplier = 1.20m,
+                            Level = 5,
+                            MaxAreaSize = 48,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 4000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.60m
+                        },
+                        new
+                        {
+                            Id = 16,
+                            CycleSpeedMultiplier = 1.25m,
+                            Level = 6,
+                            MaxAreaSize = 52,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 6250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.75m
+                        },
+                        new
+                        {
+                            Id = 17,
+                            CycleSpeedMultiplier = 1.30m,
+                            Level = 7,
+                            MaxAreaSize = 56,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 9000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.90m
+                        },
+                        new
+                        {
+                            Id = 18,
+                            CycleSpeedMultiplier = 1.35m,
+                            Level = 8,
+                            MaxAreaSize = 60,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 12250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.05m
+                        },
+                        new
+                        {
+                            Id = 19,
+                            CycleSpeedMultiplier = 1.40m,
+                            Level = 9,
+                            MaxAreaSize = 64,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 16000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.20m
+                        },
+                        new
+                        {
+                            Id = 20,
+                            CycleSpeedMultiplier = 1.45m,
+                            Level = 10,
+                            MaxAreaSize = 68,
+                            ProductionKindId = 2,
+                            UpgradeCoins = 20250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.35m
+                        },
+                        new
+                        {
+                            Id = 21,
+                            CycleSpeedMultiplier = 1.00m,
+                            Level = 1,
+                            MaxAreaSize = 262144,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 0L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.00m
+                        },
+                        new
+                        {
+                            Id = 22,
+                            CycleSpeedMultiplier = 1.05m,
+                            Level = 2,
+                            MaxAreaSize = 327680,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.15m
+                        },
+                        new
+                        {
+                            Id = 23,
+                            CycleSpeedMultiplier = 1.10m,
+                            Level = 3,
+                            MaxAreaSize = 393216,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 1000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.30m
+                        },
+                        new
+                        {
+                            Id = 24,
+                            CycleSpeedMultiplier = 1.15m,
+                            Level = 4,
+                            MaxAreaSize = 458752,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 2250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.45m
+                        },
+                        new
+                        {
+                            Id = 25,
+                            CycleSpeedMultiplier = 1.20m,
+                            Level = 5,
+                            MaxAreaSize = 524288,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 4000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.60m
+                        },
+                        new
+                        {
+                            Id = 26,
+                            CycleSpeedMultiplier = 1.25m,
+                            Level = 6,
+                            MaxAreaSize = 589824,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 6250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.75m
+                        },
+                        new
+                        {
+                            Id = 27,
+                            CycleSpeedMultiplier = 1.30m,
+                            Level = 7,
+                            MaxAreaSize = 655360,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 9000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.90m
+                        },
+                        new
+                        {
+                            Id = 28,
+                            CycleSpeedMultiplier = 1.35m,
+                            Level = 8,
+                            MaxAreaSize = 720896,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 12250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.05m
+                        },
+                        new
+                        {
+                            Id = 29,
+                            CycleSpeedMultiplier = 1.40m,
+                            Level = 9,
+                            MaxAreaSize = 786432,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 16000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.20m
+                        },
+                        new
+                        {
+                            Id = 30,
+                            CycleSpeedMultiplier = 1.45m,
+                            Level = 10,
+                            MaxAreaSize = 851968,
+                            ProductionKindId = 3,
+                            UpgradeCoins = 20250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.35m
+                        },
+                        new
+                        {
+                            Id = 31,
+                            CycleSpeedMultiplier = 1.00m,
+                            Level = 1,
+                            MaxAreaSize = 262144,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 0L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.00m
+                        },
+                        new
+                        {
+                            Id = 32,
+                            CycleSpeedMultiplier = 1.05m,
+                            Level = 2,
+                            MaxAreaSize = 327680,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.15m
+                        },
+                        new
+                        {
+                            Id = 33,
+                            CycleSpeedMultiplier = 1.10m,
+                            Level = 3,
+                            MaxAreaSize = 393216,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 1000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.30m
+                        },
+                        new
+                        {
+                            Id = 34,
+                            CycleSpeedMultiplier = 1.15m,
+                            Level = 4,
+                            MaxAreaSize = 458752,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 2250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.45m
+                        },
+                        new
+                        {
+                            Id = 35,
+                            CycleSpeedMultiplier = 1.20m,
+                            Level = 5,
+                            MaxAreaSize = 524288,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 4000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.60m
+                        },
+                        new
+                        {
+                            Id = 36,
+                            CycleSpeedMultiplier = 1.25m,
+                            Level = 6,
+                            MaxAreaSize = 589824,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 6250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.75m
+                        },
+                        new
+                        {
+                            Id = 37,
+                            CycleSpeedMultiplier = 1.30m,
+                            Level = 7,
+                            MaxAreaSize = 655360,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 9000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.90m
+                        },
+                        new
+                        {
+                            Id = 38,
+                            CycleSpeedMultiplier = 1.35m,
+                            Level = 8,
+                            MaxAreaSize = 720896,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 12250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.05m
+                        },
+                        new
+                        {
+                            Id = 39,
+                            CycleSpeedMultiplier = 1.40m,
+                            Level = 9,
+                            MaxAreaSize = 786432,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 16000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.20m
+                        },
+                        new
+                        {
+                            Id = 40,
+                            CycleSpeedMultiplier = 1.45m,
+                            Level = 10,
+                            MaxAreaSize = 851968,
+                            ProductionKindId = 4,
+                            UpgradeCoins = 20250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.35m
+                        },
+                        new
+                        {
+                            Id = 41,
+                            CycleSpeedMultiplier = 1.00m,
+                            Level = 1,
+                            MaxAreaSize = 32,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 0L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.00m
+                        },
+                        new
+                        {
+                            Id = 42,
+                            CycleSpeedMultiplier = 1.05m,
+                            Level = 2,
+                            MaxAreaSize = 36,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.15m
+                        },
+                        new
+                        {
+                            Id = 43,
+                            CycleSpeedMultiplier = 1.10m,
+                            Level = 3,
+                            MaxAreaSize = 40,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 1000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.30m
+                        },
+                        new
+                        {
+                            Id = 44,
+                            CycleSpeedMultiplier = 1.15m,
+                            Level = 4,
+                            MaxAreaSize = 44,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 2250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.45m
+                        },
+                        new
+                        {
+                            Id = 45,
+                            CycleSpeedMultiplier = 1.20m,
+                            Level = 5,
+                            MaxAreaSize = 48,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 4000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.60m
+                        },
+                        new
+                        {
+                            Id = 46,
+                            CycleSpeedMultiplier = 1.25m,
+                            Level = 6,
+                            MaxAreaSize = 52,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 6250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.75m
+                        },
+                        new
+                        {
+                            Id = 47,
+                            CycleSpeedMultiplier = 1.30m,
+                            Level = 7,
+                            MaxAreaSize = 56,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 9000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.90m
+                        },
+                        new
+                        {
+                            Id = 48,
+                            CycleSpeedMultiplier = 1.35m,
+                            Level = 8,
+                            MaxAreaSize = 60,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 12250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.05m
+                        },
+                        new
+                        {
+                            Id = 49,
+                            CycleSpeedMultiplier = 1.40m,
+                            Level = 9,
+                            MaxAreaSize = 64,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 16000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.20m
+                        },
+                        new
+                        {
+                            Id = 50,
+                            CycleSpeedMultiplier = 1.45m,
+                            Level = 10,
+                            MaxAreaSize = 68,
+                            ProductionKindId = 5,
+                            UpgradeCoins = 20250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.35m
+                        },
+                        new
+                        {
+                            Id = 51,
+                            CycleSpeedMultiplier = 1.00m,
+                            Level = 1,
+                            MaxAreaSize = 1024,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 0L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.00m
+                        },
+                        new
+                        {
+                            Id = 52,
+                            CycleSpeedMultiplier = 1.05m,
+                            Level = 2,
+                            MaxAreaSize = 1280,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.15m
+                        },
+                        new
+                        {
+                            Id = 53,
+                            CycleSpeedMultiplier = 1.10m,
+                            Level = 3,
+                            MaxAreaSize = 1536,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 1000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.30m
+                        },
+                        new
+                        {
+                            Id = 54,
+                            CycleSpeedMultiplier = 1.15m,
+                            Level = 4,
+                            MaxAreaSize = 1792,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 2250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.45m
+                        },
+                        new
+                        {
+                            Id = 55,
+                            CycleSpeedMultiplier = 1.20m,
+                            Level = 5,
+                            MaxAreaSize = 2048,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 4000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.60m
+                        },
+                        new
+                        {
+                            Id = 56,
+                            CycleSpeedMultiplier = 1.25m,
+                            Level = 6,
+                            MaxAreaSize = 2304,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 6250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.75m
+                        },
+                        new
+                        {
+                            Id = 57,
+                            CycleSpeedMultiplier = 1.30m,
+                            Level = 7,
+                            MaxAreaSize = 2560,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 9000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.90m
+                        },
+                        new
+                        {
+                            Id = 58,
+                            CycleSpeedMultiplier = 1.35m,
+                            Level = 8,
+                            MaxAreaSize = 2816,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 12250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.05m
+                        },
+                        new
+                        {
+                            Id = 59,
+                            CycleSpeedMultiplier = 1.40m,
+                            Level = 9,
+                            MaxAreaSize = 3072,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 16000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.20m
+                        },
+                        new
+                        {
+                            Id = 60,
+                            CycleSpeedMultiplier = 1.45m,
+                            Level = 10,
+                            MaxAreaSize = 3328,
+                            ProductionKindId = 6,
+                            UpgradeCoins = 20250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.35m
+                        },
+                        new
+                        {
+                            Id = 61,
+                            CycleSpeedMultiplier = 1.00m,
+                            Level = 1,
+                            MaxAreaSize = 32,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 0L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.00m
+                        },
+                        new
+                        {
+                            Id = 62,
+                            CycleSpeedMultiplier = 1.05m,
+                            Level = 2,
+                            MaxAreaSize = 36,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.15m
+                        },
+                        new
+                        {
+                            Id = 63,
+                            CycleSpeedMultiplier = 1.10m,
+                            Level = 3,
+                            MaxAreaSize = 40,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 1000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.30m
+                        },
+                        new
+                        {
+                            Id = 64,
+                            CycleSpeedMultiplier = 1.15m,
+                            Level = 4,
+                            MaxAreaSize = 44,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 2250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.45m
+                        },
+                        new
+                        {
+                            Id = 65,
+                            CycleSpeedMultiplier = 1.20m,
+                            Level = 5,
+                            MaxAreaSize = 48,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 4000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.60m
+                        },
+                        new
+                        {
+                            Id = 66,
+                            CycleSpeedMultiplier = 1.25m,
+                            Level = 6,
+                            MaxAreaSize = 52,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 6250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.75m
+                        },
+                        new
+                        {
+                            Id = 67,
+                            CycleSpeedMultiplier = 1.30m,
+                            Level = 7,
+                            MaxAreaSize = 56,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 9000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.90m
+                        },
+                        new
+                        {
+                            Id = 68,
+                            CycleSpeedMultiplier = 1.35m,
+                            Level = 8,
+                            MaxAreaSize = 60,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 12250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.05m
+                        },
+                        new
+                        {
+                            Id = 69,
+                            CycleSpeedMultiplier = 1.40m,
+                            Level = 9,
+                            MaxAreaSize = 64,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 16000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.20m
+                        },
+                        new
+                        {
+                            Id = 70,
+                            CycleSpeedMultiplier = 1.45m,
+                            Level = 10,
+                            MaxAreaSize = 68,
+                            ProductionKindId = 7,
+                            UpgradeCoins = 20250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.35m
+                        },
+                        new
+                        {
+                            Id = 71,
+                            CycleSpeedMultiplier = 1.00m,
+                            Level = 1,
+                            MaxAreaSize = 1024,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 0L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.00m
+                        },
+                        new
+                        {
+                            Id = 72,
+                            CycleSpeedMultiplier = 1.05m,
+                            Level = 2,
+                            MaxAreaSize = 1280,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.15m
+                        },
+                        new
+                        {
+                            Id = 73,
+                            CycleSpeedMultiplier = 1.10m,
+                            Level = 3,
+                            MaxAreaSize = 1536,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 1000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.30m
+                        },
+                        new
+                        {
+                            Id = 74,
+                            CycleSpeedMultiplier = 1.15m,
+                            Level = 4,
+                            MaxAreaSize = 1792,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 2250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.45m
+                        },
+                        new
+                        {
+                            Id = 75,
+                            CycleSpeedMultiplier = 1.20m,
+                            Level = 5,
+                            MaxAreaSize = 2048,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 4000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.60m
+                        },
+                        new
+                        {
+                            Id = 76,
+                            CycleSpeedMultiplier = 1.25m,
+                            Level = 6,
+                            MaxAreaSize = 2304,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 6250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.75m
+                        },
+                        new
+                        {
+                            Id = 77,
+                            CycleSpeedMultiplier = 1.30m,
+                            Level = 7,
+                            MaxAreaSize = 2560,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 9000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 1.90m
+                        },
+                        new
+                        {
+                            Id = 78,
+                            CycleSpeedMultiplier = 1.35m,
+                            Level = 8,
+                            MaxAreaSize = 2816,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 12250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.05m
+                        },
+                        new
+                        {
+                            Id = 79,
+                            CycleSpeedMultiplier = 1.40m,
+                            Level = 9,
+                            MaxAreaSize = 3072,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 16000L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.20m
+                        },
+                        new
+                        {
+                            Id = 80,
+                            CycleSpeedMultiplier = 1.45m,
+                            Level = 10,
+                            MaxAreaSize = 3328,
+                            ProductionKindId = 8,
+                            UpgradeCoins = 20250L,
+                            UpkeepReduction = 0m,
+                            YieldMultiplier = 2.35m
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKindLevelItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionKindLevelId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ProductionKindLevelId", "Role", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("production_kind_level_items", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Accrued")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateTime>("AnchorAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("ConfiguredRatePerHour")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("LastSettledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("NextSettleAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ProductionStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RateSource")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("ResourceCategory")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("NextSettleAt");
+
+                    b.HasIndex("ProductionStructureId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("production_lines", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionLineInput", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Accrued")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("AmountPerHour")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionLineId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ProductionLineId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("production_line_inputs", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionModifier", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ActiveFrom")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ActiveUntil")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Effect")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("ScopeRefId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("TargetCategory")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int?>("TargetItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TargetProductionKindId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetItemBlueprintId");
+
+                    b.HasIndex("TargetProductionKindId");
+
+                    b.HasIndex("Enabled", "Scope");
+
+                    b.ToTable("production_modifiers", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Province", b =>
                 {
                     b.Property<int>("Id")
@@ -7653,6 +9190,188 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("menu_variable_bindings", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.WeatherRoll", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("ClimateZoneId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Day")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("DayEndsAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("DayStartsAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("RollValue")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<DateTime>("RolledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("WeatherTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeatherTypeId");
+
+                    b.HasIndex("ClimateZoneId", "Day")
+                        .IsUnique();
+
+                    b.ToTable("weather_rolls", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.WeatherType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("weather_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Good for crops and flowers.",
+                            Name = "Rain"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Hits fisheries hard and farms a little.",
+                            Name = "Storm"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Hits farms, flower farms and pastures.",
+                            Name = "Drought"
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.WeatherTypeEffect", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Effect")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("WeatherTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeatherTypeId", "Category")
+                        .IsUnique();
+
+                    b.ToTable("weather_type_effects", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Category = "Crops",
+                            Effect = "Multiply",
+                            Value = 1.1m,
+                            WeatherTypeId = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Category = "Flowers",
+                            Effect = "Multiply",
+                            Value = 1.1m,
+                            WeatherTypeId = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Category = "Fish",
+                            Effect = "Multiply",
+                            Value = 0.5m,
+                            WeatherTypeId = 2
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Category = "Crops",
+                            Effect = "Multiply",
+                            Value = 0.9m,
+                            WeatherTypeId = 2
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Category = "Crops",
+                            Effect = "Multiply",
+                            Value = 0.6m,
+                            WeatherTypeId = 3
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Category = "Flowers",
+                            Effect = "Multiply",
+                            Value = 0.7m,
+                            WeatherTypeId = 3
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Category = "Animals",
+                            Effect = "Multiply",
+                            Value = 0.8m,
+                            WeatherTypeId = 3
+                        });
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
                 {
                     b.Property<int>("Id")
@@ -8532,6 +10251,44 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("BannerDesign");
 
                     b.Navigation("DefaultForTown");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ClimateZoneTown", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ClimateZone", "ClimateZone")
+                        .WithMany("Towns")
+                        .HasForeignKey("ClimateZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Town", "Town")
+                        .WithMany()
+                        .HasForeignKey("TownId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClimateZone");
+
+                    b.Navigation("Town");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ClimateZoneWeather", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ClimateZone", "ClimateZone")
+                        .WithMany("WeatherOdds")
+                        .HasForeignKey("ClimateZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.WeatherType", "WeatherType")
+                        .WithMany()
+                        .HasForeignKey("WeatherTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ClimateZone");
+
+                    b.Navigation("WeatherType");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ConditionBinding", b =>
@@ -9618,6 +11375,102 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Holder");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionCycleRecord", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ProductionLine", "ProductionLine")
+                        .WithMany()
+                        .HasForeignKey("ProductionLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductionLine");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKindLevel", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ProductionKind", "ProductionKind")
+                        .WithMany("Levels")
+                        .HasForeignKey("ProductionKindId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductionKind");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKindLevelItem", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionKindLevel", "ProductionKindLevel")
+                        .WithMany("Items")
+                        .HasForeignKey("ProductionKindLevelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ProductionKindLevel");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionLine", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionStructure", "ProductionStructure")
+                        .WithMany("Lines")
+                        .HasForeignKey("ProductionStructureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ProductionStructure");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionLineInput", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionLine", "ProductionLine")
+                        .WithMany("Inputs")
+                        .HasForeignKey("ProductionLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ProductionLine");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionModifier", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "TargetItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("TargetItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionKind", "TargetProductionKind")
+                        .WithMany()
+                        .HasForeignKey("TargetProductionKindId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("TargetItemBlueprint");
+
+                    b.Navigation("TargetProductionKind");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Province", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Kingdom", "Kingdom")
@@ -10285,6 +12138,35 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("MenuSectionTemplate");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.WeatherRoll", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ClimateZone", "ClimateZone")
+                        .WithMany("Rolls")
+                        .HasForeignKey("ClimateZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.WeatherType", "WeatherType")
+                        .WithMany()
+                        .HasForeignKey("WeatherTypeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ClimateZone");
+
+                    b.Navigation("WeatherType");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.WeatherTypeEffect", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.WeatherType", "WeatherType")
+                        .WithMany("Effects")
+                        .HasForeignKey("WeatherTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WeatherType");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.FormConfiguration", "FormConfiguration")
@@ -10509,7 +12391,14 @@ namespace knkwebapi_v2.Migrations
                         .HasForeignKey("PreferredWarehouseId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("knkwebapi_v2.Models.ProductionKind", "ProductionKind")
+                        .WithMany()
+                        .HasForeignKey("ProductionKindId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("PreferredWarehouse");
+
+                    b.Navigation("ProductionKind");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Warehouse", b =>
@@ -10543,6 +12432,15 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ChildCategories");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ClimateZone", b =>
+                {
+                    b.Navigation("Rolls");
+
+                    b.Navigation("Towns");
+
+                    b.Navigation("WeatherOdds");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.CurrencyTransaction", b =>
@@ -10708,6 +12606,21 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Grants");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKind", b =>
+                {
+                    b.Navigation("Levels");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKindLevel", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionLine", b =>
+                {
+                    b.Navigation("Inputs");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Province", b =>
                 {
                     b.Navigation("Towns");
@@ -10779,6 +12692,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("FlaggedStructures");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.WeatherType", b =>
+                {
+                    b.Navigation("Effects");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
                 {
                     b.Navigation("Steps");
@@ -10815,6 +12733,11 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.GateStructure", b =>
                 {
                     b.Navigation("GateDoors");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionStructure", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,0 +1,80 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "58480cfc-fc4d-53d3-9167-89d4cfc890dc",
+  "entityTypeName": "ProductionLine",
+  "name": "ProductionLine - Default (seed v1)",
+  "description": "One output of a production structure with its configured rate (production engine P3, #86). Inputs are edited in the web app's line editor or through the API; status and accrual are kept by the engine.",
+  "steps": [
+    {
+      "stepGuid": "8a4cee6b-587e-5113-bd38-8bbeb279a9e3",
+      "stepName": "Output",
+      "description": "What the structure produces and how fast.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "f0af0879-2c8d-5bef-8487-6c0c7b0932dc",
+          "fieldName": "ProductionStructureId",
+          "label": "Production structure",
+          "description": "The structure that produces it. A line can't move to another structure.",
+          "fieldType": "Object",
+          "objectType": "ProductionStructure",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "39ee2138-7456-5ac5-b5e2-4e12f8ee4a1d",
+          "fieldName": "ItemBlueprintId",
+          "label": "Output",
+          "description": "The item blueprint produced. One line per blueprint and structure.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "17ebac63-f0e1-5fcb-8e97-e9c78f889905",
+          "fieldName": "RateSource",
+          "label": "Rate source",
+          "description": "Configured in P3; Derived and Hybrid come with the yield areas (P4).",
+          "fieldType": "Enum",
+          "enumType": "ProductionRateSource",
+          "defaultValue": "Configured",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Configured\"]}"
+        },
+        {
+          "fieldGuid": "205b3e2e-7e52-5fba-a350-cea5774a1666",
+          "fieldName": "ConfiguredRatePerHour",
+          "label": "Rate per hour",
+          "description": "Units per hour at level multiplier 1 with all workers present (fractions accrue, e.g. 0.3). 0 to 1,000,000.",
+          "fieldType": "Decimal",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6c389e3c-0003-5635-8e54-d485f4e8ae66",
+          "fieldName": "ResourceCategory",
+          "label": "Resource category",
+          "description": "Overrides the kind's category for weather and category modifiers. Empty = the kind's.",
+          "fieldType": "Enum",
+          "enumType": "ResourceCategory",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Crops\", \"Wood\", \"Stone\", \"Ore\", \"Fish\", \"Flowers\", \"Animals\"]}"
+        },
+        {
+          "fieldGuid": "8620e23a-ce49-5d2e-bfae-216b79b05c60",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off pauses the line: no output and no accrual until it is switched on again.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

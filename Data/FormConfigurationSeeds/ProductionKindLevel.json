@@ -1,0 +1,137 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "834f525c-8245-5d5a-8d9c-7de692353afd",
+  "entityTypeName": "ProductionKindLevel",
+  "name": "ProductionKindLevel - Default (seed v1)",
+  "description": "One of a production kind's ten levels (production engine P3, #86; G8). Edit only: the levels come with their kind. Unlocks and upgrade costs (blueprint lists) are edited in the web app's level editor or through the API.",
+  "steps": [
+    {
+      "stepGuid": "705740ab-a41b-5069-9c84-808bf8aac023",
+      "stepName": "Level",
+      "description": "The yield multiplier and cycle speed of this level.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e1b7ebd1-1b63-52dc-adf5-01b905683f44",
+          "fieldName": "ProductionKindId",
+          "label": "Production kind",
+          "description": "The kind this level belongs to.",
+          "fieldType": "Object",
+          "objectType": "ProductionKind",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "ea82c188-0949-5095-985d-6dabf9ab8e57",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "1-10.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "de36081c-e284-5e9c-9d1c-371d2d7943dc",
+          "fieldName": "YieldMultiplier",
+          "label": "Yield multiplier",
+          "description": "Multiplies every output at this level (the level modifier in the cycle trace). 1 = no change; 0 to 100.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2fd41a0a-a67f-5afc-8204-6b33e86ae54d",
+          "fieldName": "CycleSpeedMultiplier",
+          "label": "Cycle speed",
+          "description": "Cycles per base cycle: 2 settles twice as often (the rate per hour does not change). Above 0, at most 100.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8adb3c0d-5839-5fdd-a60a-588f4bb399c0",
+          "fieldName": "MaxAreaSize",
+          "label": "Max area size",
+          "description": "The area cap the yield areas check (P4): blocks for fields and pastures, volume for exclusive volumes, radius for shared radius. 0 or empty = no cap.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "83b60562-3a85-5546-861e-ad53b6850b10",
+      "stepName": "Caps",
+      "description": "Written to the structure when it reaches this level. Empty or 0 = leave the structure as it is.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "04629016-f5bd-5c5b-b672-54001f465f1c",
+          "fieldName": "OutputMaxUnits",
+          "label": "Output storage cap",
+          "description": "The Output storage's max units (raw units × storage weight).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b3d8efc4-b3b6-5c37-b791-99f40f4c86bf",
+          "fieldName": "UnitsPerSlot",
+          "label": "Units per slot",
+          "description": "The Output storage's units per container slot (later phase).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9436e929-dc35-5f42-9539-67b44c425876",
+          "fieldName": "TransportCapacity",
+          "label": "Transport capacity",
+          "description": "Raw units one transport of the structure carries (P5).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5135bab7-967d-5439-b256-b97b62e637ca",
+          "fieldName": "UpkeepReduction",
+          "label": "Upkeep reduction",
+          "description": "0 to 1. Has no effect in V1 (upkeep comes later).",
+          "fieldType": "Decimal",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "33efe51f-1cb5-53d6-8b45-cf7e8d0586c4",
+      "stepName": "Upgrade",
+      "description": "The cost of upgrading a structure to this level (paid in POST api/ProductionStructures/{id}/upgrade).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "d36f9a67-a855-504a-b0ce-be9c2b4a79bd",
+          "fieldName": "UpgradeCoins",
+          "label": "Upgrade coins",
+          "description": "Coins the payer spends to reach this level. 0 = free.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c8cdfd79-65bc-5672-a387-8939213c1bea",
+          "fieldName": "UpgradeDurationMinutes",
+          "label": "Upgrade duration",
+          "description": "Minutes of construction. Stored, not enforced in V1 (admins upgrade at once).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "9a6234af-7d08-5793-9613-65a2dbe015c1",
+  "entityTypeName": "ClimateZone",
+  "name": "ClimateZone - Default (seed v1)",
+  "description": "A climate zone (production engine P3, #86; PRODUCTION_KINDS § 4.4): its weather is rolled once per in-game day and stored. Weather odds and the towns in the zone are edited in the web app's zone editor or through the API.",
+  "steps": [
+    {
+      "stepGuid": "c9856050-d7a6-5185-8819-b4e41d4b4251",
+      "stepName": "Zone",
+      "description": "Name the zone.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a7d45406-dabc-5105-b9df-ac7fa9f73e7e",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "e.g. \"Mountains\" or \"Coast\". Unique.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "352b567c-fa43-5443-afd5-6527c12451cb",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Which towns it is for and what its weather is like.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ecdd2aa5-e4f2-5b34-a8f8-66811e5ef095",
+          "fieldName": "IsDefault",
+          "label": "Default zone",
+          "description": "The zone of every town without one. Exactly one zone is the default: making this one the default unsets the old one.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

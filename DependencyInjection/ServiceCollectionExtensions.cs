@@ -258,6 +258,24 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Production.StructureBaseWriter>();
             services.AddScoped<knkwebapi_v2.Services.Production.IWarehouseService, knkwebapi_v2.Services.Production.WarehouseService>();
             services.AddScoped<knkwebapi_v2.Services.Production.IProductionStructureService, knkwebapi_v2.Services.Production.ProductionStructureService>();
+
+            // Production engine P3 (PandiO/knk-workspace#86): kind catalogue and levels, lines, modifiers, weather, the
+            // settle engine and its sweep (gated by Production:Enabled; admin CRUD always available). Modifier sources and
+            // base-rate providers are extension points: P4 adds Derived/Hybrid providers, later phases more sources.
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionWeatherService, knkwebapi_v2.Services.Production.ProductionWeatherService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionModifierSource, knkwebapi_v2.Services.Production.LevelModifierSource>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionModifierSource, knkwebapi_v2.Services.Production.WeatherModifierSource>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionModifierSource, knkwebapi_v2.Services.Production.StoredModifierSource>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionBaseRateProvider, knkwebapi_v2.Services.Production.ConfiguredBaseRateProvider>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionEngine, knkwebapi_v2.Services.Production.ProductionEngine>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionKindService, knkwebapi_v2.Services.Production.ProductionKindService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionKindLevelService, knkwebapi_v2.Services.Production.ProductionKindLevelService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionLineService, knkwebapi_v2.Services.Production.ProductionLineService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionModifierService, knkwebapi_v2.Services.Production.ProductionModifierService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IClimateZoneService, knkwebapi_v2.Services.Production.ClimateZoneService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IWeatherTypeService, knkwebapi_v2.Services.Production.WeatherTypeService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionCycleRecordService, knkwebapi_v2.Services.Production.ProductionCycleRecordService>();
+            services.AddHostedService<knkwebapi_v2.Services.Production.ProductionSweepService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
             services.AddScoped<IBannerDesignService, BannerDesignService>();

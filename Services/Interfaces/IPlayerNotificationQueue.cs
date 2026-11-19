@@ -33,6 +33,11 @@ public interface IPlayerNotificationQueue
     long EnqueueLootboxWorldChanged(LootboxWorldChangedNotificationDto change) =>
         Enqueue(0, null, "", PlayerNotificationTypes.LootboxWorldChanged, null);
 
+    /// <summary>A production line blocked or resumed (UserId 0), see PlayerNotificationTypes.ProductionLineStatusChanged.
+    /// The default only queues the type.</summary>
+    long EnqueueProductionLineStatus(ProductionLineStatusNotificationDto change) =>
+        Enqueue(0, null, "", PlayerNotificationTypes.ProductionLineStatusChanged, null);
+
     /// <summary>A DiscoveryReset notification (domain discovery): one of the user's discoveries
     /// was reset, so the plugin re-syncs its known set. The default only queues the type.</summary>
     /// <returns>The new notification's id.</returns>

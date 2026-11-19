@@ -1,17 +1,17 @@
 {
   "format": "knk-displayconfig/1",
-  "configurationGuid": "fbe58688-6237-5a97-801b-fa824278163c",
+  "configurationGuid": "70a9e418-2892-5dfe-ace7-f82edab60809",
   "entityTypeName": "Storage",
-  "name": "Storage - Default (seed v1)",
-  "description": "A storage: holder, capacity and lock, and the stock it holds (stock core P1, #97).",
+  "name": "Storage - Default (seed v2)",
+  "description": "A storage: holder, capacity and lock, and the stock it holds (stock core P1, #97). v2 (#819): the Stock section shows the blueprint name.",
   "sections": [
     {
-      "sectionGuid": "a6f005af-a343-5e81-826c-160dcbd1f599",
+      "sectionGuid": "cc66d14a-11ed-57fb-ac32-79640609fb1b",
       "sectionName": "General information",
       "description": "The storage and its holder.",
       "fields": [
         {
-          "fieldGuid": "5c380f3b-4b22-5e12-90d5-b4523061907a",
+          "fieldGuid": "93a010dc-5847-5ced-a128-93e5102ca7c3",
           "fieldName": "Name",
           "label": "Name",
           "description": "The storage's name.",
@@ -19,21 +19,21 @@
           "isEditableInDisplay": true
         },
         {
-          "fieldGuid": "eff7ceda-3a47-5a31-b05d-f0a739834fbb",
+          "fieldGuid": "eac0a0bb-3716-54e0-9ba8-964de841c006",
           "fieldName": "Kind",
           "label": "Kind",
           "description": "Domain, Player, Clan, Transit or Virtual (system).",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "3ee37f10-cd9d-5cb1-8332-916470175ff0",
+          "fieldGuid": "36c2b514-a174-53ec-a487-e022fe17e083",
           "fieldName": "Purpose",
           "label": "Purpose",
           "description": "What it is for.",
           "fieldType": "Enum"
         },
         {
-          "fieldGuid": "e8b12c38-5672-55ce-a825-4c0eebe4356c",
+          "fieldGuid": "890b8cd4-ebd5-5c52-aca3-304eb026eb1f",
           "fieldName": "Name",
           "relatedEntityPropertyName": "Domain",
           "relatedEntityTypeName": "Domain",
@@ -42,7 +42,7 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "4b3a166f-3b55-546f-a9b3-c8262941ee7c",
+          "fieldGuid": "7ad96ca3-91da-5971-b101-1d3bb71ed650",
           "fieldName": "Username",
           "relatedEntityPropertyName": "User",
           "relatedEntityTypeName": "User",
@@ -51,7 +51,7 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "8c55eea3-98a7-5426-9241-ed11af24b4ae",
+          "fieldGuid": "48de51a7-1d07-5ea3-90f1-99fe83555c17",
           "fieldName": "Name",
           "relatedEntityPropertyName": "Clan",
           "relatedEntityTypeName": "Clan",
@@ -60,7 +60,7 @@
           "fieldType": "String"
         },
         {
-          "fieldGuid": "dbd52764-047f-532c-b121-7796dbfdcae5",
+          "fieldGuid": "6b3ba9a4-b1ec-59c7-b112-9f605b2d075e",
           "fieldName": "SystemKey",
           "label": "System key",
           "description": "Set on the five system storages (SYS_PRODUCTION, …).",
@@ -69,54 +69,54 @@
       ]
     },
     {
-      "sectionGuid": "56c1f46f-a6d8-5290-9f2a-57989a706976",
+      "sectionGuid": "c0429259-ceb1-5095-9b80-3d228d08635d",
       "sectionName": "Capacity and lock",
       "description": "Raw units × storage weight; totals are kept by the ledger.",
       "fields": [
         {
-          "fieldGuid": "6a6d730f-dd7d-51fb-9919-8be1ded03794",
+          "fieldGuid": "85b3c757-7728-536a-ad9d-370b09d62994",
           "fieldName": "TotalUnits",
           "label": "Total units",
           "description": "Σ stock amounts plus unique items.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "fadb65ae-5d30-58e0-928c-95c67c914bdb",
+          "fieldGuid": "f6dd76f6-b722-57db-ad34-f7d104ccd376",
           "fieldName": "DistinctItems",
           "label": "Distinct items",
           "description": "Stock lines plus unique items.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "1e729528-7300-5c87-a7d4-f325763b8237",
+          "fieldGuid": "eac68382-222d-5f6e-b92e-6ae542b22619",
           "fieldName": "MaxUnits",
           "label": "Max units",
           "description": "Empty = no cap.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "26f22c9f-6b34-55a0-8bf0-807a756a4701",
+          "fieldGuid": "c169fc07-98a7-592c-a299-473c525610a4",
           "fieldName": "MaxDistinct",
           "label": "Max distinct items",
           "description": "Empty = no cap.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "0e727ea1-2105-53f4-818c-000e1784a72d",
+          "fieldGuid": "f72a13e5-3d8c-5770-b29a-e47c5138e12e",
           "fieldName": "UnitsPerSlot",
           "label": "Units per container slot",
           "description": "For bound containers (later phase).",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "a85299e3-9d67-5c34-8bda-a130bec82a54",
+          "fieldGuid": "80d86d2b-bc24-508f-8097-1a4d014b5510",
           "fieldName": "LockedUntil",
           "label": "Locked until",
           "description": "Nothing moves in or out until then.",
           "fieldType": "DateTime"
         },
         {
-          "fieldGuid": "a0902d68-2ec1-5ce9-b6c6-77d7103262b7",
+          "fieldGuid": "d8f99fbb-1444-51e1-b940-5f94fa5780ca",
           "fieldName": "LockReason",
           "label": "Lock reason",
           "description": "Why it is locked.",
@@ -125,7 +125,7 @@
       ]
     },
     {
-      "sectionGuid": "13ab6215-2b7d-59b4-9f54-283726754cbb",
+      "sectionGuid": "6a6f47e4-ebb6-5212-b85a-55ff9ca10083",
       "sectionName": "Stock",
       "description": "Fungible stock, one line per item blueprint.",
       "relatedEntityPropertyName": "Lines",
@@ -133,14 +133,16 @@
       "isCollection": true,
       "fields": [
         {
-          "fieldGuid": "588dd59f-6039-529a-a4c4-51e2269e824f",
-          "fieldName": "ItemBlueprintId",
-          "label": "Blueprint id",
+          "fieldGuid": "fe4c042f-508c-59fd-b531-c86bb8ab34a3",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Blueprint",
           "description": "The item blueprint.",
-          "fieldType": "Integer"
+          "fieldType": "String"
         },
         {
-          "fieldGuid": "1a068c63-f4aa-5bb2-83ff-847a4ce03874",
+          "fieldGuid": "4afd5ec7-b027-5a99-a1c7-ea4ad4778652",
           "fieldName": "Amount",
           "label": "Amount",
           "description": "Raw units.",
@@ -149,7 +151,7 @@
       ]
     },
     {
-      "sectionGuid": "c091cd85-b26b-5389-a721-d93e424a6dbf",
+      "sectionGuid": "b704174f-ec80-5a69-a00e-4eb2550291e4",
       "sectionName": "Unique items",
       "description": "Items with their own identity (enchanted rewards and the like).",
       "relatedEntityPropertyName": "Units",
@@ -157,14 +159,14 @@
       "isCollection": true,
       "fields": [
         {
-          "fieldGuid": "d7f10ffa-67ec-59fe-adf9-78ce08a40f29",
+          "fieldGuid": "ccc6f7ad-5ad8-5c31-a376-a62963c78e2e",
           "fieldName": "ItemInstanceId",
           "label": "Item instance id",
           "description": "The unique item.",
           "fieldType": "Integer"
         },
         {
-          "fieldGuid": "7b663c19-63ea-5308-8f26-5bd2a0aaf9ed",
+          "fieldGuid": "8a97b440-791e-5702-a490-1d3dd2a2c3b5",
           "fieldName": "AddedAt",
           "label": "Added",
           "description": "When it came into this storage.",

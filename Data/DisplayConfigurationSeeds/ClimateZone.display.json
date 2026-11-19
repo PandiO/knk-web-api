@@ -1,0 +1,124 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "cce499c6-1263-5567-9a51-30c6d18a8baa",
+  "entityTypeName": "ClimateZone",
+  "name": "ClimateZone - Default (seed v1)",
+  "description": "A climate zone: its weather odds, towns and the latest daily rolls (production engine P3, #86).",
+  "sections": [
+    {
+      "sectionGuid": "82cf0a71-3679-5294-aa96-1aed53e679aa",
+      "sectionName": "General information",
+      "description": "The zone.",
+      "fields": [
+        {
+          "fieldGuid": "cb27c90a-4c14-597d-afed-153221361e18",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The zone's name.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "1fa6a108-308b-50ff-9bba-d3f8a375b385",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Its towns and weather.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "fa5685eb-8a87-5568-b03f-0837a7fd8ddf",
+          "fieldName": "IsDefault",
+          "label": "Default zone",
+          "description": "The zone of every town without one.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "2fc6ccce-248e-52ba-b75e-bf987e5b1d13",
+      "sectionName": "Weather odds",
+      "description": "The chance of each weather type per in-game day; the rest is clear.",
+      "relatedEntityPropertyName": "WeatherOdds",
+      "relatedEntityTypeName": "ClimateZoneWeather",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "587d12d5-02e6-5b49-90cc-e8588165ab01",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "WeatherType",
+          "relatedEntityTypeName": "WeatherType",
+          "label": "Weather",
+          "description": "The weather type.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "99a4547b-4e82-59a0-8bbd-b261c6aeaa7a",
+          "fieldName": "ChancePercent",
+          "label": "Chance %",
+          "description": "Percent per day.",
+          "fieldType": "Decimal"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "10e46a81-2b12-59e9-8429-3693da5c9e8b",
+      "sectionName": "Towns",
+      "description": "Towns in this zone.",
+      "relatedEntityPropertyName": "Towns",
+      "relatedEntityTypeName": "ClimateZoneTown",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "869867ca-0982-5204-ac58-434025807ee1",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Town",
+          "relatedEntityTypeName": "Town",
+          "label": "Town",
+          "description": "The town.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "a1b8fb04-6936-5d1b-ab57-e41a4323fc63",
+      "sectionName": "Recent weather",
+      "description": "The latest stored daily rolls, newest first.",
+      "relatedEntityPropertyName": "Rolls",
+      "relatedEntityTypeName": "WeatherRoll",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "ebfa0b70-ca97-525b-a423-5819cb9acc58",
+          "fieldName": "Day",
+          "label": "Day",
+          "description": "In-game day number.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c9bf83ad-2ccf-5624-a2fc-e58de2cc49c5",
+          "fieldName": "DayStartsAt",
+          "label": "Starts",
+          "description": "When the day starts (UTC).",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "a860022a-2a62-56ea-aef2-8e1b689307b4",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "WeatherType",
+          "relatedEntityTypeName": "WeatherType",
+          "label": "Weather",
+          "description": "The weather rolled; empty = clear.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "8f7a92d2-83a4-51eb-af37-6884d87f27da",
+          "fieldName": "RollValue",
+          "label": "Roll",
+          "description": "The roll in [0, 100).",
+          "fieldType": "Decimal"
+        }
+      ]
+    }
+  ]
+}

@@ -58,6 +58,7 @@ namespace knkwebapi_v2.Services
         public const string SysFees = "SYS_FEES";
         public const string SysAdmin = "SYS_ADMIN";
         public const string SysMerge = "SYS_MERGE";
+        public const string SysProduction = "SYS_PRODUCTION";
 
         // ===== Reason codes =====
 
@@ -125,6 +126,9 @@ namespace knkwebapi_v2.Services
         /// </summary>
         public const string MergeCarryover = "MERGE_CARRYOVER";
 
+        /// <summary>Coins paid for a production structure's level upgrade (P3, PRODUCTION_KINDS § 5), to SYS_PRODUCTION.</summary>
+        public const string ProductionUpgrade = "PRODUCTION_UPGRADE";
+
         public static string MergeForfeitKey(int secondaryUserId) => $"merge:{secondaryUserId}";
 
         public static string MergeCarryoverKey(int secondaryUserId) => $"merge-carry:{secondaryUserId}";
@@ -150,6 +154,7 @@ namespace knkwebapi_v2.Services
             [AdminSet] = new(AdminSet, CurrencyTransactionKind.AdminAdjust, CurrencyReasonDirection.Set, SysAdmin, "Staff set balance"),
             [Reversal] = new(Reversal, CurrencyTransactionKind.Reversal, CurrencyReasonDirection.Special, null, "Reversal"),
             [MergeForfeit] = new(MergeForfeit, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Debit, SysMerge, "Balance forfeited on account merge"),
+            [ProductionUpgrade] = new(ProductionUpgrade, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysProduction, "Production structure upgrade"),
             [MergeCarryover] = new(MergeCarryover, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Credit, SysMerge, "Higher balance kept on account merge"),
         };
 
