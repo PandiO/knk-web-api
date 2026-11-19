@@ -203,6 +203,13 @@ schematic references wait for the schematic pipeline (#614) and are not on the f
 configuration uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1") and uuid5(that, "step:"/"field:" + name); the
 in-place additions uuid5(the configuration GUID, "step:Siege weapons" or "<step>/<Field>").
 
+**SiegeWeaponSpot world task (PandiO/knk-workspace#799, 2026-11-19):** an in-place change of `SiegeWeaponSpot` seed v1
+(no new `configurationGuid`: the seed is not on `main` yet, so no database has imported it outside `next` test runs).
+`MinX` on "Place and size" gets the world task `SiegeWeaponSpot` (`settingsJson` `worldTask`), which the game server
+handles only with `siege.weapons.enabled`; the completed task fills the six bounds, `Facing`, `SizeClass` and
+`WgRegionId` and shows warnings. The step and field descriptions say so. A database that imported the seed earlier
+gets the task by turning on "Requires in-game action" on Min X with type `SiegeWeaponSpot` in the form designer.
+
 | Seed | Configuration | Import after |
 |---|---|---|
 | `SiegeAmmoType` | SiegeAmmoType - Default (seed v1) | — |

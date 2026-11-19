@@ -235,4 +235,27 @@ public class FormConfigurationSeedFilesTests
             Assert.All(imported, kv => Assert.True(kv.Value.IsDefault, $"{kv.Key} was not made default on an empty database"));
         }
     }
+
+    /// <summary>
+    /// PandiO/knk-workspace#799: the weapon spot form starts the SiegeWeaponSpot world task from its Min X field (a field
+    /// without a plugin handler of its own, so the plugin never runs another task for it with siege.weapons off), and
+    /// the type is one the import knows, so the seed imports without a warning.
+    /// </summary>
+    [Fact]
+    public void SiegeWeaponSpotSeed_StartsTheSpotWorldTaskFromMinX()
+    {
+        using var file = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(SeedDirectory(), "SiegeWeaponSpot.json")));
+        var fields = file.RootElement.GetProperty("steps").EnumerateArray()
+            .SelectMany(step => step.GetProperty("fields").EnumerateArray()).ToList();
+        var withTask = fields.Where(f => f.TryGetProperty("settingsJson", out var settings)
+            && settings.GetString()!.Contains("worldTask")).ToList();
+
+        var minX = Assert.Single(withTask);
+        Assert.Equal("MinX", minX.GetProperty("fieldName").GetString());
+        using var settings = System.Text.Json.JsonDocument.Parse(minX.GetProperty("settingsJson").GetString()!);
+        var worldTask = settings.RootElement.GetProperty("worldTask");
+        Assert.True(worldTask.GetProperty("enabled").GetBoolean());
+        Assert.Equal(WorldTaskTypes.SiegeWeaponSpot, worldTask.GetProperty("taskType").GetString());
+        Assert.Contains(WorldTaskTypes.SiegeWeaponSpot, FormConfigurationPortabilityService.KnownWorldTaskTypes);
+    }
 }

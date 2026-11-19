@@ -55,7 +55,7 @@
     {
       "stepGuid": "e57fe647-21ca-539f-83b9-f13c38b9ca59",
       "stepName": "Place and size",
-      "description": "Where the weapon goes. In game, /knk weaponspot <scenario> <team> <name> creates a spot from a WorldEdit selection or WorldGuard region (with siege.weapons.enabled). Here you can type or correct them; with bounds the size class is worked out from them and the facing.",
+      "description": "Where the weapon goes. Send the task on Min X to Minecraft and claim it in game: it reads a WorldEdit selection or WorldGuard region, takes the facing from your look direction (you can change it) and fills the bounds, facing, size class and region here (needs siege.weapons.enabled on the game server). You can also type or correct them; with bounds the size class is worked out from them and the facing on save.",
       "isManyToManyRelationship": false,
       "fields": [
         {
@@ -93,10 +93,11 @@
           "fieldGuid": "f59a8d8c-c576-5412-8d41-0fd8cdc2fd8d",
           "fieldName": "MinX",
           "label": "Min X",
-          "description": "Selection corner; give all six coordinates or none.",
+          "description": "Selection corner; give all six coordinates or none. Capturing in Minecraft fills all six, the facing, the size class and the region, and shows warnings for a floor that isn't solid or a volume that isn't clear.",
           "fieldType": "Integer",
           "isRequired": false,
-          "isReadOnly": false
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"SiegeWeaponSpot\"}}"
         },
         {
           "fieldGuid": "67b21159-5263-500f-a301-56f7cd43b8ac",
