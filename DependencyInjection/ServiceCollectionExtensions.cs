@@ -235,6 +235,14 @@ namespace knkwebapi_v2.DependencyInjection
             // Off-road navigation phase 5.1 (PandiO/knk-workspace#708): landmarks.
             services.AddScoped<ILandmarkRepository, LandmarkRepository>();
             services.AddScoped<ILandmarkService, LandmarkService>();
+            // Territory V1 (PandiO/knk-workspace#326)
+            services.AddScoped<knkwebapi_v2.Services.Territory.IProductionSettingsReader, knkwebapi_v2.Services.Territory.ProductionSettingsReader>();
+            services.AddScoped<ITerritoryHolderRules, TerritoryHolderRules>();
+            services.AddScoped<IKingdomService, KingdomService>();
+            services.AddScoped<IProvinceService, ProvinceService>();
+            services.AddScoped<ICrownLandService, CrownLandService>();
+            services.AddScoped<ITerritoryConflictService, TerritoryConflictService>();
+            services.AddScoped<ITerritoryService, TerritoryService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
             services.AddScoped<IBannerDesignService, BannerDesignService>();

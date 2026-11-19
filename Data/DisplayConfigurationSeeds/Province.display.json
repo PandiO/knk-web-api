@@ -1,0 +1,59 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "23ebdb1f-e46b-570f-b46d-3c0bc6b91658",
+  "entityTypeName": "Province",
+  "name": "Province - Default (seed v1)",
+  "description": "A province: its kingdom and towns (territory V1, #326).",
+  "sections": [
+    {
+      "sectionGuid": "c35428a4-2862-5c8c-8fa7-259e32206700",
+      "sectionName": "General information",
+      "description": "The province.",
+      "fields": [
+        {
+          "fieldGuid": "b278ccd8-4703-5d0d-ae55-3e7158db333c",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique within its kingdom.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "acffe683-fdd7-5083-b5a0-2ca8fe02bfaf",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "For admins.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "45360451-3143-595e-a784-5c64c83f6d0c",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Kingdom",
+          "relatedEntityTypeName": "Kingdom",
+          "label": "Kingdom",
+          "description": "The kingdom the province is part of.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "acbc2818-5adf-5b2e-919e-b759fb74aadb",
+      "sectionName": "Towns",
+      "description": "Towns in the province; they are in the same kingdom.",
+      "relatedEntityPropertyName": "Towns",
+      "relatedEntityTypeName": "Town",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showViewButton\":true}",
+      "fields": [
+        {
+          "fieldGuid": "fe00a2de-2126-5345-ae3e-eb0183e286dd",
+          "fieldName": "Name",
+          "label": "Town",
+          "description": "The town's name.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

@@ -23,6 +23,25 @@ public class Town : Domain
         .ThenBy(s => s.Id)
         .ToList();
 
+    // ===== Territory (territory DESIGN § 1-2, PandiO/knk-workspace#326) =====
+
+    /// <summary>The kingdom this town belongs to; null for an independent town.</summary>
+    [NavigationPair(nameof(Kingdom))]
+    [RelatedEntityField(typeof(Kingdom))]
+    public int? KingdomId { get; set; }
+    [RelatedEntityField(typeof(Kingdom))]
+    public Kingdom? Kingdom { get; set; }
+
+    /// <summary>Optional province; it must be in the same kingdom (checked on save).</summary>
+    [NavigationPair(nameof(Province))]
+    [RelatedEntityField(typeof(Province))]
+    public int? ProvinceId { get; set; }
+    [RelatedEntityField(typeof(Province))]
+    public Province? Province { get; set; }
+
+    /// <summary>Admin-set power (V1). Range = base range + power × factor (game settings, G11).</summary>
+    public int Power { get; set; }
+
     [NavigationPair(nameof(Districts))]
     [RelatedEntityField(typeof(District))]
     public ICollection<District> Districts { get; set; } = new Collection<District>();

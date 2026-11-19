@@ -1,0 +1,36 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "77e12341-db00-5ab7-b89b-c64a4b3b1ab6",
+  "entityTypeName": "Kingdom",
+  "name": "Kingdom - Default (seed v1)",
+  "description": "A kingdom, the territory holder above towns: it has no region of its own; its territory is its towns' territories plus its crown land (territory V1, #326).",
+  "steps": [
+    {
+      "stepGuid": "314e5551-1cc4-59fb-a6de-f709708af7f0",
+      "stepName": "Kingdom",
+      "description": "Name the kingdom. Towns, provinces and crown land pick their kingdom on their own forms.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "13c615cb-fa61-5bed-a431-92b2a0c05118",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique, at most 100 characters. Shown on the map and in the web app.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1cecc968-b11c-54a4-892f-6b98a1a915fd",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Optional, a line or two for admins.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

@@ -76,6 +76,20 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("districtId")]
         public int DistrictId { get; set; }
 
+        // Territory (PandiO/knk-workspace#326), read only here: loyalty is set through
+        // PUT api/Territory/structures/{id}/loyalty, the flag by the game server's territory report.
+        [JsonPropertyName("loyaltyTownId")]
+        public int? LoyaltyTownId { get; set; }
+
+        [JsonPropertyName("territoryFlag")]
+        public string? TerritoryFlag { get; set; }
+
+        [JsonPropertyName("territoryFlaggedAt")]
+        public DateTime? TerritoryFlaggedAt { get; set; }
+
+        [JsonPropertyName("territoryConflictId")]
+        public int? TerritoryConflictId { get; set; }
+
         [JsonPropertyName("houseNumber")]
         public int HouseNumber { get; set; }
 

@@ -89,6 +89,11 @@ public class GameSettingsService : IGameSettingsService
         {
             existing.ChatTokenSettingsJson = GameSettingsJson.Serialize(dto.ChatTokens);
         }
+        if (dto.Production != null)
+        {
+            // #326: Production:Enabled and the territory ranges (validated in ValidateUpdate).
+            existing.ProductionSettingsJson = GameSettingsJson.Serialize(Territory.ProductionSettings.Normalize(dto.Production));
+        }
         existing.UpdatedAt = DateTime.UtcNow;
 
         var saved = await _repository.UpsertAsync(existing);
@@ -333,6 +338,11 @@ public class GameSettingsService : IGameSettingsService
             {
                 throw new ArgumentException($"chatTokens.statCooldownSeconds must be between 0 (no cooldown) and {ChatTokenSettingsDto.MaxCooldownSeconds}");
             }
+        }
+
+        if (dto.Production != null)
+        {
+            Territory.ProductionSettings.Normalize(dto.Production);
         }
 
         if (dto.Motd != null)

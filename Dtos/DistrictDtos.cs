@@ -72,6 +72,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("townId")]
         public int TownId { get; set; }
 
+        // Territory (PandiO/knk-workspace#326): a capital's range is multiplied (G11). Null on create/update = not on
+        // this form, left as it is.
+        [JsonPropertyName("isCapital")]
+        public bool? IsCapital { get; set; }
+
         [JsonPropertyName("streetIds")]
         public List<int> StreetIds { get; set; } = new();
 

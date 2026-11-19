@@ -1,0 +1,146 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "5fe4b7fc-7100-55ab-8cd0-1d05dc92a31e",
+  "entityTypeName": "TerritoryConflict",
+  "name": "TerritoryConflict - Default (seed v1)",
+  "description": "A contested zone: two holders of equal rank whose territories overlap. Admins resolve it (territory V1, #326).",
+  "sections": [
+    {
+      "sectionGuid": "fcd4d8e2-6b74-5487-9584-9358ba5b5506",
+      "sectionName": "Conflict",
+      "description": "Where and between whom.",
+      "fields": [
+        {
+          "fieldGuid": "f84addb4-a37a-5bd2-88d3-ee22a1eae982",
+          "fieldName": "World",
+          "label": "World",
+          "description": "The world of the contested area.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "de6af4ad-ac3f-5d40-ba9a-6028df8fc1a7",
+          "fieldName": "HolderAKind",
+          "label": "Holder A kind",
+          "description": "Town, or Kingdom for crown land.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "fda4a675-e8e2-53aa-8f70-152674c3f3cb",
+          "fieldName": "HolderAId",
+          "label": "Holder A id",
+          "description": "The first holder's id (the page and the API show its name).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "ef74b7a3-2904-51e5-a939-03fdff47b0f5",
+          "fieldName": "HolderBKind",
+          "label": "Holder B kind",
+          "description": "Town, or Kingdom for crown land.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "effb1af5-e2e9-5843-a003-7b423b4e459c",
+          "fieldName": "HolderBId",
+          "label": "Holder B id",
+          "description": "The second holder's id.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "25b0e696-6427-5197-886b-376eb19a00d8",
+          "fieldName": "ChunkCount",
+          "label": "Chunks",
+          "description": "How many chunks the contested area covers.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "85e98540-6360-570e-aea4-c6784d899139",
+          "fieldName": "StillOverlapping",
+          "label": "Still overlapping",
+          "description": "Off once the last report no longer shows the overlap.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "b0c3be85-4fd7-5884-bde0-c2cb0c303e7f",
+          "fieldName": "DetectedAt",
+          "label": "Detected",
+          "description": "When the game server first reported it.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "5dc74f15-f9b5-59af-b896-2f43a108041d",
+          "fieldName": "LastReportedAt",
+          "label": "Last reported",
+          "description": "The game server's latest report of it.",
+          "fieldType": "DateTime"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "6a132efa-7334-5d92-a457-1ad5b2f1529c",
+      "sectionName": "Resolution",
+      "description": "Admins resolve a conflict; nothing is resolved automatically.",
+      "fields": [
+        {
+          "fieldGuid": "dde6f91b-99bc-5f81-b7d7-3be03523a110",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Open or Resolved.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "1ae19eee-7345-5473-bddf-45bf6f0bc8a1",
+          "fieldName": "Resolution",
+          "label": "Resolution",
+          "description": "Awarded or Redrawn.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "3b460e13-081f-5510-9502-5700e66fa008",
+          "fieldName": "AwardedHolderKind",
+          "label": "Awarded to (kind)",
+          "description": "For an award: Town or Kingdom.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "cacb8a07-ba2c-5807-a348-838d06a22ece",
+          "fieldName": "AwardedHolderId",
+          "label": "Awarded to (id)",
+          "description": "For an award: the holder the area belongs to now.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "a4bd4194-d299-5c32-935e-077b592becf8",
+          "fieldName": "ResolvedAt",
+          "label": "Resolved",
+          "description": "When it was resolved.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "159dccec-a35e-51b9-8dbf-8c2087c61193",
+          "fieldName": "ResolutionNote",
+          "label": "Note",
+          "description": "The admin's note.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "1880a672-54ca-55a7-87bc-a57ec64c7131",
+      "sectionName": "Flagged structures",
+      "description": "Structures standing in the contested area. They keep their town and are flagged.",
+      "relatedEntityPropertyName": "FlaggedStructures",
+      "relatedEntityTypeName": "Structure",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showViewButton\":true}",
+      "fields": [
+        {
+          "fieldGuid": "05721758-0099-5edd-a817-a0daee231b3b",
+          "fieldName": "Name",
+          "label": "Structure",
+          "description": "The structure's name.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

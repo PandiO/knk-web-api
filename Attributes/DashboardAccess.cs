@@ -255,6 +255,17 @@ namespace knkwebapi_v2.Attributes
             Type("Landmark", DashboardArea.World, World,
                 Del<ILandmarkService>((s, id) => s.DeleteAsync(id)), Lists<ILandmarkService, LandmarkListDto>((s, q) => s.SearchAsync(q)),
                 writeNode: StaffPermissions.LandmarkManage),
+            // Territory V1 (#326): holders, crown land and the conflicts the game server reports.
+            Type("Kingdom", DashboardArea.World, World,
+                Del<IKingdomService>((s, id) => s.DeleteAsync(id)), Lists<IKingdomService, KingdomListDto>((s, q) => s.SearchAsync(q))),
+            Type("Province", DashboardArea.World, World,
+                Del<IProvinceService>((s, id) => s.DeleteAsync(id)), Lists<IProvinceService, ProvinceListDto>((s, q) => s.SearchAsync(q))),
+            Type("CrownLand", DashboardArea.World, World,
+                Del<ICrownLandService>((s, id) => s.DeleteAsync(id)), Lists<ICrownLandService, CrownLandListDto>((s, q) => s.SearchAsync(q))),
+            Type("TerritoryConflict", DashboardArea.World, World,
+                Del<ITerritoryConflictService>((s, id) => s.DeleteAsync(id)),
+                Lists<ITerritoryConflictService, TerritoryConflictListDto>((s, q) => s.SearchAsync(q)),
+                changesNeedContent: false),
             ViewOnly("GateBlockSnapshot", DashboardArea.World, World),
             ViewOnly("GateOpenedBlockSnapshot", DashboardArea.World, World),
 

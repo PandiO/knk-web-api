@@ -304,3 +304,9 @@ What the importer (`DisplayConfigurationPortabilityService`) settled where §3/�
 **KNG-254 (2026-10-23):** `Structure` and `GateStructure` seed v2 add a last "Sub-regions" collection section (the
 domain's `SubRegions`, Edit opens a sub-region's form). New `configurationGuid` and name per §5, so each imports next to
 its v1; make it the default by hand.
+
+**Territory V1 display seeds v1 (PandiO/knk-workspace#326, 2026-11-19):** `Kingdom` (towns, provinces and crown land
+as collections), `Province` (kingdom, towns), `CrownLand` (kingdom, range, anchor region) and `TerritoryConflict`
+(holders, area size, resolution, flagged structures). GUIDs: configuration uuid5(URL namespace,
+"knk-displayconfig:<Entity>:seed-v1"), sections uuid5(that, "section:" + name), fields uuid5(that,
+"field:<section>:<field>").

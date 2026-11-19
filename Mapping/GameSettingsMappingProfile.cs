@@ -2,6 +2,7 @@ using AutoMapper;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Territory;
 
 namespace knkwebapi_v2.Mapping;
 
@@ -23,6 +24,8 @@ public class GameSettingsMappingProfile : Profile
             .ForMember(dest => dest.Hub,
                 opt => opt.MapFrom(src => GameSettingsJson.Deserialize<HubSettingsDto>(src.HubSettingsJson) ?? new HubSettingsDto()))
             .ForMember(dest => dest.ChatTokens,
-                opt => opt.MapFrom(src => GameSettingsJson.Deserialize<ChatTokenSettingsDto>(src.ChatTokenSettingsJson) ?? new ChatTokenSettingsDto()));
+                opt => opt.MapFrom(src => GameSettingsJson.Deserialize<ChatTokenSettingsDto>(src.ChatTokenSettingsJson) ?? new ChatTokenSettingsDto()))
+            .ForMember(dest => dest.Production,
+                opt => opt.MapFrom(src => ProductionSettings.Read(src)));
     }
 }
