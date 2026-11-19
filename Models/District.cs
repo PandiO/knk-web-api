@@ -12,6 +12,8 @@ public class District : Domain
     public int TownId { get; set; }
     [RelatedEntityField(typeof(Town))]
     public Town Town { get; set; } = null!;
+    /// <summary>A capital district's territory range is multiplied by the capital multiplier (territory DESIGN § 1, G11).</summary>
+    public bool IsCapital { get; set; }
     [RelatedEntityField(typeof(Street))]
     public ICollection<Street> Streets { get; set; } = new Collection<Street>();
     [RelatedEntityField(typeof(Structure))]

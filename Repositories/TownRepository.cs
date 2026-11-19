@@ -30,6 +30,8 @@ namespace knkwebapi_v2.Repositories
                 .AsNoTracking()
                 .Include(t => t.Location)
                 .Include(t => t.SubRegions)
+                .Include(t => t.Kingdom)
+                .Include(t => t.Province)
                 .Include(t => t.Districts).ThenInclude(d => d.Streets)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(t => t.Id == id);

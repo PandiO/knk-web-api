@@ -57,6 +57,13 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.DistrictId, src => src.MapFrom(src => src.DistrictId))
                 .ForMember(dest => dest.District, src => src.Ignore())
                 .ForMember(dest => dest.HouseNumber, src => src.MapFrom(src => src.HouseNumber))
+                // Territory (#326): never written through the structure form.
+                .ForMember(dest => dest.LoyaltyTownId, src => src.Ignore())
+                .ForMember(dest => dest.LoyaltyTown, src => src.Ignore())
+                .ForMember(dest => dest.TerritoryFlag, src => src.Ignore())
+                .ForMember(dest => dest.TerritoryFlaggedAt, src => src.Ignore())
+                .ForMember(dest => dest.TerritoryConflictId, src => src.Ignore())
+                .ForMember(dest => dest.TerritoryConflict, src => src.Ignore())
                 .IgnoreTeleportSettings()
                 .IgnoreNavigationDefault();
 

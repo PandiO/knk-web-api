@@ -1,0 +1,86 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "87337236-c08c-5986-96d1-197888fa3a14",
+  "entityTypeName": "Kingdom",
+  "name": "Kingdom - Default (seed v1)",
+  "description": "A kingdom: its towns, provinces and crown land (territory V1, #326).",
+  "sections": [
+    {
+      "sectionGuid": "386c5cab-843f-59a9-9b0f-97ebe06a62e0",
+      "sectionName": "General information",
+      "description": "The kingdom.",
+      "fields": [
+        {
+          "fieldGuid": "73645b73-3418-5c71-85e6-77a7dd6be6f1",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "55884331-f5d3-5d79-a3b9-705d98f9f244",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "For admins.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        }
+      ]
+    },
+    {
+      "sectionGuid": "120e6c50-5e5a-566d-a608-15b0cade38ca",
+      "sectionName": "Towns",
+      "description": "Towns that belong to the kingdom. A town picks its kingdom on the town form.",
+      "relatedEntityPropertyName": "Towns",
+      "relatedEntityTypeName": "Town",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showViewButton\":true}",
+      "fields": [
+        {
+          "fieldGuid": "6d6751e6-de9a-5b97-a127-4737427cd571",
+          "fieldName": "Name",
+          "label": "Town",
+          "description": "The town's name.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "428cdf5f-68c3-5672-bb2a-07a705d8f415",
+      "sectionName": "Provinces",
+      "description": "The kingdom's provinces (optional).",
+      "relatedEntityPropertyName": "Provinces",
+      "relatedEntityTypeName": "Province",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showViewButton\":true}",
+      "fields": [
+        {
+          "fieldGuid": "aaa93541-3af7-55d3-a40e-31da644a0a83",
+          "fieldName": "Name",
+          "label": "Province",
+          "description": "The province's name.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "e837d8cc-0d4b-5da2-8d74-60e627154875",
+      "sectionName": "Crown land",
+      "description": "Land held by the kingdom itself; it outranks town territory.",
+      "relatedEntityPropertyName": "CrownLands",
+      "relatedEntityTypeName": "CrownLand",
+      "isCollection": true,
+      "actionButtonsConfigJson": "{\"showViewButton\":true}",
+      "fields": [
+        {
+          "fieldGuid": "9c21e85e-5aca-5efe-96d6-304bdbaa9a1c",
+          "fieldName": "Name",
+          "label": "Crown land",
+          "description": "The crown land's name.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

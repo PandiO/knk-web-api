@@ -54,6 +54,12 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Location, src => src.Ignore())
                 .ForMember(dest => dest.Streets, src => src.Ignore())
                 .ForMember(dest => dest.Districts, src => src.Ignore())
+                // Territory (#326): applied by TownService (null power = not on this form).
+                .ForMember(dest => dest.Power, src => src.Ignore())
+                .ForMember(dest => dest.KingdomId, src => src.Ignore())
+                .ForMember(dest => dest.Kingdom, src => src.Ignore())
+                .ForMember(dest => dest.ProvinceId, src => src.Ignore())
+                .ForMember(dest => dest.Province, src => src.Ignore())
                 .IgnoreTeleportSettings()
                 .IgnoreNavigationDefault();
 

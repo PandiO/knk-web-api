@@ -82,6 +82,32 @@ public static class RealtimeEntityChangeMap
             nameof(User.LastEmailChangeAt), nameof(User.TokenVersion), nameof(User.LastSalaryPayoutAt),
             nameof(User.EmailVerified), nameof(User.EmailVerifiedAt), nameof(User.Email),
         },
+        // #326: the territory flag is written by the game server's own report.
+        [typeof(Structure)] = StructureTerritoryReportProperties,
+        [typeof(GateStructure)] = StructureTerritoryReportProperties,
+    };
+
+    private static HashSet<string> StructureTerritoryReportProperties => new(StringComparer.Ordinal)
+    {
+        nameof(Structure.TerritoryFlag), nameof(Structure.TerritoryFlaggedAt), nameof(Structure.TerritoryConflictId),
+    };
+
+    // ---- Territory V1 (#326): what changes an input of the game server's territory cache ----
+
+    private static readonly HashSet<string> TownTerritoryProperties = new(StringComparer.Ordinal)
+    {
+        nameof(Town.Power), nameof(Town.KingdomId), nameof(Town.ProvinceId), nameof(Town.Name),
+    };
+
+    private static readonly HashSet<string> DistrictTerritoryProperties = new(StringComparer.Ordinal)
+    {
+        nameof(District.IsCapital), nameof(District.TownId), nameof(Domain.WgRegionId), nameof(Domain.WorldName), nameof(Domain.Name),
+    };
+
+    private static readonly HashSet<string> ConflictResolutionProperties = new(StringComparer.Ordinal)
+    {
+        nameof(TerritoryConflict.Status), nameof(TerritoryConflict.Resolution), nameof(TerritoryConflict.AwardedHolderKind),
+        nameof(TerritoryConflict.AwardedHolderId),
     };
 
     private static readonly HashSet<string> DomainAccessProperties = new(StringComparer.Ordinal)
@@ -148,7 +174,8 @@ public static class RealtimeEntityChangeMap
         EntityTypes.ContainsKey(entityType) || ConfigEntities.ContainsKey(entityType)
         || typeof(Domain).IsAssignableFrom(entityType) || entityType == typeof(GameSettings)
         || entityType == typeof(RoadTile) || entityType == typeof(RoadNode) || entityType == typeof(RoadEdge)
-        || entityType == typeof(RoadProfile);
+        || entityType == typeof(RoadProfile)
+        || entityType == typeof(Kingdom) || entityType == typeof(Province) || entityType == typeof(TerritoryConflict);
 
     /// <summary>The events for one save, in a stable order (entity events first, then configuration events), without duplicates.</summary>
     public static IReadOnlyList<RealtimeEvent> Map(IEnumerable<RealtimeEntityChange> changes, int? actorUserId = null)
@@ -160,6 +187,7 @@ public static class RealtimeEntityChangeMap
         {
             AddEntityChanged(change, entityEvents);
             AddConfigEvents(change, other);
+            AddTerritoryEvents(change, other);
         }
 
         var result = new List<RealtimeEvent>();
@@ -274,6 +302,25 @@ public static class RealtimeEntityChangeMap
         if (type == typeof(RoadProfile))
         {
             into.Add((ConfigEventTypes.RoadNetworkChanged, new RoadNetworkChangedPayload(null)));
+        }
+    }
+
+    /// <summary>#326: <c>TerritoryChanged</c> when an input of the territory chunk cache changed (see the event's doc).</summary>
+    private static void AddTerritoryEvents(RealtimeEntityChange change, List<(string Type, object Payload)> into)
+    {
+        var type = change.EntityType;
+        var whole = change.State != RealtimeEntityState.Modified;
+        bool changed =
+            type == typeof(Kingdom) || type == typeof(Province) || type == typeof(CrownLand) || type == typeof(DomainSubRegion)
+            || (type == typeof(Town) && (whole || Touches(change, TownTerritoryProperties)))
+            || (type == typeof(District) && (whole || Touches(change, DistrictTerritoryProperties)))
+            || (type == typeof(TerritoryConflict)
+                && (change.State == RealtimeEntityState.Deleted || Touches(change, ConflictResolutionProperties)))
+            || (type == typeof(GameSettings) && (change.State != RealtimeEntityState.Modified
+                || change.Modified.Contains(nameof(GameSettings.ProductionSettingsJson))));
+        if (changed)
+        {
+            into.Add((ConfigEventTypes.TerritoryChanged, new ConfigChangedPayload(ConfigScopes.Territory)));
         }
     }
 

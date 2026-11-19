@@ -52,6 +52,10 @@ public class GameSettingsReadDto
     [JsonPropertyName("chatTokens")]
     public ChatTokenSettingsDto ChatTokens { get; set; } = new();
 
+    /// <summary>Production settings (PandiO/knk-workspace#326): <c>Production:Enabled</c> and the territory ranges; never null on read.</summary>
+    [JsonPropertyName("production")]
+    public ProductionSettingsDto Production { get; set; } = new();
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
@@ -97,6 +101,10 @@ public class GameSettingsUpdateDto
     /// <summary>Null = keep the current chat-token limits.</summary>
     [JsonPropertyName("chatTokens")]
     public ChatTokenSettingsDto? ChatTokens { get; set; }
+
+    /// <summary>Null = keep the current production settings.</summary>
+    [JsonPropertyName("production")]
+    public ProductionSettingsDto? Production { get; set; }
 }
 
 /// <summary>

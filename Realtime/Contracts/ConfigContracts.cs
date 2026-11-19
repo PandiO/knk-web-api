@@ -44,6 +44,16 @@ public static class ConfigEventTypes
     /// <summary>The owner's telemetry settings (enhanced targets, test runs) changed. Payload <see cref="ConfigChangedPayload"/>.</summary>
     public const string TelemetryConfigChanged = "TelemetryConfigChanged";
 
+    /// <summary>
+    /// Territory V1 (PandiO/knk-workspace#326): an input of the game server's territory chunk cache changed: a town's
+    /// power, kingdom or province; a district (added, removed, region, town or capital flag); a sub-region; crown land;
+    /// a kingdom or province; a conflict's resolution (awards); or the production settings (ranges, flag). Payload
+    /// <see cref="ConfigChangedPayload"/> with scope <see cref="ConfigScopes.Territory"/>. The server re-reads
+    /// <c>GET api/Territory/inputs</c> (debounced) and rebuilds when its <c>version</c> changed. The conflict rows the
+    /// server's own report writes send nothing, so a rebuild never triggers itself.
+    /// </summary>
+    public const string TerritoryChanged = "TerritoryChanged";
+
     // ---- game server → API (hub invocation) ----
 
     /// <summary>
@@ -98,4 +108,5 @@ public static class ConfigScopes
     public const string Defaults = "defaults";
     public const string EnhancedTargets = "enhancedTargets";
     public const string TestRuns = "testRuns";
+    public const string Territory = "territory";
 }

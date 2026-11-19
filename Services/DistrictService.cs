@@ -165,6 +165,8 @@ namespace knkwebapi_v2.Services
             district.WorldName = worldName;
             DomainTeleportSettings.Apply(district, districtDto);
             DomainNavigationDefaults.Apply(district, districtDto);
+            // #326: null = not on this form.
+            if (districtDto.IsCapital.HasValue) district.IsCapital = districtDto.IsCapital.Value;
 
             // Handle Street relationships
             if (districtDto.StreetIds != null && districtDto.StreetIds.Any())
@@ -260,6 +262,7 @@ namespace knkwebapi_v2.Services
             existing.WorldName = worldName;
             DomainTeleportSettings.Apply(existing, districtDto);
             DomainNavigationDefaults.Apply(existing, districtDto);
+            if (districtDto.IsCapital.HasValue) existing.IsCapital = districtDto.IsCapital.Value;
 
             // Handle Street relationships
             if (districtDto.StreetIds != null)
