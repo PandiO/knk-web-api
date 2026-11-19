@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "b83d921f-e65a-5f37-8e9b-cdf1e03dcfb6",
+  "configurationGuid": "24b774e7-23bf-5d8e-8631-fc0be4b4b4b6",
   "entityTypeName": "Structure",
-  "name": "Structure - Default (seed v2)",
-  "description": "A building in a district (a house, shop or keep): its address, WorldGuard region, entry rules, spawn point and /warp settings. Gates are structures too but have their own form.",
+  "name": "Structure - Default (seed v3)",
+  "description": "A building in a district (a house, shop or keep) or a rural structure in a town's territory: its address or town, WorldGuard region, entry rules, spawn point and /warp settings. Gates are structures too but have their own form.",
   "steps": [
     {
-      "stepGuid": "1544d839-b64c-5472-9344-6e8e3bbfa241",
+      "stepGuid": "29d7b3ee-056a-5794-9d7e-d534ca6064ad",
       "stepName": "General information",
       "description": "Name the structure. The name is what players see in game and what /warp and /navigate look for.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "ba62a3c7-6e52-5dd1-b9a1-bab98b1e9e78",
+          "fieldGuid": "38154712-90ba-5188-9fc7-a318423a3c66",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in game (entry messages, /warp, /navigate, menus) and in the web app. Commands find the structure by this name, so keep it short.",
@@ -21,7 +21,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "c042d307-dc9f-5b28-bb07-0ff20552745e",
+          "fieldGuid": "860eae9e-9086-58b1-a696-ca9a54950e90",
           "fieldName": "Description",
           "label": "Description",
           "description": "A line or two about the structure for admins and the web app, e.g. who lives or trades there.",
@@ -32,50 +32,60 @@
       ]
     },
     {
-      "stepGuid": "4153f720-617d-5e77-bc42-62f17a033261",
-      "stepName": "Address",
-      "description": "Where the structure stands: its district, street and house number. Pick the district first; create the street here if it doesn't exist yet.",
+      "stepGuid": "8821b048-e944-5e3b-b8dd-6926b9dbb5b9",
+      "stepName": "Placement",
+      "description": "Where the structure stands: in a district (pick the district, street and house number; create the street here if it doesn't exist yet) or rural, in its town's territory (pick only the town). Fill exactly one of District and Town.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "01766189-0515-5f98-9d71-f952e4502ccb",
+          "fieldGuid": "d0d9b467-0f40-5e5e-97e2-dbbc890354b8",
           "fieldName": "DistrictId",
           "label": "District",
-          "description": "The district the structure belongs to. Its region is the parent of the structure's region, and the structure is in the district's world.",
+          "description": "For a structure in a district: its region is the parent of the structure's region, and the structure is in the district's world. Leave empty for a rural structure.",
           "fieldType": "Object",
           "objectType": "District",
-          "isRequired": true,
+          "isRequired": false,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "b6d026c5-5fa6-550d-a174-a469e50407f9",
+          "fieldGuid": "9a992f4f-d4b1-553a-944d-4b32c8d79fbc",
           "fieldName": "StreetId",
           "label": "Street",
-          "description": "The street the structure's address is on. Use Create New if the street isn't there yet; the street form only asks for its name and districts.",
+          "description": "Only with a district: the street of the address. Use Create New if the street isn't there yet; the street form only asks for its name and districts.",
           "fieldType": "Object",
           "objectType": "Street",
-          "isRequired": true,
+          "isRequired": false,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "c9ef322d-e973-5030-9862-6f8c63931487",
+          "fieldGuid": "5e9da061-cef5-5fc8-9b8d-6362286a70ee",
           "fieldName": "HouseNumber",
           "label": "House number",
-          "description": "The structure's number on its street, shown in its address. Must be 1 or higher.",
+          "description": "Only with a district: the structure's number on its street, 1 or higher. A rural structure has none.",
           "fieldType": "Integer",
-          "isRequired": true,
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2cc909a9-e4b9-5d26-ae9d-df932492a82a",
+          "fieldName": "TownId",
+          "label": "Town (rural)",
+          "description": "For a rural structure: the town it belongs to. Leave empty when a district is set.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isRequired": false,
           "isReadOnly": false
         }
       ]
     },
     {
-      "stepGuid": "1c3024cc-3e49-5adc-bd24-cc75b8bb67d3",
+      "stepGuid": "1d3560fa-a24d-55a4-b92b-a3efbfaa9e9e",
       "stepName": "Region and access",
       "description": "The WorldGuard region around the structure, and whether players may walk in and out of it. Use Send to Minecraft and select the area in game with WorldEdit, or type the name of an existing region.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "dbd43cd5-a2a2-55b1-92e1-353743723f3f",
+          "fieldGuid": "d95449e2-6a79-5981-b14f-f782496d553d",
           "fieldName": "WgRegionId",
           "label": "Region",
           "description": "The structure's WorldGuard region; it should lie inside the district's region. A region drawn here is renamed domain_<id> and set up under the district's region when the structure is saved.",
@@ -85,7 +95,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"RegionClaim\"}}"
         },
         {
-          "fieldGuid": "f8c14e67-059b-570d-9b78-cea69a02785a",
+          "fieldGuid": "59eb0d74-fe08-53a9-9c34-05a340a0660c",
           "fieldName": "AllowEntry",
           "label": "Allow entry",
           "description": "Players may walk into the structure's region. Off keeps everyone out except staff with the region bypass permission, and the structure is no /warp destination.",
@@ -95,7 +105,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "75708b40-ceb6-582b-839d-2de31584d5ff",
+          "fieldGuid": "73578483-8359-5ca8-8edf-d0145d40ac85",
           "fieldName": "AllowExit",
           "label": "Allow exit",
           "description": "Players inside the structure's region may walk out of it. Off keeps them inside until staff let them out.",
@@ -105,7 +115,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "1244f8d0-9194-51be-9c92-47140ae71a79",
+          "fieldGuid": "e048d4a2-a2f4-56b3-8718-7d5fdd5c08be",
           "fieldName": "RoadAccessOverride",
           "label": "Entry rule on roads",
           "description": "Applies: when players may not enter, /navigate routes avoid the roads through this region. Ignored: routes may use them, e.g. for a house whose region overlaps the public street; the rule still holds at the border and for teleports. Empty = the setting for all structures on the Roads page.",
@@ -118,13 +128,13 @@
       ]
     },
     {
-      "stepGuid": "86610f37-5489-5b58-afbf-efc7fdc8e015",
+      "stepGuid": "975ba66d-a98c-5300-8d76-a122db3c0878",
       "stepName": "Spawn point",
       "description": "Where players arrive when they teleport or navigate to the structure. Stand on the spot in game, facing the way arrivals should look, and use Send to Minecraft.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "c9e71eae-aab6-50bc-84f0-a0dc5c818fe7",
+          "fieldGuid": "865ecfb9-174b-571f-aeea-82e4ed7bc0e8",
           "fieldName": "Location",
           "label": "Spawn point",
           "description": "Optional. The arrival point for /warp and /navigate <structure> spawn; without it /navigate leads to the structure's region and /warp is not possible.",
@@ -135,7 +145,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "1bb69ada-c0e1-50a4-a299-5f0c98962c83",
+          "fieldGuid": "476df2aa-7c5f-5749-b6bd-58a2ff3282b6",
           "fieldName": "NavigationDefaultOverride",
           "label": "Navigate to",
           "description": "Where /navigate <structure> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the structure's region. Leave empty to follow the setting for all structures on the Roads page.",
@@ -148,13 +158,13 @@
       ]
     },
     {
-      "stepGuid": "0b51a763-e831-5d1b-8b18-c33d9735e098",
+      "stepGuid": "833773c5-7150-5600-92d0-60ddf6c36c89",
       "stepName": "Warp destination",
       "description": "Whether players can /warp to the structure's spawn point, and what that requires. Requirements are checked in this order: title, premium tier, discovery, price.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "4e6ab008-b181-5445-aa57-67c0b27b6055",
+          "fieldGuid": "1fa57cf6-edac-5c8a-ad1b-0797614bd8ca",
           "fieldName": "TeleportEnabled",
           "label": "Warp destination",
           "description": "Lists the structure in /warp and the teleport menu. It also needs a spawn point and Allow entry on. Off keeps the settings below but doesn't use them.",
@@ -164,7 +174,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "4fb1205a-9e01-5a81-a62d-2365b6679cac",
+          "fieldGuid": "0d54e895-ef57-5058-9218-ea8ed7a63255",
           "fieldName": "TeleportPriceGems",
           "label": "Price (gems)",
           "description": "Gems charged per warp, after the warmup. 0 = free. A permission group's /warp price setting can replace or multiply it.",
@@ -174,7 +184,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "96c5d48c-d5ee-52ca-9787-d6ef992e4814",
+          "fieldGuid": "2e60f5dd-e901-5c0f-9925-7ae1db3ef623",
           "fieldName": "TeleportMinTitleBracket",
           "label": "Minimum title",
           "description": "Players whose experience is below this title can't warp here. Empty = no title needed.",
@@ -184,7 +194,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "abc1e523-2b12-5acc-be5a-67bdb05c8d3c",
+          "fieldGuid": "8e1a9488-54d6-548b-8844-9cfb4b1a9edb",
           "fieldName": "TeleportMinPremiumGroup",
           "label": "Minimum premium tier",
           "description": "Only players whose highest premium tier has at least this group's weight may warp here. Only premium-tier groups can be picked. Empty = everyone.",
@@ -195,7 +205,7 @@
           "settingsJson": "{\"pickerFilters\": {\"isPremiumTier\": \"true\"}}"
         },
         {
-          "fieldGuid": "043c5063-f867-58b5-bcb6-8d2337e60ebf",
+          "fieldGuid": "ea2a99e8-8107-5e0c-8afa-4f78eb40396c",
           "fieldName": "TeleportRequiresDiscovery",
           "label": "Discovered structures only",
           "description": "Only players who have discovered the structure (entered its region at least once) may warp here.",
@@ -207,13 +217,13 @@
       ]
     },
     {
-      "stepGuid": "92d80e19-a942-5ed1-be04-64fc5caa726c",
+      "stepGuid": "23b5d379-57ed-5fbc-ba5e-118b35e2d278",
       "stepName": "Sub-regions",
       "description": "Extra WorldGuard regions of the structure besides its main region, for a shape one region can't hold (a round tower next to a square house). The structure is the union of its regions. Save the structure first (Submit), then Edit it to add sub-regions; each one is drawn in game and saved when its form completes.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "9c1e8ddc-5be0-5e7e-aca2-a9ad5eea5a4e",
+          "fieldGuid": "0d68ad7b-9f4d-5251-bbc3-63afd24e1b4f",
           "fieldName": "SubRegions",
           "label": "Sub-regions",
           "description": "One entry per extra region. Each gets the main region's flags, owners, members and priority from the game server, so set flags on the main region only. A removed sub-region's WorldGuard region is deleted 14 days later.",

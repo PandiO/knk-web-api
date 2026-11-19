@@ -1,0 +1,183 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "8ffa6ec0-9908-5662-9bfb-eff087fcdc0a",
+  "entityTypeName": "ProductionArea",
+  "name": "ProductionArea - Default (seed v1)",
+  "description": "A production structure's yield area (yield areas P4, #138): its shape and bounding box. The area model comes from the structure's kind; the level caps the size (blocks, volume or radius). A polygon's points are captured in game or sent through the API.",
+  "steps": [
+    {
+      "stepGuid": "8084a5d9-15e1-53d0-99b7-4d0bd9d29443",
+      "stepName": "Area",
+      "description": "Which structure the area belongs to and what it is called.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "1a933590-8968-5da0-aedd-4e5a1b43492d",
+          "fieldName": "ProductionStructureId",
+          "label": "Production structure",
+          "description": "The structure it belongs to (it must have a production kind). An area can't move to another structure.",
+          "fieldType": "Object",
+          "objectType": "ProductionStructure",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4afcf806-fd06-5c28-a9bc-28441ca58aba",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique per structure, e.g. North field.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "20471f6e-0253-5366-8e3e-4b12fefd9ba0",
+          "fieldName": "Shape",
+          "label": "Shape",
+          "description": "Region (a WorldGuard region and its bounds), Cuboid (two corners), Polygon (points and a height range) or Radius (around a centre).",
+          "fieldType": "Enum",
+          "enumType": "ProductionAreaShape",
+          "defaultValue": "Radius",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Region\", \"Cuboid\", \"Polygon\", \"Radius\"]}"
+        },
+        {
+          "fieldGuid": "3fc0e34a-5069-5600-8909-deee279a4d0e",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "Empty = the structure's world.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9b1a0f3e-0957-51da-a3f4-dee6a54f7040",
+          "fieldName": "Exclusive",
+          "label": "Exclusive",
+          "description": "Exclusive areas may not overlap other exclusive areas of the same model. Empty = the kind's setting.",
+          "fieldType": "Boolean",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b33baacb-4b75-5a7c-90cd-2bebc519329a",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off = never surveyed and no yield from it.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "9971449e-d1a6-5bf6-9f4b-1ffacc5c9d56",
+      "stepName": "Shape",
+      "description": "Fill the fields of the chosen shape.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b2725b81-6567-5ffb-b8f1-240eacb1f974",
+          "fieldName": "WgRegionId",
+          "label": "WorldGuard region",
+          "description": "Shape Region: the region's id.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ff0e6b31-da76-5745-8816-c611515333af",
+          "fieldName": "Radius",
+          "label": "Radius",
+          "description": "Shape Radius: the radius in blocks (1 to 1024).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5f40d400-c115-563d-923d-29816649ec0a",
+          "fieldName": "CenterX",
+          "label": "Centre X",
+          "description": "Shape Radius: empty = the structure's Location.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "96013f6c-d34f-5df1-9c88-c6cb6a7de9a2",
+          "fieldName": "CenterY",
+          "label": "Centre Y",
+          "description": "Shape Radius: empty = the structure's Location.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a09bf885-d0f0-56c0-b5d9-712aee079468",
+          "fieldName": "CenterZ",
+          "label": "Centre Z",
+          "description": "Shape Radius: empty = the structure's Location.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "994f5072-902b-5250-b417-c0740dd41fa6",
+          "fieldName": "MinX",
+          "label": "Min X",
+          "description": "Region and Cuboid: a corner (any order).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2f7f6523-77bb-57be-bbaf-8ef5b7dbecc2",
+          "fieldName": "MinY",
+          "label": "Min Y",
+          "description": "Region, Cuboid and Polygon: the bottom; Radius: empty = the world's bottom.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9d54cac4-7f47-506c-885f-ae39a20cb2de",
+          "fieldName": "MinZ",
+          "label": "Min Z",
+          "description": "Region and Cuboid: a corner.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "782a8ce9-d735-57df-93fb-9003aa813654",
+          "fieldName": "MaxX",
+          "label": "Max X",
+          "description": "Region and Cuboid: the opposite corner.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9e7ea8bb-f978-5798-8492-d3f74558a842",
+          "fieldName": "MaxY",
+          "label": "Max Y",
+          "description": "Region, Cuboid and Polygon: the top; Radius: empty = the world's top.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8d29e139-dc03-5355-ba18-fe4738a8310e",
+          "fieldName": "MaxZ",
+          "label": "Max Z",
+          "description": "Region and Cuboid: the opposite corner.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

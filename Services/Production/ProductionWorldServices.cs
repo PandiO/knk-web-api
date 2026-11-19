@@ -19,7 +19,8 @@ namespace knkwebapi_v2.Services.Production
         Task<IEnumerable<WarehouseDto>> GetAllAsync();
         Task<WarehouseDto?> GetByIdAsync(int id);
         Task<WarehouseDto> CreateAsync(WarehouseDto dto);
-        Task UpdateAsync(int id, WarehouseDto dto);
+        /// <summary>Returns the saved structure with the placement rules' warnings, as create does (#831).</summary>
+        Task<WarehouseDto> UpdateAsync(int id, WarehouseDto dto);
         Task DeleteAsync(int id);
         Task<PagedResultDto<ProductionWorldListDto>> SearchAsync(PagedQueryDto query);
     }
@@ -29,7 +30,8 @@ namespace knkwebapi_v2.Services.Production
         Task<IEnumerable<ProductionStructureDto>> GetAllAsync();
         Task<ProductionStructureDto?> GetByIdAsync(int id);
         Task<ProductionStructureDto> CreateAsync(ProductionStructureDto dto);
-        Task UpdateAsync(int id, ProductionStructureDto dto);
+        /// <summary>Returns the saved structure with the placement rules' warnings, as create does (#831).</summary>
+        Task<ProductionStructureDto> UpdateAsync(int id, ProductionStructureDto dto);
         Task DeleteAsync(int id);
         Task<PagedResultDto<ProductionWorldListDto>> SearchAsync(PagedQueryDto query);
         /// <summary>The game server's road measurement (DESIGN § 7.6); not gated by <c>Production:Enabled</c>.</summary>
@@ -133,7 +135,7 @@ namespace knkwebapi_v2.Services.Production
             return result;
         }
 
-        public async Task UpdateAsync(int id, TDto dto)
+        public async Task<TDto> UpdateAsync(int id, TDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
@@ -143,10 +145,15 @@ namespace knkwebapi_v2.Services.Production
             string previousRegionId = existing.WgRegionId;
             await Writer.ApplyAsync(existing, dto, TypeName, isCreate: false);
             await ApplyOwnAsync(existing, dto, isCreate: false);
-            await Writer.Placement.CheckRulesAsync(TypeName, existing);
+            var warnings = await Writer.Placement.CheckRulesAsync(TypeName, existing);
             await Db.SaveChangesAsync();
             await Writer.FinalizeRegionAsync(existing, previousRegionId);
             await AfterUpdateAsync(id, dto);
+            // The placement warnings go back to the caller, as on create (PandiO/knk-workspace#831).
+            Db.ChangeTracker.Clear();
+            var result = (await GetByIdAsync(id))!;
+            result.PlacementWarnings = warnings;
+            return result;
         }
 
         public async Task DeleteAsync(int id)
@@ -283,28 +290,41 @@ namespace knkwebapi_v2.Services.Production
     public sealed class ProductionStructureService : StructureSubtypeService<ProductionStructure, ProductionStructureDto>, IProductionStructureService
     {
         private readonly IProductionEngine? _engine;
+        private readonly IProductionYieldService? _yield;
         private ProductionKind? _createKind;
         private ProductionKindLevel? _createLevel;
+        private ProductionRateSource? _previousYieldSource;
 
         public ProductionStructureService(KnKDbContext db, StructureBaseWriter writer, IStorageService storages, IMapper mapper,
-            IProductionEngine? engine = null)
+            IProductionEngine? engine = null, IProductionYieldService? yield = null)
             : base(db, writer, storages, mapper)
         {
             _engine = engine;
+            _yield = yield;
         }
 
         protected override async Task BeforeUpdateAsync(int id, ProductionStructureDto dto)
         {
-            // A level, kind, worker or switch change applies from now: settle the time before at the old values.
+            // A level, kind, worker, switch or yield source change applies from now: settle the time before at the old values.
             if (_engine != null && (dto.Level.HasValue || dto.ProductionKindId.HasValue || dto.WorkersTotal.HasValue
-                    || dto.ProductionEnabled.HasValue))
+                    || dto.ProductionEnabled.HasValue || dto.YieldSource != null))
                 await _engine.SettleStructureAsync(id);
+            _previousYieldSource = await Db.ProductionStructures.AsNoTracking().Where(p => p.Id == id)
+                .Select(p => (ProductionRateSource?)p.YieldSource).FirstOrDefaultAsync();
         }
 
         protected override async Task AfterUpdateAsync(int id, ProductionStructureDto dto)
         {
             // Lines paused by the structure's switch resume from the moment it is switched on, not at the next sweep.
             if (_engine != null && dto.ProductionEnabled == true) await _engine.SettleStructureAsync(id);
+            // P4 (#138): a new yield source (or a new level, which can unlock yield rows) re-materializes the lines.
+            var now = await Db.ProductionStructures.AsNoTracking().Where(p => p.Id == id).Select(p => p.YieldSource).FirstAsync();
+            if (_yield != null && (now != _previousYieldSource
+                    || (now != ProductionRateSource.Configured && (dto.Level.HasValue || dto.ProductionKindId.HasValue))))
+            {
+                Db.ChangeTracker.Clear();
+                await _yield.MaterializeAsync(id);
+            }
         }
 
         protected override string TypeName => nameof(ProductionStructure);
@@ -328,6 +348,7 @@ namespace knkwebapi_v2.Services.Production
                 }
                 else target.ProductionKindId = null;
             }
+            await ApplyYieldSourceAsync(target, dto, kind, isCreate);
             if (dto.Level.HasValue)
             {
                 if (dto.Level.Value is < ProductionStructure.MinLevel or > ProductionStructure.MaxLevel)
@@ -386,6 +407,32 @@ namespace knkwebapi_v2.Services.Production
                 throw new ArgumentException("warehousePreference Preferred needs a preferredWarehouseId.", nameof(dto));
         }
 
+        /// <summary>P4 (#138, PRODUCTION_KINDS § 4.1): Derived, Configured or Hybrid (the default, P-D1), one the kind allows.
+        /// Without a choice on create, the first the kind allows of Hybrid, Derived, Configured.</summary>
+        private async Task ApplyYieldSourceAsync(ProductionStructure target, ProductionStructureDto dto, ProductionKind? kind, bool isCreate)
+        {
+            kind ??= target.ProductionKindId == null ? null
+                : await Db.ProductionKinds.AsNoTracking().FirstOrDefaultAsync(k => k.Id == target.ProductionKindId);
+            static bool Allows(ProductionKind k, ProductionRateSource s) => s switch
+            {
+                ProductionRateSource.Derived => k.AllowsDerived,
+                ProductionRateSource.Configured => k.AllowsConfigured,
+                _ => k.AllowsHybrid,
+            };
+            if (dto.YieldSource != null)
+            {
+                if (!Enum.TryParse<ProductionRateSource>(dto.YieldSource.Trim(), true, out var source) || !Enum.IsDefined(source)
+                    || int.TryParse(dto.YieldSource.Trim(), out _))
+                    throw new ArgumentException("yieldSource must be Derived, Configured or Hybrid.");
+                target.YieldSource = source;
+            }
+            else if (isCreate && kind != null && !Allows(kind, target.YieldSource))
+                target.YieldSource = new[] { ProductionRateSource.Hybrid, ProductionRateSource.Derived, ProductionRateSource.Configured }
+                    .First(s => Allows(kind, s));
+            if (kind != null && !Allows(kind, target.YieldSource))
+                throw new ArgumentException($"yieldSource: {kind.Name} doesn't allow {target.YieldSource}.");
+        }
+
         protected override IEnumerable<StorageDto> DefaultStorages(ProductionStructure created)
         {
             yield return new StorageDto
@@ -405,7 +452,17 @@ namespace knkwebapi_v2.Services.Production
 
         protected override void Fill(ProductionStructure entity, ProductionStructureDto dto) => dto.Warnings = Warnings(entity);
 
-        protected override async Task FillStoragesAsync(int id, ProductionStructureDto dto) => dto.Storages = await StoragesOfAsync(id);
+        protected override async Task FillStoragesAsync(int id, ProductionStructureDto dto)
+        {
+            dto.Storages = await StoragesOfAsync(id);
+            dto.Areas = await Db.ProductionAreas.AsNoTracking().Where(a => a.ProductionStructureId == id).OrderBy(a => a.Id)
+                .Select(a => new ProductionAreaListDto
+                {
+                    Id = a.Id, Name = a.Name, ProductionStructureId = a.ProductionStructureId, ProductionStructureName = dto.Name ?? string.Empty,
+                    Model = a.Model.ToString(), Shape = a.Shape.ToString(), Exclusive = a.Exclusive, Size = a.Size, Enabled = a.Enabled,
+                    LastSurveyedAt = a.LastSurveyedAt,
+                }).ToListAsync();
+        }
 
         /// <summary>The dashboard warnings of DESIGN § 3.4 (R3) and § 7.6 (D5). A full output storage and blocked lines are
         /// in the production view (<c>GET api/ProductionStructures/{id}/production</c>, P3).</summary>

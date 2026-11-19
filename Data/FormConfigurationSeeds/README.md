@@ -297,3 +297,31 @@ next to an imported v1; make it the default and delete or keep v1 by hand. Adds 
 a `ProductionKind` picker) before "Level" on the "Production" step: a new structure gets the kind's default workers and
 storages, and its level caps follow the kind's levels. GUIDs as for ItemBlueprint v2 (new field
 "field:ProductionKindId").
+
+**Yield areas P4 seeds (PandiO/knk-workspace#138, 2026-11-19):** new seeds for the two major P4 entities staff edit,
+each with a display seed in `DisplayConfigurationSeeds/` (G17); `AreaSurvey` has only a display seed (the game server
+reports surveys, nobody types them). Import in any order.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `ProductionArea` | ProductionArea - Default (seed v1) | — |
+| `ProductionYieldOverride` | ProductionYieldOverride - Default (seed v1) | — |
+
+`ProductionArea` asks for the structure, a name and the shape, then the shape's fields (region id and bounds, two
+cuboid corners, or a radius with an optional centre); the API computes the bounding box and the size and refuses an
+area over the level's cap or an exclusive area that overlaps another (a polygon's points come from the in-game capture
+or the API). New versions, each with a new `configurationGuid` and name so it imports next to the older one; make it
+the default and delete or keep the older one by hand:
+
+1. `ProductionKind` seed v2: a "Yield" step with the survey profile (JSON) and the primary multiplier. The yield table
+   and the primary outputs are lists in the kind's API body (`yieldTable`, `primaryOutputs`), edited by the web app
+   link #680, like the P3 child lists.
+2. `ProductionStructure` seed v3: "Yield source" (Hybrid, Derived or Configured) after "Production kind".
+3. `Structure` seed v3 (PandiO/knk-workspace#831): the "Address" step becomes "Placement" with an optional "Town
+   (rural)" picker; district, street and house number are no longer required, so a rural plain structure can be made
+   (exactly one of District and Town, as the API checks).
+
+GUIDs: new seeds uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields uuid5(that, "step:"/"field:"
++ name); new versions uuid5(previous configuration GUID, "seed-vN"), every kept step/field uuid5(previous configuration
+GUID, its previous GUID) with the validation rules' references remapped, new fields uuid5(new configuration GUID,
+"field:" + name).

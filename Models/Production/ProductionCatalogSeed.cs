@@ -53,10 +53,28 @@ public static class ProductionCatalogSeed
         AllowsConfigured = true,
         AllowsHybrid = true,
         ResourceCategory = k.Category,
+        SurveyProfileJson = SurveyProfile(k.Id),
+        SurveyProfileVersion = 1,
+        PrimaryMultiplier = ProductionKind.DefaultPrimaryMultiplier,
         DefaultWorkers = 2,
         IsActive = true,
         CreatedAt = SeededAt,
     });
+
+    /// <summary>The unit types the plugin's survey counts per seeded kind (P4 #138, PRODUCTION_KINDS § 2.1, § 3.2). The
+    /// plugin link (#679) owns the details of each unit type; staff can change the profile, which raises its version.</summary>
+    public static string SurveyProfile(int kindId) => kindId switch
+    {
+        1 => """{"unitTypes":["CROP"]}""",
+        2 => """{"unitTypes":["TREE","SAPLING"]}""",
+        3 => """{"unitTypes":["BLOCK"]}""",
+        4 => """{"unitTypes":["BLOCK"]}""",
+        5 => """{"unitTypes":["WATER"]}""",
+        6 => """{"unitTypes":["FLOWER"]}""",
+        7 => """{"unitTypes":["FLOWER"]}""",
+        8 => """{"unitTypes":["ENTITY"]}""",
+        _ => """{"unitTypes":[]}""",
+    };
 
     /// <summary>The default curve of a new kind's levels (also used for kinds staff create).</summary>
     public static ProductionKindLevel DefaultLevel(int kindId, int level, int? areaSizeLevel1 = null, int areaSizeStep = 0) => new()

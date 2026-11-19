@@ -27,6 +27,18 @@ public class ProductionStructure : Structure
     [RelatedEntityField(typeof(ProductionLine))]
     public ICollection<ProductionLine> Lines { get; set; } = new List<ProductionLine>();
 
+    /// <summary>Where the lines' base rates come from (PRODUCTION_KINDS § 4.1, P4 #138): Hybrid by default (P-D1);
+    /// structures that existed before P4 were migrated as Configured. Surveys run only for Derived and Hybrid (G5).</summary>
+    public ProductionRateSource YieldSource { get; set; } = ProductionRateSource.Hybrid;
+
+    /// <summary>The structure's yield areas (P4).</summary>
+    [RelatedEntityField(typeof(ProductionArea))]
+    public ICollection<ProductionArea> Areas { get; set; } = new List<ProductionArea>();
+
+    /// <summary>Hybrid pins, exclusions and scales (P4).</summary>
+    [RelatedEntityField(typeof(ProductionYieldOverride))]
+    public ICollection<ProductionYieldOverride> YieldOverrides { get; set; } = new List<ProductionYieldOverride>();
+
     /// <summary>1-10 per kind (G8).</summary>
     public int Level { get; set; } = MinLevel;
 

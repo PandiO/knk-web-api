@@ -89,3 +89,44 @@ namespace knkwebapi_v2.Enums
         UpgradeCost,
     }
 }
+
+namespace knkwebapi_v2.Enums
+{
+    // Yield areas and surveys P4 (PandiO/knk-workspace#138, PRODUCTION_KINDS.md § 3-4). Stored as strings.
+
+    /// <summary>How a production area's shape is stored (PRODUCTION_KINDS § 3.1).</summary>
+    public enum ProductionAreaShape
+    {
+        /// <summary>A WorldGuard region (a managed region parented to the structure); its bounding box is reported with it.</summary>
+        Region,
+        /// <summary>A WorldEdit cuboid: two corners.</summary>
+        Cuboid,
+        /// <summary>A WorldEdit polygon: x/z points plus a y range.</summary>
+        Polygon,
+        /// <summary>A radius around a centre (default: the structure's Location).</summary>
+        Radius,
+    }
+
+    /// <summary>Why a survey ran (A10, G5).</summary>
+    public enum AreaSurveyTrigger
+    {
+        Creation,
+        /// <summary>On demand: the command or the web app button.</summary>
+        Admin,
+        /// <summary>The daily survey.</summary>
+        Scheduled,
+        /// <summary>After a notable change (e.g. many harvested blocks).</summary>
+        NotableChange,
+    }
+
+    /// <summary>A Hybrid override of one output (PRODUCTION_KINDS § 4.1).</summary>
+    public enum ProductionYieldOverrideKind
+    {
+        /// <summary>Always produce the output at a fixed base rate per hour, whatever the survey says.</summary>
+        Pin,
+        /// <summary>Never produce the output.</summary>
+        Exclude,
+        /// <summary>Multiply the survey-derived base rate.</summary>
+        Scale,
+    }
+}

@@ -92,6 +92,13 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<WeatherTypeEffect> WeatherTypeEffects { get; set; } = null!;
     public virtual DbSet<WeatherRoll> WeatherRolls { get; set; } = null!;
     public virtual DbSet<ProductionCycleRecord> ProductionCycleRecords { get; set; } = null!;
+    // ---- Yield areas and surveys P4 (PandiO/knk-workspace#138) ----
+    public virtual DbSet<ProductionArea> ProductionAreas { get; set; } = null!;
+    public virtual DbSet<AreaSurvey> AreaSurveys { get; set; } = null!;
+    public virtual DbSet<AreaSurveyUnit> AreaSurveyUnits { get; set; } = null!;
+    public virtual DbSet<ProductionYieldRow> ProductionYieldRows { get; set; } = null!;
+    public virtual DbSet<ProductionKindPrimaryOutput> ProductionKindPrimaryOutputs { get; set; } = null!;
+    public virtual DbSet<ProductionYieldOverride> ProductionYieldOverrides { get; set; } = null!;
     // ---- end production world ----
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
@@ -3272,6 +3279,105 @@ public partial class KnKDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
         // ---- end production engine ----
+
+        // ---- Yield areas and surveys P4 (PandiO/knk-workspace#138, PRODUCTION_KINDS.md § 2-4), one contiguous block ----
+        // Areas with their bounding boxes, the survey history (units as child rows), the kind's yield table, survey
+        // profile and primary outputs, the structure's yield source and its Hybrid overrides. Areas, surveys and
+        // overrides go with their structure (Cascade); blueprints in use are Restrict (409). Structures that existed
+        // before P4 keep Configured (the column default); new ones default to Hybrid (P-D1).
+        modelBuilder.Entity<ProductionStructure>(entity =>
+        {
+            entity.Property(e => e.YieldSource).HasConversion<string>().HasMaxLength(16)
+                .HasDefaultValue(ProductionRateSource.Configured);
+        });
+
+        modelBuilder.Entity<ProductionKind>(entity =>
+        {
+            entity.Property(e => e.SurveyProfileJson).HasMaxLength(ProductionKind.SurveyProfileMaxLength);
+            entity.Property(e => e.SurveyProfileVersion).HasDefaultValue(1);
+            entity.Property(e => e.PrimaryMultiplier).HasPrecision(12, 4).HasDefaultValue(ProductionKind.DefaultPrimaryMultiplier);
+        });
+
+        modelBuilder.Entity<ProductionArea>(entity =>
+        {
+            entity.ToTable("production_areas");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(ProductionArea.NameMaxLength);
+            entity.Property(e => e.Model).HasConversion<string>().HasMaxLength(24);
+            entity.Property(e => e.Shape).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.WorldName).IsRequired().HasMaxLength(ProductionArea.WorldNameMaxLength);
+            entity.Property(e => e.WgRegionId).HasMaxLength(ProductionArea.RegionIdMaxLength);
+            entity.Property(e => e.PointsJson).HasMaxLength(ProductionArea.PointsMaxLength);
+            entity.Property(e => e.SurveyRequestTrigger).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.SurveyRequestedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.LastSurveyedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.ProductionStructureId, e.Name }).IsUnique();
+            entity.HasIndex(e => new { e.WorldName, e.Model, e.Exclusive });
+            entity.HasOne(e => e.ProductionStructure).WithMany(p => p.Areas).HasForeignKey(e => e.ProductionStructureId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AreaSurvey>(entity =>
+        {
+            entity.ToTable("area_surveys");
+            entity.Property(e => e.Trigger).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ContentHash).HasMaxLength(AreaSurvey.ContentHashMaxLength);
+            entity.Property(e => e.Note).HasMaxLength(AreaSurvey.NoteMaxLength);
+            entity.Property(e => e.SurveyedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ReceivedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.ProductionAreaId, e.SurveyedAt });
+            entity.HasIndex(e => new { e.ProductionStructureId, e.SurveyedAt });
+            entity.HasOne(e => e.ProductionArea).WithMany().HasForeignKey(e => e.ProductionAreaId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AreaSurveyUnit>(entity =>
+        {
+            entity.ToTable("area_survey_units");
+            entity.Property(e => e.UnitKey).IsRequired().HasMaxLength(AreaSurveyUnit.UnitKeyMaxLength);
+            entity.Property(e => e.Extra).HasMaxLength(AreaSurveyUnit.ExtraMaxLength);
+            entity.HasIndex(e => new { e.AreaSurveyId, e.UnitKey, e.SharedBy }).IsUnique();
+            entity.HasOne(e => e.AreaSurvey).WithMany(s => s.Units).HasForeignKey(e => e.AreaSurveyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ProductionYieldRow>(entity =>
+        {
+            entity.ToTable("production_yield_rows");
+            entity.Property(e => e.UnitKey).IsRequired().HasMaxLength(AreaSurveyUnit.UnitKeyMaxLength);
+            entity.Property(e => e.RatePerUnitPerHour).HasPrecision(18, 6);
+            entity.Property(e => e.ByproductChance).HasPrecision(9, 6);
+            entity.HasIndex(e => new { e.ProductionKindId, e.UnitKey, e.ItemBlueprintId }).IsUnique();
+            entity.HasOne(e => e.ProductionKind).WithMany(k => k.YieldTable).HasForeignKey(e => e.ProductionKindId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProductionKindPrimaryOutput>(entity =>
+        {
+            entity.ToTable("production_kind_primary_outputs");
+            entity.HasIndex(e => new { e.ProductionKindId, e.ItemBlueprintId }).IsUnique();
+            entity.HasOne(e => e.ProductionKind).WithMany(k => k.PrimaryOutputs).HasForeignKey(e => e.ProductionKindId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProductionYieldOverride>(entity =>
+        {
+            entity.ToTable("production_yield_overrides");
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Value).HasPrecision(18, 6);
+            entity.Property(e => e.Note).HasMaxLength(ProductionYieldOverride.NoteMaxLength);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.ProductionStructureId, e.ItemBlueprintId }).IsUnique();
+            entity.HasOne(e => e.ProductionStructure).WithMany(p => p.YieldOverrides).HasForeignKey(e => e.ProductionStructureId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        // ---- end yield areas ----
 
         OnModelCreatingPartial(modelBuilder);
     }

@@ -56,6 +56,8 @@ public class DashboardChangeAccessRulesTests
         ("ProductionStructuresController", "Create", "ProductionStructure"), ("ProductionStructuresController", "Update", "ProductionStructure"),
         ("ProductionKindsController", "Create", "ProductionKind"), ("ProductionKindsController", "Update", "ProductionKind"),
         ("ProductionKindLevelsController", "Update", "ProductionKindLevel"),
+        ("ProductionAreasController", "Create", "ProductionArea"), ("ProductionAreasController", "Update", "ProductionArea"),
+        ("ProductionYieldOverridesController", "Create", "ProductionYieldOverride"), ("ProductionYieldOverridesController", "Update", "ProductionYieldOverride"),
         ("ProductionLinesController", "Create", "ProductionLine"), ("ProductionLinesController", "Update", "ProductionLine"),
         ("ProductionModifiersController", "Create", "ProductionModifier"), ("ProductionModifiersController", "Update", "ProductionModifier"),
         ("ClimateZonesController", "Create", "ClimateZone"), ("ClimateZonesController", "Update", "ClimateZone"),

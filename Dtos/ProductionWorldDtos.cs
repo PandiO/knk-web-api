@@ -39,6 +39,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("level")]
         public int? Level { get; set; }
 
+        /// <summary>"Derived", "Configured" or "Hybrid" (P4 #138; new structures default to Hybrid, P-D1). Must be one
+        /// the kind allows. Surveys run only for Derived and Hybrid (G5).</summary>
+        [JsonPropertyName("yieldSource")]
+        public string? YieldSource { get; set; }
+
         [JsonPropertyName("productionEnabled")]
         public bool? ProductionEnabled { get; set; }
 
@@ -86,6 +91,10 @@ namespace knkwebapi_v2.Dtos
         /// <summary>Read only: the storages the structure holds (Kind Domain).</summary>
         [JsonPropertyName("storages")]
         public List<StructureStorageNavDto>? Storages { get; set; }
+
+        /// <summary>Read only: the yield areas (P4, #138); edited through <c>api/ProductionAreas</c>.</summary>
+        [JsonPropertyName("areas")]
+        public List<ProductionAreaListDto>? Areas { get; set; }
     }
 
     /// <summary>A storage or warehouse row on a structure page.</summary>

@@ -66,6 +66,29 @@ public class ProductionKind
 
     [RelatedEntityField(typeof(ProductionKindLevel))]
     public ICollection<ProductionKindLevel> Levels { get; set; } = new List<ProductionKindLevel>();
+
+    // ---- Yield areas and surveys P4 (PandiO/knk-workspace#138, PRODUCTION_KINDS § 2-4) ----
+
+    public const int SurveyProfileMaxLength = 4000;
+    public const decimal DefaultPrimaryMultiplier = 1.5m;
+    public const decimal MaxPrimaryMultiplier = 100m;
+
+    /// <summary>What the plugin's survey counts and how it groups units (§ 3.2): a JSON object the plugin reads, e.g.
+    /// <c>{"unitTypes":["TREE","SAPLING"]}</c>. Seeded per kind; the plugin link (#679) fills in the details.</summary>
+    [MaxLength(SurveyProfileMaxLength)]
+    public string? SurveyProfileJson { get; set; }
+
+    /// <summary>Raised by the API on every change of <see cref="SurveyProfileJson"/>; stored with each survey.</summary>
+    public int SurveyProfileVersion { get; set; } = 1;
+
+    /// <summary>The factor the <see cref="PrimaryOutputs"/> get on Derived and Hybrid lines (built-in "primary" step).</summary>
+    public decimal PrimaryMultiplier { get; set; } = DefaultPrimaryMultiplier;
+
+    [RelatedEntityField(typeof(ProductionYieldRow))]
+    public ICollection<ProductionYieldRow> YieldTable { get; set; } = new List<ProductionYieldRow>();
+
+    [RelatedEntityField(typeof(ProductionKindPrimaryOutput))]
+    public ICollection<ProductionKindPrimaryOutput> PrimaryOutputs { get; set; } = new List<ProductionKindPrimaryOutput>();
 }
 
 /// <summary>

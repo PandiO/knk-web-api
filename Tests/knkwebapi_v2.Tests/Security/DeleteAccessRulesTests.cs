@@ -46,6 +46,8 @@ public class DeleteAccessRulesTests
         ["ProductionStructure"] = "ProductionStructuresController.Delete",
         ["ProductionKind"] = "ProductionKindsController.Delete",
         ["ProductionLine"] = "ProductionLinesController.Delete",
+        ["ProductionArea"] = "ProductionAreasController.Delete",
+        ["ProductionYieldOverride"] = "ProductionYieldOverridesController.Delete",
         ["ProductionModifier"] = "ProductionModifiersController.Delete",
         ["ClimateZone"] = "ClimateZonesController.Delete",
         ["WeatherType"] = "WeatherTypesController.Delete",

@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "f421aeca-7ef3-5602-aebc-c8e689b2dea4",
+  "configurationGuid": "8de8f5b8-01a0-5325-acc2-2601a4854b78",
   "entityTypeName": "ProductionStructure",
-  "name": "ProductionStructure - Default (seed v2)",
+  "name": "ProductionStructure - Default (seed v3)",
   "description": "A farm, logger, quarry or other producer (production P2, #91): in a district or, usually, rural in its town's territory, with its region, production and transport settings. Its output storage is created with it. v2 (P3, #86): the production kind is picked from the catalogue.",
   "steps": [
     {
-      "stepGuid": "6d57afeb-0ac6-5abd-b234-5c926cb52cf7",
+      "stepGuid": "164c369a-276d-533e-85a8-c5bf83b0ad41",
       "stepName": "General information",
       "description": "Name the production structure. The name is what players see in game and in the web app.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "9dab7dfd-a087-5a6e-9554-e6f2fca55a8f",
+          "fieldGuid": "137128f0-2427-5fce-adb7-ad49a46172b9",
           "fieldName": "Name",
           "label": "Name",
           "description": "Shown in game (entry messages, /warp, /navigate, menus) and in the web app. Commands find the structure by this name, so keep it short.",
@@ -21,7 +21,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "6d46edee-a8b7-50c5-9992-c15c36b9a98a",
+          "fieldGuid": "f4720507-2fa6-541d-b398-c0c41b534363",
           "fieldName": "Description",
           "label": "Description",
           "description": "A line or two about the structure for admins and the web app, e.g. who lives or trades there.",
@@ -32,13 +32,13 @@
       ]
     },
     {
-      "stepGuid": "a44b7c93-1901-5e9f-ad22-054198bfdf65",
+      "stepGuid": "85cca446-8cd0-5a81-bfa2-1b3bfe03ec78",
       "stepName": "Placement",
       "description": "Where the production structure stands: in a district (pick the district, street and house number) or rural, in its town's territory (pick only the town). Fill exactly one of District and Town.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "7c781cc5-06fc-5f9b-a615-8a28e58a6942",
+          "fieldGuid": "e13d4370-9809-5dd5-a30c-5f5b4269d0e2",
           "fieldName": "DistrictId",
           "label": "District",
           "description": "For a production structure in a district. Its region should lie inside the district's region (placement rule P-1, a warning unless an admin makes it blocking). Leave empty for a rural production structure.",
@@ -48,7 +48,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "d2c48a69-2419-56eb-b37a-f4fd881ccde6",
+          "fieldGuid": "e557c308-8ec6-5675-a79d-61eee5631672",
           "fieldName": "StreetId",
           "label": "Street",
           "description": "Only with a district: the street of the address.",
@@ -58,7 +58,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "0c36b4bc-f3ea-5df5-89c1-a78aa1237118",
+          "fieldGuid": "01f9384c-46ab-571f-8bba-c69330a52f00",
           "fieldName": "HouseNumber",
           "label": "House number",
           "description": "Only with a district: 1 or higher. A rural structure has none.",
@@ -67,7 +67,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "73de58fa-415a-5588-a0b9-ba17773e8f32",
+          "fieldGuid": "553a6889-fb9b-5845-bd33-b3decef8b8d1",
           "fieldName": "TownId",
           "label": "Town (rural)",
           "description": "For a rural production structure: the town it belongs to. It should lie inside that town's territory (placement rule P-2, checked by the game server; a warning unless an admin makes it blocking). Leave empty when a district is set.",
@@ -79,13 +79,13 @@
       ]
     },
     {
-      "stepGuid": "c1e1014d-2167-54bf-9a54-887c493743a1",
+      "stepGuid": "d72cead3-cc1d-5e24-8831-9cfb8db7f7a2",
       "stepName": "Region and access",
       "description": "The WorldGuard region around the structure, and whether players may walk in and out of it. Use Send to Minecraft and select the area in game with WorldEdit, or type the name of an existing region.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "29dcad32-49d6-553d-8435-4d14b3634816",
+          "fieldGuid": "c2ae7878-1c6b-592e-9a16-9817b6b230e7",
           "fieldName": "WgRegionId",
           "label": "Region",
           "description": "The production structure's WorldGuard region. In a district it should lie inside the district's region and is set up under it; a rural production structure's region has no parent (PvP stays allowed there). A region drawn here is renamed domain_<id> when the production structure is saved.",
@@ -95,7 +95,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"RegionClaim\"}}"
         },
         {
-          "fieldGuid": "8dca0cf6-3b6e-500b-aec2-13c7738a0ef3",
+          "fieldGuid": "ada68c83-a4b9-5cb4-819c-fdaa15107d7b",
           "fieldName": "AllowEntry",
           "label": "Allow entry",
           "description": "Players may walk into the structure's region. Off keeps everyone out except staff with the region bypass permission, and the structure is no /warp destination.",
@@ -105,7 +105,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "72c8feee-ed62-59a3-9f37-dd491b29bea1",
+          "fieldGuid": "007db638-3e61-5fe2-9384-3977a8277a8f",
           "fieldName": "AllowExit",
           "label": "Allow exit",
           "description": "Players inside the structure's region may walk out of it. Off keeps them inside until staff let them out.",
@@ -115,7 +115,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "20b6f863-65a8-597a-b69b-58b28aa478af",
+          "fieldGuid": "644d1276-72df-5e3d-a564-a04c55a3f8ab",
           "fieldName": "RoadAccessOverride",
           "label": "Entry rule on roads",
           "description": "Applies: when players may not enter, /navigate routes avoid the roads through this region. Ignored: routes may use them, e.g. for a house whose region overlaps the public street; the rule still holds at the border and for teleports. Empty = the setting for all structures on the Roads page.",
@@ -128,13 +128,13 @@
       ]
     },
     {
-      "stepGuid": "b8d79803-aa11-51e1-bd70-d9ed00d74b29",
+      "stepGuid": "34b76d02-7d93-53a3-9c3a-89212b95e29b",
       "stepName": "Production",
       "description": "The production settings. The kind and its production lines come with the production engine (P3); its output storage is created with the structure.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "8830640d-386b-5ff9-9e87-e8302e0b340f",
+          "fieldGuid": "ed6fcdc2-c365-5099-84ee-6f7c72b49229",
           "fieldName": "ProductionKindId",
           "label": "Production kind",
           "description": "Farm, Logger, Quarry, ... (the catalogue, production engine P3). A new structure gets the kind's default workers and storages; its level caps follow the kind's levels.",
@@ -144,7 +144,19 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "7885ac38-7f8f-58a0-919d-d736090e6503",
+          "fieldGuid": "9b91f684-43fc-5e12-943e-0f7bfc2950ba",
+          "fieldName": "YieldSource",
+          "label": "Yield source",
+          "description": "Hybrid (default): the survey of its areas with staff pins, exclusions and scales; Derived: the survey only; Configured: rates staff enter on its lines, never surveyed. Must be one the kind allows.",
+          "fieldType": "Enum",
+          "enumType": "ProductionRateSource",
+          "defaultValue": "Hybrid",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Hybrid\", \"Derived\", \"Configured\"]}"
+        },
+        {
+          "fieldGuid": "f7016040-ddb1-5087-9f75-b7f6984559ea",
           "fieldName": "Level",
           "label": "Level",
           "description": "1-10 per kind.",
@@ -154,7 +166,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "df3c2e57-4540-5fef-a49e-4f729e43e5d8",
+          "fieldGuid": "6248c006-6d2a-56ba-b414-09d593cf6992",
           "fieldName": "ProductionEnabled",
           "label": "Production on",
           "description": "The structure's own switch; nothing is produced while the game setting production.enabled is off either.",
@@ -164,7 +176,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "3cf40c63-7730-58e2-86e5-8b160bdb7d92",
+          "fieldGuid": "c3d69395-bd4a-5578-a4d5-1c3d8cb765aa",
           "fieldName": "WorkersTotal",
           "label": "Workers",
           "description": "Workers the structure has (default 2).",
@@ -174,7 +186,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "f37a6bbd-e855-5491-acfa-4e03a2a5c045",
+          "fieldGuid": "41f08db9-cc71-5863-93ed-5e8edae93bc0",
           "fieldName": "AutomaticTransport",
           "label": "Automatic transport",
           "description": "Plan transport to a warehouse automatically (held while it is not connected to its town's roads).",
@@ -184,7 +196,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "77d19a6b-bdde-5e65-91bd-83b8564e0d62",
+          "fieldGuid": "d0373015-dfe2-5480-87d5-08488525e180",
           "fieldName": "TransportThreshold",
           "label": "Transport threshold",
           "description": "Raw units in the output storage that start a transport. Empty or 0 = the planner's default.",
@@ -193,7 +205,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "7c61a419-20f6-53ad-91ed-07c7102a0bfb",
+          "fieldGuid": "32025112-86f1-5eef-ab7e-beec13eb5e00",
           "fieldName": "TransportCapacity",
           "label": "Transport capacity",
           "description": "Raw units one transport carries. Empty or 0 = the planner's default.",
@@ -202,7 +214,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "41aa98eb-400d-551a-baeb-5ba1ab3f386b",
+          "fieldGuid": "f6b2eba8-3ead-59c4-99aa-a6ef8833986a",
           "fieldName": "WarehousePreference",
           "label": "Deliver to",
           "description": "Nearest = the nearest warehouse of its town that accepts deliveries; Preferred = the warehouse below.",
@@ -214,7 +226,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "e45adb75-3b56-54f9-b474-22d53daeba96",
+          "fieldGuid": "f89b17b4-d2bd-52be-b7f0-77072564c9c8",
           "fieldName": "PreferredWarehouseId",
           "label": "Preferred warehouse",
           "description": "Used with Deliver to = Preferred.",
@@ -226,13 +238,13 @@
       ]
     },
     {
-      "stepGuid": "bf62611e-1bb6-5083-a964-84ab5ac3e79d",
+      "stepGuid": "ebc12f6c-2958-5a54-978c-331b85b704ad",
       "stepName": "Spawn point",
       "description": "Where players arrive when they teleport or navigate to the structure. Stand on the spot in game, facing the way arrivals should look, and use Send to Minecraft.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "8d1ae021-1b33-5e81-9f03-1e91c4716619",
+          "fieldGuid": "90545285-02be-5bc8-a227-7848ee406468",
           "fieldName": "Location",
           "label": "Spawn point",
           "description": "Optional. The arrival point for /warp and /navigate <structure> spawn; without it /navigate leads to the structure's region and /warp is not possible.",
@@ -243,7 +255,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
         },
         {
-          "fieldGuid": "a6badc49-fd8e-59b0-bfd2-ceecbc3bb619",
+          "fieldGuid": "14fb9651-b592-51b7-8818-640e1d8512b8",
           "fieldName": "NavigationDefaultOverride",
           "label": "Navigate to",
           "description": "Where /navigate <structure> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the structure's region. Leave empty to follow the setting for all structures on the Roads page.",
@@ -256,13 +268,13 @@
       ]
     },
     {
-      "stepGuid": "c91d4c60-6318-5350-9d31-62f5aa44aaf2",
+      "stepGuid": "6d9d1d89-f4f5-5db9-b903-107fe3aac761",
       "stepName": "Sub-regions",
       "description": "Extra WorldGuard regions of the structure besides its main region, for a shape one region can't hold (a round tower next to a square house). The structure is the union of its regions. Save the structure first (Submit), then Edit it to add sub-regions; each one is drawn in game and saved when its form completes.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "ae0f4971-a95d-544a-81c1-834d986429dc",
+          "fieldGuid": "17909be5-6624-570d-9545-a7823356c4e1",
           "fieldName": "SubRegions",
           "label": "Sub-regions",
           "description": "One entry per extra region. Each gets the main region's flags, owners, members and priority from the game server, so set flags on the main region only. A removed sub-region's WorldGuard region is deleted 14 days later.",
@@ -278,10 +290,10 @@
   ],
   "validationRules": [
     {
-      "fieldGuid": "29dcad32-49d6-553d-8435-4d14b3634816",
+      "fieldGuid": "c2ae7878-1c6b-592e-9a16-9817b6b230e7",
       "validationType": "RegionContainment",
       "dependsOn": {
-        "fieldGuid": "7c781cc5-06fc-5f9b-a615-8a28e58a6942"
+        "fieldGuid": "e13d4370-9809-5dd5-a30c-5f5b4269d0e2"
       },
       "dependencyPath": "District.WgRegionId",
       "configJson": "{\"parentRegionPath\": \"WgRegionId\", \"requireFullContainment\": true}",
@@ -290,10 +302,10 @@
       "requiresDependencyFilled": false
     },
     {
-      "fieldGuid": "29dcad32-49d6-553d-8435-4d14b3634816",
+      "fieldGuid": "c2ae7878-1c6b-592e-9a16-9817b6b230e7",
       "validationType": "InsideTerritory",
       "dependsOn": {
-        "fieldGuid": "73de58fa-415a-5588-a0b9-ba17773e8f32"
+        "fieldGuid": "553a6889-fb9b-5845-bd33-b3decef8b8d1"
       },
       "dependencyPath": "Town.Id",
       "configJson": "{\"holderKind\": \"Town\", \"holderIdPath\": \"Id\"}",

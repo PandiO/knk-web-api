@@ -276,6 +276,17 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Production.IWeatherTypeService, knkwebapi_v2.Services.Production.WeatherTypeService>();
             services.AddScoped<knkwebapi_v2.Services.Production.IProductionCycleRecordService, knkwebapi_v2.Services.Production.ProductionCycleRecordService>();
             services.AddHostedService<knkwebapi_v2.Services.Production.ProductionSweepService>();
+            // Yield areas and surveys P4 (PandiO/knk-workspace#138): Derived and Hybrid base rates from the latest surveys,
+            // the primary and variation steps, areas, the survey queue and history, Hybrid overrides and materialization.
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionYieldCalculator, knkwebapi_v2.Services.Production.ProductionYieldCalculator>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionBaseRateProvider, knkwebapi_v2.Services.Production.DerivedBaseRateProvider>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionBaseRateProvider, knkwebapi_v2.Services.Production.HybridBaseRateProvider>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionModifierSource, knkwebapi_v2.Services.Production.PrimaryOutputModifierSource>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionModifierSource, knkwebapi_v2.Services.Production.VariationModifierSource>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionYieldService, knkwebapi_v2.Services.Production.ProductionYieldService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionAreaService, knkwebapi_v2.Services.Production.ProductionAreaService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IAreaSurveyService, knkwebapi_v2.Services.Production.AreaSurveyService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionYieldOverrideService, knkwebapi_v2.Services.Production.ProductionYieldOverrideService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
             services.AddScoped<IBannerDesignService, BannerDesignService>();

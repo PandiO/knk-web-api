@@ -312,6 +312,19 @@ namespace knkwebapi_v2.Attributes
             ViewOnly("ClimateZoneTown", DashboardArea.World, World),
             ViewOnly("WeatherTypeEffect", DashboardArea.World, World),
             ViewOnly("WeatherRoll", DashboardArea.World, World),
+            // Yield areas and surveys P4 (#138): areas and Hybrid overrides; the survey history is read only (the game
+            // server reports surveys through api/ProductionAreas/{id}/surveys); yield rows and primary outputs are
+            // edited inside their kind.
+            Type("ProductionArea", DashboardArea.World, World,
+                Del<knkwebapi_v2.Services.Production.IProductionAreaService>((s, id) => s.DeleteAsync(id)),
+                Lists<knkwebapi_v2.Services.Production.IProductionAreaService, knkwebapi_v2.Dtos.ProductionAreaListDto>((s, q) => s.SearchAsync(q))),
+            Type("ProductionYieldOverride", DashboardArea.World, World,
+                Del<knkwebapi_v2.Services.Production.IProductionYieldOverrideService>((s, id) => s.DeleteAsync(id)),
+                Lists<knkwebapi_v2.Services.Production.IProductionYieldOverrideService, knkwebapi_v2.Dtos.ProductionYieldOverrideListDto>((s, q) => s.SearchAsync(q))),
+            ViewOnly("AreaSurvey", DashboardArea.World, World),
+            ViewOnly("AreaSurveyUnit", DashboardArea.World, World),
+            ViewOnly("ProductionYieldRow", DashboardArea.World, World),
+            ViewOnly("ProductionKindPrimaryOutput", DashboardArea.World, World),
             ViewOnly("StockTransaction", DashboardArea.World, World),
             ViewOnly("StockMove", DashboardArea.World, World),
             ViewOnly("StockLine", DashboardArea.World, World),

@@ -122,6 +122,88 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("menu_action_bindings", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.AreaSurvey", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("ProductionAreaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProfileVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("SurveyedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("TotalUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductionAreaId", "SurveyedAt");
+
+                    b.HasIndex("ProductionStructureId", "SurveyedAt");
+
+                    b.ToTable("area_surveys", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.AreaSurveyUnit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AreaSurveyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Count")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Extra")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("SharedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UnitKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaSurveyId", "UnitKey", "SharedBy")
+                        .IsUnique();
+
+                    b.ToTable("area_survey_units", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.AuditLogEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -5165,6 +5247,110 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("private_message_log_entries", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionArea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CenterX")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CenterY")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CenterZ")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("Exclusive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<long?>("LastSurveyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("LastSurveyedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("MaxX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxY")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxZ")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinY")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinZ")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("PointsJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("varchar(8000)");
+
+                    b.Property<int>("ProductionStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Radius")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Shape")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SurveyRequestTrigger")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("SurveyRequestedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("WgRegionId")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("WorldName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductionStructureId", "Name")
+                        .IsUnique();
+
+                    b.HasIndex("WorldName", "Model", "Exclusive");
+
+                    b.ToTable("production_areas", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionCycleRecord", b =>
                 {
                     b.Property<long>("Id")
@@ -5320,10 +5506,25 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<decimal>("PrimaryMultiplier")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)")
+                        .HasDefaultValue(1.5m);
+
                     b.Property<string>("ResourceCategory")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("varchar(16)");
+
+                    b.Property<string>("SurveyProfileJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<int>("SurveyProfileVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.HasKey("Id");
 
@@ -5348,7 +5549,10 @@ namespace knkwebapi_v2.Migrations
                             Icon = "WHEAT",
                             IsActive = true,
                             Name = "Farm",
-                            ResourceCategory = "Crops"
+                            PrimaryMultiplier = 1.5m,
+                            ResourceCategory = "Crops",
+                            SurveyProfileJson = "{\"unitTypes\":[\"CROP\"]}",
+                            SurveyProfileVersion = 1
                         },
                         new
                         {
@@ -5365,7 +5569,10 @@ namespace knkwebapi_v2.Migrations
                             Icon = "IRON_AXE",
                             IsActive = true,
                             Name = "Logger",
-                            ResourceCategory = "Wood"
+                            PrimaryMultiplier = 1.5m,
+                            ResourceCategory = "Wood",
+                            SurveyProfileJson = "{\"unitTypes\":[\"TREE\",\"SAPLING\"]}",
+                            SurveyProfileVersion = 1
                         },
                         new
                         {
@@ -5382,7 +5589,10 @@ namespace knkwebapi_v2.Migrations
                             Icon = "STONE",
                             IsActive = true,
                             Name = "Quarry",
-                            ResourceCategory = "Stone"
+                            PrimaryMultiplier = 1.5m,
+                            ResourceCategory = "Stone",
+                            SurveyProfileJson = "{\"unitTypes\":[\"BLOCK\"]}",
+                            SurveyProfileVersion = 1
                         },
                         new
                         {
@@ -5399,7 +5609,10 @@ namespace knkwebapi_v2.Migrations
                             Icon = "IRON_PICKAXE",
                             IsActive = true,
                             Name = "Mine",
-                            ResourceCategory = "Ore"
+                            PrimaryMultiplier = 1.5m,
+                            ResourceCategory = "Ore",
+                            SurveyProfileJson = "{\"unitTypes\":[\"BLOCK\"]}",
+                            SurveyProfileVersion = 1
                         },
                         new
                         {
@@ -5416,7 +5629,10 @@ namespace knkwebapi_v2.Migrations
                             Icon = "FISHING_ROD",
                             IsActive = true,
                             Name = "Fishery",
-                            ResourceCategory = "Fish"
+                            PrimaryMultiplier = 1.5m,
+                            ResourceCategory = "Fish",
+                            SurveyProfileJson = "{\"unitTypes\":[\"WATER\"]}",
+                            SurveyProfileVersion = 1
                         },
                         new
                         {
@@ -5433,7 +5649,10 @@ namespace knkwebapi_v2.Migrations
                             Icon = "POPPY",
                             IsActive = true,
                             Name = "Flower farm",
-                            ResourceCategory = "Flowers"
+                            PrimaryMultiplier = 1.5m,
+                            ResourceCategory = "Flowers",
+                            SurveyProfileJson = "{\"unitTypes\":[\"FLOWER\"]}",
+                            SurveyProfileVersion = 1
                         },
                         new
                         {
@@ -5450,7 +5669,10 @@ namespace knkwebapi_v2.Migrations
                             Icon = "SUNFLOWER",
                             IsActive = true,
                             Name = "Florist",
-                            ResourceCategory = "Flowers"
+                            PrimaryMultiplier = 1.5m,
+                            ResourceCategory = "Flowers",
+                            SurveyProfileJson = "{\"unitTypes\":[\"FLOWER\"]}",
+                            SurveyProfileVersion = 1
                         },
                         new
                         {
@@ -5467,7 +5689,10 @@ namespace knkwebapi_v2.Migrations
                             Icon = "WHITE_WOOL",
                             IsActive = true,
                             Name = "Animal farm",
-                            ResourceCategory = "Animals"
+                            PrimaryMultiplier = 1.5m,
+                            ResourceCategory = "Animals",
+                            SurveyProfileJson = "{\"unitTypes\":[\"ENTITY\"]}",
+                            SurveyProfileVersion = 1
                         });
                 });
 
@@ -6437,6 +6662,30 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("production_kind_level_items", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKindPrimaryOutput", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionKindId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ProductionKindId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("production_kind_primary_outputs", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionLine", b =>
                 {
                     b.Property<int>("Id")
@@ -6607,6 +6856,86 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("Enabled", "Scope");
 
                     b.ToTable("production_modifiers", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionYieldOverride", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("ProductionStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ProductionStructureId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("production_yield_overrides", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionYieldRow", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ByproductChance")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinLevel")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionKindId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RatePerUnitPerHour")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("UnitKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ProductionKindId", "UnitKey", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("production_yield_rows", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Province", b =>
@@ -10102,6 +10431,13 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("WorkersTotal")
                         .HasColumnType("int");
 
+                    b.Property<string>("YieldSource")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)")
+                        .HasDefaultValue("Configured");
+
                     b.HasIndex("PreferredWarehouseId");
 
                     b.HasIndex("ProductionKindId");
@@ -10187,6 +10523,28 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("MenuItemTemplate");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.AreaSurvey", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ProductionArea", "ProductionArea")
+                        .WithMany()
+                        .HasForeignKey("ProductionAreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductionArea");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.AreaSurveyUnit", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.AreaSurvey", "AreaSurvey")
+                        .WithMany("Units")
+                        .HasForeignKey("AreaSurveyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AreaSurvey");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.BannerLayer", b =>
@@ -11375,6 +11733,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Holder");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionArea", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ProductionStructure", "ProductionStructure")
+                        .WithMany("Areas")
+                        .HasForeignKey("ProductionStructureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductionStructure");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionCycleRecord", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.ProductionLine", "ProductionLine")
@@ -11414,6 +11783,25 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ItemBlueprint");
 
                     b.Navigation("ProductionKindLevel");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionKindPrimaryOutput", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionKind", "ProductionKind")
+                        .WithMany("PrimaryOutputs")
+                        .HasForeignKey("ProductionKindId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ProductionKind");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionLine", b =>
@@ -11469,6 +11857,44 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("TargetItemBlueprint");
 
                     b.Navigation("TargetProductionKind");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionYieldOverride", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionStructure", "ProductionStructure")
+                        .WithMany("YieldOverrides")
+                        .HasForeignKey("ProductionStructureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ProductionStructure");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionYieldRow", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionKind", "ProductionKind")
+                        .WithMany("YieldTable")
+                        .HasForeignKey("ProductionKindId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ProductionKind");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Province", b =>
@@ -12422,6 +12848,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Conditions");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.AreaSurvey", b =>
+                {
+                    b.Navigation("Units");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.BannerDesign", b =>
                 {
                     b.Navigation("Layers");
@@ -12609,6 +13040,10 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionKind", b =>
                 {
                     b.Navigation("Levels");
+
+                    b.Navigation("PrimaryOutputs");
+
+                    b.Navigation("YieldTable");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionKindLevel", b =>
@@ -12737,7 +13172,11 @@ namespace knkwebapi_v2.Migrations
 
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionStructure", b =>
                 {
+                    b.Navigation("Areas");
+
                     b.Navigation("Lines");
+
+                    b.Navigation("YieldOverrides");
                 });
 #pragma warning restore 612, 618
         }
