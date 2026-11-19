@@ -12,7 +12,7 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    [Migration("20261119093654_AddSiegeWeapons")]
+    [Migration("20261119100022_AddSiegeWeapons")]
     partial class AddSiegeWeapons
     {
         /// <inheritdoc />
@@ -2509,6 +2509,9 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
 
+                    b.Property<int?>("VanillaMaterialMatchRefId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id")
                         .HasName("PRIMARY");
 
@@ -2517,6 +2520,9 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("GradeId");
 
                     b.HasIndex("IconMaterialRefId");
+
+                    b.HasIndex("VanillaMaterialMatchRefId")
+                        .IsUnique();
 
                     b.ToTable("item_blueprints", (string)null);
                 });
@@ -2612,6 +2618,44 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("TagId");
 
                     b.ToTable("ItemBlueprintTag");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemConversionStat", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Count")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("Day")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("MaterialKey")
+                        .IsRequired()
+                        .HasMaxLength(191)
+                        .HasColumnType("varchar(191)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Day", "Source", "Outcome", "MaterialKey")
+                        .IsUnique();
+
+                    b.ToTable("item_conversion_stats", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemInstance", b =>
@@ -8212,11 +8256,18 @@ namespace knkwebapi_v2.Migrations
                         .HasForeignKey("IconMaterialRefId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("knkwebapi_v2.Models.MinecraftMaterialRef", "VanillaMaterialMatch")
+                        .WithMany()
+                        .HasForeignKey("VanillaMaterialMatchRefId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Category");
 
                     b.Navigation("Grade");
 
                     b.Navigation("IconMaterial");
+
+                    b.Navigation("VanillaMaterialMatch");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemBlueprintBannerLayer", b =>
