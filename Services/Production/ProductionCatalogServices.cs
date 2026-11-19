@@ -448,6 +448,9 @@ namespace knkwebapi_v2.Services.Production
             var line = await _db.ProductionLines.Include(l => l.Inputs).FirstAsync(l => l.Id == id);
             await ApplyAsync(line, dto, isCreate: false);
             await _db.SaveChangesAsync();
+            _db.ChangeTracker.Clear();
+            // A line switched back on resumes from now, not at the next sweep.
+            if (dto.Enabled == true) await _engine.SettleLineAsync(id);
         }
 
         private async Task ApplyAsync(ProductionLine line, ProductionLineDto dto, bool isCreate)

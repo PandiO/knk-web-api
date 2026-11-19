@@ -146,6 +146,7 @@ namespace knkwebapi_v2.Services.Production
             await Writer.Placement.CheckRulesAsync(TypeName, existing);
             await Db.SaveChangesAsync();
             await Writer.FinalizeRegionAsync(existing, previousRegionId);
+            await AfterUpdateAsync(id, dto);
         }
 
         public async Task DeleteAsync(int id)
@@ -168,6 +169,9 @@ namespace knkwebapi_v2.Services.Production
 
         /// <summary>Before an update loads the entity (P3: settle production at the old values).</summary>
         protected virtual Task BeforeUpdateAsync(int id, TDto dto) => Task.CompletedTask;
+
+        /// <summary>After an update is saved (P3: a structure switched back on resumes its lines from now).</summary>
+        protected virtual Task AfterUpdateAsync(int id, TDto dto) => Task.CompletedTask;
 
         public async Task<PagedResultDto<ProductionWorldListDto>> SearchAsync(PagedQueryDto query)
         {
@@ -295,6 +299,12 @@ namespace knkwebapi_v2.Services.Production
             if (_engine != null && (dto.Level.HasValue || dto.ProductionKindId.HasValue || dto.WorkersTotal.HasValue
                     || dto.ProductionEnabled.HasValue))
                 await _engine.SettleStructureAsync(id);
+        }
+
+        protected override async Task AfterUpdateAsync(int id, ProductionStructureDto dto)
+        {
+            // Lines paused by the structure's switch resume from the moment it is switched on, not at the next sweep.
+            if (_engine != null && dto.ProductionEnabled == true) await _engine.SettleStructureAsync(id);
         }
 
         protected override string TypeName => nameof(ProductionStructure);

@@ -437,7 +437,8 @@ namespace knkwebapi_v2.Services.Production
                 if (loaded == null) return null;
                 var (line, structure) = (loaded.Line, loaded.Structure);
                 var cycle = ProductionRate.Cycle(settings, loaded.LevelRow);
-                if (now <= line.LastSettledAt)
+                // Nothing elapsed: only a stopped line is looked at again (switched back on, room again).
+                if (now < line.LastSettledAt || (now == line.LastSettledAt && line.Status == ProductionLineStatus.Running))
                 {
                     line.NextSettleAt = ProductionRate.NextDue(line.AnchorAt, cycle, line.LastSettledAt);
                     await _db.SaveChangesAsync(ct);
@@ -786,6 +787,10 @@ namespace knkwebapi_v2.Services.Production
             string key = string.IsNullOrWhiteSpace(request.IdempotencyKey) ? $"upgrade:{structureId}:{to}" : request.IdempotencyKey.Trim();
             if (key.Length > CurrencyClientKeys.MaxLength) throw new ArgumentException("idempotencyKey is too long.");
 
+            if (next.UpgradeCoins > 0 && request.PayerUserId is not > 0)
+                throw new ArgumentException($"payerUserId is required: level {to} costs {next.UpgradeCoins} coins.");
+            if (next.UpgradeCoins > 0 && _currency == null) throw new InvalidOperationException("The currency service is not available.");
+
             // The time before the upgrade counts at the old level.
             await SettleStructureAsync(structureId, ct);
 
@@ -823,9 +828,7 @@ namespace knkwebapi_v2.Services.Production
 
             if (next.UpgradeCoins > 0)
             {
-                if (request.PayerUserId is not > 0) throw new ArgumentException($"payerUserId is required: level {to} costs {next.UpgradeCoins} coins.");
-                if (_currency == null) throw new InvalidOperationException("The currency service is not available.");
-                var posting = await _currency.SpendAsync(request.PayerUserId.Value, Currency.Coins, next.UpgradeCoins, new CurrencyContext
+                var posting = await _currency!.SpendAsync(request.PayerUserId!.Value, Currency.Coins, next.UpgradeCoins, new CurrencyContext
                 {
                     IdempotencyKey = key,
                     ReasonCode = CurrencyReasons.ProductionUpgrade,
@@ -871,7 +874,7 @@ namespace knkwebapi_v2.Services.Production
                 : db.ProductionKindLevels.AsNoTracking().FirstOrDefaultAsync(l => l.ProductionKindId == kindId && l.Level == level, ct);
     }
 
-    internal static class ProductionLineMapping
+    public static class ProductionLineMapping
     {
         public static ProductionLineDto ToDto(ProductionLine l, ProductionStructure? s = null) => new()
         {
@@ -900,7 +903,7 @@ namespace knkwebapi_v2.Services.Production
         };
     }
 
-    internal static class ProductionCycleRecordMapping
+    public static class ProductionCycleRecordMapping
     {
         public static ProductionCycleRecordDto ToDto(ProductionCycleRecord r, string? blueprintName) => new()
         {
