@@ -53,6 +53,8 @@ namespace knkwebapi_v2.Attributes
                 filters: new[] { IdFilter("kingdomId") }),
             ["CrownLand"] = Of<ICrownLandService>((s, id) => s.GetByIdAsync(id), Name,
                 o => Join(Text(o, "Kingdom"), Text(o, "WorldName")), filters: new[] { IdFilter("kingdomId") }),
+            ["TerritoryConflict"] = Of<ITerritoryConflictService>((s, id) => s.GetByIdAsync(id),
+                o => Join(Text(o, "HolderA"), Text(o, "HolderB")), o => Text(o, "World")),
             ["Street"] = Of<IStreetService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "TownNames", "DistrictNames", "Districts")),
             ["Location"] = Of<ILocationService>((s, id) => s.GetByIdAsync(id), o => Text(o, "Name") ?? Coordinates(o), Coordinates),
             ["GateStructure"] = Of<IGateStructureService>((s, id) => s.GetByIdAsync(id), Name,

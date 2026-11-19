@@ -1931,6 +1931,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<string>("Motd")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("ProductionSettingsJson")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("RuntimeWorldsJson")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -2771,6 +2774,35 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("EnchantmentDefinitionId");
 
                     b.ToTable("item_instance_enchantments", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Kingdom", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("kingdoms", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Kit", b =>
@@ -5034,6 +5066,38 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("private_message_log_entries", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Province", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<int>("KingdomId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("KingdomId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("provinces", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.RefreshToken", b =>
                 {
                     b.Property<long>("Id")
@@ -6873,6 +6937,98 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("temp_region_releases", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.TerritoryConflict", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AwardedHolderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AwardedHolderKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("ChunkCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ChunksJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("DetectedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("HolderAId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("HolderAKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("HolderBId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("HolderBKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("LastReportedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("MaxChunkX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxChunkZ")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinChunkX")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinChunkZ")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Resolution")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ResolvedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<bool>("StillOverlapping")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("World")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("World", "Status");
+
+                    b.ToTable("territory_conflicts", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.TitleBracket", b =>
                 {
                     b.Property<int>("Id")
@@ -7348,9 +7504,30 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("world_tasks", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.CrownLand", b =>
+                {
+                    b.HasBaseType("knkwebapi_v2.Models.Domain");
+
+                    b.Property<int>("KingdomId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Range")
+                        .HasColumnType("int");
+
+                    b.HasIndex("KingdomId");
+
+                    b.ToTable("crown_lands", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+                        });
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.District", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
+
+                    b.Property<bool>("IsCapital")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("TownId")
                         .HasColumnType("int");
@@ -7373,12 +7550,32 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("HouseNumber")
                         .HasColumnType("int");
 
+                    b.Property<int?>("LoyaltyTownId")
+                        .HasColumnType("int");
+
                     b.Property<int>("StreetId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TerritoryConflictId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TerritoryFlag")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasDefaultValue("None");
+
+                    b.Property<DateTime?>("TerritoryFlaggedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.HasIndex("DistrictId");
 
+                    b.HasIndex("LoyaltyTownId");
+
                     b.HasIndex("StreetId");
+
+                    b.HasIndex("TerritoryConflictId");
 
                     b.ToTable("structures", null, t =>
                         {
@@ -7389,6 +7586,19 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.Town", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
+
+                    b.Property<int?>("KingdomId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Power")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ProvinceId")
+                        .HasColumnType("int");
+
+                    b.HasIndex("KingdomId");
+
+                    b.HasIndex("ProvinceId");
 
                     b.ToTable("towns", null, t =>
                         {
@@ -8920,6 +9130,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Holder");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Province", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Kingdom", "Kingdom")
+                        .WithMany("Provinces")
+                        .HasForeignKey("KingdomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Kingdom");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.RefreshToken", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.User", "User")
@@ -9500,6 +9721,23 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("WorkflowSession");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.CrownLand", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Domain", null)
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.CrownLand", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Kingdom", "Kingdom")
+                        .WithMany("CrownLands")
+                        .HasForeignKey("KingdomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Kingdom");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.District", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Domain", null)
@@ -9531,15 +9769,29 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("knkwebapi_v2.Models.Town", "LoyaltyTown")
+                        .WithMany()
+                        .HasForeignKey("LoyaltyTownId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("knkwebapi_v2.Models.Street", "Street")
                         .WithMany("Structures")
                         .HasForeignKey("StreetId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("knkwebapi_v2.Models.TerritoryConflict", "TerritoryConflict")
+                        .WithMany("FlaggedStructures")
+                        .HasForeignKey("TerritoryConflictId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("District");
 
+                    b.Navigation("LoyaltyTown");
+
                     b.Navigation("Street");
+
+                    b.Navigation("TerritoryConflict");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Town", b =>
@@ -9549,6 +9801,20 @@ namespace knkwebapi_v2.Migrations
                         .HasForeignKey("knkwebapi_v2.Models.Town", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Kingdom", "Kingdom")
+                        .WithMany("Towns")
+                        .HasForeignKey("KingdomId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Province", "Province")
+                        .WithMany("Towns")
+                        .HasForeignKey("ProvinceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Kingdom");
+
+                    b.Navigation("Province");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.PermissionGroup", b =>
@@ -9713,6 +9979,15 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ShieldBannerLayers");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Kingdom", b =>
+                {
+                    b.Navigation("CrownLands");
+
+                    b.Navigation("Provinces");
+
+                    b.Navigation("Towns");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Kit", b =>
                 {
                     b.Navigation("Contents");
@@ -9768,6 +10043,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Grants");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Province", b =>
+                {
+                    b.Navigation("Towns");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.RoadTile", b =>
                 {
                     b.Navigation("Edges");
@@ -9815,6 +10095,11 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
                 {
                     b.Navigation("Structures");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TerritoryConflict", b =>
+                {
+                    b.Navigation("FlaggedStructures");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.WorkflowSession", b =>
