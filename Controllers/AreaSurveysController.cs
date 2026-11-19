@@ -11,6 +11,7 @@ namespace KnKWebAPI.Controllers
     /// <c>POST api/ProductionAreas/{id}/surveys</c>. Reads: the World area (or the plugin key).</summary>
     [ApiController]
     [Route("api/AreaSurveys")]
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
     [DashboardReads("AreaSurvey")]
     public class AreaSurveysController : ControllerBase
     {
