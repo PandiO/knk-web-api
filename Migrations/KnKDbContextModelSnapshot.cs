@@ -7944,7 +7944,7 @@ namespace knkwebapi_v2.Migrations
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
 
-                    b.Property<int>("DistrictId")
+                    b.Property<int?>("DistrictId")
                         .HasColumnType("int");
 
                     b.Property<int>("HouseNumber")
@@ -7953,7 +7953,7 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int?>("LoyaltyTownId")
                         .HasColumnType("int");
 
-                    b.Property<int>("StreetId")
+                    b.Property<int?>("StreetId")
                         .HasColumnType("int");
 
                     b.Property<int?>("TerritoryConflictId")
@@ -7969,6 +7969,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime?>("TerritoryFlaggedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int?>("TownId")
+                        .HasColumnType("int");
+
                     b.HasIndex("DistrictId");
 
                     b.HasIndex("LoyaltyTownId");
@@ -7977,9 +7980,13 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("TerritoryConflictId");
 
+                    b.HasIndex("TownId");
+
                     b.ToTable("structures", null, t =>
                         {
                             t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+
+                            t.HasCheckConstraint("CK_structures_DistrictXorTown", "(`DistrictId` IS NULL) <> (`TownId` IS NULL)");
                         });
                 });
 
@@ -8327,6 +8334,87 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("gate_structures", null, t =>
                         {
                             t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+
+                            t.HasCheckConstraint("CK_structures_DistrictXorTown", "(`DistrictId` IS NULL) <> (`TownId` IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionStructure", b =>
+                {
+                    b.HasBaseType("knkwebapi_v2.Models.Structure");
+
+                    b.Property<bool>("AutomaticTransport")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PreferredWarehouseId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("ProductionEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("ProductionKindId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RoadConnection")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("RoadConnectionMeasuredAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("TransportCapacity")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TransportThreshold")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WarehousePreference")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("WorkersPresent")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkersTotal")
+                        .HasColumnType("int");
+
+                    b.HasIndex("PreferredWarehouseId");
+
+                    b.HasIndex("ProductionKindId");
+
+                    b.ToTable("production_structures", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+
+                            t.HasCheckConstraint("CK_structures_DistrictXorTown", "(`DistrictId` IS NULL) <> (`TownId` IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Warehouse", b =>
+                {
+                    b.HasBaseType("knkwebapi_v2.Models.Structure");
+
+                    b.Property<bool>("AcceptsDeliveries")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("DefaultStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.HasIndex("DefaultStorageId");
+
+                    b.ToTable("warehouses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+
+                            t.HasCheckConstraint("CK_structures_DistrictXorTown", "(`DistrictId` IS NULL) <> (`TownId` IS NULL)");
                         });
                 });
 
@@ -10300,8 +10388,7 @@ namespace knkwebapi_v2.Migrations
                     b.HasOne("knkwebapi_v2.Models.District", "District")
                         .WithMany("Structures")
                         .HasForeignKey("DistrictId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.ClientNoAction);
 
                     b.HasOne("knkwebapi_v2.Models.Domain", null)
                         .WithOne()
@@ -10317,13 +10404,17 @@ namespace knkwebapi_v2.Migrations
                     b.HasOne("knkwebapi_v2.Models.Street", "Street")
                         .WithMany("Structures")
                         .HasForeignKey("StreetId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.ClientNoAction);
 
                     b.HasOne("knkwebapi_v2.Models.TerritoryConflict", "TerritoryConflict")
                         .WithMany("FlaggedStructures")
                         .HasForeignKey("TerritoryConflictId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.Town", "Town")
+                        .WithMany()
+                        .HasForeignKey("TownId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
 
                     b.Navigation("District");
 
@@ -10332,6 +10423,8 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Street");
 
                     b.Navigation("TerritoryConflict");
+
+                    b.Navigation("Town");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Town", b =>
@@ -10401,6 +10494,38 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("IconMaterial");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ProductionStructure", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Structure", null)
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.ProductionStructure", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Warehouse", "PreferredWarehouse")
+                        .WithMany()
+                        .HasForeignKey("PreferredWarehouseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("PreferredWarehouse");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Warehouse", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Storage", "DefaultStorage")
+                        .WithMany()
+                        .HasForeignKey("DefaultStorageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.Structure", null)
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.Warehouse", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DefaultStorage");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ActionBinding", b =>
