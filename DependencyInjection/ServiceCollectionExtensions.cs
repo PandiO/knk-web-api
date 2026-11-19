@@ -222,6 +222,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IGateDoorService, GateDoorService>();
             services.AddScoped<IItemBlueprintRepository, ItemBlueprintRepository>();
             services.AddScoped<IItemBlueprintService, ItemBlueprintService>();
+            services.AddScoped<IItemIdentityService, knkwebapi_v2.Services.ItemIdentity.ItemIdentityService>(); // #141
             services.AddScoped<IEnchantmentDefinitionRepository, EnchantmentDefinitionRepository>();
             services.AddScoped<IEnchantmentDefinitionService, EnchantmentDefinitionService>();
             // PandiO/knk-workspace#221: the public enchantment info sheets.

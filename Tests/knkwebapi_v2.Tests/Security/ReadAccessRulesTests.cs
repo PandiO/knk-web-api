@@ -243,7 +243,7 @@ public class ReadAccessRulesTests
         ["UserIgnoresController.Get"] = "G",
         ["WorldTasksController.ListOpenForServer"] = "G",
         ["WorldTasksController.ListTempRegionReleases"] = "G",
-        // U: the action's own stricter rule (node, self-or-node, owner node, [Authorize]) (84)
+        // U: the action's own stricter rule (node, self-or-node, owner node, [Authorize]) (85)
         ["AdminClientsController.GetActiveClients"] = "U",
         ["AdminClientsController.GetAllClients"] = "U",
         ["AdminClientsController.GetClient"] = "U",
@@ -292,6 +292,7 @@ public class ReadAccessRulesTests
         ["LootboxTypesController.GetById"] = "U",
         ["LootboxTypesController.GetOdds"] = "U",
         ["LootboxTypesController.Search"] = "U",
+        ["ItemIdentityController.GetReport"] = "U", // #141: knk.admin.content
         ["MinecraftCatalogController.Audit"] = "U",
         ["MinecraftCatalogController.GetScan"] = "U",
         ["MinecraftCatalogController.ListScans"] = "U",
@@ -331,7 +332,8 @@ public class ReadAccessRulesTests
         ["WorldAnalyticsController.GetHeatmap"] = "U",
         ["WorldAnalyticsController.GetHeatmapWorlds"] = "U",
         ["WorldAnalyticsController.GetMenuFunnels"] = "U",
-        // D: outside the access model, default rule (logged in or the plugin key) (26)
+        // D: outside the access model, default rule (logged in or the plugin key) (27)
+        ["ItemIdentityController.GetMaterialMap"] = "D", // #141: the plugin's material → blueprint map
         ["AuditLogRetentionConfigurationController.Get"] = "D",
         ["CurrencyController.GetBalances"] = "D",
         ["CurrencyController.GetLimits"] = "D",
@@ -389,6 +391,7 @@ public class ReadAccessRulesTests
         "LandmarksController.GetAll", "LandmarksController.GetById",
         "WorldTasksController.ListByStatus", "WorldTasksController.GetByLinkCode", "WorldTasksController.GetById",
         "WorldTasksController.ListOpenForServer", "WorldTasksController.ListTempRegionReleases",
+        "ItemIdentityController.GetMaterialMap", // #141
         "KitsController.Search", "KitsController.GetById", "KitsController.GetAvailable", "KitsController.GetPendingDeliveries",
         "SiegeLobbiesController.GetRuntimeConfig", "SiegeScenariosController.GetReadiness", "SiegeMatchesController.PublicPlayerMatches",
         "RoadTilesController.List", "RoadTilesController.GetGraph", "RoadTilesController.ListProposals", "RoadTilesController.GetProposal",

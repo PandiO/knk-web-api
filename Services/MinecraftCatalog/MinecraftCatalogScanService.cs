@@ -118,6 +118,24 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
         return ToDto(scan);
     }
 
+    /// <summary>
+    /// Item identity (PandiO/knk-workspace#141, D11/G4): after a scan, every obtainable material without a blueprint gets
+    /// its vanilla shadow. The scan is already committed; a failure here is logged and the next scan (or
+    /// <c>POST api/ItemIdentity/shadows/generate</c>) retries it.
+    /// </summary>
+    private async Task GenerateVanillaShadowsAsync(int scanId, CancellationToken ct)
+    {
+        try
+        {
+            await ItemIdentity.VanillaShadowBlueprints.GenerateAsync(_db, _logger, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _db.ChangeTracker.Clear();
+            _logger.LogWarning(ex, "Minecraft catalogue scan {ScanId}: generating the vanilla shadow blueprints failed", scanId);
+        }
+    }
+
     public async Task<IReadOnlyList<MinecraftCatalogScanDto>> ListAsync(int take, CancellationToken ct = default)
     {
         var scans = await _db.MinecraftCatalogScans.AsNoTracking()
@@ -250,6 +268,7 @@ public class MinecraftCatalogScanService : IMinecraftCatalogScanService
                     scanId, tracked.EnchantmentCount, tracked.EnchantmentsInserted, tracked.EnchantmentsUpdated, tracked.EnchantmentsUnchanged, tracked.EnchantmentsMerged,
                     tracked.EnchantmentsDeleted, tracked.EnchantmentsMarkedMissing, tracked.EnchantmentDefinitionsCreated, tracked.EnchantmentDefinitionsLinked);
             }
+            await GenerateVanillaShadowsAsync(scanId, ct);
             return ToDto(tracked);
         }
         catch (Exception ex) when (ex is not MinecraftCatalogConflictException and not OperationCanceledException)

@@ -27,6 +27,6 @@ public class MinecraftMaterialReferencesTests
         var known = MinecraftMaterialReferences.All.Select(r => r.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
 
         Assert.Equal(inModel, known);
-        Assert.Equal(8, known.Count);
+        Assert.Equal(9, known.Count);
     }
 }
