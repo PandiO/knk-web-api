@@ -175,6 +175,7 @@ namespace knkwebapi_v2.Services
             dto.StreetId = n.StreetId;
             dto.HouseNumber = n.HouseNumber;
 
+            // Unchanged ids are not looked up again (the foreign key keeps them valid).
             if (n.StreetId is int streetId && existing?.StreetId != streetId
                 && await _streetRepo.GetByIdAsync(streetId) == null)
                 throw new ArgumentException($"Street with id {streetId} not found.", nameof(dto));
@@ -182,19 +183,23 @@ namespace knkwebapi_v2.Services
             District? district = null;
             if (n.DistrictId is int districtId)
             {
-                district = existing?.DistrictId == districtId && existing.District != null
-                    ? existing.District
-                    : await _districtRepo.GetByIdAsync(districtId);
-                if (district == null) throw new ArgumentException($"District with id {districtId} not found.", nameof(dto));
+                if (existing?.DistrictId == districtId) district = existing.District;
+                else
+                {
+                    district = await _districtRepo.GetByIdAsync(districtId);
+                    if (district == null) throw new ArgumentException($"District with id {districtId} not found.", nameof(dto));
+                }
             }
 
             Town? town = null;
             if (n.TownId is int townId)
             {
-                town = existing?.TownId == townId && existing.Town != null
-                    ? existing.Town
-                    : _townRepo == null ? null : await _townRepo.GetByIdAsync(townId);
-                if (town == null) throw new ArgumentException($"Town with id {townId} not found.", nameof(dto));
+                if (existing?.TownId == townId) town = existing.Town;
+                else
+                {
+                    town = _townRepo == null ? null : await _townRepo.GetByIdAsync(townId);
+                    if (town == null) throw new ArgumentException($"Town with id {townId} not found.", nameof(dto));
+                }
             }
             return (district, town);
         }
@@ -205,9 +210,9 @@ namespace knkwebapi_v2.Services
             if (_placement == null) return new List<string>();
             // The rules read the selected records (District.WgRegionId, Town for the territory lookup).
             if (district != null && structure.District?.Id != district.Id) structure.District = district;
-            if (district == null) structure.District = null;
+            if (structure.DistrictId == null) structure.District = null;
             if (town != null && structure.Town?.Id != town.Id) structure.Town = town;
-            if (town == null) structure.Town = null;
+            if (structure.TownId == null) structure.Town = null;
             return await _placement.CheckRulesAsync(nameof(Structure), structure);
         }
 

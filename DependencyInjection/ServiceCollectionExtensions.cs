@@ -362,6 +362,11 @@ namespace knkwebapi_v2.DependencyInjection
                 new RegionService(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<RegionService>>(), minecraftPluginBaseUrl,
                     configuration?[knkwebapi_v2.Attributes.PluginServiceAuth.ApiKeyConfigKey])
             );
+            // P2 (#91): the territory lookup behind the InsideTerritory rule, on the same plugin HTTP server and key.
+            services.AddScoped<knkwebapi_v2.Services.Production.ITerritoryLookupClient>(sp =>
+                new knkwebapi_v2.Services.Production.TerritoryLookupClient(sp.GetRequiredService<IHttpClientFactory>(),
+                    sp.GetRequiredService<ILogger<knkwebapi_v2.Services.Production.TerritoryLookupClient>>(), minecraftPluginBaseUrl,
+                    configuration?[knkwebapi_v2.Attributes.PluginServiceAuth.ApiKeyConfigKey]));
             services.AddScoped<IDomainRegionNameFinalizer, DomainRegionNameFinalizer>();
             // KNG-111: each domain's Minecraft world (resolution, validation, backfill of older rows).
             services.AddScoped<IDomainWorldResolver, DomainWorldResolver>();
@@ -473,6 +478,8 @@ namespace knkwebapi_v2.DependencyInjection
             // Validation method implementations (Phase 3)
             services.AddScoped<IValidationMethod, LocationInsideRegionValidator>();
             services.AddScoped<IValidationMethod, RegionContainmentValidator>();
+            // P2 (PandiO/knk-workspace#91): placement rules P-2/P-3, a territory lookup on the game server.
+            services.AddScoped<IValidationMethod, InsideTerritoryValidator>();
             services.AddScoped<IValidationMethod, ConditionalRequiredValidator>();
             services.AddScoped<IValidationMethod, ConditionalValueMatchValidator>();
 

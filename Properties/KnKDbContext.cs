@@ -3034,15 +3034,18 @@ public partial class KnKDbContext : DbContext
         // ---- end stock core ----
 
         // ---- Production world P2 (PandiO/knk-workspace#91, production DESIGN § 3.3-3.4), one contiguous block ----
-        // A structure is in a district (DistrictId) or rural (TownId): exactly one is set.
+        // A structure is in a district (DistrictId) or rural (TownId): exactly one is set. ClientNoAction, not
+        // Restrict: on an optional relationship Restrict lets EF null the FKs of tracked structures when their street,
+        // district or town is deleted (the delete would then succeed and leave them without one). With ClientNoAction EF
+        // leaves them alone and the database refuses the delete as before (DeleteConstraintExceptionFilter: 409).
         modelBuilder.Entity<Structure>(entity =>
         {
             entity.HasOne(s => s.Street).WithMany(st => st.Structures).HasForeignKey(s => s.StreetId)
-                .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+                .OnDelete(DeleteBehavior.ClientNoAction).IsRequired(false);
             entity.HasOne(s => s.District).WithMany(d => d.Structures).HasForeignKey(s => s.DistrictId)
-                .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+                .OnDelete(DeleteBehavior.ClientNoAction).IsRequired(false);
             entity.HasOne(s => s.Town).WithMany().HasForeignKey(s => s.TownId)
-                .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+                .OnDelete(DeleteBehavior.ClientNoAction).IsRequired(false);
             entity.ToTable(t => t.HasCheckConstraint("CK_structures_DistrictXorTown",
                 "(`DistrictId` IS NULL) <> (`TownId` IS NULL)"));
         });

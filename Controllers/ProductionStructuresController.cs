@@ -95,7 +95,6 @@ namespace KnKWebAPI.Controllers
             Ok(await _service.SearchAsync(query));
 
         /// <summary>The road connection the game server measured (DESIGN § 7.6, P5b): plugin key or knk.admin.world.</summary>
-        [RequireDashboardChange("ProductionStructure")]
         [HttpPut("{id:int}/road-connection")]
         public async Task<IActionResult> SetRoadConnection(int id, [FromBody] RoadConnectionUpdateDto dto)
         {

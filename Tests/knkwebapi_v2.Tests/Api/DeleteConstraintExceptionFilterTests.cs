@@ -93,8 +93,10 @@ public class DeleteConstraintExceptionFilterTests
     [Fact]
     public async Task DeletingAStreetAStructureStillUses_Answers409WithTheReason()
     {
-        // StreetService loads the Street with its Structures first, so EF refuses the delete in its
-        // change tracker (a severed required relationship) before any SQL runs: no DbUpdateException.
+        // P2 (#91): Structure.StreetId is optional now (rural structures have no street). Its FK is ClientNoAction, so
+        // EF leaves the loaded structure's StreetId alone and the database refuses the delete (DbUpdateException on
+        // MySQL; MySql/ tests). The in-memory provider has no FK, so the refusal is simulated here; what is checked is
+        // that EF did not null the street of the structure and that the filter names the reason.
         using var db = new KnKDbContext(new DbContextOptionsBuilder<KnKDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         db.Towns.Add(new Town { Id = 1, Name = "Rivia", Description = "", WgRegionId = "town_rivia" });
@@ -108,7 +110,10 @@ public class DeleteConstraintExceptionFilterTests
         var filter = new DeleteConstraintExceptionFilter(NullLogger<DeleteConstraintExceptionFilter>.Instance, new EntityReferenceService(db));
 
         var thrown = await Record.ExceptionAsync(() => service.DeleteAsync(4));
-        var context = Context("DELETE", thrown!, controller: "Streets", id: "4");
+        Assert.Null(thrown); // in memory: no FK to refuse it
+        Assert.Equal(4, db.Structures.AsNoTracking().Single(s => s.Id == 3).StreetId); // EF did not null it
+        var context = Context("DELETE", new DbUpdateException("FK", new Exception("Cannot delete or update a parent row")),
+            controller: "Streets", id: "4");
         await filter.OnExceptionAsync(context);
 
         Assert.Equal("This street can't be deleted: it is still used by 1 structure. Remove or change those first.", Message(context));
