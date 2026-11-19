@@ -1,0 +1,124 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "ba68391d-ccfd-5a16-a6f9-44656bf0a93b",
+  "entityTypeName": "StockTransaction",
+  "name": "StockTransaction - Default (seed v1)",
+  "description": "A stock ledger transaction and its moves (stock core P1, #97). Read only; undo with Reverse.",
+  "sections": [
+    {
+      "sectionGuid": "c083be0d-27b7-5029-9fcb-7c687e2b837e",
+      "sectionName": "General information",
+      "description": "Who moved stock, when and why.",
+      "fields": [
+        {
+          "fieldGuid": "22fd83e2-53c5-5786-a2d0-08eae7ce860c",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Why the stock moved.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "129cfc61-ec01-570f-9e21-9ad61367cce6",
+          "fieldName": "Mode",
+          "label": "Mode",
+          "description": "AllOrNothing or Partial.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "d6e032a5-4b97-5526-a890-6ca6a67fc144",
+          "fieldName": "ActorKind",
+          "label": "Actor",
+          "description": "A person, the game server or a system job.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "4fe9cd1c-f388-5ba9-94c1-8545a7b9b536",
+          "fieldName": "ActorUserId",
+          "label": "Actor user id",
+          "description": "The person who asked, if any.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "23d4e055-ce83-5df3-86ca-ca3206dc5bb9",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Why, in words.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "45e23870-0526-542e-b0cb-e5c29a14deee",
+          "fieldName": "SourceType",
+          "label": "Source",
+          "description": "What it belongs to.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "9f7d2c1e-78ab-546e-8775-53e886aa1b1e",
+          "fieldName": "SourceRef",
+          "label": "Source reference",
+          "description": "The id of that source.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "78b59cbe-bc5f-5b41-8fc5-ca20d4cfccc1",
+          "fieldName": "ReversesTransactionId",
+          "label": "Reverses",
+          "description": "The transaction this correction undoes.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "eaf5f81c-10d5-5970-987d-bc402ac7daae",
+          "fieldName": "CreatedAt",
+          "label": "Created",
+          "description": "UTC.",
+          "fieldType": "DateTime"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "4b75838c-76b5-52af-8c31-7ce5fe4b3b85",
+      "sectionName": "Moves",
+      "description": "Each line: from one storage to another.",
+      "relatedEntityPropertyName": "Moves",
+      "relatedEntityTypeName": "StockMove",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "27a06e90-d17e-5288-909e-0cda6b86d48b",
+          "fieldName": "FromStorageId",
+          "label": "From storage",
+          "description": "Debited.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "718fd1b6-b0e3-5354-9e5b-9517b540becc",
+          "fieldName": "ToStorageId",
+          "label": "To storage",
+          "description": "Credited.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "69e12984-eed6-518e-8492-96fd748c4348",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint id",
+          "description": "For fungible stock.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "cb964b58-7caa-5534-9375-126bc98f2ff7",
+          "fieldName": "ItemInstanceId",
+          "label": "Item instance id",
+          "description": "For a unique item.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "9d16fa87-c0dc-57d7-a75b-9be1e861f5df",
+          "fieldName": "Amount",
+          "label": "Amount",
+          "description": "Raw units (1 for a unique item).",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

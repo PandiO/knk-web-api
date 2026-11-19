@@ -142,6 +142,8 @@ public class FormConfigurationSeedFilesTests
         // (FormTemplateValidationService doesn't see the "= string.Empty" initialiser), and empty is the normal value.
         // ScanMaterialWhitelist/ScanMaterialBlacklist carry [DefaultValue("")] since KNG-193, so the whitelist is an
         // optional field of the seed (v2) and the blacklist simply has a default.
+        // Stock core P1 (#97): the ledger is written by the stock service only; its seed form is read only.
+        ["StockTransaction"] = new() { ["RequestHash"] = "written by the stock service; the form is read only" },
         ["GateDoor"] = new()
         {
             ["PassThroughConditionsJson"] = "not read by the plugin",

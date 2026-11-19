@@ -58,6 +58,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("basePriceMax")]
         public decimal BasePriceMax { get; set; }
 
+        /// <summary>Capacity use per unit in raw units (stock core P1, #97; default 1).</summary>
+        [JsonPropertyName("storageWeight")]
+        public decimal StorageWeight { get; set; } = 1m;
+
         [JsonPropertyName("defaultEnchantments")]
         public List<ItemBlueprintDefaultEnchantmentDto> DefaultEnchantments { get; set; } = new();
 
@@ -135,6 +139,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("basePriceMax")]
         public decimal BasePriceMax { get; set; }
+
+        /// <summary>Capacity use per unit in raw units (stock core P1, #97). Null = keep (create: 1), so a form
+        /// without the field doesn't change it.</summary>
+        [JsonPropertyName("storageWeight")]
+        public decimal? StorageWeight { get; set; }
 
         [JsonPropertyName("defaultEnchantments")]
         public List<ItemBlueprintDefaultEnchantmentCreateDto> DefaultEnchantments { get; set; } = new();
@@ -214,6 +223,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("basePriceMax")]
         public decimal BasePriceMax { get; set; }
+
+        /// <summary>Capacity use per unit in raw units (stock core P1, #97). Null = keep (create: 1), so a form
+        /// without the field doesn't change it.</summary>
+        [JsonPropertyName("storageWeight")]
+        public decimal? StorageWeight { get; set; }
 
         [JsonPropertyName("defaultEnchantments")]
         public List<ItemBlueprintDefaultEnchantmentCreateDto> DefaultEnchantments { get; set; } = new();
@@ -301,6 +315,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("basePriceMax")]
         public decimal BasePriceMax { get; set; }
+
+        /// <summary>Capacity use per unit in raw units (stock core P1, #97; default 1).</summary>
+        [JsonPropertyName("storageWeight")]
+        public decimal StorageWeight { get; set; } = 1m;
 
         [JsonPropertyName("defaultEnchantmentsCount")]
         public int DefaultEnchantmentsCount { get; set; }

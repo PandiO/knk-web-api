@@ -310,3 +310,9 @@ as collections), `Province` (kingdom, towns), `CrownLand` (kingdom, range, ancho
 (holders, area size, resolution, flagged structures). GUIDs: configuration uuid5(URL namespace,
 "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(that, "section:" + name), fields uuid5(that,
 "field:<section>:<field>").
+
+**Stock core P1 display seeds v1 (PandiO/knk-workspace#97, 2026-11-19):** `Storage` (holder, capacity and lock, the
+stock lines and unique items as collections) and `StockTransaction` (reason, actor, source, note and the moves as a
+collection). GUIDs: configuration uuid5(URL namespace, "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(that,
+"section:" + name), fields uuid5(that, "field:<section>:<label>").
+

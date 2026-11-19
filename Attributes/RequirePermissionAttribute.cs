@@ -109,6 +109,11 @@ namespace knkwebapi_v2.Attributes
         /// Matched by knk.admin.* and *.</summary>
         public const string ManageWorld = "knk.admin.world";
 
+        /// <summary>Stock core P1 (PandiO/knk-workspace#97, production IMPLEMENTATION_PLAN § P1): the stock ledger: read
+        /// it, move or adjust stock by hand, reverse a transaction, run the reconciler and the roll-up. Not under
+        /// knk.admin, so knk.admin.* does not grant it: only * or an explicit grant (moving stock creates goods).</summary>
+        public const string EconomyAdmin = "knk.economy.admin";
+
         // Dashboard actions on top of the area nodes (knk-workspace docs/specs/dashboard-access-model/DESIGN.md
         // § 4.1, PandiO/knk-workspace#280, model A). The area node (DashboardAccess) still means view, create and
         // edit; these say what kind of write is allowed on top of it. All are children of knk.admin, so

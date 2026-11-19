@@ -47,6 +47,13 @@ public class ItemBlueprint
     public decimal BasePriceMin { get; set; }
     public decimal BasePriceMax { get; set; }
 
+    // Stock core P1 (PandiO/knk-workspace#97, production DESIGN § 4.4): capacity use = amount × StorageWeight, in raw
+    // units. Default 1 for every item; per-item weights (bulky stone vs small gems) are later tuning, data only.
+    public const decimal DefaultStorageWeight = 1m;
+    public const decimal MinStorageWeight = 0.0001m;
+    public const decimal MaxStorageWeight = 100_000m;
+    public decimal StorageWeight { get; set; } = DefaultStorageWeight;
+
     [NavigationPair(nameof(ItemBlueprintDefaultEnchantment))]
     [RelatedEntityField(typeof(ItemBlueprintDefaultEnchantment))]
     public ICollection<int> DefaultEnchantmentIds { get; set; } = new List<int>();

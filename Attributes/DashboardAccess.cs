@@ -1,6 +1,7 @@
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.Stock;
 
 namespace knkwebapi_v2.Attributes
 {
@@ -190,6 +191,12 @@ namespace knkwebapi_v2.Attributes
             ["Street"] = new[] { StaffPermissions.RoadManage },
             // Off-road #708: landmark staff without the World area node still list landmarks.
             ["Landmark"] = new[] { StaffPermissions.LandmarkManage },
+            // Stock core P1 (#97): economy staff read storages without the World area node.
+            ["Storage"] = new[] { StaffPermissions.EconomyAdmin },
+            ["StockTransaction"] = new[] { StaffPermissions.EconomyAdmin },
+            ["StockMove"] = new[] { StaffPermissions.EconomyAdmin },
+            ["StockLine"] = new[] { StaffPermissions.EconomyAdmin },
+            ["StockUnit"] = new[] { StaffPermissions.EconomyAdmin },
             ["MinecraftMaterialRef"] = new[] { StaffPermissions.RoadManage },
             ["ItemBlueprint"] = new[] { StaffPermissions.ManageKits, StaffPermissions.ManageLootboxes },
             ["EnchantmentDefinition"] = new[] { StaffPermissions.ManageKits, StaffPermissions.ManageLootboxes },
@@ -266,6 +273,14 @@ namespace knkwebapi_v2.Attributes
                 Del<ITerritoryConflictService>((s, id) => s.DeleteAsync(id)),
                 Lists<ITerritoryConflictService, TerritoryConflictListDto>((s, q) => s.SearchAsync(q)),
                 changesNeedContent: false),
+            // Stock core P1 (#97): storages are world records (domain, player and clan holders); the ledger is a read-only
+            // type (World area or knk.economy.admin to read, knk.economy.admin to move stock).
+            Type("Storage", DashboardArea.World, World,
+                Del<IStorageService>((s, id) => s.DeleteAsync(id)), Lists<IStorageService, StorageListDto>((s, q) => s.SearchAsync(q))),
+            ViewOnly("StockTransaction", DashboardArea.World, World),
+            ViewOnly("StockMove", DashboardArea.World, World),
+            ViewOnly("StockLine", DashboardArea.World, World),
+            ViewOnly("StockUnit", DashboardArea.World, World),
             ViewOnly("GateBlockSnapshot", DashboardArea.World, World),
             ViewOnly("GateOpenedBlockSnapshot", DashboardArea.World, World),
 

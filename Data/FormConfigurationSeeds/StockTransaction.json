@@ -1,0 +1,115 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "b15fc0e6-ab99-5288-bb18-28d97d7808c1",
+  "entityTypeName": "StockTransaction",
+  "name": "StockTransaction - Default (seed v1)",
+  "description": "One stock ledger transaction: who moved what between which storages, and why (stock core P1, #97). Written only by the stock service (moves, adjustments, corrections); read only here. Undo one with Reverse on its page.",
+  "steps": [
+    {
+      "stepGuid": "c498a238-e8f5-5f2f-bc20-c7a6c19d6536",
+      "stepName": "Transaction",
+      "description": "Every field is read only: the ledger is append-only, a correction is a new transaction.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "62ac6501-4d74-5d0e-9ff0-c8cd32dbb576",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Why the stock moved.",
+          "fieldType": "Enum",
+          "enumType": "StockReason",
+          "settingsJson": "{\"enumValues\": [\"Production\", \"ProductionInput\", \"TransportLoad\", \"TransportDeliver\", \"TransportReturn\", \"TransportRobbed\", \"TransportLost\", \"Distribution\", \"Trade\", \"Deposit\", \"Withdraw\", \"RewardInbox\", \"InboxClaim\", \"InboxOverflow\", \"InboxExpired\", \"ContainerSync\", \"PlayerHarvest\", \"Spoilage\", \"AdminAdjust\", \"Correction\"]}",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "d0d8e86a-ae4d-515e-8f0f-945aac9b6639",
+          "fieldName": "Mode",
+          "label": "Mode",
+          "description": "AllOrNothing = every line in full or nothing; Partial = what fitted.",
+          "fieldType": "Enum",
+          "enumType": "StockMoveMode",
+          "settingsJson": "{\"enumValues\": [\"AllOrNothing\", \"Partial\"]}",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "91789a3f-7df1-54bc-bb23-244ef8425d23",
+          "fieldName": "ActorKind",
+          "label": "Actor",
+          "description": "A person (web), the game server or a system job.",
+          "fieldType": "Enum",
+          "enumType": "StockActorKind",
+          "settingsJson": "{\"enumValues\": [\"User\", \"System\", \"PluginServer\"]}",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "b310ea8b-625b-5f44-be08-263841830000",
+          "fieldName": "ActorUserId",
+          "label": "Actor user id",
+          "description": "The person who asked, if any.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "85dbe9b7-2a63-59eb-8a1c-f5a1fdb1d52e",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Why, in words (required for adjustments).",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "4d58ac38-8e54-5070-a4aa-daec0bd30d07",
+          "fieldName": "SourceType",
+          "label": "Source",
+          "description": "What it belongs to (ProductionCycle, TransportOrder, …).",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "f1bbb258-0f47-525a-8a6c-361cda792e46",
+          "fieldName": "SourceRef",
+          "label": "Source reference",
+          "description": "The id of that source.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "305a20fa-bc94-5ceb-b64e-9eae5d1df32c",
+          "fieldName": "IdempotencyKey",
+          "label": "Idempotency key",
+          "description": "A repeated request with this key applied once.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "cadddb86-49e5-59f4-b3ed-d73e50e95f99",
+          "fieldName": "ReversesTransactionId",
+          "label": "Reverses",
+          "description": "The transaction this correction undoes.",
+          "fieldType": "Object",
+          "objectType": "StockTransaction",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "6870bf02-d4d6-5b98-9454-ffe45a404e9e",
+          "fieldName": "CreatedAt",
+          "label": "Created",
+          "description": "When it was written (UTC).",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": true
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}
