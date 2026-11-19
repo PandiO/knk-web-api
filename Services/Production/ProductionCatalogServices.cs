@@ -189,7 +189,8 @@ namespace knkwebapi_v2.Services.Production
 
         public async Task DeleteAsync(int id)
         {
-            var kind = await _db.ProductionKinds.FirstOrDefaultAsync(k => k.Id == id)
+            // Levels and their items go with the kind (Cascade); loaded so the delete is the same without a database cascade.
+            var kind = await _db.ProductionKinds.Include(k => k.Levels).ThenInclude(l => l.Items).FirstOrDefaultAsync(k => k.Id == id)
                 ?? throw new KeyNotFoundException($"ProductionKind with id {id} not found.");
             int used = await _db.ProductionStructures.CountAsync(p => p.ProductionKindId == id);
             if (used > 0) throw new InvalidOperationException($"{used} production structure(s) use this kind; give them another kind first.");
