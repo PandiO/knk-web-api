@@ -13,7 +13,7 @@ namespace knkwebapi_v2.Models;
 /// </summary>
 public static class ProductionCatalogSeed
 {
-    public static readonly DateTime SeededAt = new(2026, 11, 20, 0, 0, 0, DateTimeKind.Utc);
+    public static readonly DateTime SeededAt = new(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc);
 
     public const int DefaultClimateZoneId = 1;
     public const int RainId = 1, StormId = 2, DroughtId = 3;

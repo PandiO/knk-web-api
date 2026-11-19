@@ -266,7 +266,7 @@ unchanged (district only); the API accepts a rural `townId` there too. GUIDs: co
 "knk-formconfig:<Entity>:seed-v1"); steps and fields uuid5(that, "step:"/"field:" + name), the steps copied from the
 `Structure` seed included.
 
-**Production engine P3 seeds v1 (PandiO/knk-workspace#86, 2026-11-20):** new seeds for the six major P3 entities, each
+**Production engine P3 seeds v1 (PandiO/knk-workspace#86, 2026-11-19):** new seeds for the six major P3 entities, each
 with a display seed `<Entity>.display.json` in `DisplayConfigurationSeeds/` (G17). Import in any order.
 
 | Seed | Configuration | Import after |
@@ -286,13 +286,13 @@ weather type's effects (`effects`) are sent as lists in the entity's API body (t
 editors); the display seeds list them. GUIDs: configuration uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"),
 every step/field uuid5(that, "step:"/"field:" + name).
 
-**ItemBlueprint seed v2 (PandiO/knk-workspace#819, 2026-11-20):** a new `configurationGuid` and name, so it imports
+**ItemBlueprint seed v2 (PandiO/knk-workspace#819, 2026-11-19):** a new `configurationGuid` and name, so it imports
 next to an imported v1; make it the default and delete or keep v1 by hand. Adds "Storage weight" (`StorageWeight`,
 Decimal, default 1) after "Max stack size" on "Item in game": the capacity units one item takes in a storage (stock
 core P1, DESIGN § 4.4). GUIDs: configuration uuid5(v1 configuration GUID, "seed-v2"), every kept step/field
 uuid5(v1 configuration GUID, its v1 GUID), the new field uuid5(v2 configuration GUID, "field:StorageWeight").
 
-**ProductionStructure seed v2 (PandiO/knk-workspace#86, 2026-11-20):** a new `configurationGuid` and name, so it imports
+**ProductionStructure seed v2 (PandiO/knk-workspace#86, 2026-11-19):** a new `configurationGuid` and name, so it imports
 next to an imported v1; make it the default and delete or keep v1 by hand. Adds "Production kind" (`ProductionKindId`,
 a `ProductionKind` picker) before "Level" on the "Production" step: a new structure gets the kind's default workers and
 storages, and its level caps follow the kind's levels. GUIDs as for ItemBlueprint v2 (new field

@@ -323,7 +323,7 @@ production settings, road connection, workers, region). GUIDs: configuration uui
 "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(that, "section:" + name), fields uuid5(that,
 "field:<section>:<label>").
 
-**Production engine P3 display seeds v1 (PandiO/knk-workspace#86, 2026-11-20):** `ProductionKind` (with its ten
+**Production engine P3 display seeds v1 (PandiO/knk-workspace#86, 2026-11-19):** `ProductionKind` (with its ten
 levels), `ProductionKindLevel` (multipliers, caps, upgrade cost, unlocks and cost items), `ProductionLine` (rate, status,
 accrual, inputs), `ProductionModifier`, `ClimateZone` (odds, towns, the latest daily rolls) and `WeatherType` (effects).
 The cycle trace has no seed: it is a view-only record listed on the structure's production view
@@ -331,7 +331,7 @@ The cycle trace has no seed: it is a view-only record listed on the structure's 
 GUIDs: configuration uuid5(URL namespace, "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(that, "section:" + name),
 fields uuid5(that, "field:<section>:<label>").
 
-**Storage display seed v2 (PandiO/knk-workspace#819) and ProductionStructure display seed v2 (#86), 2026-11-20:** new
+**Storage display seed v2 (PandiO/knk-workspace#819) and ProductionStructure display seed v2 (#86), 2026-11-19:** new
 `configurationGuid`s and names; make them the default. Storage: the Stock section shows the blueprint's name
 (`itemBlueprint.name`) instead of its id. ProductionStructure: the Production section shows the kind's name
 (`productionKind.name`) instead of its id. GUIDs: configuration uuid5(v1 configuration GUID, "seed-v2"), kept
