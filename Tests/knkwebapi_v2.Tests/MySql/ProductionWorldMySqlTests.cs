@@ -41,7 +41,7 @@ public class ProductionWorldMySqlTests : IClassFixture<MySqlTestDatabase>
         WorldName = "world", DistrictId = districtId, TownId = townId, StreetId = streetId, HouseNumber = streetId.HasValue ? 1 : 0,
     };
 
-    [Fact]
+    [MySqlFact]
     public async Task CheckConstraint_RefusesBothAndNeither_AndAcceptsEach()
     {
         var (town, district, street) = await SeedAsync();
@@ -59,7 +59,7 @@ public class ProductionWorldMySqlTests : IClassFixture<MySqlTestDatabase>
         }
     }
 
-    [Fact]
+    [MySqlFact]
     public async Task DeletingAStreetOrTownAStructureUses_IsRefused_AndTheStructureKeepsIt()
     {
         var (town, district, street) = await SeedAsync();
