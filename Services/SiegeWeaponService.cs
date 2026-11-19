@@ -335,6 +335,25 @@ namespace knkwebapi_v2.Services
             if (corners.All(c => c.HasValue) && (dto.MinX > dto.MaxX || dto.MinY > dto.MaxY || dto.MinZ > dto.MaxZ))
                 throw new ArgumentException("Each min bound must be at most its max bound.");
 
+            // Phase 2 (PandiO/knk-workspace#783, W70, § 4.3): with bounds the size class is worked out from them and the
+            // facing (width across x length along x height), so changing the facing changes the class; bounds smaller
+            // than the small class are refused (A03). Without bounds the typed class stays (phase 1 behaviour).
+            var sizeClass = dto.SizeClass;
+            if (corners.All(c => c.HasValue))
+            {
+                var derived = SiegeWeaponSpotSizing.ClassFor(dto.MinX!.Value, dto.MinY!.Value, dto.MinZ!.Value,
+                    dto.MaxX!.Value, dto.MaxY!.Value, dto.MaxZ!.Value, dto.Facing);
+                if (derived == null)
+                {
+                    var (width, length, height) = SiegeWeaponSpotSizing.Footprint(dto.MinX.Value, dto.MinY.Value,
+                        dto.MinZ.Value, dto.MaxX.Value, dto.MaxY.Value, dto.MaxZ.Value, dto.Facing);
+                    throw new ArgumentException($"The bounds are too small for a weapon facing {dto.Facing}: " +
+                        $"{width} wide x {length} long x {height} high, the small class needs at least " +
+                        $"{SiegeWeaponSpotSizing.Describe(SiegeWeaponSizeClass.Small)}.");
+                }
+                sizeClass = derived.Value;
+            }
+
             target.Name = name;
             target.SiegeTeamId = dto.SiegeTeamId;
             target.MinX = dto.MinX;
@@ -345,7 +364,7 @@ namespace knkwebapi_v2.Services
             target.MaxZ = dto.MaxZ;
             target.WgRegionId = OptionalText(dto.WgRegionId, "wgRegionId", 255);
             target.Facing = dto.Facing;
-            target.SizeClass = dto.SizeClass;
+            target.SizeClass = sizeClass;
         }
 
         private async Task<SiegeScenario> RequireScenarioAsync(int siegeScenarioId)

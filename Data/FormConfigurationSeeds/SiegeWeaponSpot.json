@@ -55,7 +55,7 @@
     {
       "stepGuid": "e57fe647-21ca-539f-83b9-f13c38b9ca59",
       "stepName": "Place and size",
-      "description": "Where the weapon goes. The in-game world task fills these from a WorldEdit selection; until then type them in.",
+      "description": "Where the weapon goes. In game, /knk weaponspot <scenario> <team> <name> creates a spot from a WorldEdit selection or WorldGuard region (with siege.weapons.enabled). Here you can type or correct them; with bounds the size class is worked out from them and the facing.",
       "isManyToManyRelationship": false,
       "fields": [
         {
@@ -73,7 +73,7 @@
           "fieldGuid": "c8c0dc8c-1b84-5827-a6b5-fba5d6cabd6b",
           "fieldName": "SizeClass",
           "label": "Size class",
-          "description": "The largest weapon class that fits: Small 7 x 9 x 5, Medium 7 x 9 x 8, Large 9 x 15 x 16 (width across x length along the facing x height).",
+          "description": "The largest weapon class that fits: Small 7 x 9 x 5, Medium 7 x 9 x 8, Large 9 x 15 x 16 (width across x length along the facing x height). With all six bounds the API works it out from them and the facing; bounds smaller than Small are refused.",
           "fieldType": "Enum",
           "defaultValue": "Small",
           "isRequired": true,
