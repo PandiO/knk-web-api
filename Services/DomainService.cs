@@ -80,7 +80,7 @@ namespace knkwebapi_v2.Services
                 ParentDomainId = existing switch
                 {
                     District district => district.TownId,
-                    Structure structure => structure.DistrictId,
+                    Structure structure => structure.DistrictId ?? structure.TownId, // rural (P2, #91): its town
                     _ => null
                 }
             });

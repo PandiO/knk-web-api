@@ -252,6 +252,12 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Stock.StockMaintenanceJob>();
             services.AddHostedService<knkwebapi_v2.Services.Stock.StockMaintenanceService>();
             services.AddScoped<ITerritoryService, TerritoryService>();
+            // Production world P2 (PandiO/knk-workspace#91): District-xor-Town placement, placement rules on save,
+            // Warehouse and ProductionStructure CRUD with default storages.
+            services.AddScoped<knkwebapi_v2.Services.Production.IStructurePlacement, knkwebapi_v2.Services.Production.StructurePlacement>();
+            services.AddScoped<knkwebapi_v2.Services.Production.StructureBaseWriter>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IWarehouseService, knkwebapi_v2.Services.Production.WarehouseService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionStructureService, knkwebapi_v2.Services.Production.ProductionStructureService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
             services.AddScoped<IBannerDesignService, BannerDesignService>();

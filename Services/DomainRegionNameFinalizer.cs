@@ -575,7 +575,8 @@ namespace knkwebapi_v2.Services
             int parentId = domain switch
             {
                 District district => district.TownId,
-                Structure structure => structure.DistrictId,
+                // A rural structure (P2, #91) has no parent region: no district, and territory is not a region.
+                Structure structure => structure.DistrictId ?? 0,
                 _ => 0
             };
             if (parentId <= 0)

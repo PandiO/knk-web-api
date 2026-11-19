@@ -18,6 +18,7 @@ namespace knkwebapi_v2.Repositories
             return await _context.Structures
                 .Include(s => s.Location)
                 .Include(s => s.Street)
+                .Include(s => s.Town) // a rural structure's town (P2, #91)
                 .Include(s => s.District)
                     .ThenInclude(d => d.Town)
                 .ToListAsync();
@@ -28,6 +29,7 @@ namespace knkwebapi_v2.Repositories
             return await _context.Structures
                 .Include(s => s.Location)
                 .Include(s => s.Street)
+                .Include(s => s.Town) // a rural structure's town (P2, #91)
                 .Include(s => s.District)
                     .ThenInclude(d => d.Town)
                 .Include(s => s.SubRegions)
@@ -77,6 +79,19 @@ namespace knkwebapi_v2.Repositories
                 {
                     queryable = queryable.Where(s => s.DistrictId == districtId);
                 }
+                // P2 (#91): the structure's town, in a district of it or rural.
+                if (query.Filters.TryGetValue("townId", out var townIdStr) && int.TryParse(townIdStr, out var townId))
+                {
+                    queryable = queryable.Where(s => s.TownId == townId || (s.District != null && s.District.TownId == townId));
+                }
+                if (query.Filters.TryGetValue("isRural", out var ruralStr) && bool.TryParse(ruralStr, out var rural))
+                {
+                    queryable = rural ? queryable.Where(s => s.DistrictId == null) : queryable.Where(s => s.DistrictId != null);
+                }
+                if (query.Filters.TryGetValue("territoryFlag", out var flagStr) && Enum.TryParse<StructureTerritoryFlag>(flagStr, true, out var flag))
+                {
+                    queryable = queryable.Where(s => s.TerritoryFlag == flag);
+                }
             }
 
             queryable = ApplySorting(queryable, query.SortBy, query.SortDescending);
@@ -86,6 +101,7 @@ namespace knkwebapi_v2.Repositories
             var items = await queryable
                 .Include(s => s.Location)
                 .Include(s => s.Street)
+                .Include(s => s.Town) // a rural structure's town (P2, #91)
                 .Include(s => s.District)
                     .ThenInclude(d => d.Town) // KNG-166: the list rows name the town
                 .Skip((query.PageNumber - 1) * query.PageSize)

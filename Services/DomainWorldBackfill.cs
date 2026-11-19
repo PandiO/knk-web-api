@@ -142,7 +142,8 @@ namespace knkwebapi_v2.Services
             int parentId = domain switch
             {
                 District district => district.TownId,
-                Structure structure => structure.DistrictId,
+                // A rural structure (P2, #91) takes its town's world.
+                Structure structure => structure.DistrictId ?? structure.TownId ?? 0,
                 _ => 0
             };
             return parentId > 0 && byId.TryGetValue(parentId, out var parent) ? Normalize(parent.WorldName) : null;

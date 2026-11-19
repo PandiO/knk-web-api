@@ -365,7 +365,7 @@ namespace knkwebapi_v2.Services
         {
             StructureId = s.Id,
             StructureName = s.Name,
-            TownId = s.District?.TownId,
+            TownId = s.District?.TownId ?? s.TownId, // effective town (P2, #91)
             LoyaltyTownId = s.LoyaltyTownId,
             LoyaltyTownName = s.LoyaltyTown?.Name,
             TerritoryFlag = s.TerritoryFlag.ToString(),

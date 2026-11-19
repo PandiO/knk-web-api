@@ -70,11 +70,28 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("roadAccessOverride")]
         public string? RoadAccessOverride { get; set; }
 
+        // Placement (P2, PandiO/knk-workspace#91): in a district (districtId + streetId + houseNumber) or rural
+        // (townId, no street, houseNumber 0). Exactly one of districtId and townId is set; 0 counts as not set.
         [JsonPropertyName("streetId")]
-        public int StreetId { get; set; }
+        public int? StreetId { get; set; }
 
         [JsonPropertyName("districtId")]
-        public int DistrictId { get; set; }
+        public int? DistrictId { get; set; }
+
+        [JsonPropertyName("townId")]
+        public int? TownId { get; set; }
+
+        /// <summary>Read only: the district's town, or townId for a rural structure.</summary>
+        [JsonPropertyName("effectiveTownId")]
+        public int? EffectiveTownId { get; set; }
+
+        /// <summary>Read only: true when the structure has no district (townId set).</summary>
+        [JsonPropertyName("isRural")]
+        public bool? IsRural { get; set; }
+
+        /// <summary>Read only, on create: placement rules that failed as warnings (P-1 to P-3 warn by default).</summary>
+        [JsonPropertyName("placementWarnings")]
+        public List<string>? PlacementWarnings { get; set; }
 
         // Territory (PandiO/knk-workspace#326), read only here: loyalty is set through
         // PUT api/Territory/structures/{id}/loyalty, the flag by the game server's territory report.
@@ -99,6 +116,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("district")]
         public StructureDistrictDto? District { get; set; }
+
+        /// <summary>Read only: the rural structure's town (null for a structure in a district).</summary>
+        [JsonPropertyName("town")]
+        public StructureTownDto? Town { get; set; }
     }
 
     public class StructureListDto
@@ -123,13 +144,24 @@ namespace knkwebapi_v2.Dtos
         public int houseNumber { get; set; }
 
         [JsonPropertyName("streetId")]
-        public int streetId { get; set; }
+        public int? streetId { get; set; }
 
         [JsonPropertyName("streetName")]
         public string? streetName { get; set; }
 
         [JsonPropertyName("districtId")]
-        public int districtId { get; set; }
+        public int? districtId { get; set; }
+
+        // P2 (#91): the structure's town (its district's, or its own when rural), so the game server's territory
+        // report can check rural structures too (L2 note: it skipped structures without a district).
+        [JsonPropertyName("townId")]
+        public int? townId { get; set; }
+
+        [JsonPropertyName("isRural")]
+        public bool isRural { get; set; }
+
+        [JsonPropertyName("territoryFlag")]
+        public string? territoryFlag { get; set; }
 
         [JsonPropertyName("districtName")]
         public string? districtName { get; set; }
@@ -170,6 +202,22 @@ namespace knkwebapi_v2.Dtos
         // KNG-166: a picker row for a structure created in a form names its town, like a search row.
         [JsonPropertyName("townName")]
         public string? TownName { get; set; }
+    }
+
+    // Lightweight Town DTO for a rural structure (P2, #91)
+    public class StructureTownDto
+    {
+        [JsonPropertyName("id")]
+        public int? Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("wgRegionId")]
+        public string? WgRegionId { get; set; }
+
+        [JsonPropertyName("worldName")]
+        public string? WorldName { get; set; }
     }
 
     // Lightweight Street DTO for embedding in Structure payloads

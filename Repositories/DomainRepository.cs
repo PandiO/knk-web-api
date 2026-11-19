@@ -83,7 +83,7 @@ namespace knkwebapi_v2.Repositories
                     continue;
                 }  else if (current is Structure structure) {
                     await _context.Entry(structure).Reference(s => s.District).LoadAsync();
-                    if (structure.DistrictId <= 0) break;
+                    if (structure.DistrictId is not > 0) break; // a rural structure (P2, #91) has no parent
                     current = structure.District;
                     continue;
                 }

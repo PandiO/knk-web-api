@@ -262,7 +262,7 @@ namespace knkwebapi_v2.Services
                 .Select(d => new { d.Id, d.Name, d.WorldName })
                 .ToListAsync();
             var structures = await _context.Structures.AsNoTracking()
-                .Where(s => s.DistrictId == domainId && s.WorldName != null && s.WorldName != "" && s.WorldName.ToLower() != lowered)
+                .Where(s => (s.DistrictId == domainId || s.TownId == domainId) && s.WorldName != null && s.WorldName != "" && s.WorldName.ToLower() != lowered)
                 .Select(s => new { s.Id, s.Name, s.WorldName })
                 .ToListAsync();
             var children = districts.Concat(structures).ToList();

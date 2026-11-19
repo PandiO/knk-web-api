@@ -22,7 +22,18 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.LocationId, src => src.MapFrom(src => src.LocationId))
                 .ForMember(dest => dest.StreetId, src => src.MapFrom(src => src.StreetId))
                 .ForMember(dest => dest.DistrictId, src => src.MapFrom(src => src.DistrictId))
+                .ForMember(dest => dest.TownId, src => src.MapFrom(src => src.TownId))
+                .ForMember(dest => dest.EffectiveTownId, src => src.MapFrom(src => src.District != null ? src.District.TownId : src.TownId))
+                .ForMember(dest => dest.IsRural, src => src.MapFrom(src => src.DistrictId == null))
+                .ForMember(dest => dest.PlacementWarnings, src => src.Ignore())
                 .ForMember(dest => dest.HouseNumber, src => src.MapFrom(src => src.HouseNumber))
+                .ForMember(dest => dest.Town, src => src.MapFrom(s => s.Town == null ? null : new StructureTownDto
+                {
+                    Id = s.Town.Id,
+                    Name = s.Town.Name,
+                    WgRegionId = s.Town.WgRegionId,
+                    WorldName = s.Town.WorldName
+                }))
                 // Embedded lightweight navigations
                 .ForMember(dest => dest.Street, src => src.MapFrom(s => s.Street == null ? null : new StructureStreetDto
                 {
@@ -56,6 +67,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Street, src => src.Ignore())
                 .ForMember(dest => dest.DistrictId, src => src.MapFrom(src => src.DistrictId))
                 .ForMember(dest => dest.District, src => src.Ignore())
+                .ForMember(dest => dest.TownId, src => src.MapFrom(src => src.TownId))
+                .ForMember(dest => dest.Town, src => src.Ignore())
                 .ForMember(dest => dest.HouseNumber, src => src.MapFrom(src => src.HouseNumber))
                 // Territory (#326): never written through the structure form.
                 .ForMember(dest => dest.LoyaltyTownId, src => src.Ignore())
@@ -77,7 +90,11 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.streetName, src => src.MapFrom(src => src.Street != null ? src.Street.Name : null))
                 .ForMember(dest => dest.districtId, src => src.MapFrom(src => src.DistrictId))
                 .ForMember(dest => dest.districtName, src => src.MapFrom(src => src.District != null ? src.District.Name : null))
-                .ForMember(dest => dest.townName, src => src.MapFrom(src => src.District != null && src.District.Town != null ? src.District.Town.Name : null));
+                .ForMember(dest => dest.townName, src => src.MapFrom(src => src.District != null && src.District.Town != null ? src.District.Town.Name
+                    : src.Town != null ? src.Town.Name : null))
+                .ForMember(dest => dest.townId, src => src.MapFrom(src => src.District != null ? src.District.TownId : src.TownId))
+                .ForMember(dest => dest.isRural, src => src.MapFrom(src => src.DistrictId == null))
+                .ForMember(dest => dest.territoryFlag, src => src.MapFrom(src => src.TerritoryFlag.ToString()));
         }
     }
 }

@@ -167,9 +167,11 @@ public class MapStructureMarkerDto
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
+    /// <summary>Null for a rural structure (P2, #91).</summary>
     [JsonPropertyName("districtId")]
-    public int DistrictId { get; set; }
+    public int? DistrictId { get; set; }
 
+    /// <summary>The structure's town: its district's, or its own for a rural structure.</summary>
     [JsonPropertyName("townId")]
     public int TownId { get; set; }
 

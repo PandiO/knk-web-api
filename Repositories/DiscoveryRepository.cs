@@ -109,6 +109,7 @@ namespace knkwebapi_v2.Repositories
                 d.TownId > 0 ? d.TownId : null, d.WorldName)));
             nodes.AddRange(structures.Select(s => new DiscoveryDomainNode(s.Id, s.Name, s.WgRegionId,
                 gateIds.Contains(s.Id) ? DiscoveryRewardRule.GateStructure : DiscoveryRewardRule.Structure,
+                // A rural structure (P2, #91) has no parent node, as its region has no parent.
                 s.DistrictId > 0 ? s.DistrictId : null, s.WorldName)));
             return nodes;
         }

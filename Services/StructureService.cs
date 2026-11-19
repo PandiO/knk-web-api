@@ -7,6 +7,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.Production;
 
 namespace knkwebapi_v2.Services
 {
@@ -21,6 +22,8 @@ namespace knkwebapi_v2.Services
         private readonly ITeleportDestinationService _teleportDestinations;
         private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly IDomainWorldResolver _worlds;
+        private readonly ITownRepository? _townRepo;
+        private readonly IStructurePlacement? _placement;
 
         public StructureService(
             IStructureRepository repo,
@@ -31,8 +34,12 @@ namespace knkwebapi_v2.Services
             IMapper mapper,
             ITeleportDestinationService teleportDestinations,
             IDomainRegionNameFinalizer regionNames,
-            IDomainWorldResolver worlds)
+            IDomainWorldResolver worlds,
+            ITownRepository? townRepo = null,
+            IStructurePlacement? placement = null)
         {
+            _townRepo = townRepo;
+            _placement = placement;
             _repo = repo;
             _streetRepo = streetRepo;
             _districtRepo = districtRepo;
@@ -63,17 +70,7 @@ namespace knkwebapi_v2.Services
             if (structureDto == null) throw new ArgumentNullException(nameof(structureDto));
             DomainNameRules.Normalize(structureDto, "Structure", nameof(structureDto));
             if (string.IsNullOrWhiteSpace(structureDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(structureDto));
-            if (structureDto.StreetId <= 0) throw new ArgumentException("StreetId is required.", nameof(structureDto));
-            if (structureDto.DistrictId <= 0) throw new ArgumentException("DistrictId is required.", nameof(structureDto));
-            if (structureDto.HouseNumber <= 0) throw new ArgumentException("HouseNumber must be greater than 0.", nameof(structureDto));
-
-            // Validate that Street exists
-            var street = await _streetRepo.GetByIdAsync(structureDto.StreetId);
-            if (street == null) throw new ArgumentException($"Street with id {structureDto.StreetId} not found.", nameof(structureDto));
-
-            // Validate that District exists
-            var district = await _districtRepo.GetByIdAsync(structureDto.DistrictId);
-            if (district == null) throw new ArgumentException($"District with id {structureDto.DistrictId} not found.", nameof(structureDto));
+            var (district, town) = await ValidatePlacementAsync(structureDto, null);
             await _teleportDestinations.ValidateSettingsAsync(structureDto);
 
             // KNG-111: before the Location is saved, so a rejected world leaves nothing behind.
@@ -86,9 +83,12 @@ namespace knkwebapi_v2.Services
             structure.WorldName = worldName;
             DomainTeleportSettings.Apply(structure, structureDto);
             DomainNavigationDefaults.Apply(structure, structureDto);
+            List<string> warnings = await CheckPlacementRulesAsync(structure, district, town);
             await _repo.AddStructureAsync(structure);
             await _regionNames.FinalizeAsync(structure);
-            return _mapper.Map<StructureDto>(structure);
+            var created = _mapper.Map<StructureDto>(structure);
+            created.PlacementWarnings = warnings;
+            return created;
         }
 
         public async Task UpdateAsync(int id, StructureDto structureDto)
@@ -97,10 +97,7 @@ namespace knkwebapi_v2.Services
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             DomainNameRules.Normalize(structureDto, "Structure", nameof(structureDto));
             if (string.IsNullOrWhiteSpace(structureDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(structureDto));
-            if (structureDto.StreetId <= 0) throw new ArgumentException("StreetId is required.", nameof(structureDto));
-            if (structureDto.DistrictId <= 0) throw new ArgumentException("DistrictId is required.", nameof(structureDto));
-            if (structureDto.HouseNumber <= 0) throw new ArgumentException("HouseNumber must be greater than 0.", nameof(structureDto));
-            
+
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Structure with id {id} not found.");
             // KNG-103: the region this save replaces when the region step was run again
@@ -110,19 +107,7 @@ namespace knkwebapi_v2.Services
                 GateNameRules.EnsureNotReserved(structureDto.Name, "gate structure", "/gate", nameof(structureDto));
             await _teleportDestinations.ValidateSettingsAsync(structureDto);
 
-            // Validate that Street exists if changing
-            if (existing.StreetId != structureDto.StreetId)
-            {
-                var street = await _streetRepo.GetByIdAsync(structureDto.StreetId);
-                if (street == null) throw new ArgumentException($"Street with id {structureDto.StreetId} not found.", nameof(structureDto));
-            }
-
-            // Validate that District exists if changing
-            if (existing.DistrictId != structureDto.DistrictId)
-            {
-                var district = await _districtRepo.GetByIdAsync(structureDto.DistrictId);
-                if (district == null) throw new ArgumentException($"District with id {structureDto.DistrictId} not found.", nameof(structureDto));
-            }
+            var (district, town) = await ValidatePlacementAsync(structureDto, existing);
 
             string worldName = await _worlds.ResolveAsync(WorldRequest(structureDto, id));
             int? locationId = await ResolveLocationAsync(structureDto);
@@ -136,9 +121,11 @@ namespace knkwebapi_v2.Services
             existing.LocationId = locationId;
             existing.StreetId = structureDto.StreetId;
             existing.DistrictId = structureDto.DistrictId;
+            existing.TownId = structureDto.TownId;
             existing.HouseNumber = structureDto.HouseNumber;
             DomainTeleportSettings.Apply(existing, structureDto);
             DomainNavigationDefaults.Apply(existing, structureDto);
+            await CheckPlacementRulesAsync(existing, district, town);
 
             await _repo.UpdateStructureAsync(existing);
             await _regionNames.FinalizeAsync(existing, previousRegionId);
@@ -171,8 +158,58 @@ namespace knkwebapi_v2.Services
             WgRegionId = dto.WgRegionId,
             LocationWorld = dto.Location?.World,
             LocationId = dto.Location?.Id ?? dto.LocationId,
-            ParentDomainId = dto.DistrictId
+            ParentDomainId = dto.DistrictId ?? dto.TownId // rural (P2, #91): the town's world
         };
+
+        /// <summary>
+        /// P2 (#91): District-xor-Town, the street and house number (normalized onto <paramref name="dto"/>: 0 = not
+        /// set, a rural structure gets no street and house number 0), and that the district, town and street exist.
+        /// Unchanged ids of <paramref name="existing"/> are not looked up again.
+        /// </summary>
+        private async Task<(District? District, Town? Town)> ValidatePlacementAsync(StructureDto dto, Structure? existing)
+        {
+            var n = StructurePlacement.Normalize(
+                new StructurePlacementInput(dto.DistrictId, dto.TownId, dto.StreetId, dto.HouseNumber), nameof(dto));
+            dto.DistrictId = n.DistrictId;
+            dto.TownId = n.TownId;
+            dto.StreetId = n.StreetId;
+            dto.HouseNumber = n.HouseNumber;
+
+            if (n.StreetId is int streetId && existing?.StreetId != streetId
+                && await _streetRepo.GetByIdAsync(streetId) == null)
+                throw new ArgumentException($"Street with id {streetId} not found.", nameof(dto));
+
+            District? district = null;
+            if (n.DistrictId is int districtId)
+            {
+                district = existing?.DistrictId == districtId && existing.District != null
+                    ? existing.District
+                    : await _districtRepo.GetByIdAsync(districtId);
+                if (district == null) throw new ArgumentException($"District with id {districtId} not found.", nameof(dto));
+            }
+
+            Town? town = null;
+            if (n.TownId is int townId)
+            {
+                town = existing?.TownId == townId && existing.Town != null
+                    ? existing.Town
+                    : _townRepo == null ? null : await _townRepo.GetByIdAsync(townId);
+                if (town == null) throw new ArgumentException($"Town with id {townId} not found.", nameof(dto));
+            }
+            return (district, town);
+        }
+
+        /// <summary>Placement rules P-1 to P-3 of the default Structure form on save (DESIGN § 3.4).</summary>
+        private async Task<List<string>> CheckPlacementRulesAsync(Structure structure, District? district, Town? town)
+        {
+            if (_placement == null) return new List<string>();
+            // The rules read the selected records (District.WgRegionId, Town for the territory lookup).
+            if (district != null && structure.District?.Id != district.Id) structure.District = district;
+            if (district == null) structure.District = null;
+            if (town != null && structure.Town?.Id != town.Id) structure.Town = town;
+            if (town == null) structure.Town = null;
+            return await _placement.CheckRulesAsync(nameof(Structure), structure);
+        }
 
         /// <summary>
         /// KNG-195: the Structure's spawn point, as Town and GateStructure resolve theirs. An embedded
