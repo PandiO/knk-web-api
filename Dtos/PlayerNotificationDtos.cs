@@ -56,6 +56,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("accountLinked")]
         public AccountLinkedNotificationDto? AccountLinked { get; set; }
 
+        /// <summary>Set when Type is ProductionLineStatusChanged (UserId 0: for the game server and staff).</summary>
+        [JsonPropertyName("productionLineStatus")]
+        public ProductionLineStatusNotificationDto? ProductionLineStatus { get; set; }
+
         [JsonPropertyName("createdAt")]
         public DateTime CreatedAt { get; set; }
     }
@@ -100,6 +104,10 @@ namespace knkwebapi_v2.Dtos
         /// Payload in LootboxWorldChanged.
         /// </summary>
         public const string LootboxWorldChanged = "LootboxWorldChanged";
+
+        /// <summary>A production line was blocked (output full, inputs missing) or resumed (P3, #86). UserId 0;
+        /// payload in ProductionLineStatus.</summary>
+        public const string ProductionLineStatusChanged = "ProductionLineStatusChanged";
 
         /// <summary>
         /// One of this user's discoveries was reset (web admin player profile or /knk discovery
@@ -202,5 +210,18 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("ids")]
         public List<long> Ids { get; set; } = new();
+    }
+
+    /// <summary>What a ProductionLineStatusChanged notification carries (P3, PandiO/knk-workspace#86).</summary>
+    public class ProductionLineStatusNotificationDto
+    {
+        [JsonPropertyName("productionStructureId")] public int ProductionStructureId { get; set; }
+        [JsonPropertyName("productionStructureName")] public string ProductionStructureName { get; set; } = string.Empty;
+        [JsonPropertyName("productionLineId")] public int ProductionLineId { get; set; }
+        [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
+        [JsonPropertyName("itemBlueprintName")] public string ItemBlueprintName { get; set; } = string.Empty;
+        [JsonPropertyName("previousStatus")] public string PreviousStatus { get; set; } = string.Empty;
+        [JsonPropertyName("status")] public string Status { get; set; } = string.Empty;
+        [JsonPropertyName("reason")] public string? Reason { get; set; }
     }
 }

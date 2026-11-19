@@ -77,6 +77,21 @@ public partial class KnKDbContext : DbContext
     // ---- Production world P2 (PandiO/knk-workspace#91) ----
     public virtual DbSet<Warehouse> Warehouses { get; set; } = null!;
     public virtual DbSet<ProductionStructure> ProductionStructures { get; set; } = null!;
+
+    // ---- Production engine P3 (PandiO/knk-workspace#86) ----
+    public virtual DbSet<ProductionKind> ProductionKinds { get; set; } = null!;
+    public virtual DbSet<ProductionKindLevel> ProductionKindLevels { get; set; } = null!;
+    public virtual DbSet<ProductionKindLevelItem> ProductionKindLevelItems { get; set; } = null!;
+    public virtual DbSet<ProductionLine> ProductionLines { get; set; } = null!;
+    public virtual DbSet<ProductionLineInput> ProductionLineInputs { get; set; } = null!;
+    public virtual DbSet<ProductionModifier> ProductionModifiers { get; set; } = null!;
+    public virtual DbSet<ClimateZone> ClimateZones { get; set; } = null!;
+    public virtual DbSet<ClimateZoneWeather> ClimateZoneWeathers { get; set; } = null!;
+    public virtual DbSet<ClimateZoneTown> ClimateZoneTowns { get; set; } = null!;
+    public virtual DbSet<WeatherType> WeatherTypes { get; set; } = null!;
+    public virtual DbSet<WeatherTypeEffect> WeatherTypeEffects { get; set; } = null!;
+    public virtual DbSet<WeatherRoll> WeatherRolls { get; set; } = null!;
+    public virtual DbSet<ProductionCycleRecord> ProductionCycleRecords { get; set; } = null!;
     // ---- end production world ----
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
@@ -3068,6 +3083,191 @@ public partial class KnKDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
         // ---- end production world ----
+
+        // ---- Production engine P3 (PandiO/knk-workspace#86, PRODUCTION_KINDS.md § 2-5), one contiguous block ----
+        // The kind catalogue with ten levels per kind (seeded), production lines with their inputs and anchored due
+        // times, stored modifiers, climate zones and weather (stored daily rolls), and the cycle trace. Enums are stored
+        // as strings. A structure's lines, inputs and level items go with their parent (Cascade); blueprints, kinds and
+        // zones in use are Restrict (409).
+        modelBuilder.Entity<ProductionStructure>(entity =>
+        {
+            entity.HasOne(e => e.ProductionKind).WithMany().HasForeignKey(e => e.ProductionKindId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProductionKind>(entity =>
+        {
+            entity.ToTable("production_kinds");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(ProductionKind.NameMaxLength);
+            entity.Property(e => e.Description).HasMaxLength(ProductionKind.DescriptionMaxLength);
+            entity.Property(e => e.Icon).HasMaxLength(ProductionKind.IconMaxLength);
+            entity.Property(e => e.DefaultStoragesJson).HasMaxLength(ProductionKind.DefaultStoragesMaxLength);
+            entity.Property(e => e.AreaModel).HasConversion<string>().HasMaxLength(24);
+            entity.Property(e => e.ResourceCategory).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasData(ProductionCatalogSeed.KindEntities());
+        });
+
+        modelBuilder.Entity<ProductionKindLevel>(entity =>
+        {
+            entity.ToTable("production_kind_levels");
+            entity.Property(e => e.YieldMultiplier).HasPrecision(12, 4);
+            entity.Property(e => e.CycleSpeedMultiplier).HasPrecision(12, 4);
+            entity.Property(e => e.UpkeepReduction).HasPrecision(12, 4);
+            entity.HasIndex(e => new { e.ProductionKindId, e.Level }).IsUnique();
+            entity.HasOne(e => e.ProductionKind).WithMany(k => k.Levels).HasForeignKey(e => e.ProductionKindId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasData(ProductionCatalogSeed.LevelEntities());
+        });
+
+        modelBuilder.Entity<ProductionKindLevelItem>(entity =>
+        {
+            entity.ToTable("production_kind_level_items");
+            entity.Property(e => e.Role).HasConversion<string>().HasMaxLength(16);
+            entity.HasIndex(e => new { e.ProductionKindLevelId, e.Role, e.ItemBlueprintId }).IsUnique();
+            entity.HasOne(e => e.ProductionKindLevel).WithMany(l => l.Items).HasForeignKey(e => e.ProductionKindLevelId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProductionLine>(entity =>
+        {
+            entity.ToTable("production_lines");
+            entity.Property(e => e.RateSource).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ResourceCategory).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.StatusReason).HasMaxLength(ProductionLine.StatusReasonMaxLength);
+            entity.Property(e => e.ConfiguredRatePerHour).HasPrecision(18, 6);
+            entity.Property(e => e.Accrued).HasPrecision(18, 6);
+            entity.Property(e => e.AnchorAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.LastSettledAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.NextSettleAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.NextSettleAt);
+            entity.HasIndex(e => new { e.ProductionStructureId, e.ItemBlueprintId }).IsUnique();
+            entity.HasOne(e => e.ProductionStructure).WithMany(p => p.Lines).HasForeignKey(e => e.ProductionStructureId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProductionLineInput>(entity =>
+        {
+            entity.ToTable("production_line_inputs");
+            entity.Property(e => e.AmountPerHour).HasPrecision(18, 6);
+            entity.Property(e => e.Accrued).HasPrecision(18, 6);
+            entity.HasIndex(e => new { e.ProductionLineId, e.ItemBlueprintId }).IsUnique();
+            entity.HasOne(e => e.ProductionLine).WithMany(l => l.Inputs).HasForeignKey(e => e.ProductionLineId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProductionModifier>(entity =>
+        {
+            entity.ToTable("production_modifiers");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(ProductionModifier.NameMaxLength);
+            entity.Property(e => e.Source).IsRequired().HasMaxLength(ProductionModifier.SourceMaxLength);
+            entity.Property(e => e.Scope).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Target).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.TargetCategory).HasConversion<string>().HasMaxLength(ProductionModifier.TargetCategoryMaxLength);
+            entity.Property(e => e.Effect).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Value).HasPrecision(18, 6);
+            entity.Property(e => e.ActiveFrom).HasColumnType("datetime(6)");
+            entity.Property(e => e.ActiveUntil).HasColumnType("datetime(6)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.Enabled, e.Scope });
+        });
+
+        modelBuilder.Entity<ClimateZone>(entity =>
+        {
+            entity.ToTable("climate_zones");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(ClimateZone.NameMaxLength);
+            entity.Property(e => e.Description).HasMaxLength(ClimateZone.DescriptionMaxLength);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasData(ProductionCatalogSeed.Zones());
+        });
+
+        modelBuilder.Entity<WeatherType>(entity =>
+        {
+            entity.ToTable("weather_types");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(WeatherType.NameMaxLength);
+            entity.Property(e => e.Description).HasMaxLength(WeatherType.DescriptionMaxLength);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasData(ProductionCatalogSeed.WeatherTypes());
+        });
+
+        modelBuilder.Entity<WeatherTypeEffect>(entity =>
+        {
+            entity.ToTable("weather_type_effects");
+            entity.Property(e => e.Category).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Effect).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Value).HasPrecision(18, 6);
+            entity.HasIndex(e => new { e.WeatherTypeId, e.Category }).IsUnique();
+            entity.HasOne(e => e.WeatherType).WithMany(w => w.Effects).HasForeignKey(e => e.WeatherTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasData(ProductionCatalogSeed.WeatherEffects());
+        });
+
+        modelBuilder.Entity<ClimateZoneWeather>(entity =>
+        {
+            entity.ToTable("climate_zone_weathers");
+            entity.Property(e => e.ChancePercent).HasPrecision(7, 3);
+            entity.HasIndex(e => new { e.ClimateZoneId, e.WeatherTypeId }).IsUnique();
+            entity.HasOne(e => e.ClimateZone).WithMany(z => z.WeatherOdds).HasForeignKey(e => e.ClimateZoneId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.WeatherType).WithMany().HasForeignKey(e => e.WeatherTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ClimateZoneTown>(entity =>
+        {
+            entity.ToTable("climate_zone_towns");
+            entity.HasIndex(e => e.TownId).IsUnique();
+            entity.HasOne(e => e.ClimateZone).WithMany(z => z.Towns).HasForeignKey(e => e.ClimateZoneId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Town).WithMany().HasForeignKey(e => e.TownId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WeatherRoll>(entity =>
+        {
+            entity.ToTable("weather_rolls");
+            entity.Property(e => e.RollValue).HasPrecision(9, 6);
+            entity.Property(e => e.DayStartsAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.DayEndsAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.RolledAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.ClimateZoneId, e.Day }).IsUnique();
+            entity.HasOne(e => e.ClimateZone).WithMany().HasForeignKey(e => e.ClimateZoneId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.WeatherType).WithMany().HasForeignKey(e => e.WeatherTypeId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ProductionCycleRecord>(entity =>
+        {
+            entity.ToTable("production_cycle_records");
+            entity.Property(e => e.RateSource).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.StatusAfter).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ShortfallReason).HasMaxLength(ProductionCycleRecord.ShortfallReasonMaxLength);
+            entity.Property(e => e.ModifiersJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.InputsJson).HasColumnType("longtext");
+            foreach (var p in new[] { nameof(ProductionCycleRecord.BaseRatePerHour), nameof(ProductionCycleRecord.EffectiveRatePerHour),
+                         nameof(ProductionCycleRecord.AccruedBefore), nameof(ProductionCycleRecord.AccruedAfter),
+                         nameof(ProductionCycleRecord.UnlockFactor), nameof(ProductionCycleRecord.WorkerFactor) })
+                entity.Property(p).HasPrecision(18, 6);
+            entity.Property(e => e.SettledAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.PeriodStart).HasColumnType("datetime(6)");
+            entity.Property(e => e.PeriodEnd).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.ProductionLineId, e.SettledAt });
+            entity.HasIndex(e => new { e.ProductionStructureId, e.SettledAt });
+            entity.HasOne(e => e.ProductionLine).WithMany().HasForeignKey(e => e.ProductionLineId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        // ---- end production engine ----
 
         OnModelCreatingPartial(modelBuilder);
     }
