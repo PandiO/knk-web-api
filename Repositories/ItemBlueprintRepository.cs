@@ -18,6 +18,7 @@ namespace knkwebapi_v2.Repositories
         {
             return await _context.ItemBlueprints
                 .Include(ib => ib.IconMaterial)
+                .Include(ib => ib.VanillaMaterialMatch)
                 .Include(ib => ib.Category)
                 .Include(ib => ib.Grade)
                 .Include(ib => ib.DefaultEnchantments)
@@ -35,6 +36,7 @@ namespace knkwebapi_v2.Repositories
         {
             return await _context.ItemBlueprints
                 .Include(ib => ib.IconMaterial)
+                .Include(ib => ib.VanillaMaterialMatch)
                 .Include(ib => ib.Category)
                 .Include(ib => ib.Grade)
                 .Include(ib => ib.DefaultEnchantments)

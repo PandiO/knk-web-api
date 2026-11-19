@@ -309,6 +309,12 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
             if (rows.Count == 0) continue;
             repointed[referrer.Name] = rows.Count;
 
+            if (referrer.ForeignKey == nameof(ItemBlueprint.VanillaMaterialMatchRefId))
+            {
+                repointed[referrer.Name] = rows.Count - await KeepOneVanillaMatchAsync(db, rows.Cast<ItemBlueprint>().ToList(), target.Id, ct);
+                if (repointed[referrer.Name] == 0) repointed.Remove(referrer.Name);
+            }
+
             foreach (var block in rows.OfType<MinecraftBlockRef>())
             {
                 var properties = block.BlockStateString is { } state && state.Contains('[') ? state[state.IndexOf('[')..] : null;
@@ -322,6 +328,33 @@ public class MinecraftCatalogMaintenanceService : IMinecraftCatalogMaintenanceSe
             }
         }
         return repointed;
+    }
+
+    /// <summary>
+    /// Item identity (PandiO/knk-workspace#141): <c>ItemBlueprint.VanillaMaterialMatchRefId</c> is unique, so after a
+    /// merge repointed <paramref name="repointed"/> at <paramref name="targetId"/> only one blueprint may keep the match.
+    /// A blueprint that already held the target's match keeps it (in the database or from an earlier merge of this
+    /// pass); otherwise the lowest id of the repointed ones does. The others lose the match (set to null, logged by the
+    /// caller's counts) and stay blueprints; the material shows as matched by the kept one. Returns how many lost it.
+    /// </summary>
+    internal static async Task<int> KeepOneVanillaMatchAsync(
+        KnKDbContext db, IReadOnlyList<ItemBlueprint> repointed, int targetId, CancellationToken ct)
+    {
+        var repointedIds = repointed.Select(b => b.Id).ToHashSet();
+        var holderInPass = db.ItemBlueprints.Local
+            .Any(b => b.VanillaMaterialMatchRefId == targetId && !repointedIds.Contains(b.Id));
+        var holderInDb = !holderInPass && await db.ItemBlueprints.AsNoTracking()
+            .AnyAsync(b => b.VanillaMaterialMatchRefId == targetId && !repointedIds.Contains(b.Id), ct);
+        var keep = holderInPass || holderInDb ? null : repointed.OrderBy(b => b.Id).First();
+
+        var cleared = 0;
+        foreach (var blueprint in repointed)
+        {
+            if (ReferenceEquals(blueprint, keep)) continue;
+            blueprint.VanillaMaterialMatchRefId = null;
+            cleared++;
+        }
+        return cleared;
     }
 
     /// <summary>False while migration <c>MinecraftEnchantmentCatalogFields</c> is pending on a relational database.</summary>

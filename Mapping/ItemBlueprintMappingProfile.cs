@@ -15,6 +15,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
                 .ForMember(dest => dest.IconMaterialRefId, opt => opt.MapFrom(src => src.IconMaterialRefId))
                 .ForMember(dest => dest.IconMaterialRef, opt => opt.MapFrom(src => src.IconMaterial))
+                // Item identity (#141)
+                .ForMember(dest => dest.VanillaMaterialMatchRefId, opt => opt.MapFrom(src => src.VanillaMaterialMatchRefId))
+                .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.MapFrom(src => src.VanillaMaterialMatch))
                 .ForMember(dest => dest.DefaultDisplayName, opt => opt.MapFrom(src => src.DefaultDisplayName))
                 .ForMember(dest => dest.DefaultDisplayDescription, opt => opt.MapFrom(src => src.DefaultDisplayDescription))
                 .ForMember(dest => dest.DefaultQuantity, opt => opt.MapFrom(src => src.DefaultQuantity))
@@ -48,7 +51,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ShieldBannerBaseColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ShieldBannerLayers, opt => opt.Ignore())
                 .ForMember(dest => dest.ArmorTrimPattern, opt => opt.Ignore())
-                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore());
+                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore())
+                // Item identity (#141): only api/ItemIdentity and the shadow generation set the vanilla match.
+                .ForMember(dest => dest.VanillaMaterialMatchRefId, opt => opt.Ignore())
+                .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.Ignore());
 
             CreateMap<ItemBlueprintUpdateDto, ItemBlueprint>()
                 .ForMember(dest => dest.DefaultEnchantments, opt => opt.Ignore()) // Handled in service
@@ -57,7 +63,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ShieldBannerBaseColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ShieldBannerLayers, opt => opt.Ignore())
                 .ForMember(dest => dest.ArmorTrimPattern, opt => opt.Ignore())
-                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore());
+                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore())
+                // Item identity (#141): only api/ItemIdentity and the shadow generation set the vanilla match.
+                .ForMember(dest => dest.VanillaMaterialMatchRefId, opt => opt.Ignore())
+                .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.Ignore());
 
             // ItemBlueprint → List DTO
             CreateMap<ItemBlueprint, ItemBlueprintListDto>()
@@ -66,6 +75,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
                 .ForMember(dest => dest.DefaultDisplayName, opt => opt.MapFrom(src => src.DefaultDisplayName))
                 .ForMember(dest => dest.IconMaterialRefId, opt => opt.MapFrom(src => src.IconMaterialRefId))
+                .ForMember(dest => dest.VanillaMaterialMatchRefId, opt => opt.MapFrom(src => src.VanillaMaterialMatchRefId))
                 .ForMember(dest => dest.IconNamespaceKey, opt => opt.MapFrom(src => src.IconMaterial != null ? src.IconMaterial.NamespaceKey : null))
                 .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconMaterial != null ? src.IconMaterial.IconUrlOverride ?? src.IconMaterial.IconUrl : null))
                 .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
