@@ -219,6 +219,7 @@ public class LookupFiltersTests : IAsyncLifetime
             ["GateDoor"] = "gateStructureId:Id, isActive:Flag",
             ["Landmark"] = "domainId:Id",
             ["Province"] = "kingdomId:Id",
+            ["Storage"] = "domainId:Id, userId:Id, clanId:Id", // stock core P1 (#97)
             ["SiegeScenario"] = "townId:Id",
             ["SiegeTeam"] = "siegeScenarioId:Id",
             ["PermissionGroup"] = "parentGroupId:Id, isPremiumTier:Flag",
