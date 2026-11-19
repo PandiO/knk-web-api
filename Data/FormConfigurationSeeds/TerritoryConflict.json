@@ -1,0 +1,76 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "b9699233-a499-5f9e-a74e-5a6cc64f81a2",
+  "entityTypeName": "TerritoryConflict",
+  "name": "TerritoryConflict - Default (seed v1)",
+  "description": "A contested zone where two territories of equal rank overlap. Written by the game server's territory report; read only here. Resolve it on its page (award the area to one holder, or mark the lines redrawn) (territory V1, #326).",
+  "steps": [
+    {
+      "stepGuid": "30e78b5f-fd05-5a52-a468-c35b1a8c89b6",
+      "stepName": "Conflict",
+      "description": "The world and the state of the conflict. Holders and the area are shown on the conflict's page.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ff381f1d-b002-554b-801a-be5c13562e0f",
+          "fieldName": "World",
+          "label": "World",
+          "description": "The Minecraft world of the contested area.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "3a504431-746a-5250-8fdc-65cf0e51ece4",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Open until an admin resolves it.",
+          "fieldType": "Enum",
+          "enumType": "TerritoryConflictStatus",
+          "settingsJson": "{\"enumValues\": [\"Open\", \"Resolved\"]}",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "e85ff4e6-304c-5475-a23d-5dc47af38d2e",
+          "fieldName": "StillOverlapping",
+          "label": "Still overlapping",
+          "description": "Off once the game server's last report no longer shows the overlap.",
+          "fieldType": "Boolean",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "29bc171b-b96e-571a-a1d6-77d809198d00",
+          "fieldName": "ChunkCount",
+          "label": "Chunks",
+          "description": "How many chunks the contested area covers.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "db5eda76-45ee-5dfa-b808-32facfabe3d8",
+          "fieldName": "Resolution",
+          "label": "Resolution",
+          "description": "Awarded = the area was given to one holder; Redrawn = the inputs were changed.",
+          "fieldType": "Enum",
+          "enumType": "TerritoryConflictResolution",
+          "settingsJson": "{\"enumValues\": [\"None\", \"Awarded\", \"Redrawn\"]}",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "448f4538-f7b7-51b2-b819-deab9c92b83e",
+          "fieldName": "ResolutionNote",
+          "label": "Note",
+          "description": "The admin's note on the resolution.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

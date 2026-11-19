@@ -188,3 +188,13 @@ dependency, import any time; it becomes the default when Landmark has none). Ste
 (`ExtentKind` None/Region/Radius, `RegionId`, `Radius`, `Preference`). The API checks the rules (name unique per world,
 region id for Region, radius above 0 and at most 512 for Radius, preference 0.25-4.0). GUIDs: configuration uuid5(URL
 namespace, "knk-formconfig:Landmark:seed-v1"), every step/field uuid5(that, "step:"/"field:" + name).
+
+**Territory V1 seeds v1 (PandiO/knk-workspace#326, 2026-11-19):** new seeds `Kingdom`, `Province`, `CrownLand` and
+`TerritoryConflict`, each with a display seed `<Entity>.display.json` in `DisplayConfigurationSeeds/` (G17). Import
+`Kingdom` first: `Province` and `CrownLand` pick a kingdom (`KingdomId`). `CrownLand` captures its anchor region with
+Send to Minecraft like a district (`WgRegionId`, task `ReagionCreate`) and has a `Range` in blocks (0-10000).
+`TerritoryConflict` is read only (the game server's territory report writes conflicts; they are resolved on the
+conflict's page through `POST api/TerritoryConflicts/{id}/resolve`). The town's power, kingdom and province and the
+district's capital flag are not on the Town and District seeds yet (the web app link #690 adds them to those forms).
+GUIDs: configuration uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), every step/field uuid5(that,
+"step:"/"field:" + name).

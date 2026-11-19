@@ -1,0 +1,94 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "9561ac37-6f7d-546f-9e2d-aa5202c50ce6",
+  "entityTypeName": "CrownLand",
+  "name": "CrownLand - Default (seed v1)",
+  "description": "Kingdom-held land such as a frontier fort or a royal forest: a region and a range, owned by a kingdom. Crown land outranks town territory where they overlap (territory V1, #326, G10).",
+  "steps": [
+    {
+      "stepGuid": "1e6bef73-fd74-55db-9500-724dcbb3c2cc",
+      "stepName": "General information",
+      "description": "Name the crown land and pick the kingdom that holds it.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "64b10388-d91f-5074-a9b3-b106ec4420d2",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown on the map and in the web app.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a66c29b2-ffb0-5a97-a071-0400c522dcd2",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "A line or two for admins, e.g. \"Royal forest north of Phoenix\".",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f6cce197-5289-5e19-94db-d4c8740ed364",
+          "fieldName": "KingdomId",
+          "label": "Kingdom",
+          "description": "The kingdom that holds this land.",
+          "fieldType": "Object",
+          "objectType": "Kingdom",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "358d668f-3ab6-5b7d-a705-f87190fa8bbc",
+          "fieldName": "Range",
+          "label": "Range (blocks)",
+          "description": "How far from the nearest edge of the region the crown land reaches, 0 to 10000. 0 = the region only. No capital multiplier applies.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "6ddb4956-4739-5443-b1a7-11b20a53fe24",
+      "stepName": "Region and access",
+      "description": "The WorldGuard region that anchors the crown land. Use Send to Minecraft and select the area in game with WorldEdit, or type the name of an existing region.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "857bc7a1-eeeb-5512-aaa1-ff61e6e4d921",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The anchor region. A region drawn here is renamed domain_<id> when the crown land is saved; it has no parent region.",
+          "fieldType": "String",
+          "isRequired": true,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}",
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b8d1de17-bd4a-555f-9eb2-c6a2a00e8169",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the anchor region.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "60618ac3-7d67-5db3-86d4-b3760fd974fc",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the anchor region may walk out of it.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

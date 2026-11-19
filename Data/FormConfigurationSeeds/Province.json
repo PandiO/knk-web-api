@@ -1,0 +1,46 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "9423ff85-7d6f-50fc-9952-ddcbd8554620",
+  "entityTypeName": "Province",
+  "name": "Province - Default (seed v1)",
+  "description": "An optional level between town and kingdom: it groups towns of one kingdom. A town in a province must be in the province's kingdom (territory V1, #326).",
+  "steps": [
+    {
+      "stepGuid": "fbd4675d-fcd7-5387-b872-9b948138ee10",
+      "stepName": "Province",
+      "description": "Name the province and pick its kingdom. Towns join it on the town form.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "0f25e92a-e7b4-5d3d-97fb-76eb9666012c",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique within its kingdom, at most 100 characters.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "03dd5780-c63c-5fa8-81b5-af3be4b7ed22",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Optional, a line or two for admins.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "47a60205-a515-5f94-9643-91580ff57517",
+          "fieldName": "KingdomId",
+          "label": "Kingdom",
+          "description": "The kingdom the province is part of. It can only move to another kingdom while it has no towns.",
+          "fieldType": "Object",
+          "objectType": "Kingdom",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

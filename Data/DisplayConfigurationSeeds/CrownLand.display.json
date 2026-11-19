@@ -1,0 +1,84 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "09a8e1e9-5cc1-5882-84c4-87aca0d4f11c",
+  "entityTypeName": "CrownLand",
+  "name": "CrownLand - Default (seed v1)",
+  "description": "Crown land: a kingdom-held region and its range (territory V1, #326, G10).",
+  "sections": [
+    {
+      "sectionGuid": "3b34d5e4-cf96-5074-aa90-9830dfe32179",
+      "sectionName": "General information",
+      "description": "What the crown land is and who holds it.",
+      "fields": [
+        {
+          "fieldGuid": "f7c4cf39-a60c-58f7-8501-b1689efbc743",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown on the map and in the web app.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "d85b8e9b-f4fa-55cb-91b1-d8f7a83b835e",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "For admins.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "4b3c2bb1-56bb-550f-9768-1184633dc62b",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Kingdom",
+          "relatedEntityTypeName": "Kingdom",
+          "label": "Kingdom",
+          "description": "The kingdom that holds the land.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6d37f842-5503-59a4-b60f-151a38bddbfe",
+          "fieldName": "Range",
+          "label": "Range (blocks)",
+          "description": "From the nearest edge of the region; no capital multiplier.",
+          "fieldType": "Integer",
+          "isEditableInDisplay": true
+        }
+      ]
+    },
+    {
+      "sectionGuid": "70eabfc7-33d6-566f-9bc0-33668b12f984",
+      "sectionName": "Region and access",
+      "description": "The anchor region in game.",
+      "fields": [
+        {
+          "fieldGuid": "287402a2-9fcf-5e44-8715-f1afc82db470",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The anchor WorldGuard region.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "5026d31a-a131-50a7-9af1-e5193d5b2a7d",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The world the region is in.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6eb648e9-e952-52dc-b91b-89e8ef9f23ab",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the region.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "675fd002-f2f7-5810-8d50-469dc0e0d90f",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players may walk out of the region.",
+          "fieldType": "Boolean"
+        }
+      ]
+    }
+  ]
+}
