@@ -28,6 +28,12 @@ namespace knkwebapi_v2.Dtos
         // ItemScan, handled entirely by knk-plugin's KitScanTaskHandler.
         public const string KitScan = "KitScan";
 
+        // Player-driven weapon spot capture (knk-workspace SIEGE_WEAPONS § 4, PandiO/knk-workspace#799) - knk-plugin's
+        // WeaponSpotTaskHandler (only with siege.weapons.enabled) completes it with bounds, facing, size class, region
+        // id and warnings, which the web form spreads over the spot's fields. No server-side branching: the spot is
+        // saved by the form, and SiegeWeaponService.ApplySpot works the size class out again on save.
+        public const string SiegeWeaponSpot = "SiegeWeaponSpot";
+
         // Headless scan of the server's Minecraft registry (KNG-200, docs/specs/minecraft-catalog/
         // IMPLEMENTATION_PLAN.md §5.2a) - knk-plugin's MinecraftCatalogScanTaskHandler sends the snapshot
         // to api/MinecraftCatalog/scans/{id}/snapshot, then completes the task.
