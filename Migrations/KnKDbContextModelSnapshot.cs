@@ -2509,6 +2509,12 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
 
+                    b.Property<decimal>("StorageWeight")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)")
+                        .HasDefaultValue(1m);
+
                     b.Property<int?>("VanillaMaterialMatchRefId")
                         .HasColumnType("int");
 
@@ -6658,6 +6664,400 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("step_progress", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.StockLine", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StorageId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("StorageId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("stock_lines", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockMove", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("FromStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("ItemInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<int>("ToStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("TransactionId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.HasIndex("ItemInstanceId", "Id");
+
+                    b.HasIndex("Reason", "CreatedAt");
+
+                    b.HasIndex("FromStorageId", "ItemBlueprintId", "CreatedAt");
+
+                    b.HasIndex("ToStorageId", "ItemBlueprintId", "CreatedAt");
+
+                    b.ToTable("stock_moves", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_stock_moves_Item", "(`ItemBlueprintId` IS NOT NULL AND `ItemInstanceId` IS NULL AND `Amount` > 0) OR (`ItemInstanceId` IS NOT NULL AND `ItemBlueprintId` IS NULL AND `Amount` = 1)");
+
+                            t.HasCheckConstraint("CK_stock_moves_Storages", "`FromStorageId` <> `ToStorageId`");
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockMoveRollup", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<int>("FromStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MoveCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<DateTime>("RolledUpAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ToStorageId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("FromStorageId", "ItemBlueprintId");
+
+                    b.HasIndex("ToStorageId", "ItemBlueprintId");
+
+                    b.HasIndex("Day", "Reason", "FromStorageId", "ToStorageId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("stock_move_rollups", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActorComponent")
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<string>("ActorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("ActorUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .UseCollation("utf8mb4_bin");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasColumnType("char(64)");
+
+                    b.Property<long?>("ReversesTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceRef")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SourceType")
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("ReversesTransactionId")
+                        .IsUnique();
+
+                    b.HasIndex("ActorUserId", "CreatedAt");
+
+                    b.HasIndex("Reason", "CreatedAt");
+
+                    b.HasIndex("SourceType", "SourceRef");
+
+                    b.ToTable("stock_transactions", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockUnit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("ItemInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("StorageId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ItemInstanceId")
+                        .IsUnique();
+
+                    b.HasIndex("StorageId");
+
+                    b.ToTable("stock_units", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Storage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ClanId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DistinctItems")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("LockReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("LockedUntil")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("MaxDistinct")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("MaxUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SystemKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<long>("TotalUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("UnitsPerSlot")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("ClanId");
+
+                    b.HasIndex("DomainId");
+
+                    b.HasIndex("SystemKey")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Kind", "Purpose");
+
+                    b.ToTable("storages", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_storages_Capacity", "(`MaxUnits` IS NULL OR `MaxUnits` >= 0) AND (`MaxDistinct` IS NULL OR `MaxDistinct` >= 0) AND (`UnitsPerSlot` IS NULL OR `UnitsPerSlot` >= 0)");
+
+                            t.HasCheckConstraint("CK_storages_Holder", "(`Kind` = 'Domain' AND `DomainId` IS NOT NULL AND `UserId` IS NULL AND `ClanId` IS NULL AND `SystemKey` IS NULL) OR (`Kind` = 'Player' AND `UserId` IS NOT NULL AND `DomainId` IS NULL AND `ClanId` IS NULL AND `SystemKey` IS NULL) OR (`Kind` = 'Clan' AND `ClanId` IS NOT NULL AND `DomainId` IS NULL AND `UserId` IS NULL AND `SystemKey` IS NULL) OR (`Kind` = 'Transit' AND `DomainId` IS NULL AND `UserId` IS NULL AND `ClanId` IS NULL AND `SystemKey` IS NULL) OR (`Kind` = 'Virtual' AND `SystemKey` IS NOT NULL AND `DomainId` IS NULL AND `UserId` IS NULL AND `ClanId` IS NULL)");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DistinctItems = 0,
+                            Kind = "Virtual",
+                            Name = "SYS_PRODUCTION",
+                            Purpose = "General",
+                            RowVersion = 0L,
+                            SystemKey = "SYS_PRODUCTION",
+                            TotalUnits = 0L
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DistinctItems = 0,
+                            Kind = "Virtual",
+                            Name = "SYS_CONSUMPTION",
+                            Purpose = "General",
+                            RowVersion = 0L,
+                            SystemKey = "SYS_CONSUMPTION",
+                            TotalUnits = 0L
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DistinctItems = 0,
+                            Kind = "Virtual",
+                            Name = "SYS_LOSS",
+                            Purpose = "General",
+                            RowVersion = 0L,
+                            SystemKey = "SYS_LOSS",
+                            TotalUnits = 0L
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DistinctItems = 0,
+                            Kind = "Virtual",
+                            Name = "SYS_ADJUSTMENT",
+                            Purpose = "General",
+                            RowVersion = 0L,
+                            SystemKey = "SYS_ADJUSTMENT",
+                            TotalUnits = 0L
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedAt = new DateTime(2026, 11, 19, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DistinctItems = 0,
+                            Kind = "Virtual",
+                            Name = "SYS_WORLD",
+                            Purpose = "General",
+                            RowVersion = 0L,
+                            SystemKey = "SYS_WORLD",
+                            TotalUnits = 0L
+                        });
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
                 {
                     b.Property<int>("Id")
@@ -9564,6 +9964,146 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("WorkflowSession");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.StockLine", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Storage", "Storage")
+                        .WithMany("Lines")
+                        .HasForeignKey("StorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("Storage");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockMove", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Storage", "FromStorage")
+                        .WithMany()
+                        .HasForeignKey("FromStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.ItemInstance", "ItemInstance")
+                        .WithMany()
+                        .HasForeignKey("ItemInstanceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Storage", "ToStorage")
+                        .WithMany()
+                        .HasForeignKey("ToStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.StockTransaction", "Transaction")
+                        .WithMany("Moves")
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FromStorage");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ItemInstance");
+
+                    b.Navigation("ToStorage");
+
+                    b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockMoveRollup", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Storage", "FromStorage")
+                        .WithMany()
+                        .HasForeignKey("FromStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Storage", "ToStorage")
+                        .WithMany()
+                        .HasForeignKey("ToStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FromStorage");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ToStorage");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockTransaction", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.StockTransaction", "ReversesTransaction")
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.StockTransaction", "ReversesTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ReversesTransaction");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockUnit", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemInstance", "ItemInstance")
+                        .WithMany()
+                        .HasForeignKey("ItemInstanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Storage", "Storage")
+                        .WithMany("Units")
+                        .HasForeignKey("StorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ItemInstance");
+
+                    b.Navigation("Storage");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Storage", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Clan", "Clan")
+                        .WithMany()
+                        .HasForeignKey("ClanId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
+                        .WithMany()
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Clan");
+
+                    b.Navigation("Domain");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.UserDomainDiscovery", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
@@ -10090,6 +10630,18 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponTemplate", b =>
                 {
                     b.Navigation("AllowedAmmoTypes");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StockTransaction", b =>
+                {
+                    b.Navigation("Moves");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Storage", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Units");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>

@@ -567,11 +567,12 @@ namespace knkwebapi_v2.Services.Stock
         /// <summary>After a failed write nothing of it may ride along on a later SaveChanges of the same request.</summary>
         private void DetachStockEntries()
         {
-            foreach (var e in _db.ChangeTracker.Entries().ToList())
-            {
-                if (e.Entity is Storage or StockLine or StockUnit or StockTransaction or StockMove)
-                    e.State = EntityState.Detached;
-            }
+            // Children first: detaching a transaction before its moves makes EF sever the required relationship.
+            var entries = _db.ChangeTracker.Entries()
+                .Where(e => e.Entity is Storage or StockLine or StockUnit or StockTransaction or StockMove)
+                .OrderBy(e => e.Entity is StockMove or StockLine or StockUnit ? 0 : 1)
+                .ToList();
+            foreach (var e in entries) e.State = EntityState.Detached;
         }
     }
 
