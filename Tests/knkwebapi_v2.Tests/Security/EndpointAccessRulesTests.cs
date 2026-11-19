@@ -61,6 +61,16 @@ public class EndpointAccessRulesTests
         "InvitationsController.Check",
         // /link checks a claim code before login (KNG-214); lookup rate limit.
         "AdmissionController.CheckClaim",
+        // The public overview map (PandiO/knk-workspace#736, O02): allow-list DTOs (O32), map rate limit, 404 while
+        // Map:Enabled is off.
+        "MapController.GetConfig",
+        "MapController.GetMarkers",
+        "MapController.GetTown",
+        "MapController.GetDistrict",
+        "MapController.GetStructure",
+        // Overview map L4 (#738): live players, the caller's audience snapshot (spec § 6.2.4); 404 while
+        // Map:LivePlayers:Enabled is off.
+        "MapController.GetPlayers",
     };
 
     private sealed record Endpoint(Type Controller, MethodInfo Action, IReadOnlyList<string> Verbs)
@@ -111,6 +121,23 @@ public class EndpointAccessRulesTests
 
         Assert.Empty(anonymous.Except(AnonymousAllowList).OrderBy(n => n));
         Assert.Empty(AnonymousAllowList.Except(anonymous).OrderBy(n => n));
+    }
+
+    /// <summary>
+    /// Overview map L7 (PandiO/knk-workspace#741, spec § 6.2.5, O17): the gate command endpoint changes gate state in the
+    /// running game, so its rule is pinned: exactly <c>RequirePermission(knk.gate.admin)</c>, web staff only (no
+    /// plugin-key rule, no anonymous access, no weaker rule beside it).
+    /// </summary>
+    [Fact]
+    public void GateCommands_ArePinnedToKnkGateAdmin_WebOnly()
+    {
+        var endpoint = Assert.Single(Endpoints(), e => e.Name == "GateCommandsController.Send");
+        Assert.Equal(new[] { "POST" }, endpoint.Verbs);
+        var rules = endpoint.Metadata.OfType<IKnkAccessRule>().ToList();
+        var rule = Assert.IsType<RequirePermissionAttribute>(Assert.Single(rules));
+        Assert.Equal(StaffPermissions.GateAdmin, Assert.Single(rule.Arguments!));
+        Assert.Empty(endpoint.Metadata.OfType<IAllowAnonymous>());
+        Assert.Empty(endpoint.Metadata.OfType<AuthorizeAttribute>());
     }
 
     [Theory]

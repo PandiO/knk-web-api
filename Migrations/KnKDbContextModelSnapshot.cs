@@ -3826,6 +3826,51 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("lootbox_type_grade_weights", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.MapRegionOutline", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxY")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinY")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PointsJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("WgRegionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("WorldName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("DomainId");
+
+                    b.HasIndex("WorldName", "WgRegionId")
+                        .IsUnique();
+
+                    b.ToTable("map_region_outlines", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.MenuFunnelDaily", b =>
                 {
                     b.Property<DateOnly>("Day")
@@ -8395,6 +8440,16 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Grade");
 
                     b.Navigation("LootboxType");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.MapRegionOutline", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
+                        .WithMany()
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Domain");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.MenuItemTemplate", b =>

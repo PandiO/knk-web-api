@@ -134,5 +134,15 @@ public enum AuditAction
     /// Staff banned a player from the web app (POST api/Users/{id}/ban): permanent, on the game server's ban list,
     /// lifted only by <c>/pardon</c> in game. The API published <c>PlayerBan</c>. Details as <see cref="PlayerKicked"/>.
     /// </summary>
-    PlayerBanned = 64
+    PlayerBanned = 64,
+
+    // Value 65: gate commands from the web app (overview map phase 6a, PandiO/knk-workspace#741).
+
+    /// <summary>
+    /// Staff sent a live gate command (POST api/GateStructures/{id}/commands: open, close, toggle or repair, one door or
+    /// the whole gate). Subject = the gate structure (<see cref="AuditSubjectTypes.GateStructure"/>), no target user;
+    /// Details: command id, action, door id, the outcome (done, refused, siege, no-game-server, timeout) and the game
+    /// server's message. Refusals the API decides itself (siege 409, no game server 503) are logged too.
+    /// </summary>
+    GateCommandSent = 65
 }

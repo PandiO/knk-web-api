@@ -159,6 +159,23 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IDomainRepository, DomainRepository>();
             services.AddScoped<IDomainService, DomainService>();
             services.AddScoped<IDomainSubRegionService, DomainSubRegionService>();
+            // Overview map L1 (PandiO/knk-workspace#735): outlines the game server reports over the hub.
+            services.AddScoped<knkwebapi_v2.Services.Map.IMapRegionOutlineService, knkwebapi_v2.Services.Map.MapRegionOutlineService>();
+            // Overview map L2 (PandiO/knk-workspace#736): the public map endpoints, off by default (Map:Enabled).
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.MapOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.MapOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.Map.MapMarkerCache>();
+            services.AddScoped<knkwebapi_v2.Services.Map.IMapPublicService, knkwebapi_v2.Services.Map.MapPublicService>();
+            // Overview map L4 (#738): live players (registry and audience snapshots in memory, reads per tick in a scope).
+            services.AddSingleton<knkwebapi_v2.Services.Map.MapPlayerRegistry>();
+            services.AddSingleton<knkwebapi_v2.Services.Map.MapPlayerSnapshots>();
+            services.AddScoped<knkwebapi_v2.Services.Map.IMapLivePlayerData, knkwebapi_v2.Services.Map.MapLivePlayerData>();
+            // Overview map L7 (#741): live gate commands (Map:GateCommands:Enabled, off by default); results wait in the singleton.
+            services.AddSingleton<knkwebapi_v2.Services.Map.GateCommandWaiter>();
+            services.AddScoped<knkwebapi_v2.Services.Map.IGateCommandService, knkwebapi_v2.Services.Map.GateCommandService>();
             services.AddScoped<IMinecraftMaterialRefRepository, MinecraftMaterialRefRepository>();
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();
