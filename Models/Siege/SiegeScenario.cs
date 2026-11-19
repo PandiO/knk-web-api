@@ -93,4 +93,13 @@ public class SiegeScenario
     // D3 admin-selected gates: M2M join with fields; only the join rows cascade.
     [RelatedEntityField(typeof(SiegeScenarioGate))]
     public ICollection<SiegeScenarioGate> Gates { get; set; } = new List<SiegeScenarioGate>();
+
+    // Siege weapons (SIEGE_WEAPONS.md § 9.3, § 9.5; PandiO/knk-workspace#782). FriendlyFire (W23): off by default, allies
+    // follow AllianceGroup. WeaponSpotCooldownOverrideSeconds (W11): null = each template's own spot cooldown.
+    public bool FriendlyFire { get; set; }
+    public int? WeaponSpotCooldownOverrideSeconds { get; set; }
+
+    // Owned weapon spots (cascade), created through POST /api/SiegeScenarios/{id}/weapon-spots.
+    [RelatedEntityField(typeof(SiegeWeaponSpot))]
+    public ICollection<SiegeWeaponSpot> WeaponSpots { get; set; } = new List<SiegeWeaponSpot>();
 }

@@ -50,4 +50,8 @@ public class SiegeTeam
 
     [RelatedEntityField(typeof(SiegeSpawnpoint))]
     public ICollection<SiegeSpawnpoint> Spawnpoints { get; set; } = new List<SiegeSpawnpoint>();
+
+    // Siege weapons (SIEGE_WEAPONS.md W30, § 9.4; PandiO/knk-workspace#782): how many of this team's weapon spots are
+    // usable in a match. 0 = none, so a scenario without weapon setup plays as before.
+    public int ActiveWeaponSpots { get; set; }
 }

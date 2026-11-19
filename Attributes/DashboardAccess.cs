@@ -304,6 +304,19 @@ namespace knkwebapi_v2.Attributes
             ViewOnly("SiegeLobbyScenario", DashboardArea.Siege, StaffPermissions.SiegeManage),
             ViewOnly("SiegeScenarioDistrict", DashboardArea.Siege, StaffPermissions.SiegeManage),
             ViewOnly("SiegeScenarioGate", DashboardArea.Siege, StaffPermissions.SiegeManage),
+            // Siege weapons phase 1 (SIEGE_WEAPONS.md § 9, PandiO/knk-workspace#782).
+            Type("SiegeWeaponTemplate", DashboardArea.Siege, StaffPermissions.SiegeManage,
+                Del<ISiegeWeaponService>((s, id) => s.DeleteTemplateAsync(id)),
+                Lists<ISiegeWeaponService, SiegeWeaponTemplateListDto>((s, q) => s.SearchTemplatesAsync(q))),
+            Type("SiegeAmmoType", DashboardArea.Siege, StaffPermissions.SiegeManage,
+                Del<ISiegeWeaponService>((s, id) => s.DeleteAmmoTypeAsync(id)),
+                Lists<ISiegeWeaponService, SiegeAmmoTypeListDto>((s, q) => s.SearchAmmoTypesAsync(q))),
+            Type("SiegeWeaponSpot", DashboardArea.Siege, StaffPermissions.SiegeManage,
+                Del<ISiegeWeaponService>((s, id) => s.DeleteSpotAsync(id))),
+            Type("UserSiegeWeaponUnlock", DashboardArea.Siege, StaffPermissions.SiegeManage,
+                Del<ISiegeWeaponService>((s, id) => s.DeleteUnlockAsync(id)),
+                Lists<ISiegeWeaponService, UserSiegeWeaponUnlockReadDto>((s, q) => s.SearchUnlocksAsync(q))),
+            ViewOnly("SiegeWeaponTemplateAmmoType", DashboardArea.Siege, StaffPermissions.SiegeManage),
 
             // Roads: not a [FormConfigurableEntity]; the roads page lists profiles itself (no search to export).
             Type("RoadProfile", DashboardArea.Roads, StaffPermissions.RoadManage,

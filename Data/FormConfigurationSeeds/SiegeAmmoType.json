@@ -1,0 +1,176 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "49c45e84-fadf-5a04-9809-2e45690b4e68",
+  "entityTypeName": "SiegeAmmoType",
+  "name": "SiegeAmmoType - Default (seed v1)",
+  "description": "One kind of siege weapon ammunition; heavy and light variants are separate ammo types. Templates list the ammo they may fire.",
+  "steps": [
+    {
+      "stepGuid": "17ea5e46-9b47-5d84-91f5-6a1f8ec523ca",
+      "stepName": "General",
+      "description": "Name the ammo and pick what it does on impact.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "600c2bd4-601a-514c-aed8-a9f3d596f4db",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown on the targeting page and in game, e.g. 'Heavy boulder' or 'Incendiary bolt'. Must be unique.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "bf159076-b161-5dfc-9caf-945c750d9a38",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Optional; a line for players about when to use it.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8a7616a9-3ae3-52f1-858d-8dd0f0820fe8",
+          "fieldName": "Effect",
+          "label": "Effect",
+          "description": "Impact (boulder, kinetic bolt): full damage in a small core, then a steep drop, projectile damage. Explosion (bomb, explosive bolt): even fall-off to the edge, blast damage. Fire: no fall-off, sets players alight. Poison: the same poison for everyone in the radius.",
+          "fieldType": "Enum",
+          "defaultValue": "Impact",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Impact\", \"Explosion\", \"Fire\", \"Poison\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "16b74091-93d1-591e-a0d5-cbf259cd2b78",
+      "stepName": "Damage",
+      "description": "Damage to players and to structures. Both use the effect's fall-off and only reach what has line of sight to the impact.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "fbbe1cc8-3d77-542e-b1c8-b4517f917381",
+          "fieldName": "Damage",
+          "label": "Player damage",
+          "description": "Damage at the centre of the impact (a player has 20 health). Armour and shields reduce it the vanilla way.",
+          "fieldType": "Decimal",
+          "defaultValue": "10",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0109031d-a8cd-58e9-a26c-62e5b2bc17a9",
+          "fieldName": "StructureDamage",
+          "label": "Structure damage",
+          "description": "Damage to gates and siege weapons in gate HP (a gate has 500 HP by default). The weapon's gate and weapon multipliers apply on top.",
+          "fieldType": "Decimal",
+          "defaultValue": "100",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "bd26a1d9-4fb5-5626-a523-460b7d4b4ce6",
+          "fieldName": "BlastRadius",
+          "label": "Blast radius (blocks)",
+          "description": "How far from the impact players and structures are hit, 0 to 64.",
+          "fieldType": "Decimal",
+          "defaultValue": "2",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d91d2e0c-4f7a-5e7a-9c1c-41d7407a58c1",
+          "fieldName": "Knockback",
+          "label": "Knockback",
+          "description": "Push strength, weaker towards the edge. A blast pushes away from the impact, a direct hit along the flight path. 0 = none.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5cb3a570-f053-5f62-bb58-5c5b4f907483",
+          "fieldName": "ArmorPiercing",
+          "label": "Armour piercing",
+          "description": "0 to 1: the share of the armour and enchantment reduction this ammo ignores. 0 = armour counts fully.",
+          "fieldType": "Decimal",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "24161835-977c-5956-8b0a-26cffea0880b",
+      "stepName": "Effect area",
+      "description": "Fire area for fire bombs, poison level and duration for carcasses. Leave empty when the effect doesn't use them.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b230476d-a0ba-5ce9-9c26-a65116e7c1d7",
+          "fieldName": "EffectRadius",
+          "label": "Effect radius (blocks)",
+          "description": "Fire: the area of ground fire. Poison: the poisoned area. Empty = the blast radius.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "849d594d-3933-557b-8d97-b79b0ec7555e",
+          "fieldName": "EffectDurationSeconds",
+          "label": "Effect duration (seconds)",
+          "description": "How long players burn or stay poisoned.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fc0bc71b-85b8-5114-8833-7a1147d1de4f",
+          "fieldName": "EffectLevel",
+          "label": "Effect level",
+          "description": "Poison level, 1 to 10.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "d4eb0da4-b62b-5e96-be10-e84512daa24b",
+      "stepName": "Look and price",
+      "description": "How the projectile looks in flight and what a shot costs.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ceffff36-2a28-565f-87c4-2f524eb82e8f",
+          "fieldName": "ProjectileBlock",
+          "label": "Projectile block",
+          "description": "The block shown flying for trebuchet and catapult shots, e.g. STONE or TNT. Ballista bolts are arrows.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7a9516d3-b5c9-5d6d-9cff-005bd8d08d17",
+          "fieldName": "ParticleTrail",
+          "label": "Particle trail",
+          "description": "The particle left behind in flight, e.g. SMOKE or FLAME. Empty = none.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "57c8e184-a520-5786-ac7f-e38120980f2e",
+          "fieldName": "PricePerShot",
+          "label": "Price per shot (siege points)",
+          "description": "Paid by whoever fires.",
+          "fieldType": "Integer",
+          "defaultValue": "10",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

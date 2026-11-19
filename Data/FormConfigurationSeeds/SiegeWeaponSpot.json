@@ -1,0 +1,150 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "eb13abee-c0a9-570c-b5ff-580cbf598606",
+  "entityTypeName": "SiegeWeaponSpot",
+  "name": "SiegeWeaponSpot - Default (seed v1)",
+  "description": "A place reserved for a siege weapon in a scenario, owned by one team. Created from the scenario's Siege weapons step.",
+  "steps": [
+    {
+      "stepGuid": "7e1d54ff-51e9-5d25-aa04-f907d531fc11",
+      "stepName": "General",
+      "description": "Name the spot and pick the team it belongs to.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "231fdc1b-2e82-59ef-8b8c-3c14c3470c00",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "Filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "59fff8d0-a991-5851-a535-0717b212543c",
+          "fieldName": "SiegeTeamId",
+          "label": "Team",
+          "description": "Only this team can place a weapon here. Attackers and defenders can both have spots.",
+          "fieldType": "Object",
+          "objectType": "SiegeTeam",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"siegeScenarioId\": \"{SiegeScenarioId}\"}}"
+        },
+        {
+          "fieldGuid": "4e8d4d0c-b45b-5897-9101-b1e62b9c29f0",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in the spot picker, e.g. 'North wall tower'.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b45337f6-c000-51b5-812b-d0b4112f6035",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Leave empty to add it after the existing spots.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "e57fe647-21ca-539f-83b9-f13c38b9ca59",
+      "stepName": "Place and size",
+      "description": "Where the weapon goes. The in-game world task fills these from a WorldEdit selection; until then type them in.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "4577571d-9dfa-5a17-a10b-c3210b52255c",
+          "fieldName": "Facing",
+          "label": "Facing",
+          "description": "The direction the weapon points; it is rotated to face this way.",
+          "fieldType": "Enum",
+          "defaultValue": "North",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"North\", \"East\", \"South\", \"West\"]}"
+        },
+        {
+          "fieldGuid": "c8c0dc8c-1b84-5827-a6b5-fba5d6cabd6b",
+          "fieldName": "SizeClass",
+          "label": "Size class",
+          "description": "The largest weapon class that fits: Small 7 x 9 x 5, Medium 7 x 9 x 8, Large 9 x 15 x 16 (width across x length along the facing x height).",
+          "fieldType": "Enum",
+          "defaultValue": "Small",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Small\", \"Medium\", \"Large\"]}"
+        },
+        {
+          "fieldGuid": "26fb2ac8-9e8c-5866-9e9a-45e89f690d76",
+          "fieldName": "WgRegionId",
+          "label": "WorldGuard region",
+          "description": "Optional: the region the spot was taken from.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f59a8d8c-c576-5412-8d41-0fd8cdc2fd8d",
+          "fieldName": "MinX",
+          "label": "Min X",
+          "description": "Selection corner; give all six coordinates or none.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "67b21159-5263-500f-a301-56f7cd43b8ac",
+          "fieldName": "MinY",
+          "label": "Min Y",
+          "description": "",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "debd1e4b-ad65-5816-a628-3b260ea1c990",
+          "fieldName": "MinZ",
+          "label": "Min Z",
+          "description": "",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d7033cf8-fc75-52d3-8c06-0d70aedb99a2",
+          "fieldName": "MaxX",
+          "label": "Max X",
+          "description": "Opposite corner; each max must be at least its min.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "04997c5f-14da-5e87-baa4-f0f762ace4b7",
+          "fieldName": "MaxY",
+          "label": "Max Y",
+          "description": "",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "350b351b-677e-5637-90a6-2f31c9680a3c",
+          "fieldName": "MaxZ",
+          "label": "Max Z",
+          "description": "",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

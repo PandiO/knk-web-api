@@ -128,6 +128,7 @@ public class FormConfigurationSeedFilesTests
         ["SiegeScenarioDistrict"] = new() { ["SiegeScenarioId"] = "set by the scenario's Districts step (join entry)" },
         ["SiegeScenarioGate"] = new() { ["SiegeScenarioId"] = "set by the scenario's Gates step (join entry)" },
         ["SiegeLobbyScenario"] = new() { ["SiegeLobbyId"] = "set by the lobby's Rotation step (join entry)" },
+        ["SiegeWeaponTemplateAmmoType"] = new() { ["SiegeWeaponTemplateId"] = "set by the template's Ammo step (join entry)" },
         ["CategoryTag"] = new() { ["CategoryId"] = "set by the category's Tags step (join entry)" },
         ["ItemBlueprintDefaultEnchantment"] = new() { ["ItemBlueprintId"] = "set by the blueprint's Default enchantments step (join entry)" },
         ["ItemBlueprintOrigin"] = new() { ["ItemBlueprintId"] = "set by the blueprint's Origins step (join entry)" },

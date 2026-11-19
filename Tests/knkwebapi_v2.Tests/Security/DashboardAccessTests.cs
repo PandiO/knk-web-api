@@ -20,6 +20,7 @@ public class DashboardAccessTests
         "DomainSubRegion", "Landmark", "Location", "ItemBlueprint", "Kit", "EnchantmentDefinition", "MinecraftBlockRef",
         "MinecraftMaterialRef", "User", "PermissionGroup", "LootboxType", "LootboxSpecialEntry", "LootboxSpawnArea",
         "BannerDesign", "BannerLayer", "Clan", "SiegeScenario", "SiegeTeam", "SiegeSpawnpoint", "SiegeObjective", "SiegeLobby",
+        "SiegeWeaponTemplate", "SiegeAmmoType", "SiegeWeaponSpot", "UserSiegeWeaponUnlock",
     };
 
     /// <summary>Registry entries without <c>[FormConfigurableEntity]</c>: the roads page's profiles.</summary>

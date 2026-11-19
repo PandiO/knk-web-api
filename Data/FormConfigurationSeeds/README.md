@@ -189,6 +189,28 @@ dependency, import any time; it becomes the default when Landmark has none). Ste
 region id for Region, radius above 0 and at most 512 for Radius, preference 0.25-4.0). GUIDs: configuration uuid5(URL
 namespace, "knk-formconfig:Landmark:seed-v1"), every step/field uuid5(that, "step:"/"field:" + name).
 
+**Siege weapons phase 1 (PandiO/knk-workspace#782, 2026-11-19):** new seeds `SiegeAmmoType`,
+`SiegeWeaponTemplateAmmoType.join`, `SiegeWeaponTemplate`, `SiegeWeaponSpot` and `UserSiegeWeaponUnlock` (seed v1 each),
+and two in-place additions, without a new `configurationGuid`, because other seeds refer to these configurations by
+GUID (the NavigationItem precedent above): `SiegeScenario.json` gets a "Siege weapons" step before "Readiness"
+(`FriendlyFire`, `WeaponSpotCooldownOverrideSeconds` and the owned `WeaponSpots` list of `SiegeWeaponSpot`), and
+`SiegeTeam.json` gets `ActiveWeaponSpots` at the end of "Role and alliance". A fresh import has them; a database that
+imported these two seeds earlier gets them by adding the same step and fields in the form designer (import never
+overwrites). Import order: `SiegeAmmoType`, `SiegeWeaponTemplateAmmoType.join`, `SiegeWeaponTemplate`,
+`SiegeWeaponSpot`, `UserSiegeWeaponUnlock`. The template's "Spread and flight" step shows for Indirect weapons only and
+"Firing cone" for Direct ones. Spot bounds are typed in until the spot world task of phase 2 (#783) fills them; the
+schematic references wait for the schematic pipeline (#614) and are not on the form. GUIDs: new seeds use
+configuration uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1") and uuid5(that, "step:"/"field:" + name); the
+in-place additions uuid5(the configuration GUID, "step:Siege weapons" or "<step>/<Field>").
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `SiegeAmmoType` | SiegeAmmoType - Default (seed v1) | — |
+| `SiegeWeaponTemplateAmmoType.join` | SiegeWeaponTemplateAmmoType - Join Entry (seed v1) | — |
+| `SiegeWeaponTemplate` | SiegeWeaponTemplate - Default (seed v1) | `SiegeWeaponTemplateAmmoType.join` |
+| `SiegeWeaponSpot` | SiegeWeaponSpot - Default (seed v1) | — |
+| `UserSiegeWeaponUnlock` | UserSiegeWeaponUnlock - Default (seed v1) | — |
+
 **Territory V1 seeds v1 (PandiO/knk-workspace#326, 2026-11-19):** new seeds `Kingdom`, `Province`, `CrownLand` and
 `TerritoryConflict`, each with a display seed `<Entity>.display.json` in `DisplayConfigurationSeeds/` (G17). Import
 `Kingdom` first: `Province` and `CrownLand` pick a kingdom (`KingdomId`). `CrownLand` captures its anchor region with
