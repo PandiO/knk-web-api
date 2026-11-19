@@ -137,6 +137,7 @@ namespace knkwebapi_v2.Services.Production
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
+            await BeforeUpdateAsync(id, dto);
             var existing = await Set.Include(s => s.District).Include(s => s.Town).FirstOrDefaultAsync(s => s.Id == id)
                 ?? throw new KeyNotFoundException($"{TypeName} with id {id} not found.");
             string previousRegionId = existing.WgRegionId;
@@ -164,6 +165,9 @@ namespace knkwebapi_v2.Services.Production
         }
 
         protected virtual Task BeforeDeleteAsync(TEntity entity) => Task.CompletedTask;
+
+        /// <summary>Before an update loads the entity (P3: settle production at the old values).</summary>
+        protected virtual Task BeforeUpdateAsync(int id, TDto dto) => Task.CompletedTask;
 
         public async Task<PagedResultDto<ProductionWorldListDto>> SearchAsync(PagedQueryDto query)
         {
@@ -270,12 +274,28 @@ namespace knkwebapi_v2.Services.Production
         }
     }
 
-    /// <summary>Production structures (DESIGN § 3.3): an Output storage on create until P3 seeds kinds with their
-    /// own storage lists.</summary>
+    /// <summary>Production structures (DESIGN § 3.3): an Output storage on create plus the kind's default storages
+    /// (P3); the kind's default workers and the level's caps (PRODUCTION_KINDS § 4.5, § 5).</summary>
     public sealed class ProductionStructureService : StructureSubtypeService<ProductionStructure, ProductionStructureDto>, IProductionStructureService
     {
-        public ProductionStructureService(KnKDbContext db, StructureBaseWriter writer, IStorageService storages, IMapper mapper)
-            : base(db, writer, storages, mapper) { }
+        private readonly IProductionEngine? _engine;
+        private ProductionKind? _createKind;
+        private ProductionKindLevel? _createLevel;
+
+        public ProductionStructureService(KnKDbContext db, StructureBaseWriter writer, IStorageService storages, IMapper mapper,
+            IProductionEngine? engine = null)
+            : base(db, writer, storages, mapper)
+        {
+            _engine = engine;
+        }
+
+        protected override async Task BeforeUpdateAsync(int id, ProductionStructureDto dto)
+        {
+            // A level, kind, worker or switch change applies from now: settle the time before at the old values.
+            if (_engine != null && (dto.Level.HasValue || dto.ProductionKindId.HasValue || dto.WorkersTotal.HasValue
+                    || dto.ProductionEnabled.HasValue))
+                await _engine.SettleStructureAsync(id);
+        }
 
         protected override string TypeName => nameof(ProductionStructure);
         protected override DbSet<ProductionStructure> Set => Db.ProductionStructures;
@@ -285,14 +305,38 @@ namespace knkwebapi_v2.Services.Production
 
         protected override async Task ApplyOwnAsync(ProductionStructure target, ProductionStructureDto dto, bool isCreate)
         {
+            int? previousKind = target.ProductionKindId;
+            int previousLevel = target.Level;
+            ProductionKind? kind = null;
             if (dto.ProductionKindId.HasValue)
-                target.ProductionKindId = dto.ProductionKindId.Value > 0 ? dto.ProductionKindId.Value : null;
+            {
+                if (dto.ProductionKindId.Value > 0)
+                {
+                    kind = await Db.ProductionKinds.AsNoTracking().FirstOrDefaultAsync(k => k.Id == dto.ProductionKindId.Value)
+                        ?? throw new ArgumentException($"ProductionKind with id {dto.ProductionKindId} not found.", nameof(dto));
+                    target.ProductionKindId = kind.Id;
+                }
+                else target.ProductionKindId = null;
+            }
             if (dto.Level.HasValue)
             {
                 if (dto.Level.Value is < ProductionStructure.MinLevel or > ProductionStructure.MaxLevel)
                     throw new ArgumentException($"level must be {ProductionStructure.MinLevel} to {ProductionStructure.MaxLevel}.", nameof(dto));
                 target.Level = dto.Level.Value;
             }
+            if (isCreate && kind != null && !dto.WorkersTotal.HasValue)
+            {
+                target.WorkersTotal = kind.DefaultWorkers;
+                target.WorkersPresent = kind.DefaultWorkers;
+            }
+            if (isCreate)
+            {
+                _createKind = kind;
+                _createLevel = await ProductionLevels.FindAsync(Db, target.ProductionKindId, target.Level);
+                if (_createLevel?.TransportCapacity is { } cap && !dto.TransportCapacity.HasValue) target.TransportCapacity = cap;
+            }
+            else if (target.ProductionKindId != previousKind || target.Level != previousLevel)
+                await ProductionLevels.ApplyAsync(Db, target, await ProductionLevels.FindAsync(Db, target.ProductionKindId, target.Level));
             if (dto.ProductionEnabled.HasValue) target.ProductionEnabled = dto.ProductionEnabled.Value;
             if (dto.AutomaticTransport.HasValue) target.AutomaticTransport = dto.AutomaticTransport.Value;
             if (dto.TransportThreshold.HasValue)
@@ -334,14 +378,27 @@ namespace knkwebapi_v2.Services.Production
 
         protected override IEnumerable<StorageDto> DefaultStorages(ProductionStructure created)
         {
-            yield return new StorageDto { Name = StorageName(created.Name, "output"), Purpose = StoragePurpose.Output };
+            yield return new StorageDto
+            {
+                Name = StorageName(created.Name, "output"), Purpose = StoragePurpose.Output,
+                MaxUnits = _createLevel?.OutputMaxUnits, UnitsPerSlot = _createLevel?.UnitsPerSlot,
+            };
+            // The kind's own storages (PRODUCTION_KINDS § 2 DefaultStorages), next to the Output storage (L6 note).
+            foreach (var spec in ProductionKindService.ParseStorages(_createKind?.DefaultStoragesJson))
+                yield return new StorageDto
+                {
+                    Name = StorageName(created.Name, spec.Name!),
+                    Purpose = Enum.Parse<StoragePurpose>(spec.Purpose!),
+                    MaxUnits = spec.MaxUnits is > 0 ? spec.MaxUnits : null,
+                };
         }
 
         protected override void Fill(ProductionStructure entity, ProductionStructureDto dto) => dto.Warnings = Warnings(entity);
 
         protected override async Task FillStoragesAsync(int id, ProductionStructureDto dto) => dto.Storages = await StoragesOfAsync(id);
 
-        /// <summary>The dashboard warnings of DESIGN § 3.4 (R3) and § 7.6 (D5). A full output storage is P3's.</summary>
+        /// <summary>The dashboard warnings of DESIGN § 3.4 (R3) and § 7.6 (D5). A full output storage and blocked lines are
+        /// in the production view (<c>GET api/ProductionStructures/{id}/production</c>, P3).</summary>
         public static List<string> Warnings(ProductionStructure p)
         {
             var list = new List<string>();
