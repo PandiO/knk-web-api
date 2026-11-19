@@ -171,7 +171,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
                             return p.Value.ValueKind switch
                             {
                                 JsonValueKind.String => p.Value.GetString(),
-                                JsonValueKind.Number => p.Value.TryGetInt32(out var i) ? i : p.Value.GetDouble(),
+                                JsonValueKind.Number => p.Value.TryGetInt32(out var i) ? (object)i : p.Value.GetDouble(),
                                 JsonValueKind.Null => null,
                                 _ => p.Value,
                             };
@@ -192,7 +192,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
         private static object? Unwrap(JsonElement e) => e.ValueKind switch
         {
             JsonValueKind.String => e.GetString(),
-            JsonValueKind.Number => e.TryGetInt32(out var i) ? i : e.GetDouble(),
+            JsonValueKind.Number => e.TryGetInt32(out var i) ? (object)i : e.GetDouble(),
             JsonValueKind.Null => null,
             _ => e,
         };
