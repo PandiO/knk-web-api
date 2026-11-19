@@ -81,9 +81,18 @@ namespace knkwebapi_v2.Services.Production
     public sealed class ProductionKindService : IProductionKindService
     {
         private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
+        public const int MaxYieldRows = 500;
+        public const int MaxPrimaryOutputs = 50;
         private readonly KnKDbContext _db;
+        private readonly IProductionEngine? _engine;
+        private readonly IProductionYieldService? _yield;
 
-        public ProductionKindService(KnKDbContext db) => _db = db;
+        public ProductionKindService(KnKDbContext db, IProductionEngine? engine = null, IProductionYieldService? yield = null)
+        {
+            _db = db;
+            _engine = engine;
+            _yield = yield;
+        }
 
         /// <summary>Parses and checks a kind's default storages; Output is always created and may not be listed.</summary>
         public static List<ProductionKindStorageSpec> ParseStorages(string? json)
@@ -107,7 +116,8 @@ namespace knkwebapi_v2.Services.Production
         }
 
         private IQueryable<ProductionKind> Query() =>
-            _db.ProductionKinds.AsNoTracking().Include(k => k.Levels).ThenInclude(l => l.Items).ThenInclude(i => i.ItemBlueprint);
+            _db.ProductionKinds.AsNoTracking().Include(k => k.Levels).ThenInclude(l => l.Items).ThenInclude(i => i.ItemBlueprint)
+                .Include(k => k.YieldTable).ThenInclude(r => r.ItemBlueprint).Include(k => k.PrimaryOutputs).ThenInclude(p => p.ItemBlueprint);
 
         public async Task<IEnumerable<ProductionKindDto>> GetAllAsync() =>
             (await Query().OrderBy(k => k.Name).ToListAsync()).Select(ToDto).ToList();
@@ -135,10 +145,20 @@ namespace knkwebapi_v2.Services.Production
         public async Task UpdateAsync(int id, ProductionKindDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            var kind = await _db.ProductionKinds.FirstOrDefaultAsync(k => k.Id == id)
-                ?? throw new KeyNotFoundException($"ProductionKind with id {id} not found.");
+            if (!await _db.ProductionKinds.AnyAsync(k => k.Id == id)) throw new KeyNotFoundException($"ProductionKind with id {id} not found.");
+            // A yield table, primary or level change applies from now (P4): settle the kind's survey-driven structures first.
+            bool yieldChange = dto.YieldTable != null || dto.PrimaryOutputs != null || dto.PrimaryMultiplier.HasValue;
+            var surveyed = !yieldChange || _engine == null ? new List<int>()
+                : await _db.ProductionStructures.AsNoTracking()
+                    .Where(p => p.ProductionKindId == id && p.YieldSource != ProductionRateSource.Configured).Select(p => p.Id).ToListAsync();
+            foreach (var sid in surveyed) await _engine!.SettleStructureAsync(sid);
+            _db.ChangeTracker.Clear();
+            var kind = await _db.ProductionKinds.Include(k => k.YieldTable).Include(k => k.PrimaryOutputs).FirstAsync(k => k.Id == id);
             await ApplyAsync(kind, dto, isCreate: false);
             await _db.SaveChangesAsync();
+            _db.ChangeTracker.Clear();
+            if (dto.YieldTable != null && _yield != null)
+                foreach (var sid in surveyed) await _yield.MaterializeAsync(sid);
         }
 
         private async Task ApplyAsync(ProductionKind kind, ProductionKindDto dto, bool isCreate)
@@ -185,12 +205,89 @@ namespace knkwebapi_v2.Services.Production
                     throw new ArgumentException("defaultStoragesJson is too long.");
             }
             if (dto.IsActive.HasValue) kind.IsActive = dto.IsActive.Value;
+            await ApplyYieldAsync(kind, dto);
+        }
+
+        /// <summary>P4 (#138): survey profile, primary multiplier, yield table and primary outputs.</summary>
+        private async Task ApplyYieldAsync(ProductionKind kind, ProductionKindDto dto)
+        {
+            if (dto.SurveyProfileJson != null)
+            {
+                string? profile = null;
+                if (!string.IsNullOrWhiteSpace(dto.SurveyProfileJson))
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(dto.SurveyProfileJson);
+                        if (doc.RootElement.ValueKind != JsonValueKind.Object) throw new JsonException();
+                        profile = JsonSerializer.Serialize(doc.RootElement);
+                    }
+                    catch (JsonException) { throw new ArgumentException("surveyProfileJson must be a JSON object."); }
+                    if (profile.Length > ProductionKind.SurveyProfileMaxLength) throw new ArgumentException("surveyProfileJson is too long.");
+                }
+                if (profile != kind.SurveyProfileJson)
+                {
+                    kind.SurveyProfileJson = profile;
+                    if (kind.Id != 0) kind.SurveyProfileVersion++;
+                }
+            }
+            if (dto.PrimaryMultiplier.HasValue)
+            {
+                if (dto.PrimaryMultiplier.Value is < 0 or > ProductionKind.MaxPrimaryMultiplier)
+                    throw new ArgumentException($"primaryMultiplier must be 0 to {ProductionKind.MaxPrimaryMultiplier}.");
+                kind.PrimaryMultiplier = Math.Round(dto.PrimaryMultiplier.Value, 4);
+            }
+            if (dto.YieldTable != null)
+            {
+                if (dto.YieldTable.Count > MaxYieldRows) throw new ArgumentException($"A yield table has at most {MaxYieldRows} rows.");
+                var keep = new List<ProductionYieldRow>();
+                foreach (var r in dto.YieldTable)
+                {
+                    var key = SurveyUnitKeys.NormalizePattern(r.UnitKey, "yieldTable unitKey");
+                    if (!await _db.ItemBlueprints.AnyAsync(b => b.Id == r.ItemBlueprintId))
+                        throw new ArgumentException($"yieldTable: ItemBlueprint with id {r.ItemBlueprintId} not found.");
+                    if (r.RatePerUnitPerHour < 0 || r.RatePerUnitPerHour > ProductionLine.MaxRatePerHour)
+                        throw new ArgumentException($"yieldTable {key}: ratePerUnitPerHour must be 0 to {ProductionLine.MaxRatePerHour}.");
+                    decimal chance = r.ByproductChance ?? 1m;
+                    if (chance is < 0 or > 1) throw new ArgumentException($"yieldTable {key}: byproductChance must be 0 to 1.");
+                    int minLevel = r.MinLevel ?? 1;
+                    if (minLevel is < ProductionStructure.MinLevel or > ProductionStructure.MaxLevel)
+                        throw new ArgumentException($"yieldTable {key}: minLevel must be {ProductionStructure.MinLevel} to {ProductionStructure.MaxLevel}.");
+                    if (keep.Any(k => k.UnitKey == key && k.ItemBlueprintId == r.ItemBlueprintId))
+                        throw new ArgumentException($"yieldTable: {key} → blueprint {r.ItemBlueprintId} is listed twice.");
+                    var row = kind.YieldTable.FirstOrDefault(x => x.UnitKey == key && x.ItemBlueprintId == r.ItemBlueprintId)
+                        ?? new ProductionYieldRow { UnitKey = key, ItemBlueprintId = r.ItemBlueprintId };
+                    row.RatePerUnitPerHour = Math.Round(r.RatePerUnitPerHour, ProductionRate.Decimals);
+                    row.ByproductChance = Math.Round(chance, 6);
+                    row.MinLevel = minLevel;
+                    keep.Add(row);
+                }
+                foreach (var gone in kind.YieldTable.Where(x => !keep.Contains(x)).ToList()) _db.ProductionYieldRows.Remove(gone);
+                kind.YieldTable = keep;
+            }
+            if (dto.PrimaryOutputs != null)
+            {
+                if (dto.PrimaryOutputs.Count > MaxPrimaryOutputs) throw new ArgumentException($"A kind has at most {MaxPrimaryOutputs} primary outputs.");
+                var keep = new List<ProductionKindPrimaryOutput>();
+                foreach (var p in dto.PrimaryOutputs)
+                {
+                    if (!await _db.ItemBlueprints.AnyAsync(b => b.Id == p.ItemBlueprintId))
+                        throw new ArgumentException($"primaryOutputs: ItemBlueprint with id {p.ItemBlueprintId} not found.");
+                    if (keep.Any(k => k.ItemBlueprintId == p.ItemBlueprintId))
+                        throw new ArgumentException($"primaryOutputs: blueprint {p.ItemBlueprintId} is listed twice.");
+                    keep.Add(kind.PrimaryOutputs.FirstOrDefault(x => x.ItemBlueprintId == p.ItemBlueprintId)
+                        ?? new ProductionKindPrimaryOutput { ItemBlueprintId = p.ItemBlueprintId });
+                }
+                foreach (var gone in kind.PrimaryOutputs.Where(x => !keep.Contains(x)).ToList()) _db.ProductionKindPrimaryOutputs.Remove(gone);
+                kind.PrimaryOutputs = keep;
+            }
         }
 
         public async Task DeleteAsync(int id)
         {
             // Levels and their items go with the kind (Cascade); loaded so the delete is the same without a database cascade.
-            var kind = await _db.ProductionKinds.Include(k => k.Levels).ThenInclude(l => l.Items).FirstOrDefaultAsync(k => k.Id == id)
+            var kind = await _db.ProductionKinds.Include(k => k.Levels).ThenInclude(l => l.Items).Include(k => k.YieldTable)
+                .Include(k => k.PrimaryOutputs).FirstOrDefaultAsync(k => k.Id == id)
                 ?? throw new KeyNotFoundException($"ProductionKind with id {id} not found.");
             int used = await _db.ProductionStructures.CountAsync(p => p.ProductionKindId == id);
             if (used > 0) throw new InvalidOperationException($"{used} production structure(s) use this kind; give them another kind first.");
@@ -243,6 +340,20 @@ namespace knkwebapi_v2.Services.Production
             IsActive = k.IsActive,
             CreatedAt = k.CreatedAt,
             Levels = k.Levels.OrderBy(l => l.Level).Select(l => ProductionKindLevelService.ToDto(l, k)).ToList(),
+            SurveyProfileJson = k.SurveyProfileJson,
+            SurveyProfileVersion = k.SurveyProfileVersion,
+            PrimaryMultiplier = k.PrimaryMultiplier,
+            YieldTable = k.YieldTable.OrderBy(r => r.UnitKey).ThenBy(r => r.ItemBlueprintId).Select(r => new ProductionYieldRowDto
+            {
+                Id = r.Id, UnitKey = r.UnitKey, ItemBlueprintId = r.ItemBlueprintId,
+                ItemBlueprint = r.ItemBlueprint == null ? null : new NamedRefDto { Id = r.ItemBlueprintId, Name = r.ItemBlueprint.Name },
+                RatePerUnitPerHour = r.RatePerUnitPerHour, ByproductChance = r.ByproductChance, MinLevel = r.MinLevel,
+            }).ToList(),
+            PrimaryOutputs = k.PrimaryOutputs.OrderBy(p => p.ItemBlueprintId).Select(p => new ProductionKindPrimaryOutputDto
+            {
+                Id = p.Id, ItemBlueprintId = p.ItemBlueprintId,
+                ItemBlueprint = p.ItemBlueprint == null ? null : new NamedRefDto { Id = p.ItemBlueprintId, Name = p.ItemBlueprint.Name },
+            }).ToList(),
         };
     }
 
@@ -471,7 +582,13 @@ namespace knkwebapi_v2.Services.Production
             {
                 var source = ProductionInput.Parse<ProductionRateSource>(dto.RateSource, "rateSource");
                 if (source != ProductionRateSource.Configured)
-                    throw new ArgumentException("rateSource: only Configured exists yet; Derived and Hybrid come with the yield areas (P4).");
+                {
+                    // P4 (#138): a survey line follows its structure's yield source (materialization makes them).
+                    var yieldSource = await _db.ProductionStructures.AsNoTracking().Where(p => p.Id == line.ProductionStructureId)
+                        .Select(p => p.YieldSource).FirstAsync();
+                    if (source != yieldSource)
+                        throw new ArgumentException($"rateSource: a {source} line needs a {source} structure (the structure is {yieldSource}).");
+                }
                 line.RateSource = source;
             }
             if (dto.ConfiguredRatePerHour.HasValue)

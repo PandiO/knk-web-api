@@ -69,6 +69,12 @@ namespace knkwebapi_v2.Attributes
                 o => Join(Text(o, "Scope"), Text(o, "Effect"), Text(o, "Value"))),
             ["ClimateZone"] = Of<knkwebapi_v2.Services.Production.IClimateZoneService>((s, id) => s.GetByIdAsync(id), Name),
             ["WeatherType"] = Of<knkwebapi_v2.Services.Production.IWeatherTypeService>((s, id) => s.GetByIdAsync(id), Name),
+            // Yield areas P4 (#138): areas and Hybrid overrides per structure.
+            ["ProductionArea"] = Of<knkwebapi_v2.Services.Production.IProductionAreaService>((s, id) => s.GetByIdAsync(id), Name,
+                o => Join(Text(o, "ProductionStructure"), Text(o, "Shape")), filters: new[] { IdFilter("productionStructureId") }),
+            ["ProductionYieldOverride"] = Of<knkwebapi_v2.Services.Production.IProductionYieldOverrideService>((s, id) => s.GetByIdAsync(id),
+                o => Text(o, "Name") ?? Join(Text(o, "Kind"), Text(o, "ItemBlueprint")), o => Text(o, "Value"),
+                filters: new[] { IdFilter("productionStructureId"), IdFilter("itemBlueprintId") }),
             ["Kingdom"] = Of<IKingdomService>((s, id) => s.GetByIdAsync(id), Name),
             ["Province"] = Of<IProvinceService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "Kingdom"),
                 filters: new[] { IdFilter("kingdomId") }),

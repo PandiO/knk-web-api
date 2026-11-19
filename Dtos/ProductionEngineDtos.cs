@@ -54,6 +54,23 @@ namespace knkwebapi_v2.Dtos
 
         /// <summary>Read only: the ten levels.</summary>
         [JsonPropertyName("levels")] public List<ProductionKindLevelDto>? Levels { get; set; }
+
+        // ---- P4 (#138) ----
+
+        /// <summary>A JSON object the plugin's survey reads (e.g. <c>{"unitTypes":["TREE"]}</c>); a change raises the version.</summary>
+        [JsonPropertyName("surveyProfileJson")] public string? SurveyProfileJson { get; set; }
+
+        /// <summary>Read only.</summary>
+        [JsonPropertyName("surveyProfileVersion")] public int SurveyProfileVersion { get; set; }
+
+        /// <summary>The primary outputs' factor on Derived and Hybrid lines (default 1.5).</summary>
+        [JsonPropertyName("primaryMultiplier")] public decimal? PrimaryMultiplier { get; set; }
+
+        /// <summary>Replaces the stored yield table when sent.</summary>
+        [JsonPropertyName("yieldTable")] public List<ProductionYieldRowDto>? YieldTable { get; set; }
+
+        /// <summary>Replaces the stored primary outputs when sent.</summary>
+        [JsonPropertyName("primaryOutputs")] public List<ProductionKindPrimaryOutputDto>? PrimaryOutputs { get; set; }
     }
 
     public class ProductionKindListDto

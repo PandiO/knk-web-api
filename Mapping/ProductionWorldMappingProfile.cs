@@ -18,6 +18,7 @@ namespace knkwebapi_v2.Mapping
                 .IncludeBase<Structure, StructureDto>()
                 .ForMember(d => d.WarehousePreference, o => o.MapFrom(s => s.WarehousePreference.ToString()))
                 .ForMember(d => d.RoadConnection, o => o.MapFrom(s => s.RoadConnection.ToString()))
+                .ForMember(d => d.YieldSource, o => o.MapFrom(s => s.YieldSource.ToString()))
                 .ForMember(d => d.PreferredWarehouse, o => o.MapFrom(s => s.PreferredWarehouse == null ? null
                     : new StructureStorageNavDto { Id = s.PreferredWarehouse.Id, Name = s.PreferredWarehouse.Name }))
                 .ForMember(d => d.ProductionKind, o => o.MapFrom(s => s.ProductionKind == null ? null

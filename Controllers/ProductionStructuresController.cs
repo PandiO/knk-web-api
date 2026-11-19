@@ -149,6 +149,52 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        /// <summary>The structure's yield (P4, #138): its yield source, areas, and every output with the survey units,
+        /// shares, yield rows and Hybrid override behind its base rate (the web app's rate explanation).</summary>
+        [HttpGet("{id:int}/yield")]
+        public async Task<IActionResult> GetYield(int id, [FromServices] IProductionYieldService yield)
+        {
+            var dto = await yield.ExplainAsync(id);
+            return dto == null ? NotFound() : Ok(dto);
+        }
+
+        /// <summary>Asks the game server to survey the structure's enabled areas (or one, <c>productionAreaId</c>) at its
+        /// next poll (A10, "survey now"): plugin key or knk.admin.world. 409 for a Configured structure (G5) or one
+        /// without an enabled area.</summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        [HttpPost("{id:int}/survey")]
+        public async Task<IActionResult> RequestSurvey(int id, [FromBody] SurveyRequestDto? dto, [FromServices] IProductionAreaService areas)
+        {
+            try
+            {
+                return Ok(await areas.RequestSurveyAsync(id, dto?.ProductionAreaId));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>Makes a line for every output the latest surveys (and Hybrid pins) yield (staff tool; it also runs
+        /// after every survey, override and yield source change): plugin key or knk.admin.world.</summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        [HttpPost("{id:int}/materialize")]
+        public async Task<IActionResult> Materialize(int id, [FromServices] IProductionYieldService yield)
+        {
+            try
+            {
+                return Ok(await yield.MaterializeAsync(id));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+        }
+
         /// <summary>The road connection the game server measured (DESIGN § 7.6, P5b): plugin key or knk.admin.world.</summary>
         [HttpPut("{id:int}/road-connection")]
         public async Task<IActionResult> SetRoadConnection(int id, [FromBody] RoadConnectionUpdateDto dto)
