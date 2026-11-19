@@ -29,6 +29,8 @@ namespace knkwebapi_v2.Repositories
             .Include(s => s.Teams).ThenInclude(t => t.Spawnpoints).ThenInclude(p => p.Location)
             .Include(s => s.Objectives).ThenInclude(o => o.Location)
             .Include(s => s.Objectives).ThenInclude(o => o.GateStructure).ThenInclude(g => g!.Location)
+            // Siege weapons (PandiO/knk-workspace#782): owned weapon spots with their team (for its name).
+            .Include(s => s.WeaponSpots).ThenInclude(w => w.SiegeTeam)
             .AsSplitQuery();
 
         public async Task<IEnumerable<SiegeScenario>> GetAllAsync()
@@ -215,6 +217,9 @@ namespace knkwebapi_v2.Repositories
             // doesn't depend on the provider. (Match history rows are left to the DB.)
             await _context.SiegeObjectives.Where(o => o.InitialHolderTeamId == team.Id).LoadAsync();
             await _context.SiegeScenarioGates.Where(g => g.InitialOwnerTeamId == team.Id).LoadAsync();
+            // Siege weapons (PandiO/knk-workspace#782): the team's weapon spots cascade (ON DELETE CASCADE); loaded so
+            // EF removes them itself on every provider.
+            await _context.SiegeWeaponSpots.Where(w => w.SiegeTeamId == team.Id).LoadAsync();
             _context.SiegeTeams.Remove(team);
             await _context.SaveChangesAsync();
         }

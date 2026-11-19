@@ -77,6 +77,11 @@ namespace knkwebapi_v2.Attributes
             ["SiegeLobby"] = Of<ISiegeLobbyService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "Key")),
             ["SiegeObjective"] = Of<ISiegeScenarioService>((s, id) => s.GetObjectiveByIdAsync(id), Name, o => Text(o, "GateStructureName")),
             ["SiegeSpawnpoint"] = Of<ISiegeScenarioService>((s, id) => s.GetSpawnpointByIdAsync(id), Name),
+            ["SiegeWeaponTemplate"] = Of<ISiegeWeaponService>((s, id) => s.GetTemplateByIdAsync(id), Name, o => Text(o, "Kind")),
+            ["SiegeAmmoType"] = Of<ISiegeWeaponService>((s, id) => s.GetAmmoTypeByIdAsync(id), Name, o => Text(o, "Effect")),
+            ["SiegeWeaponSpot"] = Of<ISiegeWeaponService>((s, id) => s.GetSpotByIdAsync(id), Name, o => Text(o, "SiegeTeamName")),
+            ["UserSiegeWeaponUnlock"] = Of<ISiegeWeaponService>((s, id) => s.GetUnlockByIdAsync(id),
+                o => Text(o, "SiegeWeaponTemplateName"), o => Text(o, "Username")),
             ["RoadProfile"] = Of<IRoadNetworkService>((s, id) => s.GetProfileAsync(id), Name, o => Text(o, "RoadClass")),
 
             // Players: the username and nothing else; the search matches the username only (never the email).

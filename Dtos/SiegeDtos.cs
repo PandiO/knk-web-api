@@ -53,6 +53,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("teams")] public List<SiegeTeamReadDto> Teams { get; set; } = new();
         [JsonPropertyName("objectives")] public List<SiegeObjectiveReadDto> Objectives { get; set; } = new();
         [JsonPropertyName("gates")] public List<SiegeScenarioGateDto> Gates { get; set; } = new();
+
+        // Siege weapons (SIEGE_WEAPONS.md § 9.3, § 9.5; PandiO/knk-workspace#782). Weapon spots are owned children,
+        // ordered by (SortOrder, Id), managed through POST /api/SiegeScenarios/{id}/weapon-spots.
+        [JsonPropertyName("friendlyFire")] public bool FriendlyFire { get; set; }
+        [JsonPropertyName("weaponSpotCooldownOverrideSeconds")] public int? WeaponSpotCooldownOverrideSeconds { get; set; }
+        [JsonPropertyName("weaponSpots")] public List<SiegeWeaponSpotReadDto> WeaponSpots { get; set; } = new();
     }
 
     // Teams and objectives are managed through their own endpoints (owned child collections) - any
@@ -92,6 +98,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("enchantDropsEnabled")] public bool EnchantDropsEnabled { get; set; } = true;
         [JsonPropertyName("navigationItem")] public SiegeNavigationItemMode NavigationItem { get; set; } = SiegeNavigationItemMode.Inherit;
         [JsonPropertyName("gates")] public List<SiegeScenarioGateUpsertDto>? Gates { get; set; }
+
+        // Siege weapons (PandiO/knk-workspace#782); a "weaponSpots" property is ignored (owned children).
+        // WeaponSpotCooldownOverrideSeconds null = each template's own spot cooldown.
+        [JsonPropertyName("friendlyFire")] public bool FriendlyFire { get; set; }
+        [JsonPropertyName("weaponSpotCooldownOverrideSeconds")] public int? WeaponSpotCooldownOverrideSeconds { get; set; }
     }
 
     public class SiegeScenarioListDto
@@ -159,6 +170,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("resolvedBannerDesignId")] public int? ResolvedBannerDesignId { get; set; }
 
         [JsonPropertyName("spawnpoints")] public List<SiegeSpawnpointReadDto> Spawnpoints { get; set; } = new();
+
+        // Siege weapons (W30, PandiO/knk-workspace#782).
+        [JsonPropertyName("activeWeaponSpots")] public int ActiveWeaponSpots { get; set; }
     }
 
     // Spawnpoints are managed through their own endpoints; a "spawnpoints" property is ignored.
@@ -174,6 +188,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("chatColor")] public string? ChatColor { get; set; }
         [JsonPropertyName("bannerDesignId")] public int? BannerDesignId { get; set; }
         [JsonPropertyName("startMessage")] public string? StartMessage { get; set; }
+        // Siege weapons (W30, PandiO/knk-workspace#782): how many of the team's weapon spots are usable; 0 = none.
+        [JsonPropertyName("activeWeaponSpots")] public int ActiveWeaponSpots { get; set; }
     }
 
     // ---- SiegeSpawnpoint ----

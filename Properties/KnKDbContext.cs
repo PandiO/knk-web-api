@@ -189,6 +189,14 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<SiegeMatchObjectiveResult> SiegeMatchObjectiveResults { get; set; } = null!;
     public virtual DbSet<SiegeMatchGateSnapshot> SiegeMatchGateSnapshots { get; set; } = null!;
 
+    // Siege weapons phase 1 (knk-workspace docs/specs/siege-minigame/SIEGE_WEAPONS.md § 9, PandiO/knk-workspace#782).
+    // Model configuration: the "Siege weapons" block in OnModelCreating.
+    public virtual DbSet<SiegeWeaponTemplate> SiegeWeaponTemplates { get; set; } = null!;
+    public virtual DbSet<SiegeAmmoType> SiegeAmmoTypes { get; set; } = null!;
+    public virtual DbSet<SiegeWeaponTemplateAmmoType> SiegeWeaponTemplateAmmoTypes { get; set; } = null!;
+    public virtual DbSet<SiegeWeaponSpot> SiegeWeaponSpots { get; set; } = null!;
+    public virtual DbSet<UserSiegeWeaponUnlock> UserSiegeWeaponUnlocks { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -625,6 +633,72 @@ public partial class KnKDbContext : DbContext
             .HasForeignKey(g => g.CurrentSiegeId)
             .OnDelete(DeleteBehavior.SetNull);
         // ==== end Siege Phase 2 ================================================================
+
+        // ==== Siege weapons phase 1 (SIEGE_WEAPONS.md § 9, PandiO/knk-workspace#782) =================
+        // Own block so it merges cleanly with other siege branches. Delete rules: spots cascade from their scenario and
+        // their team, template joins from their template; an ammo type a template allows, a template a player
+        // unlocked and the (soft-deleted) user are Restrict. Enums are stored as strings.
+        modelBuilder.Entity<SiegeWeaponTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_weapon_templates");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.SizeClass).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<SiegeAmmoType>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_ammo_types");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Effect).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ProjectileBlock).HasMaxLength(100);
+            entity.Property(e => e.ParticleTrail).HasMaxLength(100);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<SiegeWeaponTemplateAmmoType>(entity =>
+        {
+            entity.HasKey(e => new { e.SiegeWeaponTemplateId, e.SiegeAmmoTypeId });
+            entity.ToTable("siege_weapon_template_ammo_types");
+
+            entity.HasOne(e => e.SiegeWeaponTemplate).WithMany(t => t.AllowedAmmoTypes).HasForeignKey(e => e.SiegeWeaponTemplateId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SiegeAmmoType).WithMany().HasForeignKey(e => e.SiegeAmmoTypeId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SiegeWeaponSpot>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_weapon_spots");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.WgRegionId).HasMaxLength(255);
+            entity.Property(e => e.Facing).HasConversion<string>().HasMaxLength(10);
+            entity.Property(e => e.SizeClass).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany(s => s.WeaponSpots).HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SiegeTeam).WithMany().HasForeignKey(e => e.SiegeTeamId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserSiegeWeaponUnlock>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("user_siege_weapon_unlocks");
+
+            entity.Property(e => e.UnlockedAt).HasColumnType("datetime");
+            entity.HasIndex(e => new { e.UserId, e.SiegeWeaponTemplateId }).IsUnique();
+
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SiegeWeaponTemplate).WithMany().HasForeignKey(e => e.SiegeWeaponTemplateId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ==== end Siege weapons phase 1 ==========================================================
 
         // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
         // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.

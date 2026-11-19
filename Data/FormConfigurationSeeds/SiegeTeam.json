@@ -50,6 +50,16 @@
           "fieldType": "Integer",
           "isRequired": false,
           "isReadOnly": false
+        },
+        {
+          "fieldGuid": "017f0eca-d3d0-59e7-887c-44c233a68e45",
+          "fieldName": "ActiveWeaponSpots",
+          "label": "Active weapon spots",
+          "description": "How many of this team's siege weapon spots are usable in a match. 0 = none.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
         }
       ]
     },

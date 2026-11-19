@@ -388,6 +388,45 @@
       ]
     },
     {
+      "stepGuid": "b4a1acb6-b0c1-5e89-b4c3-6228897a46ac",
+      "stepName": "Siege weapons",
+      "description": "Trebuchets, catapults and ballistas on spots owned by a team. Spots are available once the scenario and its teams are saved; each spot is saved when you finish its form. How many of a team's spots are usable is set on the team.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "7d7ae644-7458-5bcf-beed-7f34a74085a3",
+          "fieldName": "FriendlyFire",
+          "label": "Friendly fire",
+          "description": "Siege weapon shots also hurt the shooter's own team and its allies. Off by default.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b10e2507-97a4-579f-99b1-dfd494d6c8d1",
+          "fieldName": "WeaponSpotCooldownOverrideSeconds",
+          "label": "Spot cooldown override (seconds)",
+          "description": "After a weapon is destroyed its spot stays locked this long, for every weapon type. Empty = each weapon template's own cooldown.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "644b9d04-17eb-5459-85f6-de151208866e",
+          "fieldName": "WeaponSpots",
+          "label": "Weapon spots",
+          "description": "Create New opens the spot form.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "SiegeWeaponSpot",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    },
+    {
       "stepGuid": "f832a5d3-a589-5f09-8ed8-af0e07a888b7",
       "stepName": "Readiness",
       "description": "Whether the scenario can be played. Fix every error and press Re-check; only ready scenarios are put up for voting by a lobby.",

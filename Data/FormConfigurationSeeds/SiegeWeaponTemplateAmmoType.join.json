@@ -1,0 +1,28 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "98b2c620-5fd6-5766-a576-ff9d2a7b0981",
+  "entityTypeName": "SiegeWeaponTemplateAmmoType",
+  "name": "SiegeWeaponTemplateAmmoType - Join Entry (seed v1)",
+  "description": "Join entry for allowing an ammo type on a siege weapon template (the template's Ammo step).",
+  "steps": [
+    {
+      "stepGuid": "8e3eaa4c-b9a9-5a3f-bd60-395247314b02",
+      "stepName": "Ammo type",
+      "description": "One ammo type this weapon may fire.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "7059e77c-c291-5bc2-9c95-db19fb162e8b",
+          "fieldName": "SiegeAmmoTypeId",
+          "label": "Ammo type",
+          "description": "Create ammo types first under Siege ammo types.",
+          "fieldType": "Object",
+          "objectType": "SiegeAmmoType",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}
