@@ -68,6 +68,7 @@ namespace knkwebapi_v2.Services
 
             var entity = _mapper.Map<ItemBlueprint>(dto);
             entity.IconMaterialRefId = iconMaterialRefId;
+            entity.StorageWeight = ValidStorageWeight(dto.StorageWeight) ?? ItemBlueprint.DefaultStorageWeight;
 
             // Handle default enchantments (Many-to-Many)
             if (dto.DefaultEnchantments != null && dto.DefaultEnchantments.Any())
@@ -132,6 +133,8 @@ namespace knkwebapi_v2.Services
             existing.GradeId = dto.GradeId;
             existing.BasePriceMin = dto.BasePriceMin;
             existing.BasePriceMax = dto.BasePriceMax;
+            // Stock core P1 (#97): null = keep, so a form without the field doesn't reset it.
+            if (ValidStorageWeight(dto.StorageWeight) is { } weight) existing.StorageWeight = weight;
 
             // Update default enchantments (cascade M2M)
             existing.DefaultEnchantments.Clear();
@@ -275,6 +278,16 @@ namespace knkwebapi_v2.Services
 
             await _materialRepo.AddAsync(newMaterial);
             return newMaterial.Id;
+        }
+
+        /// <summary>Capacity weight per unit (production DESIGN § 4.4); null stays null.</summary>
+        public static decimal? ValidStorageWeight(decimal? weight)
+        {
+            if (weight is null) return null;
+            if (weight < ItemBlueprint.MinStorageWeight || weight > ItemBlueprint.MaxStorageWeight)
+                throw new ArgumentException(
+                    $"Storage weight must be between {ItemBlueprint.MinStorageWeight} and {ItemBlueprint.MaxStorageWeight}.");
+            return decimal.Round(weight.Value, 4);
         }
     }
 }

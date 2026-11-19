@@ -51,6 +51,7 @@ public class DashboardChangeAccessRulesTests
         ("KingdomsController", "Create", "Kingdom"), ("KingdomsController", "Update", "Kingdom"),
         ("ProvincesController", "Create", "Province"), ("ProvincesController", "Update", "Province"),
         ("CrownLandsController", "Create", "CrownLand"), ("CrownLandsController", "Update", "CrownLand"),
+        ("StoragesController", "Create", "Storage"), ("StoragesController", "Update", "Storage"),
         ("KitsController", "Create", "Kit"), ("KitsController", "Update", "Kit"),
         ("LootboxTypesController", "Create", "LootboxType"), ("LootboxTypesController", "Update", "LootboxType"),
         ("LootboxSpecialEntriesController", "Create", "LootboxSpecialEntry"), ("LootboxSpecialEntriesController", "Update", "LootboxSpecialEntry"),

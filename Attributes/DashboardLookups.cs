@@ -5,6 +5,7 @@ using System.Reflection;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.Stock;
 
 namespace knkwebapi_v2.Attributes
 {
@@ -55,6 +56,9 @@ namespace knkwebapi_v2.Attributes
                 o => Join(Text(o, "Kingdom"), Text(o, "WorldName")), filters: new[] { IdFilter("kingdomId") }),
             ["TerritoryConflict"] = Of<ITerritoryConflictService>((s, id) => s.GetByIdAsync(id),
                 o => Join(Text(o, "HolderA"), Text(o, "HolderB")), o => Text(o, "World")),
+            // Stock core P1 (#97): pickers for the move and adjust dialogs.
+            ["Storage"] = Of<IStorageService>((s, id) => s.GetByIdAsync(id), Name, o => Join(Text(o, "Kind"), Text(o, "HolderName")),
+                filters: new[] { IdFilter("domainId"), IdFilter("userId"), IdFilter("clanId") }),
             ["Street"] = Of<IStreetService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "TownNames", "DistrictNames", "Districts")),
             ["Location"] = Of<ILocationService>((s, id) => s.GetByIdAsync(id), o => Text(o, "Name") ?? Coordinates(o), Coordinates),
             ["GateStructure"] = Of<IGateStructureService>((s, id) => s.GetByIdAsync(id), Name,

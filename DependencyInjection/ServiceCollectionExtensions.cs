@@ -242,6 +242,15 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IProvinceService, ProvinceService>();
             services.AddScoped<ICrownLandService, CrownLandService>();
             services.AddScoped<ITerritoryConflictService, TerritoryConflictService>();
+            // Stock core P1 (PandiO/knk-workspace#97): storages, the ledger, reconciler, roll-up; background work gated
+            // by Production:Enabled.
+            services.AddScoped<knkwebapi_v2.Services.Stock.IStockService, knkwebapi_v2.Services.Stock.StockService>();
+            services.AddScoped<knkwebapi_v2.Services.Stock.IStorageService, knkwebapi_v2.Services.Stock.StorageService>();
+            services.AddScoped<knkwebapi_v2.Services.Stock.IStockLedgerService, knkwebapi_v2.Services.Stock.StockLedgerService>();
+            services.AddScoped<knkwebapi_v2.Services.Stock.IStockReconciler, knkwebapi_v2.Services.Stock.StockReconciler>();
+            services.AddScoped<knkwebapi_v2.Services.Stock.IStockRollupService, knkwebapi_v2.Services.Stock.StockRollupService>();
+            services.AddScoped<knkwebapi_v2.Services.Stock.StockMaintenanceJob>();
+            services.AddHostedService<knkwebapi_v2.Services.Stock.StockMaintenanceService>();
             services.AddScoped<ITerritoryService, TerritoryService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();

@@ -220,3 +220,21 @@ conflict's page through `POST api/TerritoryConflicts/{id}/resolve`). The town's 
 district's capital flag are not on the Town and District seeds yet (the web app link #690 adds them to those forms).
 GUIDs: configuration uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), every step/field uuid5(that,
 "step:"/"field:" + name).
+
+**Stock core P1 seeds v1 (PandiO/knk-workspace#97, 2026-11-19):** new seeds `Storage` and `StockTransaction`, each with
+a display seed `<Entity>.display.json` in `DisplayConfigurationSeeds/` (G17). Import in any order.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `Storage` | Storage - Default (seed v1) | — |
+| `StockTransaction` | StockTransaction - Default (seed v1) | — |
+
+`Storage` picks a kind (`Domain`, `Player`, `Clan`, `Transit`; the five system storages are seeded by the migration)
+and fills only the holder field of that kind (`DomainId`, `UserId` or `ClanId`); capacity (`MaxUnits`, `MaxDistinct`,
+`UnitsPerSlot`) and the lock are on step 2. Stock is never typed into the form: it moves through
+`api/StockTransactions` (adjust and move). `StockTransaction` is read only (the ledger is append-only; a correction is
+`POST api/StockTransactions/{id}/reverse`). Stock lines, units and moves are listed on their storage's and
+transaction's pages and have no form of their own; the roll-up rows (G3) have no seeds (aggregate rows, like
+`item_conversion_stats`). GUIDs: configuration uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), every
+step/field uuid5(that, "step:"/"field:" + name).
+

@@ -1,0 +1,132 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "333d12d7-40e9-5262-9642-8c4120e31bbd",
+  "entityTypeName": "Storage",
+  "name": "Storage - Default (seed v1)",
+  "description": "A place that holds items: a structure's output, a warehouse, a player's inbox or stash, a clan vault (stock core P1, #97). Stock moves only through the ledger (adjust and move dialogs), never through this form.",
+  "steps": [
+    {
+      "stepGuid": "618cfa3f-ab21-5f1b-b899-8b0fe5edd7de",
+      "stepName": "Storage",
+      "description": "Name it and pick its kind and its holder. Fill only the holder field that matches the kind; a transit storage has none.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "32da5e34-6f59-577e-946f-a6b4dc354cb3",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "At most 100 characters, e.g. \"Docks warehouse\" or \"Inbox\".",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6217ad86-40ec-592e-9a46-8817f64adff8",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "Domain = a structure, town or district; Player = a player's inbox, stash or vault; Clan = a clan vault; Transit = the cargo of a transport order. Kind and holder can't change once the storage has stock or history.",
+          "fieldType": "Enum",
+          "enumType": "StorageKind",
+          "settingsJson": "{\"enumValues\": [\"Domain\", \"Player\", \"Clan\", \"Transit\"]}",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "825617f4-17d7-5494-9e4a-bbf8a7002217",
+          "fieldName": "Purpose",
+          "label": "Purpose",
+          "description": "What the storage is for.",
+          "fieldType": "Enum",
+          "enumType": "StoragePurpose",
+          "settingsJson": "{\"enumValues\": [\"General\", \"Output\", \"Input\", \"Delivery\", \"Merchandise\", \"Inbox\", \"Stash\", \"Vault\"]}",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "02c2831c-cb85-527f-9d75-4ddd223303e1",
+          "fieldName": "DomainId",
+          "label": "Domain",
+          "description": "For kind Domain: the structure, town or district that holds it.",
+          "fieldType": "Object",
+          "objectType": "Domain",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e9fb8f42-b64e-561b-ba7a-5eca0cae5230",
+          "fieldName": "UserId",
+          "label": "Player",
+          "description": "For kind Player: the player who holds it.",
+          "fieldType": "Object",
+          "objectType": "User",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "57ea5b8c-010b-53ac-adba-ab8932dcf9ea",
+          "fieldName": "ClanId",
+          "label": "Clan",
+          "description": "For kind Clan: the clan that holds it.",
+          "fieldType": "Object",
+          "objectType": "Clan",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "e9cdd99b-f522-5050-8839-9bbe74ca60ef",
+      "stepName": "Capacity and lock",
+      "description": "Caps count raw units × each item's storage weight (default 1). Leave a cap empty for no cap. Lowering a cap below the stock only stops new stock coming in.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "b1e32d9f-5545-5503-b8c2-c5aac8266bd9",
+          "fieldName": "MaxUnits",
+          "label": "Max units",
+          "description": "Raw units the storage holds at most (Σ amount × storage weight). Empty = no cap. Transit storages have no cap.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "694f1421-af7b-5a3b-a2de-ac340c33f6ca",
+          "fieldName": "MaxDistinct",
+          "label": "Max distinct items",
+          "description": "How many different items (stock lines plus unique items) it holds at most. Empty = no cap.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5739d988-c99a-5455-bac6-13f7af26088c",
+          "fieldName": "UnitsPerSlot",
+          "label": "Units per container slot",
+          "description": "For storages with bound containers (later phase): cap = bound slots × this. Not used yet.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3e5fcc86-8918-510d-9cf7-2ec2d46be898",
+          "fieldName": "LockedUntil",
+          "label": "Locked until",
+          "description": "While in the future, nothing moves in or out (sync conflicts, sieges, investigations). Empty = not locked.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "08c9a446-f8b4-5ccc-a821-c97fb32d40e5",
+          "fieldName": "LockReason",
+          "label": "Lock reason",
+          "description": "Why it is locked, at most 200 characters.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

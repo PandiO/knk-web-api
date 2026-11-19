@@ -66,6 +66,14 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<CrownLand> CrownLands { get; set; } = null!;
     public virtual DbSet<TerritoryConflict> TerritoryConflicts { get; set; } = null!;
     // ---- end territory ----
+    // ---- Stock core P1 (PandiO/knk-workspace#97) ----
+    public virtual DbSet<Storage> Storages { get; set; } = null!;
+    public virtual DbSet<StockLine> StockLines { get; set; } = null!;
+    public virtual DbSet<StockUnit> StockUnits { get; set; } = null!;
+    public virtual DbSet<StockTransaction> StockTransactions { get; set; } = null!;
+    public virtual DbSet<StockMove> StockMoves { get; set; } = null!;
+    public virtual DbSet<StockMoveRollup> StockMoveRollups { get; set; } = null!;
+    // ---- end stock core ----
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
     public virtual DbSet<GateDoor> GateDoors { get; set; } = null!;
@@ -2899,6 +2907,141 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => new { e.World, e.Status });
         });
         // ---- end territory ----
+
+        // ---- Stock core P1 (PandiO/knk-workspace#97, production DESIGN § 4), one contiguous block ----
+        // Storages with one holder per kind, stock lines and units, the append-only ledger (transactions and moves), the
+        // 30-day roll-up rows, and ItemBlueprint.StorageWeight. Every FK is Restrict: nothing with stock or history is
+        // deleted from under the ledger.
+        modelBuilder.Entity<ItemBlueprint>(entity =>
+        {
+            entity.Property(e => e.StorageWeight).HasPrecision(12, 4).HasDefaultValue(ItemBlueprint.DefaultStorageWeight)
+                .HasSentinel(0m);
+        });
+
+        modelBuilder.Entity<Storage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("storages", t =>
+            {
+                t.HasCheckConstraint("CK_storages_Holder",
+                    "(`Kind` = 'Domain' AND `DomainId` IS NOT NULL AND `UserId` IS NULL AND `ClanId` IS NULL AND `SystemKey` IS NULL)"
+                    + " OR (`Kind` = 'Player' AND `UserId` IS NOT NULL AND `DomainId` IS NULL AND `ClanId` IS NULL AND `SystemKey` IS NULL)"
+                    + " OR (`Kind` = 'Clan' AND `ClanId` IS NOT NULL AND `DomainId` IS NULL AND `UserId` IS NULL AND `SystemKey` IS NULL)"
+                    + " OR (`Kind` = 'Transit' AND `DomainId` IS NULL AND `UserId` IS NULL AND `ClanId` IS NULL AND `SystemKey` IS NULL)"
+                    + " OR (`Kind` = 'Virtual' AND `SystemKey` IS NOT NULL AND `DomainId` IS NULL AND `UserId` IS NULL AND `ClanId` IS NULL)");
+                t.HasCheckConstraint("CK_storages_Capacity",
+                    "(`MaxUnits` IS NULL OR `MaxUnits` >= 0) AND (`MaxDistinct` IS NULL OR `MaxDistinct` >= 0)"
+                    + " AND (`UnitsPerSlot` IS NULL OR `UnitsPerSlot` >= 0)");
+            });
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(Storage.NameMaxLength);
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Purpose).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.SystemKey).HasMaxLength(Storage.SystemKeyMaxLength);
+            entity.Property(e => e.LockReason).HasMaxLength(Storage.LockReasonMaxLength);
+            entity.Property(e => e.LockedUntil).HasColumnType("datetime(6)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.RowVersion).IsConcurrencyToken();
+            entity.HasIndex(e => e.SystemKey).IsUnique();
+            entity.HasIndex(e => new { e.Kind, e.Purpose });
+            entity.HasOne(e => e.Domain).WithMany().HasForeignKey(e => e.DomainId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Clan).WithMany().HasForeignKey(e => e.ClanId).OnDelete(DeleteBehavior.Restrict);
+            var seededAt = new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc);
+            entity.HasData(Storage.SystemKeys.Select((key, i) => new Storage
+            {
+                Id = i + 1,
+                Name = key,
+                Kind = StorageKind.Virtual,
+                Purpose = StoragePurpose.General,
+                SystemKey = key,
+                CreatedAt = seededAt,
+            }));
+        });
+
+        modelBuilder.Entity<StockLine>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("stock_lines");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.StorageId, e.ItemBlueprintId }).IsUnique();
+            entity.HasIndex(e => e.ItemBlueprintId);
+            entity.HasOne(e => e.Storage).WithMany(s => s.Lines).HasForeignKey(e => e.StorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StockUnit>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("stock_units");
+            entity.Property(e => e.AddedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.ItemInstanceId).IsUnique();
+            entity.HasOne(e => e.Storage).WithMany(s => s.Units).HasForeignKey(e => e.StorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemInstance).WithMany().HasForeignKey(e => e.ItemInstanceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StockTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("stock_transactions");
+            entity.Property(e => e.Reason).HasConversion<string>().HasMaxLength(24);
+            entity.Property(e => e.Mode).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ActorKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ActorComponent).HasMaxLength(StockTransaction.ActorComponentMaxLength);
+            entity.Property(e => e.SourceType).HasMaxLength(StockTransaction.SourceTypeMaxLength);
+            entity.Property(e => e.SourceRef).HasMaxLength(StockTransaction.SourceRefMaxLength);
+            entity.Property(e => e.Note).HasMaxLength(StockTransaction.NoteMaxLength);
+            // Binary collation: keys are compared exactly, "Abc" and "abc" are different keys (currency ledger).
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(StockTransaction.IdempotencyKeyMaxLength).UseCollation("utf8mb4_bin");
+            entity.Property(e => e.RequestHash).IsRequired().HasColumnType("char(64)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.IdempotencyKey).IsUnique();
+            entity.HasIndex(e => e.ReversesTransactionId).IsUnique();
+            entity.HasIndex(e => new { e.Reason, e.CreatedAt });
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.SourceType, e.SourceRef });
+            entity.HasIndex(e => new { e.ActorUserId, e.CreatedAt });
+            entity.HasOne(e => e.ReversesTransaction).WithOne().HasForeignKey<StockTransaction>(e => e.ReversesTransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StockMove>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("stock_moves", t =>
+            {
+                t.HasCheckConstraint("CK_stock_moves_Item",
+                    "(`ItemBlueprintId` IS NOT NULL AND `ItemInstanceId` IS NULL AND `Amount` > 0)"
+                    + " OR (`ItemInstanceId` IS NOT NULL AND `ItemBlueprintId` IS NULL AND `Amount` = 1)");
+                t.HasCheckConstraint("CK_stock_moves_Storages", "`FromStorageId` <> `ToStorageId`");
+            });
+            entity.Property(e => e.Reason).HasConversion<string>().HasMaxLength(24);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.FromStorageId, e.ItemBlueprintId, e.CreatedAt });
+            entity.HasIndex(e => new { e.ToStorageId, e.ItemBlueprintId, e.CreatedAt });
+            entity.HasIndex(e => new { e.ItemInstanceId, e.Id });
+            entity.HasIndex(e => new { e.Reason, e.CreatedAt });
+            entity.HasOne(e => e.Transaction).WithMany(t => t.Moves).HasForeignKey(e => e.TransactionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.FromStorage).WithMany().HasForeignKey(e => e.FromStorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ToStorage).WithMany().HasForeignKey(e => e.ToStorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemInstance).WithMany().HasForeignKey(e => e.ItemInstanceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StockMoveRollup>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("stock_move_rollups");
+            entity.Property(e => e.Reason).HasConversion<string>().HasMaxLength(24);
+            entity.Property(e => e.Day).HasColumnType("date");
+            entity.Property(e => e.RolledUpAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.Day, e.Reason, e.FromStorageId, e.ToStorageId, e.ItemBlueprintId }).IsUnique();
+            entity.HasIndex(e => new { e.FromStorageId, e.ItemBlueprintId });
+            entity.HasIndex(e => new { e.ToStorageId, e.ItemBlueprintId });
+            entity.HasOne(e => e.FromStorage).WithMany().HasForeignKey(e => e.FromStorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ToStorage).WithMany().HasForeignKey(e => e.ToStorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ---- end stock core ----
 
         OnModelCreatingPartial(modelBuilder);
     }

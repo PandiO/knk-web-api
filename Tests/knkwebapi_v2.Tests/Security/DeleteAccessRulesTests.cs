@@ -41,6 +41,7 @@ public class DeleteAccessRulesTests
         ["Province"] = "ProvincesController.Delete",
         ["CrownLand"] = "CrownLandsController.Delete",
         ["TerritoryConflict"] = "TerritoryConflictsController.Delete",
+        ["Storage"] = "StoragesController.Delete",
         ["Kit"] = "KitsController.Delete",
         ["LootboxType"] = "LootboxTypesController.Delete",
         ["LootboxSpecialEntry"] = "LootboxSpecialEntriesController.Delete",

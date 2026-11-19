@@ -28,6 +28,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Grade, opt => opt.MapFrom(src => src.Grade))
                 .ForMember(dest => dest.BasePriceMin, opt => opt.MapFrom(src => src.BasePriceMin))
                 .ForMember(dest => dest.BasePriceMax, opt => opt.MapFrom(src => src.BasePriceMax))
+                .ForMember(dest => dest.StorageWeight, opt => opt.MapFrom(src => src.StorageWeight))
                 .ForMember(dest => dest.DefaultEnchantments, opt => opt.MapFrom(src => src.DefaultEnchantments))
                 .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags))
                 .ForMember(dest => dest.Origins, opt => opt.MapFrom(src => src.Origins.OrderBy(o => o.SequenceNumber)))
@@ -54,7 +55,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore())
                 // Item identity (#141): only api/ItemIdentity and the shadow generation set the vanilla match.
                 .ForMember(dest => dest.VanillaMaterialMatchRefId, opt => opt.Ignore())
-                .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.Ignore());
+                .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.Ignore())
+                // Stock core P1 (#97): validated by the service; null = the default weight 1.
+                .ForMember(dest => dest.StorageWeight, opt => opt.MapFrom(src => src.StorageWeight ?? ItemBlueprint.DefaultStorageWeight));
 
             CreateMap<ItemBlueprintUpdateDto, ItemBlueprint>()
                 .ForMember(dest => dest.DefaultEnchantments, opt => opt.Ignore()) // Handled in service
@@ -66,7 +69,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore())
                 // Item identity (#141): only api/ItemIdentity and the shadow generation set the vanilla match.
                 .ForMember(dest => dest.VanillaMaterialMatchRefId, opt => opt.Ignore())
-                .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.Ignore());
+                .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.Ignore())
+                // Stock core P1 (#97): null = keep, set by the service.
+                .ForMember(dest => dest.StorageWeight, opt => opt.Ignore());
 
             // ItemBlueprint → List DTO
             CreateMap<ItemBlueprint, ItemBlueprintListDto>()
@@ -84,6 +89,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.GradeName, opt => opt.MapFrom(src => src.Grade != null ? src.Grade.Name : null))
                 .ForMember(dest => dest.BasePriceMin, opt => opt.MapFrom(src => src.BasePriceMin))
                 .ForMember(dest => dest.BasePriceMax, opt => opt.MapFrom(src => src.BasePriceMax))
+                .ForMember(dest => dest.StorageWeight, opt => opt.MapFrom(src => src.StorageWeight))
                 .ForMember(dest => dest.DefaultEnchantmentsCount, opt => opt.MapFrom(src => src.DefaultEnchantments != null ? src.DefaultEnchantments.Count : 0))
                 .ForMember(dest => dest.TagsCount, opt => opt.MapFrom(src => src.Tags != null ? src.Tags.Count : 0));
 

@@ -65,6 +65,8 @@ public class DashboardAccessTests
     [InlineData("Kingdom", DashboardArea.World, "knk.admin.world")]
     [InlineData("CrownLand", DashboardArea.World, "knk.admin.world")]
     [InlineData("TerritoryConflict", DashboardArea.World, "knk.admin.world")]
+    [InlineData("Storage", DashboardArea.World, "knk.admin.world")]
+    [InlineData("StockTransaction", DashboardArea.World, "knk.admin.world")]
     [InlineData("Kit", DashboardArea.Kits, "knk.kit.manage")]
     [InlineData("LootboxSpawnArea", DashboardArea.Lootboxes, "knk.admin.lootbox.manage")]
     [InlineData("SiegeTeam", DashboardArea.Siege, "knk.siege.admin.manage")]
