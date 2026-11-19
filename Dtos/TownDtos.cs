@@ -67,6 +67,24 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("roadAccessOverride")]
         public string? RoadAccessOverride { get; set; }
 
+        // Territory (PandiO/knk-workspace#326). On create/update a null power means "not on this form": power,
+        // kingdomId and provinceId are left as they are (like teleportEnabled); a value sets all three (a null
+        // kingdomId or provinceId then clears it).
+        [JsonPropertyName("power")]
+        public int? Power { get; set; }
+
+        [JsonPropertyName("kingdomId")]
+        public int? KingdomId { get; set; }
+
+        [JsonPropertyName("kingdomName")]
+        public string? KingdomName { get; set; }
+
+        [JsonPropertyName("provinceId")]
+        public int? ProvinceId { get; set; }
+
+        [JsonPropertyName("provinceName")]
+        public string? ProvinceName { get; set; }
+
         [JsonPropertyName("streetIds")]
         public List<int>? StreetIds { get; set; } = new();
         [JsonPropertyName("streets")]

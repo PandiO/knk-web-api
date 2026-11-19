@@ -67,6 +67,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Town, src => src.Ignore())
                 .ForMember(dest => dest.Streets, src => src.Ignore())
                 .ForMember(dest => dest.Structures, src => src.Ignore())
+                // Territory (#326): applied by DistrictService (null = not on this form).
+                .ForMember(dest => dest.IsCapital, src => src.Ignore())
                 .IgnoreTeleportSettings()
                 .IgnoreNavigationDefault();
 

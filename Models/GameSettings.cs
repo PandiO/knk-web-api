@@ -63,6 +63,12 @@ public class GameSettings
     /// </summary>
     public string? ChatTokenSettingsJson { get; set; }
 
+    /// <summary>
+    /// Serialized ProductionSettingsDto: the production feature flag <c>Production:Enabled</c> (G16, default off) and the
+    /// territory range settings (territory DESIGN § 1, G11). Null = the defaults.
+    /// </summary>
+    public string? ProductionSettingsJson { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

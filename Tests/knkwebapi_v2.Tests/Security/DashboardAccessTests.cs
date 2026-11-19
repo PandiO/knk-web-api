@@ -61,6 +61,9 @@ public class DashboardAccessTests
     [InlineData("Town", DashboardArea.World, "knk.admin.world")]
     [InlineData("GateDoor", DashboardArea.World, "knk.admin.world")]
     [InlineData("Landmark", DashboardArea.World, "knk.admin.world")]
+    [InlineData("Kingdom", DashboardArea.World, "knk.admin.world")]
+    [InlineData("CrownLand", DashboardArea.World, "knk.admin.world")]
+    [InlineData("TerritoryConflict", DashboardArea.World, "knk.admin.world")]
     [InlineData("Kit", DashboardArea.Kits, "knk.kit.manage")]
     [InlineData("LootboxSpawnArea", DashboardArea.Lootboxes, "knk.admin.lootbox.manage")]
     [InlineData("SiegeTeam", DashboardArea.Siege, "knk.siege.admin.manage")]
@@ -160,8 +163,9 @@ public class DashboardAccessTests
 
     // #374 (developer 2026-11-13): area staff work with the content available; creating, editing and changing links
     // of a dashboard type also needs knk.admin.content, except the Players types and RoadProfile.
+    // TerritoryConflict (#326) has no create or edit: the game server's report writes it, resolve/reopen are world actions.
     private static readonly string[] ChangesWithoutContent =
-        { "RoadProfile", "User", "PermissionGroup", "PermissionHolder", "PermissionGrant", "UserPermissionGroup" };
+        { "RoadProfile", "User", "PermissionGroup", "PermissionHolder", "PermissionGrant", "UserPermissionGroup", "TerritoryConflict" };
 
     [Fact]
     public void ChangeNodes_AreTheWriteNodeAndContent_ExceptPlayersAndRoadProfile()

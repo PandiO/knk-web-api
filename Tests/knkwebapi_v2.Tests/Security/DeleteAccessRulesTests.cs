@@ -37,6 +37,10 @@ public class DeleteAccessRulesTests
         ["GateDoor"] = "GateDoorsController.Delete",
         ["DomainSubRegion"] = "DomainSubRegionsController.Delete",
         ["Landmark"] = "LandmarksController.Delete",
+        ["Kingdom"] = "KingdomsController.Delete",
+        ["Province"] = "ProvincesController.Delete",
+        ["CrownLand"] = "CrownLandsController.Delete",
+        ["TerritoryConflict"] = "TerritoryConflictsController.Delete",
         ["Kit"] = "KitsController.Delete",
         ["LootboxType"] = "LootboxTypesController.Delete",
         ["LootboxSpecialEntry"] = "LootboxSpecialEntriesController.Delete",
@@ -69,6 +73,7 @@ public class DeleteAccessRulesTests
     public static readonly IReadOnlySet<string> Exempt = new HashSet<string>
     {
         "EntityTypeConfigurationController.Delete",
+        "TerritoryController.ClearFlag", // #326: clears a structure's territory flag, deletes no record
         "DisplayFieldsController.DeleteAsync",
         "DisplaySectionsController.DeleteAsync",
         "FormStepsController.Delete",

@@ -60,6 +60,12 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<Street> Streets { get; set; } = null!;
     public virtual DbSet<Town> Towns { get; set; } = null!;
     public virtual DbSet<District> Districts { get; set; } = null!;
+    // ---- Territory V1 (PandiO/knk-workspace#326) ----
+    public virtual DbSet<Kingdom> Kingdoms { get; set; } = null!;
+    public virtual DbSet<Province> Provinces { get; set; } = null!;
+    public virtual DbSet<CrownLand> CrownLands { get; set; } = null!;
+    public virtual DbSet<TerritoryConflict> TerritoryConflicts { get; set; } = null!;
+    // ---- end territory ----
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
     public virtual DbSet<GateDoor> GateDoors { get; set; } = null!;
@@ -2755,6 +2761,70 @@ public partial class KnKDbContext : DbContext
             entity.HasIndex(e => new { e.RecipientUserId, e.SentAt });
             entity.HasIndex(e => e.SentAt);
         });
+
+        // ---- Territory V1 (PandiO/knk-workspace#326), one contiguous block ----
+        // Kingdoms, provinces, crown land (a Domain subtype, TPT like districts), conflicts, and the additive columns on
+        // towns (kingdom, province, power), districts (capital) and structures (loyalty, territory flag).
+        modelBuilder.Entity<Kingdom>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("kingdoms");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(Kingdom.NameMaxLength);
+            entity.Property(e => e.Description).HasMaxLength(Kingdom.DescriptionMaxLength);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<Province>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("provinces");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(Province.NameMaxLength);
+            entity.Property(e => e.Description).HasMaxLength(Province.DescriptionMaxLength);
+            entity.HasIndex(e => new { e.KingdomId, e.Name }).IsUnique();
+            entity.HasOne(e => e.Kingdom).WithMany(k => k.Provinces).HasForeignKey(e => e.KingdomId)
+                .OnDelete(DeleteBehavior.Restrict).IsRequired();
+        });
+
+        modelBuilder.Entity<CrownLand>(entity =>
+        {
+            entity.ToTable("crown_lands");
+            entity.HasOne(e => e.Kingdom).WithMany(k => k.CrownLands).HasForeignKey(e => e.KingdomId)
+                .OnDelete(DeleteBehavior.Restrict).IsRequired();
+        });
+
+        modelBuilder.Entity<Town>(entity =>
+        {
+            entity.HasOne(e => e.Kingdom).WithMany(k => k.Towns).HasForeignKey(e => e.KingdomId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Province).WithMany(p => p.Towns).HasForeignKey(e => e.ProvinceId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Structure>(entity =>
+        {
+            entity.HasOne(e => e.LoyaltyTown).WithMany().HasForeignKey(e => e.LoyaltyTownId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.Property(e => e.TerritoryFlag).HasConversion<string>().HasMaxLength(32)
+                .HasDefaultValue(StructureTerritoryFlag.None).HasSentinel(StructureTerritoryFlag.None);
+            entity.HasOne(e => e.TerritoryConflict).WithMany(c => c.FlaggedStructures)
+                .HasForeignKey(e => e.TerritoryConflictId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<TerritoryConflict>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("territory_conflicts");
+            entity.Property(e => e.World).IsRequired().HasMaxLength(TerritoryConflict.WorldMaxLength);
+            entity.Property(e => e.HolderAKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.HolderBKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.AwardedHolderKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Resolution).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ChunksJson).IsRequired().HasColumnType("longtext");
+            entity.Property(e => e.ResolutionNote).HasMaxLength(TerritoryConflict.NoteMaxLength);
+            entity.HasIndex(e => new { e.World, e.Status });
+        });
+        // ---- end territory ----
 
         OnModelCreatingPartial(modelBuilder);
     }

@@ -19,6 +19,7 @@ namespace knkwebapi_v2.Services
         private readonly ITeleportDestinationService _teleportDestinations;
         private readonly IDomainRegionNameFinalizer _regionNames;
         private readonly IDomainWorldResolver _worlds;
+        private readonly ITerritoryHolderRules? _territory;
 
         public TownService(
             ITownRepository repo,
@@ -27,8 +28,10 @@ namespace knkwebapi_v2.Services
             IMapper mapper,
             ITeleportDestinationService teleportDestinations,
             IDomainRegionNameFinalizer regionNames,
-            IDomainWorldResolver worlds)
+            IDomainWorldResolver worlds,
+            ITerritoryHolderRules? territory = null)
         {
+            _territory = territory;
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
@@ -58,6 +61,8 @@ namespace knkwebapi_v2.Services
             DomainNameRules.Normalize(townDto, "Town", nameof(townDto));
             if (string.IsNullOrWhiteSpace(townDto.WgRegionId)) throw new ArgumentException("WgRegionId is required.", nameof(townDto));
             await _teleportDestinations.ValidateSettingsAsync(townDto);
+            // #326: kingdom, province and power are checked before anything is saved.
+            if (_territory != null) await _territory.ValidateTownAsync(townDto);
             // KNG-111: before the Location is saved, so a rejected world leaves nothing behind.
             string worldName = await _worlds.ResolveAsync(WorldRequest(townDto, null));
 
@@ -69,6 +74,7 @@ namespace knkwebapi_v2.Services
             town.WorldName = worldName;
             DomainTeleportSettings.Apply(town, townDto);
             DomainNavigationDefaults.Apply(town, townDto);
+            TerritoryHolderRules.ApplyTown(town, townDto);
             town.CreatedAt = DateTime.UtcNow;
             await _repo.AddTownAsync(town);
             await _regionNames.FinalizeAsync(town);
@@ -87,6 +93,7 @@ namespace knkwebapi_v2.Services
             // KNG-103: the region this save replaces when the region step was run again
             string previousRegionId = existing.WgRegionId;
             await _teleportDestinations.ValidateSettingsAsync(townDto);
+            if (_territory != null) await _territory.ValidateTownAsync(townDto);
             string worldName = await _worlds.ResolveAsync(WorldRequest(townDto, id));
 
             // Handle nested Location entity
@@ -101,6 +108,7 @@ namespace knkwebapi_v2.Services
             existing.LocationId = resolvedLocationId;
             DomainTeleportSettings.Apply(existing, townDto);
             DomainNavigationDefaults.Apply(existing, townDto);
+            TerritoryHolderRules.ApplyTown(existing, townDto);
 
             await _repo.UpdateTownAsync(existing);
             await _regionNames.FinalizeAsync(existing, previousRegionId);
