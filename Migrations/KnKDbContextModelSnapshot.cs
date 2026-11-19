@@ -5534,6 +5534,72 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("salary_configurations", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeAmmoType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("ArmorPiercing")
+                        .HasColumnType("double");
+
+                    b.Property<double>("BlastRadius")
+                        .HasColumnType("double");
+
+                    b.Property<double>("Damage")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Effect")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<double?>("EffectDurationSeconds")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("EffectLevel")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("EffectRadius")
+                        .HasColumnType("double");
+
+                    b.Property<double>("Knockback")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("ParticleTrail")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("PricePerShot")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProjectileBlock")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<double>("StructureDamage")
+                        .HasColumnType("double");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("siege_ammo_types", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeConfiguration", b =>
                 {
                     b.Property<string>("Id")
@@ -6003,6 +6069,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("ExpRewardWin")
                         .HasColumnType("int");
 
+                    b.Property<bool>("FriendlyFire")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<int>("GateDamageRewardStep")
                         .HasColumnType("int");
 
@@ -6047,6 +6116,9 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("TownId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WeaponSpotCooldownOverrideSeconds")
                         .HasColumnType("int");
 
                     b.HasKey("Id")
@@ -6147,6 +6219,9 @@ namespace knkwebapi_v2.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("ActiveWeaponSpots")
+                        .HasColumnType("int");
+
                     b.Property<int>("AllianceGroup")
                         .HasColumnType("int");
 
@@ -6189,6 +6264,181 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("SiegeScenarioId", "SortOrder");
 
                     b.ToTable("siege_teams", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponSpot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Facing")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<int?>("MaxX")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxY")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxZ")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MinX")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MinY")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MinZ")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeTeamId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SizeClass")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WgRegionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeTeamId");
+
+                    b.HasIndex("SiegeScenarioId", "SortOrder");
+
+                    b.ToTable("siege_weapon_spots", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("ArcHeight")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("ArmedSchematicId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BuildTimeSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<double>("ConeHalfAngleDegrees")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<int?>("FiredSchematicId")
+                        .HasColumnType("int");
+
+                    b.Property<double>("FlightTimeAtMaxRangeSeconds")
+                        .HasColumnType("double");
+
+                    b.Property<double>("GateDamageMultiplier")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("LeaseIdleTimeoutSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MatchPrice")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxHealth")
+                        .HasColumnType("int");
+
+                    b.Property<double>("MaxRange")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("MinRange")
+                        .HasColumnType("double");
+
+                    b.Property<double>("MinSpreadRadius")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<double>("RangingStep")
+                        .HasColumnType("double");
+
+                    b.Property<int>("ReloadSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SizeClass")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("SpotCooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<double>("StartSpreadRadius")
+                        .HasColumnType("double");
+
+                    b.Property<int>("UnlockPrice")
+                        .HasColumnType("int");
+
+                    b.Property<double>("WeaponDamageMultiplier")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("WreckSchematicId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("siege_weapon_templates", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponTemplateAmmoType", b =>
+                {
+                    b.Property<int>("SiegeWeaponTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeAmmoTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("SiegeWeaponTemplateId", "SiegeAmmoTypeId");
+
+                    b.HasIndex("SiegeAmmoTypeId");
+
+                    b.ToTable("siege_weapon_template_ammo_types", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.StatisticsProjectedSource", b =>
@@ -6723,6 +6973,34 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("PermissionGroupId");
 
                     b.ToTable("user_permission_groups", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.UserSiegeWeaponUnlock", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("SiegeWeaponTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UnlockedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeWeaponTemplateId");
+
+                    b.HasIndex("UserId", "SiegeWeaponTemplateId")
+                        .IsUnique();
+
+                    b.ToTable("user_siege_weapon_unlocks", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.VariableBinding", b =>
@@ -8954,6 +9232,44 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("SiegeScenario");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponSpot", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany("WeaponSpots")
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeTeam", "SiegeTeam")
+                        .WithMany()
+                        .HasForeignKey("SiegeTeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeScenario");
+
+                    b.Navigation("SiegeTeam");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponTemplateAmmoType", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeAmmoType", "SiegeAmmoType")
+                        .WithMany()
+                        .HasForeignKey("SiegeAmmoTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeWeaponTemplate", "SiegeWeaponTemplate")
+                        .WithMany("AllowedAmmoTypes")
+                        .HasForeignKey("SiegeWeaponTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeAmmoType");
+
+                    b.Navigation("SiegeWeaponTemplate");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.StepCondition", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.FormStep", "FormStep")
@@ -9029,6 +9345,25 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("PermissionGroup");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.UserSiegeWeaponUnlock", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeWeaponTemplate", "SiegeWeaponTemplate")
+                        .WithMany()
+                        .HasForeignKey("SiegeWeaponTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SiegeWeaponTemplate");
 
                     b.Navigation("User");
                 });
@@ -9412,11 +9747,18 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Objectives");
 
                     b.Navigation("Teams");
+
+                    b.Navigation("WeaponSpots");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeTeam", b =>
                 {
                     b.Navigation("Spawnpoints");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponTemplate", b =>
+                {
+                    b.Navigation("AllowedAmmoTypes");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
