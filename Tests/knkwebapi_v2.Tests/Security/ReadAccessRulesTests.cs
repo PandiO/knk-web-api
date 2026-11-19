@@ -108,6 +108,13 @@ public class ReadAccessRulesTests
         ["StoragesController.GetAll"] = "F Storage",
         ["StoragesController.GetById"] = "F Storage",
         ["StoragesController.Search"] = "F Storage",
+        // Production world P2 (#91).
+        ["WarehousesController.GetAll"] = "F Warehouse",
+        ["WarehousesController.GetById"] = "F Warehouse",
+        ["WarehousesController.Search"] = "F Warehouse",
+        ["ProductionStructuresController.GetAll"] = "F ProductionStructure",
+        ["ProductionStructuresController.GetById"] = "F ProductionStructure",
+        ["ProductionStructuresController.Search"] = "F ProductionStructure",
         ["StockTransactionsController.Search"] = "F StockTransaction",
         ["StockTransactionsController.GetById"] = "F StockTransaction",
         ["StockTransactionsController.SearchMoves"] = "F StockTransaction",

@@ -230,12 +230,13 @@ public class RoadNetworkRepository : IRoadNetworkRepository
     {
         // Structure is table-per-type over domains; LocationId lives on Domain - use the navigation.
         var rows = await _context.Structures
-            .Where(s => s.Location != null && s.Location.World == world
+            // A rural structure (P2, #91) has no street to label.
+            .Where(s => s.StreetId != null && s.Location != null && s.Location.World == world
                         && s.Location.X >= minX && s.Location.X <= maxX
                         && s.Location.Z >= minZ && s.Location.Z <= maxZ)
             .Select(s => new { s.Id, s.StreetId, s.Location!.X, s.Location.Y, s.Location.Z })
             .ToListAsync();
-        return rows.Select(r => new RoadStreetLabeler.Structure { Id = r.Id, StreetId = r.StreetId, X = r.X, Y = r.Y, Z = r.Z }).ToList();
+        return rows.Select(r => new RoadStreetLabeler.Structure { Id = r.Id, StreetId = r.StreetId!.Value, X = r.X, Y = r.Y, Z = r.Z }).ToList();
     }
 
     public async Task<List<RoadSeedLocationDto>> GetDomainLocationsInBoxAsync(string world, int minX, int minZ, int maxX, int maxZ)

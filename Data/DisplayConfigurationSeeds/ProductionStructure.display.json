@@ -1,0 +1,235 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "30ccd73e-6d6e-509e-b521-bff741f87fa2",
+  "entityTypeName": "ProductionStructure",
+  "name": "ProductionStructure - Default (seed v1)",
+  "description": "A production structure: placement, territory flag, road connection and settings (production P2, #91).",
+  "sections": [
+    {
+      "sectionGuid": "d1963b16-2e75-55ae-98c6-a2ac14dfd61d",
+      "sectionName": "General information",
+      "description": "What it is.",
+      "fields": [
+        {
+          "fieldGuid": "52411bc7-87ca-5f58-b45c-c2b10c0fd792",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game and in the web app.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "6b670d6b-d62f-55db-9588-8e23fd958ffc",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "For admins.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        }
+      ]
+    },
+    {
+      "sectionGuid": "d10704bf-1107-5484-85ae-adae7ca0c47d",
+      "sectionName": "Placement",
+      "description": "In a district, or rural with a town (exactly one).",
+      "fields": [
+        {
+          "fieldGuid": "eb7f93d4-f02b-5a37-a181-285a9d9c4448",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "District",
+          "relatedEntityTypeName": "District",
+          "label": "District",
+          "description": "Empty for a rural structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6d57482e-a0d3-5a63-a38f-f09e23206870",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Street",
+          "relatedEntityTypeName": "Street",
+          "label": "Street",
+          "description": "Only in a district.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "7c623c51-1249-56ed-bba5-b83c4fff6e15",
+          "fieldName": "HouseNumber",
+          "label": "House number",
+          "description": "0 for a rural structure.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "dc9e7916-d7d9-54a2-8570-624cac8065c7",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Town",
+          "relatedEntityTypeName": "Town",
+          "label": "Town (rural)",
+          "description": "The town of a rural structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "deca96d9-72d1-570d-8b90-f8fe7eaa9caa",
+          "fieldName": "TerritoryFlag",
+          "label": "Territory flag",
+          "description": "OutsideTerritory or Contested from the game server's territory report: it keeps its town (R3).",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "933a6792-4218-58ea-8f69-b6c0f12e6da5",
+          "fieldName": "TerritoryFlaggedAt",
+          "label": "Flagged at",
+          "description": "When the flag was set.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "b463867d-7a42-5a92-9a1a-5fb1fe029d08",
+          "fieldName": "Id",
+          "relatedEntityPropertyName": "TerritoryConflict",
+          "relatedEntityTypeName": "TerritoryConflict",
+          "label": "Conflict",
+          "description": "The conflict it is listed on.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "ba0d41b3-b87b-521d-b599-a11eaef5154e",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "LoyaltyTown",
+          "relatedEntityTypeName": "Town",
+          "label": "Loyal to",
+          "description": "Empty = its own town.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "6af9c097-4fb5-5ca3-ab93-23d7b542fe53",
+      "sectionName": "Production",
+      "description": "Settings, road connection and workers.",
+      "fields": [
+        {
+          "fieldGuid": "0caef56f-0daa-5fa6-bb1c-2e27eef04e9d",
+          "fieldName": "ProductionKindId",
+          "label": "Production kind",
+          "description": "Chosen once kinds exist (P3).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "855555a6-9fea-563c-a577-47c90d58694d",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "1-10.",
+          "fieldType": "Integer",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "73d4b85d-a8ab-56b3-bbc9-22f142b83c18",
+          "fieldName": "ProductionEnabled",
+          "label": "Production on",
+          "description": "The structure's own switch.",
+          "fieldType": "Boolean",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "89d85813-d3c0-5ab2-8ca5-3b1e15298c03",
+          "fieldName": "RoadConnection",
+          "label": "Road connection",
+          "description": "Measured by the game server: Unmeasured, Connected or Unconnected (no automatic transport).",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "1cc1f921-017c-58b4-9a77-7b98ed89c9cb",
+          "fieldName": "RoadConnectionMeasuredAt",
+          "label": "Measured at",
+          "description": "When the road connection was measured.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "7466b446-5047-56dc-bce4-197aaef24a30",
+          "fieldName": "AutomaticTransport",
+          "label": "Automatic transport",
+          "description": "Held while not connected.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "d71aeb4e-6fa1-5f13-8ebd-592da7f00e17",
+          "fieldName": "TransportThreshold",
+          "label": "Transport threshold",
+          "description": "Empty = the planner's default.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "ee2ae121-8c98-5e99-82f6-57d8336c7099",
+          "fieldName": "TransportCapacity",
+          "label": "Transport capacity",
+          "description": "Empty = the planner's default.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "ed12cef4-57c1-5a0b-b028-da50fcbe5d72",
+          "fieldName": "WarehousePreference",
+          "label": "Deliver to",
+          "description": "Nearest or Preferred.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "1c8695c6-23eb-5542-a4cf-f9d247196727",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "PreferredWarehouse",
+          "relatedEntityTypeName": "Warehouse",
+          "label": "Preferred warehouse",
+          "description": "Used with Preferred.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d9674433-20e2-5ee5-beac-01279ad25d8c",
+          "fieldName": "WorkersTotal",
+          "label": "Workers",
+          "description": "Workers the structure has.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "8aaf456a-b9a9-500f-9e1a-35fa0260eceb",
+          "fieldName": "WorkersPresent",
+          "label": "Workers present",
+          "description": "The rest are carrying goods.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "47cf9fdf-2535-5c23-bfa6-50342089ff44",
+      "sectionName": "Region and access",
+      "description": "The structure's region in game.",
+      "fields": [
+        {
+          "fieldGuid": "486cd755-7219-513c-b3a0-afc5c2b104e6",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The WorldGuard region; a rural one has no parent.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "0350ef32-986f-5b73-b17c-2e3c23491011",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The world the region is in.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "698e7cf7-2b59-57d9-9b4f-6f0c9df84ec7",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the region.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "2559d7b0-25e8-586b-af0d-13bcce9858c2",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players may walk out of the region.",
+          "fieldType": "Boolean"
+        }
+      ]
+    }
+  ]
+}

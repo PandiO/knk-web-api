@@ -245,3 +245,23 @@ transaction's pages and have no form of their own; the roll-up rows (G3) have no
 `item_conversion_stats`). GUIDs: configuration uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), every
 step/field uuid5(that, "step:"/"field:" + name).
 
+**Production world P2 seeds v1 (PandiO/knk-workspace#91, 2026-11-19):** new seeds `Warehouse` and
+`ProductionStructure`, each with a display seed `<Entity>.display.json` in `DisplayConfigurationSeeds/` (G17). Import in
+any order.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `Warehouse` | Warehouse - Default (seed v1) | — |
+| `ProductionStructure` | ProductionStructure - Default (seed v1) | — (its preferred warehouse is a picker, not a rule) |
+
+Both have a "Placement" step: a district with street and house number, or only a town for a rural structure (exactly
+one of District and Town; the API refuses both or neither). The region field carries the placement rules of production
+DESIGN § 3.4, both seeded as warnings (`isBlocking: false`, R2); an admin makes either blocking on the form
+configuration, and the API then refuses a save that breaks it: **P-1** `RegionContainment` against the district's
+region and **P-2** `InsideTerritory` against the town's territory (a lookup on the game server). Each rule only runs when
+its own dependency is filled (`requiresDependencyFilled: false`), so a rural structure skips P-1 and a district one P-2.
+The production kind is not on the form yet (P3 adds kinds); the default storages (a delivery storage for a warehouse,
+an output storage for a production structure) are created by the API, not the form. The generic `Structure` seed is
+unchanged (district only); the API accepts a rural `townId` there too. GUIDs: configuration uuid5(URL namespace,
+"knk-formconfig:<Entity>:seed-v1"); steps and fields uuid5(that, "step:"/"field:" + name), the steps copied from the
+`Structure` seed included.

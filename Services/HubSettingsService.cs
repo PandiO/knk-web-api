@@ -240,9 +240,16 @@ namespace knkwebapi_v2.Services
             switch (domain)
             {
                 case Structure structure:
-                    related.Add(structure.DistrictId);
-                    var townId = await _context.Districts.Where(d => d.Id == structure.DistrictId).Select(d => (int?)d.TownId).FirstOrDefaultAsync();
-                    if (townId is int t) related.Add(t);
+                    if (structure.DistrictId is int structureDistrictId)
+                    {
+                        related.Add(structureDistrictId);
+                        var townId = await _context.Districts.Where(d => d.Id == structureDistrictId).Select(d => (int?)d.TownId).FirstOrDefaultAsync();
+                        if (townId is int t) related.Add(t);
+                    }
+                    else if (structure.TownId is int ruralTownId)
+                    {
+                        related.Add(ruralTownId); // a rural structure (P2, #91): its town
+                    }
                     break;
                 case District district:
                     related.Add(district.TownId);
@@ -251,7 +258,9 @@ namespace knkwebapi_v2.Services
                 case Town town:
                     var districtIds = await _context.Districts.Where(d => d.TownId == town.Id).Select(d => d.Id).ToListAsync();
                     related.AddRange(districtIds);
-                    related.AddRange(await _context.Structures.Where(s => districtIds.Contains(s.DistrictId)).Select(s => s.Id).ToListAsync());
+                    related.AddRange(await _context.Structures
+                        .Where(s => (s.DistrictId != null && districtIds.Contains(s.DistrictId.Value)) || s.TownId == town.Id)
+                        .Select(s => s.Id).ToListAsync());
                     break;
             }
             if (related.Count == 0)

@@ -316,3 +316,9 @@ stock lines and unique items as collections) and `StockTransaction` (reason, act
 collection). GUIDs: configuration uuid5(URL namespace, "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(that,
 "section:" + name), fields uuid5(that, "field:<section>:<label>").
 
+
+**Production world P2 display seeds v1 (PandiO/knk-workspace#91, 2026-11-19):** `Warehouse` (placement, territory
+flag, deliveries and the delivery storage, region) and `ProductionStructure` (placement, territory flag and conflict,
+production settings, road connection, workers, region). GUIDs: configuration uuid5(URL namespace,
+"knk-displayconfig:<Entity>:seed-v1"), sections uuid5(that, "section:" + name), fields uuid5(that,
+"field:<section>:<label>").

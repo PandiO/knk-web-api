@@ -74,6 +74,10 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<StockMove> StockMoves { get; set; } = null!;
     public virtual DbSet<StockMoveRollup> StockMoveRollups { get; set; } = null!;
     // ---- end stock core ----
+    // ---- Production world P2 (PandiO/knk-workspace#91) ----
+    public virtual DbSet<Warehouse> Warehouses { get; set; } = null!;
+    public virtual DbSet<ProductionStructure> ProductionStructures { get; set; } = null!;
+    // ---- end production world ----
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
     public virtual DbSet<GateDoor> GateDoors { get; set; } = null!;
@@ -2184,21 +2188,7 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasColumnType("datetime");
         });
-        // Structure-Street many-to-one (required)
-        modelBuilder.Entity<Structure>()
-            .HasOne(s => s.Street)
-            .WithMany(st => st.Structures)
-            .HasForeignKey(s => s.StreetId)
-            .OnDelete(DeleteBehavior.Restrict)
-            .IsRequired();
-
-        // Structure-District many-to-one (required)
-        modelBuilder.Entity<Structure>()
-            .HasOne(s => s.District)
-            .WithMany(d => d.Structures)
-            .HasForeignKey(s => s.DistrictId)
-            .OnDelete(DeleteBehavior.Restrict)
-            .IsRequired();
+        // Structure-Street and Structure-District (optional since P2, #91): configured in the production world block.
 
         // ItemBlueprintDefaultEnchantment join entity with composite primary key
         modelBuilder.Entity<ItemBlueprintDefaultEnchantment>()
@@ -3042,6 +3032,42 @@ public partial class KnKDbContext : DbContext
             entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
         });
         // ---- end stock core ----
+
+        // ---- Production world P2 (PandiO/knk-workspace#91, production DESIGN § 3.3-3.4), one contiguous block ----
+        // A structure is in a district (DistrictId) or rural (TownId): exactly one is set. ClientNoAction, not
+        // Restrict: on an optional relationship Restrict lets EF null the FKs of tracked structures when their street,
+        // district or town is deleted (the delete would then succeed and leave them without one). With ClientNoAction EF
+        // leaves them alone and the database refuses the delete as before (DeleteConstraintExceptionFilter: 409).
+        modelBuilder.Entity<Structure>(entity =>
+        {
+            entity.HasOne(s => s.Street).WithMany(st => st.Structures).HasForeignKey(s => s.StreetId)
+                .OnDelete(DeleteBehavior.ClientNoAction).IsRequired(false);
+            entity.HasOne(s => s.District).WithMany(d => d.Structures).HasForeignKey(s => s.DistrictId)
+                .OnDelete(DeleteBehavior.ClientNoAction).IsRequired(false);
+            entity.HasOne(s => s.Town).WithMany().HasForeignKey(s => s.TownId)
+                .OnDelete(DeleteBehavior.ClientNoAction).IsRequired(false);
+            entity.ToTable(t => t.HasCheckConstraint("CK_structures_DistrictXorTown",
+                "(`DistrictId` IS NULL) <> (`TownId` IS NULL)"));
+        });
+
+        modelBuilder.Entity<Warehouse>(entity =>
+        {
+            entity.ToTable("warehouses");
+            entity.HasOne(e => e.DefaultStorage).WithMany().HasForeignKey(e => e.DefaultStorageId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ProductionStructure>(entity =>
+        {
+            entity.ToTable("production_structures");
+            entity.Property(e => e.WarehousePreference).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.RoadConnection).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.RoadConnectionMeasuredAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.ProductionKindId);
+            entity.HasOne(e => e.PreferredWarehouse).WithMany().HasForeignKey(e => e.PreferredWarehouseId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+        // ---- end production world ----
 
         OnModelCreatingPartial(modelBuilder);
     }

@@ -152,8 +152,8 @@ namespace knkwebapi_v2.Repositories
             var ids = districtIds.Distinct().ToList();
             var query = _context.GateStructures.AsQueryable();
             query = ids.Count > 0
-                ? query.Where(g => ids.Contains(g.DistrictId))
-                : query.Where(g => g.District.TownId == townId);
+                ? query.Where(g => g.DistrictId != null && ids.Contains(g.DistrictId.Value))
+                : query.Where(g => g.District!.TownId == townId);
             return await query.OrderBy(g => g.Id).Select(g => g.Id).ToListAsync();
         }
 

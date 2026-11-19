@@ -1,0 +1,235 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "bf2c856d-b938-5c1e-a236-570cae6e7e4a",
+  "entityTypeName": "Warehouse",
+  "name": "Warehouse - Default (seed v1)",
+  "description": "A town's storage hub (production P2, #91): in a district or rural, with its region, delivery settings and spawn point. Its delivery storage is created with it.",
+  "steps": [
+    {
+      "stepGuid": "4f7bf080-334f-540d-87fa-0ec530446ebb",
+      "stepName": "General information",
+      "description": "Name the warehouse. The name is what players see in game and in the web app.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "78a4cf19-cdbe-537a-996e-4b9001342146",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game (entry messages, /warp, /navigate, menus) and in the web app. Commands find the structure by this name, so keep it short.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a626f807-09c6-5850-93e6-4ce33c7767f6",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "A line or two about the structure for admins and the web app, e.g. who lives or trades there.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "457fd10b-28c8-53ea-b5a1-62994268e19f",
+      "stepName": "Placement",
+      "description": "Where the warehouse stands: in a district (pick the district, street and house number) or rural, in its town's territory (pick only the town). Fill exactly one of District and Town.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "382be60c-f88c-5e02-82c0-0e2306f80608",
+          "fieldName": "DistrictId",
+          "label": "District",
+          "description": "For a warehouse in a district. Its region should lie inside the district's region (placement rule P-1, a warning unless an admin makes it blocking). Leave empty for a rural warehouse.",
+          "fieldType": "Object",
+          "objectType": "District",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "dc5ab48d-ba11-5d13-b0ed-c5350425b63c",
+          "fieldName": "StreetId",
+          "label": "Street",
+          "description": "Only with a district: the street of the address.",
+          "fieldType": "Object",
+          "objectType": "Street",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ed678054-e850-5a33-9f9b-99e70c295236",
+          "fieldName": "HouseNumber",
+          "label": "House number",
+          "description": "Only with a district: 1 or higher. A rural structure has none.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7cf5ac64-8309-5e48-9e51-f6e32d20bbaa",
+          "fieldName": "TownId",
+          "label": "Town (rural)",
+          "description": "For a rural warehouse: the town it belongs to. It should lie inside that town's territory (placement rule P-2, checked by the game server; a warning unless an admin makes it blocking). Leave empty when a district is set.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "f8a56546-5858-584b-8ee5-1cf1e20ed95a",
+      "stepName": "Region and access",
+      "description": "The WorldGuard region around the structure, and whether players may walk in and out of it. Use Send to Minecraft and select the area in game with WorldEdit, or type the name of an existing region.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ce22b179-f41b-5c30-baac-f8497f660f3f",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The warehouse's WorldGuard region. In a district it should lie inside the district's region and is set up under it; a rural warehouse's region has no parent (PvP stays allowed there). A region drawn here is renamed domain_<id> when the warehouse is saved.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"RegionClaim\"}}"
+        },
+        {
+          "fieldGuid": "db119401-90b3-5948-9c68-1d7b9567d1c2",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the structure's region. Off keeps everyone out except staff with the region bypass permission, and the structure is no /warp destination.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9b9b10b2-4a0c-58ed-9622-0a0018bf9910",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the structure's region may walk out of it. Off keeps them inside until staff let them out.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ed20c9a5-b942-5cee-b01a-10afe3f92ac1",
+          "fieldName": "RoadAccessOverride",
+          "label": "Entry rule on roads",
+          "description": "Applies: when players may not enter, /navigate routes avoid the roads through this region. Ignored: routes may use them, e.g. for a house whose region overlaps the public street; the rule still holds at the border and for teleports. Empty = the setting for all structures on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "RoadAccessRule",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Applies\", \"Ignored\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "2245b169-f0b3-5002-8faf-5ffefc0711ed",
+      "stepName": "Warehouse",
+      "description": "How the warehouse takes deliveries. Its delivery storage is created with it.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "c4e39339-6e41-5d88-a4b8-970915555ff0",
+          "fieldName": "AcceptsDeliveries",
+          "label": "Accepts deliveries",
+          "description": "Producers and transport may deliver here.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8fbfdb0c-9e5e-534e-a079-b9372b3fe8ed",
+          "fieldName": "Priority",
+          "label": "Priority",
+          "description": "0-1000; higher first when several warehouses of the town could take a delivery.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "d04842c7-967e-5238-b916-2cddd6271ca5",
+      "stepName": "Spawn point",
+      "description": "Where players arrive when they teleport or navigate to the structure. Stand on the spot in game, facing the way arrivals should look, and use Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "6a21f636-9a1e-5672-aae1-26bdf0442477",
+          "fieldName": "Location",
+          "label": "Spawn point",
+          "description": "Optional. The arrival point for /warp and /navigate <structure> spawn; without it /navigate leads to the structure's region and /warp is not possible.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "08591b73-49c4-5482-a51b-e002671db4e3",
+          "fieldName": "NavigationDefaultOverride",
+          "label": "Navigate to",
+          "description": "Where /navigate <structure> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the structure's region. Leave empty to follow the setting for all structures on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "NavigationDestinationMode",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Spawn\", \"Region\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "69cdd045-ca3e-588c-a780-7fd8c0403a94",
+      "stepName": "Sub-regions",
+      "description": "Extra WorldGuard regions of the structure besides its main region, for a shape one region can't hold (a round tower next to a square house). The structure is the union of its regions. Save the structure first (Submit), then Edit it to add sub-regions; each one is drawn in game and saved when its form completes.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "19e65dfe-be27-51a4-ab6f-a08c8871b167",
+          "fieldName": "SubRegions",
+          "label": "Sub-regions",
+          "description": "One entry per extra region. Each gets the main region's flags, owners, members and priority from the game server, so set flags on the main region only. A removed sub-region's WorldGuard region is deleted 14 days later.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "DomainSubRegion",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "ce22b179-f41b-5c30-baac-f8497f660f3f",
+      "validationType": "RegionContainment",
+      "dependsOn": {
+        "fieldGuid": "382be60c-f88c-5e02-82c0-0e2306f80608"
+      },
+      "dependencyPath": "District.WgRegionId",
+      "configJson": "{\"parentRegionPath\": \"WgRegionId\", \"requireFullContainment\": true}",
+      "errorMessage": "P-1: the warehouse's region is not completely inside the district's region.",
+      "isBlocking": false,
+      "requiresDependencyFilled": false
+    },
+    {
+      "fieldGuid": "ce22b179-f41b-5c30-baac-f8497f660f3f",
+      "validationType": "InsideTerritory",
+      "dependsOn": {
+        "fieldGuid": "7cf5ac64-8309-5e48-9e51-f6e32d20bbaa"
+      },
+      "dependencyPath": "Town.Id",
+      "configJson": "{\"holderKind\": \"Town\", \"holderIdPath\": \"Id\"}",
+      "errorMessage": "P-2: the warehouse's region is not inside its town's territory (or part of it is contested).",
+      "isBlocking": false,
+      "requiresDependencyFilled": false
+    }
+  ]
+}

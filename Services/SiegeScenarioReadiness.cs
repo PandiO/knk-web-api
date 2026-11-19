@@ -165,7 +165,7 @@ namespace knkwebapi_v2.Services
         /// </summary>
         public static bool IsInScenarioArea(GateStructure gate, int townId, IReadOnlySet<int> scenarioDistrictIds)
         {
-            if (scenarioDistrictIds.Count > 0) return scenarioDistrictIds.Contains(gate.DistrictId);
+            if (scenarioDistrictIds.Count > 0) return gate.DistrictId is int districtId && scenarioDistrictIds.Contains(districtId);
             return gate.District != null && gate.District.TownId == townId;
         }
 

@@ -176,7 +176,7 @@ public sealed class MapPublicService : IMapPublicService
             .ToListAsync(ct);
         var structures = await _db.Structures.AsNoTracking()
             .OrderBy(s => s.Id)
-            .Select(s => new { s.DistrictId, TownId = s.District != null ? s.District.TownId : 0,
+            .Select(s => new { s.DistrictId, TownId = s.District != null ? s.District.TownId : s.TownId ?? 0,
                 Row = new DomainRow(s.Id, s.Name, s.WgRegionId, s.WorldName,
                 s.Location != null ? s.Location.X : null, s.Location != null ? s.Location.Y : null,
                 s.Location != null ? s.Location.Z : null, s.Location != null ? s.Location.World : null) })
@@ -341,7 +341,8 @@ public sealed class MapPublicService : IMapPublicService
                 Description = s.Description ?? string.Empty,
                 Type = StructureType,
                 DistrictName = s.District != null ? s.District.Name : string.Empty,
-                TownName = s.District != null && s.District.Town != null ? s.District.Town.Name : string.Empty,
+                TownName = s.District != null && s.District.Town != null ? s.District.Town.Name
+                    : s.Town != null ? s.Town.Name : string.Empty, // rural (P2, #91): its own town
                 StreetName = s.Street != null ? s.Street.Name : string.Empty,
                 HouseNumber = s.HouseNumber,
             })

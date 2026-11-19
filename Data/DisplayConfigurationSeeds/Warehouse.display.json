@@ -1,0 +1,172 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "c7c99c72-3608-5377-8e87-ea6808a06efc",
+  "entityTypeName": "Warehouse",
+  "name": "Warehouse - Default (seed v1)",
+  "description": "A warehouse: placement, deliveries and region (production P2, #91).",
+  "sections": [
+    {
+      "sectionGuid": "bd9f2b04-1164-51d0-90c9-3f63c399c02f",
+      "sectionName": "General information",
+      "description": "What it is.",
+      "fields": [
+        {
+          "fieldGuid": "557c5f42-0f3a-55f5-9609-fb325177e40a",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game and in the web app.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "457a0fee-689a-556b-8b33-140047139b16",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "For admins.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        }
+      ]
+    },
+    {
+      "sectionGuid": "a345b0e9-f226-5b7c-9dde-a62b58b0f90d",
+      "sectionName": "Placement",
+      "description": "In a district, or rural with a town (exactly one).",
+      "fields": [
+        {
+          "fieldGuid": "5d376871-6e8a-5984-9488-1df0836182e8",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "District",
+          "relatedEntityTypeName": "District",
+          "label": "District",
+          "description": "Empty for a rural structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6ef4f717-632d-554e-b709-df66e12a8609",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Street",
+          "relatedEntityTypeName": "Street",
+          "label": "Street",
+          "description": "Only in a district.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d1727e23-06b4-5933-a5e6-5310b6fd456b",
+          "fieldName": "HouseNumber",
+          "label": "House number",
+          "description": "0 for a rural structure.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "8dffe744-7e4d-580b-ad1f-6e2de40d6e73",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Town",
+          "relatedEntityTypeName": "Town",
+          "label": "Town (rural)",
+          "description": "The town of a rural structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "886bb08b-b5d8-54d6-beee-d5aa4166a645",
+          "fieldName": "TerritoryFlag",
+          "label": "Territory flag",
+          "description": "OutsideTerritory or Contested from the game server's territory report: it keeps its town (R3).",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "f02a34aa-9f53-546c-bc88-190482ddc26b",
+          "fieldName": "TerritoryFlaggedAt",
+          "label": "Flagged at",
+          "description": "When the flag was set.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "06b5b396-7aee-5de2-ac6b-6b68fa41e2b2",
+          "fieldName": "Id",
+          "relatedEntityPropertyName": "TerritoryConflict",
+          "relatedEntityTypeName": "TerritoryConflict",
+          "label": "Conflict",
+          "description": "The conflict it is listed on.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "da197b84-7cc0-5cc1-9a23-9c30828cba33",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "LoyaltyTown",
+          "relatedEntityTypeName": "Town",
+          "label": "Loyal to",
+          "description": "Empty = its own town.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "be3281a0-7ed0-54d3-aba1-53661612aefd",
+      "sectionName": "Warehouse",
+      "description": "Deliveries.",
+      "fields": [
+        {
+          "fieldGuid": "fb13303b-a53c-5729-9bb4-2e4031e816c2",
+          "fieldName": "AcceptsDeliveries",
+          "label": "Accepts deliveries",
+          "description": "Producers and transport may deliver here.",
+          "fieldType": "Boolean",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "87a74a94-d118-5a72-99c0-9d9a39132fee",
+          "fieldName": "Priority",
+          "label": "Priority",
+          "description": "Higher first.",
+          "fieldType": "Integer",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "06611cf6-5539-55b6-a40c-ed2e7d40acf5",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "DefaultStorage",
+          "relatedEntityTypeName": "Storage",
+          "label": "Delivery storage",
+          "description": "Created with the warehouse.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "bf78ad01-766d-51f1-8d65-1364bdfce1dd",
+      "sectionName": "Region and access",
+      "description": "The structure's region in game.",
+      "fields": [
+        {
+          "fieldGuid": "715f70cd-64cd-570f-a5ee-277340d884a7",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The WorldGuard region; a rural one has no parent.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "39e5f05d-d2ed-518e-ace1-e2000a063a0f",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The world the region is in.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "75df18e4-c404-508e-92f9-3a257a9c45c1",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the region.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "61b1bf7e-2790-5527-8462-ec9b0a46bb93",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players may walk out of the region.",
+          "fieldType": "Boolean"
+        }
+      ]
+    }
+  ]
+}

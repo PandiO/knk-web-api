@@ -60,7 +60,8 @@ public class DomainMappingProfile : Profile
                 current = district.Town;
                 // continue;
             }  else if (current is Structure structure) {
-                if (structure.DistrictId <= 0) break;
+                // A rural structure (P2, #91) has no parent region: the chain ends here.
+                if (structure.DistrictId is not > 0 || structure.District == null) break;
                 current = structure.District;
                 // continue;
             }
@@ -96,7 +97,8 @@ public class DomainMappingProfile : Profile
                 current = district.Town;
                 // continue;
             }  else if (current is Structure structure) {
-                if (structure.DistrictId <= 0) break;
+                // A rural structure (P2, #91) has no parent region: the chain ends here.
+                if (structure.DistrictId is not > 0 || structure.District == null) break;
                 current = structure.District;
                 // continue;
             }

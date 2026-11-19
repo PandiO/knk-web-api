@@ -277,6 +277,13 @@ namespace knkwebapi_v2.Attributes
             // type (World area or knk.economy.admin to read, knk.economy.admin to move stock).
             Type("Storage", DashboardArea.World, World,
                 Del<IStorageService>((s, id) => s.DeleteAsync(id)), Lists<IStorageService, StorageListDto>((s, q) => s.SearchAsync(q))),
+            // Production world P2 (#91): structure subtypes, in a district or rural.
+            Type("Warehouse", DashboardArea.World, World,
+                Del<knkwebapi_v2.Services.Production.IWarehouseService>((s, id) => s.DeleteAsync(id)),
+                Lists<knkwebapi_v2.Services.Production.IWarehouseService, ProductionWorldListDto>((s, q) => s.SearchAsync(q))),
+            Type("ProductionStructure", DashboardArea.World, World,
+                Del<knkwebapi_v2.Services.Production.IProductionStructureService>((s, id) => s.DeleteAsync(id)),
+                Lists<knkwebapi_v2.Services.Production.IProductionStructureService, ProductionWorldListDto>((s, q) => s.SearchAsync(q))),
             ViewOnly("StockTransaction", DashboardArea.World, World),
             ViewOnly("StockMove", DashboardArea.World, World),
             ViewOnly("StockLine", DashboardArea.World, World),
