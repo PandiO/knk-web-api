@@ -71,6 +71,27 @@ public class MinecraftCatalogScanServiceTests
         return await Service(context).IngestAsync(scanId, snapshot);
     }
 
+    /// <summary>Item identity (#141, D11/G4): an applied scan gives every obtainable item without a blueprint its shadow.</summary>
+    [Fact]
+    public async Task Ingest_GeneratesVanillaShadowBlueprints_ForObtainableItemsWithoutOne()
+    {
+        await SeedAsync(new ItemBlueprint { Id = 30, Name = "Phoenix Apple", IconMaterialRefId = null });
+        var scanId = await RequestAsync();
+
+        await IngestAsync(scanId, Snapshot(
+            Entry("minecraft:stone", isBlock: true, name: "Stone"),
+            Entry("minecraft:apple", name: "Apple"),
+            Entry("minecraft:wall_torch", isItem: false, isBlock: true),
+            Entry("minecraft:barrier", isBlock: true)));
+
+        await using var check = NewContext();
+        var shadows = await check.ItemBlueprints.Include(b => b.VanillaMaterialMatch).Where(b => b.VanillaMaterialMatchRefId != null).ToListAsync();
+        Assert.Equal(new[] { "minecraft:apple", "minecraft:stone" }, shadows.Select(b => b.VanillaMaterialMatch!.NamespaceKey).OrderBy(k => k));
+        var category = await check.Categories.SingleAsync();
+        Assert.All(shadows, b => Assert.Equal(category.Id, b.CategoryId));
+        Assert.Equal("Uncurated", category.Name);
+    }
+
     [Fact]
     public async Task RequestScan_CreatesAPendingHeadlessWorldTask_InAWorkflowSessionOfTheRequester()
     {
@@ -185,7 +206,7 @@ public class MinecraftCatalogScanServiceTests
         await using var check = NewContext();
         var apple = await check.MinecraftMaterialRefs.SingleAsync(m => m.Id == 2);
         Assert.Equal(("minecraft:apple", true, false, MinecraftCatalogStatus.Active), (apple.NamespaceKey, apple.IsItem, apple.IsBlock, apple.CatalogStatus));
-        Assert.Equal(2, (await check.ItemBlueprints.SingleAsync()).IconMaterialRefId);
+        Assert.Equal(2, (await check.ItemBlueprints.SingleAsync(b => b.Id == 30)).IconMaterialRefId);
         var torch = await check.MinecraftMaterialRefs.SingleAsync(m => m.NamespaceKey == "minecraft:wall_torch");
         Assert.Equal(("Wall Torch", "BLOCK", "1.21.10", "1.21.10"), (torch.DisplayName, torch.Category, torch.FirstSeenVersion, torch.LastSeenVersion));
         Assert.Equal(scanId, torch.LastScanId);

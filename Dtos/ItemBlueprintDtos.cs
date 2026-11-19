@@ -21,6 +21,13 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("iconMaterialRef")]
         public MinecraftMaterialRefNavDto? IconMaterialRef { get; set; }
 
+        /// <summary>Item identity (#141): the vanilla material this blueprint is the one blueprint of (unique), or null.</summary>
+        [JsonPropertyName("vanillaMaterialMatchRefId")]
+        public int? VanillaMaterialMatchRefId { get; set; }
+
+        [JsonPropertyName("vanillaMaterialMatch")]
+        public MinecraftMaterialRefNavDto? VanillaMaterialMatch { get; set; }
+
         [JsonPropertyName("defaultDisplayName")]
         public string DefaultDisplayName { get; set; } = string.Empty;
 
@@ -265,6 +272,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("iconMaterialRefId")]
         public int? IconMaterialRefId { get; set; }
+
+        /// <summary>Item identity (#141): the vanilla material this blueprint is the match of, or null.</summary>
+        [JsonPropertyName("vanillaMaterialMatchRefId")]
+        public int? VanillaMaterialMatchRefId { get; set; }
 
         [JsonPropertyName("iconNamespaceKey")]
         public string? IconNamespaceKey { get; set; }

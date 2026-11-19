@@ -15,6 +15,17 @@ public class ItemBlueprint
     [RelatedEntityField(typeof(MinecraftMaterialRef))]
     public MinecraftMaterialRef? IconMaterial { get; set; } = null;
 
+    // Item identity (PandiO/knk-workspace#141, production DESIGN §8): the vanilla Material this blueprint stands for.
+    // Unique: each obtainable material maps to exactly one blueprint, so a plain vanilla item resolves to it. Generated
+    // "vanilla shadow" blueprints in the "Uncurated" category hold the match until an admin moves it to a curated
+    // blueprint (api/ItemIdentity/matches). Not part of the create/update DTOs: only that endpoint and the shadow
+    // generation set it, so a form that doesn't know the field can't clear it.
+    [RelatedEntityField(typeof(MinecraftMaterialRef))]
+    [NavigationPair("VanillaMaterialMatch")]
+    public int? VanillaMaterialMatchRefId { get; set; }
+    [RelatedEntityField(typeof(MinecraftMaterialRef))]
+    public MinecraftMaterialRef? VanillaMaterialMatch { get; set; } = null;
+
     public string DefaultDisplayName { get; set; } = string.Empty;
     public string? DefaultDisplayDescription { get; set; } = string.Empty;
 

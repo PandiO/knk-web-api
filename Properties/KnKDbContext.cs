@@ -66,6 +66,7 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<GateBlockSnapshot> GateBlockSnapshots { get; set; } = null!;
     public virtual DbSet<GateOpenedBlockSnapshot> GateOpenedBlockSnapshots { get; set; } = null!;
     public virtual DbSet<ItemBlueprint> ItemBlueprints { get; set; } = null!;
+    public virtual DbSet<ItemConversionStat> ItemConversionStats { get; set; } = null!;
     public virtual DbSet<MinecraftMaterialRef> MinecraftMaterialRefs { get; set; } = null!;
     public virtual DbSet<MinecraftBlockRef> MinecraftBlockRefs { get; set; } = null!;
     public virtual DbSet<MinecraftCatalogScan> MinecraftCatalogScans { get; set; } = null!;
@@ -767,6 +768,29 @@ public partial class KnKDbContext : DbContext
                 .HasForeignKey(ib => ib.GradeId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+        // ---- Item identity (PandiO/knk-workspace#141), one contiguous block ----
+        // One blueprint per vanilla material. MySQL allows many NULLs in a unique index, so every blueprint that is
+        // nobody's vanilla match stays NULL.
+        modelBuilder.Entity<ItemBlueprint>(entity =>
+        {
+            entity.HasOne(ib => ib.VanillaMaterialMatch)
+                .WithMany()
+                .HasForeignKey(ib => ib.VanillaMaterialMatchRefId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(ib => ib.VanillaMaterialMatchRefId).IsUnique();
+        });
+        // Conversion counts the game server reports, summed per UTC day, source, outcome and
+        // material. System-written; the admin read sums them.
+        modelBuilder.Entity<ItemConversionStat>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("item_conversion_stats");
+            entity.Property(e => e.Source).HasMaxLength(32);
+            entity.Property(e => e.Outcome).HasMaxLength(32);
+            entity.Property(e => e.MaterialKey).HasMaxLength(191);
+            entity.HasIndex(e => new { e.Day, e.Source, e.Outcome, e.MaterialKey }).IsUnique();
+        });
+        // ---- end item identity ----
         modelBuilder.Entity<Grade>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");

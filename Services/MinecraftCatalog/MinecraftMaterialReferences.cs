@@ -57,6 +57,8 @@ public static class MinecraftMaterialReferences
     {
         Make<Category>(nameof(Category.IconMaterialRefId), x => x.IconMaterialRefId, (x, id) => x.IconMaterialRefId = id),
         Make<ItemBlueprint>(nameof(ItemBlueprint.IconMaterialRefId), x => x.IconMaterialRefId, (x, id) => x.IconMaterialRefId = id),
+        // Item identity (#141): unique per material; RepointReferencesAsync keeps one match when a merge would make two.
+        Make<ItemBlueprint>(nameof(ItemBlueprint.VanillaMaterialMatchRefId), x => x.VanillaMaterialMatchRefId, (x, id) => x.VanillaMaterialMatchRefId = id),
         Make<GateStructure>(nameof(GateStructure.IconMaterialRefId), x => x.IconMaterialRefId, (x, id) => x.IconMaterialRefId = id),
         Make<GateDoor>(nameof(GateDoor.FallbackMaterialRefId), x => x.FallbackMaterialRefId, (x, id) => x.FallbackMaterialRefId = id),
         Make<MenuTemplate>(nameof(MenuTemplate.BackgroundMaterialRefId), x => x.BackgroundMaterialRefId, (x, id) => x.BackgroundMaterialRefId = id),
