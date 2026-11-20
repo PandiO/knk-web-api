@@ -8969,6 +8969,70 @@ namespace knkwebapi_v2.Migrations
                         });
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.StorageContainer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContainerType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDouble")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("Slots")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StorageId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("WorldName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("X")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Y")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Z")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StorageId");
+
+                    b.HasIndex("WorldName", "X", "Y", "Z")
+                        .IsUnique();
+
+                    b.ToTable("storage_containers", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
                 {
                     b.Property<int>("Id")
@@ -12898,6 +12962,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Domain");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.StorageContainer", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Storage", "Storage")
+                        .WithMany()
+                        .HasForeignKey("StorageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Storage");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.TransportAssignment", b =>
