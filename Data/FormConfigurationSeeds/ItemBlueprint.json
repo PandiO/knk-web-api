@@ -108,6 +108,15 @@
           "fieldType": "String",
           "isRequired": false,
           "isReadOnly": false
+        },
+        {
+          "fieldGuid": "22ef5e65-72c0-59c5-bff7-142447d8cbbd",
+          "fieldName": "PotionType",
+          "label": "Potion type",
+          "description": "Potions, splash and lingering potions and tipped arrows only: the vanilla potion type, e.g. healing, strong_healing (level II), long_regeneration (minecraft: prefix optional). Empty = none.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
         }
       ]
     },

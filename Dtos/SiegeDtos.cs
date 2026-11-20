@@ -59,6 +59,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("friendlyFire")] public bool FriendlyFire { get; set; }
         [JsonPropertyName("weaponSpotCooldownOverrideSeconds")] public int? WeaponSpotCooldownOverrideSeconds { get; set; }
         [JsonPropertyName("weaponSpots")] public List<SiegeWeaponSpotReadDto> WeaponSpots { get; set; } = new();
+
+        // Siege shop (siege-shop DESIGN.md § 4.4.2, § 6.1; PandiO/knk-workspace#867): the scenario's overrides of the
+        // mode's default entries and its own scenario-only entries, both owned children managed through their own
+        // endpoints (/api/SiegeScenarios/{id}/shop-overrides, /api/SiegeShopEntries).
+        [JsonPropertyName("shopOverrides")] public List<SiegeScenarioShopOverrideReadDto> ShopOverrides { get; set; } = new();
+        [JsonPropertyName("shopEntries")] public List<SiegeShopEntryReadDto> ShopEntries { get; set; } = new();
     }
 
     // Teams and objectives are managed through their own endpoints (owned child collections) - any

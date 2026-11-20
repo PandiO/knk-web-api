@@ -245,6 +245,10 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<SiegeWeaponTemplateAmmoType> SiegeWeaponTemplateAmmoTypes { get; set; } = null!;
     public virtual DbSet<SiegeWeaponSpot> SiegeWeaponSpots { get; set; } = null!;
     public virtual DbSet<UserSiegeWeaponUnlock> UserSiegeWeaponUnlocks { get; set; } = null!;
+    // Siege shop catalogue (PandiO/knk-workspace#867).
+    public virtual DbSet<SiegeShopCategory> SiegeShopCategories { get; set; } = null!;
+    public virtual DbSet<SiegeShopEntry> SiegeShopEntries { get; set; } = null!;
+    public virtual DbSet<SiegeScenarioShopOverride> SiegeScenarioShopOverrides { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -752,6 +756,59 @@ public partial class KnKDbContext : DbContext
         });
         // ==== end Siege weapons phase 1 ==========================================================
 
+        // ==== Siege shop catalogue (siege-shop DESIGN.md § 6.1, PandiO/knk-workspace#867) ===========
+        // Own block so it merges cleanly with other branches. Delete rules: a category in use, an item blueprint or a
+        // weapon template an entry sells are Restrict (the service answers 409 first); scenario-only entries and a
+        // scenario's overrides cascade from the scenario, overrides also from their entry. Enums are stored as strings.
+        // The three categories are seeded here (stable keys); the default entries are a startup seed (SiegeShopSeed),
+        // because they point at item blueprints whose ids only exist at runtime.
+        modelBuilder.Entity<SiegeShopCategory>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_shop_categories");
+
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.IconMaterial).HasMaxLength(100);
+            entity.HasIndex(e => e.Key).IsUnique();
+
+            entity.HasData(
+                new SiegeShopCategory { Id = 1, Key = "siege-weapons", Name = "Siege weapons", IconMaterial = "minecraft:crossbow", SortOrder = 0 },
+                new SiegeShopCategory { Id = 2, Key = "consumables", Name = "Consumables", IconMaterial = "minecraft:golden_apple", SortOrder = 1 },
+                new SiegeShopCategory { Id = 3, Key = "magic", Name = "Magic", IconMaterial = "minecraft:blaze_rod", SortOrder = 2 });
+        });
+
+        modelBuilder.Entity<SiegeShopEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_shop_entries");
+
+            entity.Property(e => e.GameMode).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.PriceCurve).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.CooldownCurve).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.DisplayName).HasMaxLength(100);
+            entity.Property(e => e.IconMaterial).HasMaxLength(100);
+            entity.HasIndex(e => new { e.GameMode, e.SiegeScenarioId, e.SortOrder });
+
+            entity.HasOne(e => e.SiegeScenario).WithMany(s => s.ShopEntries).HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Category).WithMany().HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SiegeWeaponTemplate).WithMany().HasForeignKey(e => e.SiegeWeaponTemplateId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SiegeScenarioShopOverride>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("siege_scenario_shop_overrides");
+
+            entity.HasIndex(e => new { e.SiegeScenarioId, e.SiegeShopEntryId }).IsUnique();
+
+            entity.HasOne(e => e.SiegeScenario).WithMany(s => s.ShopOverrides).HasForeignKey(e => e.SiegeScenarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SiegeShopEntry).WithMany().HasForeignKey(e => e.SiegeShopEntryId).OnDelete(DeleteBehavior.Cascade);
+        });
+        // ==== end Siege shop catalogue ===========================================================
+
         // Closed-alpha hardening WP4: opaque, hashed, rotated refresh tokens and the per-user
         // session generation (users.TokenVersion). Expand-only: a new table and a defaulted column.
         // KNG-206: the persistent mail outbox (EmailComposer / EmailDispatcher).
@@ -875,6 +932,8 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.ShieldBannerBaseColor).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.ArmorTrimPattern).HasMaxLength(64);
             entity.Property(e => e.ArmorTrimMaterial).HasMaxLength(64);
+            // Siege shop (#867, DESIGN § 9.4): the potion type key ("minecraft:strong_healing").
+            entity.Property(e => e.PotionType).HasMaxLength(64);
 
             entity.HasOne(ib => ib.IconMaterial)
                 .WithMany()

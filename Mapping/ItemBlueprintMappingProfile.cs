@@ -36,7 +36,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ShieldBannerBaseColor, opt => opt.MapFrom(src => src.ShieldBannerBaseColor.HasValue ? src.ShieldBannerBaseColor.Value.ToString() : null))
                 .ForMember(dest => dest.ShieldBannerLayers, opt => opt.MapFrom(src => src.ShieldBannerLayers.OrderBy(l => l.SortOrder).ThenBy(l => l.Id)))
                 .ForMember(dest => dest.ArmorTrimPattern, opt => opt.MapFrom(src => src.ArmorTrimPattern))
-                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.MapFrom(src => src.ArmorTrimMaterial));
+                .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.MapFrom(src => src.ArmorTrimMaterial))
+                .ForMember(dest => dest.PotionType, opt => opt.MapFrom(src => src.PotionType));
 
             CreateMap<ItemBlueprintBannerLayer, ItemBannerLayerDto>()
                 .ForMember(dest => dest.PatternKey, opt => opt.MapFrom(src => src.PatternKey))
@@ -53,6 +54,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ShieldBannerLayers, opt => opt.Ignore())
                 .ForMember(dest => dest.ArmorTrimPattern, opt => opt.Ignore())
                 .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore())
+                // Siege shop (#867): normalised and checked by PotionTypeKeys in the service.
+                .ForMember(dest => dest.PotionType, opt => opt.Ignore())
                 // Item identity (#141): only api/ItemIdentity and the shadow generation set the vanilla match.
                 .ForMember(dest => dest.VanillaMaterialMatchRefId, opt => opt.Ignore())
                 .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.Ignore())
@@ -67,6 +70,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ShieldBannerLayers, opt => opt.Ignore())
                 .ForMember(dest => dest.ArmorTrimPattern, opt => opt.Ignore())
                 .ForMember(dest => dest.ArmorTrimMaterial, opt => opt.Ignore())
+                // Siege shop (#867): normalised and checked by PotionTypeKeys in the service.
+                .ForMember(dest => dest.PotionType, opt => opt.Ignore())
                 // Item identity (#141): only api/ItemIdentity and the shadow generation set the vanilla match.
                 .ForMember(dest => dest.VanillaMaterialMatchRefId, opt => opt.Ignore())
                 .ForMember(dest => dest.VanillaMaterialMatch, opt => opt.Ignore())

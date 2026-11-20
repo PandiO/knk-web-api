@@ -34,7 +34,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.TownName, o => o.MapFrom(s => s.Town != null ? s.Town.Name : null))
                 .ForMember(d => d.Teams, o => o.MapFrom(s => s.Teams.OrderBy(t => t.SortOrder).ThenBy(t => t.Id)))
                 .ForMember(d => d.Objectives, o => o.MapFrom(s => s.Objectives.OrderBy(t => t.SortOrder).ThenBy(t => t.Id)))
-                .ForMember(d => d.WeaponSpots, o => o.MapFrom(s => s.WeaponSpots.OrderBy(w => w.SortOrder).ThenBy(w => w.Id)));
+                .ForMember(d => d.WeaponSpots, o => o.MapFrom(s => s.WeaponSpots.OrderBy(w => w.SortOrder).ThenBy(w => w.Id)))
+                // Siege shop (PandiO/knk-workspace#867): maps in SiegeShopMappingProfile.
+                .ForMember(d => d.ShopOverrides, o => o.MapFrom(s => s.ShopOverrides.OrderBy(x => x.Id)))
+                .ForMember(d => d.ShopEntries, o => o.MapFrom(s => s.ShopEntries.OrderBy(x => x.SortOrder).ThenBy(x => x.Id)));
 
             CreateMap<SiegeScenario, SiegeScenarioListDto>()
                 .ForMember(d => d.TownName, o => o.MapFrom(s => s.Town != null ? s.Town.Name : null))

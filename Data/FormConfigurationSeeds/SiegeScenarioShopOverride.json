@@ -1,0 +1,112 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "2c1d3ae4-ee10-50a5-847e-a7f915554b73",
+  "entityTypeName": "SiegeScenarioShopOverride",
+  "name": "SiegeScenarioShopOverride - Default (seed v1)",
+  "description": "A scenario's change to one of the mode's default shop entries: hide it, or change its price, quantity or brakes. Empty fields keep the default. Created from the scenario's Siege shop step.",
+  "steps": [
+    {
+      "stepGuid": "15c113be-8a26-5068-9d56-db97b7cf7881",
+      "stepName": "Override",
+      "description": "Pick the default entry and what changes in this scenario.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "48ca2c53-8ab0-5422-b5df-de369903cabd",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario",
+          "description": "Filled in from the scenario you are editing.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "2c88f6af-8d1a-5f4a-9911-734570520364",
+          "fieldName": "SiegeShopEntryId",
+          "label": "Shop entry",
+          "description": "A default entry of the mode (scenario-only entries are edited directly). One override per entry.",
+          "fieldType": "Object",
+          "objectType": "SiegeShopEntry",
+          "isRequired": true,
+          "settingsJson": "{\"pickerFilters\": {\"defaultsOnly\": \"true\"}}",
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "968d835f-93de-5731-9cf1-5a86df8bb441",
+          "fieldName": "Hidden",
+          "label": "Hide in this scenario",
+          "description": "Not sold in this scenario.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f6319abb-a2e6-59de-b012-6373bdaa968b",
+          "fieldName": "Price",
+          "label": "Price",
+          "description": "Empty = the default.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6717f1bf-fc41-5319-8c54-7465cb781318",
+          "fieldName": "Quantity",
+          "label": "Quantity",
+          "description": "Empty = the default.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0ed5f2ca-293f-5083-9d3b-b93376bbdd31",
+          "fieldName": "MaxPerMatch",
+          "label": "Max per match",
+          "description": "Empty = the default.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "73dd8165-6ae7-5e21-9e34-99e722071b55",
+          "fieldName": "CooldownSeconds",
+          "label": "Cooldown (seconds)",
+          "description": "Empty = the default.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b823d427-6cc1-5702-b487-3546d6b7c7ef",
+          "fieldName": "PriceStep",
+          "label": "Price step",
+          "description": "Empty = the default.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d57c409e-0608-5cd6-abcc-550ccf3dcf72",
+          "fieldName": "CooldownStepSeconds",
+          "label": "Cooldown step (seconds)",
+          "description": "Empty = the default.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e294b7aa-e3ee-5e2c-844d-a26164443f1e",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Empty = the default.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

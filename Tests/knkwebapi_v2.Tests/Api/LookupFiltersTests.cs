@@ -231,6 +231,7 @@ public class LookupFiltersTests : IAsyncLifetime
             ["Storage"] = "domainId:Id, userId:Id, clanId:Id", // stock core P1 (#97)
             ["SiegeScenario"] = "townId:Id",
             ["SiegeTeam"] = "siegeScenarioId:Id",
+            ["SiegeShopEntry"] = "siegeScenarioId:Id, categoryId:Id, defaultsOnly:Flag", // siege shop L2 (#867)
             ["PermissionGroup"] = "parentGroupId:Id, isPremiumTier:Flag",
         };
         var actual = DashboardAccess.All

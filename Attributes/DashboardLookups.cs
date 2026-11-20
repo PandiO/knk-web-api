@@ -130,6 +130,13 @@ namespace knkwebapi_v2.Attributes
             ["SiegeWeaponSpot"] = Of<ISiegeWeaponService>((s, id) => s.GetSpotByIdAsync(id), Name, o => Text(o, "SiegeTeamName")),
             ["UserSiegeWeaponUnlock"] = Of<ISiegeWeaponService>((s, id) => s.GetUnlockByIdAsync(id),
                 o => Text(o, "SiegeWeaponTemplateName"), o => Text(o, "Username")),
+            // Siege shop catalogue (PandiO/knk-workspace#867).
+            ["SiegeShopCategory"] = Of<ISiegeShopService>((s, id) => s.GetCategoryByIdAsync(id), Name, o => Text(o, "Key")),
+            ["SiegeShopEntry"] = Of<ISiegeShopService>((s, id) => s.GetEntryByIdAsync(id),
+                o => Text(o, "Name", "DisplayName", "ItemBlueprintName", "SiegeWeaponTemplateName"), o => Text(o, "GameMode"),
+                filters: new[] { IdFilter("siegeScenarioId"), IdFilter("categoryId"), FlagFilter("defaultsOnly") }),
+            ["SiegeScenarioShopOverride"] = Of<ISiegeShopService>((s, id) => s.GetOverrideByIdAsync(id),
+                o => Text(o, "SiegeShopEntryName"), o => Text(o, "Hidden")),
             ["RoadProfile"] = Of<IRoadNetworkService>((s, id) => s.GetProfileAsync(id), Name, o => Text(o, "RoadClass")),
 
             // Players: the username and nothing else; the search matches the username only (never the email).

@@ -86,6 +86,10 @@ namespace knkwebapi_v2.Dtos
         /// <summary>#232: armour trim material key, e.g. "minecraft:netherite" (null = no trim).</summary>
         [JsonPropertyName("armorTrimMaterial")]
         public string? ArmorTrimMaterial { get; set; }
+
+        /// <summary>Siege shop (#867): potion type key, e.g. "minecraft:strong_healing" (null = none).</summary>
+        [JsonPropertyName("potionType")]
+        public string? PotionType { get; set; }
     }
 
     // Create DTO
@@ -167,6 +171,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("armorTrimMaterial")]
         public string? ArmorTrimMaterial { get; set; }
+
+        // Siege shop (#867, DESIGN § 9.4): the potion type, "strong_healing" or "minecraft:strong_healing"; null clears
+        // it, like the armour trim. An unknown vanilla key is a 400.
+        [JsonPropertyName("potionType")]
+        public string? PotionType { get; set; }
     }
 
     // Update DTO
@@ -251,6 +260,11 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("armorTrimMaterial")]
         public string? ArmorTrimMaterial { get; set; }
+
+        // Siege shop (#867, DESIGN § 9.4): the potion type, "strong_healing" or "minecraft:strong_healing"; null clears
+        // it, like the armour trim. An unknown vanilla key is a 400.
+        [JsonPropertyName("potionType")]
+        public string? PotionType { get; set; }
     }
 
     // Navigation DTO - Lightweight representation for relationships
