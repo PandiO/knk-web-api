@@ -652,4 +652,40 @@ public class SiegeMatchServiceTests : IAsyncLifetime
         var r1 = result.Rewards.Single();
         Assert.Equal((600, 600, true), (r1.ActiveSeconds, r1.MatchSeconds, r1.Participation));
     }
+
+    // ---- siege points totals (siege shop L1, PandiO/knk-workspace#866, P27, A11) ----
+
+    [Fact]
+    public async Task Complete_StoresSiegePointsEarnedAndSpent_AndZeroWhenNotSent()
+    {
+        var id = await StartedMatchAsync((1, 201), (3, 202));
+        var result = await _service.CompleteAsync(id, new SiegeMatchCompleteDto
+        {
+            EndReason = SiegeMatchEndReason.TimeExpired,
+            Participants =
+            {
+                new SiegeMatchParticipantResultDto { UserId = 1, SiegeTeamId = 201, SiegePointsEarned = 415, SiegePointsSpent = 300 },
+                // A plugin with siege.points.enabled off sends no totals (as before).
+                new SiegeMatchParticipantResultDto { UserId = 3, SiegeTeamId = 202 }
+            }
+        });
+
+        Assert.Equal(SiegeMatchStatus.Completed, result.Status);
+        var match = (await _service.GetByIdAsync(id))!;
+        var p1 = match.Participants.Single(p => p.UserId == 1);
+        Assert.Equal((415, 300), (p1.SiegePointsEarned, p1.SiegePointsSpent));
+        var p3 = match.Participants.Single(p => p.UserId == 3);
+        Assert.Equal((0, 0), (p3.SiegePointsEarned, p3.SiegePointsSpent));
+    }
+
+    [Fact]
+    public async Task Complete_RejectsNegativeSiegePoints()
+    {
+        var id = await StartedMatchAsync((1, 201));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CompleteAsync(id, new SiegeMatchCompleteDto
+        {
+            EndReason = SiegeMatchEndReason.TimeExpired,
+            Participants = { new SiegeMatchParticipantResultDto { UserId = 1, SiegeTeamId = 201, SiegePointsSpent = -1 } }
+        }));
+    }
 }

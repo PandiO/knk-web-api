@@ -87,6 +87,30 @@ public class SiegeConfiguration
     // Off by default, so deploying the feature changes nothing until an admin turns it on.
     public bool GiveNavigationItem { get; set; } = false;
 
+    // ---- Siege points (docs/specs/siege-shop/DESIGN.md § 5.2, § 6.1.4; PandiO/knk-workspace#866) ----
+    // What PvP Siege pays in siege points, the per-match balance spent in the siege shop. Read by the plugin with
+    // the runtime config; it earns only with its siege.points.enabled switch on. Defaults are the design's
+    // proposals (about 100 points a minute for a good player), tuned in the alpha balance runs (#651).
+    public int PointsPerKill { get; set; } = 100;
+    // The n-th kill of a streak pays PointsPerKill × min(1 + step × (n − 1), cap) (P14).
+    public double PointsStreakStep { get; set; } = 0.1;
+    public double PointsStreakCap { get; set; } = 1.5;
+    // An assist: at least AssistMinDamage damage (half hearts) to the victim in the last AssistWindowSeconds (P13).
+    public int PointsPerAssist { get; set; } = 40;
+    public double AssistMinDamage { get; set; } = 4.0;
+    public int AssistWindowSeconds { get; set; } = 10;
+    public int PointsPerDeath { get; set; } = 15;
+    // One point per this many gate HP removed (0 = gate damage pays nothing).
+    public double GateHpPerPoint { get; set; } = 5.0;
+    // Per percent an objective moves towards a side, to each of that side's members in the radius (P16).
+    public int PointsPerCapturePercent { get; set; } = 3;
+    public int PointsPerCapture { get; set; } = 100;
+    // Every TrickleIntervalSeconds, to each member who was active in the interval (P17).
+    public int TrickleAmount { get; set; } = 10;
+    public int TrickleIntervalSeconds { get; set; } = 60;
+    // Teammates may send each other siege points (/siege pay, P07): off in PvP Siege.
+    public bool PointTransfersEnabled { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

@@ -226,6 +226,9 @@ namespace knkwebapi_v2.Services
                     // Clock skew can't make a member more active than present (a 400 here would lose every reward).
                     row.ActiveSeconds = Math.Min(r.ActiveSeconds, r.MatchSeconds);
                     row.MatchSeconds = r.MatchSeconds;
+                    // Siege shop L1 (#866): siege points totals; an older plugin or one with siege points off sends none.
+                    row.SiegePointsEarned = WholePoints(r.SiegePointsEarned);
+                    row.SiegePointsSpent = WholePoints(r.SiegePointsSpent);
                     // A reported leaver (KNG-34): the first left marker wins, as in ParticipantLeftAsync. It is
                     // kept strictly before the end so the member is never counted as present at the end.
                     if (r.LeftAt.HasValue && row.LeftAt == null)
@@ -422,9 +425,14 @@ namespace knkwebapi_v2.Services
 
             if (participants.Any(p => p.Kills < 0 || p.Deaths < 0 || p.HighestKillStreak < 0 || p.Captures < 0
                                       || p.ActiveSeconds < 0 || p.MatchSeconds < 0
+                                      || p.SiegePointsEarned < 0 || p.SiegePointsSpent < 0
                                       || double.IsNaN(p.GateDamage) || double.IsInfinity(p.GateDamage) || p.GateDamage < 0))
                 throw new ArgumentException("Participant stats can't be negative.");
         }
+
+        /// <summary>#866: reported siege points (null = not sent) as a stored total, capped at int.MaxValue.</summary>
+        private static int WholePoints(long? points) =>
+            points is null or <= 0 ? 0 : points >= int.MaxValue ? int.MaxValue : (int)points.Value;
 
         /// <summary>Reported gate HP as whole HP (rounded down; capped at int.MaxValue).</summary>
         private static int WholeHp(double gateDamage) =>
@@ -548,6 +556,8 @@ namespace knkwebapi_v2.Services
             GateDamage = p.GateDamage,
             ActiveSeconds = p.ActiveSeconds,
             MatchSeconds = p.MatchSeconds,
+            SiegePointsEarned = p.SiegePointsEarned,
+            SiegePointsSpent = p.SiegePointsSpent,
             CoinsAwarded = p.CoinsAwarded,
             ExpAwarded = p.ExpAwarded,
             GemsAwarded = p.GemsAwarded

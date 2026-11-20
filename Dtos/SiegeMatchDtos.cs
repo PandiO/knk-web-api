@@ -56,6 +56,10 @@ namespace knkwebapi_v2.Dtos
         // then only a 0 % requirement pays.
         [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
         [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
+        // Siege shop L1 (PandiO/knk-workspace#866, P27): siege points earned and spent in the match. Sent only by a
+        // plugin with siege.points.enabled; omitted (null) otherwise and stored as 0.
+        [JsonPropertyName("siegePointsEarned")] public long? SiegePointsEarned { get; set; }
+        [JsonPropertyName("siegePointsSpent")] public long? SiegePointsSpent { get; set; }
     }
 
     // One capture of an objective, or - with capturedByUserId/capturedAt null - its final holder when
@@ -109,6 +113,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("gateDamage")] public int GateDamage { get; set; }
         [JsonPropertyName("activeSeconds")] public int ActiveSeconds { get; set; }
         [JsonPropertyName("matchSeconds")] public int MatchSeconds { get; set; }
+        // #866: siege points earned and spent in the match (0 without siege points).
+        [JsonPropertyName("siegePointsEarned")] public int SiegePointsEarned { get; set; }
+        [JsonPropertyName("siegePointsSpent")] public int SiegePointsSpent { get; set; }
         [JsonPropertyName("coinsAwarded")] public int CoinsAwarded { get; set; }
         [JsonPropertyName("expAwarded")] public int ExpAwarded { get; set; }
         [JsonPropertyName("gemsAwarded")] public int GemsAwarded { get; set; }
