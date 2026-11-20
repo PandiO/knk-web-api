@@ -132,6 +132,9 @@ public static partial class MenuTemplateSeed
                             Lore(0, "&7Teleport to important points in the world"),
                             Lore(1, "&7Price will be paid in gems!")),
 
+                        // Production menus (P6a, #683, M2): the structures overview.
+                        StructuresHubTile(),
+
                         WithPermissions(UserManagePermission, OpenTile(22, 6, UserManagerMenuKey,
                             Bind("Material", "PLAYER_HEAD", VariableRefreshPolicy.Static),
                             Bind("Name", "&cPlayer manager", VariableRefreshPolicy.Static),

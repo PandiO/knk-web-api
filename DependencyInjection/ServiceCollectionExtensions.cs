@@ -293,6 +293,11 @@ namespace knkwebapi_v2.DependencyInjection
             // CRUD, manual orders, dry runs and cancel always available).
             services.AddScoped<knkwebapi_v2.Services.Production.ITransportService, knkwebapi_v2.Services.Production.TransportService>();
             services.AddScoped<knkwebapi_v2.Services.Production.ITransportLaneService, knkwebapi_v2.Services.Production.TransportLaneService>();
+            // Terminals and menus P6a (PandiO/knk-workspace#683): containers, the M3 caller filter, structure menus.
+            services.AddScoped<knkwebapi_v2.Services.Production.ITownMembershipResolver, knkwebapi_v2.Services.Production.PermissionTownMembershipResolver>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IProductionViewerResolver, knkwebapi_v2.Services.Production.ProductionViewerResolver>();
+            services.AddScoped<knkwebapi_v2.Services.Stock.IStorageContainerService, knkwebapi_v2.Services.Stock.StorageContainerService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IStructureMenuService, knkwebapi_v2.Services.Production.StructureMenuService>();
             services.AddHostedService<knkwebapi_v2.Services.Production.TransportSweepService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();

@@ -1,0 +1,114 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "d48a7d4f-8ccc-5516-8b71-9fc315157e15",
+  "entityTypeName": "StorageContainer",
+  "name": "StorageContainer - Default (seed v1)",
+  "description": "A block bound to a storage (terminals and displays P6a, #683): Terminal shows the storage as a paged menu (take and put are ledger moves, the block stays empty); Display is filled read-only with a sample of the stock. In game, look at the block and use /knk storage bind instead. Every bound container adds its slots x the storage's units per slot to the storage's cap.",
+  "steps": [
+    {
+      "stepGuid": "9df72055-8af2-58f0-8cc6-a79b13689561",
+      "stepName": "Container",
+      "description": "The storage and how the block shows it.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "8b3f38c8-1e11-5f12-a06e-8c188bdd5dd8",
+          "fieldName": "StorageId",
+          "label": "Storage",
+          "description": "A domain, player or clan storage (not a system or transit storage).",
+          "fieldType": "Object",
+          "objectType": "Storage",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9e6c4549-97fa-5f95-ad4d-e9e59bafd7f7",
+          "fieldName": "Mode",
+          "label": "Mode",
+          "description": "Terminal: a paged menu with take and put. Display: a read-only sample of the stock.",
+          "fieldType": "Enum",
+          "enumType": "StorageContainerMode",
+          "defaultValue": "Terminal",
+          "settingsJson": "{\"enumValues\": [\"Terminal\", \"Display\"]}",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b29b6829-6799-5925-bb41-d0bbeb0500d7",
+          "fieldName": "Label",
+          "label": "Label",
+          "description": "An optional name for staff, such as North terminal.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "9b06406b-56ab-5807-a99f-ecc8d0ce28d8",
+      "stepName": "Block",
+      "description": "The block in the world. A double chest is bound once, at its left half.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "50517c8a-b71a-5187-87f1-73c528a8c9d7",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The Minecraft world.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fbe5f48c-a198-528c-b4c8-a0738f38e9c1",
+          "fieldName": "X",
+          "label": "X",
+          "description": "Block X.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b3837314-c527-567c-8ac9-420221b8befc",
+          "fieldName": "Y",
+          "label": "Y",
+          "description": "Block Y (-64 to 320).",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "25dbc169-3ca9-5d21-ab2c-dca3948643c1",
+          "fieldName": "Z",
+          "label": "Z",
+          "description": "Block Z.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3c32d873-476d-59bf-9ad9-8dbe783479ce",
+          "fieldName": "ContainerType",
+          "label": "Block type",
+          "description": "Chest, trapped chest or barrel.",
+          "fieldType": "Enum",
+          "enumType": "StorageContainerType",
+          "defaultValue": "Chest",
+          "settingsJson": "{\"enumValues\": [\"Chest\", \"TrappedChest\", \"Barrel\"]}",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e1a729d3-c50b-5117-8e3c-4ff00f382ae7",
+          "fieldName": "IsDouble",
+          "label": "Double chest",
+          "description": "A double chest (54 slots instead of 27); not for a barrel.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

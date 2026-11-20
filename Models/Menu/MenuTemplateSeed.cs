@@ -48,6 +48,8 @@ public static partial class MenuTemplateSeed
 
         // Siege menus seeded before a layout fix are brought up to date in place (see RepairSiegeLayoutAsync).
         await RepairSiegeLayoutAsync(context, logger, cancellationToken);
+        // A hub seeded before the production menus gets their "Structures" tile (P6a, #683).
+        await RepairProductionHubTileAsync(context, logger, cancellationToken);
     }
 
     private static IEnumerable<MenuTemplate> CanonicalTemplates()
@@ -689,6 +691,10 @@ public static partial class MenuTemplateSeed
 
         // Player statistics privacy (KNG-34) - see MenuTemplateSeed.Statistics.cs.
         foreach (var template in StatisticsTemplates())
+            yield return template;
+
+        // Production menus (PandiO/knk-workspace#683, P6a) - see MenuTemplateSeed.Production.cs.
+        foreach (var template in ProductionTemplates())
             yield return template;
     }
 
