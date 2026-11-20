@@ -1103,8 +1103,9 @@ namespace knkwebapi_v2.Services.Production
         {
             var r = await _db.ProductionCycleRecords.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
             if (r == null) return null;
-            var name = await _db.ItemBlueprints.AsNoTracking().Where(b => b.Id == r.ItemBlueprintId).Select(b => b.Name).FirstOrDefaultAsync();
-            return ProductionCycleRecordMapping.ToDto(r, name);
+            var ids = ProductionCycleRecordMapping.BlueprintIds(r).Distinct().ToList();
+            var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name);
+            return ProductionCycleRecordMapping.ToDto(r, names);
         }
 
         public async Task<PagedResultDto<ProductionCycleRecordDto>> SearchAsync(PagedQueryDto query)
@@ -1113,15 +1114,16 @@ namespace knkwebapi_v2.Services.Production
             IQueryable<ProductionCycleRecord> q = _db.ProductionCycleRecords.AsNoTracking();
             if (TerritoryPaging.IntFilter(query, "productionStructureId") is { } sid) q = q.Where(r => r.ProductionStructureId == sid);
             if (TerritoryPaging.IntFilter(query, "productionLineId") is { } lid) q = q.Where(r => r.ProductionLineId == lid);
+            if (TerritoryPaging.IntFilter(query, "itemBlueprintId") is { } bid) q = q.Where(r => r.ItemBlueprintId == bid);
             q = query.SortBy != null && !query.SortDescending
                 ? q.OrderBy(r => r.SettledAt).ThenBy(r => r.Id)
                 : q.OrderByDescending(r => r.SettledAt).ThenByDescending(r => r.Id);
             var page = await TerritoryPaging.PageAsync(q, query);
-            var ids = page.Items.Select(r => r.ItemBlueprintId).Distinct().ToList();
+            var ids = page.Items.SelectMany(ProductionCycleRecordMapping.BlueprintIds).Distinct().ToList();
             var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name);
             return new PagedResultDto<ProductionCycleRecordDto>
             {
-                Items = page.Items.Select(r => ProductionCycleRecordMapping.ToDto(r, names.GetValueOrDefault(r.ItemBlueprintId))).ToList(),
+                Items = page.Items.Select(r => ProductionCycleRecordMapping.ToDto(r, names)).ToList(),
                 TotalCount = page.TotalCount, PageNumber = page.PageNumber, PageSize = page.PageSize,
             };
         }

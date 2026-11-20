@@ -23,6 +23,60 @@ namespace knkwebapi_v2.Dtos
         /// <summary>The production engine's timing (P3, PandiO/knk-workspace#86). Null in stored JSON = the defaults.</summary>
         [JsonPropertyName("engine")]
         public ProductionEngineSettingsDto Engine { get; set; } = new();
+
+        /// <summary>Transport (P5, PandiO/knk-workspace#79). Null in stored JSON = the defaults; null on a save = keep the
+        /// stored values (so a client that doesn't know the section yet doesn't reset it).</summary>
+        [JsonPropertyName("transport")]
+        public ProductionTransportSettingsDto? Transport { get; set; }
+    }
+
+    /// <summary>
+    /// Transport timing and sizing (P5, production DESIGN § 7.4, § 7.6-7.7, G14). The simulated trip takes route length ÷
+    /// <see cref="WalkingSpeedBlocksPerSecond"/>; without a measured lane the route is the straight distance ×
+    /// <see cref="UnmeasuredRouteFactor"/>. A structure without its own threshold or capacity uses the defaults here.
+    /// </summary>
+    public class ProductionTransportSettingsDto
+    {
+        public const decimal MinSpeed = 0.1m, MaxSpeed = 50m;
+        public const int MaxUnits = 1_000_000;
+        public const decimal MinRouteFactor = 1m, MaxRouteFactor = 10m;
+        public const int MaxMinutes = 10_080;
+
+        /// <summary>4.317 = a vanilla player's walking speed.</summary>
+        [JsonPropertyName("walkingSpeedBlocksPerSecond")]
+        public decimal WalkingSpeedBlocksPerSecond { get; set; } = 4.317m;
+
+        /// <summary>Raw units a worker carries when the structure has no <c>TransportCapacity</c> (from its level).</summary>
+        [JsonPropertyName("defaultCarrierCapacity")]
+        public int DefaultCarrierCapacity { get; set; } = 64;
+
+        /// <summary>Output occupancy that triggers a transport, in % of the Output storage's cap, when the structure has
+        /// no <c>TransportThreshold</c>.</summary>
+        [JsonPropertyName("defaultThresholdPercent")]
+        public int DefaultThresholdPercent { get; set; } = 75;
+
+        /// <summary>The trigger in raw units for an uncapped Output storage without a structure threshold.</summary>
+        [JsonPropertyName("defaultThresholdUnits")]
+        public int DefaultThresholdUnits { get; set; } = 64;
+
+        [JsonPropertyName("unmeasuredRouteFactor")]
+        public decimal UnmeasuredRouteFactor { get; set; } = 1.4m;
+
+        /// <summary>Blocks used for a leg when neither a lane nor both structures' positions are known.</summary>
+        [JsonPropertyName("fallbackDistanceBlocks")]
+        public int FallbackDistanceBlocks { get; set; } = 200;
+
+        /// <summary>How long a carrier waits at a full stop before it re-routes (or returns).</summary>
+        [JsonPropertyName("awaitingSpaceMinutes")]
+        public int AwaitingSpaceMinutes { get; set; } = 30;
+
+        /// <summary>Re-routes per order before the cargo goes back.</summary>
+        [JsonPropertyName("maxReroutes")]
+        public int MaxReroutes { get; set; } = 2;
+
+        /// <summary>Lanes older than this are listed again for the game server to measure.</summary>
+        [JsonPropertyName("laneMaxAgeHours")]
+        public int LaneMaxAgeHours { get; set; } = 24;
     }
 
     /// <summary>

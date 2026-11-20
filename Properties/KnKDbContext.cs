@@ -99,6 +99,14 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<ProductionYieldRow> ProductionYieldRows { get; set; } = null!;
     public virtual DbSet<ProductionKindPrimaryOutput> ProductionKindPrimaryOutputs { get; set; } = null!;
     public virtual DbSet<ProductionYieldOverride> ProductionYieldOverrides { get; set; } = null!;
+    // ---- Transport core P5 (PandiO/knk-workspace#79) ----
+    public virtual DbSet<TransportOrder> TransportOrders { get; set; } = null!;
+    public virtual DbSet<TransportStop> TransportStops { get; set; } = null!;
+    public virtual DbSet<TransportStopLine> TransportStopLines { get; set; } = null!;
+    public virtual DbSet<TransportOrderLine> TransportOrderLines { get; set; } = null!;
+    public virtual DbSet<TransportAssignment> TransportAssignments { get; set; } = null!;
+    public virtual DbSet<TransportEvent> TransportEvents { get; set; } = null!;
+    public virtual DbSet<TransportLane> TransportLanes { get; set; } = null!;
     // ---- end production world ----
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
@@ -3378,6 +3386,119 @@ public partial class KnKDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
         // ---- end yield areas ----
+
+        // ---- Transport core P5 (PandiO/knk-workspace#79, production DESIGN § 7), one contiguous block ----
+        // Orders with their stops (per-stop planned amounts), cargo lines, simulated carrier assignments and event log;
+        // each order owns one Transit storage (unique). Children go with their order (Cascade); storages, structures and
+        // blueprints an order names are Restrict (the ledger keeps every storage it names). Lanes go with either
+        // structure (Cascade) and are unique per direction.
+        modelBuilder.Entity<TransportOrder>(entity =>
+        {
+            entity.ToTable("transport_orders");
+            entity.Property(e => e.Origin).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.StatusReason).HasMaxLength(TransportOrder.StatusReasonMaxLength);
+            entity.Property(e => e.Note).HasMaxLength(TransportOrder.NoteMaxLength);
+            entity.Property(e => e.ClientKey).HasMaxLength(TransportOrder.ClientKeyMaxLength);
+            entity.Property(e => e.Risk).HasPrecision(9, 4);
+            entity.Property(e => e.ExecuteAfter).HasColumnType("datetime(6)");
+            entity.Property(e => e.NextActionAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.DepartedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.LegStartedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.EtaAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.WaitingSince).HasColumnType("datetime(6)");
+            entity.Property(e => e.CompletedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.NextActionAt);
+            entity.HasIndex(e => new { e.Status, e.Origin });
+            entity.HasIndex(e => new { e.SourceStructureId, e.Origin, e.Status });
+            entity.HasIndex(e => e.CargoStorageId).IsUnique();
+            entity.HasIndex(e => e.ClientKey).IsUnique();
+            entity.HasOne(e => e.SourceStorage).WithMany().HasForeignKey(e => e.SourceStorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CargoStorage).WithMany().HasForeignKey(e => e.CargoStorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SourceStructure).WithMany().HasForeignKey(e => e.SourceStructureId)
+                .OnDelete(DeleteBehavior.ClientNoAction);
+            entity.HasOne(e => e.CarrierStructure).WithMany().HasForeignKey(e => e.CarrierStructureId)
+                .OnDelete(DeleteBehavior.ClientNoAction);
+        });
+
+        modelBuilder.Entity<TransportStop>(entity =>
+        {
+            entity.ToTable("transport_stops");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.DistanceSource).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.DistanceBlocks).HasPrecision(12, 2);
+            entity.Property(e => e.EtaAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ArrivedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.CompletedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.TransportOrderId, e.Sequence });
+            entity.HasIndex(e => e.StorageId);
+            entity.HasOne(e => e.TransportOrder).WithMany(o => o.Stops).HasForeignKey(e => e.TransportOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Storage).WithMany().HasForeignKey(e => e.StorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Structure).WithMany().HasForeignKey(e => e.StructureId).OnDelete(DeleteBehavior.ClientNoAction);
+        });
+
+        modelBuilder.Entity<TransportStopLine>(entity =>
+        {
+            entity.ToTable("transport_stop_lines");
+            entity.HasIndex(e => new { e.TransportStopId, e.ItemBlueprintId }).IsUnique();
+            entity.HasOne(e => e.TransportStop).WithMany(s => s.Lines).HasForeignKey(e => e.TransportStopId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TransportOrderLine>(entity =>
+        {
+            entity.ToTable("transport_order_lines");
+            entity.HasIndex(e => new { e.TransportOrderId, e.ItemBlueprintId }).IsUnique();
+            entity.HasOne(e => e.TransportOrder).WithMany(o => o.Lines).HasForeignKey(e => e.TransportOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TransportAssignment>(entity =>
+        {
+            entity.ToTable("transport_assignments");
+            entity.Property(e => e.Mode).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.SpeedBlocksPerSecond).HasPrecision(9, 4);
+            entity.Property(e => e.AssignedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ReleasedAt).HasColumnType("datetime(6)");
+            entity.Ignore(e => e.IsActive);
+            entity.HasIndex(e => new { e.CarrierStructureId, e.ReleasedAt });
+            entity.HasOne(e => e.TransportOrder).WithMany(o => o.Assignments).HasForeignKey(e => e.TransportOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.CarrierStructure).WithMany().HasForeignKey(e => e.CarrierStructureId)
+                .OnDelete(DeleteBehavior.ClientNoAction);
+        });
+
+        modelBuilder.Entity<TransportEvent>(entity =>
+        {
+            entity.ToTable("transport_events");
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(24);
+            entity.Property(e => e.StatusAfter).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Message).IsRequired().HasMaxLength(TransportEvent.MessageMaxLength);
+            entity.Property(e => e.At).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.TransportOrderId, e.At });
+            entity.HasOne(e => e.TransportOrder).WithMany(o => o.Events).HasForeignKey(e => e.TransportOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TransportLane>(entity =>
+        {
+            entity.ToTable("transport_lanes");
+            entity.Property(e => e.Source).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.RoadDistance).HasPrecision(12, 2);
+            entity.Property(e => e.StraightDistance).HasPrecision(12, 2);
+            entity.Property(e => e.RouteEdgeIdsJson).HasMaxLength(TransportLane.EdgeIdsMaxLength);
+            entity.Property(e => e.Note).HasMaxLength(TransportLane.NoteMaxLength);
+            entity.Property(e => e.MeasuredAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.FromStructureId, e.ToStructureId }).IsUnique();
+            entity.HasIndex(e => e.ToStructureId);
+            entity.HasOne(e => e.FromStructure).WithMany().HasForeignKey(e => e.FromStructureId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ToStructure).WithMany().HasForeignKey(e => e.ToStructureId).OnDelete(DeleteBehavior.Cascade);
+        });
+        // ---- end transport ----
 
         OnModelCreatingPartial(modelBuilder);
     }

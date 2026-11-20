@@ -25,16 +25,55 @@ namespace knkwebapi_v2.Services.Territory
             var dto = JsonColumn.Deserialize<ProductionSettingsDto>(settings?.ProductionSettingsJson) ?? new ProductionSettingsDto();
             dto.Territory ??= new TerritorySettingsDto();
             dto.Engine ??= new ProductionEngineSettingsDto();
+            dto.Transport ??= new ProductionTransportSettingsDto();
             return dto;
         }
 
-        /// <summary>Validates (throws <see cref="System.ArgumentException"/>) and returns a clean copy.</summary>
-        public static ProductionSettingsDto Normalize(ProductionSettingsDto dto) => new()
+        /// <summary>Validates (throws <see cref="System.ArgumentException"/>) and returns a clean copy. A missing transport
+        /// section keeps <paramref name="stored"/>'s (P5: clients that don't send it yet don't reset it).</summary>
+        public static ProductionSettingsDto Normalize(ProductionSettingsDto dto, ProductionSettingsDto? stored = null) => new()
         {
             Enabled = dto.Enabled,
             Territory = TerritoryRules.Validate(dto.Territory),
             Engine = ValidateEngine(dto.Engine),
+            Transport = ValidateTransport(dto.Transport ?? stored?.Transport),
         };
+
+        private static ProductionTransportSettingsDto ValidateTransport(ProductionTransportSettingsDto? t)
+        {
+            t ??= new ProductionTransportSettingsDto();
+            const string p = "production.transport.";
+            if (t.WalkingSpeedBlocksPerSecond is < ProductionTransportSettingsDto.MinSpeed or > ProductionTransportSettingsDto.MaxSpeed)
+                throw new System.ArgumentException($"{p}walkingSpeedBlocksPerSecond must be {ProductionTransportSettingsDto.MinSpeed} to {ProductionTransportSettingsDto.MaxSpeed}.");
+            if (t.DefaultCarrierCapacity is < 1 or > ProductionTransportSettingsDto.MaxUnits)
+                throw new System.ArgumentException($"{p}defaultCarrierCapacity must be 1 to {ProductionTransportSettingsDto.MaxUnits}.");
+            if (t.DefaultThresholdPercent is < 1 or > 100)
+                throw new System.ArgumentException($"{p}defaultThresholdPercent must be 1 to 100.");
+            if (t.DefaultThresholdUnits is < 1 or > ProductionTransportSettingsDto.MaxUnits)
+                throw new System.ArgumentException($"{p}defaultThresholdUnits must be 1 to {ProductionTransportSettingsDto.MaxUnits}.");
+            if (t.UnmeasuredRouteFactor is < ProductionTransportSettingsDto.MinRouteFactor or > ProductionTransportSettingsDto.MaxRouteFactor)
+                throw new System.ArgumentException($"{p}unmeasuredRouteFactor must be {ProductionTransportSettingsDto.MinRouteFactor} to {ProductionTransportSettingsDto.MaxRouteFactor}.");
+            if (t.FallbackDistanceBlocks is < 1 or > ProductionTransportSettingsDto.MaxUnits)
+                throw new System.ArgumentException($"{p}fallbackDistanceBlocks must be 1 to {ProductionTransportSettingsDto.MaxUnits}.");
+            if (t.AwaitingSpaceMinutes is < 1 or > ProductionTransportSettingsDto.MaxMinutes)
+                throw new System.ArgumentException($"{p}awaitingSpaceMinutes must be 1 to {ProductionTransportSettingsDto.MaxMinutes}.");
+            if (t.MaxReroutes is < 0 or > 10)
+                throw new System.ArgumentException($"{p}maxReroutes must be 0 to 10.");
+            if (t.LaneMaxAgeHours is < 1 or > 8760)
+                throw new System.ArgumentException($"{p}laneMaxAgeHours must be 1 to 8760.");
+            return new ProductionTransportSettingsDto
+            {
+                WalkingSpeedBlocksPerSecond = t.WalkingSpeedBlocksPerSecond,
+                DefaultCarrierCapacity = t.DefaultCarrierCapacity,
+                DefaultThresholdPercent = t.DefaultThresholdPercent,
+                DefaultThresholdUnits = t.DefaultThresholdUnits,
+                UnmeasuredRouteFactor = t.UnmeasuredRouteFactor,
+                FallbackDistanceBlocks = t.FallbackDistanceBlocks,
+                AwaitingSpaceMinutes = t.AwaitingSpaceMinutes,
+                MaxReroutes = t.MaxReroutes,
+                LaneMaxAgeHours = t.LaneMaxAgeHours,
+            };
+        }
 
         private static ProductionEngineSettingsDto ValidateEngine(ProductionEngineSettingsDto? e)
         {

@@ -32,6 +32,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.acceptsDeliveries, o => o.MapFrom(s => s.AcceptsDeliveries))
                 .ForMember(d => d.priority, o => o.MapFrom(s => s.Priority))
                 .ForMember(d => d.productionKindId, o => o.Ignore())
+                .ForMember(d => d.productionKindName, o => o.Ignore())
                 .ForMember(d => d.level, o => o.Ignore())
                 .ForMember(d => d.productionEnabled, o => o.Ignore())
                 .ForMember(d => d.roadConnection, o => o.Ignore());
@@ -41,6 +42,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.acceptsDeliveries, o => o.Ignore())
                 .ForMember(d => d.priority, o => o.Ignore())
                 .ForMember(d => d.productionKindId, o => o.MapFrom(s => s.ProductionKindId))
+                .ForMember(d => d.productionKindName, o => o.MapFrom(s => s.ProductionKind != null ? s.ProductionKind.Name : null))
                 .ForMember(d => d.level, o => o.MapFrom(s => s.Level))
                 .ForMember(d => d.productionEnabled, o => o.MapFrom(s => s.ProductionEnabled))
                 .ForMember(d => d.roadConnection, o => o.MapFrom(s => s.RoadConnection.ToString()));

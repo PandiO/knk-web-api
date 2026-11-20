@@ -131,6 +131,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("productionKindId")]
         public int? productionKindId { get; set; }
 
+        /// <summary>The production kind's name (#838), so the list shows it without a lookup per row.</summary>
+        [JsonPropertyName("productionKindName")]
+        public string? productionKindName { get; set; }
+
         [JsonPropertyName("level")]
         public int? level { get; set; }
 
