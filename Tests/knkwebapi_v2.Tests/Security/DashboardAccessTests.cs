@@ -21,6 +21,7 @@ public class DashboardAccessTests
         "MinecraftMaterialRef", "User", "PermissionGroup", "LootboxType", "LootboxSpecialEntry", "LootboxSpawnArea",
         "BannerDesign", "BannerLayer", "Clan", "SiegeScenario", "SiegeTeam", "SiegeSpawnpoint", "SiegeObjective", "SiegeLobby",
         "SiegeWeaponTemplate", "SiegeAmmoType", "SiegeWeaponSpot", "UserSiegeWeaponUnlock",
+        "SiegeShopCategory", "SiegeShopEntry", "SiegeScenarioShopOverride",
     };
 
     /// <summary>Registry entries without <c>[FormConfigurableEntity]</c>: the roads page's profiles.</summary>

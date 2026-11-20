@@ -401,6 +401,15 @@ namespace knkwebapi_v2.Attributes
                 Del<ISiegeWeaponService>((s, id) => s.DeleteUnlockAsync(id)),
                 Lists<ISiegeWeaponService, UserSiegeWeaponUnlockReadDto>((s, q) => s.SearchUnlocksAsync(q))),
             ViewOnly("SiegeWeaponTemplateAmmoType", DashboardArea.Siege, StaffPermissions.SiegeManage),
+            // Siege shop catalogue (siege-shop DESIGN.md § 6, PandiO/knk-workspace#867).
+            Type("SiegeShopCategory", DashboardArea.Siege, StaffPermissions.SiegeManage,
+                Del<ISiegeShopService>((s, id) => s.DeleteCategoryAsync(id)),
+                Lists<ISiegeShopService, SiegeShopCategoryReadDto>((s, q) => s.SearchCategoriesAsync(q))),
+            Type("SiegeShopEntry", DashboardArea.Siege, StaffPermissions.SiegeManage,
+                Del<ISiegeShopService>((s, id) => s.DeleteEntryAsync(id)),
+                Lists<ISiegeShopService, SiegeShopEntryListDto>((s, q) => s.SearchEntriesAsync(q))),
+            Type("SiegeScenarioShopOverride", DashboardArea.Siege, StaffPermissions.SiegeManage,
+                Del<ISiegeShopService>((s, id) => s.DeleteOverrideAsync(id))),
 
             // Roads: not a [FormConfigurableEntity]; the roads page lists profiles itself (no search to export).
             Type("RoadProfile", DashboardArea.Roads, StaffPermissions.RoadManage,

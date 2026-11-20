@@ -351,6 +351,23 @@ lines, carrier assignments and events are listed on the order's page (view only,
 the two structures and the road distance; the game server's lane measurer (#681) fills lanes in on its own. GUIDs:
 uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields uuid5(that, "step:"/"field:" + name).
 
+**Siege shop catalogue (PandiO/knk-workspace#867, 2026-11-20):** new seeds `SiegeShopCategory`, `SiegeShopEntry` and
+`SiegeScenarioShopOverride` (seed v1 each), and two in-place additions without a new `configurationGuid` (the siege
+weapons precedent above): `SiegeScenario.json` gets a "Siege shop" step after "Siege weapons" with the owned
+`ShopOverrides` list (`SiegeScenarioShopOverride`) and `ShopEntries` list (scenario-only `SiegeShopEntry`), and
+`ItemBlueprint.json` gets `PotionType` after the armour trim material. A database that imported those two seeds earlier
+gets them by adding the same step and fields in the form designer (import never overwrites). The entry's "Item" step
+shows for kind Item only and "Siege weapon" for kind SiegeWeapon. The override's entry picker lists the modes' default
+entries only (`pickerFilters` `defaultsOnly: true`). GUIDs: new seeds use configuration uuid5(URL namespace,
+"knk-formconfig:<Entity>:seed-v1") and uuid5(that, "step:"/"field:" + name); the in-place additions uuid5(the
+configuration GUID, "step:Siege shop", "Siege shop/<Field>" or "<step>/PotionType").
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `SiegeShopCategory` | SiegeShopCategory - Default (seed v1) | — |
+| `SiegeShopEntry` | SiegeShopEntry - Default (seed v1) | — |
+| `SiegeScenarioShopOverride` | SiegeScenarioShopOverride - Default (seed v1) | `SiegeShopEntry` |
+
 **Terminals and menus P6a seeds (PandiO/knk-workspace#683, 2026-11-20):** a new seed `StorageContainer` with a display
 seed in `DisplayConfigurationSeeds/` (G17), and two new versions (#881, #877). Import in any order.
 

@@ -12,8 +12,8 @@ using knkwebapi_v2.Properties;
 namespace knkwebapi_v2.Migrations
 {
     [DbContext(typeof(KnKDbContext))]
-    [Migration("20261120184128_AddStorageContainers")]
-    partial class AddStorageContainers
+    [Migration("20261120183543_AddSiegeShopCatalogue")]
+    partial class AddSiegeShopCatalogue
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2682,6 +2682,10 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<string>("Name")
                         .HasColumnType("longtext");
+
+                    b.Property<string>("PotionType")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("ShieldBannerBaseColor")
                         .HasMaxLength(20)
@@ -8204,6 +8208,215 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("siege_scenario_gates", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeScenarioShopOverride", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CooldownStepSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Hidden")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("MaxPerMatch")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Price")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PriceStep")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegeShopEntryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("SiegeShopEntryId");
+
+                    b.HasIndex("SiegeScenarioId", "SiegeShopEntryId")
+                        .IsUnique();
+
+                    b.ToTable("siege_scenario_shop_overrides", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeShopCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("IconMaterial")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("siege_shop_categories", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            IconMaterial = "minecraft:crossbow",
+                            Key = "siege-weapons",
+                            Name = "Siege weapons",
+                            SortOrder = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            IconMaterial = "minecraft:golden_apple",
+                            Key = "consumables",
+                            Name = "Consumables",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            IconMaterial = "minecraft:blaze_rod",
+                            Key = "magic",
+                            Name = "Magic",
+                            SortOrder = 2
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeShopEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CooldownCurve")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<double?>("CooldownGrowthFactor")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("CooldownMaxSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CooldownStepSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("GameMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("IconMaterial")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int?>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("MaxPerMatch")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Price")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PriceCurve")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<double?>("PriceGrowthFactor")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("PriceMax")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PriceStep")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SiegeScenarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SiegeWeaponTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("SiegeScenarioId");
+
+                    b.HasIndex("SiegeWeaponTemplateId");
+
+                    b.HasIndex("GameMode", "SiegeScenarioId", "SortOrder");
+
+                    b.ToTable("siege_shop_entries", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeSpawnpoint", b =>
                 {
                     b.Property<int>("Id")
@@ -8970,70 +9183,6 @@ namespace knkwebapi_v2.Migrations
                             SystemKey = "SYS_WORLD",
                             TotalUnits = 0L
                         });
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.StorageContainer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ContainerType")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("CreatedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsDouble")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Label")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Mode")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<int>("Slots")
-                        .HasColumnType("int");
-
-                    b.Property<int>("StorageId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("WorldName")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<int>("X")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Y")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Z")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StorageId");
-
-                    b.HasIndex("WorldName", "X", "Y", "Z")
-                        .IsUnique();
-
-                    b.ToTable("storage_containers", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Street", b =>
@@ -12723,6 +12872,57 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("SiegeScenario");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeScenarioShopOverride", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany("ShopOverrides")
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeShopEntry", "SiegeShopEntry")
+                        .WithMany()
+                        .HasForeignKey("SiegeShopEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SiegeScenario");
+
+                    b.Navigation("SiegeShopEntry");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeShopEntry", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.SiegeShopCategory", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeScenario", "SiegeScenario")
+                        .WithMany("ShopEntries")
+                        .HasForeignKey("SiegeScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("knkwebapi_v2.Models.SiegeWeaponTemplate", "SiegeWeaponTemplate")
+                        .WithMany()
+                        .HasForeignKey("SiegeWeaponTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Category");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("SiegeScenario");
+
+                    b.Navigation("SiegeWeaponTemplate");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeSpawnpoint", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Location", "Location")
@@ -12965,17 +13165,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Domain");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.StorageContainer", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.Storage", "Storage")
-                        .WithMany()
-                        .HasForeignKey("StorageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Storage");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.TransportAssignment", b =>
@@ -13741,6 +13930,10 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Gates");
 
                     b.Navigation("Objectives");
+
+                    b.Navigation("ShopEntries");
+
+                    b.Navigation("ShopOverrides");
 
                     b.Navigation("Teams");
 

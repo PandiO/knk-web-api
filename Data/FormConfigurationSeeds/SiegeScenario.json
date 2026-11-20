@@ -427,6 +427,38 @@
       ]
     },
     {
+      "stepGuid": "cdfed0d3-af59-519a-a551-0ef183854c29",
+      "stepName": "Siege shop",
+      "description": "Change the mode's default shop for this scenario: an override hides a default entry or changes its price, quantity or brakes; a scenario-only entry is sold only here. Available once the scenario is saved; each is saved when you finish its form.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ab552d08-8afa-58a1-ac1a-b712c494b90b",
+          "fieldName": "ShopOverrides",
+          "label": "Shop overrides",
+          "description": "Create New opens the override form.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "SiegeScenarioShopOverride",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        },
+        {
+          "fieldGuid": "a0f852bb-9ffb-5bd7-b671-0916fa7ed688",
+          "fieldName": "ShopEntries",
+          "label": "Scenario-only entries",
+          "description": "Create New opens the shop entry form with this scenario filled in.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "SiegeShopEntry",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    },
+    {
       "stepGuid": "f832a5d3-a589-5f09-8ed8-af0e07a888b7",
       "stepName": "Readiness",
       "description": "Whether the scenario can be played. Fix every error and press Re-check; only ready scenarios are put up for voting by a lobby.",

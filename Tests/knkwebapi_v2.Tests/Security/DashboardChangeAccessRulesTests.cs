@@ -77,6 +77,9 @@ public class DashboardChangeAccessRulesTests
         ("SiegeAmmoTypesController", "Create", "SiegeAmmoType"), ("SiegeAmmoTypesController", "Update", "SiegeAmmoType"),
         ("SiegeWeaponSpotsController", "Create", "SiegeWeaponSpot"), ("SiegeWeaponSpotsController", "Update", "SiegeWeaponSpot"),
         ("UserSiegeWeaponUnlocksController", "Create", "UserSiegeWeaponUnlock"), ("UserSiegeWeaponUnlocksController", "Update", "UserSiegeWeaponUnlock"),
+        ("SiegeShopCategoriesController", "Create", "SiegeShopCategory"), ("SiegeShopCategoriesController", "Update", "SiegeShopCategory"),
+        ("SiegeShopEntriesController", "Create", "SiegeShopEntry"), ("SiegeShopEntriesController", "Update", "SiegeShopEntry"),
+        ("SiegeScenarioShopOverridesController", "Create", "SiegeScenarioShopOverride"), ("SiegeScenarioShopOverridesController", "Update", "SiegeScenarioShopOverride"),
     };
 
     private static IEnumerable<(Type Controller, MethodInfo Method, RequireDashboardChangeAttribute Rule)> Carriers() =>
