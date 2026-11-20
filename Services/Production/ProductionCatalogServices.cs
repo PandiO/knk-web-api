@@ -1105,7 +1105,8 @@ namespace knkwebapi_v2.Services.Production
             if (r == null) return null;
             var ids = ProductionCycleRecordMapping.BlueprintIds(r).Distinct().ToList();
             var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name);
-            return ProductionCycleRecordMapping.WithNames(r, names);
+            return ProductionCycleRecordMapping.WithNames(r, names,
+                await ProductionCycleRecordMapping.StructureNamesAsync(_db, new[] { r.ProductionStructureId }));
         }
 
         public async Task<PagedResultDto<ProductionCycleRecordDto>> SearchAsync(PagedQueryDto query)
@@ -1121,9 +1122,10 @@ namespace knkwebapi_v2.Services.Production
             var page = await TerritoryPaging.PageAsync(q, query);
             var ids = page.Items.SelectMany(ProductionCycleRecordMapping.BlueprintIds).Distinct().ToList();
             var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name);
+            var structures = await ProductionCycleRecordMapping.StructureNamesAsync(_db, page.Items.Select(r => r.ProductionStructureId));
             return new PagedResultDto<ProductionCycleRecordDto>
             {
-                Items = page.Items.Select(r => ProductionCycleRecordMapping.WithNames(r, names)).ToList(),
+                Items = page.Items.Select(r => ProductionCycleRecordMapping.WithNames(r, names, structures)).ToList(),
                 TotalCount = page.TotalCount, PageNumber = page.PageNumber, PageSize = page.PageSize,
             };
         }

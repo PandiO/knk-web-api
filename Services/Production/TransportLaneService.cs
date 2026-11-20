@@ -211,14 +211,18 @@ namespace knkwebapi_v2.Services.Production
                 if (reason == null) continue;
                 list.Add(new TransportLaneDueDto
                 {
-                    FromStructureId = a.Id, FromStructureName = a.Name, From = Point(a),
-                    ToStructureId = b.Id, ToStructureName = b.Name, To = Point(b),
+                    FromStructureId = a.Id, FromStructureName = a.Name, FromKind = KindOf(a), From = Point(a),
+                    ToStructureId = b.Id, ToStructureName = b.Name, ToKind = KindOf(b), To = Point(b),
                     Reason = reason, LastMeasuredAt = lane?.MeasuredAt,
                 });
                 if (list.Count >= limit) break;
             }
             return list;
         }
+
+        public const string ProducerKind = "Producer", WarehouseKind = "Warehouse";
+
+        private static string KindOf(Structure s) => s is Warehouse ? WarehouseKind : ProducerKind;
 
         private static TransportPointDto? Point(Structure s) =>
             s.Location == null ? null : new TransportPointDto { World = s.Location.World, X = s.Location.X, Y = s.Location.Y, Z = s.Location.Z };

@@ -752,7 +752,8 @@ namespace knkwebapi_v2.Services.Production
         {
             var ids = ProductionCycleRecordMapping.BlueprintIds(r).Distinct().ToList();
             var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name, ct);
-            return ProductionCycleRecordMapping.WithNames(r, names);
+            return ProductionCycleRecordMapping.WithNames(r, names,
+                await ProductionCycleRecordMapping.StructureNamesAsync(_db, new[] { r.ProductionStructureId }, ct));
         }
 
         // ================= Workers and upgrades =================
@@ -916,8 +917,21 @@ namespace knkwebapi_v2.Services.Production
         private static List<ConsumedInputDto> Inputs(ProductionCycleRecord r) =>
             string.IsNullOrEmpty(r.InputsJson) ? new() : JsonSerializer.Deserialize<List<ConsumedInputDto>>(r.InputsJson) ?? new();
 
-        public static ProductionCycleRecordDto WithNames(ProductionCycleRecord r, IReadOnlyDictionary<int, string> names) =>
-            ToDto(r, names.GetValueOrDefault(r.ItemBlueprintId), names);
+        public static ProductionCycleRecordDto WithNames(ProductionCycleRecord r, IReadOnlyDictionary<int, string> names,
+            IReadOnlyDictionary<int, string>? structureNames = null)
+        {
+            var dto = ToDto(r, names.GetValueOrDefault(r.ItemBlueprintId), names);
+            dto.ProductionStructureName = structureNames?.GetValueOrDefault(r.ProductionStructureId);
+            return dto;
+        }
+
+        /// <summary>The names of the records' structures (#890).</summary>
+        public static Task<Dictionary<int, string>> StructureNamesAsync(KnKDbContext db, IEnumerable<int> structureIds,
+            CancellationToken ct = default)
+        {
+            var ids = structureIds.Distinct().ToList();
+            return db.ProductionStructures.AsNoTracking().Where(s => ids.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
+        }
 
         public static ProductionCycleRecordDto ToDto(ProductionCycleRecord r, string? blueprintName,
             IReadOnlyDictionary<int, string>? names = null) => new()

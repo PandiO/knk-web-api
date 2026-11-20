@@ -554,13 +554,37 @@ namespace knkwebapi_v2.Services.Production
 
         private async Task<List<ProductionAreaOverlapDto>> OverlapsOfAsync(ProductionArea area, bool sharedOnly)
         {
-            var q = _db.ProductionAreas.AsNoTracking().Include(a => a.ProductionStructure)
+            var q = _db.ProductionAreas.AsNoTracking().Include(a => a.ProductionStructure).ThenInclude(s => s.ProductionKind)
                 .Where(a => a.Id != area.Id && a.WorldName == area.WorldName
                     && a.MinX <= area.MaxX && area.MinX <= a.MaxX && a.MinZ <= area.MaxZ && area.MinZ <= a.MaxZ
                     && a.MinY <= area.MaxY && area.MinY <= a.MaxY);
             if (sharedOnly) q = q.Where(a => !a.Exclusive && a.Enabled && a.ProductionStructureId != area.ProductionStructureId);
             var rows = await q.OrderBy(a => a.Id).ToListAsync();
-            return rows.Select(a => OverlapDto(a, a.ProductionStructure.Name)).ToList();
+            return rows.Select(a =>
+            {
+                var dto = OverlapDto(a, a.ProductionStructure.Name);
+                dto.UnitTypes = UnitTypes(a.ProductionStructure.ProductionKind?.SurveyProfileJson);
+                return dto;
+            }).ToList();
+        }
+
+        /// <summary>The <c>unitTypes</c> of a kind's survey profile (#875); null when missing or unreadable.</summary>
+        public static List<string>? UnitTypes(string? surveyProfileJson)
+        {
+            if (string.IsNullOrWhiteSpace(surveyProfileJson)) return null;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(surveyProfileJson);
+                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object
+                    || !doc.RootElement.TryGetProperty("unitTypes", out var types)
+                    || types.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
+                return types.EnumerateArray().Where(t => t.ValueKind == System.Text.Json.JsonValueKind.String)
+                    .Select(t => t.GetString()!).ToList();
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
+            }
         }
 
         public async Task<List<SurveyDueAreaDto>> SurveyDueAsync(int limit)
