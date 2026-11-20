@@ -38,6 +38,11 @@ namespace knkwebapi_v2.Dtos
         // IMPLEMENTATION_PLAN.md §5.2a) - knk-plugin's MinecraftCatalogScanTaskHandler sends the snapshot
         // to api/MinecraftCatalog/scans/{id}/snapshot, then completes the task.
         public const string MinecraftCatalogScan = "MinecraftCatalogScan";
+
+        // Player-driven capture of a radius production area (PandiO/knk-workspace#877, P4): the player stands at the
+        // centre and sets the radius in game; the plugin's handler (a later plugin link) completes the task with
+        // centerX/Y/Z, radius and world, which the ProductionArea form spreads over its fields. No server-side branching.
+        public const string CaptureRadius = "CaptureRadius";
     }
 
     /// <summary>

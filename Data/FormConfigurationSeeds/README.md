@@ -350,3 +350,27 @@ Staff make a manual order with the web app's manual order form (#682) or `POST a
 lines, carrier assignments and events are listed on the order's page (view only, no seeds). `TransportLane` asks for
 the two structures and the road distance; the game server's lane measurer (#681) fills lanes in on its own. GUIDs:
 uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields uuid5(that, "step:"/"field:" + name).
+
+**Terminals and menus P6a seeds (PandiO/knk-workspace#683, 2026-11-20):** a new seed `StorageContainer` with a display
+seed in `DisplayConfigurationSeeds/` (G17), and two new versions (#881, #877). Import in any order.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `StorageContainer` | StorageContainer - Default (seed v1) | — |
+| `StockTransaction` | StockTransaction - Default (seed v2) | — (replaces v1) |
+| `ProductionArea` | ProductionArea - Default (seed v2) | — (replaces v1) |
+
+`StorageContainer` binds a block to a storage: the storage and the mode (Terminal or Display) on step 1, the world,
+block position, block type and the double-chest flag on step 2. In game, staff bind with `/knk storage bind` instead
+(the plugin link #74). The slots are worked out by the API (27, or 54 for a double chest), and every bound container
+adds its slots × the storage's `UnitsPerSlot` to the storage's cap. New versions, each with a new `configurationGuid`
+and name so it imports next to the older one; make it the default and delete or keep the older one by hand:
+
+1. `StockTransaction` seed v2 (#881): the Reason list has `Upgrade` (level upgrades, P3) before `Correction`.
+2. `ProductionArea` seed v2 (#877): "Region" (`WgRegionId`) captures a region in game (world task `RegionClaim`), and
+   "Radius" captures a centre and radius (world task `CaptureRadius`, a known type now; the plugin handler comes with a
+   later plugin link). A Region-shaped area whose bounds are left empty takes them from the region's stored outline.
+
+GUIDs: the new seed uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields uuid5(that,
+"step:"/"field:" + name); new versions uuid5(previous configuration GUID, "seed-v2"), every kept step/field
+uuid5(previous configuration GUID, its previous GUID).
