@@ -388,7 +388,8 @@ public static partial class MenuTemplateSeed
                     Width = 9,
                     Height = 1,
                     Overflow = MenuOverflowMode.Hide,
-                    Items = { changeSpawn, status, help, BackButton(8, 3) },
+                    // Siege shop L3 (#868): the Shop button (slot 0), shown only while the viewer can use a shop.
+                    Items = { changeSpawn, status, help, BackButton(8, 3), SiegeShopButton() },
                 },
                 new MenuSectionTemplate
                 {

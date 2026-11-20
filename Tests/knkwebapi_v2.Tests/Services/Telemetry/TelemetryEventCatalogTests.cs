@@ -19,6 +19,7 @@ public class TelemetryEventCatalogTests
     [InlineData("siege.objective_captured"), InlineData("siege.gate_destroyed"), InlineData("discovery.granted")]
     [InlineData("currency.posting"), InlineData("api.call_failed"), InlineData("telemetry.dropped")]
     [InlineData("siege.points_earned")] // siege shop L1 (PandiO/knk-workspace#866)
+    [InlineData("siege.shop_purchase")] // siege shop L3 (PandiO/knk-workspace#868)
     public void EveryBaselineFamilyOfTheDesign_IsListedAsBaseline(string name)
     {
         var def = TelemetryEventCatalog.Find(name);
