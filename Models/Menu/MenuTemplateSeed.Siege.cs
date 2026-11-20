@@ -172,6 +172,7 @@ public static partial class MenuTemplateSeed
                             Bind("Lore", "&7Players playing Siege: &a$siegeServer.getPlayingCount$", VariableRefreshPolicy.Ttl, 5, 20),
                             Bind("Lore", "$siegeServer.getEntryHintLine$", VariableRefreshPolicy.Ttl, 6, 20)),
                         BackButton(8, 1),
+                        SiegeUnlocksButton(), // siege shop L4 (#869), MenuTemplateSeed.SiegeUnlocks.cs
                     },
                 },
                 new MenuSectionTemplate

@@ -51,6 +51,8 @@ public static partial class MenuTemplateSeed
 
         // Siege shop L3 (#868): siege.information menus seeded before the shop get its Shop button once.
         await AddSiegeShopButtonAsync(context, logger, cancellationToken);
+        // Siege shop L4 (#869): siege.overview menus seeded before the unlocks get their Siege unlocks button once.
+        await AddSiegeUnlocksButtonAsync(context, logger, cancellationToken);
         // A hub seeded before the production menus gets their "Structures" tile (P6a, #683).
         await RepairProductionHubTileAsync(context, logger, cancellationToken);
     }
@@ -694,6 +696,10 @@ public static partial class MenuTemplateSeed
 
         // Siege shop L3 (PandiO/knk-workspace#868) - see MenuTemplateSeed.SiegeShop.cs.
         foreach (var template in SiegeShopTemplates())
+            yield return template;
+
+        // Siege shop L4 (PandiO/knk-workspace#869) - see MenuTemplateSeed.SiegeUnlocks.cs.
+        foreach (var template in SiegeUnlocksTemplates())
             yield return template;
 
         // Player statistics privacy (KNG-34) - see MenuTemplateSeed.Statistics.cs.
