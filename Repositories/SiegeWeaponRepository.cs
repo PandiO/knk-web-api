@@ -19,7 +19,8 @@ namespace knkwebapi_v2.Repositories
         // ---- Templates ----
 
         private IQueryable<SiegeWeaponTemplate> TemplatesWithAmmo() => _context.SiegeWeaponTemplates
-            .Include(t => t.AllowedAmmoTypes).ThenInclude(a => a.SiegeAmmoType);
+            .Include(t => t.AllowedAmmoTypes).ThenInclude(a => a.SiegeAmmoType)
+            .Include(t => t.UnlockMinTitle);
 
         public async Task<List<SiegeWeaponTemplate>> GetTemplatesAsync() =>
             await TemplatesWithAmmo().OrderBy(t => t.Name).ToListAsync();
@@ -80,6 +81,9 @@ namespace knkwebapi_v2.Repositories
 
         public async Task<bool> TemplateHasUnlocksAsync(int templateId) =>
             await _context.UserSiegeWeaponUnlocks.AnyAsync(u => u.SiegeWeaponTemplateId == templateId);
+
+        public async Task<bool> TitleBracketExistsAsync(int titleBracketId) =>
+            await _context.TitleBrackets.AnyAsync(b => b.Id == titleBracketId);
 
         // ---- Ammo types ----
 

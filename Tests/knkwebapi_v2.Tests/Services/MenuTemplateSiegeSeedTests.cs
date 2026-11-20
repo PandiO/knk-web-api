@@ -30,6 +30,7 @@ public class MenuTemplateSiegeSeedTests
         MenuTemplateSeed.SiegeSpawnpointMenuKey,
         MenuTemplateSeed.SiegeShopMenuKey, // siege shop L3 (PandiO/knk-workspace#868)
         MenuTemplateSeed.SiegeShopCategoryMenuKey,
+        MenuTemplateSeed.SiegeUnlocksMenuKey, // siege shop L4 (PandiO/knk-workspace#869)
     };
 
     private static async Task<(KnKDbContext Context, List<MenuTemplate> Seeded)> SeedTwiceAsync()
@@ -229,6 +230,67 @@ public class MenuTemplateSiegeSeedTests
         var buy = offers.Items.Single(i => i.IsRowTemplate).Actions.Single();
         Assert.Equal("siege.shop.buy", buy.ActionTypeId);
         Assert.Equal("{\"entryId\":\"$row.getEntryId$\"}", buy.ParamsJson);
+    }
+
+    // ===== Siege shop L4 (PandiO/knk-workspace#869): Siege unlocks =====
+
+    [Fact]
+    public async Task Overview_HasASiegeUnlocksButton_OpeningTheUnlocksMenu_869()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var overview = seeded.Single(t => t.Key == MenuTemplateSeed.SiegeOverviewMenuKey);
+        var header = overview.Sections.Single(s => s.Name == "Header");
+
+        var button = header.Items.Single(i => i.SlotOverride == 0);
+        var open = Assert.Single(button.Actions);
+        Assert.Equal(("menu.open", "{\"key\":\"siege.unlocks\"}"), (open.ActionTypeId, open.ParamsJson));
+        // Shown once a plugin with the feature validated the menu, so an older plugin shows the overview as before.
+        Assert.Equal(("menu-available", MenuConditionPhase.Render), (button.Conditions.Single().ConditionTypeId, button.Conditions.Single().Phase));
+        Assert.Equal(new int?[] { 0, 4, 8 }, header.Items.Select(i => i.SlotOverride).OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task UnlocksMenu_ConfirmsAnUnlockableRow_AndSendsTheOthersStraightToTheAction_869()
+    {
+        var (context, seeded) = await SeedTwiceAsync();
+        await using var _ = context;
+        var menu = seeded.Single(t => t.Key == MenuTemplateSeed.SiegeUnlocksMenuKey);
+        var weapons = menu.Sections.Single(s => s.Name == "Weapons");
+        Assert.Equal("siege.unlocks", weapons.ContentSourceId);
+
+        var row = weapons.Items.Single(i => i.IsRowTemplate);
+        var confirm = row.Actions.Single(a => a.ActionTypeId == "menu.confirm.request");
+        Assert.Contains("\"actionTypeId\":\"siege.unlocks.buy\"", confirm.ParamsJson);
+        Assert.Contains("\"expected\":\"true\"", confirm.Conditions.Single().ParamsJson);
+        var direct = row.Actions.Single(a => a.ActionTypeId == "siege.unlocks.buy");
+        Assert.Equal("{\"templateId\":\"$row.getTemplateId$\"}", direct.ParamsJson);
+        Assert.Contains("\"expected\":\"false\"", direct.Conditions.Single().ParamsJson);
+
+        var header = menu.Sections.Single(s => s.Name == "Header").Items;
+        Assert.Equal(2, header.Count(i => i.Conditions.Any(c => c.ConditionTypeId == "siege.unlocks.purchase-pending")));
+    }
+
+    [Fact]
+    public async Task Seed_AddsTheUnlocksButtonOnce_ToAnOverviewSeededBeforeL4_869()
+    {
+        var context = new KnKDbContext(new DbContextOptionsBuilder<KnKDbContext>()
+            .UseInMemoryDatabase($"MenuSiegeUnlocksButton_{Guid.NewGuid()}").Options);
+        await using var _ = context;
+        await MenuTemplateSeed.SeedCanonicalAsync(context);
+        var overview = await context.MenuTemplates.Include(t => t.Sections).ThenInclude(s => s.Items).ThenInclude(i => i.Actions)
+            .SingleAsync(t => t.Key == MenuTemplateSeed.SiegeOverviewMenuKey);
+        var header = overview.Sections.Single(s => s.Name == "Header");
+        header.Items.Remove(header.Items.Single(i => i.SlotOverride == 0)); // as seeded before #869
+        await context.SaveChangesAsync();
+
+        Assert.Equal(1, await MenuTemplateSeed.AddSiegeUnlocksButtonAsync(context));
+        Assert.Equal(0, await MenuTemplateSeed.AddSiegeUnlocksButtonAsync(context));
+
+        var repaired = await context.MenuTemplates.Include(t => t.Sections).ThenInclude(s => s.Items).ThenInclude(i => i.Actions)
+            .SingleAsync(t => t.Key == MenuTemplateSeed.SiegeOverviewMenuKey);
+        Assert.Single(repaired.Sections.SelectMany(s => s.Items),
+            i => i.Actions.Any(a => a.ActionTypeId == "menu.open" && a.ParamsJson!.Contains("siege.unlocks")));
     }
 
     [Fact]

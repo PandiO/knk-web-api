@@ -15,6 +15,7 @@ namespace knkwebapi_v2.Repositories.Interfaces
         Task DeleteTemplateAsync(SiegeWeaponTemplate template);
         Task<PagedResult<SiegeWeaponTemplate>> SearchTemplatesAsync(PagedQuery query);
         Task<bool> TemplateHasUnlocksAsync(int templateId);
+        Task<bool> TitleBracketExistsAsync(int titleBracketId); // siege shop L4 (#869)
 
         // Ammo types
         Task<List<SiegeAmmoType>> GetAmmoTypesAsync();
