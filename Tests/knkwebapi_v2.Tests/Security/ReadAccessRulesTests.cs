@@ -147,6 +147,13 @@ public class ReadAccessRulesTests
         ["ProductionModifiersController.GetById"] = "F ProductionModifier",
         ["ProductionModifiersController.Search"] = "F ProductionModifier",
         ["ProductionStructuresController.GetProduction"] = "F ProductionStructure",
+        // Transport core P5 (#79): orders, lanes, the lanes due for measuring (game server) and a structure's transport view.
+        ["ProductionStructuresController.GetTransport"] = "F ProductionStructure",
+        ["TransportOrdersController.GetById"] = "F TransportOrder",
+        ["TransportOrdersController.Search"] = "F TransportOrder",
+        ["TransportLanesController.GetById"] = "F TransportLane",
+        ["TransportLanesController.Search"] = "F TransportLane",
+        ["TransportLanesController.Due"] = "F TransportLane",
         ["WeatherTypesController.GetAll"] = "F WeatherType",
         ["WeatherTypesController.GetById"] = "F WeatherType",
         ["WeatherTypesController.Search"] = "F WeatherType",

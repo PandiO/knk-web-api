@@ -75,6 +75,17 @@ namespace knkwebapi_v2.Attributes
             ["ProductionYieldOverride"] = Of<knkwebapi_v2.Services.Production.IProductionYieldOverrideService>((s, id) => s.GetByIdAsync(id),
                 o => Text(o, "Name") ?? Join(Text(o, "Kind"), Text(o, "ItemBlueprint")), o => Text(o, "Value"),
                 filters: new[] { IdFilter("productionStructureId"), IdFilter("itemBlueprintId") }),
+            // #838: cycle records have their own dashboard list.
+            ["ProductionCycleRecord"] = Of<knkwebapi_v2.Services.Production.IProductionCycleRecordService>((s, id) => s.GetByIdAsync(id),
+                o => Join(Text(o, "ItemBlueprintName"), Text(o, "SettledAt")), o => Text(o, "StatusAfter"),
+                filters: new[] { IdFilter("productionStructureId"), IdFilter("productionLineId") }),
+            // Transport core P5 (#79): orders (labels for events and links) and lanes.
+            ["TransportOrder"] = Of<knkwebapi_v2.Services.Production.ITransportService>((s, id) => s.GetByIdAsync(id),
+                o => "Transport #" + Text(o, "Id"), o => Join(Text(o, "Origin"), Text(o, "Status")),
+                filters: new[] { IdFilter("sourceStructureId"), IdFilter("structureId") }),
+            ["TransportLane"] = Of<knkwebapi_v2.Services.Production.ITransportLaneService>((s, id) => s.GetByIdAsync(id),
+                o => Join(Text(o, "FromStructure"), Text(o, "ToStructure")), o => Text(o, "RoadDistance"),
+                filters: new[] { IdFilter("structureId") }),
             ["Kingdom"] = Of<IKingdomService>((s, id) => s.GetByIdAsync(id), Name),
             ["Province"] = Of<IProvinceService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "Kingdom"),
                 filters: new[] { IdFilter("kingdomId") }),

@@ -220,6 +220,9 @@ public class LookupFiltersTests : IAsyncLifetime
             ["ProductionKindLevel"] = "productionKindId:Id", // production engine P3 (#86)
             ["ProductionLine"] = "productionStructureId:Id, itemBlueprintId:Id",
             ["ProductionArea"] = "productionStructureId:Id",
+            ["ProductionCycleRecord"] = "productionStructureId:Id, productionLineId:Id", // #838
+            ["TransportOrder"] = "sourceStructureId:Id, structureId:Id", // transport core P5 (#79)
+            ["TransportLane"] = "structureId:Id",
             ["ProductionYieldOverride"] = "productionStructureId:Id, itemBlueprintId:Id",
             ["GateStructure"] = "streetId:Id, districtId:Id, townId:Id, siegeScenarioId:Id, isActive:Flag, isOpened:Flag",
             ["GateDoor"] = "gateStructureId:Id, isActive:Flag",

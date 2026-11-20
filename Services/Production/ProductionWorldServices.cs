@@ -196,6 +196,7 @@ namespace knkwebapi_v2.Services.Production
                 && Enum.TryParse<StructureTerritoryFlag>(f, true, out var flag))
                 q = q.Where(s => s.TerritoryFlag == flag);
             q = Filter(q, query);
+            q = IncludeForList(q);
             q = (query.SortBy ?? "name").ToLowerInvariant() switch
             {
                 "id" => query.SortDescending ? q.OrderByDescending(s => s.Id) : q.OrderBy(s => s.Id),
@@ -213,6 +214,9 @@ namespace knkwebapi_v2.Services.Production
         }
 
         protected virtual IQueryable<TEntity> Filter(IQueryable<TEntity> q, PagedQueryDto query) => q;
+
+        /// <summary>Extra navigations the list rows show (#838: the production kind's name).</summary>
+        protected virtual IQueryable<TEntity> IncludeForList(IQueryable<TEntity> q) => q;
 
         private async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction?> BeginAsync() =>
             Db.Database.IsRelational() && Db.Database.CurrentTransaction == null
@@ -455,6 +459,16 @@ namespace knkwebapi_v2.Services.Production
         protected override async Task FillStoragesAsync(int id, ProductionStructureDto dto)
         {
             dto.Storages = await StoragesOfAsync(id);
+            // A13 (P5, #79): the full Output storage next to the missing road (D4: production stops until it is emptied).
+            var output = await Db.Storages.AsNoTracking()
+                .Where(x => x.Kind == StorageKind.Domain && x.DomainId == id && x.Purpose == StoragePurpose.Output && x.MaxUnits != null)
+                .OrderBy(x => x.Id).FirstOrDefaultAsync();
+            if (output != null && dto.Warnings != null)
+            {
+                decimal used = await new TransportRouting(Db).UsedUnitsAsync(output.Id);
+                if (used >= output.MaxUnits!.Value)
+                    dto.Warnings.Add($"Its Output storage is full ({used:0.##} of {output.MaxUnits} units): production stops until transport carries goods away.");
+            }
             dto.Areas = await Db.ProductionAreas.AsNoTracking().Where(a => a.ProductionStructureId == id).OrderBy(a => a.Id)
                 .Select(a => new ProductionAreaListDto
                 {
@@ -477,6 +491,9 @@ namespace knkwebapi_v2.Services.Production
                 list.Add("Outside its town's territory: it keeps its town and keeps producing.");
             return list;
         }
+
+        protected override IQueryable<ProductionStructure> IncludeForList(IQueryable<ProductionStructure> q) =>
+            q.Include(p => p.ProductionKind);
 
         protected override IQueryable<ProductionStructure> Filter(IQueryable<ProductionStructure> q, PagedQueryDto query)
         {

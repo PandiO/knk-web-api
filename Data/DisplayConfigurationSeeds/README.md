@@ -348,3 +348,12 @@ are API views for the web app link #680, like the production view. GUIDs: new se
 uuid5(configuration, "field:<field>") or "field:<section>:<field>" in collections); new versions as for v2 above
 (configuration uuid5(previous configuration GUID, "seed-vN"), kept sections/fields uuid5(previous configuration GUID,
 their previous GUID)).
+
+**Transport core P5 display seeds v1 (PandiO/knk-workspace#79, 2026-11-20):** `TransportOrder` (origin, status and
+reason, source, carrier and transit storage, timing, the stops with distances and route source, the cargo per blueprint
+and the event log as collections) and `TransportLane` (the two structures, reachable, road and straight distance,
+source and measured time). The order's API view (`GET api/TransportOrders/{id}`) also lists what is in transit now and
+the carrier assignments; a structure's transport view is `GET api/ProductionStructures/{id}/transport` (the automatic
+trigger's dry run, warnings, open orders), for the web app link #682. GUIDs: configuration uuid5(URL namespace,
+"knk-displayconfig:<Entity>:seed-v1"), sections uuid5(configuration, "section:<section>"), fields uuid5(configuration,
+"field:<field>[:<related property>]" or "field:<section>:<field>[:<related property>]" in collections).

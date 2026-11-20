@@ -750,8 +750,9 @@ namespace knkwebapi_v2.Services.Production
 
         private async Task<ProductionCycleRecordDto> RecordDtoAsync(ProductionCycleRecord r, CancellationToken ct)
         {
-            var name = await _db.ItemBlueprints.AsNoTracking().Where(b => b.Id == r.ItemBlueprintId).Select(b => b.Name).FirstOrDefaultAsync(ct);
-            return ProductionCycleRecordMapping.ToDto(r, name);
+            var ids = ProductionCycleRecordMapping.BlueprintIds(r).Distinct().ToList();
+            var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name, ct);
+            return ProductionCycleRecordMapping.WithNames(r, names);
         }
 
         // ================= Workers and upgrades =================
@@ -906,7 +907,18 @@ namespace knkwebapi_v2.Services.Production
 
     public static class ProductionCycleRecordMapping
     {
-        public static ProductionCycleRecordDto ToDto(ProductionCycleRecord r, string? blueprintName) => new()
+        /// <summary>The blueprints a record names: its output and its consumed inputs (#838: the inputs carry names).</summary>
+        public static IEnumerable<int> BlueprintIds(ProductionCycleRecord r) =>
+            new[] { r.ItemBlueprintId }.Concat(Inputs(r).Select(i => i.ItemBlueprintId));
+
+        private static List<ConsumedInputDto> Inputs(ProductionCycleRecord r) =>
+            string.IsNullOrEmpty(r.InputsJson) ? new() : JsonSerializer.Deserialize<List<ConsumedInputDto>>(r.InputsJson) ?? new();
+
+        public static ProductionCycleRecordDto WithNames(ProductionCycleRecord r, IReadOnlyDictionary<int, string> names) =>
+            ToDto(r, names.GetValueOrDefault(r.ItemBlueprintId), names);
+
+        public static ProductionCycleRecordDto ToDto(ProductionCycleRecord r, string? blueprintName,
+            IReadOnlyDictionary<int, string>? names = null) => new()
         {
             Id = r.Id,
             ProductionLineId = r.ProductionLineId,
@@ -930,7 +942,11 @@ namespace knkwebapi_v2.Services.Production
             AccruedAfter = r.AccruedAfter,
             Emitted = r.Emitted,
             Accepted = r.Accepted,
-            Inputs = string.IsNullOrEmpty(r.InputsJson) ? new() : JsonSerializer.Deserialize<List<ConsumedInputDto>>(r.InputsJson) ?? new(),
+            Inputs = Inputs(r).Select(i => new ConsumedInputDto
+            {
+                ItemBlueprintId = i.ItemBlueprintId, Consumed = i.Consumed,
+                ItemBlueprintName = names?.GetValueOrDefault(i.ItemBlueprintId) ?? i.ItemBlueprintName,
+            }).ToList(),
             StatusAfter = r.StatusAfter.ToString(),
             ShortfallReason = r.ShortfallReason,
             StockTransactionId = r.StockTransactionId,
