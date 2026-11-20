@@ -116,6 +116,10 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("Damage multipliers can't be negative.");
             if (dto.SpotCooldownSeconds < 0) throw new ArgumentException("spotCooldownSeconds can't be negative.");
             if (dto.MatchPrice < 0 || dto.UnlockPrice < 0) throw new ArgumentException("Prices can't be negative.");
+            // Siege shop L4 (#869, P09): empty or 0 (the wizard's empty value; bracket 0 is the lowest title anyway) = no minimum.
+            int? minTitle = dto.UnlockMinTitleLevel is > 0 ? dto.UnlockMinTitleLevel : null;
+            if (minTitle.HasValue && !await _repo.TitleBracketExistsAsync(minTitle.Value))
+                throw new ArgumentException($"TitleBracket with id {minTitle} not found.");
 
             var sameName = await _repo.GetTemplateByNameAsync(name);
             if (sameName != null && sameName.Id != existingId)
@@ -158,6 +162,7 @@ namespace knkwebapi_v2.Services
             target.SpotCooldownSeconds = dto.SpotCooldownSeconds;
             target.MatchPrice = dto.MatchPrice;
             target.UnlockPrice = dto.UnlockPrice;
+            target.UnlockMinTitleLevel = minTitle;
 
             if (ammoIds != null) SyncAmmoTypes(target, ammoIds);
         }

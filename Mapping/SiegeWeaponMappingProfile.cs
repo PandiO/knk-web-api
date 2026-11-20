@@ -15,7 +15,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.SiegeAmmoTypeName, o => o.MapFrom(s => s.SiegeAmmoType != null ? s.SiegeAmmoType.Name : null));
 
             CreateMap<SiegeWeaponTemplate, SiegeWeaponTemplateReadDto>()
-                .ForMember(d => d.AllowedAmmoTypes, o => o.MapFrom(s => s.AllowedAmmoTypes.OrderBy(a => a.SiegeAmmoTypeId)));
+                .ForMember(d => d.AllowedAmmoTypes, o => o.MapFrom(s => s.AllowedAmmoTypes.OrderBy(a => a.SiegeAmmoTypeId)))
+                .ForMember(d => d.UnlockMinTitleName, o => o.MapFrom(s => s.UnlockMinTitle != null ? s.UnlockMinTitle.MaleName : null));
 
             CreateMap<SiegeWeaponTemplate, SiegeWeaponTemplateListDto>()
                 .ForMember(d => d.AmmoTypeCount, o => o.MapFrom(s => s.AllowedAmmoTypes.Count));

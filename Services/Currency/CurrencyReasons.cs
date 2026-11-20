@@ -129,6 +129,10 @@ namespace knkwebapi_v2.Services
         /// <summary>Coins paid for a production structure's level upgrade (P3, PRODUCTION_KINDS § 5), to SYS_PRODUCTION.</summary>
         public const string ProductionUpgrade = "PRODUCTION_UPGRADE";
 
+        /// <summary>Coins paid once to unlock a siege weapon type (siege shop DESIGN.md § 5.6, W32; PandiO/knk-workspace#869),
+        /// to SYS_SIEGE. Key: <c>siege-unlock:{templateId}:{userId}</c>.</summary>
+        public const string SiegeUnlock = "SIEGE_UNLOCK";
+
         public static string MergeForfeitKey(int secondaryUserId) => $"merge:{secondaryUserId}";
 
         public static string MergeCarryoverKey(int secondaryUserId) => $"merge-carry:{secondaryUserId}";
@@ -155,6 +159,7 @@ namespace knkwebapi_v2.Services
             [Reversal] = new(Reversal, CurrencyTransactionKind.Reversal, CurrencyReasonDirection.Special, null, "Reversal"),
             [MergeForfeit] = new(MergeForfeit, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Debit, SysMerge, "Balance forfeited on account merge"),
             [ProductionUpgrade] = new(ProductionUpgrade, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysProduction, "Production structure upgrade"),
+            [SiegeUnlock] = new(SiegeUnlock, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysSiege, "Siege weapon unlock"),
             [MergeCarryover] = new(MergeCarryover, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Credit, SysMerge, "Higher balance kept on account merge"),
         };
 

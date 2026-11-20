@@ -347,6 +347,7 @@ public class ReadAccessRulesTests
         ["WorldTasksController.ListTempRegionReleases"] = "G",
         ["StorageContainersController.Terminal"] = "G",
         ["StorageContainersController.Display"] = "G",
+        ["SiegeWeaponUnlocksController.GetByUser"] = "G", // siege shop L4 (#869): the Siege unlocks menu
         // U: the action's own stricter rule (node, self-or-node, owner node, [Authorize]) (85)
         ["AdminClientsController.GetActiveClients"] = "U",
         // Item delivery P7 (#60): a player's inbox and stash, for the game server, the player and economy staff.
@@ -365,6 +366,7 @@ public class ReadAccessRulesTests
         ["CurrencyMonitorController.GetReconciliation"] = "U",
         ["DataDeletionController.GetForPlayer"] = "U",
         ["DataDeletionController.GetMine"] = "U",
+        ["SiegeWeaponUnlocksController.GetMine"] = "U", // siege shop L4 (#869): [Authorize], the profile panel
         ["DiscoveriesController.GetStats"] = "U",
         ["DiscoveriesController.GetSummary"] = "U",
         ["DiscoveryRewardsController.GetOverrides"] = "U",
@@ -526,6 +528,8 @@ public class ReadAccessRulesTests
         "HealthCheckController.GetReadiness",
         // Siege shop (PandiO/knk-workspace#867): fetched once per match from siege shop phase 3 (#868) on.
         "SiegeShopController.GetCatalogue",
+        // Siege shop L4 (PandiO/knk-workspace#869): the Siege unlocks menu.
+        "SiegeWeaponUnlocksController.GetByUser",
     };
 
     // ===== The pinned categories =====

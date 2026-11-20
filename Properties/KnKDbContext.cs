@@ -706,6 +706,8 @@ public partial class KnKDbContext : DbContext
             entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.SizeClass).HasConversion<string>().HasMaxLength(20);
             entity.HasIndex(e => e.Name).IsUnique();
+            // Siege shop L4 (#869): optional minimum title to unlock the type.
+            entity.HasOne(e => e.UnlockMinTitle).WithMany().HasForeignKey(e => e.UnlockMinTitleLevel).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<SiegeAmmoType>(entity =>

@@ -144,6 +144,36 @@ public class SiegeWeaponServiceTests : IAsyncLifetime
         Assert.Equal("Heavy boulder", link.SiegeAmmoTypeName);
     }
 
+    // Siege shop L4 (#869, P09): the optional minimum title to unlock the type.
+    [Fact]
+    public async Task Template_SavesTheMinimumUnlockTitle_AndZeroMeansNone()
+    {
+        _context.TitleBrackets.Add(new TitleBracket { Id = 3, MaleName = "Squire", FemaleName = "Squiress", MinExperience = 100 });
+        await _context.SaveChangesAsync();
+        var dto = Trebuchet();
+        dto.UnlockMinTitleLevel = 3;
+        var created = await Service().CreateTemplateAsync(dto);
+        _context.ChangeTracker.Clear();
+
+        var read = (await Service().GetTemplateByIdAsync(created.Id))!;
+        Assert.Equal(3, read.UnlockMinTitleLevel);
+        Assert.Equal("Squire", read.UnlockMinTitleName);
+
+        dto.UnlockMinTitleLevel = 0;
+        await Service().UpdateTemplateAsync(created.Id, dto);
+        _context.ChangeTracker.Clear();
+        Assert.Null((await Service().GetTemplateByIdAsync(created.Id))!.UnlockMinTitleLevel);
+    }
+
+    [Fact]
+    public async Task Template_RefusesAnUnknownMinimumUnlockTitle()
+    {
+        var dto = Trebuchet();
+        dto.UnlockMinTitleLevel = 42;
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => Service().CreateTemplateAsync(dto));
+        Assert.Contains("TitleBracket", ex.Message);
+    }
+
     [Fact]
     public async Task Template_Update_ReplacesTheAmmoSet_NullKeepsIt()
     {

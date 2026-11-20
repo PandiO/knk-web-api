@@ -38,6 +38,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("spotCooldownSeconds")] public int SpotCooldownSeconds { get; set; }
         [JsonPropertyName("matchPrice")] public int MatchPrice { get; set; }
         [JsonPropertyName("unlockPrice")] public int UnlockPrice { get; set; }
+        // Siege shop L4 (#869): the TitleBracket id a player needs to unlock the type; null = none.
+        [JsonPropertyName("unlockMinTitleLevel")] public int? UnlockMinTitleLevel { get; set; }
+        [JsonPropertyName("unlockMinTitleName")] public string? UnlockMinTitleName { get; set; }
         [JsonPropertyName("allowedAmmoTypes")] public List<SiegeWeaponTemplateAmmoTypeDto> AllowedAmmoTypes { get; set; } = new();
     }
 
@@ -68,6 +71,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("spotCooldownSeconds")] public int SpotCooldownSeconds { get; set; } = 120;
         [JsonPropertyName("matchPrice")] public int MatchPrice { get; set; } = 200;
         [JsonPropertyName("unlockPrice")] public int UnlockPrice { get; set; } = 1000;
+        [JsonPropertyName("unlockMinTitleLevel")] public int? UnlockMinTitleLevel { get; set; }
         [JsonPropertyName("allowedAmmoTypes")] public List<SiegeWeaponTemplateAmmoTypeUpsertDto>? AllowedAmmoTypes { get; set; }
     }
 
@@ -79,6 +83,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("sizeClass")] public SiegeWeaponSizeClass SizeClass { get; set; }
         [JsonPropertyName("matchPrice")] public int MatchPrice { get; set; }
         [JsonPropertyName("unlockPrice")] public int UnlockPrice { get; set; }
+        [JsonPropertyName("unlockMinTitleLevel")] public int? UnlockMinTitleLevel { get; set; }
         [JsonPropertyName("ammoTypeCount")] public int AmmoTypeCount { get; set; }
     }
 

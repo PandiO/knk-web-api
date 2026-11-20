@@ -57,6 +57,8 @@ namespace knkwebapi_v2.Services.Telemetry
             Baseline("siege.gate_destroyed", "A gate door was destroyed.", "lobbyId", "gateId"),
             // Siege shop L1 (PandiO/knk-workspace#866, P27): siege points earned; gate damage and capture progress summed.
             Baseline("siege.points_earned", "Siege points were earned in a match.", "lobbyId", "source", "amount", "count", "factor"),
+            // Siege shop L3 (PandiO/knk-workspace#868, P27): one event per siege shop purchase.
+            Baseline("siege.shop_purchase", "A siege shop purchase in a match.", "lobbyId", "entryId", "categoryId", "kind", "price", "purchaseNo"),
             // Discoveries and the ledger.
             Baseline("discovery.granted", "A domain discovery was granted.", "domainId", "domainType"),
             Baseline("currency.posting", "A ledger posting (reference only; amounts stay in the ledger).", "transactionPublicId", "reasonCode"),
