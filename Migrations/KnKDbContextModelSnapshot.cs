@@ -2846,6 +2846,148 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("item_conversion_stats", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("ActorUserId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("CapUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .UseCollation("utf8mb4_bin");
+
+                    b.Property<int>("InboxStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<long?>("OverflowTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)");
+
+                    b.Property<string>("SourceRef")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SourceType")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long?>("StockTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("InboxStorageId");
+
+                    b.HasIndex("SourceType", "SourceRef");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("item_deliveries", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemDeliveryLine", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("Claimed")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Expired")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("Inboxed")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("ItemDeliveryId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ItemInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Lost")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Remaining")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("RemindersSent")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Requested")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ItemInstanceId");
+
+                    b.HasIndex("ItemDeliveryId", "LineNo")
+                        .IsUnique();
+
+                    b.HasIndex("Remaining", "ExpiresAt");
+
+                    b.ToTable("item_delivery_lines", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ItemInstance", b =>
                 {
                     b.Property<long>("Id")
@@ -11857,6 +11999,51 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Tag");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemDelivery", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Storage", "InboxStorage")
+                        .WithMany()
+                        .HasForeignKey("InboxStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InboxStorage");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemDeliveryLine", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemDelivery", "ItemDelivery")
+                        .WithMany("Lines")
+                        .HasForeignKey("ItemDeliveryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemInstance", "ItemInstance")
+                        .WithMany()
+                        .HasForeignKey("ItemInstanceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ItemDelivery");
+
+                    b.Navigation("ItemInstance");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ItemInstance", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Grade", "Grade")
@@ -13880,6 +14067,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ShieldBannerLayers");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ItemDelivery", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.ItemInstance", b =>
