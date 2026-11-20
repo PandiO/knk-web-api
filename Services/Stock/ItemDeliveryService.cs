@@ -652,13 +652,13 @@ namespace knkwebapi_v2.Services.Stock
             IdempotencyKey = key,
         };
 
-        internal static int? PassedWarning(IEnumerable<int> levels, decimal before, decimal after, long cap)
+        public static int? PassedWarning(IEnumerable<int> levels, decimal before, decimal after, long cap)
         {
             int b = Percent(before, cap), a = Percent(after, cap);
             return levels.Where(w => b < w && a >= w).Select(w => (int?)w).DefaultIfEmpty().Max();
         }
 
-        internal static int Percent(decimal used, long cap) =>
+        public static int Percent(decimal used, long cap) =>
             cap <= 0 ? (used > 0 ? 100 : 0) : (int)Math.Min(100m, Math.Floor(used * 100m / cap));
 
         private static string? Filter(PagedQueryDto q, string name) =>
