@@ -33,6 +33,12 @@ namespace knkwebapi_v2.Services.Production
         /// (it ends Returned). 409 (<see cref="InvalidOperationException"/>) when final or already returning.</summary>
         Task<TransportOrderDto> CancelAsync(int id, int? actorUserId, string? reason, CancellationToken ct = default);
 
+        /// <summary>Staff retry (P6a #683, M4): a waiting order (Planned, AtStop, AwaitingSpace, ReturnBlocked) tries its
+        /// next step now; a Returned or Cancelled order is made again as a new manual order with the same stops (a repeated
+        /// retry returns the same new order). 409 (<see cref="InvalidOperationException"/>) while Production:Enabled is off,
+        /// for an order on the road (it arrives at its ETA) and for a delivered order.</summary>
+        Task<TransportOrderDto> RetryAsync(int id, int? actorUserId, CancellationToken ct = default);
+
         /// <summary>A production structure's transport: the automatic trigger's dry run, open orders, workers away.</summary>
         Task<TransportStructureViewDto?> StructureViewAsync(int structureId, CancellationToken ct = default);
 
@@ -505,6 +511,71 @@ namespace knkwebapi_v2.Services.Production
                 if (tx != null) await tx.CommitAsync(ct);
             }
             _db.ChangeTracker.Clear();
+            return (await GetByIdAsync(id, ct))!;
+        }
+
+        // ================= Retry (P6a #683, M4) =================
+
+        public async Task<TransportOrderDto> RetryAsync(int id, int? actorUserId, CancellationToken ct = default)
+        {
+            var settings = await _settings.GetAsync();
+            if (!settings.Enabled)
+                throw new InvalidOperationException("Production is switched off (Production:Enabled); orders don't move.");
+            var order = await _db.TransportOrders.AsNoTracking().Include(o => o.Stops).ThenInclude(s => s.Lines)
+                .FirstOrDefaultAsync(o => o.Id == id, ct) ?? throw new KeyNotFoundException($"TransportOrder with id {id} not found.");
+            string who = actorUserId.HasValue ? $"user {actorUserId}" : "the game server";
+            switch (order.Status)
+            {
+                case TransportStatus.Delivered:
+                    throw new InvalidOperationException("The order was delivered; there is nothing to retry.");
+                case TransportStatus.Returned:
+                case TransportStatus.Cancelled:
+                {
+                    var dto = new TransportOrderCreateDto
+                    {
+                        SourceStorageId = order.SourceStorageId,
+                        CarrierStructureId = order.CarrierStructureId,
+                        Origin = TransportOrigin.Manual.ToString(),
+                        Note = $"Retry of transport #{order.Id}.",
+                        ClientKey = $"retry-of-{order.Id}",
+                        Stops = order.Stops.Where(st => st.Lines.Any(l => l.Planned > 0)).OrderBy(st => st.Sequence)
+                            .Select(st => new TransportStopRequestDto
+                            {
+                                StorageId = st.StorageId,
+                                Lines = st.Lines.Where(l => l.Planned > 0)
+                                    .Select(l => new TransportLineRequestDto { ItemBlueprintId = l.ItemBlueprintId, Amount = l.Planned }).ToList(),
+                            }).ToList(),
+                    };
+                    if (dto.Stops.Count == 0) throw new InvalidOperationException("The order has no cargo to send again.");
+                    try
+                    {
+                        return await CreateAsync(dto, actorUserId, ct);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        throw new InvalidOperationException($"The order can't be sent again: {ex.Message}");
+                    }
+                }
+                case TransportStatus.InTransit:
+                case TransportStatus.Returning:
+                    throw new InvalidOperationException($"The order is on the road ({order.Status}); it arrives at {order.EtaAt:u}.");
+            }
+            if (order.NextActionAt == null) throw new InvalidOperationException($"The order is {order.Status} and has nothing to retry.");
+            var now = Now;
+            await using (var tx = await BeginAsync(ct))
+            {
+                await LockOrderAsync(id, ct);
+                var tracked = await LoadTrackedAsync(id, ct) ?? throw new KeyNotFoundException($"TransportOrder with id {id} not found.");
+                if (tracked.NextActionAt != null && tracked.NextActionAt > now)
+                {
+                    tracked.NextActionAt = now;
+                    AddEvent(tracked, now, TransportEventKind.Note, $"Retried now by {who}.");
+                }
+                await _db.SaveChangesAsync(ct);
+                if (tx != null) await tx.CommitAsync(ct);
+            }
+            _db.ChangeTracker.Clear();
+            await AdvanceCoreAsync(id, now, settings.Transport!, ct);
             return (await GetByIdAsync(id, ct))!;
         }
 

@@ -107,6 +107,8 @@ public partial class KnKDbContext : DbContext
     public virtual DbSet<TransportAssignment> TransportAssignments { get; set; } = null!;
     public virtual DbSet<TransportEvent> TransportEvents { get; set; } = null!;
     public virtual DbSet<TransportLane> TransportLanes { get; set; } = null!;
+    // ---- Terminals and menus P6a (PandiO/knk-workspace#683) ----
+    public virtual DbSet<StorageContainer> StorageContainers { get; set; } = null!;
     // ---- end production world ----
     public virtual DbSet<Structure> Structures { get; set; } = null!;
     public virtual DbSet<GateStructure> GateStructures { get; set; } = null!;
@@ -3502,6 +3504,22 @@ public partial class KnKDbContext : DbContext
             entity.HasOne(e => e.ToStructure).WithMany().HasForeignKey(e => e.ToStructureId).OnDelete(DeleteBehavior.Cascade);
         });
         // ---- end transport ----
+
+        // ---- Terminals and menus P6a (PandiO/knk-workspace#683): containers bound to a storage ----
+        modelBuilder.Entity<StorageContainer>(entity =>
+        {
+            entity.ToTable("storage_containers");
+            entity.Property(e => e.Mode).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ContainerType).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.WorldName).HasMaxLength(StorageContainer.WorldNameMaxLength).IsRequired();
+            entity.Property(e => e.Label).HasMaxLength(StorageContainer.LabelMaxLength);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.WorldName, e.X, e.Y, e.Z }).IsUnique();
+            entity.HasIndex(e => e.StorageId);
+            entity.HasOne(e => e.Storage).WithMany().HasForeignKey(e => e.StorageId).OnDelete(DeleteBehavior.Cascade);
+        });
+        // ---- end terminals and menus ----
 
         OnModelCreatingPartial(modelBuilder);
     }

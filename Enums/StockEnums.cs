@@ -98,4 +98,23 @@ namespace knkwebapi_v2.Enums
         System,
         PluginServer,
     }
+
+    // P6a (PandiO/knk-workspace#683, DESIGN § 6.2): containers bound to a storage. Stored as strings.
+
+    /// <summary>How a bound block shows its storage. Backed mode (a normal chest mirrored into the API) is Later.</summary>
+    public enum StorageContainerMode
+    {
+        /// <summary>Opening the block shows the storage as a paged menu; take and put are ledger moves.</summary>
+        Terminal,
+        /// <summary>The block is filled read-only with a sample of the stock (fill level visible).</summary>
+        Display,
+    }
+
+    /// <summary>The block types a storage can be bound to (DESIGN § 6.3).</summary>
+    public enum StorageContainerType
+    {
+        Chest,
+        TrappedChest,
+        Barrel,
+    }
 }

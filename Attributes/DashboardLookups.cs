@@ -86,6 +86,10 @@ namespace knkwebapi_v2.Attributes
             ["TransportLane"] = Of<knkwebapi_v2.Services.Production.ITransportLaneService>((s, id) => s.GetByIdAsync(id),
                 o => Join(Text(o, "FromStructure"), Text(o, "ToStructure")), o => Text(o, "RoadDistance"),
                 filters: new[] { IdFilter("structureId") }),
+            // Terminals and menus P6a (#683): containers per storage.
+            ["StorageContainer"] = Of<knkwebapi_v2.Services.Stock.IStorageContainerService>((s, id) => s.GetByIdAsync(id),
+                o => Text(o, "Label") ?? Join(Text(o, "Mode"), Text(o, "Storage")), o => Join(Text(o, "WorldName"), Text(o, "X"), Text(o, "Y"), Text(o, "Z")),
+                filters: new[] { IdFilter("storageId") }),
             ["Kingdom"] = Of<IKingdomService>((s, id) => s.GetByIdAsync(id), Name),
             ["Province"] = Of<IProvinceService>((s, id) => s.GetByIdAsync(id), Name, o => Text(o, "Kingdom"),
                 filters: new[] { IdFilter("kingdomId") }),
