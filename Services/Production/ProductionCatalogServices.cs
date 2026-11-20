@@ -1105,7 +1105,7 @@ namespace knkwebapi_v2.Services.Production
             if (r == null) return null;
             var ids = ProductionCycleRecordMapping.BlueprintIds(r).Distinct().ToList();
             var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name);
-            return ProductionCycleRecordMapping.ToDto(r, names);
+            return ProductionCycleRecordMapping.WithNames(r, names);
         }
 
         public async Task<PagedResultDto<ProductionCycleRecordDto>> SearchAsync(PagedQueryDto query)
@@ -1123,7 +1123,7 @@ namespace knkwebapi_v2.Services.Production
             var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name);
             return new PagedResultDto<ProductionCycleRecordDto>
             {
-                Items = page.Items.Select(r => ProductionCycleRecordMapping.ToDto(r, names)).ToList(),
+                Items = page.Items.Select(r => ProductionCycleRecordMapping.WithNames(r, names)).ToList(),
                 TotalCount = page.TotalCount, PageNumber = page.PageNumber, PageSize = page.PageSize,
             };
         }

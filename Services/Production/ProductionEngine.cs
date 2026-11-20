@@ -752,7 +752,7 @@ namespace knkwebapi_v2.Services.Production
         {
             var ids = ProductionCycleRecordMapping.BlueprintIds(r).Distinct().ToList();
             var names = await _db.ItemBlueprints.AsNoTracking().Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name, ct);
-            return ProductionCycleRecordMapping.ToDto(r, names);
+            return ProductionCycleRecordMapping.WithNames(r, names);
         }
 
         // ================= Workers and upgrades =================
@@ -914,7 +914,7 @@ namespace knkwebapi_v2.Services.Production
         private static List<ConsumedInputDto> Inputs(ProductionCycleRecord r) =>
             string.IsNullOrEmpty(r.InputsJson) ? new() : JsonSerializer.Deserialize<List<ConsumedInputDto>>(r.InputsJson) ?? new();
 
-        public static ProductionCycleRecordDto ToDto(ProductionCycleRecord r, IReadOnlyDictionary<int, string> names) =>
+        public static ProductionCycleRecordDto WithNames(ProductionCycleRecord r, IReadOnlyDictionary<int, string> names) =>
             ToDto(r, names.GetValueOrDefault(r.ItemBlueprintId), names);
 
         public static ProductionCycleRecordDto ToDto(ProductionCycleRecord r, string? blueprintName,
