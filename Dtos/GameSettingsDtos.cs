@@ -56,6 +56,10 @@ public class GameSettingsReadDto
     [JsonPropertyName("production")]
     public ProductionSettingsDto Production { get; set; } = new();
 
+    /// <summary>The menu item (PandiO/knk-workspace#870, siege shop DESIGN § 4.3); never null on read (the defaults when unset).</summary>
+    [JsonPropertyName("menuItem")]
+    public MenuItemSettingsDto MenuItem { get; set; } = new();
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
@@ -105,6 +109,10 @@ public class GameSettingsUpdateDto
     /// <summary>Null = keep the current production settings.</summary>
     [JsonPropertyName("production")]
     public ProductionSettingsDto? Production { get; set; }
+
+    /// <summary>Null = keep the current menu item settings (PandiO/knk-workspace#870).</summary>
+    [JsonPropertyName("menuItem")]
+    public MenuItemSettingsDto? MenuItem { get; set; }
 }
 
 /// <summary>
