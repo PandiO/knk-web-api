@@ -10073,6 +10073,10 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
+                    b.Property<string>("DefaultRouteMode")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
                     b.Property<decimal>("ExpBonusMultiplier")
                         .HasColumnType("decimal(65,30)");
 

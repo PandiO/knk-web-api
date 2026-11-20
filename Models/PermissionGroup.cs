@@ -123,6 +123,15 @@ public class PermissionGroup : PermissionHolder
     /// <summary>Replaces teleport.cooldown-seconds after a /spawn; null = not set here.</summary>
     public int? TeleportSpawnCooldownSeconds { get; set; }
 
+    /// <summary>
+    /// The route mode /navigate uses for members when they type no mode word (PandiO/knk-workspace#852,
+    /// on top of the route modes of #707): "shortest", "efficient" or "preferred", stored lowercase as the
+    /// plugin's mode words. The plugin takes the default of the player's highest-Weight group that sets one.
+    /// Null = this group sets no default (with none set anywhere the route is "preferred", today's route).
+    /// See <see cref="knkwebapi_v2.Services.PermissionGroupRouteMode"/>.
+    /// </summary>
+    public string? DefaultRouteMode { get; set; }
+
     [NavigationPair(nameof(ParentGroup))]
     [RelatedEntityField(typeof(PermissionGroup))]
     public int? ParentGroupId { get; set; }

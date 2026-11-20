@@ -44,6 +44,7 @@ namespace knkwebapi_v2.Services
             if (dto.GemBonusMultiplier < 0) throw new ArgumentException("GemBonusMultiplier cannot be negative.", nameof(dto));
             if (dto.ExpBonusMultiplier < 0) throw new ArgumentException("ExpBonusMultiplier cannot be negative.", nameof(dto));
             PermissionGroupTeleportSettings.Validate(dto);
+            PermissionGroupRouteMode.Validate(dto);
         }
 
         public async Task<PermissionGroupDto> CreateAsync(PermissionGroupDto dto)
@@ -62,6 +63,7 @@ namespace knkwebapi_v2.Services
 
             var group = _mapper.Map<PermissionGroup>(dto);
             PermissionGroupTeleportSettings.Apply(group, dto);
+            PermissionGroupRouteMode.Apply(group, dto);
             await _repo.AddAsync(group);
             _readCache?.ForgetAll();
             _realtime.PermissionGroupChanged(group.Id, PermissionGroupChangeOps.Created);
@@ -108,6 +110,8 @@ namespace knkwebapi_v2.Services
             existing.ParentGroupId = dto.ParentGroupId;
             // Omitted price mode = keep that kind's teleport settings (KNG-41), as above.
             PermissionGroupTeleportSettings.Apply(existing, dto);
+            // #852: omitted keeps the default route mode, "" clears it.
+            PermissionGroupRouteMode.Apply(existing, dto);
 
             await _repo.UpdateAsync(existing);
             _readCache?.ForgetAll();

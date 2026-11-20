@@ -21,6 +21,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ChatPrimaryColor, src => src.MapFrom(src => src.ChatPrimaryColor))
                 .ForMember(dest => dest.ChatSecondaryColor, src => src.MapFrom(src => src.ChatSecondaryColor))
                 .ForMember(dest => dest.NameColor, src => src.MapFrom(src => src.NameColor))
+                .ForMember(dest => dest.DefaultRouteMode, src => src.MapFrom(src => src.DefaultRouteMode))
                 .ForMember(dest => dest.ParentGroupId, src => src.MapFrom(src => src.ParentGroupId.HasValue ? src.ParentGroupId : src.ParentGroup != null ? src.ParentGroup.Id : null))
                 .ForMember(dest => dest.ParentGroup, src => src.MapFrom(src => src.ParentGroup))
                 .ForMember(dest => dest.ChildGroups, src => src.MapFrom(s => s.ChildGroups));
@@ -43,7 +44,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ParentGroup, src => src.Ignore())
                 .ForMember(dest => dest.ChildGroups, src => src.Ignore())
                 .ForMember(dest => dest.UserMemberships, src => src.Ignore())
-                .ForMember(dest => dest.Grants, src => src.Ignore());
+                .ForMember(dest => dest.Grants, src => src.Ignore())
+                // #852: applied by PermissionGroupService (omitted keeps, "" clears), see PermissionGroupRouteMode.
+                .ForMember(dest => dest.DefaultRouteMode, src => src.Ignore());
             // Teleport fees/cooldowns (KNG-41) are applied by PermissionGroupService, gated per kind.
             foreach (var property in Services.PermissionGroupTeleportSettings.EntityProperties)
             {
@@ -66,6 +69,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.chatPrimaryColor, src => src.MapFrom(src => src.ChatPrimaryColor))
                 .ForMember(dest => dest.chatSecondaryColor, src => src.MapFrom(src => src.ChatSecondaryColor))
                 .ForMember(dest => dest.nameColor, src => src.MapFrom(src => src.NameColor))
+                .ForMember(dest => dest.defaultRouteMode, src => src.MapFrom(src => src.DefaultRouteMode))
                 .ForMember(dest => dest.parentGroupId, src => src.MapFrom(src => src.ParentGroupId))
                 .ForMember(dest => dest.parentGroupName, src => src.MapFrom(src => src.ParentGroup != null ? src.ParentGroup.Name : null))
                 .ForMember(dest => dest.childrenCount, src => src.MapFrom(src => src.ChildGroups != null ? src.ChildGroups.Count : 0));
