@@ -325,3 +325,13 @@ GUIDs: new seeds uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps 
 + name); new versions uuid5(previous configuration GUID, "seed-vN"), every kept step/field uuid5(previous configuration
 GUID, its previous GUID) with the validation rules' references remapped, new fields uuid5(new configuration GUID,
 "field:" + name).
+
+**DefaultRouteMode field (PandiO/knk-workspace#852, 2026-11-20):** `PermissionGroup.json` (step "Group") gained the
+optional String field `DefaultRouteMode` ("Default route mode") in place, without a new `configurationGuid`, as with
+`NavigationItem` above: a dropdown of `shortest`, `efficient`, `preferred` (`settingsJson.enumValues`) whose empty
+option reads "None (default: preferred)" (`settingsJson.emptyOptionLabel`, a web app setting of the same issue) and
+sends "", which the API stores as no default. A fresh import has the field; a database that imported the seed earlier
+gets it by adding the field in the form designer with the same field name, type and settings JSON
+`{"enumValues": ["shortest", "efficient", "preferred"], "emptyOptionLabel": "None (default: preferred)"}`. Without it
+the form leaves the stored value alone (an omitted value is kept). Field GUID: uuid5 of the configuration GUID and
+`Group/DefaultRouteMode`.

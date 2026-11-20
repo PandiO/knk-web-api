@@ -49,6 +49,16 @@
           "defaultValue": "False",
           "isRequired": false,
           "isReadOnly": false
+        },
+        {
+          "fieldGuid": "36e51aef-a568-5bc6-8e5a-5e285c6ea13b",
+          "fieldName": "DefaultRouteMode",
+          "label": "Default route mode",
+          "description": "The route /navigate takes for members who type no mode word. shortest = length only, efficient = walking effort (stairs, ladders, doors, water and the road class), preferred = efficient plus the road and landmark preference weights. A player in several groups gets the default of their highest-weight group that sets one. None = this group sets no default (with none set anywhere the route is preferred). A typed mode word still wins and still needs its knk.navigate.mode node.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"shortest\", \"efficient\", \"preferred\"], \"emptyOptionLabel\": \"None (default: preferred)\"}"
         }
       ]
     },

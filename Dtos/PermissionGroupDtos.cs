@@ -91,6 +91,14 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("teleportSpawnCooldownSeconds")]
         public int? TeleportSpawnCooldownSeconds { get; set; }
 
+        /// <summary>
+        /// Default /navigate route mode of the group's members (PandiO/knk-workspace#852): "shortest", "efficient"
+        /// or "preferred", null = no default. Read: always the stored value (lowercase or null). Write: omitted
+        /// (null) keeps the stored value, "" clears it (see Services.PermissionGroupRouteMode).
+        /// </summary>
+        [JsonPropertyName("defaultRouteMode")]
+        public string? DefaultRouteMode { get; set; }
+
         [JsonPropertyName("parentGroupId")]
         public int? ParentGroupId { get; set; }
         [JsonPropertyName("parentGroup")]
@@ -134,6 +142,9 @@ namespace knkwebapi_v2.Dtos
         public string? chatSecondaryColor { get; set; }
         [JsonPropertyName("nameColor")]
         public string? nameColor { get; set; }
+        /// <summary>Default /navigate route mode (PandiO/knk-workspace#852), null = no default.</summary>
+        [JsonPropertyName("defaultRouteMode")]
+        public string? defaultRouteMode { get; set; }
         [JsonPropertyName("parentGroupId")]
         public int? parentGroupId { get; set; }
         [JsonPropertyName("parentGroupName")]

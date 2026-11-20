@@ -40,17 +40,10 @@ public class SeedStaffFreezeNodesMySqlTests : IClassFixture<MySqlTestDatabase>
             var migrator = ctx.GetService<IMigrator>();
             await migrator.MigrateAsync(Previous);
 
-            var parentGroup = new PermissionGroup
-            {
-                Name = "Rules" + suffix, Weight = 35,
-                Grants = new List<PermissionGrant> { new() { Node = "knk.unfreeze", Value = false } },
-            };
-            ctx.PermissionGroups.Add(parentGroup);
-            await ctx.SaveChangesAsync();
-            var staffGroup = new PermissionGroup { Name = "Staff", Weight = 40, ParentGroupId = parentGroup.Id };
-            ctx.PermissionGroups.Add(staffGroup);
-            await ctx.SaveChangesAsync();
-            (staff, parent) = (staffGroup.Id, parentGroup.Id);
+            // Plain SQL: the schema is the older one here (see PermissionGroupRows).
+            parent = await PermissionGroupRows.InsertAsync(ctx, "Rules" + suffix, 35, null,
+                new PermissionGrant { Node = "knk.unfreeze", Value = false });
+            staff = await PermissionGroupRows.InsertAsync(ctx, "Staff", 40, parent);
 
             await migrator.MigrateAsync();
         }

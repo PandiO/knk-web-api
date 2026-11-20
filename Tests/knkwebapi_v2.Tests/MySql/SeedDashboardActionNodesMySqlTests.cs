@@ -51,18 +51,14 @@ public class SeedDashboardActionNodesMySqlTests : IClassFixture<MySqlTestDatabas
             // The alpha shape: Admin holds knk.admin.*.
             ctx.PermissionGrants.Add(new PermissionGrant { HolderId = admin, Node = "knk.admin.*", Value = true });
 
-            var groups = new[]
-            {
-                new PermissionGroup { Name = "Staff", Weight = 25, Grants = new List<PermissionGrant> { Grant("knk.kit.manage"), Grant("knk.admin.user.manage") } },
-                new PermissionGroup { Name = "Builders" + suffix, Weight = 30, Grants = new List<PermissionGrant> { Grant("knk.admin.world") } },
-                new PermissionGroup { Name = "Deniers" + suffix, Weight = 31, Grants = new List<PermissionGrant> { Grant("knk.admin.content"), Grant("knk.admin.delete", false) } },
-                new PermissionGroup { Name = "WildDeny" + suffix, Weight = 32, Grants = new List<PermissionGrant> { Grant("knk.admin.road"), Grant("knk.admin.delete.*", false) } },
-                new PermissionGroup { Name = "Expired" + suffix, Weight = 33, Grants = new List<PermissionGrant> { Grant("knk.admin.road", expires: DateTime.UtcNow.AddDays(-1)) } },
-                new PermissionGroup { Name = "Plain" + suffix, Weight = 34, Grants = new List<PermissionGrant> { Grant("knk.freeze"), Grant("knk.admin.export", false) } },
-            };
-            ctx.PermissionGroups.AddRange(groups);
+            // Plain SQL for the groups: the schema is the older one here (see PermissionGroupRows).
+            staff = await PermissionGroupRows.InsertAsync(ctx, "Staff", 25, null, Grant("knk.kit.manage"), Grant("knk.admin.user.manage"));
+            builders = await PermissionGroupRows.InsertAsync(ctx, "Builders" + suffix, 30, null, Grant("knk.admin.world"));
+            deniers = await PermissionGroupRows.InsertAsync(ctx, "Deniers" + suffix, 31, null, Grant("knk.admin.content"), Grant("knk.admin.delete", false));
+            wildDeny = await PermissionGroupRows.InsertAsync(ctx, "WildDeny" + suffix, 32, null, Grant("knk.admin.road"), Grant("knk.admin.delete.*", false));
+            expired = await PermissionGroupRows.InsertAsync(ctx, "Expired" + suffix, 33, null, Grant("knk.admin.road", expires: DateTime.UtcNow.AddDays(-1)));
+            plain = await PermissionGroupRows.InsertAsync(ctx, "Plain" + suffix, 34, null, Grant("knk.freeze"), Grant("knk.admin.export", false));
             await ctx.SaveChangesAsync();
-            (staff, builders, deniers, wildDeny, expired, plain) = (groups[0].Id, groups[1].Id, groups[2].Id, groups[3].Id, groups[4].Id, groups[5].Id);
 
             var users = new[]
             {
