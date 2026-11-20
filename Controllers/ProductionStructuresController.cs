@@ -196,6 +196,16 @@ namespace KnKWebAPI.Controllers
             }
         }
 
+        /// <summary>The structure's transport (P5, #79): the automatic trigger's dry run (why it fires or is held, the
+        /// order it would make, where to), dashboard warnings (no road connection D5, full Output storage), open orders
+        /// and workers away. Writes nothing.</summary>
+        [HttpGet("{id:int}/transport")]
+        public async Task<IActionResult> GetTransport(int id, [FromServices] ITransportService transport)
+        {
+            var view = await transport.StructureViewAsync(id);
+            return view == null ? NotFound() : Ok(view);
+        }
+
         /// <summary>The road connection the game server measured (DESIGN § 7.6, P5b): plugin key or knk.admin.world.</summary>
         [HttpPut("{id:int}/road-connection")]
         public async Task<IActionResult> SetRoadConnection(int id, [FromBody] RoadConnectionUpdateDto dto)

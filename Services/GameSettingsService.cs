@@ -92,7 +92,8 @@ public class GameSettingsService : IGameSettingsService
         if (dto.Production != null)
         {
             // #326: Production:Enabled and the territory ranges (validated in ValidateUpdate).
-            existing.ProductionSettingsJson = GameSettingsJson.Serialize(Territory.ProductionSettings.Normalize(dto.Production));
+            existing.ProductionSettingsJson = GameSettingsJson.Serialize(
+                Territory.ProductionSettings.Normalize(dto.Production, Territory.ProductionSettings.Read(existing)));
         }
         existing.UpdatedAt = DateTime.UtcNow;
 

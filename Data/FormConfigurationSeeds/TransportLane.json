@@ -1,0 +1,83 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "5aa0da25-1bb9-539f-bae6-48ac5857bfc4",
+  "entityTypeName": "TransportLane",
+  "name": "TransportLane - Default (seed v1)",
+  "description": "A transport lane (transport core P5, #79): the road route between two structures. The game server measures lanes (AStarRouter over the road snapshot, #681); staff can type one in. The simulated trip takes road distance \u00f7 walking speed; without a lane the straight distance \u00d7 a factor is used.",
+  "steps": [
+    {
+      "stepGuid": "573b6997-fa74-50e7-b4f5-52e8c51f41ce",
+      "stepName": "Lane",
+      "description": "The two structures and the road between them (read in both directions).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "847a39e2-9f23-50e9-8cd3-2f8db5ece858",
+          "fieldName": "FromStructureId",
+          "label": "From",
+          "description": "A production structure or warehouse.",
+          "fieldType": "Object",
+          "objectType": "Structure",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fd5a7717-e58f-56b2-8ef7-0c6413f6ef6e",
+          "fieldName": "ToStructureId",
+          "label": "To",
+          "description": "The other structure.",
+          "fieldType": "Object",
+          "objectType": "Structure",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1ad9a332-4db5-5776-903a-13b63f8475ae",
+          "fieldName": "Reachable",
+          "label": "Reachable",
+          "description": "Off when there is no road between them (the lane is then not a route).",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "957f735e-5207-54f6-aedc-ad73a62a038f",
+          "fieldName": "RoadDistance",
+          "label": "Road distance",
+          "description": "Length of the road route in blocks (needed when reachable).",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "348e33c5-8fa4-5d17-9684-cc66b6cb8c67",
+          "fieldName": "StraightDistance",
+          "label": "Straight distance",
+          "description": "Straight distance in blocks.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5f60b899-1792-5fca-9111-8bc4ac8c3d4e",
+          "fieldName": "MeasuredSeconds",
+          "label": "Walked time",
+          "description": "Seconds, when a walk was timed (shown only).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d0002c51-9c72-507d-89a5-82c83ffa0915",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Why it was typed in.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

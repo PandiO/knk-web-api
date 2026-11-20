@@ -1,0 +1,317 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "66e76162-499e-5e8a-a8df-1e355173df3f",
+  "entityTypeName": "TransportOrder",
+  "name": "TransportOrder - Default (seed v1)",
+  "description": "A transport order with its stops, cargo and event log (transport core P5, #79). The order's API view also lists what is in transit now and the carrier assignments.",
+  "sections": [
+    {
+      "sectionGuid": "f9d342a0-3520-5708-98db-a55a9381345e",
+      "sectionName": "General information",
+      "description": "Where it comes from, who carries it and where it is.",
+      "fields": [
+        {
+          "fieldGuid": "86f0910f-d7c0-558d-8653-6af352ac3d55",
+          "fieldName": "Id",
+          "label": "Order",
+          "description": "The order number.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "b529886b-6dbd-545f-af9a-2a31eff7cc1e",
+          "fieldName": "Origin",
+          "label": "Origin",
+          "description": "Automatic, Distribution, Trade, Manual or Quest.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "f51745d3-6892-578f-918e-ec15bbcff4cc",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Where the order is in its lifecycle.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "8b1fbfc0-64bb-5bf7-bb08-7fbbbab0fcce",
+          "fieldName": "StatusReason",
+          "label": "Status reason",
+          "description": "Why it waits, re-routed, returned or was cancelled.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "4b9e4a23-454d-5ab7-83ae-62d4b8b67c2b",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "SourceStorage",
+          "relatedEntityTypeName": "Storage",
+          "label": "Source storage",
+          "description": "Where the cargo comes from.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "efd0ee9e-90cb-5116-bfbd-08c2608152a3",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "SourceStructure",
+          "relatedEntityTypeName": "Structure",
+          "label": "Source structure",
+          "description": "The structure the cargo starts from.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "3209a549-3866-572f-ba50-ee14e786fd71",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "CarrierStructure",
+          "relatedEntityTypeName": "ProductionStructure",
+          "label": "Carrier",
+          "description": "Whose worker carries it.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "797c00aa-f0bd-5f5a-91e2-1e71bef9d5e7",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "CargoStorage",
+          "relatedEntityTypeName": "Storage",
+          "label": "Transit storage",
+          "description": "The order's own transit storage.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "99ae4ed0-35b4-5156-a009-c0179547fa49",
+          "fieldName": "CarrierCapacity",
+          "label": "Carrier capacity",
+          "description": "Raw units the carrier takes.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "7212b366-e759-5c39-9108-5ac4e213705d",
+          "fieldName": "Reroutes",
+          "label": "Re-routes",
+          "description": "Times it went to another warehouse.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "6b58d393-a726-5c06-a1a1-e7c2f3767e11",
+          "fieldName": "CancelRequested",
+          "label": "Cancelled after loading",
+          "description": "The cargo was brought back.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "aa56c59a-fbed-5114-a002-446d0f9b5f1b",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Staff note.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "b941bef5-d6dd-58a3-a23f-1457fc7f909d",
+      "sectionName": "Timing",
+      "description": "Simulated trip: route length \u00f7 walking speed (G14).",
+      "fields": [
+        {
+          "fieldGuid": "b1988cd6-b2c5-5968-8911-f8442ca8addc",
+          "fieldName": "CreatedAt",
+          "label": "Created",
+          "description": "When it was made.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "bb2a1823-7471-5397-9c74-75079396eb84",
+          "fieldName": "ExecuteAfter",
+          "label": "Not before",
+          "description": "When it may leave.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "c0ba0e43-e93d-5b6d-9c36-0c4ddd93addb",
+          "fieldName": "DepartedAt",
+          "label": "Departed",
+          "description": "When it left.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "ec4cfa88-4f5c-58cb-80d3-d6a3b8d97e64",
+          "fieldName": "EtaAt",
+          "label": "Arrives",
+          "description": "Arrival at the next stop (or back at the source).",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "80637ac2-4939-58a8-a1ca-a1b691dcc5f7",
+          "fieldName": "WaitingSince",
+          "label": "Waiting since",
+          "description": "Since when a stop or the source has had no room.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "edc6631c-928d-5622-8b36-40a7fefc7449",
+          "fieldName": "CompletedAt",
+          "label": "Completed",
+          "description": "When it ended.",
+          "fieldType": "DateTime"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "b402e850-1c35-5eed-868a-c944f159aff6",
+      "sectionName": "Stops",
+      "description": "The stops in visiting order with their distances.",
+      "relatedEntityPropertyName": "Stops",
+      "relatedEntityTypeName": "TransportStop",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "01ffc7b7-cacb-50c5-847d-ec284fa28429",
+          "fieldName": "Sequence",
+          "label": "#",
+          "description": "Visiting order.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "3876dcc3-2934-5e8c-a14f-39fa99807792",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Storage",
+          "relatedEntityTypeName": "Storage",
+          "label": "Storage",
+          "description": "The stop's storage.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "8b251590-359e-52d7-84db-e19820b9ab46",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Pending, Delivered, Partial or Skipped.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "2976b29f-bd97-5d58-a0dd-1bfbdfd56153",
+          "fieldName": "DistanceBlocks",
+          "label": "Distance",
+          "description": "The leg in blocks.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "b5f7197b-1e4b-5158-ade3-c18389c0a1f0",
+          "fieldName": "DistanceSource",
+          "label": "Route",
+          "description": "Lane (measured), Estimated, Fallback or TurnedAround.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "8bce015e-c87c-5df3-bf22-0f2808fe2361",
+          "fieldName": "EtaAt",
+          "label": "Arrives",
+          "description": "Planned arrival.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "7a94bd26-84c8-5c69-a0df-28fb3004ec21",
+          "fieldName": "ArrivedAt",
+          "label": "Arrived",
+          "description": "Actual arrival.",
+          "fieldType": "DateTime"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "16c2f754-70a2-5332-8363-e46597022ada",
+      "sectionName": "Cargo",
+      "description": "Per blueprint: requested, loaded, delivered, returned and lost.",
+      "relatedEntityPropertyName": "Lines",
+      "relatedEntityTypeName": "TransportOrderLine",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "5b6df778-db18-5e89-9de4-912655022392",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Blueprint",
+          "description": "The item.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "bb982890-0c3e-5384-bd8f-19a65dc86da7",
+          "fieldName": "Requested",
+          "label": "Requested",
+          "description": "Asked for.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "3c64f695-4d12-5446-a924-fc5d6ec4dc2a",
+          "fieldName": "Loaded",
+          "label": "Loaded",
+          "description": "Taken from the source.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d2df3d61-2ac8-5354-9240-e54f3d0f10d7",
+          "fieldName": "Delivered",
+          "label": "Delivered",
+          "description": "Put into stops.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "1d4d4ad9-dd65-5b2e-89f9-e017d2e2fa45",
+          "fieldName": "Returned",
+          "label": "Returned",
+          "description": "Brought back to the source.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "0bf12526-afd6-5e8e-98e2-c06e3aa98910",
+          "fieldName": "Lost",
+          "label": "Lost",
+          "description": "Lost on the way (later: robbery).",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "b199ddb2-8435-5f53-9050-ccfece09b5b6",
+      "sectionName": "Event log",
+      "description": "What happened, oldest first.",
+      "relatedEntityPropertyName": "Events",
+      "relatedEntityTypeName": "TransportEvent",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "0eaac012-cc7a-5271-8a2d-9286954198c7",
+          "fieldName": "At",
+          "label": "At",
+          "description": "When.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "d7f3c152-e55b-515e-8c08-4fc19eb7eb0d",
+          "fieldName": "Kind",
+          "label": "Event",
+          "description": "What happened.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "1d3970a2-16a4-534b-a0ff-7a59a7d8d384",
+          "fieldName": "StatusAfter",
+          "label": "Status after",
+          "description": "The order's status after it.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "ed97f856-bad9-5816-8b56-89978a94af7b",
+          "fieldName": "Message",
+          "label": "Message",
+          "description": "Details.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "a94e4991-d0b1-5777-ab31-166ee0750c8d",
+          "fieldName": "StockTransactionId",
+          "label": "Ledger transaction",
+          "description": "The stock transaction, for moves.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

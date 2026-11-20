@@ -335,3 +335,18 @@ gets it by adding the field in the form designer with the same field name, type 
 `{"enumValues": ["shortest", "efficient", "preferred"], "emptyOptionLabel": "None (default: preferred)"}`. Without it
 the form leaves the stored value alone (an omitted value is kept). Field GUID: uuid5 of the configuration GUID and
 `Group/DefaultRouteMode`.
+
+**Transport core P5 seeds v1 (PandiO/knk-workspace#79, 2026-11-20):** new seeds for the two major P5 entities, each
+with a display seed in `DisplayConfigurationSeeds/` (G17). Import in any order.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `TransportOrder` | TransportOrder - Default (seed v1) | — (read only) |
+| `TransportLane` | TransportLane - Default (seed v1) | — |
+
+`TransportOrder` is read only, like `StockTransaction`: the transport service writes orders and moves them along.
+Staff make a manual order with the web app's manual order form (#682) or `POST api/TransportOrders` (dry run:
+`POST api/TransportOrders/dry-run`), and cancel with `POST api/TransportOrders/{id}/cancel`. Stops, stop lines, cargo
+lines, carrier assignments and events are listed on the order's page (view only, no seeds). `TransportLane` asks for
+the two structures and the road distance; the game server's lane measurer (#681) fills lanes in on its own. GUIDs:
+uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields uuid5(that, "step:"/"field:" + name).

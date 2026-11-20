@@ -1,0 +1,85 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "b1a33c88-e820-590c-9690-67120bfae47a",
+  "entityTypeName": "TransportLane",
+  "name": "TransportLane - Default (seed v1)",
+  "description": "A transport lane (transport core P5, #79): the road between two structures.",
+  "sections": [
+    {
+      "sectionGuid": "1849a854-7d1c-5c2f-924c-8dcb42d54802",
+      "sectionName": "Lane",
+      "description": "The two structures and the road between them.",
+      "fields": [
+        {
+          "fieldGuid": "904850f5-1c53-5128-9ffc-c8d0e2b2b4ec",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "FromStructure",
+          "relatedEntityTypeName": "Structure",
+          "label": "From",
+          "description": "A production structure or warehouse.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b6d57f78-bd55-5444-a42f-d3c3cb3fe4e0",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ToStructure",
+          "relatedEntityTypeName": "Structure",
+          "label": "To",
+          "description": "The other structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "bd9fdb8f-9153-50fb-876a-3e7706f9db09",
+          "fieldName": "Reachable",
+          "label": "Reachable",
+          "description": "Off when there is no road.",
+          "fieldType": "Boolean",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "aded8283-a09b-5f14-8f65-49e1fb698d83",
+          "fieldName": "RoadDistance",
+          "label": "Road distance",
+          "description": "Blocks of road.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "25020c1e-06c3-5d85-ba5b-bdfffbc96460",
+          "fieldName": "StraightDistance",
+          "label": "Straight distance",
+          "description": "Blocks.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "1c3f625f-64dc-5508-9b14-f9466b42e1d2",
+          "fieldName": "MeasuredSeconds",
+          "label": "Walked time",
+          "description": "Seconds.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "8fc92d0c-b6c5-52a1-9611-5aa452ba8d09",
+          "fieldName": "Source",
+          "label": "Source",
+          "description": "Plugin (measured) or Manual.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "60735c20-5fa9-54b4-87b9-6b596f4737a0",
+          "fieldName": "MeasuredAt",
+          "label": "Measured",
+          "description": "When.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "882499c8-3526-572f-ab39-7fd290d273a5",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Why it was typed in.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        }
+      ]
+    }
+  ]
+}

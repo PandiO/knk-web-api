@@ -342,6 +342,10 @@ namespace knkwebapi_v2.Dtos
     public class ConsumedInputDto
     {
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
+        /// <summary>The blueprint's name (#838); filled on read, not stored in the record.</summary>
+        [JsonPropertyName("itemBlueprintName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ItemBlueprintName { get; set; }
         [JsonPropertyName("consumed")] public long Consumed { get; set; }
     }
 

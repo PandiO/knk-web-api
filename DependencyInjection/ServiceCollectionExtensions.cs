@@ -287,6 +287,13 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Production.IProductionAreaService, knkwebapi_v2.Services.Production.ProductionAreaService>();
             services.AddScoped<knkwebapi_v2.Services.Production.IAreaSurveyService, knkwebapi_v2.Services.Production.AreaSurveyService>();
             services.AddScoped<knkwebapi_v2.Services.Production.IProductionYieldOverrideService, knkwebapi_v2.Services.Production.ProductionYieldOverrideService>();
+
+            // Transport core P5 (PandiO/knk-workspace#79): orders with a Transit storage, the simulated carrier (the
+            // producer's own worker, G14), lanes, the automatic trigger and the sweep (gated by Production:Enabled; admin
+            // CRUD, manual orders, dry runs and cancel always available).
+            services.AddScoped<knkwebapi_v2.Services.Production.ITransportService, knkwebapi_v2.Services.Production.TransportService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.ITransportLaneService, knkwebapi_v2.Services.Production.TransportLaneService>();
+            services.AddHostedService<knkwebapi_v2.Services.Production.TransportSweepService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
             services.AddScoped<IBannerDesignService, BannerDesignService>();
