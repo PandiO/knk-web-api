@@ -57,6 +57,20 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         config.PlayerSkipMatchmakingSeconds = dto.PlayerSkipMatchmakingSeconds ?? config.PlayerSkipMatchmakingSeconds;
         config.AdminSkipMatchmakingSeconds = dto.AdminSkipMatchmakingSeconds ?? config.AdminSkipMatchmakingSeconds;
         config.PostMatchSeconds = dto.PostMatchSeconds ?? config.PostMatchSeconds;
+        // Siege points (siege shop § 5.2, #866).
+        config.PointsPerKill = dto.PointsPerKill ?? config.PointsPerKill;
+        config.PointsStreakStep = dto.PointsStreakStep ?? config.PointsStreakStep;
+        config.PointsStreakCap = dto.PointsStreakCap ?? config.PointsStreakCap;
+        config.PointsPerAssist = dto.PointsPerAssist ?? config.PointsPerAssist;
+        config.AssistMinDamage = dto.AssistMinDamage ?? config.AssistMinDamage;
+        config.AssistWindowSeconds = dto.AssistWindowSeconds ?? config.AssistWindowSeconds;
+        config.PointsPerDeath = dto.PointsPerDeath ?? config.PointsPerDeath;
+        config.GateHpPerPoint = dto.GateHpPerPoint ?? config.GateHpPerPoint;
+        config.PointsPerCapturePercent = dto.PointsPerCapturePercent ?? config.PointsPerCapturePercent;
+        config.PointsPerCapture = dto.PointsPerCapture ?? config.PointsPerCapture;
+        config.TrickleAmount = dto.TrickleAmount ?? config.TrickleAmount;
+        config.TrickleIntervalSeconds = dto.TrickleIntervalSeconds ?? config.TrickleIntervalSeconds;
+        config.PointTransfersEnabled = dto.PointTransfersEnabled ?? config.PointTransfersEnabled;
 
         if (dto.NonMemberGateView.HasValue)
         {
@@ -122,6 +136,23 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         if (c.EnchantLevelMin < 1 || c.EnchantLevelMax < c.EnchantLevelMin || c.EnchantLevelMax > 255)
             throw new ArgumentException("Enchant levels must satisfy 1 ≤ enchantLevelMin ≤ enchantLevelMax ≤ 255.");
         if (c.MaxBooksAlive < 0) throw new ArgumentException("maxBooksAlive can't be negative.");
+
+        // Siege points (#866): amounts are whole points, never negative; the streak never lowers a kill.
+        if (new[] { c.PointsPerKill, c.PointsPerAssist, c.PointsPerDeath, c.PointsPerCapturePercent,
+                    c.PointsPerCapture, c.TrickleAmount }.Any(v => v < 0))
+            throw new ArgumentException("Siege point amounts can't be negative.");
+        if (!double.IsFinite(c.PointsStreakStep) || c.PointsStreakStep < 0 || c.PointsStreakStep > 10)
+            throw new ArgumentException("pointsStreakStep must be between 0 and 10.");
+        if (!double.IsFinite(c.PointsStreakCap) || c.PointsStreakCap < 1 || c.PointsStreakCap > 100)
+            throw new ArgumentException("pointsStreakCap must be between 1.0 (no streak bonus) and 100.");
+        if (!double.IsFinite(c.AssistMinDamage) || c.AssistMinDamage < 0 || c.AssistMinDamage > 1000)
+            throw new ArgumentException("assistMinDamage must be between 0 and 1000.");
+        if (c.AssistWindowSeconds < 0 || c.AssistWindowSeconds > 600)
+            throw new ArgumentException("assistWindowSeconds must be between 0 and 600 seconds.");
+        if (!double.IsFinite(c.GateHpPerPoint) || c.GateHpPerPoint < 0 || c.GateHpPerPoint > 100000)
+            throw new ArgumentException("gateHpPerPoint must be between 0 (gate damage pays nothing) and 100000.");
+        if (c.TrickleIntervalSeconds < 1 || c.TrickleIntervalSeconds > 3600)
+            throw new ArgumentException("trickleIntervalSeconds must be between 1 and 3600 seconds.");
     }
 
     private static string JoinPositiveInts(List<int> values, string field, bool descending)
@@ -204,6 +235,19 @@ public class SiegeConfigurationService : ISiegeConfigurationService
         PlayerSkipMatchmakingSeconds = c.PlayerSkipMatchmakingSeconds,
         AdminSkipMatchmakingSeconds = c.AdminSkipMatchmakingSeconds,
         PostMatchSeconds = c.PostMatchSeconds,
+        PointsPerKill = c.PointsPerKill,
+        PointsStreakStep = c.PointsStreakStep,
+        PointsStreakCap = c.PointsStreakCap,
+        PointsPerAssist = c.PointsPerAssist,
+        AssistMinDamage = c.AssistMinDamage,
+        AssistWindowSeconds = c.AssistWindowSeconds,
+        PointsPerDeath = c.PointsPerDeath,
+        GateHpPerPoint = c.GateHpPerPoint,
+        PointsPerCapturePercent = c.PointsPerCapturePercent,
+        PointsPerCapture = c.PointsPerCapture,
+        TrickleAmount = c.TrickleAmount,
+        TrickleIntervalSeconds = c.TrickleIntervalSeconds,
+        PointTransfersEnabled = c.PointTransfersEnabled,
         UpdatedAt = DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc)
     };
 }

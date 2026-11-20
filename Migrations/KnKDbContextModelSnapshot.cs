@@ -7599,6 +7599,12 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("varchar(2000)");
 
+                    b.Property<double>("AssistMinDamage")
+                        .HasColumnType("double");
+
+                    b.Property<int>("AssistWindowSeconds")
+                        .HasColumnType("int");
+
                     b.Property<int>("CaptureAttackBase")
                         .HasColumnType("int");
 
@@ -7631,6 +7637,9 @@ namespace knkwebapi_v2.Migrations
 
                     b.Property<int>("EnchantLevelMin")
                         .HasColumnType("int");
+
+                    b.Property<double>("GateHpPerPoint")
+                        .HasColumnType("double");
 
                     b.Property<bool>("GiveNavigationItem")
                         .HasColumnType("tinyint(1)");
@@ -7665,6 +7674,30 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int>("PlayerSkipMatchmakingSeconds")
                         .HasColumnType("int");
 
+                    b.Property<bool>("PointTransfersEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("PointsPerAssist")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsPerCapture")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsPerCapturePercent")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsPerDeath")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsPerKill")
+                        .HasColumnType("int");
+
+                    b.Property<double>("PointsStreakCap")
+                        .HasColumnType("double");
+
+                    b.Property<double>("PointsStreakStep")
+                        .HasColumnType("double");
+
                     b.Property<int>("PostMatchSeconds")
                         .HasColumnType("int");
 
@@ -7675,6 +7708,12 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("TeamSplitSecondsBeforeStart")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TrickleAmount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TrickleIntervalSeconds")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -7922,6 +7961,12 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("SiegeMatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegePointsEarned")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiegePointsSpent")
                         .HasColumnType("int");
 
                     b.Property<int?>("SiegeTeamId")

@@ -32,6 +32,12 @@ public class SiegeMatchParticipant
     public int ActiveSeconds { get; set; }
     public int MatchSeconds { get; set; }
 
+    // Siege shop L1 (PandiO/knk-workspace#866, P27): the siege points this member earned (play and transfers in) and
+    // spent (purchases and transfers out) in the match, reported with "complete" when the plugin's siege points are on
+    // (0 otherwise). Balance data for #651.
+    public int SiegePointsEarned { get; set; }
+    public int SiegePointsSpent { get; set; }
+
     public int CoinsAwarded { get; set; }
     public int ExpAwarded { get; set; }
     public int GemsAwarded { get; set; }

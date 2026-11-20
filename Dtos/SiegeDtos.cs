@@ -374,6 +374,20 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("playerSkipMatchmakingSeconds")] public int PlayerSkipMatchmakingSeconds { get; set; }
         [JsonPropertyName("adminSkipMatchmakingSeconds")] public int AdminSkipMatchmakingSeconds { get; set; }
         [JsonPropertyName("postMatchSeconds")] public int PostMatchSeconds { get; set; }
+        // Siege points (siege shop § 5.2, PandiO/knk-workspace#866).
+        [JsonPropertyName("pointsPerKill")] public int PointsPerKill { get; set; }
+        [JsonPropertyName("pointsStreakStep")] public double PointsStreakStep { get; set; }
+        [JsonPropertyName("pointsStreakCap")] public double PointsStreakCap { get; set; }
+        [JsonPropertyName("pointsPerAssist")] public int PointsPerAssist { get; set; }
+        [JsonPropertyName("assistMinDamage")] public double AssistMinDamage { get; set; }
+        [JsonPropertyName("assistWindowSeconds")] public int AssistWindowSeconds { get; set; }
+        [JsonPropertyName("pointsPerDeath")] public int PointsPerDeath { get; set; }
+        [JsonPropertyName("gateHpPerPoint")] public double GateHpPerPoint { get; set; }
+        [JsonPropertyName("pointsPerCapturePercent")] public int PointsPerCapturePercent { get; set; }
+        [JsonPropertyName("pointsPerCapture")] public int PointsPerCapture { get; set; }
+        [JsonPropertyName("trickleAmount")] public int TrickleAmount { get; set; }
+        [JsonPropertyName("trickleIntervalSeconds")] public int TrickleIntervalSeconds { get; set; }
+        [JsonPropertyName("pointTransfersEnabled")] public bool PointTransfersEnabled { get; set; }
         [JsonPropertyName("updatedAt")] public DateTime UpdatedAt { get; set; }
     }
 
@@ -407,6 +421,20 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("playerSkipMatchmakingSeconds")] public int? PlayerSkipMatchmakingSeconds { get; set; }
         [JsonPropertyName("adminSkipMatchmakingSeconds")] public int? AdminSkipMatchmakingSeconds { get; set; }
         [JsonPropertyName("postMatchSeconds")] public int? PostMatchSeconds { get; set; }
+        // Siege points (#866).
+        [JsonPropertyName("pointsPerKill")] public int? PointsPerKill { get; set; }
+        [JsonPropertyName("pointsStreakStep")] public double? PointsStreakStep { get; set; }
+        [JsonPropertyName("pointsStreakCap")] public double? PointsStreakCap { get; set; }
+        [JsonPropertyName("pointsPerAssist")] public int? PointsPerAssist { get; set; }
+        [JsonPropertyName("assistMinDamage")] public double? AssistMinDamage { get; set; }
+        [JsonPropertyName("assistWindowSeconds")] public int? AssistWindowSeconds { get; set; }
+        [JsonPropertyName("pointsPerDeath")] public int? PointsPerDeath { get; set; }
+        [JsonPropertyName("gateHpPerPoint")] public double? GateHpPerPoint { get; set; }
+        [JsonPropertyName("pointsPerCapturePercent")] public int? PointsPerCapturePercent { get; set; }
+        [JsonPropertyName("pointsPerCapture")] public int? PointsPerCapture { get; set; }
+        [JsonPropertyName("trickleAmount")] public int? TrickleAmount { get; set; }
+        [JsonPropertyName("trickleIntervalSeconds")] public int? TrickleIntervalSeconds { get; set; }
+        [JsonPropertyName("pointTransfersEnabled")] public bool? PointTransfersEnabled { get; set; }
     }
 
     // ---- Runtime config (GET /api/siege-lobbies/runtime-config, DESIGN §11.2) ----

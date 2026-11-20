@@ -68,6 +68,52 @@ public class SiegeConfigurationServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(new UpdateSiegeConfigurationDto { PostMatchSeconds = 601 }));
     }
 
+    /// <summary>Siege shop L1 (PandiO/knk-workspace#866): the siege points earn settings, DESIGN § 5.2 defaults, transfers off.</summary>
+    [Fact]
+    public async Task TheSiegePointsSettingsHaveTheDesignDefaultsAndTransfersAreOff()
+    {
+        var c = await _service.GetAsync();
+        Assert.Equal((100, 0.1, 1.5), (c.PointsPerKill, c.PointsStreakStep, c.PointsStreakCap));
+        Assert.Equal((40, 4.0, 10), (c.PointsPerAssist, c.AssistMinDamage, c.AssistWindowSeconds));
+        Assert.Equal((15, 5.0, 3, 100), (c.PointsPerDeath, c.GateHpPerPoint, c.PointsPerCapturePercent, c.PointsPerCapture));
+        Assert.Equal((10, 60), (c.TrickleAmount, c.TrickleIntervalSeconds));
+        Assert.False(c.PointTransfersEnabled);
+    }
+
+    [Fact]
+    public async Task TheSiegePointsSettingsAreEditablePartially()
+    {
+        var updated = await _service.UpdateAsync(new UpdateSiegeConfigurationDto
+        {
+            PointsPerKill = 120, PointsStreakCap = 2.0, PointTransfersEnabled = true, GateHpPerPoint = 0
+        });
+        Assert.Equal((120, 2.0, true, 0.0), (updated.PointsPerKill, updated.PointsStreakCap, updated.PointTransfersEnabled, updated.GateHpPerPoint));
+        Assert.Equal(40, updated.PointsPerAssist);
+
+        var other = await _service.UpdateAsync(new UpdateSiegeConfigurationDto { MaxBooksAlive = 11 });
+        Assert.Equal((120, true), (other.PointsPerKill, other.PointTransfersEnabled));
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidSiegePoints))]
+    public async Task TheSiegePointsSettingsRejectNonsense(UpdateSiegeConfigurationDto dto)
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(dto));
+    }
+
+    public static IEnumerable<object[]> InvalidSiegePoints() => new[]
+    {
+        new object[] { new UpdateSiegeConfigurationDto { PointsPerKill = -1 } },
+        new object[] { new UpdateSiegeConfigurationDto { PointsPerDeath = -1 } },
+        new object[] { new UpdateSiegeConfigurationDto { PointsStreakStep = -0.1 } },
+        new object[] { new UpdateSiegeConfigurationDto { PointsStreakCap = 0.9 } },
+        new object[] { new UpdateSiegeConfigurationDto { AssistMinDamage = double.NaN } },
+        new object[] { new UpdateSiegeConfigurationDto { AssistWindowSeconds = -1 } },
+        new object[] { new UpdateSiegeConfigurationDto { GateHpPerPoint = -5 } },
+        new object[] { new UpdateSiegeConfigurationDto { TrickleIntervalSeconds = 0 } },
+        new object[] { new UpdateSiegeConfigurationDto { TrickleAmount = -10 } },
+    };
+
     [Fact]
     public async Task FirstRead_SeedsTheLegacyDefaults()
     {
