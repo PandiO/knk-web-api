@@ -69,6 +69,12 @@ public class GameSettings
     /// </summary>
     public string? ProductionSettingsJson { get; set; }
 
+    /// <summary>
+    /// Serialized MenuItemSettingsDto: the menu item's look, click table and situation overrides (siege shop DESIGN
+    /// § 4.3, § 6.1.8, PandiO/knk-workspace#870). Null = the defaults (<c>Services.MenuItemSettings.Defaults</c>).
+    /// </summary>
+    public string? MenuItemSettingsJson { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

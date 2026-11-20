@@ -95,6 +95,11 @@ public class GameSettingsService : IGameSettingsService
             existing.ProductionSettingsJson = GameSettingsJson.Serialize(
                 Territory.ProductionSettings.Normalize(dto.Production, Territory.ProductionSettings.Read(existing)));
         }
+        if (dto.MenuItem != null)
+        {
+            // #870: the menu item section (validated in ValidateUpdate).
+            existing.MenuItemSettingsJson = GameSettingsJson.Serialize(MenuItemSettings.Normalize(dto.MenuItem));
+        }
         existing.UpdatedAt = DateTime.UtcNow;
 
         var saved = await _repository.UpsertAsync(existing);
@@ -344,6 +349,11 @@ public class GameSettingsService : IGameSettingsService
         if (dto.Production != null)
         {
             Territory.ProductionSettings.Normalize(dto.Production);
+        }
+
+        if (dto.MenuItem != null)
+        {
+            MenuItemSettings.Normalize(dto.MenuItem);
         }
 
         if (dto.Motd != null)
