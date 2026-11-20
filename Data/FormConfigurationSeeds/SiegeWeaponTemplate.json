@@ -1,8 +1,8 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "07a8df64-31f7-5c66-b462-cff3ccc9c64c",
+  "configurationGuid": "aa01ac34-e471-4d5f-8139-66d836396238",
   "entityTypeName": "SiegeWeaponTemplate",
-  "name": "SiegeWeaponTemplate - Default (seed v1)",
+  "name": "SiegeWeaponTemplate - Default (seed v2)",
   "description": "One siege weapon type (trebuchet, catapult, ballista): its build, firing, range, damage multipliers, prices and the ammo it may fire.",
   "steps": [
     {
@@ -293,6 +293,16 @@
           "fieldType": "Integer",
           "defaultValue": "1000",
           "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5585bdda-99f6-4959-8be1-d2f76948fc24",
+          "fieldName": "UnlockMinTitleLevel",
+          "label": "Minimum title to unlock",
+          "description": "Optional: players below this title can't unlock this type (they see \"Needs title ...\").",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
           "isReadOnly": false
         }
       ]

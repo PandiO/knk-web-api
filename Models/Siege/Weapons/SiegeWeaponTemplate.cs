@@ -54,6 +54,15 @@ public class SiegeWeaponTemplate
     public int MatchPrice { get; set; } = 200;           // W13, siege points to place one
     public int UnlockPrice { get; set; } = 1000;         // W32, personal coins to unlock the type
 
+    // Siege shop L4 (knk-workspace docs/specs/siege-shop/DESIGN.md § 5.6, § 6.1.6, P09; PandiO/knk-workspace#869): the
+    // minimum title level a player needs to unlock the type, as the TitleBracket id (the brackets are v1's title levels,
+    // ids 0-18 in XP order); null = no minimum. Restrict: a title a template requires can't be deleted.
+    [NavigationPair(nameof(UnlockMinTitle))]
+    [RelatedEntityField(typeof(TitleBracket))]
+    public int? UnlockMinTitleLevel { get; set; }
+    [RelatedEntityField(typeof(TitleBracket))]
+    public TitleBracket? UnlockMinTitle { get; set; }
+
     // W19: M2M join; the join rows cascade with the template, an ammo type in use can't be deleted.
     [RelatedEntityField(typeof(SiegeWeaponTemplateAmmoType))]
     public ICollection<SiegeWeaponTemplateAmmoType> AllowedAmmoTypes { get; set; } = new List<SiegeWeaponTemplateAmmoType>();
