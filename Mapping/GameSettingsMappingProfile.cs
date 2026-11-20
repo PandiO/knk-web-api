@@ -26,6 +26,8 @@ public class GameSettingsMappingProfile : Profile
             .ForMember(dest => dest.ChatTokens,
                 opt => opt.MapFrom(src => GameSettingsJson.Deserialize<ChatTokenSettingsDto>(src.ChatTokenSettingsJson) ?? new ChatTokenSettingsDto()))
             .ForMember(dest => dest.Production,
-                opt => opt.MapFrom(src => ProductionSettings.Read(src)));
+                opt => opt.MapFrom(src => ProductionSettings.Read(src)))
+            .ForMember(dest => dest.MenuItem,
+                opt => opt.MapFrom(src => MenuItemSettings.Read(src)));
     }
 }
