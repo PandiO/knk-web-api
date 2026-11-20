@@ -48,6 +48,9 @@ public static partial class MenuTemplateSeed
 
         // Siege menus seeded before a layout fix are brought up to date in place (see RepairSiegeLayoutAsync).
         await RepairSiegeLayoutAsync(context, logger, cancellationToken);
+
+        // Siege shop L3 (#868): siege.information menus seeded before the shop get its Shop button once.
+        await AddSiegeShopButtonAsync(context, logger, cancellationToken);
         // A hub seeded before the production menus gets their "Structures" tile (P6a, #683).
         await RepairProductionHubTileAsync(context, logger, cancellationToken);
     }
@@ -687,6 +690,10 @@ public static partial class MenuTemplateSeed
 
         // Siege Phase 8b (siege-minigame MENU_TEMPLATES.md Part C) - see MenuTemplateSeed.Siege.cs.
         foreach (var template in SiegeTemplates())
+            yield return template;
+
+        // Siege shop L3 (PandiO/knk-workspace#868) - see MenuTemplateSeed.SiegeShop.cs.
+        foreach (var template in SiegeShopTemplates())
             yield return template;
 
         // Player statistics privacy (KNG-34) - see MenuTemplateSeed.Statistics.cs.
