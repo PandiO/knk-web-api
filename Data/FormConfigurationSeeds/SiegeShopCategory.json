@@ -1,0 +1,55 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "d2ce608c-22d9-501a-9e03-537b2c196434",
+  "entityTypeName": "SiegeShopCategory",
+  "name": "SiegeShopCategory - Default (seed v1)",
+  "description": "A category of the siege shop (Siege weapons, Consumables, Magic). A category without visible entries is not shown in the shop.",
+  "steps": [
+    {
+      "stepGuid": "8f7b1345-7dcf-51d1-b775-dc126b355951",
+      "stepName": "Category",
+      "description": "Name the category and where it sits in the shop.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "48944661-f120-552a-b706-c50f5e13b90f",
+          "fieldName": "Key",
+          "label": "Key",
+          "description": "Stable key the game server and seeds use, e.g. consumables. Lower-case letters, digits and dashes; unique.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "12981827-7d8b-50dc-b52e-8f36c753dfd3",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in the shop menu.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "32d8f10c-3354-55f3-8abe-1016a95a33d9",
+          "fieldName": "IconMaterial",
+          "label": "Icon",
+          "description": "Material key of the icon in the shop menu, e.g. minecraft:golden_apple (minecraft: prefix optional). Empty = a default icon.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c3875cb8-09ee-5fe6-bae4-1d6d378b8058",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Lower first.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

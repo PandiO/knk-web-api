@@ -205,6 +205,16 @@ public class ReadAccessRulesTests
         ["SiegeWeaponTemplatesController.GetAll"] = "F SiegeWeaponTemplate",
         ["SiegeWeaponTemplatesController.GetById"] = "F SiegeWeaponTemplate",
         ["SiegeWeaponTemplatesController.Search"] = "F SiegeWeaponTemplate",
+        // Siege shop catalogue (PandiO/knk-workspace#867); the effective catalogue reads with the entries' nodes.
+        ["SiegeShopCategoriesController.GetAll"] = "F SiegeShopCategory",
+        ["SiegeShopCategoriesController.GetById"] = "F SiegeShopCategory",
+        ["SiegeShopCategoriesController.Search"] = "F SiegeShopCategory",
+        ["SiegeShopEntriesController.GetAll"] = "F SiegeShopEntry",
+        ["SiegeShopEntriesController.GetById"] = "F SiegeShopEntry",
+        ["SiegeShopEntriesController.Search"] = "F SiegeShopEntry",
+        ["SiegeScenarioShopOverridesController.GetById"] = "F SiegeScenarioShopOverride",
+        ["SiegeScenarioShopOverridesController.GetByScenario"] = "F SiegeScenarioShopOverride",
+        ["SiegeShopController.GetCatalogue"] = "F SiegeShopEntry",
         ["StreetsController.GetAll"] = "F Street",
         ["StreetsController.GetStreetById"] = "F Street",
         ["StreetsController.GetStreetRoad"] = "F Street",
@@ -498,6 +508,8 @@ public class ReadAccessRulesTests
         "LootboxTokensController.Undelivered", "LootboxTypesController.GetOdds", "PlayerNotificationsController.GetPending",
         "NavigationSettingsController.GetCompass", "GameSettingsController.Get", "TitleBracketsController.GetAll",
         "HealthCheckController.GetReadiness",
+        // Siege shop (PandiO/knk-workspace#867): fetched once per match from siege shop phase 3 (#868) on.
+        "SiegeShopController.GetCatalogue",
     };
 
     // ===== The pinned categories =====

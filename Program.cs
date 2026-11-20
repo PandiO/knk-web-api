@@ -372,6 +372,11 @@ using (var scope = app.Services.CreateScope())
     // Siege Phase 9: one disabled example lobby (create-only by key).
     var siegeLobbySeedLogger = loggerFactory.CreateLogger("SiegeLobbySeed");
     await knkwebapi_v2.Models.SiegeLobbySeed.SeedCanonicalAsync(dbContext, siegeLobbySeedLogger, includeExamples);
+
+    // Siege shop (PandiO/knk-workspace#867): the default catalogue of DESIGN § 12.2, per mode while it has no entries.
+    // After the item and siege seeds (it reuses blueprints by name and lists the existing weapon templates).
+    var siegeShopSeedLogger = loggerFactory.CreateLogger("SiegeShopSeed");
+    await knkwebapi_v2.Models.SiegeShopSeed.SeedCanonicalAsync(dbContext, siegeShopSeedLogger);
 }
 
 app.Run();

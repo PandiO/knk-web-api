@@ -102,4 +102,12 @@ public class SiegeScenario
     // Owned weapon spots (cascade), created through POST /api/SiegeScenarios/{id}/weapon-spots.
     [RelatedEntityField(typeof(SiegeWeaponSpot))]
     public ICollection<SiegeWeaponSpot> WeaponSpots { get; set; } = new List<SiegeWeaponSpot>();
+
+    // Siege shop (knk-workspace docs/specs/siege-shop/DESIGN.md § 5.3, § 6.1; PandiO/knk-workspace#867): the scenario's
+    // overrides of the mode's default entries and its own scenario-only entries, both owned (cascade). Managed through
+    // /api/SiegeScenarios/{id}/shop-overrides and /api/SiegeShopEntries; no column on this table.
+    [RelatedEntityField(typeof(SiegeScenarioShopOverride))]
+    public ICollection<SiegeScenarioShopOverride> ShopOverrides { get; set; } = new List<SiegeScenarioShopOverride>();
+    [RelatedEntityField(typeof(SiegeShopEntry))]
+    public ICollection<SiegeShopEntry> ShopEntries { get; set; } = new List<SiegeShopEntry>();
 }

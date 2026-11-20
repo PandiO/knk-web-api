@@ -45,6 +45,7 @@ public static class SiegeTestData
     {
         cfg.AddProfile<SiegeMappingProfile>();
         cfg.AddProfile<SiegeWeaponMappingProfile>(); // the scenario's weapon spots (PandiO/knk-workspace#782)
+        cfg.AddProfile<SiegeShopMappingProfile>(); // the scenario's shop overrides and entries (PandiO/knk-workspace#867)
         cfg.AddProfile<ClanMappingProfile>();
         cfg.AddProfile<LocationMappingProfile>();
         cfg.AddProfile<PagedQueryMappingProfile>();

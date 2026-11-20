@@ -1,0 +1,291 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "767ba64f-d894-53e9-806d-d17b2b5074c9",
+  "entityTypeName": "SiegeShopEntry",
+  "name": "SiegeShopEntry - Default (seed v1)",
+  "description": "One line of the siege shop: an item (blueprint and quantity) or a siege weapon, its price in siege points and its brakes. Leave the scenario empty for the mode's default list.",
+  "steps": [
+    {
+      "stepGuid": "d4a7e9a2-ce90-517d-9723-daa82f14bb51",
+      "stepName": "General",
+      "description": "Which shop list it is on, and what it sells.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a093591b-e34c-5c43-b8ce-bc4e3230a27c",
+          "fieldName": "GameMode",
+          "label": "Game mode",
+          "description": "PvP Siege or Siege Survival: each mode has its own default list.",
+          "fieldType": "Enum",
+          "defaultValue": "Siege",
+          "isRequired": true,
+          "settingsJson": "{\"enumValues\": [\"Siege\", \"SiegeSurvival\"]}",
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c12111bb-3f84-5da4-a476-a61ca4b59ac6",
+          "fieldName": "SiegeScenarioId",
+          "label": "Scenario only",
+          "description": "Empty = the mode's default list. Set = sold only in this scenario (filled in when you add it from the scenario's Siege shop step). To change a default entry for one scenario, add an override there instead.",
+          "fieldType": "Object",
+          "objectType": "SiegeScenario",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "bb5e64f1-3b86-502b-867f-1e25d5166f6b",
+          "fieldName": "CategoryId",
+          "label": "Category",
+          "description": "Where the entry is listed in the shop.",
+          "fieldType": "Object",
+          "objectType": "SiegeShopCategory",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2f8e577a-5279-52f9-a7bc-e17e9bd28338",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "Item: an item blueprint in a quantity. SiegeWeapon: a siege weapon type (placing it is siege weapons phase 3).",
+          "fieldType": "Enum",
+          "defaultValue": "Item",
+          "isRequired": true,
+          "settingsJson": "{\"enumValues\": [\"Item\", \"SiegeWeapon\"]}",
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c226c505-78bc-5274-bd46-d4612e16ddce",
+          "fieldName": "DisplayName",
+          "label": "Display name",
+          "description": "Optional name in the shop; empty = the blueprint's or weapon's own name.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "39a42610-83fa-5c45-9fc8-5ec9274a9bba",
+          "fieldName": "IconMaterial",
+          "label": "Icon",
+          "description": "Optional material key of the icon, e.g. minecraft:ender_pearl; empty = the blueprint's or weapon's own icon.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ddee9ef5-467a-5b3b-b5dd-262b8b2c2660",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Lower first within its category.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "87b19c8a-9797-587a-bc4b-b412d5c7bccb",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off = not sold anywhere (also not in scenarios).",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b7eea7dd-3b4c-5590-83e2-bb2469f40759",
+      "stepName": "Item",
+      "description": "Item entries only: what one purchase gives.",
+      "isManyToManyRelationship": false,
+      "displayConditionGroups": [
+        {
+          "innerLogic": "And",
+          "combineWithPreviousLogic": "And",
+          "isActive": true,
+          "conditions": [
+            {
+              "sourceFieldGuid": "2f8e577a-5279-52f9-a7bc-e17e9bd28338",
+              "operator": "Equals",
+              "valueJson": "\"Item\""
+            }
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "fieldGuid": "40517c05-1175-5cbf-a9c2-04884521e497",
+          "fieldName": "ItemBlueprintId",
+          "label": "Item blueprint",
+          "description": "The item sold. Potions take their type from the blueprint's potion type.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6695ecea-a854-57f9-9ede-9e020733447b",
+          "fieldName": "Quantity",
+          "label": "Quantity",
+          "description": "How many one purchase gives (the standard amount the brakes count).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "d20d159e-dae0-586a-8427-0d84da237730",
+      "stepName": "Siege weapon",
+      "description": "Siege weapon entries only. Players also need the weapon type's unlock to buy it.",
+      "isManyToManyRelationship": false,
+      "displayConditionGroups": [
+        {
+          "innerLogic": "And",
+          "combineWithPreviousLogic": "And",
+          "isActive": true,
+          "conditions": [
+            {
+              "sourceFieldGuid": "2f8e577a-5279-52f9-a7bc-e17e9bd28338",
+              "operator": "Equals",
+              "valueJson": "\"SiegeWeapon\""
+            }
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "fieldGuid": "4ee82f9d-ec32-5b9a-a79a-72c5446160b8",
+          "fieldName": "SiegeWeaponTemplateId",
+          "label": "Weapon type",
+          "description": "The siege weapon template sold. One weapon per purchase.",
+          "fieldType": "Object",
+          "objectType": "SiegeWeaponTemplate",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "f92d2829-4e83-58ba-bbd3-1049830cedf2",
+      "stepName": "Price",
+      "description": "In siege points. Each purchase by the same player in a match can raise the price: price = base + the sum of the grown steps, rounded, up to the maximum.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e5f84da1-6b0b-5d7f-b38c-2f30f82f67d7",
+          "fieldName": "Price",
+          "label": "Price",
+          "description": "Base price. Required for items; empty for a weapon = the template's match price.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c043c1d1-d5cf-54f6-b198-ddcaea85f5ef",
+          "fieldName": "PriceStep",
+          "label": "Price step",
+          "description": "Added per purchase; empty = a fixed price.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "be594f97-f3c9-55c9-a0c8-a3cf58ae017e",
+          "fieldName": "PriceCurve",
+          "label": "Step growth",
+          "description": "How the step grows with purchase i: None s, Linear s x i, Logarithmic s x (1 + ln i), Exponential s x factor^(i - 1).",
+          "fieldType": "Enum",
+          "defaultValue": "None",
+          "isRequired": true,
+          "settingsJson": "{\"enumValues\": [\"None\", \"Linear\", \"Logarithmic\", \"Exponential\"]}",
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d929f4a1-65dd-5c59-b3a5-c6ae3f899f16",
+          "fieldName": "PriceGrowthFactor",
+          "label": "Growth factor",
+          "description": "Exponential only, above 1; empty = 1.5.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8762e03d-68d3-57b9-9a25-ce6ed2742e4d",
+          "fieldName": "PriceMax",
+          "label": "Maximum price",
+          "description": "Optional cap on the grown price.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "2ac69099-0842-5785-9598-71b51226da75",
+      "stepName": "Cooldown and cap",
+      "description": "Optional brakes per player and match. The cooldown after purchase k = base + the sum of the grown steps, up to the maximum.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "efe59c99-2767-5e26-91a5-7a047d878776",
+          "fieldName": "CooldownSeconds",
+          "label": "Cooldown (seconds)",
+          "description": "Lock after a purchase; empty = no cooldown.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ee903326-9329-5d45-a1cf-67da5f3008e6",
+          "fieldName": "CooldownStepSeconds",
+          "label": "Cooldown step (seconds)",
+          "description": "Added per purchase; needs a cooldown.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6e3fb250-ac5d-52f4-b9b8-fdeadf7ae05a",
+          "fieldName": "CooldownCurve",
+          "label": "Step growth",
+          "description": "None, Linear, Logarithmic or Exponential, as for the price.",
+          "fieldType": "Enum",
+          "defaultValue": "None",
+          "isRequired": true,
+          "settingsJson": "{\"enumValues\": [\"None\", \"Linear\", \"Logarithmic\", \"Exponential\"]}",
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "96010553-5b05-5304-a7a3-a2bda524ff34",
+          "fieldName": "CooldownGrowthFactor",
+          "label": "Growth factor",
+          "description": "Exponential only, above 1; empty = 1.5.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3998fa40-a3d6-55fc-bc7b-49d713e208d8",
+          "fieldName": "CooldownMaxSeconds",
+          "label": "Maximum cooldown (seconds)",
+          "description": "Optional cap; needs a cooldown.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ba1bddc7-e6ca-52ab-b899-c00c721d49ee",
+          "fieldName": "MaxPerMatch",
+          "label": "Max per match",
+          "description": "Purchases per player per match; empty = no cap.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

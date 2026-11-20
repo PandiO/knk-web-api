@@ -76,4 +76,9 @@ public class ItemBlueprint
     // set or both null (ArmorTrimKeys). Only meaningful on an armour material.
     public string? ArmorTrimPattern { get; set; }
     public string? ArmorTrimMaterial { get; set; }
+
+    // Potion type (siege shop, PandiO/knk-workspace#867, DESIGN § 9.4): the vanilla potion registry key
+    // ("minecraft:strong_healing", "minecraft:regeneration"), null = none. Only meaningful on potion, splash potion,
+    // lingering potion and tipped arrow materials; the material decides drink/splash. Keys in PotionTypeKeys.
+    public string? PotionType { get; set; }
 }

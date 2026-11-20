@@ -31,6 +31,13 @@ namespace knkwebapi_v2.Repositories
             .Include(s => s.Objectives).ThenInclude(o => o.GateStructure).ThenInclude(g => g!.Location)
             // Siege weapons (PandiO/knk-workspace#782): owned weapon spots with their team (for its name).
             .Include(s => s.WeaponSpots).ThenInclude(w => w.SiegeTeam)
+            // Siege shop (PandiO/knk-workspace#867): the scenario's overrides and scenario-only entries, with the names
+            // their read DTOs show.
+            .Include(s => s.ShopOverrides).ThenInclude(o => o.SiegeShopEntry).ThenInclude(e => e.ItemBlueprint)
+            .Include(s => s.ShopOverrides).ThenInclude(o => o.SiegeShopEntry).ThenInclude(e => e.SiegeWeaponTemplate)
+            .Include(s => s.ShopEntries).ThenInclude(e => e.Category)
+            .Include(s => s.ShopEntries).ThenInclude(e => e.ItemBlueprint)
+            .Include(s => s.ShopEntries).ThenInclude(e => e.SiegeWeaponTemplate)
             .AsSplitQuery();
 
         public async Task<IEnumerable<SiegeScenario>> GetAllAsync()
