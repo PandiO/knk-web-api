@@ -333,6 +333,10 @@ namespace knkwebapi_v2.Attributes
             Type("TransportLane", DashboardArea.World, World,
                 Del<knkwebapi_v2.Services.Production.ITransportLaneService>((s, id) => s.DeleteAsync(id)),
                 Lists<knkwebapi_v2.Services.Production.ITransportLaneService, knkwebapi_v2.Dtos.TransportLaneListDto>((s, q) => s.SearchAsync(q))),
+            // Terminals and menus P6a (#683): containers bound to a storage (Terminal, Display).
+            Type("StorageContainer", DashboardArea.World, World,
+                Del<knkwebapi_v2.Services.Stock.IStorageContainerService>((s, id) => s.DeleteAsync(id)),
+                Lists<knkwebapi_v2.Services.Stock.IStorageContainerService, knkwebapi_v2.Dtos.StorageContainerListDto>((s, q) => s.SearchAsync(q))),
             ViewOnly("TransportStop", DashboardArea.World, World),
             ViewOnly("TransportStopLine", DashboardArea.World, World),
             ViewOnly("TransportOrderLine", DashboardArea.World, World),

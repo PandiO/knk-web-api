@@ -339,7 +339,11 @@ namespace knkwebapi_v2.Services.Production
             bool shapeSent = dto.Shape != null || dto.WgRegionId != null || dto.Points != null || dto.Radius.HasValue
                 || dto.CenterX.HasValue || dto.CenterY.HasValue || dto.CenterZ.HasValue || dto.MinX.HasValue || dto.MinY.HasValue
                 || dto.MinZ.HasValue || dto.MaxX.HasValue || dto.MaxY.HasValue || dto.MaxZ.HasValue;
-            if (isCreate || shapeSent) ApplyShape(area, dto, structure, isCreate);
+            if (isCreate || shapeSent)
+            {
+                await FillRegionBoundsAsync(area, dto);
+                ApplyShape(area, dto, structure, isCreate);
+            }
             area.Size = AreaGeometry.Size(area, AreaGeometry.Points(area.PointsJson));
 
             // G6, A11: the level's cap, by the model (blocks, volume or radius).
@@ -360,6 +364,31 @@ namespace knkwebapi_v2.Services.Production
                     throw new InvalidOperationException($"The area overlaps the exclusive area '{others.Name}' of "
                         + $"{others.ProductionStructure.Name}: exclusive {area.Model} areas may not overlap.");
             }
+        }
+
+        /// <summary>
+        /// #877: a Region-shaped area takes its bounds from the region. When the region id is sent and a bound is left
+        /// empty, the bounds come from the region's stored outline (<see cref="MapRegionOutline"/>, reported by the game
+        /// server): x and z from its points, y from its height. A bound that is sent wins; without an outline the bounds
+        /// stay required as before.
+        /// </summary>
+        private async Task FillRegionBoundsAsync(ProductionArea area, ProductionAreaDto dto)
+        {
+            var shape = dto.Shape != null && Enum.TryParse<ProductionAreaShape>(dto.Shape, true, out var sent) ? sent : area.Shape;
+            var region = dto.WgRegionId?.Trim();
+            if (shape != ProductionAreaShape.Region || string.IsNullOrEmpty(region)) return;
+            if (dto.MinX.HasValue && dto.MinY.HasValue && dto.MinZ.HasValue && dto.MaxX.HasValue && dto.MaxY.HasValue && dto.MaxZ.HasValue) return;
+            var id = region.ToLowerInvariant();
+            var outlines = await _db.MapRegionOutlines.AsNoTracking().Where(o => o.WgRegionId == id).ToListAsync();
+            var outline = outlines.FirstOrDefault(o => o.WorldName == area.WorldName) ?? (outlines.Count == 1 ? outlines[0] : null);
+            var points = outline == null ? null : knkwebapi_v2.Services.Map.MapOutlinePoints.Parse(outline.PointsJson);
+            if (outline == null || points == null || points.Count == 0) return;
+            dto.MinX ??= points.Min(p => p.X);
+            dto.MaxX ??= points.Max(p => p.X);
+            dto.MinZ ??= points.Min(p => p.Z);
+            dto.MaxZ ??= points.Max(p => p.Z);
+            dto.MinY ??= outline.MinY;
+            dto.MaxY ??= outline.MaxY;
         }
 
         private static void ApplyShape(ProductionArea area, ProductionAreaDto dto, ProductionStructure structure, bool isCreate)

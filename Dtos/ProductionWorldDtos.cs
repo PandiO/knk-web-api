@@ -143,5 +143,10 @@ namespace knkwebapi_v2.Dtos
 
         [JsonPropertyName("roadConnection")]
         public string? roadConnection { get; set; }
+
+        /// <summary>Where a production structure's rates come from (#877): Configured, Derived or Hybrid; null for a
+        /// warehouse.</summary>
+        [JsonPropertyName("yieldSource")]
+        public string? yieldSource { get; set; }
     }
 }
