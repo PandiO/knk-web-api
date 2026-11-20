@@ -2103,6 +2103,9 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("MenuItemSettingsJson")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Motd")
                         .HasColumnType("longtext");
 
