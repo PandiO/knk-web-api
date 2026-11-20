@@ -8649,6 +8649,9 @@ namespace knkwebapi_v2.Migrations
                     b.Property<double>("StartSpreadRadius")
                         .HasColumnType("double");
 
+                    b.Property<int?>("UnlockMinTitleLevel")
+                        .HasColumnType("int");
+
                     b.Property<int>("UnlockPrice")
                         .HasColumnType("int");
 
@@ -8663,6 +8666,8 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("Name")
                         .IsUnique();
+
+                    b.HasIndex("UnlockMinTitleLevel");
 
                     b.ToTable("siege_weapon_templates", (string)null);
                 });
@@ -13048,6 +13053,16 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("SiegeScenario");
 
                     b.Navigation("SiegeTeam");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponTemplate", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.TitleBracket", "UnlockMinTitle")
+                        .WithMany()
+                        .HasForeignKey("UnlockMinTitleLevel")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("UnlockMinTitle");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeWeaponTemplateAmmoType", b =>
