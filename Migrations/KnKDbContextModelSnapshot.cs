@@ -9337,6 +9337,386 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("title_brackets", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("Capacity")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("CarrierStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("SpeedBlocksPerSecond")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<int>("TransportOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Workers")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransportOrderId");
+
+                    b.HasIndex("CarrierStructureId", "ReleasedAt");
+
+                    b.ToTable("transport_assignments", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("StatusAfter")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long?>("StockTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TransportOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TransportStopId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransportOrderId", "At");
+
+                    b.ToTable("transport_events", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportLane", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("FromStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("MeasuredAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("MeasuredSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<bool>("Reachable")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<decimal?>("RoadDistance")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<string>("RouteEdgeIdsJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("varchar(8000)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<decimal?>("StraightDistance")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int>("ToStructureId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ToStructureId");
+
+                    b.HasIndex("FromStructureId", "ToStructureId")
+                        .IsUnique();
+
+                    b.ToTable("transport_lanes", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportOrder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("CancelRequested")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("CargoStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("CarrierCapacity")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("CarrierStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ClientKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CurrentStopId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CurrentStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DepartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("EtaAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("ExecuteAfter")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LegStartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("NextActionAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("Reroutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReturnAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("Risk")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<int>("SourceStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SourceStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("WaitingSince")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CargoStorageId")
+                        .IsUnique();
+
+                    b.HasIndex("CarrierStructureId");
+
+                    b.HasIndex("ClientKey")
+                        .IsUnique();
+
+                    b.HasIndex("NextActionAt");
+
+                    b.HasIndex("SourceStorageId");
+
+                    b.HasIndex("Status", "Origin");
+
+                    b.HasIndex("SourceStructureId", "Origin", "Status");
+
+                    b.ToTable("transport_orders", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportOrderLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Delivered")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Loaded")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Lost")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Requested")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Returned")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TransportOrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("TransportOrderId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("transport_order_lines", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportStop", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ArrivedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal?>("DistanceBlocks")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<string>("DistanceSource")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("EtaAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ReroutedFromStopId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("StorageId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StructureId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TransportOrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StorageId");
+
+                    b.HasIndex("StructureId");
+
+                    b.HasIndex("TransportOrderId", "Sequence");
+
+                    b.ToTable("transport_stops", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportStopLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Delivered")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Planned")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TransportStopId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("TransportStopId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("transport_stop_lines", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.UserDomainDiscovery", b =>
                 {
                     b.Property<int>("Id")
@@ -12475,6 +12855,151 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportAssignment", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ProductionStructure", "CarrierStructure")
+                        .WithMany()
+                        .HasForeignKey("CarrierStructureId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("knkwebapi_v2.Models.TransportOrder", "TransportOrder")
+                        .WithMany("Assignments")
+                        .HasForeignKey("TransportOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CarrierStructure");
+
+                    b.Navigation("TransportOrder");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportEvent", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.TransportOrder", "TransportOrder")
+                        .WithMany("Events")
+                        .HasForeignKey("TransportOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TransportOrder");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportLane", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Structure", "FromStructure")
+                        .WithMany()
+                        .HasForeignKey("FromStructureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Structure", "ToStructure")
+                        .WithMany()
+                        .HasForeignKey("ToStructureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FromStructure");
+
+                    b.Navigation("ToStructure");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportOrder", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Storage", "CargoStorage")
+                        .WithMany()
+                        .HasForeignKey("CargoStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionStructure", "CarrierStructure")
+                        .WithMany()
+                        .HasForeignKey("CarrierStructureId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("knkwebapi_v2.Models.Storage", "SourceStorage")
+                        .WithMany()
+                        .HasForeignKey("SourceStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Structure", "SourceStructure")
+                        .WithMany()
+                        .HasForeignKey("SourceStructureId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.Navigation("CargoStorage");
+
+                    b.Navigation("CarrierStructure");
+
+                    b.Navigation("SourceStorage");
+
+                    b.Navigation("SourceStructure");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportOrderLine", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.TransportOrder", "TransportOrder")
+                        .WithMany("Lines")
+                        .HasForeignKey("TransportOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("TransportOrder");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportStop", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Storage", "Storage")
+                        .WithMany()
+                        .HasForeignKey("StorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Structure", "Structure")
+                        .WithMany()
+                        .HasForeignKey("StructureId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("knkwebapi_v2.Models.TransportOrder", "TransportOrder")
+                        .WithMany("Stops")
+                        .HasForeignKey("TransportOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Storage");
+
+                    b.Navigation("Structure");
+
+                    b.Navigation("TransportOrder");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportStopLine", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.TransportStop", "TransportStop")
+                        .WithMany("Lines")
+                        .HasForeignKey("TransportStopId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("TransportStop");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.UserDomainDiscovery", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
@@ -13129,6 +13654,22 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.TerritoryConflict", b =>
                 {
                     b.Navigation("FlaggedStructures");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportOrder", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("Events");
+
+                    b.Navigation("Lines");
+
+                    b.Navigation("Stops");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.TransportStop", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.WeatherType", b =>
