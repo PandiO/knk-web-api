@@ -102,6 +102,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("id")] public int Id { get; set; }
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
         [JsonPropertyName("itemBlueprintName")] public string? ItemBlueprintName { get; set; }
+        [JsonPropertyName("itemBlueprint")] public NamedRefDto? ItemBlueprint { get; set; }
         [JsonPropertyName("planned")] public long Planned { get; set; }
         [JsonPropertyName("delivered")] public long Delivered { get; set; }
     }
@@ -111,6 +112,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("id")] public int Id { get; set; }
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
         [JsonPropertyName("itemBlueprintName")] public string? ItemBlueprintName { get; set; }
+        [JsonPropertyName("itemBlueprint")] public NamedRefDto? ItemBlueprint { get; set; }
         [JsonPropertyName("requested")] public long Requested { get; set; }
         [JsonPropertyName("loaded")] public long Loaded { get; set; }
         [JsonPropertyName("delivered")] public long Delivered { get; set; }

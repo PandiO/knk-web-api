@@ -157,12 +157,14 @@ namespace knkwebapi_v2.Services.Production
                     Lines = s.Lines.OrderBy(l => l.ItemBlueprintId).Select(l => new TransportStopLineDto
                     {
                         Id = l.Id, ItemBlueprintId = l.ItemBlueprintId, ItemBlueprintName = l.ItemBlueprint?.Name,
+                        ItemBlueprint = Ref(l.ItemBlueprintId, l.ItemBlueprint?.Name),
                         Planned = l.Planned, Delivered = l.Delivered,
                     }).ToList(),
                 }).ToList(),
                 Lines = o.Lines.OrderBy(l => l.ItemBlueprintId).Select(l => new TransportOrderLineDto
                 {
                     Id = l.Id, ItemBlueprintId = l.ItemBlueprintId, ItemBlueprintName = l.ItemBlueprint?.Name,
+                    ItemBlueprint = Ref(l.ItemBlueprintId, l.ItemBlueprint?.Name),
                     Requested = l.Requested, Loaded = l.Loaded, Delivered = l.Delivered, Returned = l.Returned, Lost = l.Lost,
                 }).ToList(),
                 Assignments = o.Assignments.OrderBy(a => a.Id).Select(a => new TransportAssignmentDto

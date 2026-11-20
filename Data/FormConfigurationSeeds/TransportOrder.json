@@ -1,0 +1,105 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "75609048-add5-5c14-a5a0-0dba2f492cec",
+  "entityTypeName": "TransportOrder",
+  "name": "TransportOrder - Default (seed v1)",
+  "description": "A transport order (transport core P5, #79): goods from a source storage through the order's transit storage to its stops. Written by the transport service; read only here. Staff make a manual order with the web app's manual order form or POST api/TransportOrders (with a dry run), and cancel on the order's page.",
+  "steps": [
+    {
+      "stepGuid": "93b318a4-ba12-5f92-8ae9-43f33e492ed9",
+      "stepName": "Order",
+      "description": "Every field is read only: the order moves along its lifecycle on its own (the transport sweep).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "c21b9541-459f-572b-bcce-be75f9e361da",
+          "fieldName": "Origin",
+          "label": "Origin",
+          "description": "Automatic (from a producer), Distribution, Trade, Manual or Quest.",
+          "fieldType": "Enum",
+          "enumType": "TransportOrigin",
+          "settingsJson": "{\"enumValues\": [\"Automatic\", \"Distribution\", \"Trade\", \"Manual\", \"Quest\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "9a44b1f8-1b16-5a56-bc11-8c77eeedaa4e",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Where the order is in its lifecycle.",
+          "fieldType": "Enum",
+          "enumType": "TransportStatus",
+          "settingsJson": "{\"enumValues\": [\"Planned\", \"Assigned\", \"Loading\", \"InTransit\", \"AtStop\", \"AwaitingSpace\", \"Returning\", \"ReturnBlocked\", \"Delivered\", \"Returned\", \"Cancelled\", \"Ambushed\", \"Defended\", \"Robbed\", \"Lost\", \"Stalled\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "1d221456-ee38-5853-8ebd-b8213424a748",
+          "fieldName": "StatusReason",
+          "label": "Status reason",
+          "description": "Why it waits, re-routed, returned or was cancelled.",
+          "fieldType": "String",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "9c69f18b-66d4-5778-b623-889e3c2577d2",
+          "fieldName": "SourceStorageId",
+          "label": "Source storage",
+          "description": "Where the cargo comes from.",
+          "fieldType": "Object",
+          "objectType": "Storage",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "6adc74ab-c902-541f-901b-7b31660cf797",
+          "fieldName": "CargoStorageId",
+          "label": "Transit storage",
+          "description": "The order's own transit storage: the only place its cargo is while it travels.",
+          "fieldType": "Object",
+          "objectType": "Storage",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "5503d028-9f74-53f6-8433-3947802422dd",
+          "fieldName": "CarrierStructureId",
+          "label": "Carrier",
+          "description": "The production structure whose worker carries the order (empty: a simulated carrier without a worker).",
+          "fieldType": "Object",
+          "objectType": "ProductionStructure",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "941ef6ef-0e7f-564b-a9f1-d5b98495ff76",
+          "fieldName": "CarrierCapacity",
+          "label": "Carrier capacity",
+          "description": "Raw units the carrier takes.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "1c148962-2df8-5aaa-8584-71a3506c821d",
+          "fieldName": "ExecuteAfter",
+          "label": "Not before",
+          "description": "When it may leave.",
+          "fieldType": "DateTime",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "7a0f6c22-1af0-52bd-aca8-14f726aa596f",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Staff note.",
+          "fieldType": "String",
+          "isReadOnly": true,
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
