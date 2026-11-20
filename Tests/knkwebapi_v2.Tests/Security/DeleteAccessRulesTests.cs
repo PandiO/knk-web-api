@@ -48,6 +48,7 @@ public class DeleteAccessRulesTests
         ["ProductionLine"] = "ProductionLinesController.Delete",
         ["ProductionArea"] = "ProductionAreasController.Delete",
         ["TransportLane"] = "TransportLanesController.Delete", // transport core P5 (#79)
+        ["StorageContainer"] = "StorageContainersController.Delete", // terminals and menus P6a (#683)
         ["ProductionYieldOverride"] = "ProductionYieldOverridesController.Delete",
         ["ProductionModifier"] = "ProductionModifiersController.Delete",
         ["ClimateZone"] = "ClimateZonesController.Delete",

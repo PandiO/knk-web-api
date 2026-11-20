@@ -21,9 +21,9 @@ namespace knkwebapi_v2.Services.Stock
     }
 
     /// <summary>Thrown when <c>Production:Enabled</c> is off for an in-game action (409, A21).</summary>
-    public sealed class ProductionDisabledException : InvalidOperationException
+    public sealed class ProductionOffException : InvalidOperationException
     {
-        public ProductionDisabledException(string message) : base(message) { }
+        public ProductionOffException(string message) : base(message) { }
     }
 
     public interface IStorageContainerService
@@ -234,7 +234,7 @@ namespace knkwebapi_v2.Services.Stock
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (!(await _settings.GetAsync()).Enabled)
-                throw new ProductionDisabledException("Production is switched off (Production:Enabled); terminals don't move stock.");
+                throw new ProductionOffException("Production is switched off (Production:Enabled); terminals don't move stock.");
             var key = dto.IdempotencyKey?.Trim();
             if (string.IsNullOrEmpty(key)) throw new ArgumentException("idempotencyKey is required (one per click, so a retry applies once).");
             if (key.Length > 100) throw new ArgumentException("idempotencyKey is at most 100 characters.");
@@ -276,10 +276,11 @@ namespace knkwebapi_v2.Services.Stock
             // Largest remainder over the filled slots, every shown blueprint at least one stack.
             long total = lines.Sum(l => l.Amount);
             var shown = lines.Take(filled).ToList();
-            var stacks = shown.Select(l => Math.Max(1, (int)(filled * l.Amount / total))).ToList();
-            int i = 0;
-            while (stacks.Sum() < filled) { stacks[i % stacks.Count]++; i++; }
-            while (stacks.Sum() > filled) { int k = stacks.IndexOf(stacks.Max()); stacks[k]--; }
+            var exact = shown.Select(l => (decimal)filled * l.Amount / total).ToList();
+            var stacks = exact.Select(e => Math.Max(1, (int)Math.Floor(e))).ToList();
+            var byRemainder = Enumerable.Range(0, shown.Count).OrderByDescending(k => exact[k] - Math.Floor(exact[k])).ThenBy(k => k).ToList();
+            for (int i = 0; stacks.Sum() < filled; i++) stacks[byRemainder[i % byRemainder.Count]]++;
+            while (stacks.Sum() > filled) { int k = stacks.LastIndexOf(stacks.Max()); stacks[k]--; }
             for (int k = 0; k < shown.Count; k++)
                 if (stacks[k] > 0)
                     sample.Items.Add(new DisplaySampleItemDto { ItemBlueprintId = shown[k].ItemBlueprintId, ItemBlueprintName = shown[k].Name, Stacks = stacks[k] });

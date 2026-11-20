@@ -154,6 +154,10 @@ public class ReadAccessRulesTests
         ["TransportLanesController.GetById"] = "F TransportLane",
         ["TransportLanesController.Search"] = "F TransportLane",
         ["TransportLanesController.Due"] = "F TransportLane",
+        // Terminals and menus P6a (#683): staff reads of containers; the in-game routes are the game server's.
+        ["StorageContainersController.GetById"] = "F StorageContainer",
+        ["StorageContainersController.GetByBlock"] = "F StorageContainer",
+        ["StorageContainersController.Search"] = "F StorageContainer",
         ["WeatherTypesController.GetAll"] = "F WeatherType",
         ["WeatherTypesController.GetById"] = "F WeatherType",
         ["WeatherTypesController.Search"] = "F WeatherType",
@@ -328,6 +332,8 @@ public class ReadAccessRulesTests
         ["UserIgnoresController.Get"] = "G",
         ["WorldTasksController.ListOpenForServer"] = "G",
         ["WorldTasksController.ListTempRegionReleases"] = "G",
+        ["StorageContainersController.Terminal"] = "G",
+        ["StorageContainersController.Display"] = "G",
         // U: the action's own stricter rule (node, self-or-node, owner node, [Authorize]) (85)
         ["AdminClientsController.GetActiveClients"] = "U",
         ["AdminClientsController.GetAllClients"] = "U",
@@ -445,6 +451,10 @@ public class ReadAccessRulesTests
         ["TitleBracketsController.GetAll"] = "D",
         ["TitleBracketsController.GetById"] = "D",
         ["TitleBracketsController.Search"] = "D",
+        // P6a (#683, M3): any player through the game server or the web; the API filters the fields by viewer.
+        ["StructureMenusController.Search"] = "D",
+        ["StructureMenusController.Get"] = "D",
+        ["StructureMenusController.Orders"] = "D",
     };
 
     private static readonly Dictionary<ReadCategory, string> Codes = new()

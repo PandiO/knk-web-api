@@ -136,7 +136,7 @@ namespace KnKWebAPI.Controllers
             {
                 return StatusCode(403, new { error = "Forbidden", message = ex.Message });
             }
-            catch (ProductionDisabledException ex)
+            catch (ProductionOffException ex)
             {
                 return Conflict(new { code = "ProductionDisabled", error = ex.Message });
             }
