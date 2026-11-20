@@ -56,6 +56,13 @@ public interface IPlayerNotificationQueue
     long EnqueueAccountLinked(int userId, string? uuid, string username, AccountLinkedNotificationDto linked) =>
         Enqueue(userId, uuid, username, PlayerNotificationTypes.AccountLinked, null);
 
+    /// <summary>An InboxUpdated notification (P7, PandiO/knk-workspace#60): items reached the player's inbox, some
+    /// were lost, the inbox passed a warning level, or inbox items expire soon or expired. The default only queues
+    /// the type.</summary>
+    /// <returns>The new notification's id.</returns>
+    long EnqueueInbox(int userId, string? uuid, string username, InboxNotificationDto inbox) =>
+        Enqueue(userId, uuid, username, PlayerNotificationTypes.InboxUpdated, null);
+
     /// <summary>Every unacknowledged, unexpired notification, oldest first.</summary>
     IReadOnlyList<PlayerNotificationDto> GetPending();
 

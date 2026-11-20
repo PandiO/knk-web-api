@@ -88,6 +88,16 @@ public class InMemoryPlayerNotificationQueue : IPlayerNotificationQueue
             ProductionLineStatus = change
         });
 
+    public long EnqueueInbox(int userId, string? uuid, string username, InboxNotificationDto inbox) =>
+        Add(new PlayerNotificationDto
+        {
+            UserId = userId,
+            Uuid = uuid,
+            Username = username,
+            Type = PlayerNotificationTypes.InboxUpdated,
+            Inbox = inbox
+        });
+
     public long EnqueueDiscoveryReset(int userId, string? uuid, string username, DiscoveryResetNotificationDto reset) =>
         Add(new PlayerNotificationDto
         {

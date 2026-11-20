@@ -60,6 +60,10 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("productionLineStatus")]
         public ProductionLineStatusNotificationDto? ProductionLineStatus { get; set; }
 
+        /// <summary>Set when Type is InboxUpdated (P7).</summary>
+        [JsonPropertyName("inbox")]
+        public InboxNotificationDto? Inbox { get; set; }
+
         [JsonPropertyName("createdAt")]
         public DateTime CreatedAt { get; set; }
     }
@@ -144,6 +148,14 @@ namespace knkwebapi_v2.Dtos
         /// nothing past the player's next join, which reads the pending deliveries anyway.
         /// </summary>
         public const string KitDeliveryPending = "KitDeliveryPending";
+
+        /// <summary>
+        /// The player's reward inbox changed or needs attention (P7, PandiO/knk-workspace#60, production DESIGN § 4.6,
+        /// D7): items arrived (with the amount lost at the hard cap, the loss notification, and a near-cap warning when
+        /// a fill level was passed), items expire soon (a reminder), or items expired. Payload in Inbox. The inbox
+        /// itself (<c>GET api/Inbox/{userId}</c>) is the record: losing a notification loses no items.
+        /// </summary>
+        public const string InboxUpdated = "InboxUpdated";
     }
 
     /// <summary>Payload of an AccountLinked notification.</summary>

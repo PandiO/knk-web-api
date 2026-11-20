@@ -28,6 +28,11 @@ namespace knkwebapi_v2.Dtos
         /// stored values (so a client that doesn't know the section yet doesn't reset it).</summary>
         [JsonPropertyName("transport")]
         public ProductionTransportSettingsDto? Transport { get; set; }
+
+        /// <summary>Inbox and stash (P7, PandiO/knk-workspace#60). Null in stored JSON = the defaults; null on a save =
+        /// keep the stored values.</summary>
+        [JsonPropertyName("delivery")]
+        public ProductionDeliverySettingsDto? Delivery { get; set; }
     }
 
     /// <summary>
