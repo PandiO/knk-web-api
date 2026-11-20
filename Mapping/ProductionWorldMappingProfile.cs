@@ -35,7 +35,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.productionKindName, o => o.Ignore())
                 .ForMember(d => d.level, o => o.Ignore())
                 .ForMember(d => d.productionEnabled, o => o.Ignore())
-                .ForMember(d => d.roadConnection, o => o.Ignore());
+                .ForMember(d => d.roadConnection, o => o.Ignore())
+                .ForMember(d => d.yieldSource, o => o.Ignore());
 
             CreateMap<ProductionStructure, ProductionWorldListDto>()
                 .IncludeBase<Structure, StructureListDto>()
@@ -45,7 +46,8 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.productionKindName, o => o.MapFrom(s => s.ProductionKind != null ? s.ProductionKind.Name : null))
                 .ForMember(d => d.level, o => o.MapFrom(s => s.Level))
                 .ForMember(d => d.productionEnabled, o => o.MapFrom(s => s.ProductionEnabled))
-                .ForMember(d => d.roadConnection, o => o.MapFrom(s => s.RoadConnection.ToString()));
+                .ForMember(d => d.roadConnection, o => o.MapFrom(s => s.RoadConnection.ToString()))
+                .ForMember(d => d.yieldSource, o => o.MapFrom(s => s.YieldSource.ToString()));
         }
     }
 }

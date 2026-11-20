@@ -357,3 +357,10 @@ the carrier assignments; a structure's transport view is `GET api/ProductionStru
 trigger's dry run, warnings, open orders), for the web app link #682. GUIDs: configuration uuid5(URL namespace,
 "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(configuration, "section:<section>"), fields uuid5(configuration,
 "field:<field>[:<related property>]" or "field:<section>:<field>[:<related property>]" in collections).
+
+**Terminals and menus P6a display seed v1 (PandiO/knk-workspace#683, 2026-11-20):** `StorageContainer` (the storage,
+mode, label, block type, double flag, slots, world and position, when it was bound). The in-game views are API reads
+for the game server: `GET api/StorageContainers/{id}/terminal` (a page of the storage), `.../display` (the sample a
+display shows), and the structure menus `api/StructureMenus` (filtered by viewer). GUIDs: configuration uuid5(URL
+namespace, "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(configuration, "section:<section>"), fields
+uuid5(configuration, "field:<field>[:<related property>]").

@@ -868,6 +868,8 @@ namespace knkwebapi_v2.Services.Production
             if (output == null) return;
             if (level.OutputMaxUnits.HasValue) output.MaxUnits = level.OutputMaxUnits.Value;
             if (level.UnitsPerSlot.HasValue) output.UnitsPerSlot = level.UnitsPerSlot.Value;
+            // P6a (#683): an Output storage with bound containers takes its cap from them (slots × units per slot).
+            await knkwebapi_v2.Services.Stock.StorageContainerCapacity.ApplyAsync(db, output, ct);
         }
 
         public static Task<ProductionKindLevel?> FindAsync(KnKDbContext db, int? kindId, int level, CancellationToken ct = default) =>

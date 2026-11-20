@@ -69,6 +69,10 @@ public class MenuTemplateContentSeedTests
         MenuTemplateSeed.StatisticsMainMenuKey,
         MenuTemplateSeed.LeaderboardsMenuKey,
         MenuTemplateSeed.LeaderboardMenuKey,
+        // Production menus (P6a, PandiO/knk-workspace#683); the plugin side is L18 (#74).
+        MenuTemplateSeed.StructuresOverviewMenuKey,
+        MenuTemplateSeed.StructureMenuKey,
+        MenuTemplateSeed.StructureOrdersMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()

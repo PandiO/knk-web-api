@@ -1,0 +1,95 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "4ec9d552-1d81-53c7-9616-2506746e42c1",
+  "entityTypeName": "StorageContainer",
+  "name": "StorageContainer - Default (seed v1)",
+  "description": "A block bound to a storage (terminals and displays P6a, #683).",
+  "sections": [
+    {
+      "sectionGuid": "9783caa6-5b97-594d-8b91-d73f458bcbaf",
+      "sectionName": "Container",
+      "description": "The storage, the mode and the block.",
+      "fields": [
+        {
+          "fieldGuid": "1da50361-89fd-5d10-a137-724f503ca264",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Storage",
+          "relatedEntityTypeName": "Storage",
+          "label": "Storage",
+          "description": "The storage it shows.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "e67c36b2-2f24-5d57-bc61-aa6a33237983",
+          "fieldName": "Mode",
+          "label": "Mode",
+          "description": "Terminal or Display.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "4603679b-023c-5e20-a983-5804af97c99e",
+          "fieldName": "Label",
+          "label": "Label",
+          "description": "Name for staff.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "74f21af2-1bb0-5d6b-8317-2e55e2ebc53a",
+          "fieldName": "ContainerType",
+          "label": "Block type",
+          "description": "Chest, trapped chest or barrel.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "e0cd745d-3fa8-5396-b354-5a5611457a36",
+          "fieldName": "IsDouble",
+          "label": "Double chest",
+          "description": "54 slots instead of 27.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "3ca53f29-160d-5322-bf15-66bfb31e5286",
+          "fieldName": "Slots",
+          "label": "Slots",
+          "description": "Added to the storage's cap (x units per slot).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "02099718-6236-5cfc-8ceb-efdfca2d3236",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "Minecraft world.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "ca158f99-f403-543e-b02c-bd00eb040dd7",
+          "fieldName": "X",
+          "label": "X",
+          "description": "Block X.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "77c25485-cc9b-5abf-b2bf-0b1f444b31b0",
+          "fieldName": "Y",
+          "label": "Y",
+          "description": "Block Y.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "fe2707d7-e5bb-54b6-a780-8df12eb34f1a",
+          "fieldName": "Z",
+          "label": "Z",
+          "description": "Block Z.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "6ef57e41-b904-5435-85dd-09d52bbecb7d",
+          "fieldName": "CreatedAt",
+          "label": "Bound",
+          "description": "When it was bound.",
+          "fieldType": "DateTime"
+        }
+      ]
+    }
+  ]
+}

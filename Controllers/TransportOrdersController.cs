@@ -91,6 +91,26 @@ namespace KnKWebAPI.Controllers
 
         /// <summary>Runs the transport sweep now over every open order (and the automatic trigger). Plugin key or
         /// knk.admin.world. 409 while Production:Enabled is off (A21).</summary>
+        /// <summary>Staff retry (P6a #683, M4): a waiting order tries its next step now; a Returned or Cancelled one is sent
+        /// again as a new manual order. 409 while Production:Enabled is off, while on the road, or once delivered.</summary>
+        [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
+        [HttpPost("{id:int}/retry")]
+        public async Task<IActionResult> Retry(int id, CancellationToken ct)
+        {
+            try
+            {
+                return Ok(await _service.RetryAsync(id, HttpContext.GetKnkCaller().ActorUserId, ct));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { error = ex.Message });
+            }
+        }
+
         [RequireServiceOrPermission(StaffPermissions.ManageWorld)]
         [HttpPost("run-now")]
         public async Task<ActionResult<TransportSweepResultDto>> RunNow(CancellationToken ct)

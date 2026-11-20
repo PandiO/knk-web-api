@@ -132,6 +132,8 @@ namespace knkwebapi_v2.Services.Stock
                 await ApplyHolderAsync(s, dto);
             }
             Apply(s, dto);
+            // P6a (#683): with bound containers and units per slot the cap is derived (slots × units per slot).
+            await StorageContainerCapacity.ApplyAsync(_db, s);
             s.RowVersion++;
             await _db.SaveChangesAsync();
             if (tx != null) await tx.CommitAsync();
