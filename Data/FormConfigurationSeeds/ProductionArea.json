@@ -1,18 +1,18 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "04afdd63-a599-5fe6-a73f-4a80e2e50b40",
+  "configurationGuid": "871b76ee-0292-5c4f-adaa-6f652db18be9",
   "entityTypeName": "ProductionArea",
-  "name": "ProductionArea - Default (seed v2)",
-  "description": "A production structure's yield area (yield areas P4, #138): its shape and bounding box. The area model comes from the structure's kind; the level caps the size (blocks, volume or radius). A polygon's points are captured in game or sent through the API. Seed v2 (#877): the region field captures a region in game (RegionClaim), the radius field a centre and radius (CaptureRadius); a Region-shaped area takes its bounds from the region.",
+  "name": "ProductionArea - Default (seed v3)",
+  "description": "A production structure's yield area (yield areas P4, #138): its shape and bounding box. The area model comes from the structure's kind; the level caps the size (blocks, volume or radius). A polygon's points are captured in game or sent through the API. Seed v2 (#877): the region field captures a region in game (RegionClaim), the radius field a centre and radius (CaptureRadius); a Region-shaped area takes its bounds from the region. Seed v3 (#883): placement rule P-3 on the structure field (warning by default): the area stays inside its structure's district, or for a rural structure inside its town's territory.",
   "steps": [
     {
-      "stepGuid": "b3e98bcd-2ef8-5cf3-8388-5cf3f82dda82",
+      "stepGuid": "f70900b9-9e03-5159-9b16-173f5f0bb779",
       "stepName": "Area",
       "description": "Which structure the area belongs to and what it is called.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "83e45b91-6720-5b50-9951-75334778b79c",
+          "fieldGuid": "bd3e8d66-42f5-5179-9fc5-eb4bc4f1c6f3",
           "fieldName": "ProductionStructureId",
           "label": "Production structure",
           "description": "The structure it belongs to (it must have a production kind). An area can't move to another structure.",
@@ -22,7 +22,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "6ab1ff18-65ca-50a2-a508-576a4ebb1f41",
+          "fieldGuid": "96f7eb46-fb8c-5e8f-85f6-a2486e9b3a9b",
           "fieldName": "Name",
           "label": "Name",
           "description": "Unique per structure, e.g. North field.",
@@ -31,7 +31,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "5233ad1f-1614-5c9a-b91a-470d2fce4843",
+          "fieldGuid": "098e1773-d0fc-5a7f-952d-59a26ff982b4",
           "fieldName": "Shape",
           "label": "Shape",
           "description": "Region (a WorldGuard region and its bounds), Cuboid (two corners), Polygon (points and a height range) or Radius (around a centre).",
@@ -43,7 +43,7 @@
           "settingsJson": "{\"enumValues\": [\"Region\", \"Cuboid\", \"Polygon\", \"Radius\"]}"
         },
         {
-          "fieldGuid": "7af572c7-caff-5ab0-8aae-bcc0be1dc095",
+          "fieldGuid": "5a315998-f18f-5162-89c6-ac2e9fe62dd5",
           "fieldName": "WorldName",
           "label": "World",
           "description": "Empty = the structure's world.",
@@ -52,7 +52,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "e4e22877-2fe5-5768-9713-e5163a314cc6",
+          "fieldGuid": "3cdad25e-b10c-5d1c-8b02-07a6cab9b57f",
           "fieldName": "Exclusive",
           "label": "Exclusive",
           "description": "Exclusive areas may not overlap other exclusive areas of the same model. Empty = the kind's setting.",
@@ -61,7 +61,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "35164c7d-ae54-5823-b8e2-2448d50160f8",
+          "fieldGuid": "df6976f8-0400-5c80-9c83-dcf9e4f08e3c",
           "fieldName": "Enabled",
           "label": "Enabled",
           "description": "Off = never surveyed and no yield from it.",
@@ -73,13 +73,13 @@
       ]
     },
     {
-      "stepGuid": "264e9ff5-6e64-5414-a211-2aaafabe45b1",
+      "stepGuid": "ab4f2a2a-12a0-5629-aa5c-73f71ccacfc2",
       "stepName": "Shape",
       "description": "Fill the fields of the chosen shape.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "e2081f46-df81-50d0-a4da-02ba21251ff7",
+          "fieldGuid": "fc27a776-96b2-5aae-bee2-988bf42da51e",
           "fieldName": "WgRegionId",
           "label": "WorldGuard region",
           "description": "Shape Region: the region's id. Use Send to Minecraft to pick the region in game; its bounds are taken from the region when the minimum and maximum are left empty.",
@@ -89,7 +89,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"RegionClaim\"}}"
         },
         {
-          "fieldGuid": "6992115e-7079-594c-8e88-92478235967b",
+          "fieldGuid": "6b32ed49-870e-5b46-b398-b76bb9a83d63",
           "fieldName": "Radius",
           "label": "Radius",
           "description": "Shape Radius: the radius in blocks (1 to 1024). Use Send to Minecraft to capture the centre and radius in game.",
@@ -99,7 +99,7 @@
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"CaptureRadius\"}}"
         },
         {
-          "fieldGuid": "36fe0b70-0a4a-5500-848a-149282091ceb",
+          "fieldGuid": "ba810b31-43fa-57e4-bc30-0e7bd9f021ed",
           "fieldName": "CenterX",
           "label": "Centre X",
           "description": "Shape Radius: empty = the structure's Location.",
@@ -108,7 +108,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "10b95491-4fff-581d-ae0f-44897442d6d2",
+          "fieldGuid": "dc664669-98a3-578b-9610-02d1481ec220",
           "fieldName": "CenterY",
           "label": "Centre Y",
           "description": "Shape Radius: empty = the structure's Location.",
@@ -117,7 +117,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "ad98a26d-2aed-5204-979e-fa7d77eaa32f",
+          "fieldGuid": "761a5891-2361-51a1-8cfa-1dd3a60710c0",
           "fieldName": "CenterZ",
           "label": "Centre Z",
           "description": "Shape Radius: empty = the structure's Location.",
@@ -126,7 +126,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "72e3fac8-99d8-50f5-a4c7-5add1d2363b6",
+          "fieldGuid": "2e38bb65-5448-52e4-a355-6b2b35b45bd8",
           "fieldName": "MinX",
           "label": "Min X",
           "description": "Region and Cuboid: a corner (any order). For a Region shape, leave empty to take the region's bounds.",
@@ -135,7 +135,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "d38de39e-332b-5042-84c5-2d53293696c7",
+          "fieldGuid": "8faa6ed2-334a-548e-b21b-a1130802a948",
           "fieldName": "MinY",
           "label": "Min Y",
           "description": "Region, Cuboid and Polygon: the bottom; Radius: empty = the world's bottom. For a Region shape, leave empty to take the region's bounds.",
@@ -144,7 +144,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "a86330c3-df51-5f47-af05-84864c379121",
+          "fieldGuid": "84292255-c21e-527c-af8c-b56bbbfcfc2d",
           "fieldName": "MinZ",
           "label": "Min Z",
           "description": "Region and Cuboid: a corner. For a Region shape, leave empty to take the region's bounds.",
@@ -153,7 +153,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "f4bdb4a9-99bd-5aa1-9150-e0d23401002f",
+          "fieldGuid": "36d373bd-9429-5836-8bb5-d9099416df76",
           "fieldName": "MaxX",
           "label": "Max X",
           "description": "Region and Cuboid: the opposite corner. For a Region shape, leave empty to take the region's bounds.",
@@ -162,7 +162,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "f3a08fe1-d8a7-5345-80c3-08ed0712f0f5",
+          "fieldGuid": "f872209f-2685-5c1d-9062-ef1171f2eb33",
           "fieldName": "MaxY",
           "label": "Max Y",
           "description": "Region, Cuboid and Polygon: the top; Radius: empty = the world's top. For a Region shape, leave empty to take the region's bounds.",
@@ -171,7 +171,7 @@
           "isReadOnly": false
         },
         {
-          "fieldGuid": "377409ca-44a9-52be-8b34-7655d337d626",
+          "fieldGuid": "7eaa3f3c-d047-52f7-8509-0dcf26861519",
           "fieldName": "MaxZ",
           "label": "Max Z",
           "description": "Region and Cuboid: the opposite corner. For a Region shape, leave empty to take the region's bounds.",
@@ -180,6 +180,16 @@
           "isReadOnly": false
         }
       ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "bd3e8d66-42f5-5179-9fc5-eb4bc4f1c6f3",
+      "validationType": "ProductionAreaPlacement",
+      "configJson": "{}",
+      "errorMessage": "P-3: the area is not inside {holderName} (its structure's district region, or for a rural structure its town's territory).",
+      "isBlocking": false,
+      "requiresDependencyFilled": false
     }
   ]
 }

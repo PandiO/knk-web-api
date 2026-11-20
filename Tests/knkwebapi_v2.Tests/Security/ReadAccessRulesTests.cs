@@ -158,6 +158,9 @@ public class ReadAccessRulesTests
         ["StorageContainersController.GetById"] = "F StorageContainer",
         ["StorageContainersController.GetByBlock"] = "F StorageContainer",
         ["StorageContainersController.Search"] = "F StorageContainer",
+        // Item delivery P7 (#60): deliveries (World area or knk.economy.admin).
+        ["ItemDeliveriesController.GetById"] = "F ItemDelivery",
+        ["ItemDeliveriesController.Search"] = "F ItemDelivery",
         ["WeatherTypesController.GetAll"] = "F WeatherType",
         ["WeatherTypesController.GetById"] = "F WeatherType",
         ["WeatherTypesController.Search"] = "F WeatherType",
@@ -346,6 +349,9 @@ public class ReadAccessRulesTests
         ["StorageContainersController.Display"] = "G",
         // U: the action's own stricter rule (node, self-or-node, owner node, [Authorize]) (85)
         ["AdminClientsController.GetActiveClients"] = "U",
+        // Item delivery P7 (#60): a player's inbox and stash, for the game server, the player and economy staff.
+        ["InboxController.Inbox"] = "U",
+        ["InboxController.Stash"] = "U",
         ["AdminClientsController.GetAllClients"] = "U",
         ["AdminClientsController.GetClient"] = "U",
         ["AuditLogController.Get"] = "U",

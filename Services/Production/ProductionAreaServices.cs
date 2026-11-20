@@ -8,6 +8,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
+using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Services.Territory;
 using Microsoft.EntityFrameworkCore;
 
@@ -197,15 +198,40 @@ namespace knkwebapi_v2.Services.Production
         private readonly IProductionEngine _engine;
         private readonly IProductionYieldService _yield;
         private readonly TimeProvider _clock;
+        private readonly ISavedEntityRuleValidator? _rules;
 
         public ProductionAreaService(KnKDbContext db, IProductionSettingsReader settings, IProductionEngine engine,
-            IProductionYieldService yield, TimeProvider? clock = null)
+            IProductionYieldService yield, TimeProvider? clock = null, ISavedEntityRuleValidator? rules = null)
         {
             _db = db;
             _settings = settings;
             _engine = engine;
             _yield = yield;
             _clock = clock ?? TimeProvider.System;
+            _rules = rules;
+        }
+
+        /// <summary>
+        /// Placement rule P-3 (#883, DESIGN § 3.4): runs the field rules of the default ProductionArea form against the
+        /// area about to be saved, as the structure services do (<see cref="IStructurePlacement.CheckRulesAsync"/>). A
+        /// failed blocking rule refuses the save (400); failed warnings and rules that could not run are returned.
+        /// </summary>
+        private async Task<List<string>> CheckPlacementAsync(ProductionArea area)
+        {
+            var warnings = new List<string>();
+            if (_rules == null) return warnings;
+            var validation = await _rules.ValidateAsync(nameof(ProductionArea), area);
+            foreach (var check in validation.Results.Where(r => !r.Result.IsValid))
+            {
+                if (check.CouldNotRun)
+                {
+                    warnings.Add($"{check.FieldLabel}: not checked ({check.Message})");
+                    continue;
+                }
+                if (check.Result.IsBlocking) throw new ArgumentException($"{check.FieldLabel}: {check.Message}");
+                warnings.Add($"{check.FieldLabel}: {check.Message}");
+            }
+            return warnings;
         }
 
         private DateTime Now => _clock.GetUtcNow().UtcDateTime;
@@ -280,10 +306,13 @@ namespace knkwebapi_v2.Services.Production
                 area.SurveyRequestedAt = Now;
                 area.SurveyRequestTrigger = AreaSurveyTrigger.Creation;
             }
+            var warnings = await CheckPlacementAsync(area);
             _db.ProductionAreas.Add(area);
             await _db.SaveChangesAsync();
             _db.ChangeTracker.Clear();
-            return (await GetByIdAsync(area.Id))!;
+            var created = (await GetByIdAsync(area.Id))!;
+            created.PlacementWarnings = warnings;
+            return created;
         }
 
         public async Task<ProductionAreaDto> UpdateAsync(int id, ProductionAreaDto dto)
@@ -307,9 +336,12 @@ namespace knkwebapi_v2.Services.Production
                 area.SurveyRequestedAt = Now; // a new shape holds other contents
                 area.SurveyRequestTrigger = AreaSurveyTrigger.Admin;
             }
+            var warnings = await CheckPlacementAsync(area);
             await _db.SaveChangesAsync();
             _db.ChangeTracker.Clear();
-            return (await GetByIdAsync(id))!;
+            var updated = (await GetByIdAsync(id))!;
+            updated.PlacementWarnings = warnings;
+            return updated;
         }
 
         private async Task ApplyAsync(ProductionArea area, ProductionAreaDto dto, ProductionStructure structure, bool isCreate)

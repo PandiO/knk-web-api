@@ -527,6 +527,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IValidationMethod, RegionContainmentValidator>();
             // P2 (PandiO/knk-workspace#91): placement rules P-2/P-3, a territory lookup on the game server.
             services.AddScoped<IValidationMethod, InsideTerritoryValidator>();
+            services.AddScoped<IValidationMethod, knkwebapi_v2.Services.ValidationMethods.ProductionAreaPlacementValidator>(); // P-3 (#883)
             services.AddScoped<IValidationMethod, ConditionalRequiredValidator>();
             services.AddScoped<IValidationMethod, ConditionalValueMatchValidator>();
 

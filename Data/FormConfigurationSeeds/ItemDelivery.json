@@ -1,0 +1,161 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "6a909ef2-4d49-5883-b816-fa0e7cbe1f70",
+  "entityTypeName": "ItemDelivery",
+  "name": "ItemDelivery - Default (seed v1)",
+  "description": "One delivery of items to a player's reward inbox (P7, #60): what arrived, what was lost at the hard cap, and when the rest expires. Written only by the delivery service (api/ItemDeliveries); read only here. Its lines (the inbox lots) are on the detail page.",
+  "steps": [
+    {
+      "stepGuid": "21b4500d-a387-5c54-ae05-9563b74f3434",
+      "stepName": "Delivery",
+      "description": "Every field is read only: deliveries are ledger records.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "d74b4c9a-7517-5eb1-8f64-f69cff936b7d",
+          "fieldName": "UserId",
+          "label": "Player",
+          "description": "Who the items are for.",
+          "fieldType": "Object",
+          "objectType": "User",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "4b7f5e94-8cf7-5185-992a-d8706139f3cf",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Why the player gets the items.",
+          "fieldType": "Enum",
+          "enumType": "ItemDeliveryReason",
+          "settingsJson": "{\"enumValues\": [\"Kit\", \"Lootbox\", \"Quest\", \"Gift\", \"Admin\", \"Other\"]}",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "60423e90-5e47-5dde-be0d-2ffbd4b8a273",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Inboxed = all in the inbox; PartlyLost / Lost = the inbox was full (InboxOverflow to SYS_LOSS).",
+          "fieldType": "Enum",
+          "enumType": "ItemDeliveryStatus",
+          "settingsJson": "{\"enumValues\": [\"Inboxed\", \"PartlyLost\", \"Lost\"]}",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "ca8af60e-8c30-5ce5-80dc-2ae97d450eed",
+          "fieldName": "SourceType",
+          "label": "Source",
+          "description": "What it belongs to (KitClaim, LootboxClaim, \u2026).",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "28bc0eb5-8b5e-53de-884e-99c3efddbf7d",
+          "fieldName": "SourceRef",
+          "label": "Source reference",
+          "description": "The id of that source.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "cfd7bba3-e70f-53b2-a28c-d5ee23613a4f",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Why, in words.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "aeb78693-2137-54d5-935b-f26be6eba07d",
+          "fieldName": "ActorKind",
+          "label": "Actor",
+          "description": "The game server, a person (web) or a system job.",
+          "fieldType": "Enum",
+          "enumType": "StockActorKind",
+          "settingsJson": "{\"enumValues\": [\"User\", \"System\", \"PluginServer\"]}",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "c992da58-f590-5cf5-a98c-9c449983927b",
+          "fieldName": "ActorUserId",
+          "label": "Actor user id",
+          "description": "The person who asked, if any.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "44aaf633-fd7c-50a0-9659-5b8b97228a6b",
+          "fieldName": "IdempotencyKey",
+          "label": "Idempotency key",
+          "description": "A repeated delivery with this key applied once.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "a8268ccd-e14b-5ad4-81a9-425879e29d2a",
+          "fieldName": "InboxStorageId",
+          "label": "Inbox",
+          "description": "The player's Inbox storage.",
+          "fieldType": "Object",
+          "objectType": "Storage",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "af3584a0-ea60-5364-905b-b582ded285fb",
+          "fieldName": "StockTransactionId",
+          "label": "Inbox transaction",
+          "description": "The RewardInbox ledger transaction.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "61d990f0-ea5d-5dce-9cbe-8d12ebcf0317",
+          "fieldName": "OverflowTransactionId",
+          "label": "Overflow transaction",
+          "description": "The InboxOverflow ledger transaction (what was lost).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "22e8481a-019d-59b3-ab3e-7ef0a4c30735",
+          "fieldName": "CapUnits",
+          "label": "Inbox cap",
+          "description": "The player's hard cap when it arrived (raw units \u00d7 storage weight).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "d6715288-ec89-507a-a4b2-ecb9c9c92c07",
+          "fieldName": "CreatedAt",
+          "label": "Delivered",
+          "description": "When it arrived (UTC).",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "0e89c005-74e0-5df1-a1ff-7e53cd3fb5a8",
+          "fieldName": "ExpiresAt",
+          "label": "Expires",
+          "description": "When what is left moves to SYS_LOSS (InboxExpired).",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": true
+        }
+      ]
+    }
+  ],
+  "validationRules": []
+}

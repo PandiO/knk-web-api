@@ -391,3 +391,20 @@ and name so it imports next to the older one; make it the default and delete or 
 GUIDs: the new seed uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields uuid5(that,
 "step:"/"field:" + name); new versions uuid5(previous configuration GUID, "seed-v2"), every kept step/field
 uuid5(previous configuration GUID, its previous GUID).
+
+**Item delivery P7 seed v1 (PandiO/knk-workspace#60, 2026-11-20):** a new seed `ItemDelivery` with a display seed in
+`DisplayConfigurationSeeds/` (G17), and `ProductionArea` seed v3 (#883: placement rule P-3). Import in any order.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `ItemDelivery` | ItemDelivery - Default (seed v1) | — |
+| `ProductionArea` | ProductionArea - Default (seed v3) | — (replaces v2) |
+
+`ItemDelivery` is read only, like `StockTransaction`: the delivery service writes it (`POST api/ItemDeliveries`, from
+the game server or staff with `knk.economy.admin`). Its lines (`ItemDeliveryLine`, the inbox lots) are listed on its
+page and have no seed of their own (child rows, developer clarification 2026-11-19). `ProductionArea` seed v3 adds
+placement rule P-3 (`ProductionAreaPlacement` on the structure field, warning by default, R2): the area stays inside
+its structure's district region (as P-1) or, for a rural structure, its town's territory (as P-2). A Region area is
+checked as a whole region, a Cuboid by its four corners, a Radius by its centre and the four points one radius away;
+a Polygon is not checked by this rule. The API also runs it on save and answers `placementWarnings`. GUIDs: as for the
+P6a seeds above.

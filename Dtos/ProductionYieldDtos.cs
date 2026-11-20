@@ -86,6 +86,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lastSurveyId")] public long? LastSurveyId { get; set; }
         [JsonPropertyName("lastSurveyedAt")] public DateTime? LastSurveyedAt { get; set; }
         [JsonPropertyName("createdAt")] public DateTime CreatedAt { get; set; }
+
+        /// <summary>Read only, on create and update: placement rule P-3 warnings (#883), as on structures.</summary>
+        [JsonPropertyName("placementWarnings")] public List<string>? PlacementWarnings { get; set; }
     }
 
     public class ProductionAreaListDto
