@@ -43,6 +43,11 @@ namespace knkwebapi_v2.Dtos
         /// keep the stored values.</summary>
         [JsonPropertyName("logistics")]
         public ProductionLogisticsSettingsDto? Logistics { get; set; }
+
+        /// <summary>Shops (P10, PandiO/knk-workspace#248). Null in stored JSON = the defaults; null on a save = keep the
+        /// stored values.</summary>
+        [JsonPropertyName("shops")]
+        public ProductionShopSettingsDto? Shops { get; set; }
     }
 
     /// <summary>

@@ -330,7 +330,15 @@ namespace knkwebapi_v2.Services.Production
         // ================= Settle =================
 
         private sealed record Loaded(ProductionLine Line, ProductionStructure Structure, ProductionKindLevel? LevelRow,
-            int? TownId, int? KingdomId, ResourceCategory? Category);
+            int? TownId, int? KingdomId, ResourceCategory? Category, decimal InputFactor = 1m)
+        {
+            /// <summary>Where the line's output goes: Output, or Merchandise for a shop's processing lines (shops P10).</summary>
+            public StoragePurpose OutputPurpose => OutputPurposeOf(Structure);
+        }
+
+        /// <summary>A shop (P10, #248) processes Input → Merchandise; every other structure produces into Output.</summary>
+        public static StoragePurpose OutputPurposeOf(ProductionStructure structure) =>
+            structure is Shop ? StoragePurpose.Merchandise : StoragePurpose.Output;
 
         private async Task<Loaded?> LoadAsync(int lineId, bool tracking, CancellationToken ct)
         {
@@ -350,11 +358,19 @@ namespace knkwebapi_v2.Services.Production
             ProductionKindLevel? level = structure.ProductionKindId == null ? null
                 : await _db.ProductionKindLevels.AsNoTracking()
                     .FirstOrDefaultAsync(l => l.ProductionKindId == structure.ProductionKindId && l.Level == structure.Level, ct);
+            decimal inputFactor = 1m;
+            if (structure is Shop shop)
+            {
+                // Shops P10 (#248): the shop type's level sets the processing speed, yield and input cost (shops DESIGN § 5).
+                var shopLevel = await knkwebapi_v2.Services.Shops.ShopLevels.FindAsync(_db, shop.ShopTypeId, shop.Level, ct);
+                level = knkwebapi_v2.Services.Shops.ShopLevels.AsEngineLevel(shopLevel);
+                if (shopLevel?.InputCostMultiplier > 0) inputFactor = shopLevel.InputCostMultiplier;
+            }
             int? townId = structure.TownId ?? structure.District?.TownId;
             int? kingdomId = townId == null ? null
                 : await _db.Towns.AsNoTracking().Where(t => t.Id == townId).Select(t => t.KingdomId).FirstOrDefaultAsync(ct);
             ResourceCategory? category = line.ResourceCategory ?? structure.ProductionKind?.ResourceCategory;
-            return new Loaded(line, structure, level, townId, kingdomId, category);
+            return new Loaded(line, structure, level, townId, kingdomId, category, inputFactor);
         }
 
         private ProductionSettleContext Context(Loaded l, DateTime at, ProductionEngineSettingsDto settings) => new()
@@ -527,10 +543,12 @@ namespace knkwebapi_v2.Services.Production
 
             if (!l.Structure.ProductionEnabled) return Skip(ProductionLineStatus.Paused, "The structure's production is switched off.");
             if (!line.Enabled) return Skip(ProductionLineStatus.Paused, "The line is paused.");
+            if (l.Structure is Shop { Kind: ShopKind.Trading })
+                return Skip(ProductionLineStatus.Paused, "A trading shop doesn't process; make it a Processing shop to run its lines.");
             if (!_rates.ContainsKey(line.RateSource))
                 return Skip(ProductionLineStatus.Error, $"Rate source {line.RateSource} is not available yet (P4).");
-            var output = await StorageOfAsync(l.Structure.Id, StoragePurpose.Output, ct);
-            if (output == null) return Skip(ProductionLineStatus.Error, "The structure has no Output storage.");
+            var output = await StorageOfAsync(l.Structure.Id, l.OutputPurpose, ct);
+            if (output == null) return Skip(ProductionLineStatus.Error, $"The structure has no {l.OutputPurpose} storage.");
             var noRoom = await NoRoomReasonAsync(output, line.ItemBlueprintId, now, ct);
             if (noRoom != null) return Skip(ProductionLineStatus.BlockedFull, noRoom);
 
@@ -560,7 +578,7 @@ namespace knkwebapi_v2.Services.Production
             var takes = new Dictionary<ProductionLineInput, (decimal Total, long Take)>();
             foreach (var i in line.Inputs)
             {
-                decimal total = Math.Round(i.Accrued + i.AmountPerHour * hours * plan.Workers * plan.Unlock, ProductionRate.Decimals);
+                decimal total = Math.Round(i.Accrued + i.AmountPerHour * l.InputFactor * hours * plan.Workers * plan.Unlock, ProductionRate.Decimals);
                 takes[i] = (total, (long)Math.Floor(total));
             }
             if (takes.Values.Any(t => t.Take > 0))
@@ -678,7 +696,7 @@ namespace knkwebapi_v2.Services.Production
 
             var structure = await _db.ProductionStructures.AsNoTracking().Include(s => s.ProductionKind)
                 .Include(s => s.District).Include(s => s.Town).FirstAsync(s => s.Id == structureId, ct);
-            var output = await StorageOfAsync(structureId, StoragePurpose.Output, ct);
+            var output = await StorageOfAsync(structureId, OutputPurposeOf(structure), ct);
             var input = await StorageOfAsync(structureId, StoragePurpose.Input, ct);
             var dto = new ProductionOverviewDto
             {
@@ -695,7 +713,8 @@ namespace knkwebapi_v2.Services.Production
             };
             if (!settings.Enabled) dto.NotProducingReasons.Add("Production is turned off for the whole server (Production:Enabled).");
             if (!structure.ProductionEnabled) dto.NotProducingReasons.Add("The structure's production is switched off.");
-            if (output == null) dto.NotProducingReasons.Add("The structure has no Output storage.");
+            if (output == null) dto.NotProducingReasons.Add($"The structure has no {OutputPurposeOf(structure)} storage.");
+            if (structure is Shop { Kind: ShopKind.Trading }) dto.NotProducingReasons.Add("A trading shop doesn't process.");
 
             int? townId = structure.TownId ?? structure.District?.TownId;
             var zone = await _weather.ZoneForTownAsync(townId, ct);

@@ -1,0 +1,264 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "74a670d4-5d02-57e0-a46a-d21be2a004e8",
+  "entityTypeName": "Shop",
+  "name": "Shop - Default (seed v1)",
+  "description": "A shop (shops P10, #248): placement, type, pricing, worker and catalogue. Its processing view is GET api/ProductionStructures/{id}/production.",
+  "sections": [
+    {
+      "sectionGuid": "647a3d1b-15db-5eab-9628-1c7050799d11",
+      "sectionName": "General information",
+      "description": "What it is.",
+      "fields": [
+        {
+          "fieldGuid": "6fe9cb83-c680-553d-9f0d-ddcd8b67e1ae",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game and in the web app.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "f9fa32b3-126e-53ed-ad83-e5891ad64273",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "For admins.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        }
+      ]
+    },
+    {
+      "sectionGuid": "accd1bed-8004-5294-992b-b929e651b7a2",
+      "sectionName": "Shop",
+      "description": "Type, kind, level, pricing and worker.",
+      "fields": [
+        {
+          "fieldGuid": "816f2b37-9722-5a7d-ab4b-dce37e700b7c",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ShopType",
+          "relatedEntityTypeName": "ShopType",
+          "label": "Shop type",
+          "description": "Accepted categories and levels.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "5b362473-d697-5143-a78d-70008ba373ec",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "Trading or Processing.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "e4faeb4c-fe2e-54d1-a354-d4ecd06da052",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "Shop type level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "9390ec58-06d6-5d9c-82a9-677ee6165ac1",
+          "fieldName": "TaxModifier",
+          "label": "Tax modifier",
+          "description": "Sell price ×.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "e67a1863-2274-5d89-870c-f8992347e0df",
+          "fieldName": "BuyBackPercent",
+          "label": "Buy-back %",
+          "description": "Of the sell price.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "20fb4fa0-cf31-50be-876f-f35e4a5767a2",
+          "fieldName": "WorkersPresent",
+          "label": "Workers present",
+          "description": "The rest are collecting.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "296a94df-9df2-5f9c-b0a6-d955feb3492f",
+          "fieldName": "WorkersTotal",
+          "label": "Workers",
+          "description": "Its own worker(s).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "9128e8d4-37c5-5bce-aa0a-3c3202733f9b",
+          "fieldName": "ProductionEnabled",
+          "label": "Processing on",
+          "description": "Its own switch.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "7ffa05d8-09db-5cd3-967a-bb4f65dba008",
+          "fieldName": "HideSoldOut",
+          "label": "Hide sold out",
+          "description": "Else greyed out.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "0195f379-9ebb-592b-a187-4c58e1cc97c5",
+      "sectionName": "Placement",
+      "description": "In a district, or rural with a town (exactly one).",
+      "fields": [
+        {
+          "fieldGuid": "672c02bd-bd58-5da9-b595-7a9c385370ab",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "District",
+          "relatedEntityTypeName": "District",
+          "label": "District",
+          "description": "Empty for a rural structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "ff8e2e6f-d880-5739-8109-26112ab24c03",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Street",
+          "relatedEntityTypeName": "Street",
+          "label": "Street",
+          "description": "Only in a district.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d8119929-1875-5d58-b00d-96b9ec26b3a1",
+          "fieldName": "HouseNumber",
+          "label": "House number",
+          "description": "0 for a rural structure.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "28abce83-7f20-525a-99db-d5154bd70e5c",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Town",
+          "relatedEntityTypeName": "Town",
+          "label": "Town (rural)",
+          "description": "The town of a rural structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "22bb572b-220f-5cd5-8b19-173b7eb3cacf",
+          "fieldName": "TerritoryFlag",
+          "label": "Territory flag",
+          "description": "OutsideTerritory or Contested from the game server's territory report: it keeps its town (R3).",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "eba841dd-c6cd-5d53-b3ba-3ffff05bb4de",
+          "fieldName": "TerritoryFlaggedAt",
+          "label": "Flagged at",
+          "description": "When the flag was set.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "b3fb0400-5444-5710-9753-103144124472",
+          "fieldName": "Id",
+          "relatedEntityPropertyName": "TerritoryConflict",
+          "relatedEntityTypeName": "TerritoryConflict",
+          "label": "Conflict",
+          "description": "The conflict it is listed on.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "0103f48a-2acd-579a-8c8a-459160c3410f",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "LoyaltyTown",
+          "relatedEntityTypeName": "Town",
+          "label": "Loyal to",
+          "description": "Empty = its own town.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "06739ea5-4837-55dc-bc13-ea7738c20f62",
+      "sectionName": "Region and access",
+      "description": "The structure's region in game.",
+      "fields": [
+        {
+          "fieldGuid": "4a3140e5-df35-53a2-8eab-b1136a789595",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The WorldGuard region; a rural one has no parent.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "c99a79d2-a5f2-5f2e-abe3-764807284a6f",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The world the region is in.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "388dc541-4bf5-5eb8-b24a-10a3eb3b2688",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the region.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "5fba83f6-4c94-5592-83ca-b8ddb123935a",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players may walk out of the region.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "3c66f519-4622-5177-8d8f-20af07aa8cb1",
+      "sectionName": "Catalogue",
+      "description": "The static admin catalogue (GET api/Shops/{id}/offer shows the prices and stock now).",
+      "relatedEntityPropertyName": "CatalogueEntries",
+      "relatedEntityTypeName": "ShopCatalogueEntry",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "741e3beb-37f8-5457-b76b-930385641b0d",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint",
+          "description": "The blueprint id.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "0d34bd18-0e8b-56dc-ab96-6defeb8ae427",
+          "fieldName": "ItemInstanceId",
+          "label": "Item instance",
+          "description": "A unique item.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "cc0c044f-86b6-5fb9-a0ac-404d60adf169",
+          "fieldName": "StaticPrice",
+          "label": "Static price",
+          "description": "Empty = formula.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "0b285f99-ab95-5c14-b11d-be4513b4eb77",
+          "fieldName": "StockMode",
+          "label": "Stock",
+          "description": "Stocked or Unlimited.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "cf991eaf-76e0-5b29-8192-f3370771b09e",
+          "fieldName": "Pinned",
+          "label": "Pinned",
+          "description": "Display stalls.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "d0bb2c4d-888c-5c85-96b4-26e2245c3515",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "On sale.",
+          "fieldType": "Boolean"
+        }
+      ]
+    }
+  ]
+}

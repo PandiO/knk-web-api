@@ -1,0 +1,76 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "c4151c23-963d-58f6-b22d-e0ea2cab1971",
+  "entityTypeName": "ShopCatalogueEntry",
+  "name": "ShopCatalogueEntry - Default (seed v1)",
+  "description": "A catalogue entry (shops P10). GET api/Shops/{id}/offer shows the shop's prices and stock now.",
+  "sections": [
+    {
+      "sectionGuid": "30aca356-6ffd-5f0c-9d71-5b1b991d0b96",
+      "sectionName": "Entry",
+      "description": "The shop, the item and its price.",
+      "fields": [
+        {
+          "fieldGuid": "1555dfc9-6b8a-5fd9-8cbe-bd41cffdb3a4",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Shop",
+          "relatedEntityTypeName": "Shop",
+          "label": "Shop",
+          "description": "The shop.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "82c9a818-ddff-53f8-af41-44212a8644be",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Blueprint",
+          "description": "The item.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "c9e4088d-efa8-59a7-9672-552f97b8c419",
+          "fieldName": "ItemInstanceId",
+          "label": "Item instance",
+          "description": "A unique item.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d5825f5e-f028-57df-b596-3d4e3b4b33cd",
+          "fieldName": "StaticPrice",
+          "label": "Static price",
+          "description": "Empty = the formula.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "a26e5aca-7f9a-5594-acce-88d8cebe16f8",
+          "fieldName": "StockMode",
+          "label": "Stock",
+          "description": "Stocked or Unlimited.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "d9507cc2-e101-5fdd-b7f2-f14bebbb59b0",
+          "fieldName": "Pinned",
+          "label": "Pinned",
+          "description": "Display stalls.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "8bbdad9f-b589-586d-a6fa-1075dfa96a8a",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Lower first.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d5909d35-e845-5def-be6a-74270c980762",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "On sale.",
+          "fieldType": "Boolean"
+        }
+      ]
+    }
+  ]
+}

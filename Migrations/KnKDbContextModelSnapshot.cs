@@ -687,6 +687,9 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("varchar(30)");
 
+                    b.Property<int?>("TownId")
+                        .HasColumnType("int");
+
                     b.Property<long>("TransactionId")
                         .HasColumnType("bigint");
 
@@ -700,11 +703,13 @@ namespace knkwebapi_v2.Migrations
 
                     b.HasIndex("SystemAccount", "Currency", "TransactionId");
 
+                    b.HasIndex("TownId", "Currency", "Id");
+
                     b.HasIndex("UserId", "Currency", "Id");
 
                     b.ToTable("currency_entries", null, t =>
                         {
-                            t.HasCheckConstraint("CK_currency_entries_Account", "(`AccountKind` = 0 AND `UserId` IS NOT NULL AND `SystemAccount` IS NULL AND `BalanceBefore` IS NOT NULL AND `BalanceAfter` IS NOT NULL) OR (`AccountKind` = 1 AND `UserId` IS NULL AND `SystemAccount` IS NOT NULL AND `BalanceBefore` IS NULL AND `BalanceAfter` IS NULL)");
+                            t.HasCheckConstraint("CK_currency_entries_Account", "(`AccountKind` = 0 AND `UserId` IS NOT NULL AND `SystemAccount` IS NULL AND `TownId` IS NULL AND `BalanceBefore` IS NOT NULL AND `BalanceAfter` IS NOT NULL) OR (`AccountKind` = 1 AND `UserId` IS NULL AND `SystemAccount` IS NOT NULL AND `TownId` IS NULL AND `BalanceBefore` IS NULL AND `BalanceAfter` IS NULL) OR (`AccountKind` = 2 AND `UserId` IS NULL AND `SystemAccount` IS NULL AND `TownId` IS NOT NULL AND `BalanceBefore` IS NOT NULL AND `BalanceAfter` IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_currency_entries_Balances", "`BalanceAfter` IS NULL OR (`BalanceBefore` >= 0 AND `BalanceAfter` >= 0 AND `BalanceBefore` + `Amount` = `BalanceAfter`)");
                         });
@@ -8453,6 +8458,227 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("salary_configurations", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopCatalogueEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("ItemInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("Pinned")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ShopId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("StaticPrice")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StockMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ItemInstanceId");
+
+                    b.HasIndex("ShopId", "ItemBlueprintId");
+
+                    b.ToTable("shop_catalogue_entries", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopTradeStat", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal?>("AvgSellPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<long>("BuyBackPaid")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ComputedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DistinctCustomers")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("HourStart")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Revenue")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ShopId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("StockAtEnd")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("TownPlayerCount")
+                        .HasColumnType("int");
+
+                    b.Property<long>("UnitsBoughtBack")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UnitsSold")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UnitsSupplied")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HourStart");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ShopId", "ItemBlueprintId", "HourStart")
+                        .IsUnique();
+
+                    b.ToTable("shop_trade_stats", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DefaultKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("shop_types", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopTypeCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ShopTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("ShopTypeId", "CategoryId")
+                        .IsUnique();
+
+                    b.ToTable("shop_type_categories", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopTypeLevel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CycleSpeedMultiplier")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.Property<decimal>("InputCostMultiplier")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.Property<long?>("InputMaxUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("MerchandiseMaxUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("PriceMultiplier")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.Property<long?>("ReorderPointUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ShopTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("TargetUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("UnitsPerSlot")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("YieldMultiplier")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShopTypeId", "Level")
+                        .IsUnique();
+
+                    b.ToTable("shop_type_levels", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeAmmoType", b =>
                 {
                     b.Property<int>("Id")
@@ -10599,6 +10825,37 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("title_brackets", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.TownAccount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Coins")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("TownId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TownId")
+                        .IsUnique();
+
+                    b.ToTable("town_accounts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_town_accounts_Coins", "`Coins` >= 0");
+                        });
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.TransportAssignment", b =>
                 {
                     b.Property<int>("Id")
@@ -12112,6 +12369,44 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("DefaultStorageId");
 
                     b.ToTable("warehouses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+
+                            t.HasCheckConstraint("CK_structures_DistrictXorTown", "(`DistrictId` IS NULL) <> (`TownId` IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Shop", b =>
+                {
+                    b.HasBaseType("knkwebapi_v2.Models.ProductionStructure");
+
+                    b.Property<decimal>("BuyBackPercent")
+                        .HasPrecision(7, 3)
+                        .HasColumnType("decimal(7,3)");
+
+                    b.Property<bool>("HideSoldOut")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("ShopTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ShopkeeperLocationId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TaxModifier")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.HasIndex("ShopTypeId");
+
+                    b.HasIndex("ShopkeeperLocationId");
+
+                    b.ToTable("shops", null, t =>
                         {
                             t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
 
@@ -13951,6 +14246,81 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Tile");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopCatalogueEntry", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemInstance", "ItemInstance")
+                        .WithMany()
+                        .HasForeignKey("ItemInstanceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Shop", "Shop")
+                        .WithMany("CatalogueEntries")
+                        .HasForeignKey("ShopId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("ItemInstance");
+
+                    b.Navigation("Shop");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopTradeStat", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Shop", "Shop")
+                        .WithMany()
+                        .HasForeignKey("ShopId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("Shop");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopTypeCategory", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ShopType", "ShopType")
+                        .WithMany("AcceptedCategories")
+                        .HasForeignKey("ShopTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("ShopType");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopTypeLevel", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ShopType", "ShopType")
+                        .WithMany("Levels")
+                        .HasForeignKey("ShopTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ShopType");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeLobbyScenario", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.SiegeLobby", "SiegeLobby")
@@ -14485,6 +14855,17 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Storage");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.TownAccount", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Town", "Town")
+                        .WithMany()
+                        .HasForeignKey("TownId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Town");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.TransportAssignment", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.ProductionStructure", "CarrierStructure")
@@ -15002,6 +15383,29 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("DefaultStorage");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Shop", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ProductionStructure", null)
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.Shop", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ShopType", "ShopType")
+                        .WithMany()
+                        .HasForeignKey("ShopTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Location", "ShopkeeperLocation")
+                        .WithMany()
+                        .HasForeignKey("ShopkeeperLocationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ShopType");
+
+                    b.Navigation("ShopkeeperLocation");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ActionBinding", b =>
                 {
                     b.Navigation("Conditions");
@@ -15244,6 +15648,13 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Nodes");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopType", b =>
+                {
+                    b.Navigation("AcceptedCategories");
+
+                    b.Navigation("Levels");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.SiegeLobby", b =>
                 {
                     b.Navigation("Rotation");
@@ -15373,6 +15784,11 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Lines");
 
                     b.Navigation("YieldOverrides");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Shop", b =>
+                {
+                    b.Navigation("CatalogueEntries");
                 });
 #pragma warning restore 612, 618
         }

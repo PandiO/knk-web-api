@@ -1,0 +1,97 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "fcb17e1c-3628-5af7-9fdd-9b3517176b4b",
+  "entityTypeName": "ShopTradeStat",
+  "name": "ShopTradeStat - Default (seed v1)",
+  "description": "Hourly trade stats (shops DESIGN § 9.1).",
+  "sections": [
+    {
+      "sectionGuid": "7bd436cb-649d-55a8-b4fe-028c5b5a327b",
+      "sectionName": "Hour",
+      "description": "One shop, blueprint and hour.",
+      "fields": [
+        {
+          "fieldGuid": "99b63551-dee9-5ec3-960e-3ff82d30f3b8",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Shop",
+          "relatedEntityTypeName": "Shop",
+          "label": "Shop",
+          "description": "The shop.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "9b67ad1f-4910-5b1c-8ee5-12abbe8a9bd7",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Blueprint",
+          "description": "The item.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "e1bf94e2-7e48-529d-9f91-5c1238b19775",
+          "fieldName": "HourStart",
+          "label": "Hour",
+          "description": "UTC.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "cb21059e-3e56-58bf-9f11-62b6b3f0b44c",
+          "fieldName": "UnitsSold",
+          "label": "Units sold",
+          "description": "To players.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "799ec51e-f854-58da-b182-268d7dc4c5e5",
+          "fieldName": "Revenue",
+          "label": "Revenue",
+          "description": "Coins.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "a0c4dfcc-0b22-5b36-83a7-71f20d5ebd24",
+          "fieldName": "AvgSellPrice",
+          "label": "Average price",
+          "description": "Revenue ÷ units.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "c50d04ea-1400-59cb-9dc8-466f751476cf",
+          "fieldName": "UnitsBoughtBack",
+          "label": "Bought back",
+          "description": "From players.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "7b0e1989-cc7e-516b-8b3e-7cddad408190",
+          "fieldName": "BuyBackPaid",
+          "label": "Buy-back paid",
+          "description": "Coins.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "850102ad-9cbe-5990-9eb4-181f6ac96aed",
+          "fieldName": "UnitsSupplied",
+          "label": "Supplied",
+          "description": "Collections and processing.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d7ad8f9b-e9f1-58cb-befe-995a4c4e6c54",
+          "fieldName": "DistinctCustomers",
+          "label": "Customers",
+          "description": "Distinct buyers.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "fbfdb451-0629-5a36-b570-1561a5b14c4d",
+          "fieldName": "StockAtEnd",
+          "label": "Stock at end",
+          "description": "Merchandise.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

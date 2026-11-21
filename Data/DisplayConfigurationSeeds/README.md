@@ -391,3 +391,14 @@ expiry, explanation) and `LogisticsPlannerRun` (trigger, policy version, counts,
 (`GET api/Logistics/towns/{id}/supply`, `.../service-areas`, `GET api/Logistics/consumers/{id}`) for the web app.
 GUIDs: configuration uuid5(URL namespace, "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(configuration,
 "section:<section>"), fields uuid5(configuration, "field:<section>:<field>[:<related property>]").
+
+**Shops P10 display seeds v1 (PandiO/knk-workspace#248, 2026-11-21):** `ShopType` (name, default kind, switch, with
+its levels), `ShopTypeLevel` (type, level, multipliers, caps, default min/max), `Shop` (the `Warehouse` display's
+general, placement and region sections, the shop section: type, kind, level, tax modifier, buy-back percentage,
+workers, processing switch, hide sold-out; and its catalogue entries), `ShopCatalogueEntry` (shop, item, static price,
+stock mode, pin, order, switch), `ShopTradeStat` (shop, blueprint, hour, sales, revenue, average price, buy-backs,
+supply, customers, stock at the end) and `TownAccount` (town, coins, opened, updated). The offer with live prices and
+stock (`GET api/Shops/{id}/offer`), a shop's processing view (`GET api/ProductionStructures/{id}/production`) and a
+town account's ledger (`GET api/TownAccounts/{id}/ledger`) are API views for the web app (#688). GUIDs:
+uuid5(namespace `6f1d2c58-3b0e-5a8e-9c49-2f2b8a4d0248`, "display/<Entity>[/<section>[/<field>/<related property>]]");
+the copied `Shop` sections and fields uuid5(namespace, "display/Shop/<Warehouse GUID>").

@@ -1,0 +1,56 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "5d656b0c-3883-5779-843c-9248c31afb6f",
+  "entityTypeName": "ShopType",
+  "name": "ShopType - Default (seed v1)",
+  "description": "A shop type (shops P10, #248, shops DESIGN § 2.1, § 3.2, § 5): bakery, weaponsmith, general store, market stall. Its accepted categories (what shops of this type buy from players; a category also accepts its sub-categories) are set through acceptedCategoryIds (api/ShopTypes) and its levels as ShopTypeLevel rows.",
+  "steps": [
+    {
+      "stepGuid": "7e651890-68a4-57c1-9f2c-cee10ea3bd18",
+      "stepName": "Shop type",
+      "description": "Name, default kind and switch.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "1849e9ae-1975-5c76-8619-804e10dd718c",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique, e.g. Bakery.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "03620d3a-7250-5f52-8111-72729542ebda",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Optional.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "03a6db09-3b84-5684-84f9-2ae2c9cc4d69",
+          "fieldName": "DefaultKind",
+          "label": "Default kind",
+          "description": "The kind a new shop of this type gets: Trading sells goods as they are, Processing turns inputs into goods on its lines.",
+          "fieldType": "Enum",
+          "enumType": "ShopKind",
+          "settingsJson": "{\"enumValues\": [\"Trading\", \"Processing\"]}",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e0f90e27-f749-59da-8ad0-406f7e065894",
+          "fieldName": "IsActive",
+          "label": "Active",
+          "description": "Off: kept for existing shops, not offered for new ones.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

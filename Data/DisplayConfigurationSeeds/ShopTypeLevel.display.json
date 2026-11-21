@@ -1,0 +1,109 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "8d197ce0-799e-5de5-b20a-6f777319cdeb",
+  "entityTypeName": "ShopTypeLevel",
+  "name": "ShopTypeLevel - Default (seed v1)",
+  "description": "A shop type level (shops DESIGN § 5).",
+  "sections": [
+    {
+      "sectionGuid": "188dcefb-50b4-5601-8b59-2701cbc8de78",
+      "sectionName": "Level",
+      "description": "The type and level.",
+      "fields": [
+        {
+          "fieldGuid": "6319efd6-67a4-54a6-95e8-d386d04b8eaa",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ShopType",
+          "relatedEntityTypeName": "ShopType",
+          "label": "Shop type",
+          "description": "The type.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "a29c736c-5931-567b-933e-53873cf1a086",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "The level.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "f8337e18-9b8c-5b18-872f-f99aa57f4082",
+      "sectionName": "Effects",
+      "description": "Multipliers.",
+      "fields": [
+        {
+          "fieldGuid": "3e4e910b-f7b7-5c2d-9e8c-dbf95660fa49",
+          "fieldName": "PriceMultiplier",
+          "label": "Price ×",
+          "description": "Sell price modifier.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "0aa84073-61f5-5649-9656-ef4768bd0cf8",
+          "fieldName": "CycleSpeedMultiplier",
+          "label": "Speed ×",
+          "description": "Processing speed.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "5a76b7cb-edab-5f42-94d3-7b845043c69d",
+          "fieldName": "YieldMultiplier",
+          "label": "Yield ×",
+          "description": "Processing yield.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "89c5e1b0-51b3-5e96-9c1a-2815308aae4d",
+          "fieldName": "InputCostMultiplier",
+          "label": "Input cost ×",
+          "description": "Inputs per hour.",
+          "fieldType": "Decimal"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "55ccbd6b-c553-5020-a4ec-e3cb7a3db04d",
+      "sectionName": "Caps and restocking",
+      "description": "Caps in raw units and the default min/max.",
+      "fields": [
+        {
+          "fieldGuid": "24ded436-2985-5c47-820a-5a43eb86a5d1",
+          "fieldName": "MerchandiseMaxUnits",
+          "label": "Merchandise cap",
+          "description": "Raw units.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "030e18d5-e14b-5c77-993b-01a6b353a590",
+          "fieldName": "InputMaxUnits",
+          "label": "Input cap",
+          "description": "Raw units.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "3d27194c-0d37-5eca-a884-ab18c8f2dcab",
+          "fieldName": "UnitsPerSlot",
+          "label": "Units per slot",
+          "description": "Bound containers.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d9ee01da-9216-5d10-8a99-24e83bef9c98",
+          "fieldName": "ReorderPointUnits",
+          "label": "Default min",
+          "description": "Restocking.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "64ea7368-b68a-54b5-8451-8686f53c1ce7",
+          "fieldName": "TargetUnits",
+          "label": "Default max",
+          "description": "Restocking.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

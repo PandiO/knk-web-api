@@ -1,0 +1,137 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "279aad43-1fa5-559e-a844-2ecb3d57c783",
+  "entityTypeName": "ShopTypeLevel",
+  "name": "ShopTypeLevel - Default (seed v1)",
+  "description": "One level of a shop type (shops DESIGN § 5, the production level pattern of PRODUCTION_KINDS § 5). Saving it writes its caps to the storages of the type's shops at that level.",
+  "steps": [
+    {
+      "stepGuid": "657cb5b9-2387-5282-9393-30b8742c0687",
+      "stepName": "Level",
+      "description": "The type and level number.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e54e572b-af59-5cba-9843-8f6829047998",
+          "fieldName": "ShopTypeId",
+          "label": "Shop type",
+          "description": "The type this level belongs to.",
+          "fieldType": "Object",
+          "objectType": "ShopType",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6484834a-bd09-5864-a5ab-181aabe507cf",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "1 to 100, once per type.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "937ebdcb-236b-5d8c-a3f5-03958988c11f",
+      "stepName": "Effects",
+      "description": "Multipliers (above 0; 1 = no change).",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ce461573-3695-590c-b216-a3454c4978a4",
+          "fieldName": "PriceMultiplier",
+          "label": "Price multiplier",
+          "description": "The shop level modifier of the sell price.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2151bc5d-c1fe-53d5-adef-b3ae16552e53",
+          "fieldName": "CycleSpeedMultiplier",
+          "label": "Processing speed",
+          "description": "Cycle length ÷ this.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a627e3f9-f186-561e-beac-3d5f45cf3397",
+          "fieldName": "YieldMultiplier",
+          "label": "Processing yield",
+          "description": "Output rate × this.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d9deea7d-5e86-5408-b18c-033c81059a8e",
+          "fieldName": "InputCostMultiplier",
+          "label": "Input cost",
+          "description": "Inputs per hour × this.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "2060870b-4d03-5550-a84c-8934334af1af",
+      "stepName": "Caps and restocking",
+      "description": "Empty or 0 leaves the shop's current value.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e4f6b0ca-9b16-587c-abb9-c33a26068076",
+          "fieldName": "MerchandiseMaxUnits",
+          "label": "Merchandise cap",
+          "description": "Raw units of the Merchandise storage.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "376c04f8-237a-57ee-8fc2-4983fb0651dd",
+          "fieldName": "InputMaxUnits",
+          "label": "Input cap",
+          "description": "Raw units of the Input storage.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7448adfa-56ba-5416-a536-6d97dc64886a",
+          "fieldName": "UnitsPerSlot",
+          "label": "Units per slot",
+          "description": "For storages with bound containers.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1e1cb505-12a3-5a23-aa0f-81b8db42631f",
+          "fieldName": "ReorderPointUnits",
+          "label": "Default min",
+          "description": "Restock a stocked catalogue item when Merchandise (with what is on the way) falls to this.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "cb4658c8-53df-5fed-a9a0-79485f348b3e",
+          "fieldName": "TargetUnits",
+          "label": "Default max",
+          "description": "Restock up to this (at least the min). A consumer replenishment setting overrides both.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

@@ -27,14 +27,18 @@ public class CurrencyEntry
     /// <summary>Set when AccountKind = System, e.g. SYS_SALARY (CurrencyReasons).</summary>
     public string? SystemAccount { get; set; }
 
+    /// <summary>Set when AccountKind = Town (shops P10, PandiO/knk-workspace#248): the town whose account the leg
+    /// changes. No FK, like UserId.</summary>
+    public int? TownId { get; set; }
+
     public CurrencyOperation Operation { get; set; }
 
     /// <summary>Signed change. Zero only for a Set that found the balance already at the target.</summary>
     public long Amount { get; set; }
 
-    /// <summary>User legs only.</summary>
+    /// <summary>User and town legs only.</summary>
     public long? BalanceBefore { get; set; }
 
-    /// <summary>User legs only.</summary>
+    /// <summary>User and town legs only.</summary>
     public long? BalanceAfter { get; set; }
 }

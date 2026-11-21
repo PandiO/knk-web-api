@@ -315,6 +315,15 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Logistics.ILogisticsPlannerRunService>(sp => sp.GetRequiredService<knkwebapi_v2.Services.Logistics.LogisticsRecordsService>());
             services.AddScoped<knkwebapi_v2.Services.Logistics.ILogisticsPlanner, knkwebapi_v2.Services.Logistics.LogisticsPlanner>();
             services.AddHostedService<knkwebapi_v2.Services.Logistics.LogisticsPlannerSweepService>();
+            // Shops P10 (PandiO/knk-workspace#248): types and levels, shops, catalogue, buying and selling (coins through the
+            // town account, ICurrencyTownService), hourly trade stats (job only while Production:Enabled is on), town accounts.
+            services.AddScoped<knkwebapi_v2.Services.Shops.IShopTypeService, knkwebapi_v2.Services.Shops.ShopTypeService>();
+            services.AddScoped<knkwebapi_v2.Services.Shops.IShopService, knkwebapi_v2.Services.Shops.ShopService>();
+            services.AddScoped<knkwebapi_v2.Services.Shops.IShopCatalogueService, knkwebapi_v2.Services.Shops.ShopCatalogueService>();
+            services.AddScoped<knkwebapi_v2.Services.Shops.IShopTradingService, knkwebapi_v2.Services.Shops.ShopTradingService>();
+            services.AddScoped<knkwebapi_v2.Services.Shops.IShopTradeStatService, knkwebapi_v2.Services.Shops.ShopTradeStatService>();
+            services.AddScoped<knkwebapi_v2.Services.Shops.ITownAccountService, knkwebapi_v2.Services.Shops.TownAccountService>();
+            services.AddHostedService<knkwebapi_v2.Services.Shops.ShopTradeStatSweepService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
             services.AddScoped<IBannerDesignService, BannerDesignService>();
@@ -439,6 +448,8 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<CurrencyService>();
             services.AddScoped<ICurrencyService>(sp => sp.GetRequiredService<CurrencyService>());
             services.AddScoped<ICurrencyTransferService>(sp => sp.GetRequiredService<CurrencyService>());
+            // Shops P10 (#248): postings to and from a town's account (AccountKind.Town).
+            services.AddScoped<ICurrencyTownService>(sp => sp.GetRequiredService<CurrencyService>());
             services.AddScoped<ITitleProgressionService, TitleProgressionService>();
             services.AddScoped<ICurrencyAdminService, CurrencyAdminService>();
             services.AddScoped<CurrencyReconciler>();

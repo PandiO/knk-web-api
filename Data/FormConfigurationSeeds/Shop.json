@@ -1,0 +1,305 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "1e4f186e-8a35-5921-b121-3b0e47e4c8f0",
+  "entityTypeName": "Shop",
+  "name": "Shop - Default (seed v1)",
+  "description": "A shop (shops P10, #248, shops DESIGN § 2): a structure with an Input and a Merchandise storage (created with it), a type, a kind, a level, pricing modifiers and its own worker. In a district (with a street) or rural (a town). Its catalogue entries are added on its page; its processing lines are production lines (ProductionLine) of the shop.",
+  "steps": [
+    {
+      "stepGuid": "e4e993bc-3c2f-5c9a-b9d1-8210a7f3ba32",
+      "stepName": "General information",
+      "description": "Name the shop. The name is what players see in game and in the web app.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "33d33809-11f0-519c-b68d-f09304934d65",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in game (entry messages, /warp, /navigate, menus) and in the web app. Commands find the structure by this name, so keep it short.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3cfa5d08-e869-5b6c-8a09-632b28b97496",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "A line or two about the structure for admins and the web app, e.g. who lives or trades there.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "df823c02-35d2-5980-8a02-b5592b5b728e",
+      "stepName": "Placement",
+      "description": "Where the shop stands: in a district (pick the district, street and house number) or rural, in its town's territory (pick only the town). Fill exactly one of District and Town.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "9c991639-cda6-5a01-b719-5066da0f6b47",
+          "fieldName": "DistrictId",
+          "label": "District",
+          "description": "For a shop in a district. Its region should lie inside the district's region (placement rule P-1, a warning unless an admin makes it blocking). Leave empty for a rural shop.",
+          "fieldType": "Object",
+          "objectType": "District",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "951d7db0-ca79-5723-aa21-c921f62d0284",
+          "fieldName": "StreetId",
+          "label": "Street",
+          "description": "Only with a district: the street of the address.",
+          "fieldType": "Object",
+          "objectType": "Street",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7ee4a639-f90d-5845-9d9e-76be2db17284",
+          "fieldName": "HouseNumber",
+          "label": "House number",
+          "description": "Only with a district: 1 or higher. A rural structure has none.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "fa11709f-9f22-5abe-839e-03daba60e955",
+          "fieldName": "TownId",
+          "label": "Town (rural)",
+          "description": "For a rural shop: the town it belongs to. It should lie inside that town's territory (placement rule P-2, checked by the game server; a warning unless an admin makes it blocking). Leave empty when a district is set.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b0d7467f-5759-5853-9eda-0de446492ef9",
+      "stepName": "Region and access",
+      "description": "The WorldGuard region around the structure, and whether players may walk in and out of it. Use Send to Minecraft and select the area in game with WorldEdit, or type the name of an existing region.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "0e902208-fb40-595e-813a-ef2d0b5a4acb",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The shop's WorldGuard region. In a district it should lie inside the district's region and is set up under it; a rural shop's region has no parent (PvP stays allowed there). A region drawn here is renamed domain_<id> when the shop is saved.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"RegionClaim\"}}"
+        },
+        {
+          "fieldGuid": "15598073-3db0-5692-af47-5a459da9ea4a",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the structure's region. Off keeps everyone out except staff with the region bypass permission, and the structure is no /warp destination.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "36fbbcf2-685c-54ef-b8f7-2b115a4f3862",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the structure's region may walk out of it. Off keeps them inside until staff let them out.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "970ded39-0658-5ff9-8daa-9c31aefcaa34",
+          "fieldName": "RoadAccessOverride",
+          "label": "Entry rule on roads",
+          "description": "Applies: when players may not enter, /navigate routes avoid the roads through this region. Ignored: routes may use them, e.g. for a house whose region overlaps the public street; the rule still holds at the border and for teleports. Empty = the setting for all structures on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "RoadAccessRule",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Applies\", \"Ignored\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "be6f9721-d251-5eec-bfe4-49193ea65722",
+      "stepName": "Shop",
+      "description": "Type, kind, level, pricing and worker.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "f3f18cdd-d90d-5861-9882-530b75172817",
+          "fieldName": "ShopTypeId",
+          "label": "Shop type",
+          "description": "Its accepted categories (what it buys from players) and levels.",
+          "fieldType": "Object",
+          "objectType": "ShopType",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "c0f9069e-d79d-55e7-81b0-391a7c7f4e0a",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "Trading sells goods as they are; Processing also turns inputs into goods on its lines (Input → Merchandise). Empty on create = the type's default.",
+          "fieldType": "Enum",
+          "enumType": "ShopKind",
+          "settingsJson": "{\"enumValues\": [\"Trading\", \"Processing\"]}",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e26f8ad2-e908-532c-96cc-691bfac97330",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "Its shop type level (price multiplier, caps, processing).",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "41b41d73-e0f2-565e-b229-08e9a1832837",
+          "fieldName": "TaxModifier",
+          "label": "Tax modifier",
+          "description": "Sell price × this (the interim town tax); 1 = none.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "5f0d301c-1cb4-5590-a915-d297a13c15da",
+          "fieldName": "BuyBackPercent",
+          "label": "Buy-back %",
+          "description": "What it pays players: sell price × this / 100.",
+          "fieldType": "Decimal",
+          "defaultValue": "50",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "8cc2044b-1b53-5387-a79e-e0aec0d5b375",
+          "fieldName": "WorkersTotal",
+          "label": "Workers",
+          "description": "Its own worker(s): they collect restocking from the warehouse; processing slows while they are away.",
+          "fieldType": "Integer",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2ba73750-2b56-5e08-8ce0-14c344e4e47b",
+          "fieldName": "ProductionEnabled",
+          "label": "Processing on",
+          "description": "The shop's own switch for its processing lines.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d66f38c6-a35c-58dc-9d28-afa5d2c00c4e",
+          "fieldName": "HideSoldOut",
+          "label": "Hide sold-out items",
+          "description": "Off: sold-out items are greyed out.",
+          "fieldType": "Boolean",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "507944f4-63b0-5080-9565-d497572955c9",
+          "fieldName": "ShopkeeperLocationId",
+          "label": "Shopkeeper spawn",
+          "description": "Where the shopkeeper NPC stands (P11).",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "afb86ce0-7554-59da-955c-c2781098ced0",
+      "stepName": "Spawn point",
+      "description": "Where players arrive when they teleport or navigate to the structure. Stand on the spot in game, facing the way arrivals should look, and use Send to Minecraft.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "11433c7f-9de3-526e-a87d-afae1a6b23fb",
+          "fieldName": "Location",
+          "label": "Spawn point",
+          "description": "Optional. The arrival point for /warp and /navigate <structure> spawn; without it /navigate leads to the structure's region and /warp is not possible.",
+          "fieldType": "Object",
+          "objectType": "Location",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"LocationSelection\"}}"
+        },
+        {
+          "fieldGuid": "d5d7cd8e-3651-50fb-90ed-6c0b57b0995f",
+          "fieldName": "NavigationDefaultOverride",
+          "label": "Navigate to",
+          "description": "Where /navigate <structure> leads when the player names no spot: Spawn = the spawn point above, Region = the nearest edge of the structure's region. Leave empty to follow the setting for all structures on the Roads page.",
+          "fieldType": "Enum",
+          "enumType": "NavigationDestinationMode",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Spawn\", \"Region\"]}"
+        }
+      ]
+    },
+    {
+      "stepGuid": "065869fb-4e16-5199-b241-4efda49df39b",
+      "stepName": "Sub-regions",
+      "description": "Extra WorldGuard regions of the structure besides its main region, for a shape one region can't hold (a round tower next to a square house). The structure is the union of its regions. Save the structure first (Submit), then Edit it to add sub-regions; each one is drawn in game and saved when its form completes.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "c8b903bd-c0aa-5f22-96f9-39a1d3cf99eb",
+          "fieldName": "SubRegions",
+          "label": "Sub-regions",
+          "description": "One entry per extra region. Each gets the main region's flags, owners, members and priority from the game server, so set flags on the main region only. A removed sub-region's WorldGuard region is deleted 14 days later.",
+          "fieldType": "List",
+          "elementType": "Object",
+          "objectType": "DomainSubRegion",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
+        }
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "fieldGuid": "0e902208-fb40-595e-813a-ef2d0b5a4acb",
+      "validationType": "RegionContainment",
+      "dependsOn": {
+        "fieldGuid": "9c991639-cda6-5a01-b719-5066da0f6b47"
+      },
+      "dependencyPath": "District.WgRegionId",
+      "configJson": "{\"parentRegionPath\": \"WgRegionId\", \"requireFullContainment\": true}",
+      "errorMessage": "P-1: the shop's region is not completely inside the district's region.",
+      "isBlocking": false,
+      "requiresDependencyFilled": false
+    },
+    {
+      "fieldGuid": "0e902208-fb40-595e-813a-ef2d0b5a4acb",
+      "validationType": "InsideTerritory",
+      "dependsOn": {
+        "fieldGuid": "fa11709f-9f22-5abe-839e-03daba60e955"
+      },
+      "dependencyPath": "Town.Id",
+      "configJson": "{\"holderKind\": \"Town\", \"holderIdPath\": \"Id\"}",
+      "errorMessage": "P-2: the shop's region is not inside its town's territory (or part of it is contested).",
+      "isBlocking": false,
+      "requiresDependencyFilled": false
+    }
+  ]
+}

@@ -44,5 +44,9 @@ public enum CurrencyAccountKind : byte
     User = 0,
 
     /// <summary>A system account such as SYS_SALARY: the source of minted and sink of burned amounts.</summary>
-    System = 1
+    System = 1,
+
+    /// <summary>A town's account (shops P10, PandiO/knk-workspace#248, TOWN_LOGISTICS D-L5): shop income. The leg names
+    /// the town (TownId) and records its balance before and after, like a user leg (towns' TownAccount.Coins).</summary>
+    Town = 2
 }

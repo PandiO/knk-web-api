@@ -59,6 +59,9 @@ namespace knkwebapi_v2.Services
         public const string SysAdmin = "SYS_ADMIN";
         public const string SysMerge = "SYS_MERGE";
         public const string SysProduction = "SYS_PRODUCTION";
+        /// <summary>The nominal counterpart of the shop reasons. Shop postings are balanced by the town's account
+        /// (AccountKind.Town, CurrencyService.PostWithTownAsync), never by this system account.</summary>
+        public const string SysShops = "SYS_SHOPS";
 
         // ===== Reason codes =====
 
@@ -133,6 +136,17 @@ namespace knkwebapi_v2.Services
         /// to SYS_SIEGE. Key: <c>siege-unlock:{templateId}:{userId}</c>.</summary>
         public const string SiegeUnlock = "SIEGE_UNLOCK";
 
+        /// <summary>A player buys from a shop (shops P10, PandiO/knk-workspace#248, DESIGN § 3.1): the player pays the town's
+        /// account (PostWithTownAsync). Key: <c>shop-buy:{clientKey}</c>.</summary>
+        public const string ShopPurchase = "SHOP_PURCHASE";
+
+        /// <summary>A shop buys from a player (shops DESIGN § 3.2): the town's account pays the buy-back price
+        /// (PostWithTownAsync). Key: <c>shop-sell:{clientKey}:{lineNo}</c>.</summary>
+        public const string ShopBuyBack = "SHOP_BUYBACK";
+
+        /// <summary>The reasons balanced by a town account instead of their system account.</summary>
+        public static bool IsTownReason(string? code) => code is ShopPurchase or ShopBuyBack;
+
         public static string MergeForfeitKey(int secondaryUserId) => $"merge:{secondaryUserId}";
 
         public static string MergeCarryoverKey(int secondaryUserId) => $"merge-carry:{secondaryUserId}";
@@ -160,6 +174,8 @@ namespace knkwebapi_v2.Services
             [MergeForfeit] = new(MergeForfeit, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Debit, SysMerge, "Balance forfeited on account merge"),
             [ProductionUpgrade] = new(ProductionUpgrade, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysProduction, "Production structure upgrade"),
             [SiegeUnlock] = new(SiegeUnlock, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysSiege, "Siege weapon unlock"),
+            [ShopPurchase] = new(ShopPurchase, CurrencyTransactionKind.Spend, CurrencyReasonDirection.Debit, SysShops, "Shop purchase"),
+            [ShopBuyBack] = new(ShopBuyBack, CurrencyTransactionKind.Grant, CurrencyReasonDirection.Credit, SysShops, "Sold to a shop"),
             [MergeCarryover] = new(MergeCarryover, CurrencyTransactionKind.Merge, CurrencyReasonDirection.Credit, SysMerge, "Higher balance kept on account merge"),
         };
 

@@ -1,0 +1,103 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "510d3081-fd9b-59f8-ae21-d5354153f416",
+  "entityTypeName": "ShopCatalogueEntry",
+  "name": "ShopCatalogueEntry - Default (seed v1)",
+  "description": "A row of a shop's static admin catalogue (shops DESIGN § 2.3, § 4): a blueprint (once per shop) or one unique item instance, an optional static price that wins over the formula, Stocked (sold from Merchandise) or Unlimited (blueprints only, never sold out: the fallback before the supply chain is live), a pin for display stalls and an order. Restocked goods and bought-back items without an entry are on sale at the formula price.",
+  "steps": [
+    {
+      "stepGuid": "3b7c8836-a462-5d10-b818-6a093241053f",
+      "stepName": "Entry",
+      "description": "The shop and the item.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "e20545fa-20d0-514e-9095-b93e99d35de8",
+          "fieldName": "ShopId",
+          "label": "Shop",
+          "description": "The shop.",
+          "fieldType": "Object",
+          "objectType": "Shop",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e2769159-259e-503b-85b5-7b310e11dd87",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint",
+          "description": "A stackable item; left empty for a unique item (taken from the instance).",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4dd5ff9c-60c2-598d-80bd-fa633c518497",
+          "fieldName": "ItemInstanceId",
+          "label": "Item instance id",
+          "description": "One unique item (in the shop's Merchandise storage) instead of a blueprint.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "fbd6e038-1078-51b7-b906-bc6389b60c17",
+      "stepName": "Price and display",
+      "description": "Static price, stock mode, pin and order.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "365a81cd-3a45-574b-81d4-ca4f069695eb",
+          "fieldName": "StaticPrice",
+          "label": "Static price",
+          "description": "Coins per unit; wins over the formula. Empty or 0 = the formula price (base price midpoint × tax modifier × level multiplier).",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e98797d3-c8e5-59a8-a1ce-fe9fb3e02388",
+          "fieldName": "StockMode",
+          "label": "Stock",
+          "description": "Stocked: sold from Merchandise, sold out at zero. Unlimited: never sold out (blueprints only).",
+          "fieldType": "Enum",
+          "enumType": "ShopStockMode",
+          "settingsJson": "{\"enumValues\": [\"Stocked\", \"Unlimited\"]}",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "cd7ea93e-11db-518f-a119-72a7a4997d4f",
+          "fieldName": "Pinned",
+          "label": "Pinned",
+          "description": "Shown first on display stalls.",
+          "fieldType": "Boolean",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "acb4b1bd-0826-51ef-a128-97a13b1dcb94",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Lower first.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "cbd5391d-b1e3-5324-bc70-6d177400e94f",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off: not on sale.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

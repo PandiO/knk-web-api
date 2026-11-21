@@ -56,6 +56,42 @@ namespace knkwebapi_v2.Repositories
             return users.ToDictionary(u => u.Id);
         }
 
+        public async Task EnsureTownAccountAsync(int townId, CancellationToken ct = default)
+        {
+            if (_context.Database.IsRelational())
+            {
+                var now = DateTime.UtcNow;
+                await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $"INSERT IGNORE INTO town_accounts (TownId, Coins, CreatedAt, UpdatedAt) VALUES ({townId}, 0, {now}, {now})", ct);
+                return;
+            }
+            if (!await _context.Set<TownAccount>().AnyAsync(a => a.TownId == townId, ct))
+            {
+                _context.Set<TownAccount>().Add(new TownAccount { TownId = townId });
+                await _context.SaveChangesAsync(ct);
+            }
+        }
+
+        public async Task<TownAccount?> GetTownAccountForUpdateAsync(int townId, CancellationToken ct = default)
+        {
+            if (_context.Database.IsRelational())
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT Id FROM town_accounts WHERE TownId = {townId} FOR UPDATE", ct);
+            }
+            var account = await _context.Set<TownAccount>().FirstOrDefaultAsync(a => a.TownId == townId, ct);
+            if (account != null && _context.Database.IsRelational())
+            {
+                await _context.Entry(account).ReloadAsync(ct); // read under the lock
+            }
+            return account;
+        }
+
+        public void DiscardTownAccount(TownAccount account)
+        {
+            var entry = _context.Entry(account);
+            if (entry.State != EntityState.Detached) entry.State = EntityState.Detached;
+        }
+
         public async Task<Dictionary<int, BalancesDto>> GetBalancesAsync(IEnumerable<int> userIds, CancellationToken ct = default)
         {
             var ids = userIds.Distinct().ToList();
