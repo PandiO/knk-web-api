@@ -364,3 +364,10 @@ for the game server: `GET api/StorageContainers/{id}/terminal` (a page of the st
 display shows), and the structure menus `api/StructureMenus` (filtered by viewer). GUIDs: configuration uuid5(URL
 namespace, "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(configuration, "section:<section>"), fields
 uuid5(configuration, "field:<field>[:<related property>]").
+
+**Item delivery P7 display seed v1 (PandiO/knk-workspace#60, 2026-11-20):** `ItemDelivery` (player, reason, status,
+source, actor, key, the inbox storage, the RewardInbox and InboxOverflow transactions, the cap at arrival, delivered and
+expiry times) with its lines as a collection (requested, inboxed, lost, claimed, expired, remaining, reminders). The
+player-facing views are API reads: `GET api/Inbox/{userId}` and `GET api/Inbox/{userId}/stash`. GUIDs: configuration
+uuid5(URL namespace, "knk-displayconfig:ItemDelivery:seed-v1"), sections uuid5(configuration, "section:<section>"),
+fields uuid5(configuration, "field:<section>:<label>").

@@ -118,3 +118,27 @@ namespace knkwebapi_v2.Enums
         Barrel,
     }
 }
+
+namespace knkwebapi_v2.Enums
+{
+    // P7 (PandiO/knk-workspace#60, DESIGN § 4.6): item delivery to players. Stored as strings.
+
+    /// <summary>Why a player gets items (the entry points of DESIGN § 4.6).</summary>
+    public enum ItemDeliveryReason
+    {
+        Kit,
+        Lootbox,
+        Quest,
+        Gift,
+        Admin,
+        Other,
+    }
+
+    /// <summary>What a delivery did when it arrived: everything in the inbox, part lost at the cap, or all lost.</summary>
+    public enum ItemDeliveryStatus
+    {
+        Inboxed,
+        PartlyLost,
+        Lost,
+    }
+}

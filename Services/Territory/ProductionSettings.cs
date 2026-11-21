@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Json;
@@ -26,6 +27,7 @@ namespace knkwebapi_v2.Services.Territory
             dto.Territory ??= new TerritorySettingsDto();
             dto.Engine ??= new ProductionEngineSettingsDto();
             dto.Transport ??= new ProductionTransportSettingsDto();
+            dto.Delivery ??= new ProductionDeliverySettingsDto();
             return dto;
         }
 
@@ -37,7 +39,41 @@ namespace knkwebapi_v2.Services.Territory
             Territory = TerritoryRules.Validate(dto.Territory),
             Engine = ValidateEngine(dto.Engine),
             Transport = ValidateTransport(dto.Transport ?? stored?.Transport),
+            Delivery = ValidateDelivery(dto.Delivery ?? stored?.Delivery),
         };
+
+        private static ProductionDeliverySettingsDto ValidateDelivery(ProductionDeliverySettingsDto? d)
+        {
+            d ??= new ProductionDeliverySettingsDto();
+            const string p = "production.delivery.";
+            const long max = ProductionDeliverySettingsDto.MaxCap;
+            if (d.InboxBaseCapUnits is < 0 or > max) throw new System.ArgumentException($"{p}inboxBaseCapUnits must be 0 to {max}.");
+            if (d.StashBaseCapUnits is < 0 or > max) throw new System.ArgumentException($"{p}stashBaseCapUnits must be 0 to {max}.");
+            if (d.ExpiryDays is < 1 or > 365) throw new System.ArgumentException($"{p}expiryDays must be 1 to 365.");
+            var reminders = (d.ReminderDaysBefore ?? new()).Distinct().OrderByDescending(x => x).ToList();
+            if (reminders.Count > 5 || reminders.Any(x => x < 1 || x >= d.ExpiryDays))
+                throw new System.ArgumentException($"{p}reminderDaysBefore: at most 5 values, each 1 to expiryDays - 1.");
+            var warn = (d.WarnAtPercent ?? new()).Distinct().OrderBy(x => x).ToList();
+            if (warn.Count > 5 || warn.Any(x => x < 1 || x > 100))
+                throw new System.ArgumentException($"{p}warnAtPercent: at most 5 values, each 1 to 100.");
+            var tiers = d.PremiumTiers ?? new();
+            if (tiers.GroupBy(t => t.PermissionGroupId).Any(g => g.Count() > 1))
+                throw new System.ArgumentException($"{p}premiumTiers: one entry per permission group.");
+            if (tiers.Any(t => t.PermissionGroupId <= 0 || t.InboxCapUnits is < 0 or > max || t.StashCapUnits is < 0 or > max))
+                throw new System.ArgumentException($"{p}premiumTiers: a permission group id and caps of 0 to {max}.");
+            return new ProductionDeliverySettingsDto
+            {
+                InboxBaseCapUnits = d.InboxBaseCapUnits,
+                StashBaseCapUnits = d.StashBaseCapUnits,
+                ExpiryDays = d.ExpiryDays,
+                ReminderDaysBefore = reminders,
+                WarnAtPercent = warn,
+                PremiumTiers = tiers.Select(t => new PremiumStorageCapDto
+                {
+                    PermissionGroupId = t.PermissionGroupId, InboxCapUnits = t.InboxCapUnits, StashCapUnits = t.StashCapUnits,
+                }).ToList(),
+            };
+        }
 
         private static ProductionTransportSettingsDto ValidateTransport(ProductionTransportSettingsDto? t)
         {

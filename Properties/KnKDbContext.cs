@@ -3582,6 +3582,39 @@ public partial class KnKDbContext : DbContext
         });
         // ---- end terminals and menus ----
 
+        // ---- Item delivery and reward inbox P7 (PandiO/knk-workspace#60): deliveries and their inbox lots ----
+        // No DbSet properties on purpose (one contiguous block, coordinator note): use Set<ItemDelivery>().
+        modelBuilder.Entity<ItemDelivery>(entity =>
+        {
+            entity.ToTable("item_deliveries");
+            entity.Property(e => e.Reason).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ActorKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.SourceType).HasMaxLength(ItemDelivery.SourceMaxLength);
+            entity.Property(e => e.SourceRef).HasMaxLength(ItemDelivery.SourceMaxLength);
+            entity.Property(e => e.Note).HasMaxLength(ItemDelivery.NoteMaxLength);
+            entity.Property(e => e.IdempotencyKey).IsRequired().HasMaxLength(ItemDelivery.KeyMaxLength).UseCollation("utf8mb4_bin");
+            entity.Property(e => e.RequestHash).IsRequired().HasColumnType("char(64)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ExpiresAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.IdempotencyKey).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+            entity.HasIndex(e => new { e.SourceType, e.SourceRef });
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.InboxStorage).WithMany().HasForeignKey(e => e.InboxStorageId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ItemDeliveryLine>(entity =>
+        {
+            entity.ToTable("item_delivery_lines");
+            entity.Property(e => e.ExpiresAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.ItemDeliveryId, e.LineNo }).IsUnique();
+            entity.HasIndex(e => new { e.Remaining, e.ExpiresAt });
+            entity.HasOne(e => e.ItemDelivery).WithMany(d => d.Lines).HasForeignKey(e => e.ItemDeliveryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemInstance).WithMany().HasForeignKey(e => e.ItemInstanceId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ---- end item delivery ----
+
         OnModelCreatingPartial(modelBuilder);
     }
 

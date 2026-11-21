@@ -197,6 +197,9 @@ namespace knkwebapi_v2.Attributes
             ["StockMove"] = new[] { StaffPermissions.EconomyAdmin },
             ["StockLine"] = new[] { StaffPermissions.EconomyAdmin },
             ["StockUnit"] = new[] { StaffPermissions.EconomyAdmin },
+            // Item delivery P7 (#60): economy staff read deliveries and their inbox lots.
+            ["ItemDelivery"] = new[] { StaffPermissions.EconomyAdmin },
+            ["ItemDeliveryLine"] = new[] { StaffPermissions.EconomyAdmin },
             ["MinecraftMaterialRef"] = new[] { StaffPermissions.RoadManage },
             ["ItemBlueprint"] = new[] { StaffPermissions.ManageKits, StaffPermissions.ManageLootboxes },
             ["EnchantmentDefinition"] = new[] { StaffPermissions.ManageKits, StaffPermissions.ManageLootboxes },
@@ -350,6 +353,9 @@ namespace knkwebapi_v2.Attributes
             ViewOnly("StockMove", DashboardArea.World, World),
             ViewOnly("StockLine", DashboardArea.World, World),
             ViewOnly("StockUnit", DashboardArea.World, World),
+            // Item delivery P7 (#60): deliveries are ledger-like records (made through api/ItemDeliveries, not edited).
+            ViewOnly("ItemDelivery", DashboardArea.World, World),
+            ViewOnly("ItemDeliveryLine", DashboardArea.World, World),
             ViewOnly("GateBlockSnapshot", DashboardArea.World, World),
             ViewOnly("GateOpenedBlockSnapshot", DashboardArea.World, World),
 

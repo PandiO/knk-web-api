@@ -1,0 +1,180 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "5f9ca4f2-5d56-5fae-a9b8-9fad04f4a628",
+  "entityTypeName": "ItemDelivery",
+  "name": "ItemDelivery - Default (seed v1)",
+  "description": "A delivery to a player's reward inbox and its lines (P7, #60). Read only.",
+  "sections": [
+    {
+      "sectionGuid": "8c59aa1f-bcbf-5daf-8fe8-51e83905d9e7",
+      "sectionName": "General information",
+      "description": "Who got what, why, and what was lost.",
+      "fields": [
+        {
+          "fieldGuid": "560b013b-fd99-5d9c-884c-8b923d3e39ab",
+          "fieldName": "UserId",
+          "label": "Player id",
+          "description": "Who the items are for.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c39b93cc-4149-5096-ac01-233da744a466",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Kit, Lootbox, Quest, Gift, Admin or Other.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "466cff99-0e80-58f5-a1e8-cdf622edcb35",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Inboxed, PartlyLost or Lost (inbox full).",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "94eadb73-adc1-566c-8a68-1f262abdb77a",
+          "fieldName": "SourceType",
+          "label": "Source",
+          "description": "What it belongs to.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "537ad326-0ae4-5625-a042-e71b369cebdb",
+          "fieldName": "SourceRef",
+          "label": "Source reference",
+          "description": "The id of that source.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "fe4c65a3-3dc0-5465-92ab-ffada8833360",
+          "fieldName": "ActorKind",
+          "label": "Actor",
+          "description": "The game server, a person or a system job.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "fc1427f8-e682-598e-b1eb-7baaa1296a33",
+          "fieldName": "IdempotencyKey",
+          "label": "Idempotency key",
+          "description": "Applied once per key.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "f0e62ff6-bedd-5dcb-b918-103a3570e39e",
+          "fieldName": "InboxStorageId",
+          "label": "Inbox storage id",
+          "description": "The player's Inbox storage.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "75f95fa3-37a5-5453-8d44-5fa6db7cc650",
+          "fieldName": "StockTransactionId",
+          "label": "Inbox transaction",
+          "description": "RewardInbox.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "96c05ad1-2394-5b66-8098-90e5094dc06c",
+          "fieldName": "OverflowTransactionId",
+          "label": "Overflow transaction",
+          "description": "InboxOverflow (lost).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "944cb5b0-b2ef-5771-830f-4c3a6d36ecbf",
+          "fieldName": "CapUnits",
+          "label": "Inbox cap",
+          "description": "At arrival.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "2a44e054-25e9-5704-9c4a-3ac1ca17b985",
+          "fieldName": "CreatedAt",
+          "label": "Delivered",
+          "description": "UTC.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "d37e2dc6-420c-54fd-af56-e9da362cced2",
+          "fieldName": "ExpiresAt",
+          "label": "Expires",
+          "description": "UTC; then the rest moves to SYS_LOSS.",
+          "fieldType": "DateTime"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "6854ff54-4920-5da8-8711-52229d7e4375",
+      "sectionName": "Lines",
+      "description": "Each line is an inbox lot: claims take the oldest first.",
+      "relatedEntityPropertyName": "Lines",
+      "relatedEntityTypeName": "ItemDeliveryLine",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "25601917-6e2a-520d-a968-295d4e127f26",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint id",
+          "description": "The item.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "6745d8ac-02ef-53a3-b388-9e35e6fa3c11",
+          "fieldName": "ItemInstanceId",
+          "label": "Item instance id",
+          "description": "For a unique item.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "a96df208-e7c7-539e-ab6e-dd923993dc78",
+          "fieldName": "Requested",
+          "label": "Requested",
+          "description": "What came.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "92596007-4e78-5898-9798-86dd86b75258",
+          "fieldName": "Inboxed",
+          "label": "Inboxed",
+          "description": "Put in the inbox.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "2b12776d-52e0-5dad-8b8f-229dd93ab630",
+          "fieldName": "Lost",
+          "label": "Lost",
+          "description": "Over the cap (SYS_LOSS).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "f00a472b-c558-5125-a02c-30648c41a0c2",
+          "fieldName": "Claimed",
+          "label": "Claimed",
+          "description": "Taken out by the player.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c4ca6d22-1af0-5bc3-9cdf-1ec9f110bf23",
+          "fieldName": "Expired",
+          "label": "Expired",
+          "description": "Moved to SYS_LOSS after 30 days.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d74b7b83-5b98-5f94-a885-c5caef15513c",
+          "fieldName": "Remaining",
+          "label": "Remaining",
+          "description": "Still in the inbox.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "24b1f015-10e6-508e-9513-cbd68e35bd92",
+          "fieldName": "RemindersSent",
+          "label": "Reminders",
+          "description": "Expiry reminders sent.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

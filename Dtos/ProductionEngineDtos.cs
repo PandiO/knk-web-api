@@ -355,6 +355,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("id")] public long Id { get; set; }
         [JsonPropertyName("productionLineId")] public int ProductionLineId { get; set; }
         [JsonPropertyName("productionStructureId")] public int ProductionStructureId { get; set; }
+        /// <summary>#890: the structure's name (null where the record was read without it).</summary>
+        [JsonPropertyName("productionStructureName")] public string? ProductionStructureName { get; set; }
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
         [JsonPropertyName("itemBlueprintName")] public string? ItemBlueprintName { get; set; }
         [JsonPropertyName("settledAt")] public DateTime SettledAt { get; set; }

@@ -8,6 +8,7 @@ using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
+using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Services.Territory;
 using Microsoft.EntityFrameworkCore;
 
@@ -197,15 +198,40 @@ namespace knkwebapi_v2.Services.Production
         private readonly IProductionEngine _engine;
         private readonly IProductionYieldService _yield;
         private readonly TimeProvider _clock;
+        private readonly ISavedEntityRuleValidator? _rules;
 
         public ProductionAreaService(KnKDbContext db, IProductionSettingsReader settings, IProductionEngine engine,
-            IProductionYieldService yield, TimeProvider? clock = null)
+            IProductionYieldService yield, TimeProvider? clock = null, ISavedEntityRuleValidator? rules = null)
         {
             _db = db;
             _settings = settings;
             _engine = engine;
             _yield = yield;
             _clock = clock ?? TimeProvider.System;
+            _rules = rules;
+        }
+
+        /// <summary>
+        /// Placement rule P-3 (#883, DESIGN § 3.4): runs the field rules of the default ProductionArea form against the
+        /// area about to be saved, as the structure services do (<see cref="IStructurePlacement.CheckRulesAsync"/>). A
+        /// failed blocking rule refuses the save (400); failed warnings and rules that could not run are returned.
+        /// </summary>
+        private async Task<List<string>> CheckPlacementAsync(ProductionArea area)
+        {
+            var warnings = new List<string>();
+            if (_rules == null) return warnings;
+            var validation = await _rules.ValidateAsync(nameof(ProductionArea), area);
+            foreach (var check in validation.Results.Where(r => !r.Result.IsValid))
+            {
+                if (check.CouldNotRun)
+                {
+                    warnings.Add($"{check.FieldLabel}: not checked ({check.Message})");
+                    continue;
+                }
+                if (check.Result.IsBlocking) throw new ArgumentException($"{check.FieldLabel}: {check.Message}");
+                warnings.Add($"{check.FieldLabel}: {check.Message}");
+            }
+            return warnings;
         }
 
         private DateTime Now => _clock.GetUtcNow().UtcDateTime;
@@ -280,10 +306,13 @@ namespace knkwebapi_v2.Services.Production
                 area.SurveyRequestedAt = Now;
                 area.SurveyRequestTrigger = AreaSurveyTrigger.Creation;
             }
+            var warnings = await CheckPlacementAsync(area);
             _db.ProductionAreas.Add(area);
             await _db.SaveChangesAsync();
             _db.ChangeTracker.Clear();
-            return (await GetByIdAsync(area.Id))!;
+            var created = (await GetByIdAsync(area.Id))!;
+            created.PlacementWarnings = warnings;
+            return created;
         }
 
         public async Task<ProductionAreaDto> UpdateAsync(int id, ProductionAreaDto dto)
@@ -307,9 +336,12 @@ namespace knkwebapi_v2.Services.Production
                 area.SurveyRequestedAt = Now; // a new shape holds other contents
                 area.SurveyRequestTrigger = AreaSurveyTrigger.Admin;
             }
+            var warnings = await CheckPlacementAsync(area);
             await _db.SaveChangesAsync();
             _db.ChangeTracker.Clear();
-            return (await GetByIdAsync(id))!;
+            var updated = (await GetByIdAsync(id))!;
+            updated.PlacementWarnings = warnings;
+            return updated;
         }
 
         private async Task ApplyAsync(ProductionArea area, ProductionAreaDto dto, ProductionStructure structure, bool isCreate)
@@ -522,13 +554,37 @@ namespace knkwebapi_v2.Services.Production
 
         private async Task<List<ProductionAreaOverlapDto>> OverlapsOfAsync(ProductionArea area, bool sharedOnly)
         {
-            var q = _db.ProductionAreas.AsNoTracking().Include(a => a.ProductionStructure)
+            var q = _db.ProductionAreas.AsNoTracking().Include(a => a.ProductionStructure).ThenInclude(s => s.ProductionKind)
                 .Where(a => a.Id != area.Id && a.WorldName == area.WorldName
                     && a.MinX <= area.MaxX && area.MinX <= a.MaxX && a.MinZ <= area.MaxZ && area.MinZ <= a.MaxZ
                     && a.MinY <= area.MaxY && area.MinY <= a.MaxY);
             if (sharedOnly) q = q.Where(a => !a.Exclusive && a.Enabled && a.ProductionStructureId != area.ProductionStructureId);
             var rows = await q.OrderBy(a => a.Id).ToListAsync();
-            return rows.Select(a => OverlapDto(a, a.ProductionStructure.Name)).ToList();
+            return rows.Select(a =>
+            {
+                var dto = OverlapDto(a, a.ProductionStructure.Name);
+                dto.UnitTypes = UnitTypes(a.ProductionStructure.ProductionKind?.SurveyProfileJson);
+                return dto;
+            }).ToList();
+        }
+
+        /// <summary>The <c>unitTypes</c> of a kind's survey profile (#875); null when missing or unreadable.</summary>
+        public static List<string>? UnitTypes(string? surveyProfileJson)
+        {
+            if (string.IsNullOrWhiteSpace(surveyProfileJson)) return null;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(surveyProfileJson);
+                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object
+                    || !doc.RootElement.TryGetProperty("unitTypes", out var types)
+                    || types.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
+                return types.EnumerateArray().Where(t => t.ValueKind == System.Text.Json.JsonValueKind.String)
+                    .Select(t => t.GetString()!).ToList();
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
+            }
         }
 
         public async Task<List<SurveyDueAreaDto>> SurveyDueAsync(int limit)

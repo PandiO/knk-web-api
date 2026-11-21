@@ -192,6 +192,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("sourceStorageId")] public int SourceStorageId { get; set; }
         [JsonPropertyName("sourceStructureId")] public int? SourceStructureId { get; set; }
         [JsonPropertyName("carrierStructureId")] public int? CarrierStructureId { get; set; }
+        /// <summary>#890: the carrier's name.</summary>
+        [JsonPropertyName("carrierStructureName")] public string? CarrierStructureName { get; set; }
         [JsonPropertyName("carrierCapacity")] public long? CarrierCapacity { get; set; }
         [JsonPropertyName("speedBlocksPerSecond")] public decimal SpeedBlocksPerSecond { get; set; }
         [JsonPropertyName("workersPresent")] public int? WorkersPresent { get; set; }
@@ -256,6 +258,8 @@ namespace knkwebapi_v2.Dtos
         /// <summary>The order the trigger would make now (null when held or not triggered).</summary>
         [JsonPropertyName("wouldCreate")] public TransportPlanDto? WouldCreate { get; set; }
         [JsonPropertyName("destinationWarehouseId")] public int? DestinationWarehouseId { get; set; }
+        /// <summary>#890: the destination warehouse's name.</summary>
+        [JsonPropertyName("destinationWarehouseName")] public string? DestinationWarehouseName { get; set; }
         [JsonPropertyName("openOrders")] public List<TransportOrderListDto> OpenOrders { get; set; } = new();
     }
 
@@ -319,9 +323,13 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("fromStructureId")] public int FromStructureId { get; set; }
         [JsonPropertyName("fromStructureName")] public string? FromStructureName { get; set; }
+        /// <summary>#890: <c>Producer</c> (a production structure) or <c>Warehouse</c>.</summary>
+        [JsonPropertyName("fromKind")] public string FromKind { get; set; } = string.Empty;
         [JsonPropertyName("from")] public TransportPointDto? From { get; set; }
         [JsonPropertyName("toStructureId")] public int ToStructureId { get; set; }
         [JsonPropertyName("toStructureName")] public string? ToStructureName { get; set; }
+        /// <summary>#890: always <c>Warehouse</c> today (pairs end at a warehouse).</summary>
+        [JsonPropertyName("toKind")] public string ToKind { get; set; } = string.Empty;
         [JsonPropertyName("to")] public TransportPointDto? To { get; set; }
         /// <summary>Missing (never measured) or Stale (older than laneMaxAgeHours).</summary>
         [JsonPropertyName("reason")] public string Reason { get; set; } = string.Empty;

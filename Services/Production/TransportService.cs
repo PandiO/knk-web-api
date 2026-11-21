@@ -338,6 +338,7 @@ namespace knkwebapi_v2.Services.Production
             if (ctx.Carrier != null)
             {
                 plan.CarrierStructureId = ctx.Carrier.Id;
+                plan.CarrierStructureName = ctx.Carrier.Name;
                 plan.WorkersPresent = ctx.Carrier.WorkersPresent;
                 plan.WorkersTotal = ctx.Carrier.WorkersTotal;
                 plan.CarrierCapacity = ctx.Carrier.TransportCapacity ?? settings.DefaultCarrierCapacity;
@@ -1183,6 +1184,7 @@ namespace knkwebapi_v2.Services.Production
                 }
             }
             view.DestinationWarehouseId = target?.Id;
+            view.DestinationWarehouseName = target?.Name;
 
             if (view.TriggerReasons.Count == 0 || view.HeldReasons.Count > 0 || target == null || output == null || cargo.Count == 0)
                 return new Evaluation(view, null);

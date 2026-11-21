@@ -86,6 +86,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("lastSurveyId")] public long? LastSurveyId { get; set; }
         [JsonPropertyName("lastSurveyedAt")] public DateTime? LastSurveyedAt { get; set; }
         [JsonPropertyName("createdAt")] public DateTime CreatedAt { get; set; }
+
+        /// <summary>Read only, on create and update: placement rule P-3 warnings (#883), as on structures.</summary>
+        [JsonPropertyName("placementWarnings")] public List<string>? PlacementWarnings { get; set; }
     }
 
     public class ProductionAreaListDto
@@ -124,6 +127,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("maxX")] public int MaxX { get; set; }
         [JsonPropertyName("maxY")] public int MaxY { get; set; }
         [JsonPropertyName("maxZ")] public int MaxZ { get; set; }
+
+        /// <summary>#875: the unit types the overlapping area's kind counts (its survey profile's <c>unitTypes</c>), so
+        /// the game server counts a unit's <c>sharedBy</c> only over structures that count that unit. Null when the
+        /// structure has no kind or the profile has no list.</summary>
+        [JsonPropertyName("unitTypes")] public List<string>? UnitTypes { get; set; }
     }
 
     /// <summary>

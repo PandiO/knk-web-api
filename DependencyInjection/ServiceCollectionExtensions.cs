@@ -251,6 +251,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Stock.IStockRollupService, knkwebapi_v2.Services.Stock.StockRollupService>();
             services.AddScoped<knkwebapi_v2.Services.Stock.StockMaintenanceJob>();
             services.AddHostedService<knkwebapi_v2.Services.Stock.StockMaintenanceService>();
+            services.AddHostedService<knkwebapi_v2.Services.Stock.InboxMaintenanceService>(); // P7 (#60): inbox reminders and expiry, flag-gated
             services.AddScoped<ITerritoryService, TerritoryService>();
             // Production world P2 (PandiO/knk-workspace#91): District-xor-Town placement, placement rules on save,
             // Warehouse and ProductionStructure CRUD with default storages.
@@ -298,6 +299,8 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Production.IProductionViewerResolver, knkwebapi_v2.Services.Production.ProductionViewerResolver>();
             services.AddScoped<knkwebapi_v2.Services.Stock.IStorageContainerService, knkwebapi_v2.Services.Stock.StorageContainerService>();
             services.AddScoped<knkwebapi_v2.Services.Production.IStructureMenuService, knkwebapi_v2.Services.Production.StructureMenuService>();
+            // Item delivery and reward inbox P7 (PandiO/knk-workspace#60): deliveries, claims, stash, hourly expiry.
+            services.AddScoped<knkwebapi_v2.Services.Stock.IItemDeliveryService, knkwebapi_v2.Services.Stock.ItemDeliveryService>();
             services.AddHostedService<knkwebapi_v2.Services.Production.TransportSweepService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
@@ -525,6 +528,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<IValidationMethod, RegionContainmentValidator>();
             // P2 (PandiO/knk-workspace#91): placement rules P-2/P-3, a territory lookup on the game server.
             services.AddScoped<IValidationMethod, InsideTerritoryValidator>();
+            services.AddScoped<IValidationMethod, knkwebapi_v2.Services.ValidationMethods.ProductionAreaPlacementValidator>(); // P-3 (#883)
             services.AddScoped<IValidationMethod, ConditionalRequiredValidator>();
             services.AddScoped<IValidationMethod, ConditionalValueMatchValidator>();
 
