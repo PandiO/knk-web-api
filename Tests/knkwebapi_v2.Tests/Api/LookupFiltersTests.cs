@@ -225,6 +225,9 @@ public class LookupFiltersTests : IAsyncLifetime
             ["TransportLane"] = "structureId:Id",
             ["StorageContainer"] = "storageId:Id",
             ["ProductionYieldOverride"] = "productionStructureId:Id, itemBlueprintId:Id",
+            ["HarvestRule"] = "productionKindId:Id", // player harvesting P8a (#685)
+            ["ResourcePool"] = "productionStructureId:Id, productionAreaId:Id",
+            ["PlayerHarvest"] = "productionStructureId:Id, harvestRuleId:Id",
             ["GateStructure"] = "streetId:Id, districtId:Id, townId:Id, siegeScenarioId:Id, isActive:Flag, isOpened:Flag",
             ["GateDoor"] = "gateStructureId:Id, isActive:Flag",
             ["Landmark"] = "domainId:Id",

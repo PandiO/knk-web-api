@@ -81,6 +81,9 @@ namespace knkwebapi_v2.Attributes
             ["ResourcePool"] = Of<knkwebapi_v2.Services.Production.IResourcePoolService>((s, id) => s.GetByIdAsync(id),
                 o => Join(Text(o, "ProductionStructure"), Text(o, "ProductionArea")), o => Text(o, "Current"),
                 filters: new[] { IdFilter("productionStructureId"), IdFilter("productionAreaId") }),
+            ["PlayerHarvest"] = Of<knkwebapi_v2.Services.Production.IHarvestService>((s, id) => s.GetAsync(id),
+                o => Join(Text(o, "User"), Text(o, "HarvestRule")), o => Text(o, "ReceivedAt"),
+                filters: new[] { IdFilter("productionStructureId"), IdFilter("harvestRuleId") }),
             // #838: cycle records have their own dashboard list.
             ["ProductionCycleRecord"] = Of<knkwebapi_v2.Services.Production.IProductionCycleRecordService>((s, id) => s.GetByIdAsync(id),
                 o => Join(Text(o, "ItemBlueprintName"), Text(o, "SettledAt")), o => Text(o, "StatusAfter"),
