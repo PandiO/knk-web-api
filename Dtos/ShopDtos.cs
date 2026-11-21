@@ -388,6 +388,11 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("sourceType")] public string? SourceType { get; set; }
         [JsonPropertyName("sourceRef")] public string? SourceRef { get; set; }
         [JsonPropertyName("userId")] public int? UserId { get; set; }
+        /// <summary>The player's username (#938), null when the leg has no user or the user is gone.</summary>
+        [JsonPropertyName("username")] public string? Username { get; set; }
+        /// <summary>The shop sale's or buy-back's stock transaction (#938): the goods leg of the same trade, joined on the
+        /// shared idempotency key; null for any other leg.</summary>
+        [JsonPropertyName("stockTransactionId")] public long? StockTransactionId { get; set; }
         [JsonPropertyName("createdAt")] public DateTime CreatedAt { get; set; }
     }
 }
