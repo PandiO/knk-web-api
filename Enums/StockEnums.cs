@@ -55,6 +55,12 @@ namespace knkwebapi_v2.Enums
         AdminAdjust,
         /// <summary>Resources paid for a production structure's level upgrade (PRODUCTION_KINDS § 5), to <c>SYS_CONSUMPTION</c>.</summary>
         Upgrade,
+        /// <summary>A player bought from a shop (P10): Merchandise (or <c>SYS_ADJUSTMENT</c> for an unlimited catalogue
+        /// entry) → <c>SYS_WORLD</c>, with the coins to the town account in the same database transaction.</summary>
+        ShopSale,
+        /// <summary>A player sold to a shop (P10): <c>SYS_WORLD</c> → Merchandise, paid the buy-back price from the town
+        /// account in the same database transaction.</summary>
+        ShopBuyBack,
         /// <summary>A compensating transaction that undoes another one (corrections are new moves, never edits).</summary>
         Correction,
     }

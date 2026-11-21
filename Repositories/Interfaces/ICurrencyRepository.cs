@@ -33,6 +33,17 @@ namespace knkwebapi_v2.Repositories.Interfaces
         /// RunWithUsersLockedAsync so the values are the locked, current ones.</summary>
         Task<Dictionary<int, User>> GetUsersForUpdateAsync(IEnumerable<int> userIds, CancellationToken ct = default);
 
+        /// <summary>Shops P10 (#248): creates the town's account when it has none (a no-op when it exists, also under a
+        /// race), outside any posting lock.</summary>
+        Task EnsureTownAccountAsync(int townId, CancellationToken ct = default);
+
+        /// <summary>The town's account, tracked and locked FOR UPDATE (relational) inside the posting's transaction; null
+        /// when the town has none.</summary>
+        Task<TownAccount?> GetTownAccountForUpdateAsync(int townId, CancellationToken ct = default);
+
+        /// <summary>Stops tracking a town account a failed posting changed.</summary>
+        void DiscardTownAccount(TownAccount account);
+
         /// <summary>Current balances, untracked (users missing from the result don't exist).</summary>
         Task<Dictionary<int, BalancesDto>> GetBalancesAsync(IEnumerable<int> userIds, CancellationToken ct = default);
 

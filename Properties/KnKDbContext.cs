@@ -3805,6 +3805,90 @@ public partial class KnKDbContext : DbContext
         });
         // ---- end town logistics ----
 
+        // ---- Shops P10 (PandiO/knk-workspace#248, shops DESIGN § 2-5, § 9.1), one contiguous block ----
+        // Shop is a TPT subtype of ProductionStructure (table shops): it gets the producer's worker, carrier role and
+        // processing lines. Shop types with accepted categories and levels, the static catalogue, hourly trade stats and
+        // the town account (currency AccountKind.Town). Enums are stored as strings. Entries, levels and accepted
+        // categories go with their parent (Cascade); a shop type, blueprint or instance in use is Restrict (409).
+        modelBuilder.Entity<Shop>(entity =>
+        {
+            entity.ToTable("shops");
+            entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.TaxModifier).HasPrecision(12, 4);
+            entity.Property(e => e.BuyBackPercent).HasPrecision(7, 3);
+            entity.HasIndex(e => e.ShopTypeId);
+            entity.HasOne(e => e.ShopType).WithMany().HasForeignKey(e => e.ShopTypeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ShopkeeperLocation).WithMany().HasForeignKey(e => e.ShopkeeperLocationId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ShopType>(entity =>
+        {
+            entity.ToTable("shop_types");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(ShopType.NameMaxLength);
+            entity.Property(e => e.Description).HasMaxLength(ShopType.DescriptionMaxLength);
+            entity.Property(e => e.DefaultKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<ShopTypeCategory>(entity =>
+        {
+            entity.ToTable("shop_type_categories");
+            entity.HasIndex(e => new { e.ShopTypeId, e.CategoryId }).IsUnique();
+            entity.HasOne(e => e.ShopType).WithMany(t => t.AcceptedCategories).HasForeignKey(e => e.ShopTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Category).WithMany().HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ShopTypeLevel>(entity =>
+        {
+            entity.ToTable("shop_type_levels");
+            entity.Property(e => e.CycleSpeedMultiplier).HasPrecision(12, 4);
+            entity.Property(e => e.YieldMultiplier).HasPrecision(12, 4);
+            entity.Property(e => e.InputCostMultiplier).HasPrecision(12, 4);
+            entity.Property(e => e.PriceMultiplier).HasPrecision(12, 4);
+            entity.HasIndex(e => new { e.ShopTypeId, e.Level }).IsUnique();
+            entity.HasOne(e => e.ShopType).WithMany(t => t.Levels).HasForeignKey(e => e.ShopTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ShopCatalogueEntry>(entity =>
+        {
+            entity.ToTable("shop_catalogue_entries");
+            entity.Property(e => e.StockMode).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.ShopId, e.ItemBlueprintId });
+            entity.HasIndex(e => e.ItemInstanceId);
+            entity.HasOne(e => e.Shop).WithMany(s => s.CatalogueEntries).HasForeignKey(e => e.ShopId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemInstance).WithMany().HasForeignKey(e => e.ItemInstanceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ShopTradeStat>(entity =>
+        {
+            entity.ToTable("shop_trade_stats");
+            entity.Property(e => e.HourStart).HasColumnType("datetime(6)");
+            entity.Property(e => e.ComputedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.AvgSellPrice).HasPrecision(18, 4);
+            entity.HasIndex(e => new { e.ShopId, e.ItemBlueprintId, e.HourStart }).IsUnique();
+            entity.HasIndex(e => e.HourStart);
+            entity.HasOne(e => e.Shop).WithMany().HasForeignKey(e => e.ShopId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TownAccount>(entity =>
+        {
+            entity.ToTable("town_accounts", t => t.HasCheckConstraint("CK_town_accounts_Coins", "`Coins` >= 0"));
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.TownId).IsUnique();
+            // The ledger keeps a town's legs after the town is gone (no FK on currency_entries.TownId); the account goes.
+            entity.HasOne(e => e.Town).WithMany().HasForeignKey(e => e.TownId).OnDelete(DeleteBehavior.Cascade);
+        });
+        // ---- end shops ----
+
         OnModelCreatingPartial(modelBuilder);
     }
 
@@ -3867,8 +3951,10 @@ public partial class KnKDbContext : DbContext
             {
                 // A user leg names a user and records its balances; a system leg names a system account.
                 t.HasCheckConstraint("CK_currency_entries_Account",
-                    "(`AccountKind` = 0 AND `UserId` IS NOT NULL AND `SystemAccount` IS NULL AND `BalanceBefore` IS NOT NULL AND `BalanceAfter` IS NOT NULL) OR "
-                    + "(`AccountKind` = 1 AND `UserId` IS NULL AND `SystemAccount` IS NOT NULL AND `BalanceBefore` IS NULL AND `BalanceAfter` IS NULL)");
+                    "(`AccountKind` = 0 AND `UserId` IS NOT NULL AND `SystemAccount` IS NULL AND `TownId` IS NULL AND `BalanceBefore` IS NOT NULL AND `BalanceAfter` IS NOT NULL) OR "
+                    + "(`AccountKind` = 1 AND `UserId` IS NULL AND `SystemAccount` IS NOT NULL AND `TownId` IS NULL AND `BalanceBefore` IS NULL AND `BalanceAfter` IS NULL) OR "
+                    // A town leg (shops P10, #248) names the town and records its account's balances.
+                    + "(`AccountKind` = 2 AND `UserId` IS NULL AND `SystemAccount` IS NULL AND `TownId` IS NOT NULL AND `BalanceBefore` IS NOT NULL AND `BalanceAfter` IS NOT NULL)");
                 t.HasCheckConstraint("CK_currency_entries_Balances",
                     "`BalanceAfter` IS NULL OR (`BalanceBefore` >= 0 AND `BalanceAfter` >= 0 AND `BalanceBefore` + `Amount` = `BalanceAfter`)");
             });
@@ -3881,6 +3967,7 @@ public partial class KnKDbContext : DbContext
             // Statements and balance history per user and currency, in posting order.
             entity.HasIndex(e => new { e.UserId, e.Currency, e.Id });
             entity.HasIndex(e => new { e.SystemAccount, e.Currency, e.TransactionId });
+            entity.HasIndex(e => new { e.TownId, e.Currency, e.Id });
         });
 
         modelBuilder.Entity<CurrencyPolicy>(entity =>

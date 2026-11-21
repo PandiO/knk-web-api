@@ -439,6 +439,8 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<CurrencyService>();
             services.AddScoped<ICurrencyService>(sp => sp.GetRequiredService<CurrencyService>());
             services.AddScoped<ICurrencyTransferService>(sp => sp.GetRequiredService<CurrencyService>());
+            // Shops P10 (#248): postings to and from a town's account (AccountKind.Town).
+            services.AddScoped<ICurrencyTownService>(sp => sp.GetRequiredService<CurrencyService>());
             services.AddScoped<ITitleProgressionService, TitleProgressionService>();
             services.AddScoped<ICurrencyAdminService, CurrencyAdminService>();
             services.AddScoped<CurrencyReconciler>();

@@ -76,6 +76,10 @@ namespace knkwebapi_v2.Services
                 throw Invalid($"{reason.Code} can't be posted this way (use AdminAdjustAsync, ReverseAsync or the transfer API).");
             }
             ValidateContext(ctx, reason);
+            if (CurrencyReasons.IsTownReason(reason.Code))
+            {
+                throw Invalid($"{reason.Code} is paid to or from a town's account (PostWithTownAsync).");
+            }
 
             if (legs == null || legs.Count == 0)
             {
@@ -272,6 +276,12 @@ namespace knkwebapi_v2.Services
 
             var original = await _repo.FindByIdAsync(transactionId, ct)
                 ?? throw new CurrencyException(CurrencyErrorCode.TransactionNotFound, $"Transaction {transactionId} doesn't exist.");
+            if (original.Entries.Any(e => e.AccountKind == CurrencyAccountKind.Town))
+            {
+                // Shops P10 (#248): reversing a town leg is not built yet; a correction is a new shop posting.
+                throw new CurrencyException(CurrencyErrorCode.NotReversible,
+                    $"Transaction {original.PublicId} moved coins of a town's account; it can't be reversed yet.");
+            }
             if (original.Kind == CurrencyTransactionKind.Reversal)
             {
                 throw new CurrencyException(CurrencyErrorCode.NotReversible,
@@ -691,6 +701,9 @@ namespace knkwebapi_v2.Services
                 }
                 _userLegs.Add((user, currency, amount, op, before, after));
             }
+
+            /// <summary>A leg built by the caller (a town leg, shops P10); it counts in the double-entry check.</summary>
+            public void AddEntry(CurrencyEntry entry) => _systemLegs.Add(entry);
 
             public void AddSystemLeg(string account, Currency currency, long amount) =>
                 _systemLegs.Add(new CurrencyEntry
