@@ -145,6 +145,45 @@ public class TempRegionReleaseTests
         Assert.Null(TempRegionReleases.WorldOf("not json"));
     }
 
+    [Theory]
+    [InlineData("ReagionCreate")]
+    [InlineData("RegionCreate")]
+    [InlineData("RegionClaim")]
+    [InlineData(" reagioncreate ")]
+    public void IsRegionTask_ByTaskType_OnAnyField(string taskType)
+    {
+        // PandiO/knk-workspace#944: the plugin's region handler is registered by task type, so a region drawn on the
+        // Landmark form's RegionId is released like one on a WgRegionId field.
+        var task = new WorldTask { Id = 44, TaskType = taskType, FieldName = "RegionId", Status = "Cancelled", ClaimedAt = _now };
+
+        Assert.True(TempRegionReleases.IsRegionTask(task));
+        Assert.True(TempRegionReleases.ShouldRelease(task, TempRegionReleaseReasons.TaskCancelled));
+    }
+
+    [Fact]
+    public void IsRegionTask_KeepsTheFieldNameRule_AndLeavesOtherTypesOnOtherFieldsOut()
+    {
+        Assert.True(TempRegionReleases.IsRegionTask(new WorldTask { Id = 45, TaskType = "Custom", FieldName = "WgRegionId" }));
+        Assert.False(TempRegionReleases.IsRegionTask(new WorldTask { Id = 46, TaskType = "LocationSelection", FieldName = "RegionId" }));
+        Assert.False(TempRegionReleases.IsRegionTask(new WorldTask { Id = 47, TaskType = "", FieldName = "RegionId" }));
+    }
+
+    [Fact]
+    public async Task CancellingAHeldRegionTaskOnALandmarkRegionIdField_ReleasesItsRegion()
+    {
+        var held = RegionTask("InProgress");
+        held.FieldName = "RegionId";
+        await SeedAsync(true, held);
+
+        await using (var db = NewContext())
+        {
+            await Tasks(db).CancelAsync(held.Id, null);
+        }
+
+        var row = Assert.Single(await RowsAsync());
+        Assert.Equal((held.Id, $"tempregion_worldtask_{held.Id}"), (row.WorldTaskId, row.RegionId));
+    }
+
     // ===== hooks =====
 
     [Fact]
@@ -313,7 +352,7 @@ public class TempRegionReleaseTests
     public static IEnumerable<object[]> Users() => new[]
     {
         new object[] { "domain" }, new object[] { "subregion" }, new object[] { "area" }, new object[] { "exclusion" },
-        new object[] { "road" }, new object[] { "draft" }
+        new object[] { "road" }, new object[] { "draft" }, new object[] { "landmark" }
     };
 
     [Theory]
@@ -340,6 +379,14 @@ public class TempRegionReleaseTests
                     break;
                 case "exclusion":
                     db.LootboxSpawnAreas.Add(new LootboxSpawnArea { Name = "a", World = "knk_hub", WgRegionId = "lootbox_a", ExcludedRegionIds = $"spawn,{region}" });
+                    break;
+                case "landmark":
+                    // #945: a landmark whose drawn region kept its temp name (its rename failed).
+                    db.Landmarks.Add(new Landmark
+                    {
+                        Name = "Throne room", ExtentKind = LandmarkExtentKind.Region, RegionId = region,
+                        Location = new Location { Name = "Throne room", X = 1, Y = 64, Z = 2, World = "knk_hub" }
+                    });
                     break;
                 case "road":
                     var tile = new RoadTile { World = "knk_hub" };

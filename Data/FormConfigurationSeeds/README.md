@@ -189,6 +189,14 @@ dependency, import any time; it becomes the default when Landmark has none). Ste
 region id for Region, radius above 0 and at most 512 for Radius, preference 0.25-4.0). GUIDs: configuration uuid5(URL
 namespace, "knk-formconfig:Landmark:seed-v1"), every step/field uuid5(that, "step:"/"field:" + name).
 
+**Landmark seed v1, region world task (PandiO/knk-workspace#944/#945, 2026-11-21):** an in-place change, without a new
+`configurationGuid` (the seed is only on `next`, not yet released): the "Area" step's `RegionId` field gets the
+region world task (`ReagionCreate`, which the plugin now runs on any field) and its label and description say that a
+drawn region becomes `landmark_<id>` on save, keeps the outline and Y range it was drawn with and is replaced by a
+re-run, while an existing region id is used as it is; the step description says the same in short. Needs the
+knk-web-api and knk-plugin change of the same issues. A fresh import has it; a database that imported the seed earlier
+keeps its configuration (import never overwrites), so add the world task to the field in the form designer there.
+
 **Siege weapons phase 1 (PandiO/knk-workspace#782, 2026-11-19):** new seeds `SiegeAmmoType`,
 `SiegeWeaponTemplateAmmoType.join`, `SiegeWeaponTemplate`, `SiegeWeaponSpot` and `UserSiegeWeaponUnlock` (seed v1 each),
 and two in-place additions, without a new `configurationGuid`, because other seeds refer to these configurations by

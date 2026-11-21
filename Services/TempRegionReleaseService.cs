@@ -30,7 +30,7 @@ namespace knkwebapi_v2.Services
         /// <summary>
         /// The releases game server <paramref name="serverId"/> may act on now: past the grace period, their task closed
         /// (or gone), not a Completed task of a draft that still exists, and no domain, domain sub-region, lootbox area
-        /// (its region or exclusions), road edge or draft names the region. Drops releases older than the keep period.
+        /// (its region or exclusions), landmark (#945), road edge or draft names the region. Drops releases older than the keep period.
         /// The due rows are read in pages of <c>ScanLimit</c> (oldest first) until <paramref name="max"/> are listed or no due
         /// row is left, so rows that keep waiting (#399) never hide later releases.
         /// </summary>
@@ -46,12 +46,27 @@ namespace knkwebapi_v2.Services
         /// <summary>The plugin's region task handler (<c>WgRegionIdTaskHandler</c>) is found through this field name.</summary>
         public const string RegionTaskField = "WgRegionId";
 
+        /// <summary>
+        /// PandiO/knk-workspace#944: the task types the plugin's region handler is registered for, on any field (the
+        /// Landmark form's <c>RegionId</c>, for one). <c>ReagionCreate</c> is the seeded spelling.
+        /// </summary>
+        public static readonly IReadOnlyList<string> RegionTaskTypes = new[] { "ReagionCreate", "RegionCreate", "RegionClaim" };
+
         public static string RegionIdFor(int worldTaskId) => DomainRegionNameFinalizer.TempRegionPrefix + worldTaskId;
 
-        /// <summary>A task the plugin's region handler runs: field <c>WgRegionId</c>, or a result naming its temp region.</summary>
+        /// <summary>
+        /// A task the plugin's region handler runs: one of <see cref="RegionTaskTypes"/> (#944), the field <c>WgRegionId</c>
+        /// (older configurations), or a result naming its temp region.
+        /// </summary>
         public static bool IsRegionTask(WorldTask task) =>
-            string.Equals(task.FieldName?.Trim(), RegionTaskField, StringComparison.OrdinalIgnoreCase)
+            IsRegionTaskType(task.TaskType)
+            || string.Equals(task.FieldName?.Trim(), RegionTaskField, StringComparison.OrdinalIgnoreCase)
             || (task.OutputJson != null && task.OutputJson.Contains(RegionIdFor(task.Id), StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>#944: whether <paramref name="taskType"/> is one the plugin's region handler is registered for.</summary>
+        public static bool IsRegionTaskType(string? taskType) =>
+            !string.IsNullOrWhiteSpace(taskType)
+            && RegionTaskTypes.Any(t => t.Equals(taskType.Trim(), StringComparison.OrdinalIgnoreCase));
 
         /// <summary>A game server claimed it at some point (a release keeps <c>ReleaseCount</c>), so it may have drawn a region.</summary>
         public static bool WasEverClaimed(WorldTask task) =>
@@ -361,6 +376,9 @@ namespace knkwebapi_v2.Services
             if (await _db.LootboxSpawnAreas.AsNoTracking().AnyAsync(a => (a.WgRegionId != null && a.WgRegionId.ToLower() == lowered)
                     || (a.ExcludedRegionIds != null && a.ExcludedRegionIds.ToLower().Contains(lowered)), ct))
                 return "a lootbox spawn area uses or excludes it";
+            // #945: a landmark's region drawn through its form, still on the temp name when its rename failed.
+            if (await _db.Landmarks.AsNoTracking().AnyAsync(l => l.RegionId != null && l.RegionId.ToLower() == lowered, ct))
+                return "a landmark uses it";
             if (await _db.RoadEdges.AsNoTracking().AnyAsync(e => e.RegionIdsJson != null && e.RegionIdsJson.ToLower().Contains(lowered), ct))
                 return "a road edge names it";
             if (await _db.FormSubmissionProgresses.AsNoTracking().AnyAsync(p =>

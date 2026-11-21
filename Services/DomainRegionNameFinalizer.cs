@@ -14,7 +14,8 @@ namespace knkwebapi_v2.Services
     /// task is called <c>tempregion_worldtask_&lt;taskId&gt;</c>; after the Town, District, Structure, GateStructure or
     /// Domain is saved, the region is renamed to <c>domain_&lt;id&gt;</c> (all share Domain's id sequence) and the plugin
     /// sets it up as that type: parent region, priority and flags. See knk-workspace
-    /// <c>docs/architecture/managed-worldguard-regions.md</c> §7 (KNG-43).
+    /// <c>docs/architecture/managed-worldguard-regions.md</c> §7 (KNG-43). The same rename on save covers domain sub-regions
+    /// (KNG-254), lootbox spawn areas (PandiO/knk-workspace#34) and landmarks (PandiO/knk-workspace#945).
     /// </summary>
     public interface IDomainRegionNameFinalizer
     {
@@ -58,6 +59,18 @@ namespace knkwebapi_v2.Services
         /// (as KNG-103 does for domains). Never throws.
         /// </summary>
         Task<bool> FinalizeLootboxAreaAsync(LootboxSpawnArea area, string? previousRegionId);
+
+        /// <summary>
+        /// PandiO/knk-workspace#945: gives a landmark's region drawn through the form's region task its final name
+        /// <c>landmark_&lt;id&gt;</c> after the landmark is saved, so the 14-day temp-region cleanup keeps it, exactly as
+        /// <see cref="FinalizeLootboxAreaAsync"/> does for a lootbox spawn area. The region keeps the outline and Y range it
+        /// was drawn with and gets no managed-region setup. Only a temp-named region is renamed; an existing region the
+        /// landmark names (a domain's, a hand-made one, one given to <c>/knk landmark create &lt;name&gt; region &lt;id&gt;</c>)
+        /// is left as it is. <paramref name="previousRegionId"/> is the landmark's RegionId before this save: on a re-run of
+        /// the region task its previous <c>landmark_&lt;id&gt;</c> is redefined in place, a previous temp-named region removed
+        /// (KNG-103). The world is the one of the landmark's pin. Never throws.
+        /// </summary>
+        Task<bool> FinalizeLandmarkAsync(Landmark landmark, string? previousRegionId);
     }
 
     public sealed record TempRegionFinalizeResult(int Found, int Renamed, IReadOnlyList<string> Failed);
@@ -117,6 +130,13 @@ namespace knkwebapi_v2.Services
         /// <c>lootbox_&lt;name&gt;</c> can't take it.
         /// </summary>
         public static string FinalLootboxAreaNameFor(int areaId) => $"lootbox_area_{areaId}";
+
+        /// <summary>
+        /// #945: the final name of a landmark's drawn region. No landmark name is reserved for it: a landmark's name never
+        /// becomes a region id (the in-game command only takes an existing region), and the plugin refuses to rename onto
+        /// a region that already holds the name unless it is the one being replaced.
+        /// </summary>
+        public static string FinalLandmarkNameFor(int landmarkId) => $"landmark_{landmarkId}";
 
         /// <summary>The concrete type name the plugin's managed-region policy understands; null for a bare Domain.</summary>
         public static string? DomainTypeOf(Domain domain) => domain switch
@@ -228,6 +248,13 @@ namespace knkwebapi_v2.Services
                     domain.Id, previous, areaId);
                 return null;
             }
+            // #945: the same for a landmark standing on it.
+            if (IsTemporary(previous) && await LandmarkUsingAsync(previous, world, null) is int landmarkId)
+            {
+                _logger.LogWarning("Domain {DomainId}'s previous region {PreviousRegionId} is also landmark {LandmarkId}'s; it is kept",
+                    domain.Id, previous, landmarkId);
+                return null;
+            }
             return previous;
         }
 
@@ -248,6 +275,45 @@ namespace knkwebapi_v2.Services
                 .Take(1)
                 .ToListAsync();
             return ids.Count == 0 ? null : ids[0];
+        }
+
+        /// <summary>
+        /// #945: the id of a landmark (other than <paramref name="exceptLandmarkId"/>) whose extent is
+        /// <paramref name="regionId"/> with its pin in <paramref name="world"/>, or null. Without a world, a landmark in any
+        /// world counts.
+        /// </summary>
+        private async Task<int?> LandmarkUsingAsync(string regionId, string? world, int? exceptLandmarkId)
+        {
+            string loweredRegion = regionId.Trim().ToLower();
+            string? loweredWorld = string.IsNullOrWhiteSpace(world) ? null : world.Trim().ToLower();
+            int self = exceptLandmarkId ?? 0;
+            var ids = await _context.Landmarks.AsNoTracking()
+                .Where(l => l.Id != self && l.RegionId != null && l.RegionId.ToLower() == loweredRegion
+                    && (loweredWorld == null || (l.Location.World != null && l.Location.World.ToLower() == loweredWorld)))
+                .OrderBy(l => l.Id)
+                .Select(l => l.Id)
+                .Take(1)
+                .ToListAsync();
+            return ids.Count == 0 ? null : ids[0];
+        }
+
+        /// <summary>
+        /// #945: what else (a domain, a domain sub-region, a lootbox spawn area other than <paramref name="exceptAreaId"/>,
+        /// a landmark other than <paramref name="exceptLandmarkId"/>) stands on <paramref name="regionId"/> in
+        /// <paramref name="world"/>, or null.
+        /// </summary>
+        private async Task<string?> OtherUserOfRegionAsync(string regionId, string? world, int? exceptAreaId, int? exceptLandmarkId)
+        {
+            string? takenBy = await DomainRegionOwnership.TakenByAsync(_context, regionId, world);
+            if (takenBy == null && await LootboxAreaUsingAsync(regionId, world, exceptAreaId) is int areaId)
+            {
+                takenBy = $"lootbox spawn area {areaId} stands on it";
+            }
+            if (takenBy == null && await LandmarkUsingAsync(regionId, world, exceptLandmarkId) is int landmarkId)
+            {
+                takenBy = $"landmark {landmarkId} stands on it";
+            }
+            return takenBy;
         }
 
         private async Task RenameBackAsync(Domain domain, string tempName, string finalName, Exception storeError)
@@ -330,7 +396,25 @@ namespace knkwebapi_v2.Services
                 }
             }
 
-            int found = domains.Count + subRegions.Count + areas.Count;
+            // #945: then the landmarks still on a region drawn through their form.
+            var landmarks = await _context.Landmarks
+                .Where(l => l.RegionId != null && l.RegionId.StartsWith(TempRegionPrefix))
+                .OrderBy(l => l.Id)
+                .ToListAsync();
+            foreach (var landmark in landmarks)
+            {
+                string tempName = landmark.RegionId!;
+                if (await FinalizeLandmarkAsync(landmark, null))
+                {
+                    renamed++;
+                }
+                else
+                {
+                    failed.Add($"{nameof(Landmark)} {landmark.Id} ({tempName})");
+                }
+            }
+
+            int found = domains.Count + subRegions.Count + areas.Count + landmarks.Count;
             _logger.LogInformation("Temp region finalize pass: found {Found}, renamed {Renamed}, failed {Failed}",
                 found, renamed, failed.Count);
             return new TempRegionFinalizeResult(found, renamed, failed);
@@ -441,6 +525,10 @@ namespace knkwebapi_v2.Services
             {
                 takenBy = $"lootbox spawn area {areaId} stands on it";
             }
+            if (takenBy == null && IsTemporary(previous) && await LandmarkUsingAsync(previous, world, null) is int landmarkId)
+            {
+                takenBy = $"landmark {landmarkId} stands on it";
+            }
             if (takenBy != null)
             {
                 _logger.LogWarning("Sub-region {SubRegionId}'s previous region {PreviousRegionId} is kept: {TakenBy}", subRegion.Id, previous, takenBy);
@@ -463,11 +551,7 @@ namespace knkwebapi_v2.Services
             {
                 // The temp region is renamed away; whoever else stands on it would lose it. Left on its temp name, the
                 // cleanup still keeps it (the plugin asks for lootbox areas too).
-                string? sharedWith = await DomainRegionOwnership.TakenByAsync(_context, tempName, world);
-                if (sharedWith == null && await LootboxAreaUsingAsync(tempName, world, area.Id) is int otherArea)
-                {
-                    sharedWith = $"lootbox spawn area {otherArea} stands on it too";
-                }
+                string? sharedWith = await OtherUserOfRegionAsync(tempName, world, area.Id, null);
                 if (sharedWith != null)
                 {
                     _logger.LogWarning("Lootbox spawn area {AreaId} keeps {TempName}: {SharedWith}", area.Id, tempName, sharedWith);
@@ -549,17 +633,133 @@ namespace knkwebapi_v2.Services
                     area.Id, previous);
                 return null;
             }
-            string? takenBy = await DomainRegionOwnership.TakenByAsync(_context, previous, world);
-            if (takenBy == null && await LootboxAreaUsingAsync(previous, world, area.Id) is int otherArea)
-            {
-                takenBy = $"lootbox spawn area {otherArea} stands on it";
-            }
+            string? takenBy = await OtherUserOfRegionAsync(previous, world, area.Id, null);
             if (takenBy != null)
             {
                 _logger.LogWarning("Lootbox spawn area {AreaId}'s previous region {PreviousRegionId} is kept: {TakenBy}", area.Id, previous, takenBy);
                 return null;
             }
             return previous;
+        }
+
+        public async Task<bool> FinalizeLandmarkAsync(Landmark landmark, string? previousRegionId)
+        {
+            if (landmark == null || landmark.Id <= 0 || !IsTemporary(landmark.RegionId))
+            {
+                return false;
+            }
+            string tempName = landmark.RegionId!.Trim();
+            string finalName = FinalLandmarkNameFor(landmark.Id);
+            string? world = null;
+            string? replaceRegionId = null;
+            try
+            {
+                world = await LandmarkWorldAsync(landmark);
+                // The temp region is renamed away; whoever else stands on it would lose it. Left on its temp name, the
+                // cleanup still keeps it (the plugin asks for landmarks too).
+                string? sharedWith = await OtherUserOfRegionAsync(tempName, world, null, landmark.Id);
+                if (sharedWith != null)
+                {
+                    _logger.LogWarning("Landmark {LandmarkId} keeps {TempName}: {SharedWith}", landmark.Id, tempName, sharedWith);
+                    return false;
+                }
+
+                replaceRegionId = await ReplaceableLandmarkRegionAsync(landmark, previousRegionId, finalName, world);
+                _logger.LogInformation("Finalizing region name for landmark {LandmarkId}: {TempName} -> {FinalName} (world {World}, replacing {ReplaceRegionId})",
+                    landmark.Id, tempName, finalName, world, replaceRegionId ?? "nothing");
+                if (!await _regionService.RenameLandmarkRegionAsync(tempName, finalName, world, replaceRegionId))
+                {
+                    _logger.LogWarning("Failed to finalize region name for landmark {LandmarkId}: the plugin did not rename {TempName} (see the plugin log)",
+                        landmark.Id, tempName);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finalizing region name for landmark {LandmarkId} ({TempName})", landmark.Id, tempName);
+                return false;
+            }
+
+            try
+            {
+                landmark.RegionId = finalName;
+                if (_context.Entry(landmark).State == EntityState.Detached)
+                {
+                    var tracked = await _context.Landmarks.FirstOrDefaultAsync(l => l.Id == landmark.Id)
+                        ?? throw new InvalidOperationException($"Landmark {landmark.Id} not found.");
+                    tracked.RegionId = finalName;
+                }
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Finalized region name for landmark {LandmarkId}: {FinalName}{Replaced}", landmark.Id, finalName,
+                    replaceRegionId != null ? $" (replaced {replaceRegionId})" : string.Empty);
+                return true;
+            }
+            catch (Exception storeError)
+            {
+                landmark.RegionId = tempName;
+                try
+                {
+                    if (await _regionService.RenameRegionAsync(finalName, tempName, null, null, world))
+                    {
+                        _logger.LogError(storeError, "Landmark {LandmarkId} could not be updated after its region was renamed to {FinalName}; renamed back to {TempName}",
+                            landmark.Id, finalName, tempName);
+                        return false;
+                    }
+                }
+                catch (Exception renameBackError)
+                {
+                    _logger.LogError(renameBackError, "Renaming {FinalName} back to {TempName} failed", finalName, tempName);
+                }
+                _logger.LogError(storeError, "Region {TempName} was renamed to {FinalName} but landmark {LandmarkId} could not be updated; set its RegionId to {FinalName} by hand",
+                    tempName, finalName, landmark.Id, finalName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// #945: as <see cref="ReplaceableLootboxAreaRegionAsync"/> for a landmark whose region task was run again. Only its
+        /// own <c>landmark_&lt;id&gt;</c> (redefined in place) or a temp-named region (removed) qualify, and only when no
+        /// domain, domain sub-region, lootbox spawn area or other landmark in the world uses it. Any other region the
+        /// landmark named before (a domain's, a hand-made one) is kept.
+        /// </summary>
+        public async Task<string?> ReplaceableLandmarkRegionAsync(Landmark landmark, string? previousRegionId, string finalName, string? world)
+        {
+            if (string.IsNullOrWhiteSpace(previousRegionId))
+            {
+                return null;
+            }
+            string previous = previousRegionId.Trim();
+            if (previous.Equals(landmark.RegionId?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            if (!previous.Equals(finalName, StringComparison.OrdinalIgnoreCase) && !IsTemporary(previous))
+            {
+                _logger.LogInformation("Landmark {LandmarkId}'s previous region {PreviousRegionId} is not one the form's region task creates; it is kept",
+                    landmark.Id, previous);
+                return null;
+            }
+            string? takenBy = await OtherUserOfRegionAsync(previous, world, null, landmark.Id);
+            if (takenBy != null)
+            {
+                _logger.LogWarning("Landmark {LandmarkId}'s previous region {PreviousRegionId} is kept: {TakenBy}", landmark.Id, previous, takenBy);
+                return null;
+            }
+            return previous;
+        }
+
+        /// <summary>#945: the world of the landmark's pin (its Location), or null when it has none.</summary>
+        private async Task<string?> LandmarkWorldAsync(Landmark landmark)
+        {
+            string? world = landmark.Location?.World;
+            if (string.IsNullOrWhiteSpace(world) && landmark.LocationId > 0)
+            {
+                world = await _context.Locations.AsNoTracking()
+                    .Where(l => l.Id == landmark.LocationId)
+                    .Select(l => l.World)
+                    .FirstOrDefaultAsync();
+            }
+            return string.IsNullOrWhiteSpace(world) ? null : world.Trim();
         }
 
         private static int HierarchyLevel(Domain domain) => domain switch
