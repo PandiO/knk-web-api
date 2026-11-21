@@ -1,0 +1,197 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "4d84b2dd-f4da-54e5-8acb-b89e51b34267",
+  "entityTypeName": "HarvestRule",
+  "name": "HarvestRule - Default (seed v1)",
+  "description": "A harvest rule (player harvesting P8a, #685). The net-output check is GET api/HarvestRules/{id}/balance.",
+  "sections": [
+    {
+      "sectionGuid": "c434d5dd-42aa-505a-99d3-ccb146a4f402",
+      "sectionName": "Rule",
+      "description": "The kind and what may be harvested.",
+      "fields": [
+        {
+          "fieldGuid": "e265fb30-64ed-559d-ae9c-199fae388c26",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionKind",
+          "relatedEntityTypeName": "ProductionKind",
+          "label": "Production kind",
+          "description": "The kind.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b058afac-abe0-542b-8a6f-ef8577ff19ff",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The rule.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "fe955935-b7ea-58f9-b3aa-3bd6db15305e",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off: breaks denied, reports refused.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "ce3ac821-5dad-56c4-b7dc-c1dd4cc12f49",
+          "fieldName": "TargetKind",
+          "label": "Targets are",
+          "description": "Block or Entity.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "9ad51ca3-c3cd-5837-8f74-4badd388bdfb",
+          "fieldName": "TargetsJson",
+          "label": "Targets",
+          "description": "Material or entity type names.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d677813a-063d-55c9-b777-16c096e192dd",
+          "fieldName": "MinBlockAge",
+          "label": "Minimum crop age",
+          "description": "Empty = any.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "f57709e9-5a3f-5839-9189-57c5fc9b4268",
+      "sectionName": "Who may harvest",
+      "description": "Checked by the game server.",
+      "fields": [
+        {
+          "fieldGuid": "5d273bf8-5dea-5d15-9323-0606e4c912ea",
+          "fieldName": "RequiredPermission",
+          "label": "Permission node",
+          "description": "Empty = none.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "28445f5a-0a5e-52c2-aa47-eabdb4cb03f0",
+          "fieldName": "MaleName",
+          "relatedEntityPropertyName": "MinTitleBracket",
+          "relatedEntityTypeName": "TitleBracket",
+          "label": "Lowest title",
+          "description": "Empty = none.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "1be1ad5a-103a-5a8d-a4b2-6f239788ce20",
+          "fieldName": "ToolClass",
+          "label": "Tool",
+          "description": "Any = no tool rule.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "eff00218-3c93-5047-8875-57b74191253a",
+          "fieldName": "MinToolTier",
+          "label": "Lowest tool tier",
+          "description": "Any = every tier.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "e160d29b-dc1b-5b42-8937-ac8a494049a3",
+          "fieldName": "CooldownSeconds",
+          "label": "Cooldown (seconds)",
+          "description": "Per player per area.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "e420ac78-7fc9-5832-b148-1e9d3749c10f",
+      "sectionName": "Yield",
+      "description": "What a break yields and how it is split.",
+      "fields": [
+        {
+          "fieldGuid": "702b5045-2ffd-5613-b2f7-5b23d5ec308a",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "YieldItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Yield",
+          "description": "The item blueprint.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "c3a323da-591d-579d-bf2d-d50baaf2887f",
+          "fieldName": "YieldPerBreak",
+          "label": "Units per break",
+          "description": "Before fortune.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "4f2fd461-7196-51f8-ac5e-b2f84217133f",
+          "fieldName": "FortuneBonusPerLevel",
+          "label": "Fortune bonus per level",
+          "description": "Up to Fortune IV.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "dc39f78b-9532-5aa8-a17a-5bfd71238ee6",
+          "fieldName": "WorkerShare",
+          "label": "Worker's share",
+          "description": "Paid to the player; the rest goes to Output.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "9bd66b68-56c7-5d44-aa03-aa7ebad062ed",
+          "fieldName": "PoolCost",
+          "label": "Pool cost per break",
+          "description": "Drawn from the area's pool.",
+          "fieldType": "Decimal"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "b8fbbd7e-4fcb-504e-9729-f1711cedfd45",
+      "sectionName": "Regeneration",
+      "description": "Placeholder and time.",
+      "fields": [
+        {
+          "fieldGuid": "7e18d1a2-3e4e-5f2f-89c4-90e002ece271",
+          "fieldName": "Placeholder",
+          "label": "Placeholder",
+          "description": "What stays until the block comes back.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "ca2f2d42-e483-55d7-bfff-efa102822b93",
+          "fieldName": "PlaceholderMaterial",
+          "label": "Placeholder block",
+          "description": "For DepletedBlock.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "610c6ef1-8f45-5fe7-95a6-b05a29382db9",
+          "fieldName": "RegenSeconds",
+          "label": "Regeneration (seconds)",
+          "description": "How long until it comes back.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "a60245aa-1701-5fa4-a9d8-cb2ce120fa35",
+          "fieldName": "RegenScalesWithPool",
+          "label": "Slower when the pool is low",
+          "description": "Up to twice as long at an empty pool.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "0d4abaa0-3b4c-5ea8-8053-1b86a79882fa",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "For other staff.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "372899a3-a1da-5321-9ebc-5d6d26920f73",
+          "fieldName": "CreatedAt",
+          "label": "Created",
+          "description": "When it was made.",
+          "fieldType": "DateTime"
+        }
+      ]
+    }
+  ]
+}

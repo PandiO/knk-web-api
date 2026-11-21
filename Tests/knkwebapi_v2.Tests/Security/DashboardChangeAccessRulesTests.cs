@@ -60,6 +60,8 @@ public class DashboardChangeAccessRulesTests
         ("TransportLanesController", "Create", "TransportLane"), ("TransportLanesController", "Update", "TransportLane"),
         ("StorageContainersController", "Create", "StorageContainer"), ("StorageContainersController", "Update", "StorageContainer"),
         ("ProductionYieldOverridesController", "Create", "ProductionYieldOverride"), ("ProductionYieldOverridesController", "Update", "ProductionYieldOverride"),
+        ("HarvestRulesController", "Create", "HarvestRule"), ("HarvestRulesController", "Update", "HarvestRule"),
+        ("ResourcePoolsController", "Create", "ResourcePool"), ("ResourcePoolsController", "Update", "ResourcePool"),
         ("ProductionLinesController", "Create", "ProductionLine"), ("ProductionLinesController", "Update", "ProductionLine"),
         ("ProductionModifiersController", "Create", "ProductionModifier"), ("ProductionModifiersController", "Update", "ProductionModifier"),
         ("ClimateZonesController", "Create", "ClimateZone"), ("ClimateZonesController", "Update", "ClimateZone"),

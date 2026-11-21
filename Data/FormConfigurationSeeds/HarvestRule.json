@@ -1,0 +1,252 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "7a6e0b72-6b97-5f12-8db5-9442557259b2",
+  "entityTypeName": "HarvestRule",
+  "name": "HarvestRule - Default (seed v1)",
+  "description": "What players may harvest in a production kind's areas and what each break yields (player harvesting P8a, #685). Harvesting counts as working for the town: each harvest is split at once into the worker's share (paid to the player) and the town's share (into the structure's Output storage). Check the rule's net-output balance on its detail page.",
+  "steps": [
+    {
+      "stepGuid": "d5748758-8045-5e2a-8394-4b7bd8c2e611",
+      "stepName": "Rule",
+      "description": "The kind and what may be harvested.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "d302a0e8-64cf-55b2-b573-e9cd28924c95",
+          "fieldName": "ProductionKindId",
+          "label": "Production kind",
+          "description": "The kind whose areas this rule applies to.",
+          "fieldType": "Object",
+          "objectType": "ProductionKind",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "92ed9c93-168b-5e7a-862c-7e605a077696",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique within the kind, e.g. \"Coal ore\".",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "888af11e-d40a-51b1-8e8e-dbf1dcabcc63",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off: the game server denies these breaks and the API refuses their reports.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "4e06fc17-f151-5c42-ae73-4ab8c54e2918",
+          "fieldName": "TargetKind",
+          "label": "Targets are",
+          "description": "Block materials or entity types.",
+          "fieldType": "Enum",
+          "enumType": "HarvestTargetKind",
+          "defaultValue": "Block",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Block\", \"Entity\"]}"
+        },
+        {
+          "fieldGuid": "5ec1613c-7c32-5f02-ba64-8d5760cdfd73",
+          "fieldName": "TargetsJson",
+          "label": "Targets",
+          "description": "A JSON list of material or entity type names; a name may start or end with *, e.g. [\"COAL_ORE\",\"DEEPSLATE_COAL_ORE\"] or [\"*_LOG\"].",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ba6fce59-08b2-55b7-8363-6f1d1ace6ce0",
+          "fieldName": "MinBlockAge",
+          "label": "Minimum crop age",
+          "description": "Crops: the lowest block age that may be harvested (wheat 7). Empty = any.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "b39b85da-1c65-51a1-a82f-ebdf1f49d1b6",
+      "stepName": "Who may harvest",
+      "description": "Checked by the game server before it allows a break.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a7cc6b6a-5ab0-5994-a305-ffbbc9dbbc89",
+          "fieldName": "RequiredPermission",
+          "label": "Permission node",
+          "description": "A node the player needs, e.g. knk.harvest.mine. Empty = none.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "bce9c8ae-2d5c-5649-8711-ab062bea00b7",
+          "fieldName": "MinTitleBracketId",
+          "label": "Lowest title",
+          "description": "The lowest title bracket the player needs. Empty = none.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a42a3b79-6b17-5149-b01d-065236fd687b",
+          "fieldName": "ToolClass",
+          "label": "Tool",
+          "description": "The tool the player must hold (Any = no tool rule).",
+          "fieldType": "Enum",
+          "enumType": "HarvestToolClass",
+          "defaultValue": "Any",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Any\", \"Pickaxe\", \"Axe\", \"Shovel\", \"Hoe\", \"Shears\", \"Sword\", \"FishingRod\"]}"
+        },
+        {
+          "fieldGuid": "27a10e3a-0e73-59ef-9b6e-d8026f036403",
+          "fieldName": "MinToolTier",
+          "label": "Lowest tool tier",
+          "description": "The lowest tool tier accepted (Any = every tier).",
+          "fieldType": "Enum",
+          "enumType": "HarvestToolTier",
+          "defaultValue": "Any",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"Any\", \"Wood\", \"Stone\", \"Iron\", \"Gold\", \"Diamond\", \"Netherite\"]}"
+        },
+        {
+          "fieldGuid": "ab6db35b-ef6d-5c8f-845f-08b526f61200",
+          "fieldName": "CooldownSeconds",
+          "label": "Cooldown (seconds)",
+          "description": "Per player per area, against farming. Empty = none.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "6a00356b-bfad-5113-bc30-0b7b2f172c7b",
+      "stepName": "Yield",
+      "description": "What a break yields and how it is split.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "caf71fbb-cb03-53d9-8601-e02a036ea78b",
+          "fieldName": "YieldItemBlueprintId",
+          "label": "Yield",
+          "description": "The item blueprint a break yields (replaces the vanilla drops).",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "7075503a-ca3c-5c28-b3ca-1cbc9e957cec",
+          "fieldName": "YieldPerBreak",
+          "label": "Units per break",
+          "description": "Before fortune. Above 0, at most 64.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2b75e9ab-8672-53ab-a916-d95fa896abeb",
+          "fieldName": "FortuneBonusPerLevel",
+          "label": "Fortune bonus per level",
+          "description": "Extra yield per fortune level, counted up to Fortune IV: yield × (1 + bonus × level). 0 = fortune does nothing.",
+          "fieldType": "Decimal",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b42168c1-ac8b-5181-b87d-48d02ae3e17d",
+          "fieldName": "WorkerShare",
+          "label": "Worker's share",
+          "description": "The share of each harvest paid to the player (0 to 1, suggested 0.25); the rest goes into the structure's Output storage.",
+          "fieldType": "Decimal",
+          "defaultValue": "0.25",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "31842578-ee97-530f-a74a-5435f4c0e5df",
+          "fieldName": "PoolCost",
+          "label": "Pool cost per break",
+          "description": "Units drawn from the area's resource pool per break. A fuller pool keeps the structure producing at full speed.",
+          "fieldType": "Decimal",
+          "defaultValue": "1",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "8f7dd3bb-1c8f-5046-9a20-09541f8be870",
+      "stepName": "Regeneration",
+      "description": "What the game server leaves behind and when the block comes back.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "7cdbae1d-78e7-5910-987f-3490ee489b01",
+          "fieldName": "Placeholder",
+          "label": "Placeholder",
+          "description": "DepletedBlock (ore, rock), Replant (crops at age 0), Air (flowers), Sapling (a felled tree, restored by snapshot) or None (entities).",
+          "fieldType": "Enum",
+          "enumType": "HarvestPlaceholder",
+          "defaultValue": "DepletedBlock",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"enumValues\": [\"DepletedBlock\", \"Replant\", \"Air\", \"Sapling\", \"None\"]}"
+        },
+        {
+          "fieldGuid": "e46d70a7-4787-5e65-bf81-51e1891b4dad",
+          "fieldName": "PlaceholderMaterial",
+          "label": "Placeholder block",
+          "description": "For DepletedBlock: STONE, NETHERRACK, … Empty = the game server's default for the world.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "09ab7471-a995-58c7-9ac6-db5cfa30f4ae",
+          "fieldName": "RegenSeconds",
+          "label": "Regeneration (seconds)",
+          "description": "How long until the block comes back (V1: crops and wood 25).",
+          "fieldType": "Integer",
+          "defaultValue": "60",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "0bcd2766-6c36-5236-a75c-f09fd4bb41e1",
+          "fieldName": "RegenScalesWithPool",
+          "label": "Slower when the pool is low",
+          "description": "On: up to twice as long at an empty pool.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "eace738b-3145-5e6c-96f7-5794be3b9535",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "For other staff.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

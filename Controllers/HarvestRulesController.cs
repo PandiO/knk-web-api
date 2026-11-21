@@ -132,6 +132,7 @@ namespace KnKWebAPI.Controllers
     /// <summary>The booked harvests (read only): the World area, or the plugin key.</summary>
     [ApiController]
     [Route("api/PlayerHarvests")]
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
     [DashboardReads("PlayerHarvest")]
     public class PlayerHarvestsController : ControllerBase
     {

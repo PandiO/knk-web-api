@@ -367,7 +367,6 @@ namespace knkwebapi_v2.Attributes
             Type("PlayerHarvest", DashboardArea.World, World, null,
                 Lists<knkwebapi_v2.Services.Production.IHarvestService, knkwebapi_v2.Dtos.PlayerHarvestListDto>((s, q) => s.SearchAsync(q)),
                 bulk: false),
-            ViewOnly("HarvestAccrual", DashboardArea.World, World),
             ViewOnly("GateBlockSnapshot", DashboardArea.World, World),
             ViewOnly("GateOpenedBlockSnapshot", DashboardArea.World, World),
 

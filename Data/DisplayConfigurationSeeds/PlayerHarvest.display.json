@@ -1,0 +1,188 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "47ce732b-853d-5baf-8e76-365fad71a85b",
+  "entityTypeName": "PlayerHarvest",
+  "name": "PlayerHarvest - Default (seed v1)",
+  "description": "One booked harvest (player harvesting P8a, #685): who, which rule, how it was split between the player and the town, and the pool before and after. Written only by the game server's reports (api/Harvest/reports).",
+  "sections": [
+    {
+      "sectionGuid": "b2f2c10a-2b02-50f0-b874-b6817cfef41b",
+      "sectionName": "Harvest",
+      "description": "Who harvested what.",
+      "fields": [
+        {
+          "fieldGuid": "ee6c659d-4d79-5f24-95c7-1c68ae3f72a4",
+          "fieldName": "Username",
+          "relatedEntityPropertyName": "User",
+          "relatedEntityTypeName": "User",
+          "label": "Player",
+          "description": "Who harvested.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b39c3718-0765-527f-81b3-a4b2667c864d",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "HarvestRule",
+          "relatedEntityTypeName": "HarvestRule",
+          "label": "Rule",
+          "description": "The harvest rule.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d7232775-fc73-580a-b0a9-38036151ad39",
+          "fieldName": "ProductionStructureId",
+          "label": "Production structure",
+          "description": "The structure (id).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "53150da8-fdaf-5811-b170-33a2fd451f83",
+          "fieldName": "ProductionAreaId",
+          "label": "Production area",
+          "description": "The area (id).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c63ff6ea-18a4-578c-bc8a-54c7b7134f01",
+          "fieldName": "ItemBlueprintId",
+          "label": "Yield blueprint",
+          "description": "The item blueprint (id).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "e0fa132b-6efc-56fb-b5db-d9ea7a30edd4",
+          "fieldName": "Breaks",
+          "label": "Breaks",
+          "description": "Blocks or entities harvested.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "e36ed460-ad24-5e2a-965d-7e1bf77080b3",
+          "fieldName": "FortuneLevel",
+          "label": "Fortune",
+          "description": "The tool's fortune level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "dd2db9fa-9b21-5d89-8995-b30e50c3ba23",
+          "fieldName": "HarvestedAt",
+          "label": "Harvested",
+          "description": "When the game server saw it.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "e7bb4347-3bce-5054-aa46-f26f91aeaabf",
+          "fieldName": "ReceivedAt",
+          "label": "Booked",
+          "description": "When the API booked it.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "ab2747eb-04cc-54fe-8ba0-b505c9970729",
+          "fieldName": "IdempotencyKey",
+          "label": "Key",
+          "description": "The game server's key (one booking per key).",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "162dc2ba-2f4e-52de-aa68-ba7cca49086f",
+      "sectionName": "Split",
+      "description": "The worker's share and the town's share (PRODUCTION_KINDS § 6.2).",
+      "fields": [
+        {
+          "fieldGuid": "533a7e18-9723-5339-9e65-dc33a0fbc469",
+          "fieldName": "YieldUnits",
+          "label": "Yield",
+          "description": "Breaks × units per break × fortune.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "fe300fa7-cacc-5c6c-99c8-19cd321a46d0",
+          "fieldName": "WorkerShare",
+          "label": "Worker's share",
+          "description": "The rule's share at the time.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "2b173e75-6436-5f04-b905-1532fc498036",
+          "fieldName": "WorkerUnits",
+          "label": "Paid to the player",
+          "description": "Whole units (SYS_PRODUCTION → SYS_WORLD).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "f21f5cbe-4ba8-5407-a37d-dfa830cb530a",
+          "fieldName": "TownUnits",
+          "label": "Town's share",
+          "description": "Whole units sent to Output.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "57bd5b99-2e39-556a-8982-914aebcb2fcc",
+          "fieldName": "TownAccepted",
+          "label": "Accepted by Output",
+          "description": "The rest was lost to the town (F10).",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "028449e7-9049-5e38-acce-653d73453637",
+          "fieldName": "ShortfallReason",
+          "label": "Shortfall",
+          "description": "Why part of the town's share was lost.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6a739524-cb7e-5d88-b94b-86b989672825",
+          "fieldName": "WorkerTransactionId",
+          "label": "Worker transaction",
+          "description": "The stock transaction.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "7754791a-f24d-57d8-bc3b-6221253a87b2",
+          "fieldName": "TownTransactionId",
+          "label": "Town transaction",
+          "description": "The stock transaction.",
+          "fieldType": "Integer"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "5a2bee0b-7f41-5d0c-bf27-7e7d666e444f",
+      "sectionName": "Pool",
+      "description": "The area's resource pool.",
+      "fields": [
+        {
+          "fieldGuid": "422d0207-549c-5944-a5c8-0674b9eefb99",
+          "fieldName": "PoolBefore",
+          "label": "Before",
+          "description": "Units left before (regeneration included).",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "e77b3dce-9b29-52f5-b2e7-dc12e1dfff1e",
+          "fieldName": "PoolAfter",
+          "label": "After",
+          "description": "Units left after.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "4b40ad1a-eb19-5fa8-ae5f-c1e235ae2126",
+          "fieldName": "PoolCapacity",
+          "label": "Capacity",
+          "description": "The pool's capacity.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "ae3dc8d0-d478-59bb-977a-bda2093bac85",
+          "fieldName": "RegenSeconds",
+          "label": "Regeneration (seconds)",
+          "description": "When the blocks come back.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

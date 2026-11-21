@@ -140,6 +140,7 @@ namespace knkwebapi_v2.Services.Production
             Enabled = r.Enabled,
             TargetKind = r.TargetKind.ToString(),
             Targets = Targets(r.TargetsJson),
+            TargetsJson = r.TargetsJson,
             MinBlockAge = r.MinBlockAge,
             RequiredPermission = r.RequiredPermission,
             MinTitleBracketId = r.MinTitleBracketId,
@@ -224,7 +225,8 @@ namespace knkwebapi_v2.Services.Production
             }
             if (dto.Enabled.HasValue) r.Enabled = dto.Enabled.Value;
             if (dto.TargetKind != null) r.TargetKind = ProductionInput.Parse<HarvestTargetKind>(dto.TargetKind, "targetKind");
-            if (dto.Targets != null) r.TargetsJson = JsonSerializer.Serialize(NormalizeTargets(dto.Targets));
+            var targets = dto.Targets ?? ParseTargetsJson(dto.TargetsJson);
+            if (targets != null) r.TargetsJson = JsonSerializer.Serialize(NormalizeTargets(targets));
             else if (isCreate) throw new ArgumentException("targets is required: the materials or entity types players may harvest.");
             if (dto.MinBlockAge.HasValue)
             {
@@ -298,6 +300,19 @@ namespace knkwebapi_v2.Services.Production
             }
             if (dto.RegenScalesWithPool.HasValue) r.RegenScalesWithPool = dto.RegenScalesWithPool.Value;
             if (dto.Note != null) r.Note = ProductionInput.Text(dto.Note, HarvestRule.NoteMaxLength, "note");
+        }
+
+        private static List<string>? ParseTargetsJson(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try
+            {
+                return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+            }
+            catch (JsonException)
+            {
+                throw new ArgumentException("targetsJson must be a JSON list of names, e.g. [\"COAL_ORE\",\"*_LOG\"].");
+            }
         }
 
         private static List<string> NormalizeTargets(List<string> targets)

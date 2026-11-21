@@ -40,6 +40,9 @@ namespace knkwebapi_v2.Dtos
 
         /// <summary>Material or entity type names; one may start or end with <c>*</c> (<c>*_LOG</c>).</summary>
         [JsonPropertyName("targets")] public List<string>? Targets { get; set; }
+
+        /// <summary>The same list as JSON text (what the form seed's "Targets" field sends); used when <c>targets</c> is null.</summary>
+        [JsonPropertyName("targetsJson")] public string? TargetsJson { get; set; }
         [JsonPropertyName("minBlockAge")] public int? MinBlockAge { get; set; }
 
         /// <summary>"" clears it.</summary>
