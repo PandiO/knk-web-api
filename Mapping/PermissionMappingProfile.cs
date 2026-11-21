@@ -45,7 +45,7 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.ChildGroups, src => src.Ignore())
                 .ForMember(dest => dest.UserMemberships, src => src.Ignore())
                 .ForMember(dest => dest.Grants, src => src.Ignore())
-                // #852: applied by PermissionGroupService (omitted keeps, "" clears), see PermissionGroupRouteMode.
+                // #852: applied by PermissionGroupService (omitted keeps, null or "" clears), see PermissionGroupRouteMode.
                 .ForMember(dest => dest.DefaultRouteMode, src => src.Ignore());
             // Teleport fees/cooldowns (KNG-41) are applied by PermissionGroupService, gated per kind.
             foreach (var property in Services.PermissionGroupTeleportSettings.EntityProperties)

@@ -54,11 +54,11 @@
           "fieldGuid": "36e51aef-a568-5bc6-8e5a-5e285c6ea13b",
           "fieldName": "DefaultRouteMode",
           "label": "Default route mode",
-          "description": "The route /navigate takes for members who type no mode word. shortest = length only, efficient = walking effort (stairs, ladders, doors, water and the road class), preferred = efficient plus the road and landmark preference weights. A player in several groups gets the default of their highest-weight group that sets one. None = this group sets no default (with none set anywhere the route is preferred). A typed mode word still wins and still needs its knk.navigate.mode node.",
-          "fieldType": "String",
+          "description": "The route /navigate takes for members who type no mode word. Shortest = length only, Efficient = walking effort (stairs, ladders, doors, water and the road class), Preferred = Efficient plus the road and landmark preference weights. A player in several groups gets the default of their highest-weight group that sets one. None = this group sets no default (with none set anywhere the route is Preferred). A typed mode word still wins and still needs its knk.navigate.mode node.",
+          "fieldType": "Enum",
           "isRequired": false,
           "isReadOnly": false,
-          "settingsJson": "{\"enumValues\": [\"shortest\", \"efficient\", \"preferred\"], \"emptyOptionLabel\": \"None (default: preferred)\"}"
+          "settingsJson": "{\"enumValues\": [\"Shortest\", \"Efficient\", \"Preferred\"], \"emptyOptionLabel\": \"None (default: Preferred)\"}"
         }
       ]
     },
