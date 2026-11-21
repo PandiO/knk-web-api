@@ -54,6 +54,7 @@ public class DeleteAccessRulesTests
         ["ShopTypeLevel"] = "ShopTypeLevelsController.Delete",
         ["Shop"] = "ShopsController.Delete",
         ["ShopCatalogueEntry"] = "ShopCatalogueEntriesController.Delete",
+        ["ShopDisplaySpot"] = "ShopDisplaySpotsController.Delete", // display stalls P12 (#250)
         ["StorageContainer"] = "StorageContainersController.Delete", // terminals and menus P6a (#683)
         ["ProductionYieldOverride"] = "ProductionYieldOverridesController.Delete",
         ["HarvestRule"] = "HarvestRulesController.Delete", // player harvesting P8a (#685)

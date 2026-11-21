@@ -320,6 +320,7 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Shops.IShopTypeService, knkwebapi_v2.Services.Shops.ShopTypeService>();
             services.AddScoped<knkwebapi_v2.Services.Shops.IShopService, knkwebapi_v2.Services.Shops.ShopService>();
             services.AddScoped<knkwebapi_v2.Services.Shops.IShopCatalogueService, knkwebapi_v2.Services.Shops.ShopCatalogueService>();
+            services.AddScoped<knkwebapi_v2.Services.Shops.IShopDisplaySpotService, knkwebapi_v2.Services.Shops.ShopDisplaySpotService>(); // display stalls P12 (#250)
             services.AddScoped<knkwebapi_v2.Services.Shops.IShopTradingService, knkwebapi_v2.Services.Shops.ShopTradingService>();
             services.AddScoped<knkwebapi_v2.Services.Shops.IShopTradeStatService, knkwebapi_v2.Services.Shops.ShopTradeStatService>();
             services.AddScoped<knkwebapi_v2.Services.Shops.ITownAccountService, knkwebapi_v2.Services.Shops.TownAccountService>();

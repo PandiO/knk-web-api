@@ -176,6 +176,8 @@ public class ReadAccessRulesTests
         ["ShopsController.Offer"] = "F Shop",
         ["ShopCatalogueEntriesController.GetById"] = "F ShopCatalogueEntry",
         ["ShopCatalogueEntriesController.Search"] = "F ShopCatalogueEntry",
+        ["ShopDisplaySpotsController.GetById"] = "F ShopDisplaySpot", // display stalls P12 (#250)
+        ["ShopDisplaySpotsController.Search"] = "F ShopDisplaySpot",
         ["ShopTradeStatsController.GetById"] = "F ShopTradeStat",
         ["ShopTradeStatsController.Search"] = "F ShopTradeStat",
         ["TownAccountsController.GetById"] = "F TownAccount",
@@ -572,6 +574,9 @@ public class ReadAccessRulesTests
         "HealthCheckController.GetReadiness",
         // Siege shop (PandiO/knk-workspace#867): fetched once per match from siege shop phase 3 (#868) on.
         "SiegeShopController.GetCatalogue",
+        // Display stalls P12 (PandiO/knk-workspace#250): the spots index and the best sellers per shop.
+        "ShopDisplaySpotsController.Search",
+        "ShopTradeStatsController.Search",
         // Siege shop L4 (PandiO/knk-workspace#869): the Siege unlocks menu.
         "SiegeWeaponUnlocksController.GetByUser",
         // Player harvesting P8a (PandiO/knk-workspace#685): the harvest listener's rules and areas (L22, #134).

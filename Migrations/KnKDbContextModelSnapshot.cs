@@ -8506,6 +8506,70 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("shop_catalogue_entries", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopDisplaySpot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Facing")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("varchar(8)");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int?>("PinnedCatalogueEntryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ShopId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("WorldName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("X")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Y")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Z")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PinnedCatalogueEntryId");
+
+                    b.HasIndex("ShopId", "SortOrder");
+
+                    b.HasIndex("WorldName", "X", "Y", "Z")
+                        .IsUnique();
+
+                    b.ToTable("shop_display_spots", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ShopTradeStat", b =>
                 {
                     b.Property<long>("Id")
@@ -14276,6 +14340,24 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("ItemBlueprint");
 
                     b.Navigation("ItemInstance");
+
+                    b.Navigation("Shop");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ShopDisplaySpot", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ShopCatalogueEntry", "PinnedCatalogueEntry")
+                        .WithMany()
+                        .HasForeignKey("PinnedCatalogueEntryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.Shop", "Shop")
+                        .WithMany()
+                        .HasForeignKey("ShopId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PinnedCatalogueEntry");
 
                     b.Navigation("Shop");
                 });

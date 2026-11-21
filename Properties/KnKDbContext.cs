@@ -3890,6 +3890,22 @@ public partial class KnKDbContext : DbContext
             // The ledger keeps a town's legs after the town is gone (no FK on currency_entries.TownId); the account goes.
             entity.HasOne(e => e.Town).WithMany().HasForeignKey(e => e.TownId).OnDelete(DeleteBehavior.Cascade);
         });
+        // Display spots (display stalls P12, PandiO/knk-workspace#250, shops DESIGN § 7): one row per block; they go with
+        // their shop (Cascade); a spot's pinned catalogue entry is cleared when the entry goes (SetNull).
+        modelBuilder.Entity<ShopDisplaySpot>(entity =>
+        {
+            entity.ToTable("shop_display_spots");
+            entity.Property(e => e.WorldName).IsRequired().HasMaxLength(ShopDisplaySpot.WorldNameMaxLength);
+            entity.Property(e => e.Label).HasMaxLength(ShopDisplaySpot.LabelMaxLength);
+            entity.Property(e => e.Facing).HasConversion<string>().HasMaxLength(8);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.WorldName, e.X, e.Y, e.Z }).IsUnique();
+            entity.HasIndex(e => new { e.ShopId, e.SortOrder });
+            entity.HasOne(e => e.Shop).WithMany().HasForeignKey(e => e.ShopId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.PinnedCatalogueEntry).WithMany().HasForeignKey(e => e.PinnedCatalogueEntryId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
         // ---- end shops ----
 
         OnModelCreatingPartial(modelBuilder);

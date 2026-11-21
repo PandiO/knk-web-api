@@ -1,0 +1,95 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "12ddf07a-4796-5d8c-9622-3f0c7a4bb378",
+  "entityTypeName": "ShopDisplaySpot",
+  "name": "ShopDisplaySpot - Default (seed v1)",
+  "description": "A display spot of a shop (display stalls P12, #250).",
+  "sections": [
+    {
+      "sectionGuid": "07eaa22e-39d3-539e-bdd8-77159a01d229",
+      "sectionName": "Display spot",
+      "description": "The shop, what the spot shows and the block.",
+      "fields": [
+        {
+          "fieldGuid": "4796389b-9499-58b8-ba5e-a9b8d1544316",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Shop",
+          "relatedEntityTypeName": "Shop",
+          "label": "Shop",
+          "description": "The shop.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "7125b1bd-5a3d-5d02-bec2-36195a6939e9",
+          "fieldName": "Label",
+          "label": "Label",
+          "description": "Name for staff.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "01ad7f86-0abe-515f-91fa-e36ef611c489",
+          "fieldName": "PinnedCatalogueEntryId",
+          "label": "Pinned entry",
+          "description": "The catalogue entry this spot always shows; empty when the game server chooses.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "49a1cf42-e07a-531a-b06d-c444a272b46e",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Filled lowest first.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "53c3c1b7-b845-5b90-bfcf-f2fa656acb21",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Shown in game.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "df7dcf88-a789-5e1f-8dd5-0d8f426a09c2",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "Minecraft world.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "26196ede-f39a-5e6d-bbba-2f9601200d17",
+          "fieldName": "X",
+          "label": "X",
+          "description": "Block X.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d1c47658-d95a-5735-8447-ee81cd075ec8",
+          "fieldName": "Y",
+          "label": "Y",
+          "description": "Block Y.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "7dceab24-5d8f-503a-a665-8f679aa4dfd6",
+          "fieldName": "Z",
+          "label": "Z",
+          "description": "Block Z.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "3f8bdc30-d1ec-5caa-8a95-f33983b1160a",
+          "fieldName": "Facing",
+          "label": "Facing",
+          "description": "The way the item faces.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "3754d344-a3e2-5f0b-b6a1-3154b56a7561",
+          "fieldName": "CreatedAt",
+          "label": "Registered",
+          "description": "When the spot was registered.",
+          "fieldType": "DateTime"
+        }
+      ]
+    }
+  ]
+}
