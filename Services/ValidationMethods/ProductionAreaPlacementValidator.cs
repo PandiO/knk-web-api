@@ -23,7 +23,9 @@ namespace knkwebapi_v2.Services.ValidationMethods
     ///   <item>Region: the whole region (<c>WgRegionId</c>) is inside the district's region, or the town's territory.</item>
     ///   <item>Cuboid: its four corners (<c>MinX</c>/<c>MaxX</c> × <c>MinZ</c>/<c>MaxZ</c>) are inside.</item>
     ///   <item>Radius: the centre and the four points one radius away along x and z are inside.</item>
-    ///   <item>Polygon: not checked here (the form holds no points); it passes with a note.</item>
+    ///   <item>Polygon: each of its points is inside (#900). The points come from <c>PointsJson</c> (the API passes the saved
+    ///   area's points on create and update) or a <c>Points</c> list in the form values; without points it passes with a
+    ///   note.</item>
     /// </list>
     /// Seeded as a warning; an admin can make it blocking. The territory half passes without a lookup while
     /// <c>Production:Enabled</c> is off (A21), like <see cref="InsideTerritoryValidator"/>. A game server that cannot be
@@ -32,6 +34,9 @@ namespace knkwebapi_v2.Services.ValidationMethods
     public class ProductionAreaPlacementValidator : IValidationMethod
     {
         public const string Type = "ProductionAreaPlacement";
+
+        /// <summary>The context key a Polygon area's points travel under (JSON list of <c>{"x":..,"z":..}</c>).</summary>
+        public const string PointsContextKey = "PointsJson";
 
         private readonly KnKDbContext _db;
         private readonly IRegionService _regions;
@@ -143,6 +148,7 @@ namespace knkwebapi_v2.Services.ValidationMethods
                 if (Number(ctx, "CenterX") is not { } cx || Number(ctx, "CenterZ") is not { } cz || Number(ctx, "Radius") is not { } r) return null;
                 return new() { (cx, cz), (cx - r, cz), (cx + r, cz), (cx, cz - r), (cx, cz + r) };
             }
+            if (string.Equals(shape, "Polygon", StringComparison.OrdinalIgnoreCase)) return PolygonPoints(ctx);
             if (string.Equals(shape, "Cuboid", StringComparison.OrdinalIgnoreCase))
             {
                 if (Number(ctx, "MinX") is not { } x1 || Number(ctx, "MinZ") is not { } z1
@@ -150,6 +156,51 @@ namespace knkwebapi_v2.Services.ValidationMethods
                 return new() { (x1, z1), (x1, z2), (x2, z1), (x2, z2) };
             }
             return null;
+        }
+
+        /// <summary>A Polygon's points (#900) from <c>PointsJson</c> (text) or <c>Points</c> (a list); null when there are
+        /// fewer than three.</summary>
+        public static List<(double X, double Z)>? PolygonPoints(Dictionary<string, object> ctx)
+        {
+            var raw = Get(ctx, PointsContextKey) ?? Get(ctx, "Points");
+            JsonElement? list = raw switch
+            {
+                null => null,
+                string s when !string.IsNullOrWhiteSpace(s) => TryParse(s),
+                JsonElement { ValueKind: JsonValueKind.String } e => TryParse(e.GetString()),
+                JsonElement { ValueKind: JsonValueKind.Array } e => e,
+                System.Collections.IEnumerable items and not string => JsonSerializer.SerializeToElement(items),
+                _ => null,
+            };
+            if (list is not { ValueKind: JsonValueKind.Array } array) return null;
+            var points = new List<(double X, double Z)>();
+            foreach (var p in array.EnumerateArray())
+            {
+                if (p.ValueKind != JsonValueKind.Object) return null;
+                double? x = null, z = null;
+                foreach (var prop in p.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind != JsonValueKind.Number) continue;
+                    if (string.Equals(prop.Name, "x", StringComparison.OrdinalIgnoreCase)) x = prop.Value.GetDouble();
+                    else if (string.Equals(prop.Name, "z", StringComparison.OrdinalIgnoreCase)) z = prop.Value.GetDouble();
+                }
+                if (x is not { } px || z is not { } pz) return null;
+                points.Add((px, pz));
+            }
+            return points.Count >= 3 ? points : null;
+        }
+
+        private static JsonElement? TryParse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try
+            {
+                return JsonSerializer.Deserialize<JsonElement>(json);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
 
         private static ValidationMethodResult Valid(string message) =>

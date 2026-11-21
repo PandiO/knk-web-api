@@ -10,6 +10,7 @@ using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
 using knkwebapi_v2.Services.Interfaces;
 using knkwebapi_v2.Services.Territory;
+using knkwebapi_v2.Services.ValidationMethods;
 using Microsoft.EntityFrameworkCore;
 
 namespace knkwebapi_v2.Services.Production
@@ -220,7 +221,11 @@ namespace knkwebapi_v2.Services.Production
         {
             var warnings = new List<string>();
             if (_rules == null) return warnings;
-            var validation = await _rules.ValidateAsync(nameof(ProductionArea), area);
+            // #900: a Polygon area's points are not a form field; hand them to the rule as extra context.
+            var extra = area.Shape == ProductionAreaShape.Polygon && area.PointsJson != null
+                ? new Dictionary<string, object?> { [ProductionAreaPlacementValidator.PointsContextKey] = area.PointsJson }
+                : null;
+            var validation = await _rules.ValidateAsync(nameof(ProductionArea), area, extra);
             foreach (var check in validation.Results.Where(r => !r.Result.IsValid))
             {
                 if (check.CouldNotRun)
