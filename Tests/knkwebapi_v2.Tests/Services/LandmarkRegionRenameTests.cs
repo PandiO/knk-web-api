@@ -250,8 +250,8 @@ public class LandmarkRegionRenameTests : IDisposable
         (await _finalizer.ReplaceableLandmarkRegionAsync(landmark, "tempregion_worldtask_72", "landmark_5", "world")).Should().BeNull();
         (await _finalizer.ReplaceableLandmarkRegionAsync(landmark, "tempregion_worldtask_73", "landmark_5", "world")).Should().BeNull();
         (await _finalizer.ReplaceableLandmarkRegionAsync(landmark, "tempregion_worldtask_74", "landmark_5", "world")).Should().BeNull();
-        // Landmark 7 points at landmark 5's region, so it is not redefined under it.
-        (await _finalizer.ReplaceableLandmarkRegionAsync(landmark, "landmark_5", "landmark_5", "world")).Should().BeNull();
+        // Landmark 7 only points at landmark 5's region: it is redefined in place, and landmark 7 follows the new shape.
+        (await _finalizer.ReplaceableLandmarkRegionAsync(landmark, "landmark_5", "landmark_5", "world")).Should().Be("landmark_5");
         // Another world's region of the same id is not this one.
         (await _finalizer.ReplaceableLandmarkRegionAsync(landmark, "tempregion_worldtask_72", "landmark_5", "world_nether")).Should().Be("tempregion_worldtask_72");
     }
@@ -309,6 +309,28 @@ public class LandmarkRegionRenameTests : IDisposable
         (await _finalizer.ReplaceableRegionAsync(town, "tempregion_worldtask_95")).Should().BeNull();
         (await _finalizer.ReplaceableRegionAsync(town, "tempregion_worldtask_97")).Should().Be("tempregion_worldtask_97");
         (await _finalizer.ReplaceableLootboxAreaRegionAsync(area, "tempregion_worldtask_95", "lootbox_area_2", "world")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ALandmarkOnAnotherRowsFinalName_DoesNotBlockItsRedefinition()
+    {
+        // Review of #945: a landmark (or production area) that names lootbox_area_2 or domain_1 as an existing region only
+        // reads its shape; the owner's re-run still redefines it in place instead of leaving the owner on a temp name.
+        await AddLandmarkAsync(5, "lootbox_area_2");
+        await AddLandmarkAsync(6, "domain_1", locationId: 11);
+        var area = new LootboxSpawnArea { Id = 2, Name = "a2", World = "world", WgRegionId = "tempregion_worldtask_100" };
+        _context.LootboxSpawnAreas.Add(area);
+        var town = new Town { Id = 1, Name = "Cinix", Description = "t", WgRegionId = "tempregion_worldtask_101", WorldName = "world" };
+        _context.Towns.Add(town);
+        await _context.SaveChangesAsync();
+
+        (await _finalizer.ReplaceableLootboxAreaRegionAsync(area, "lootbox_area_2", "lootbox_area_2", "world")).Should().Be("lootbox_area_2");
+        (await _finalizer.ReplaceableRegionAsync(town, "domain_1")).Should().Be("domain_1");
+        // A lootbox area holding a landmark's final name still keeps it (it owns the region it stands on).
+        _context.LootboxSpawnAreas.Add(new LootboxSpawnArea { Id = 3, Name = "a3", World = "world", WgRegionId = "landmark_7" });
+        await _context.SaveChangesAsync();
+        var landmark = await AddLandmarkAsync(7, "tempregion_worldtask_102");
+        (await _finalizer.ReplaceableLandmarkRegionAsync(landmark, "landmark_7", "landmark_7", "world")).Should().BeNull();
     }
 
     [Fact]

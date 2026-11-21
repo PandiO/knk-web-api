@@ -66,6 +66,12 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameLandmarkRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId);
 
         /// <summary>
+        /// PandiO/knk-workspace#946: the same for a production area's drawn region (no managed-region setup: the area is
+        /// not a domain; the survey reads the region's shape from WorldGuard).
+        /// </summary>
+        Task<bool> RenameProductionAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId);
+
+        /// <summary>
         /// Check whether a location (x,z) lies inside the specified region.
         /// </summary>
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
@@ -304,6 +310,11 @@ namespace knkwebapi_v2.Services
         }
 
         public Task<bool> RenameLandmarkRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId)
+        {
+            return RenameAsync(oldRegionId, newRegionId, null, null, world, replaceRegionId, null);
+        }
+
+        public Task<bool> RenameProductionAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId)
         {
             return RenameAsync(oldRegionId, newRegionId, null, null, world, replaceRegionId, null);
         }

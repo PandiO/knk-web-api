@@ -352,7 +352,7 @@ public class TempRegionReleaseTests
     public static IEnumerable<object[]> Users() => new[]
     {
         new object[] { "domain" }, new object[] { "subregion" }, new object[] { "area" }, new object[] { "exclusion" },
-        new object[] { "road" }, new object[] { "draft" }, new object[] { "landmark" }
+        new object[] { "road" }, new object[] { "draft" }, new object[] { "landmark" }, new object[] { "productionArea" }
     };
 
     [Theory]
@@ -386,6 +386,14 @@ public class TempRegionReleaseTests
                     {
                         Name = "Throne room", ExtentKind = LandmarkExtentKind.Region, RegionId = region,
                         Location = new Location { Name = "Throne room", X = 1, Y = 64, Z = 2, World = "knk_hub" }
+                    });
+                    break;
+                case "productionArea":
+                    // #946: a production area whose drawn region kept its temp name.
+                    db.ProductionAreas.Add(new ProductionArea
+                    {
+                        Name = "South field", WorldName = "knk_hub", Shape = knkwebapi_v2.Enums.ProductionAreaShape.Region, WgRegionId = region,
+                        ProductionStructureId = 9001
                     });
                     break;
                 case "road":
