@@ -224,8 +224,8 @@ public class LookupFiltersTests : IAsyncLifetime
             ["TransportOrder"] = "sourceStructureId:Id, structureId:Id", // transport core P5 (#79)
             ["TransportLane"] = "structureId:Id",
             ["LogisticsPolicy"] = "townId:Id, warehouseId:Id", // town logistics P9 (#127)
-            ["LogisticsRule"] = "logisticsPolicyId:Id",
-            ["ConsumerReplenishment"] = "structureId:Id, storageId:Id",
+            ["LogisticsRule"] = "logisticsPolicyId:Id, townId:Id", // townId #928
+            ["ConsumerReplenishment"] = "structureId:Id, storageId:Id, townId:Id", // #928
             ["LogisticsReservation"] = "townId:Id, consumerStructureId:Id",
             ["LogisticsPlannerRun"] = "townId:Id",
             ["ShopTypeLevel"] = "shopTypeId:Id", // shops P10 (#248)
@@ -242,7 +242,7 @@ public class LookupFiltersTests : IAsyncLifetime
             ["GateDoor"] = "gateStructureId:Id, isActive:Flag",
             ["Landmark"] = "domainId:Id",
             ["Province"] = "kingdomId:Id",
-            ["Storage"] = "domainId:Id, userId:Id, clanId:Id", // stock core P1 (#97)
+            ["Storage"] = "domainId:Id, userId:Id, clanId:Id, townId:Id", // stock core P1 (#97); townId #928
             ["SiegeScenario"] = "townId:Id",
             ["SiegeTeam"] = "siegeScenarioId:Id",
             ["SiegeShopEntry"] = "siegeScenarioId:Id, categoryId:Id, defaultsOnly:Flag", // siege shop L2 (#867)

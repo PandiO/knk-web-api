@@ -336,7 +336,8 @@ namespace knkwebapi_v2.Services.Logistics
                     var (pc, prule, pwhy) = state.Priority(d, structureId);
                     var e = new LogisticsPlanEntryDto
                     {
-                        ConsumerStructureId = structureId, ConsumerStructureName = place.Name, ConsumerStorageId = storageId,
+                        ConsumerStructureId = structureId, ConsumerStructureName = place.Name,
+                        ConsumerStructureType = state.StructureType(structureId), ConsumerStorageId = storageId,
                         ConsumerStorageName = state.StorageNames.GetValueOrDefault(storageId), ItemBlueprintId = d.Blueprint,
                         ItemBlueprintName = state.ItemName(d.Blueprint), PriorityClass = pc.ToString(), Stock = stock + inbound,
                         ReorderPoint = d.ReorderPoint, TargetLevel = d.TargetLevel, SettingSource = d.Source,
@@ -490,8 +491,10 @@ namespace knkwebapi_v2.Services.Logistics
                         WarehouseStorageId = chosenStorage, CapacityLeft = capacity,
                         Order = new LogisticsPlannedOrderDto
                         {
-                            ConsumerStructureId = place.Id, ConsumerStructureName = place.Name, ConsumerStorageId = e.ConsumerStorageId,
-                            WarehouseId = chosen.W.Id, WarehouseName = chosen.W.Name, WarehouseStorageId = chosenStorage, CarrierCapacity = capacity,
+                            ConsumerStructureId = place.Id, ConsumerStructureName = place.Name, ConsumerStructureType = state.StructureType(place.Id),
+                            ConsumerStorageId = e.ConsumerStorageId, ConsumerStorageName = e.ConsumerStorageName,
+                            WarehouseId = chosen.W.Id, WarehouseName = chosen.W.Name, WarehouseStorageId = chosenStorage,
+                            WarehouseStorageName = state.StorageNames.GetValueOrDefault(chosenStorage), CarrierCapacity = capacity,
                             WorkersPresent = place.WorkersPresent, WorkersTotal = place.WorkersTotal,
                         },
                     };
@@ -508,7 +511,7 @@ namespace knkwebapi_v2.Services.Logistics
                     continue;
                 }
                 group.CapacityLeft -= carry * weight;
-                group.Order.Lines.Add(new TransportLineRequestDto { ItemBlueprintId = d.Blueprint, Amount = carry });
+                group.Order.Lines.Add(new LogisticsPlannedOrderLineDto { ItemBlueprintId = d.Blueprint, ItemBlueprintName = e.ItemBlueprintName, Amount = carry });
                 held[(chosenStorage, d.Blueprint)] = held.GetValueOrDefault((chosenStorage, d.Blueprint)) + carry;
                 e.Reserved = carry;
                 e.WarehouseId = chosen.W.Id;
@@ -565,7 +568,8 @@ namespace knkwebapi_v2.Services.Logistics
                     SourceStorageId = g.WarehouseStorageId,
                     CarrierStructureId = g.ConsumerStructureId,
                     Note = Cut($"Collection for {state.PlaceName(g.ConsumerStructureId)} (logistics run #{runId}).", TransportOrder.NoteMaxLength),
-                    Stops = new List<TransportStopRequestDto> { new() { StorageId = g.ConsumerStorageId, Lines = g.Order.Lines } },
+                    Stops = new List<TransportStopRequestDto> { new() { StorageId = g.ConsumerStorageId, Lines = g.Order.Lines
+                        .Select(l => new TransportLineRequestDto { ItemBlueprintId = l.ItemBlueprintId, Amount = l.Amount }).ToList() } },
                 }, TransportOrigin.Distribution, $"logistics:{runId}:{g.ConsumerStorageId}:{g.WarehouseStorageId}",
                     $"Collection (logistics run #{runId}): {string.Join(", ", lines)} from {state.WarehouseName(g.WarehouseId)} for {state.PlaceName(g.ConsumerStructureId)}.", ct);
                 g.Order.Warnings.AddRange(orderPlan.Warnings);
@@ -701,7 +705,8 @@ namespace knkwebapi_v2.Services.Logistics
                 }
                 dto.Entries.Add(new ServiceAreaEntryDto
                 {
-                    AreaKind = nameof(LogisticsAreaKind.Structure), StructureId = id, StructureName = place.Name, DistrictId = place.DistrictId,
+                    AreaKind = nameof(LogisticsAreaKind.Structure), StructureId = id, StructureName = place.Name, StructureType = state.StructureType(id),
+                    DistrictId = place.DistrictId,
                     WarehouseId = w?.Id, WarehouseName = w?.Name, Source = rule == null ? "Nearest" : "Rule", RuleId = rule?.Id,
                 });
             }
@@ -718,12 +723,14 @@ namespace knkwebapi_v2.Services.Logistics
             if (town.TownId == null)
             {
                 view.StructureName = await _db.Structures.AsNoTracking().Where(s => s.Id == structureId).Select(s => s.Name).FirstAsync(ct);
+                view.StructureType = (await LogisticsStructureTypes.ResolveAsync(_db, new[] { structureId }, ct)).GetValueOrDefault(structureId);
                 view.Warnings.Add("It has no town: no warehouse supplies it.");
                 return view;
             }
             var state = await LogisticsTownState.LoadAsync(_db, town.TownId.Value, Now, settings.Logistics!.ConsumptionWindowDays, ct);
             var place = state.Places[structureId];
             view.StructureName = place.Name;
+            view.StructureType = state.StructureType(structureId);
             view.HasWorkers = place.IsProduction && place.WorkersTotal > 0;
             view.WorkersTotal = place.WorkersTotal;
             view.WorkersPresent = place.WorkersPresent;

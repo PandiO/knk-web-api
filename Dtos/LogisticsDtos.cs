@@ -197,6 +197,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("warehouseStorage")] public NamedRefDto? WarehouseStorage { get; set; }
         [JsonPropertyName("consumerStructureId")] public int ConsumerStructureId { get; set; }
         [JsonPropertyName("consumerStructure")] public NamedRefDto? ConsumerStructure { get; set; }
+        /// <summary>The consumer's dashboard type: Shop, ProductionStructure, Warehouse, GateStructure or Structure (#928).</summary>
+        [JsonPropertyName("consumerStructureType")] public string? ConsumerStructureType { get; set; }
         [JsonPropertyName("consumerStorageId")] public int ConsumerStorageId { get; set; }
         [JsonPropertyName("consumerStorage")] public NamedRefDto? ConsumerStorage { get; set; }
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
@@ -224,7 +226,12 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("warehouseName")] public string? WarehouseName { get; set; }
         [JsonPropertyName("consumerStructureId")] public int ConsumerStructureId { get; set; }
         [JsonPropertyName("consumerStructureName")] public string? ConsumerStructureName { get; set; }
+        /// <summary>Shop, ProductionStructure, Warehouse, GateStructure or Structure (#928).</summary>
+        [JsonPropertyName("consumerStructureType")] public string? ConsumerStructureType { get; set; }
         [JsonPropertyName("consumerStorageId")] public int ConsumerStorageId { get; set; }
+        [JsonPropertyName("consumerStorageName")] public string? ConsumerStorageName { get; set; }
+        [JsonPropertyName("warehouseStorageId")] public int WarehouseStorageId { get; set; }
+        [JsonPropertyName("warehouseStorageName")] public string? WarehouseStorageName { get; set; }
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
         [JsonPropertyName("itemBlueprintName")] public string? ItemBlueprintName { get; set; }
         [JsonPropertyName("amount")] public long Amount { get; set; }
@@ -247,6 +254,8 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("consumerStructureId")] public int ConsumerStructureId { get; set; }
         [JsonPropertyName("consumerStructureName")] public string? ConsumerStructureName { get; set; }
+        /// <summary>Shop, ProductionStructure, Warehouse, GateStructure or Structure (#928).</summary>
+        [JsonPropertyName("consumerStructureType")] public string? ConsumerStructureType { get; set; }
         [JsonPropertyName("consumerStorageId")] public int ConsumerStorageId { get; set; }
         [JsonPropertyName("consumerStorageName")] public string? ConsumerStorageName { get; set; }
         [JsonPropertyName("itemBlueprintId")] public int ItemBlueprintId { get; set; }
@@ -274,16 +283,27 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("consumerStructureId")] public int ConsumerStructureId { get; set; }
         [JsonPropertyName("consumerStructureName")] public string? ConsumerStructureName { get; set; }
+        /// <summary>Shop, ProductionStructure, Warehouse, GateStructure or Structure (#928).</summary>
+        [JsonPropertyName("consumerStructureType")] public string? ConsumerStructureType { get; set; }
         [JsonPropertyName("consumerStorageId")] public int ConsumerStorageId { get; set; }
+        [JsonPropertyName("consumerStorageName")] public string? ConsumerStorageName { get; set; }
         [JsonPropertyName("warehouseId")] public int WarehouseId { get; set; }
         [JsonPropertyName("warehouseName")] public string? WarehouseName { get; set; }
         [JsonPropertyName("warehouseStorageId")] public int WarehouseStorageId { get; set; }
-        [JsonPropertyName("lines")] public List<TransportLineRequestDto> Lines { get; set; } = new();
+        [JsonPropertyName("warehouseStorageName")] public string? WarehouseStorageName { get; set; }
+        /// <summary>The lines carried (a transport line request with the blueprint's name, #928).</summary>
+        [JsonPropertyName("lines")] public List<LogisticsPlannedOrderLineDto> Lines { get; set; } = new();
         [JsonPropertyName("carrierCapacity")] public long CarrierCapacity { get; set; }
         [JsonPropertyName("workersPresent")] public int WorkersPresent { get; set; }
         [JsonPropertyName("workersTotal")] public int WorkersTotal { get; set; }
         [JsonPropertyName("transportOrderId")] public int? TransportOrderId { get; set; }
         [JsonPropertyName("warnings")] public List<string> Warnings { get; set; } = new();
+    }
+
+    /// <summary>A collection order line: the transport line request plus the blueprint's name (#928).</summary>
+    public class LogisticsPlannedOrderLineDto : TransportLineRequestDto
+    {
+        [JsonPropertyName("itemBlueprintName")] public string? ItemBlueprintName { get; set; }
     }
 
     public class LogisticsReleasedDto
@@ -419,6 +439,8 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("districtName")] public string? DistrictName { get; set; }
         [JsonPropertyName("structureId")] public int? StructureId { get; set; }
         [JsonPropertyName("structureName")] public string? StructureName { get; set; }
+        /// <summary>Structure entries: Shop, ProductionStructure, Warehouse, GateStructure or Structure (#928).</summary>
+        [JsonPropertyName("structureType")] public string? StructureType { get; set; }
         [JsonPropertyName("warehouseId")] public int? WarehouseId { get; set; }
         [JsonPropertyName("warehouseName")] public string? WarehouseName { get; set; }
         /// <summary>Rule (a ServiceArea rule) or Nearest (the default: nearest warehouse by road).</summary>
@@ -463,6 +485,8 @@ namespace knkwebapi_v2.Dtos
     {
         [JsonPropertyName("structureId")] public int StructureId { get; set; }
         [JsonPropertyName("structureName")] public string? StructureName { get; set; }
+        /// <summary>Shop, ProductionStructure, Warehouse, GateStructure or Structure (#928).</summary>
+        [JsonPropertyName("structureType")] public string? StructureType { get; set; }
         [JsonPropertyName("townId")] public int? TownId { get; set; }
         [JsonPropertyName("isConsumer")] public bool IsConsumer { get; set; }
         [JsonPropertyName("hasWorkers")] public bool HasWorkers { get; set; }
@@ -475,5 +499,27 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("storages")] public List<ConsumerStorageViewDto> Storages { get; set; } = new();
         [JsonPropertyName("openReservations")] public List<LogisticsReservationListDto> OpenReservations { get; set; } = new();
         [JsonPropertyName("warnings")] public List<string> Warnings { get; set; } = new();
+    }
+
+    // ================= Town logistics profile (#928 point 1) =================
+
+    /// <summary>
+    /// A town's size and specialization, the labels the default policy templates key on (TOWN_LOGISTICS § 4.1, D-L3), and
+    /// the template that fits them best. <c>PUT</c>: a null field is left as it is, an empty string clears it.
+    /// </summary>
+    public class TownLogisticsProfileDto
+    {
+        [JsonPropertyName("townId")] public int TownId { get; set; }
+        [JsonPropertyName("townName")] public string? TownName { get; set; }
+        /// <summary>Village, Town or City; null = not set.</summary>
+        [JsonPropertyName("townSize")] public string? TownSize { get; set; }
+        /// <summary>A resource category (Crops, Wood, Stone, Ore, Fish, Flowers, Animals); null = general.</summary>
+        [JsonPropertyName("specialization")] public string? Specialization { get; set; }
+        /// <summary>The current template for this size and specialization: an exact match first, then the same size with a
+        /// general specialization, then the default template (read only).</summary>
+        [JsonPropertyName("suggestedTemplateId")] public int? SuggestedTemplateId { get; set; }
+        [JsonPropertyName("suggestedTemplateName")] public string? SuggestedTemplateName { get; set; }
+        /// <summary>Exact, Size, Default or None (read only).</summary>
+        [JsonPropertyName("suggestedTemplateMatch")] public string? SuggestedTemplateMatch { get; set; }
     }
 }

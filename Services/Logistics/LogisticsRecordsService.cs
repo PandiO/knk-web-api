@@ -68,6 +68,7 @@ namespace knkwebapi_v2.Services.Logistics
                 WarehouseId = r.WarehouseId, Warehouse = new NamedRefDto { Id = r.WarehouseId, Name = r.Warehouse.Name },
                 WarehouseStorageId = r.WarehouseStorageId, WarehouseStorage = new NamedRefDto { Id = r.WarehouseStorageId, Name = r.WarehouseStorage.Name },
                 ConsumerStructureId = r.ConsumerStructureId, ConsumerStructure = new NamedRefDto { Id = r.ConsumerStructureId, Name = r.ConsumerStructure.Name },
+                ConsumerStructureType = (await LogisticsStructureTypes.ResolveAsync(_db, new[] { r.ConsumerStructureId }, ct)).GetValueOrDefault(r.ConsumerStructureId),
                 ConsumerStorageId = r.ConsumerStorageId, ConsumerStorage = new NamedRefDto { Id = r.ConsumerStorageId, Name = r.ConsumerStorage.Name },
                 ItemBlueprintId = r.ItemBlueprintId, ItemBlueprint = new NamedRefDto { Id = r.ItemBlueprintId, Name = r.ItemBlueprint.Name },
                 Amount = r.Amount, Collected = r.Collected, Status = r.Status.ToString(), PriorityClass = r.PriorityClass.ToString(),
@@ -80,7 +81,14 @@ namespace knkwebapi_v2.Services.Logistics
             q.OrderByDescending(r => r.Id).Select(r => new LogisticsReservationListDto
             {
                 Id = r.Id, TownId = r.TownId, TownName = r.Town.Name, WarehouseId = r.WarehouseId, WarehouseName = r.Warehouse.Name,
-                ConsumerStructureId = r.ConsumerStructureId, ConsumerStructureName = r.ConsumerStructure.Name, ConsumerStorageId = r.ConsumerStorageId,
+                ConsumerStructureId = r.ConsumerStructureId, ConsumerStructureName = r.ConsumerStructure.Name,
+                ConsumerStructureType = r.ConsumerStructure is Shop ? LogisticsStructureTypes.Shop
+                    : r.ConsumerStructure is ProductionStructure ? LogisticsStructureTypes.ProductionStructure
+                    : r.ConsumerStructure is Warehouse ? LogisticsStructureTypes.Warehouse
+                    : r.ConsumerStructure is GateStructure ? LogisticsStructureTypes.GateStructure
+                    : LogisticsStructureTypes.Structure,
+                ConsumerStorageId = r.ConsumerStorageId, ConsumerStorageName = r.ConsumerStorage.Name,
+                WarehouseStorageId = r.WarehouseStorageId, WarehouseStorageName = r.WarehouseStorage.Name,
                 ItemBlueprintId = r.ItemBlueprintId, ItemBlueprintName = r.ItemBlueprint.Name, Amount = r.Amount, Collected = r.Collected,
                 Status = r.Status.ToString(), PriorityClass = r.PriorityClass.ToString(), TransportOrderId = r.TransportOrderId,
                 CreatedAt = r.CreatedAt, ExpiresAt = r.ExpiresAt,
@@ -140,6 +148,7 @@ namespace knkwebapi_v2.Services.Logistics
             var names = await _db.Structures.AsNoTracking().Where(s => structureIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
             var storageIds = run.Entries.Select(e => e.ConsumerStorageId).Distinct().ToList();
             var storages = await _db.Storages.AsNoTracking().Where(s => storageIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
+            var types = await LogisticsStructureTypes.ResolveAsync(_db, run.Entries.Select(e => e.ConsumerStructureId), ct);
             var blueprintIds = run.Entries.Select(e => e.ItemBlueprintId).Distinct().ToList();
             var items = await _db.ItemBlueprints.AsNoTracking().Where(b => blueprintIds.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name, ct);
             return new LogisticsPlannerRunDto
@@ -152,6 +161,7 @@ namespace knkwebapi_v2.Services.Logistics
                 Entries = run.Entries.OrderBy(e => e.Id).Select(e => new LogisticsPlanEntryDto
                 {
                     ConsumerStructureId = e.ConsumerStructureId, ConsumerStructureName = names.GetValueOrDefault(e.ConsumerStructureId),
+                    ConsumerStructureType = types.GetValueOrDefault(e.ConsumerStructureId),
                     ConsumerStorageId = e.ConsumerStorageId, ConsumerStorageName = storages.GetValueOrDefault(e.ConsumerStorageId),
                     ItemBlueprintId = e.ItemBlueprintId, ItemBlueprintName = items.GetValueOrDefault(e.ItemBlueprintId),
                     WarehouseId = e.WarehouseId, WarehouseName = e.WarehouseId is { } w ? names.GetValueOrDefault(w) : null,

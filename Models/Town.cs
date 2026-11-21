@@ -42,6 +42,15 @@ public class Town : Domain
     /// <summary>Admin-set power (V1). Range = base range + power × factor (game settings, G11).</summary>
     public int Power { get; set; }
 
+    // ===== Town logistics (PandiO/knk-workspace#928, TOWN_LOGISTICS § 4.1) =====
+
+    /// <summary>The town's size label (Village, Town or City), the one the default policy templates key on; null = not
+    /// set. Read and set through <c>api/LogisticsPolicies/towns/{townId}/profile</c>, not the town form.</summary>
+    public knkwebapi_v2.Enums.LogisticsTownSize? LogisticsTownSize { get; set; }
+
+    /// <summary>The town's specialization (a resource category, concept L144); null = general.</summary>
+    public knkwebapi_v2.Enums.ResourceCategory? LogisticsSpecialization { get; set; }
+
     [NavigationPair(nameof(Districts))]
     [RelatedEntityField(typeof(District))]
     public ICollection<District> Districts { get; set; } = new Collection<District>();

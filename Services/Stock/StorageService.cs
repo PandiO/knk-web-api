@@ -166,6 +166,14 @@ namespace knkwebapi_v2.Services.Stock
             if (Filter(query, "purpose") is { } purposeText && Enum.TryParse<StoragePurpose>(purposeText, true, out var purpose))
                 q = q.Where(s => s.Purpose == purpose);
             if (TerritoryPaging.IntFilter(query, "domainId") is { } domainId) q = q.Where(s => s.DomainId == domainId);
+            // #928: storages held by the town, one of its districts or a structure in it (in a district or rural).
+            if (TerritoryPaging.IntFilter(query, "townId") is { } townId)
+            {
+                var districtIds = _db.Districts.Where(d => d.TownId == townId).Select(d => d.Id);
+                var structureIds = _db.Structures.Where(x => x.TownId == townId || (x.District != null && x.District.TownId == townId)).Select(x => x.Id);
+                q = q.Where(s => s.DomainId != null
+                    && (s.DomainId == townId || districtIds.Contains(s.DomainId.Value) || structureIds.Contains(s.DomainId.Value)));
+            }
             if (TerritoryPaging.IntFilter(query, "userId") is { } userId) q = q.Where(s => s.UserId == userId);
             if (TerritoryPaging.IntFilter(query, "clanId") is { } clanId) q = q.Where(s => s.ClanId == clanId);
             if (Filter(query, "locked") is { } lockedText && bool.TryParse(lockedText, out var locked))

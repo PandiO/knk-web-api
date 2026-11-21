@@ -82,6 +82,8 @@ namespace knkwebapi_v2.Services.Logistics
         /// <summary>(storage, blueprint) → amount, for warehouse and consumer storages.</summary>
         public Dictionary<(int Storage, int Blueprint), long> Stock { get; init; } = new();
         public Dictionary<int, LogisticsPlace> Places { get; init; } = new();
+        /// <summary>Structure → its dashboard type (Shop, ProductionStructure, Warehouse, GateStructure, Structure; #928).</summary>
+        public Dictionary<int, string> StructureTypes { get; init; } = new();
         /// <summary>Consumer storages: (storage id, structure id, purpose).</summary>
         public List<(int StorageId, int StructureId, StoragePurpose Purpose)> ConsumerStorages { get; init; } = new();
         public List<LogisticsReservation> OpenReservations { get; init; } = new();
@@ -143,6 +145,8 @@ namespace knkwebapi_v2.Services.Logistics
                 return new LogisticsPlace(s.Id, s.Name, s.DistrictId, p != null, p?.ProductionKindId, p?.WorkersTotal ?? 0, p?.WorkersPresent ?? 0,
                     p?.TransportCapacity, p?.RoadConnection);
             });
+
+            var structureTypes = await LogisticsStructureTypes.ResolveAsync(db, structureIds, ct);
 
             var storages = await db.Storages.AsNoTracking()
                 .Where(s => s.Kind == StorageKind.Domain && s.DomainId != null && structureIds.Contains(s.DomainId.Value))
@@ -218,6 +222,7 @@ namespace knkwebapi_v2.Services.Logistics
                 StorageNames = storages.ToDictionary(s => s.Id, s => s.Name),
                 Stock = stock,
                 Places = places,
+                StructureTypes = structureTypes,
                 ConsumerStorages = consumerStorages,
                 OpenReservations = open,
                 InboundLines = inbound,
@@ -250,6 +255,8 @@ namespace knkwebapi_v2.Services.Logistics
         }
 
         public string ItemName(int id) => Items.TryGetValue(id, out var i) ? i.Name : $"blueprint {id}";
+
+        public string StructureType(int id) => StructureTypes.GetValueOrDefault(id) ?? LogisticsStructureTypes.Structure;
 
         public string PlaceName(int id) => Places.TryGetValue(id, out var p) ? p.Name : $"structure {id}";
 
