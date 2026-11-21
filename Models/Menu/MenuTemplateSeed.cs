@@ -709,6 +709,10 @@ public static partial class MenuTemplateSeed
         // Production menus (PandiO/knk-workspace#683, P6a) - see MenuTemplateSeed.Production.cs.
         foreach (var template in ProductionTemplates())
             yield return template;
+
+        // Shop menus (PandiO/knk-workspace#687, P10b) - see MenuTemplateSeed.Shops.cs.
+        foreach (var template in ShopTemplates())
+            yield return template;
     }
 
     /// <summary>
