@@ -73,6 +73,10 @@ public class MenuTemplateContentSeedTests
         MenuTemplateSeed.StructuresOverviewMenuKey,
         MenuTemplateSeed.StructureMenuKey,
         MenuTemplateSeed.StructureOrdersMenuKey,
+        // Shop menus (P10b, PandiO/knk-workspace#687); the plugin side is ShopMenuFeature.
+        MenuTemplateSeed.ShopMenuKey,
+        MenuTemplateSeed.ShopItemMenuKey,
+        MenuTemplateSeed.ShopConfirmMenuKey,
     };
 
     public static TheoryData<string> ContentKeys()
