@@ -29,6 +29,7 @@ namespace knkwebapi_v2.Services.Territory
             dto.Transport ??= new ProductionTransportSettingsDto();
             dto.Delivery ??= new ProductionDeliverySettingsDto();
             dto.Harvest ??= new ProductionHarvestSettingsDto();
+            dto.Logistics ??= new ProductionLogisticsSettingsDto();
             return dto;
         }
 
@@ -42,7 +43,33 @@ namespace knkwebapi_v2.Services.Territory
             Transport = ValidateTransport(dto.Transport ?? stored?.Transport),
             Delivery = ValidateDelivery(dto.Delivery ?? stored?.Delivery),
             Harvest = ValidateHarvest(dto.Harvest ?? stored?.Harvest),
+            Logistics = ValidateLogistics(dto.Logistics ?? stored?.Logistics),
         };
+
+        private static ProductionLogisticsSettingsDto ValidateLogistics(ProductionLogisticsSettingsDto? l)
+        {
+            l ??= new ProductionLogisticsSettingsDto();
+            const string p = "production.logistics.";
+            if (l.PlannerIntervalMinutes is < 1 or > 1440)
+                throw new System.ArgumentException($"{p}plannerIntervalMinutes must be 1 to 1440.");
+            if (l.ReservationMinutes is < 1 or > 10_080)
+                throw new System.ArgumentException($"{p}reservationMinutes must be 1 to 10080.");
+            if (l.ConsumptionWindowDays is < 1 or > 90)
+                throw new System.ArgumentException($"{p}consumptionWindowDays must be 1 to 90.");
+            if (l.DefaultReorderHours is < 0 or > 720 || l.DefaultTargetHours is <= 0 or > 720 || l.DefaultTargetHours < l.DefaultReorderHours)
+                throw new System.ArgumentException($"{p}defaultReorderHours (0 to 720) must be at most defaultTargetHours (above 0, at most 720).");
+            if (l.RunRetentionDays is < 1 or > 365)
+                throw new System.ArgumentException($"{p}runRetentionDays must be 1 to 365.");
+            return new ProductionLogisticsSettingsDto
+            {
+                PlannerIntervalMinutes = l.PlannerIntervalMinutes,
+                ReservationMinutes = l.ReservationMinutes,
+                ConsumptionWindowDays = l.ConsumptionWindowDays,
+                DefaultReorderHours = l.DefaultReorderHours,
+                DefaultTargetHours = l.DefaultTargetHours,
+                RunRetentionDays = l.RunRetentionDays,
+            };
+        }
 
         private static ProductionHarvestSettingsDto ValidateHarvest(ProductionHarvestSettingsDto? h)
         {

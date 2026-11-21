@@ -3697,6 +3697,114 @@ public partial class KnKDbContext : DbContext
         });
         // ---- end player harvesting ----
 
+        // ---- Town logistics P9 (PandiO/knk-workspace#127, TOWN_LOGISTICS.md § 2-5), one contiguous block ----
+        // Versioned policies with their rules, consumer replenishment settings, reservations, planner runs and their
+        // explanations. No DbSet properties (coordinator note): use Set<LogisticsPolicy>() and so on. Rules go with their
+        // version (Cascade); everything a rule or setting points at is Restrict (409: change the rule first). A
+        // reservation keeps its town, warehouse, storages and order (Restrict); run entries are a log with plain ids.
+        modelBuilder.Entity<LogisticsPolicy>(entity =>
+        {
+            entity.ToTable("logistics_policies");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(LogisticsPolicy.NameMaxLength);
+            entity.Property(e => e.Scope).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Specialization).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.TownSize).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Author).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.CurrentKey).HasMaxLength(LogisticsPolicy.CurrentKeyMaxLength);
+            entity.Property(e => e.Reason).HasMaxLength(LogisticsPolicy.ReasonMaxLength);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.SupersededAt).HasColumnType("datetime(6)");
+            entity.Ignore(e => e.IsCurrent);
+            entity.HasIndex(e => e.CurrentKey).IsUnique();
+            entity.HasIndex(e => new { e.LineageId, e.Version }).IsUnique();
+            entity.HasIndex(e => new { e.Scope, e.TownId });
+            entity.HasOne(e => e.Town).WithMany().HasForeignKey(e => e.TownId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<LogisticsRule>(entity =>
+        {
+            entity.ToTable("logistics_rules");
+            entity.Property(e => e.Type).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Scope).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.TargetKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.ConsumerKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.AreaKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.PriorityClass).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Author).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.DaysOfCover).HasPrecision(9, 3);
+            entity.Property(e => e.Reason).HasMaxLength(LogisticsRule.ReasonMaxLength);
+            entity.Property(e => e.ActiveFrom).HasColumnType("datetime(6)");
+            entity.Property(e => e.ActiveUntil).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.LogisticsPolicyId, e.Sequence });
+            entity.HasOne(e => e.LogisticsPolicy).WithMany(p => p.Rules).HasForeignKey(e => e.LogisticsPolicyId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Category).WithMany().HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Tag).WithMany().HasForeignKey(e => e.TagId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Structure).WithMany().HasForeignKey(e => e.StructureId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ProductionKind).WithMany().HasForeignKey(e => e.ProductionKindId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.District).WithMany().HasForeignKey(e => e.DistrictId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ConsumerReplenishment>(entity =>
+        {
+            entity.ToTable("consumer_replenishments");
+            entity.Property(e => e.PriorityClass).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Note).HasMaxLength(ConsumerReplenishment.NoteMaxLength);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.StorageId, e.ItemBlueprintId }).IsUnique();
+            entity.HasIndex(e => e.StructureId);
+            entity.HasOne(e => e.Storage).WithMany().HasForeignKey(e => e.StorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Structure).WithMany().HasForeignKey(e => e.StructureId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<LogisticsReservation>(entity =>
+        {
+            entity.ToTable("logistics_reservations");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.PriorityClass).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.OpenKey).HasMaxLength(LogisticsReservation.OpenKeyMaxLength);
+            entity.Property(e => e.Explanation).HasMaxLength(LogisticsReservation.ReasonMaxLength);
+            entity.Property(e => e.StatusReason).HasMaxLength(LogisticsReservation.ReasonMaxLength);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ExpiresAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ClosedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.OpenKey).IsUnique();
+            entity.HasIndex(e => new { e.TownId, e.Status });
+            entity.HasIndex(e => new { e.WarehouseStorageId, e.ItemBlueprintId, e.Status });
+            entity.HasIndex(e => new { e.ConsumerStructureId, e.Status });
+            entity.HasOne(e => e.Town).WithMany().HasForeignKey(e => e.TownId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.WarehouseStorage).WithMany().HasForeignKey(e => e.WarehouseStorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ConsumerStructure).WithMany().HasForeignKey(e => e.ConsumerStructureId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ConsumerStorage).WithMany().HasForeignKey(e => e.ConsumerStorageId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ItemBlueprint).WithMany().HasForeignKey(e => e.ItemBlueprintId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.TransportOrder).WithMany().HasForeignKey(e => e.TransportOrderId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<LogisticsPlannerRun>(entity =>
+        {
+            entity.ToTable("logistics_planner_runs");
+            entity.Property(e => e.Trigger).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Summary).HasMaxLength(LogisticsPlannerRun.SummaryMaxLength);
+            entity.Property(e => e.StartedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.FinishedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.TownId, e.StartedAt });
+            entity.HasIndex(e => e.StartedAt);
+            entity.HasOne(e => e.Town).WithMany().HasForeignKey(e => e.TownId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<LogisticsPlanEntry>(entity =>
+        {
+            entity.ToTable("logistics_plan_entries");
+            entity.Property(e => e.PriorityClass).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Outcome).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.RuleIds).HasMaxLength(LogisticsPlanEntry.RuleIdsMaxLength);
+            entity.Property(e => e.Explanation).IsRequired().HasMaxLength(LogisticsPlanEntry.ExplanationMaxLength);
+            entity.HasIndex(e => new { e.ConsumerStructureId, e.ItemBlueprintId });
+            entity.HasOne(e => e.LogisticsPlannerRun).WithMany(r => r.Entries).HasForeignKey(e => e.LogisticsPlannerRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        // ---- end town logistics ----
+
         OnModelCreatingPartial(modelBuilder);
     }
 

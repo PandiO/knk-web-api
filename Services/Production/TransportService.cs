@@ -29,6 +29,13 @@ namespace knkwebapi_v2.Services.Production
         /// <summary>What <see cref="CreateAsync"/> would do, without writing anything.</summary>
         Task<TransportPlanDto> DryRunAsync(TransportOrderCreateDto dto, CancellationToken ct = default);
 
+        /// <summary>A server-planned order (P9 collection orders, origin <see cref="TransportOrigin.Distribution"/>) inside
+        /// the caller's transaction: the same plan checks as a manual order, and <paramref name="clientKey"/> makes a
+        /// replay return the first order. Returns null with the plan's errors when the plan is not valid. Clears the
+        /// change tracker (save your own changes first).</summary>
+        Task<(int? OrderId, TransportPlanDto Plan)> CreatePlannedAsync(TransportOrderCreateDto dto, TransportOrigin origin, string clientKey,
+            string createdMessage, CancellationToken ct = default);
+
         /// <summary>Cancels an order: before loading it ends Cancelled; a loaded order turns back and returns its cargo
         /// (it ends Returned). 409 (<see cref="InvalidOperationException"/>) when final or already returning.</summary>
         Task<TransportOrderDto> CancelAsync(int id, int? actorUserId, string? reason, CancellationToken ct = default);
@@ -427,6 +434,23 @@ namespace knkwebapi_v2.Services.Production
                 id = winner.Value;
             }
             return (await GetByIdAsync(id, ct))!;
+        }
+
+        public async Task<(int? OrderId, TransportPlanDto Plan)> CreatePlannedAsync(TransportOrderCreateDto dto, TransportOrigin origin,
+            string clientKey, string createdMessage, CancellationToken ct = default)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+            if (string.IsNullOrWhiteSpace(clientKey) || clientKey.Length > TransportOrder.ClientKeyMaxLength)
+                throw new ArgumentException($"A planned order needs a clientKey of at most {TransportOrder.ClientKeyMaxLength} characters.");
+            var settings = (await _settings.GetAsync()).Transport!;
+            var (plan, ctx) = await PlanAsync(dto, settings, manual: false, ct);
+            if (await _db.TransportOrders.AsNoTracking().Where(o => o.ClientKey == clientKey).Select(o => (int?)o.Id).FirstOrDefaultAsync(ct) is { } existing)
+                return (existing, plan);
+            if (ctx == null) return (null, plan);
+            ctx.Origin = origin;
+            var now = Now;
+            int id = await InsertAsync(ctx, plan, now, now, null, dto.Note?.Trim(), clientKey, createdMessage, ct);
+            return (id, plan);
         }
 
         private async Task<int> InsertAsync(PlanContext ctx, TransportPlanDto plan, DateTime now, DateTime executeAfter,
@@ -1167,6 +1191,17 @@ namespace knkwebapi_v2.Services.Production
                     var room = await _routes.RoomAsync(w.DefaultStorageId!.Value, ct);
                     var d = await _routes.DistanceAsync(p.Id, w.Id, settings, ct);
                     candidates.Add((w, room == null || room >= need, d.Source == TransportDistanceSource.Lane, d.Blocks));
+                }
+                // Town logistics P9 (#127, TOWN_LOGISTICS § 4 "service area / routing"): without a preferred warehouse, the
+                // warehouse of the producer's service area takes the delivery when it has room.
+                if (p.WarehousePreference != WarehousePreference.Preferred && candidates.Count > 0)
+                {
+                    var rules = await knkwebapi_v2.Services.Logistics.LogisticsRuleSet.LoadAsync(_db, town, Now, ct);
+                    var area = rules.ServiceAreaFor(p.Id, p.DistrictId);
+                    var c = candidates.FirstOrDefault(x => area != null && x.W.Id == area.WarehouseId);
+                    if (c.W != null && c.Fits) target = c.W;
+                    else if (area != null)
+                        view.Warnings.Add("The warehouse of its service area can't take this delivery (not accepting, or full): the nearest one is used.");
                 }
                 if (p.WarehousePreference == WarehousePreference.Preferred && p.PreferredWarehouseId is { } pref)
                 {
