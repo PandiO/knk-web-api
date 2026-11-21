@@ -148,5 +148,17 @@ namespace knkwebapi_v2.Dtos
         /// warehouse.</summary>
         [JsonPropertyName("yieldSource")]
         public string? yieldSource { get; set; }
+
+        /// <summary>A shop's kind (#938): Trading or Processing; null for any other structure.</summary>
+        [JsonPropertyName("kind")]
+        public string? kind { get; set; }
+
+        /// <summary>A shop's type (#938); null for any other structure or a shop without a type.</summary>
+        [JsonPropertyName("shopTypeId")]
+        public int? shopTypeId { get; set; }
+
+        /// <summary>The shop type's name (#938), so the Shop dashboard shows it without a lookup per row.</summary>
+        [JsonPropertyName("shopTypeName")]
+        public string? shopTypeName { get; set; }
     }
 }

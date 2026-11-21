@@ -36,7 +36,10 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.level, o => o.Ignore())
                 .ForMember(d => d.productionEnabled, o => o.Ignore())
                 .ForMember(d => d.roadConnection, o => o.Ignore())
-                .ForMember(d => d.yieldSource, o => o.Ignore());
+                .ForMember(d => d.yieldSource, o => o.Ignore())
+                .ForMember(d => d.kind, o => o.Ignore())
+                .ForMember(d => d.shopTypeId, o => o.Ignore())
+                .ForMember(d => d.shopTypeName, o => o.Ignore());
 
             CreateMap<ProductionStructure, ProductionWorldListDto>()
                 .IncludeBase<Structure, StructureListDto>()
@@ -47,11 +50,17 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.level, o => o.MapFrom(s => s.Level))
                 .ForMember(d => d.productionEnabled, o => o.MapFrom(s => s.ProductionEnabled))
                 .ForMember(d => d.roadConnection, o => o.MapFrom(s => s.RoadConnection.ToString()))
-                .ForMember(d => d.yieldSource, o => o.MapFrom(s => s.YieldSource.ToString()));
+                .ForMember(d => d.yieldSource, o => o.MapFrom(s => s.YieldSource.ToString()))
+                .ForMember(d => d.kind, o => o.Ignore())
+                .ForMember(d => d.shopTypeId, o => o.Ignore())
+                .ForMember(d => d.shopTypeName, o => o.Ignore());
 
             // Shops P10 (#248): a TPT subtype of ProductionStructure.
             CreateMap<Shop, ProductionStructureDto>().IncludeBase<ProductionStructure, ProductionStructureDto>();
-            CreateMap<Shop, ProductionWorldListDto>().IncludeBase<ProductionStructure, ProductionWorldListDto>();
+            CreateMap<Shop, ProductionWorldListDto>().IncludeBase<ProductionStructure, ProductionWorldListDto>()
+                .ForMember(d => d.kind, o => o.MapFrom(s => s.Kind.ToString()))
+                .ForMember(d => d.shopTypeId, o => o.MapFrom(s => s.ShopTypeId))
+                .ForMember(d => d.shopTypeName, o => o.MapFrom(s => s.ShopType != null ? s.ShopType.Name : null));
             CreateMap<Shop, ShopDto>()
                 .IncludeBase<Structure, StructureDto>()
                 .ForMember(d => d.Kind, o => o.MapFrom(s => s.Kind.ToString()))

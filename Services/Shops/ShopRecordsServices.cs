@@ -466,13 +466,45 @@ namespace knkwebapi_v2.Services.Shops
                 ?? throw new KeyNotFoundException($"TownAccount with id {id} not found.");
             var q = _db.CurrencyEntries.AsNoTracking().Where(e => e.AccountKind == CurrencyAccountKind.Town && e.TownId == townId);
             int total = await q.CountAsync(ct);
-            var rows = await q.OrderByDescending(e => e.Id).Skip(ShopEnum.Skip(query)).Take(ShopEnum.Size(query))
-                .Select(e => new TownAccountEntryDto
+            var page = await q.OrderByDescending(e => e.Id).Skip(ShopEnum.Skip(query)).Take(ShopEnum.Size(query))
+                .Select(e => new
                 {
-                    EntryId = e.Id, TransactionPublicId = e.Transaction.PublicId, ReasonCode = e.Transaction.ReasonCode, Amount = e.Amount,
-                    BalanceBefore = e.BalanceBefore ?? 0, BalanceAfter = e.BalanceAfter ?? 0, SourceType = e.Transaction.SourceType,
-                    SourceRef = e.Transaction.SourceRef, UserId = e.Transaction.InitiatorUserId, CreatedAt = e.Transaction.CreatedAt,
+                    Row = new TownAccountEntryDto
+                    {
+                        EntryId = e.Id, TransactionPublicId = e.Transaction.PublicId, ReasonCode = e.Transaction.ReasonCode, Amount = e.Amount,
+                        BalanceBefore = e.BalanceBefore ?? 0, BalanceAfter = e.BalanceAfter ?? 0, SourceType = e.Transaction.SourceType,
+                        SourceRef = e.Transaction.SourceRef, UserId = e.Transaction.InitiatorUserId, CreatedAt = e.Transaction.CreatedAt,
+                    },
+                    e.Transaction.IdempotencyScope,
+                    e.Transaction.IdempotencyKey,
                 }).ToListAsync(ct);
+            var rows = page.Select(p => p.Row).ToList();
+
+            // The player's username (#938 point 2), one query per page.
+            var userIds = rows.Where(r => r.UserId.HasValue).Select(r => r.UserId!.Value).Distinct().ToList();
+            if (userIds.Count > 0)
+            {
+                var names = await _db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id))
+                    .Select(u => new { u.Id, u.Username }).ToDictionaryAsync(u => u.Id, u => u.Username, ct);
+                foreach (var r in rows)
+                    if (r.UserId.HasValue && names.TryGetValue(r.UserId.Value, out var name)) r.Username = name;
+            }
+
+            // A shop purchase or buy-back's stock transaction (#938 point 3): the trading service posts both legs under the
+            // same plugin idempotency key, the same join the trade stats use.
+            var keys = page.Where(p => p.IdempotencyScope == CurrencyIdempotencyScopes.Plugin && CurrencyReasons.IsTownReason(p.Row.ReasonCode))
+                .Select(p => p.IdempotencyKey).Distinct().ToList();
+            if (keys.Count > 0)
+            {
+                var stock = (await _db.StockTransactions.AsNoTracking()
+                        .Where(t => t.SourceType == ShopTradingService.StockSourceType && t.IdempotencyKey != null && keys.Contains(t.IdempotencyKey))
+                        .Select(t => new { t.Id, t.IdempotencyKey }).ToListAsync(ct))
+                    .GroupBy(t => t.IdempotencyKey!).ToDictionary(g => g.Key, g => g.Min(t => t.Id));
+                foreach (var p in page)
+                    if (p.IdempotencyScope == CurrencyIdempotencyScopes.Plugin && CurrencyReasons.IsTownReason(p.Row.ReasonCode)
+                        && stock.TryGetValue(p.IdempotencyKey, out var stockId))
+                        p.Row.StockTransactionId = stockId;
+            }
             return ShopEnum.Page(rows, total, query);
         }
     }
