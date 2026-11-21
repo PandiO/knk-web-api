@@ -550,6 +550,58 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("menu_condition_bindings", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ConsumerReplenishment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<string>("PriorityClass")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long>("ReorderPoint")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("StorageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StructureId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("TargetLevel")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("StructureId");
+
+                    b.HasIndex("StorageId", "ItemBlueprintId")
+                        .IsUnique();
+
+                    b.ToTable("consumer_replenishments", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.CurrencyAlert", b =>
                 {
                     b.Property<long>("Id")
@@ -3840,6 +3892,429 @@ namespace knkwebapi_v2.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("location_retention_settings", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsPlanEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("ConsumerStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ConsumerStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LogisticsPlannerRunId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("LogisticsReservationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("PriorityClass")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long>("ReorderPoint")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Reserved")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("RuleIds")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<long>("Shortfall")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Stock")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TargetLevel")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("TransportOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LogisticsPlannerRunId");
+
+                    b.HasIndex("ConsumerStructureId", "ItemBlueprintId");
+
+                    b.ToTable("logistics_plan_entries", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsPlannerRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DemandLines")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("LogisticsPolicyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrdersCreated")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PolicyVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReservationsCollected")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReservationsCreated")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReservationsReleased")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Shortfalls")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<int>("TownId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.HasIndex("TownId", "StartedAt");
+
+                    b.ToTable("logistics_planner_runs", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("BasedOnPolicyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CurrentKey")
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<bool>("IsDefaultTemplate")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("LineageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Specialization")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("SupersededAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("SupersededByPolicyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TownId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TownSize")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CurrentKey")
+                        .IsUnique();
+
+                    b.HasIndex("TownId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("LineageId", "Version")
+                        .IsUnique();
+
+                    b.HasIndex("Scope", "TownId");
+
+                    b.ToTable("logistics_policies", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsReservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("Collected")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ConsumerStorageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ConsumerStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Explanation")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OpenKey")
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<int?>("PlannerRunId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PriorityClass")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("TownId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TransportOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WarehouseStorageId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConsumerStorageId");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("OpenKey")
+                        .IsUnique();
+
+                    b.HasIndex("TransportOrderId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("ConsumerStructureId", "Status");
+
+                    b.HasIndex("TownId", "Status");
+
+                    b.HasIndex("WarehouseStorageId", "ItemBlueprintId", "Status");
+
+                    b.ToTable("logistics_reservations", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ActiveFrom")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ActiveUntil")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("AreaKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ConsumerKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<decimal?>("DaysOfCover")
+                        .HasPrecision(9, 3)
+                        .HasColumnType("decimal(9,3)");
+
+                    b.Property<int?>("DistrictId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LogisticsPolicyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PriorityClass")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int?>("ProductionKindId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<long?>("ReorderPoint")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StructureId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TagId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TargetKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long?>("TargetLevel")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<long?>("Units")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("DistrictId");
+
+                    b.HasIndex("ItemBlueprintId");
+
+                    b.HasIndex("ProductionKindId");
+
+                    b.HasIndex("StructureId");
+
+                    b.HasIndex("TagId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("LogisticsPolicyId", "Sequence");
+
+                    b.ToTable("logistics_rules", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LootboxClaim", b =>
@@ -11838,6 +12313,33 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("MenuItemTemplate");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.ConsumerReplenishment", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Storage", "Storage")
+                        .WithMany()
+                        .HasForeignKey("StorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Structure", "Structure")
+                        .WithMany()
+                        .HasForeignKey("StructureId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("Storage");
+
+                    b.Navigation("Structure");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.CurrencyEntry", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.CurrencyTransaction", "Transaction")
@@ -12609,6 +13111,163 @@ namespace knkwebapi_v2.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsPlanEntry", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.LogisticsPlannerRun", "LogisticsPlannerRun")
+                        .WithMany("Entries")
+                        .HasForeignKey("LogisticsPlannerRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LogisticsPlannerRun");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsPlannerRun", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Town", "Town")
+                        .WithMany()
+                        .HasForeignKey("TownId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Town");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsPolicy", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Town", "Town")
+                        .WithMany()
+                        .HasForeignKey("TownId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Town");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsReservation", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Storage", "ConsumerStorage")
+                        .WithMany()
+                        .HasForeignKey("ConsumerStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Structure", "ConsumerStructure")
+                        .WithMany()
+                        .HasForeignKey("ConsumerStructureId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Town", "Town")
+                        .WithMany()
+                        .HasForeignKey("TownId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.TransportOrder", "TransportOrder")
+                        .WithMany()
+                        .HasForeignKey("TransportOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Storage", "WarehouseStorage")
+                        .WithMany()
+                        .HasForeignKey("WarehouseStorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConsumerStorage");
+
+                    b.Navigation("ConsumerStructure");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("Town");
+
+                    b.Navigation("TransportOrder");
+
+                    b.Navigation("Warehouse");
+
+                    b.Navigation("WarehouseStorage");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsRule", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.District", "District")
+                        .WithMany()
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "ItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("ItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.LogisticsPolicy", "LogisticsPolicy")
+                        .WithMany("Rules")
+                        .HasForeignKey("LogisticsPolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionKind", "ProductionKind")
+                        .WithMany()
+                        .HasForeignKey("ProductionKindId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Structure", "Structure")
+                        .WithMany()
+                        .HasForeignKey("StructureId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Tag", "Tag")
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("knkwebapi_v2.Models.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Category");
+
+                    b.Navigation("District");
+
+                    b.Navigation("ItemBlueprint");
+
+                    b.Navigation("LogisticsPolicy");
+
+                    b.Navigation("ProductionKind");
+
+                    b.Navigation("Structure");
+
+                    b.Navigation("Tag");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LootboxClaim", b =>
@@ -14495,6 +15154,16 @@ namespace knkwebapi_v2.Migrations
             modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshot", b =>
                 {
                     b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsPlannerRun", b =>
+                {
+                    b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.LogisticsPolicy", b =>
+                {
+                    b.Navigation("Rules");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LootboxSpawnArea", b =>
