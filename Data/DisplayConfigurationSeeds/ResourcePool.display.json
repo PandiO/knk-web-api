@@ -1,0 +1,74 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "2489590f-14aa-5749-8873-4b910ad44448",
+  "entityTypeName": "ResourcePool",
+  "name": "ResourcePool - Default (seed v1)",
+  "description": "A production area's resource pool (player harvesting P8a, #685): units left now (regeneration included), capacity and regeneration. The structure's production view shows the pool factor per line.",
+  "sections": [
+    {
+      "sectionGuid": "d3e4b05e-1a4b-55ab-bd46-0acddb83b63b",
+      "sectionName": "Pool",
+      "description": "The area and its numbers.",
+      "fields": [
+        {
+          "fieldGuid": "c8489614-0d0b-58f3-b80f-e6f59aa4b689",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionArea",
+          "relatedEntityTypeName": "ProductionArea",
+          "label": "Production area",
+          "description": "The area.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "ff27b0ca-84ed-5f68-ba50-8a9b448c558a",
+          "fieldName": "Capacity",
+          "label": "Capacity",
+          "description": "The harvestable units.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "9af911fd-189a-56f7-9077-0d3ab7c6d3b9",
+          "fieldName": "Current",
+          "label": "Units left",
+          "description": "Now, regeneration included.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "3b73330e-1a25-5645-aa2a-103cdee9f76d",
+          "fieldName": "RegenPerHour",
+          "label": "Regeneration per hour",
+          "description": "Units added per hour.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "ae2582ca-cb58-560f-afe9-f11a8439621e",
+          "fieldName": "CapacityFromSurvey",
+          "label": "Capacity from surveys",
+          "description": "Each new survey sets the capacity.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "ecd75b68-dfaa-5e4b-b677-de365e4befd2",
+          "fieldName": "CapacitySurveyId",
+          "label": "Capacity survey",
+          "description": "The survey the capacity came from.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "80db741f-6b2d-5132-8f3f-282c79f354b3",
+          "fieldName": "LastRegenAt",
+          "label": "Last written",
+          "description": "When the units left were last stored.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "bc7f640b-48c4-5b6f-8379-e432c2f6d293",
+          "fieldName": "UpdatedAt",
+          "label": "Updated",
+          "description": "Last change.",
+          "fieldType": "DateTime"
+        }
+      ]
+    }
+  ]
+}

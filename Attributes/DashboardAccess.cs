@@ -356,6 +356,17 @@ namespace knkwebapi_v2.Attributes
             // Item delivery P7 (#60): deliveries are ledger-like records (made through api/ItemDeliveries, not edited).
             ViewOnly("ItemDelivery", DashboardArea.World, World),
             ViewOnly("ItemDeliveryLine", DashboardArea.World, World),
+            // Player harvesting P8a (#685): harvest rules per kind and one resource pool per area; the harvest history is
+            // written by the game server's reports (api/Harvest/reports), read only here.
+            Type("HarvestRule", DashboardArea.World, World,
+                Del<knkwebapi_v2.Services.Production.IHarvestRuleService>((s, id) => s.DeleteAsync(id)),
+                Lists<knkwebapi_v2.Services.Production.IHarvestRuleService, knkwebapi_v2.Dtos.HarvestRuleListDto>((s, q) => s.SearchAsync(q))),
+            Type("ResourcePool", DashboardArea.World, World,
+                Del<knkwebapi_v2.Services.Production.IResourcePoolService>((s, id) => s.DeleteAsync(id)),
+                Lists<knkwebapi_v2.Services.Production.IResourcePoolService, knkwebapi_v2.Dtos.ResourcePoolListDto>((s, q) => s.SearchAsync(q))),
+            Type("PlayerHarvest", DashboardArea.World, World, null,
+                Lists<knkwebapi_v2.Services.Production.IHarvestService, knkwebapi_v2.Dtos.PlayerHarvestListDto>((s, q) => s.SearchAsync(q)),
+                bulk: false),
             ViewOnly("GateBlockSnapshot", DashboardArea.World, World),
             ViewOnly("GateOpenedBlockSnapshot", DashboardArea.World, World),
 

@@ -2515,6 +2515,146 @@ namespace knkwebapi_v2.Migrations
                     b.ToTable("grades", (string)null);
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.HarvestAccrual", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("HarvestRuleId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TownAccrued")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("WorkerAccrued")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HarvestRuleId");
+
+                    b.HasIndex("UserId", "HarvestRuleId")
+                        .IsUnique();
+
+                    b.ToTable("harvest_accruals", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.HarvestRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<decimal>("FortuneBonusPerLevel")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<int?>("MinBlockAge")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MinTitleBracketId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MinToolTier")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Placeholder")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("PlaceholderMaterial")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<decimal>("PoolCost")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("ProductionKindId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RegenScalesWithPool")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("RegenSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequiredPermission")
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<string>("TargetKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("TargetsJson")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<string>("ToolClass")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<decimal>("WorkerShare")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<int>("YieldItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("YieldPerBreak")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MinTitleBracketId");
+
+                    b.HasIndex("YieldItemBlueprintId");
+
+                    b.HasIndex("ProductionKindId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("harvest_rules", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
                 {
                     b.Property<int>("Id")
@@ -4959,6 +5099,110 @@ namespace knkwebapi_v2.Migrations
                     b.UseTptMappingStrategy();
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerHarvest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Breaks")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FortuneLevel")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HarvestRuleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("HarvestedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .UseCollation("utf8mb4_bin");
+
+                    b.Property<int>("ItemBlueprintId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PoolAfter")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("PoolBefore")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("PoolCapacity")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("ProductionAreaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("RegenSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)");
+
+                    b.Property<string>("ShortfallReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<long>("TownAccepted")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("TownTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TownUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("WorkerShare")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<long?>("WorkerTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("WorkerUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("YieldUnits")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HarvestRuleId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("ProductionAreaId", "ReceivedAt");
+
+                    b.HasIndex("ProductionStructureId", "ReceivedAt");
+
+                    b.HasIndex("UserId", "ReceivedAt");
+
+                    b.ToTable("player_harvests", (string)null);
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.PlayerPvpKillPairDaily", b =>
                 {
                     b.Property<int>("KillerUserId")
@@ -5549,6 +5793,12 @@ namespace knkwebapi_v2.Migrations
                     b.Property<DateTime>("PeriodStart")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<decimal>("PoolFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)")
+                        .HasDefaultValue(1m);
+
                     b.Property<int>("ProductionLineId")
                         .HasColumnType("int");
 
@@ -5655,6 +5905,12 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<decimal>("PoolFloor")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)")
+                        .HasDefaultValue(0.5m);
+
                     b.Property<decimal>("PrimaryMultiplier")
                         .ValueGeneratedOnAdd()
                         .HasPrecision(12, 4)
@@ -5698,6 +5954,7 @@ namespace knkwebapi_v2.Migrations
                             Icon = "WHEAT",
                             IsActive = true,
                             Name = "Farm",
+                            PoolFloor = 0.5m,
                             PrimaryMultiplier = 1.5m,
                             ResourceCategory = "Crops",
                             SurveyProfileJson = "{\"unitTypes\":[\"CROP\"]}",
@@ -5718,6 +5975,7 @@ namespace knkwebapi_v2.Migrations
                             Icon = "IRON_AXE",
                             IsActive = true,
                             Name = "Logger",
+                            PoolFloor = 0.5m,
                             PrimaryMultiplier = 1.5m,
                             ResourceCategory = "Wood",
                             SurveyProfileJson = "{\"unitTypes\":[\"TREE\",\"SAPLING\"]}",
@@ -5738,6 +5996,7 @@ namespace knkwebapi_v2.Migrations
                             Icon = "STONE",
                             IsActive = true,
                             Name = "Quarry",
+                            PoolFloor = 0.5m,
                             PrimaryMultiplier = 1.5m,
                             ResourceCategory = "Stone",
                             SurveyProfileJson = "{\"unitTypes\":[\"BLOCK\"]}",
@@ -5758,6 +6017,7 @@ namespace knkwebapi_v2.Migrations
                             Icon = "IRON_PICKAXE",
                             IsActive = true,
                             Name = "Mine",
+                            PoolFloor = 0.5m,
                             PrimaryMultiplier = 1.5m,
                             ResourceCategory = "Ore",
                             SurveyProfileJson = "{\"unitTypes\":[\"BLOCK\"]}",
@@ -5778,6 +6038,7 @@ namespace knkwebapi_v2.Migrations
                             Icon = "FISHING_ROD",
                             IsActive = true,
                             Name = "Fishery",
+                            PoolFloor = 0.5m,
                             PrimaryMultiplier = 1.5m,
                             ResourceCategory = "Fish",
                             SurveyProfileJson = "{\"unitTypes\":[\"WATER\"]}",
@@ -5798,6 +6059,7 @@ namespace knkwebapi_v2.Migrations
                             Icon = "POPPY",
                             IsActive = true,
                             Name = "Flower farm",
+                            PoolFloor = 0.5m,
                             PrimaryMultiplier = 1.5m,
                             ResourceCategory = "Flowers",
                             SurveyProfileJson = "{\"unitTypes\":[\"FLOWER\"]}",
@@ -5818,6 +6080,7 @@ namespace knkwebapi_v2.Migrations
                             Icon = "SUNFLOWER",
                             IsActive = true,
                             Name = "Florist",
+                            PoolFloor = 0.5m,
                             PrimaryMultiplier = 1.5m,
                             ResourceCategory = "Flowers",
                             SurveyProfileJson = "{\"unitTypes\":[\"FLOWER\"]}",
@@ -5838,6 +6101,7 @@ namespace knkwebapi_v2.Migrations
                             Icon = "WHITE_WOOL",
                             IsActive = true,
                             Name = "Animal farm",
+                            PoolFloor = 0.5m,
                             PrimaryMultiplier = 1.5m,
                             ResourceCategory = "Animals",
                             SurveyProfileJson = "{\"unitTypes\":[\"ENTITY\"]}",
@@ -7178,6 +7442,57 @@ namespace knkwebapi_v2.Migrations
                     b.HasIndex("UserId", "RevokedAt");
 
                     b.ToTable("refresh_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ResourcePool", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Capacity")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<bool>("CapacityFromSurvey")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<long?>("CapacitySurveyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("Current")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateTime>("LastRegenAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ProductionAreaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductionStructureId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RegenPerHour")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductionAreaId")
+                        .IsUnique();
+
+                    b.HasIndex("ProductionStructureId");
+
+                    b.ToTable("resource_pools", (string)null);
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.RoadEdge", b =>
@@ -11884,6 +12199,43 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("GateDoor");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.HarvestAccrual", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.HarvestRule", "HarvestRule")
+                        .WithMany()
+                        .HasForeignKey("HarvestRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("HarvestRule");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.HarvestRule", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.TitleBracket", "MinTitleBracket")
+                        .WithMany()
+                        .HasForeignKey("MinTitleBracketId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("knkwebapi_v2.Models.ProductionKind", "ProductionKind")
+                        .WithMany("HarvestRules")
+                        .HasForeignKey("ProductionKindId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.ItemBlueprint", "YieldItemBlueprint")
+                        .WithMany()
+                        .HasForeignKey("YieldItemBlueprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MinTitleBracket");
+
+                    b.Navigation("ProductionKind");
+
+                    b.Navigation("YieldItemBlueprint");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Invitation", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.PermissionGroup", "GrantGroup")
@@ -12634,6 +12986,25 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Holder");
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.PlayerHarvest", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.HarvestRule", "HarvestRule")
+                        .WithMany()
+                        .HasForeignKey("HarvestRuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HarvestRule");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionArea", b =>
                 {
                     b.HasOne("knkwebapi_v2.Models.ProductionStructure", "ProductionStructure")
@@ -12818,6 +13189,17 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.ResourcePool", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.ProductionArea", "ProductionArea")
+                        .WithMany()
+                        .HasForeignKey("ProductionAreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductionArea");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.RoadEdge", b =>
@@ -14162,6 +14544,8 @@ namespace knkwebapi_v2.Migrations
 
             modelBuilder.Entity("knkwebapi_v2.Models.ProductionKind", b =>
                 {
+                    b.Navigation("HarvestRules");
+
                     b.Navigation("Levels");
 
                     b.Navigation("PrimaryOutputs");

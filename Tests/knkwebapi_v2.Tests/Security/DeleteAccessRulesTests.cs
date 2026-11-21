@@ -50,6 +50,8 @@ public class DeleteAccessRulesTests
         ["TransportLane"] = "TransportLanesController.Delete", // transport core P5 (#79)
         ["StorageContainer"] = "StorageContainersController.Delete", // terminals and menus P6a (#683)
         ["ProductionYieldOverride"] = "ProductionYieldOverridesController.Delete",
+        ["HarvestRule"] = "HarvestRulesController.Delete", // player harvesting P8a (#685)
+        ["ResourcePool"] = "ResourcePoolsController.Delete",
         ["ProductionModifier"] = "ProductionModifiersController.Delete",
         ["ClimateZone"] = "ClimateZonesController.Delete",
         ["WeatherType"] = "WeatherTypesController.Delete",

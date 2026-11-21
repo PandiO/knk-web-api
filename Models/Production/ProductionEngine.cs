@@ -12,7 +12,7 @@ namespace knkwebapi_v2.Models;
 /// <summary>
 /// A production kind (PRODUCTION_KINDS § 2): catalogue data, not a class per kind. Seeded with the V1 catalogue
 /// (§ 2.1, Hunter deferred, P-D10). Every kind has exactly ten <see cref="ProductionKindLevel"/>s (G8), created with
-/// it. The survey profile, yield table and primary outputs (Derived/Hybrid yields), harvest and regeneration rules come
+/// it. The survey profile, yield table and primary outputs (Derived/Hybrid yields), harvest rules (P8a) come
 /// with P4 and P8.
 /// </summary>
 [FormConfigurableEntity("ProductionKind")]
@@ -89,6 +89,17 @@ public class ProductionKind
 
     [RelatedEntityField(typeof(ProductionKindPrimaryOutput))]
     public ICollection<ProductionKindPrimaryOutput> PrimaryOutputs { get; set; } = new List<ProductionKindPrimaryOutput>();
+
+    // ---- Player harvesting P8a (PandiO/knk-workspace#685, PRODUCTION_KINDS § 6.3) ----
+
+    public const decimal DefaultPoolFloor = 0.5m;
+
+    /// <summary>The lowest pool factor (P-D6): <c>pool multiplier = floor + (1 − floor) × Current / Capacity</c>, so player
+    /// harvesting slows the structure but never stops it. 0-1, default 0.5.</summary>
+    public decimal PoolFloor { get; set; } = DefaultPoolFloor;
+
+    [RelatedEntityField(typeof(HarvestRule))]
+    public ICollection<HarvestRule> HarvestRules { get; set; } = new List<HarvestRule>();
 }
 
 /// <summary>
@@ -509,6 +520,9 @@ public class ProductionCycleRecord
     public int WorkersTotal { get; set; }
 
     public decimal WorkerFactor { get; set; }
+
+    /// <summary>The structure's ResourcePool factor at the settle (P8a, PRODUCTION_KINDS § 6.3); 1 without pools.</summary>
+    public decimal PoolFactor { get; set; } = 1m;
 
     public decimal EffectiveRatePerHour { get; set; }
 

@@ -408,3 +408,26 @@ its structure's district region (as P-1) or, for a rural structure, its town's t
 checked as a whole region, a Cuboid by its four corners, a Radius by its centre and the four points one radius away;
 a Polygon is not checked by this rule. The API also runs it on save and answers `placementWarnings`. GUIDs: as for the
 P6a seeds above.
+
+**Player harvesting P8a seeds (PandiO/knk-workspace#685, 2026-11-21):** two new seeds `HarvestRule` and `ResourcePool`
+with display seeds in `DisplayConfigurationSeeds/` (G17), and `ProductionKind` seed v3 (the pool floor). Import in any
+order.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `HarvestRule` | HarvestRule - Default (seed v1) | — |
+| `ResourcePool` | ResourcePool - Default (seed v1) | — |
+| `ProductionKind` | ProductionKind - Default (seed v3) | — (replaces v2) |
+
+`HarvestRule` has four steps: the kind and targets (a JSON list of material or entity names, `*` allowed at either
+end), who may harvest (permission node, lowest title, tool, tool tier, cooldown; the game server checks these), the
+yield (blueprint, units per break, fortune bonus, worker's share, pool cost) and the regeneration (placeholder,
+placeholder block, seconds, slower when the pool is low). `ResourcePool` names the area and, optionally, the capacity,
+units left and regeneration per hour; left empty, the capacity is the latest survey's total units (else the game
+setting `production.harvest.defaultPoolCapacity`). The first harvest in an area makes its pool, so a pool seed is only
+needed to set one up beforehand. `PlayerHarvest` (the harvest history) is read only and has a display seed only;
+`HarvestAccrual` (the unpaid fractions per player and rule) has no seed (a counter table, developer clarification
+2026-11-19). `ProductionKind` seed v3 adds "Pool floor" (`PoolFloor`, default 0.5) to the Yield step. GUIDs: the new
+seeds uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields uuid5(that, "step:"/"field:" + name);
+v3 uuid5(v2 configuration GUID, "seed-v3"), every kept step/field uuid5(v2 configuration GUID, its v2 GUID), the new
+field uuid5(v3 configuration GUID, "field:PoolFloor").

@@ -371,3 +371,13 @@ expiry times) with its lines as a collection (requested, inboxed, lost, claimed,
 player-facing views are API reads: `GET api/Inbox/{userId}` and `GET api/Inbox/{userId}/stash`. GUIDs: configuration
 uuid5(URL namespace, "knk-displayconfig:ItemDelivery:seed-v1"), sections uuid5(configuration, "section:<section>"),
 fields uuid5(configuration, "field:<section>:<label>").
+
+**Player harvesting P8a display seeds v1 (PandiO/knk-workspace#685, 2026-11-21):** `HarvestRule` (kind, targets, who
+may harvest, yield and split, regeneration), `ResourcePool` (area, capacity, units left now with regeneration,
+regeneration per hour, capacity from surveys) and `PlayerHarvest` (player, rule, breaks, the worker's and the town's
+units, what Output accepted, the pool before and after, the two stock transactions); and `ProductionKind` seed v3 (the
+pool floor). The net-output check of a rule is an API view, `GET api/HarvestRules/{id}/balance`, for the web app.
+GUIDs: configuration uuid5(URL namespace, "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(configuration,
+"section:<section>"), fields uuid5(configuration, "field:<section>:<field>[:<related property>]"); v3 as for v2
+(configuration uuid5(v2 configuration GUID, "seed-v3"), kept sections/fields uuid5(v2 configuration GUID, their v2
+GUID), the new field uuid5(v3 configuration GUID, "field:PoolFloor")).

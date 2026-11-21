@@ -192,4 +192,55 @@ public class ProductionAreaPlacementTests : IDisposable
         Assert.Empty(area.PlacementWarnings!);
         _territory.VerifyNoOtherCalls();
     }
+    // #900: a Polygon area is checked by each of its points (the API passes the saved area's points to the rule).
+    [Fact]
+    public async Task APolygonArea_IsCheckedByEachOfItsPoints()
+    {
+        await ImportSeedAsync();
+        var logger = await _y.LoggerAsync();
+        var asked = new List<(double, double)>();
+        _territory.Setup(t => t.IsLocationInsideAsync(TerritoryHolderKind.Town, Phoenix, It.IsAny<double>(), It.IsAny<double>(), It.IsAny<string?>()))
+            .Callback((TerritoryHolderKind _, int _, double x, double z, string? _) => asked.Add((x, z)))
+            .ReturnsAsync((TerritoryHolderKind _, int _, double x, double _, string? _) => x < 50);
+        List<AreaPointDto> Points(int far) => new()
+        {
+            new() { X = 0, Z = 0 }, new() { X = 20, Z = 0 }, new() { X = far, Z = 20 }, new() { X = 0, Z = 20 },
+        };
+
+        var inside = await _areas.CreateAsync(new ProductionAreaDto
+        {
+            ProductionStructureId = logger, Name = "Field", Shape = "Polygon", WorldName = "world", MinY = 60, MaxY = 70, Points = Points(30),
+        });
+        Assert.Empty(inside.PlacementWarnings!);
+        Assert.Equal(new List<(double, double)> { (0, 0), (20, 0), (30, 20), (0, 20) }, asked);
+
+        asked.Clear();
+        var outside = await _areas.CreateAsync(new ProductionAreaDto
+        {
+            ProductionStructureId = logger, Name = "Far field", Shape = "Polygon", WorldName = "world", MinY = 60, MaxY = 70, Points = Points(60),
+        });
+        Assert.Contains(outside.PlacementWarnings!, w => w.Contains("territory"));
+        Assert.Contains((60d, 20d), asked);
+
+        // A point moved back inside on update: no warning.
+        var updated = await _areas.UpdateAsync(outside.Id, new ProductionAreaDto { Points = Points(40) });
+        Assert.Empty(updated.PlacementWarnings!);
+    }
+
+    [Fact]
+    public void PolygonPoints_ReadsPointsJsonOrAPointsList_AndNeedsThree()
+    {
+        var fromJson = ProductionAreaPlacementValidator.PolygonPoints(new Dictionary<string, object>
+        {
+            ["PointsJson"] = "[{\"x\":1,\"z\":2},{\"x\":3,\"z\":4},{\"x\":5,\"z\":6}]",
+        });
+        Assert.Equal(new List<(double, double)> { (1, 2), (3, 4), (5, 6) }, fromJson);
+        var fromList = ProductionAreaPlacementValidator.PolygonPoints(new Dictionary<string, object>
+        {
+            ["points"] = new List<AreaPointDto> { new() { X = 1, Z = 1 }, new() { X = 2, Z = 1 }, new() { X = 2, Z = 2 } },
+        });
+        Assert.Equal(3, fromList!.Count);
+        Assert.Null(ProductionAreaPlacementValidator.PolygonPoints(new Dictionary<string, object> { ["PointsJson"] = "[{\"x\":1,\"z\":2}]" }));
+        Assert.Null(ProductionAreaPlacementValidator.PolygonPoints(new Dictionary<string, object> { ["PointsJson"] = "not json" }));
+    }
 }

@@ -148,9 +148,12 @@ namespace knkwebapi_v2.Services.Production
             if (!await _db.ProductionKinds.AnyAsync(k => k.Id == id)) throw new KeyNotFoundException($"ProductionKind with id {id} not found.");
             // A yield table, primary or level change applies from now (P4): settle the kind's survey-driven structures first.
             bool yieldChange = dto.YieldTable != null || dto.PrimaryOutputs != null || dto.PrimaryMultiplier.HasValue;
-            var surveyed = !yieldChange || _engine == null ? new List<int>()
+            // P8a (#685): a pool floor change applies from now too, to every structure of the kind (pools work on all sources).
+            bool floorChange = dto.PoolFloor.HasValue;
+            var surveyed = (!yieldChange && !floorChange) || _engine == null ? new List<int>()
                 : await _db.ProductionStructures.AsNoTracking()
-                    .Where(p => p.ProductionKindId == id && p.YieldSource != ProductionRateSource.Configured).Select(p => p.Id).ToListAsync();
+                    .Where(p => p.ProductionKindId == id && (floorChange || p.YieldSource != ProductionRateSource.Configured))
+                    .Select(p => p.Id).ToListAsync();
             foreach (var sid in surveyed) await _engine!.SettleStructureAsync(sid);
             _db.ChangeTracker.Clear();
             var kind = await _db.ProductionKinds.Include(k => k.YieldTable).Include(k => k.PrimaryOutputs).FirstAsync(k => k.Id == id);
@@ -230,6 +233,11 @@ namespace knkwebapi_v2.Services.Production
                     kind.SurveyProfileJson = profile;
                     if (kind.Id != 0) kind.SurveyProfileVersion++;
                 }
+            }
+            if (dto.PoolFloor.HasValue)
+            {
+                if (dto.PoolFloor.Value is < 0 or > 1) throw new ArgumentException("poolFloor must be 0 to 1 (P-D6: 0.5).");
+                kind.PoolFloor = Math.Round(dto.PoolFloor.Value, 6);
             }
             if (dto.PrimaryMultiplier.HasValue)
             {
@@ -343,6 +351,7 @@ namespace knkwebapi_v2.Services.Production
             SurveyProfileJson = k.SurveyProfileJson,
             SurveyProfileVersion = k.SurveyProfileVersion,
             PrimaryMultiplier = k.PrimaryMultiplier,
+            PoolFloor = k.PoolFloor,
             YieldTable = k.YieldTable.OrderBy(r => r.UnitKey).ThenBy(r => r.ItemBlueprintId).Select(r => new ProductionYieldRowDto
             {
                 Id = r.Id, UnitKey = r.UnitKey, ItemBlueprintId = r.ItemBlueprintId,

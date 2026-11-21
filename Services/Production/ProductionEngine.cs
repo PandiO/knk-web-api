@@ -159,18 +159,19 @@ namespace knkwebapi_v2.Services.Production
     }
 
     /// <summary>The rate formula (PRODUCTION_KINDS § 4.2, F8): additions to the base first, then multiplications, then
-    /// the built-in steps (unlock, workers; primary and pool come with P4 and P8). Never negative.</summary>
+    /// the built-in steps (unlock, pool, workers; primary is listed as a modifier, P4). Never negative.</summary>
     public static class ProductionRate
     {
         public const int Decimals = 6;
 
-        public static decimal Compute(decimal baseRate, IEnumerable<AppliedModifierDto> modifiers, decimal unlock, decimal workers)
+        public static decimal Compute(decimal baseRate, IEnumerable<AppliedModifierDto> modifiers, decimal unlock, decimal workers,
+            decimal pool = 1m)
         {
             var list = modifiers.ToList();
             decimal rate = baseRate;
             foreach (var m in list.Where(m => m.Effect == nameof(ProductionModifierEffect.Add))) rate += m.Value;
             foreach (var m in list.Where(m => m.Effect == nameof(ProductionModifierEffect.Multiply))) rate *= m.Value;
-            rate *= unlock * workers;
+            rate *= unlock * pool * workers;
             return rate < 0 ? 0 : Math.Round(rate, Decimals);
         }
 
@@ -363,7 +364,15 @@ namespace knkwebapi_v2.Services.Production
         };
 
         private sealed record RatePlan(decimal BaseRate, List<AppliedModifierDto> Modifiers, decimal Unlock, decimal Workers,
-            decimal Effective, int? UnlockLevel);
+            decimal Effective, int? UnlockLevel, decimal Pool);
+
+        /// <summary>The built-in pool step (P8a, PRODUCTION_KINDS § 6.3): the structure's pools' combined fill at
+        /// <paramref name="at"/> (regeneration included, nothing written), through the kind's floor; 1 without pools.</summary>
+        private async Task<decimal> PoolFactorAsync(ProductionStructure structure, DateTime at, CancellationToken ct)
+        {
+            var pools = await _db.Set<ResourcePool>().AsNoTracking().Where(p => p.ProductionStructureId == structure.Id).ToListAsync(ct);
+            return ResourcePoolMath.StructureFactor(pools, structure.ProductionKind?.PoolFloor ?? ProductionKind.DefaultPoolFloor, at);
+        }
 
         private async Task<RatePlan> PlanAsync(Loaded l, DateTime at, ProductionEngineSettingsDto settings, CancellationToken ct)
         {
@@ -375,7 +384,9 @@ namespace knkwebapi_v2.Services.Production
             int? unlockLevel = await UnlockLevelAsync(l.Structure.ProductionKindId, l.Line.ItemBlueprintId, ct);
             decimal unlock = unlockLevel.HasValue && l.Structure.Level < unlockLevel.Value ? 0m : 1m;
             decimal workers = ProductionRate.WorkerFactor(l.Structure.WorkersPresent, l.Structure.WorkersTotal);
-            return new RatePlan(baseRate, modifiers, unlock, workers, ProductionRate.Compute(baseRate, modifiers, unlock, workers), unlockLevel);
+            decimal pool = await PoolFactorAsync(l.Structure, at, ct);
+            return new RatePlan(baseRate, modifiers, unlock, workers, ProductionRate.Compute(baseRate, modifiers, unlock, workers, pool),
+                unlockLevel, pool);
         }
 
         /// <summary>The lowest level of the kind that lists the blueprint as an unlock; null = produced from level 1.</summary>
@@ -542,6 +553,7 @@ namespace knkwebapi_v2.Services.Production
             record.ModifiersJson = JsonSerializer.Serialize(plan.Modifiers, Json);
             record.UnlockFactor = plan.Unlock;
             record.WorkerFactor = plan.Workers;
+            record.PoolFactor = plan.Pool;
             record.EffectiveRatePerHour = plan.Effective;
 
             // Inputs, consumed while the line runs (scaled like the workers and the unlock).
@@ -710,6 +722,7 @@ namespace knkwebapi_v2.Services.Production
                     Modifiers = plan.Modifiers,
                     UnlockFactor = plan.Unlock,
                     WorkerFactor = plan.Workers,
+                    PoolFactor = plan.Pool,
                     EffectiveRatePerHour = plan.Effective,
                 };
                 if (!line.Enabled) lo.NotProducingReasons.Add("The line is paused.");
@@ -721,6 +734,8 @@ namespace knkwebapi_v2.Services.Production
                 else if (plan.Workers == 0m) lo.NotProducingReasons.Add($"All workers are away (0 of {structure.WorkersTotal} present).");
                 else if (plan.Workers < 1m)
                     lo.NotProducingReasons.Add($"Only {structure.WorkersPresent} of {structure.WorkersTotal} workers present: {plan.Workers * 100m:0.#}% output.");
+                if (plan.Pool < 1m)
+                    lo.NotProducingReasons.Add($"Player harvesting has drawn down the resource pool: {plan.Pool * 100m:0.#}% output until it regenerates.");
                 if (plan.BaseRate <= 0m) lo.NotProducingReasons.Add("The base rate is 0.");
                 else if (plan.Effective <= 0m && plan.Unlock > 0m && plan.Workers > 0m)
                     lo.NotProducingReasons.Add("The modifiers bring the rate to 0.");
@@ -745,7 +760,9 @@ namespace knkwebapi_v2.Services.Production
             int? unlockLevel = await UnlockLevelAsync(l.Structure.ProductionKindId, l.Line.ItemBlueprintId, ct);
             decimal unlock = unlockLevel.HasValue && l.Structure.Level < unlockLevel.Value ? 0m : 1m;
             decimal workers = ProductionRate.WorkerFactor(l.Structure.WorkersPresent, l.Structure.WorkersTotal);
-            return new RatePlan(baseRate, modifiers, unlock, workers, ProductionRate.Compute(baseRate, modifiers, unlock, workers), unlockLevel);
+            decimal pool = await PoolFactorAsync(l.Structure, at, ct);
+            return new RatePlan(baseRate, modifiers, unlock, workers, ProductionRate.Compute(baseRate, modifiers, unlock, workers, pool),
+                unlockLevel, pool);
         }
 
         private async Task<ProductionCycleRecordDto> RecordDtoAsync(ProductionCycleRecord r, CancellationToken ct)
@@ -953,6 +970,7 @@ namespace knkwebapi_v2.Services.Production
             WorkersPresent = r.WorkersPresent,
             WorkersTotal = r.WorkersTotal,
             WorkerFactor = r.WorkerFactor,
+            PoolFactor = r.PoolFactor,
             EffectiveRatePerHour = r.EffectiveRatePerHour,
             AccruedBefore = r.AccruedBefore,
             AccruedAfter = r.AccruedAfter,

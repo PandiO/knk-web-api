@@ -28,6 +28,7 @@ namespace knkwebapi_v2.Services.Territory
             dto.Engine ??= new ProductionEngineSettingsDto();
             dto.Transport ??= new ProductionTransportSettingsDto();
             dto.Delivery ??= new ProductionDeliverySettingsDto();
+            dto.Harvest ??= new ProductionHarvestSettingsDto();
             return dto;
         }
 
@@ -40,7 +41,26 @@ namespace knkwebapi_v2.Services.Territory
             Engine = ValidateEngine(dto.Engine),
             Transport = ValidateTransport(dto.Transport ?? stored?.Transport),
             Delivery = ValidateDelivery(dto.Delivery ?? stored?.Delivery),
+            Harvest = ValidateHarvest(dto.Harvest ?? stored?.Harvest),
         };
+
+        private static ProductionHarvestSettingsDto ValidateHarvest(ProductionHarvestSettingsDto? h)
+        {
+            h ??= new ProductionHarvestSettingsDto();
+            const string p = "production.harvest.";
+            if (h.DefaultPoolCapacity is <= 0 or > ProductionHarvestSettingsDto.MaxPoolCapacity)
+                throw new System.ArgumentException($"{p}defaultPoolCapacity must be above 0 and at most {ProductionHarvestSettingsDto.MaxPoolCapacity}.");
+            if (h.DefaultRegenHoursToFull is <= 0 or > 24 * 365)
+                throw new System.ArgumentException($"{p}defaultRegenHoursToFull must be above 0 and at most {24 * 365}.");
+            if (h.MaxEntriesPerReport is < 1 or > ProductionHarvestSettingsDto.MaxReportEntries)
+                throw new System.ArgumentException($"{p}maxEntriesPerReport must be 1 to {ProductionHarvestSettingsDto.MaxReportEntries}.");
+            return new ProductionHarvestSettingsDto
+            {
+                DefaultPoolCapacity = h.DefaultPoolCapacity,
+                DefaultRegenHoursToFull = h.DefaultRegenHoursToFull,
+                MaxEntriesPerReport = h.MaxEntriesPerReport,
+            };
+        }
 
         private static ProductionDeliverySettingsDto ValidateDelivery(ProductionDeliverySettingsDto? d)
         {

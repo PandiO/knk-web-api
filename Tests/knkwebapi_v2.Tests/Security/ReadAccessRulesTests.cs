@@ -161,6 +161,17 @@ public class ReadAccessRulesTests
         // Item delivery P7 (#60): deliveries (World area or knk.economy.admin).
         ["ItemDeliveriesController.GetById"] = "F ItemDelivery",
         ["ItemDeliveriesController.Search"] = "F ItemDelivery",
+        // Player harvesting P8a (#685): rules, pools, the harvest history and the game server's catalogue.
+        ["HarvestRulesController.GetAll"] = "F HarvestRule",
+        ["HarvestRulesController.GetById"] = "F HarvestRule",
+        ["HarvestRulesController.Search"] = "F HarvestRule",
+        ["HarvestRulesController.Balance"] = "F HarvestRule",
+        ["HarvestController.Catalog"] = "F HarvestRule",
+        ["ResourcePoolsController.GetAll"] = "F ResourcePool",
+        ["ResourcePoolsController.GetById"] = "F ResourcePool",
+        ["ResourcePoolsController.Search"] = "F ResourcePool",
+        ["PlayerHarvestsController.GetById"] = "F PlayerHarvest",
+        ["PlayerHarvestsController.Search"] = "F PlayerHarvest",
         ["WeatherTypesController.GetAll"] = "F WeatherType",
         ["WeatherTypesController.GetById"] = "F WeatherType",
         ["WeatherTypesController.Search"] = "F WeatherType",
@@ -530,6 +541,8 @@ public class ReadAccessRulesTests
         "SiegeShopController.GetCatalogue",
         // Siege shop L4 (PandiO/knk-workspace#869): the Siege unlocks menu.
         "SiegeWeaponUnlocksController.GetByUser",
+        // Player harvesting P8a (PandiO/knk-workspace#685): the harvest listener's rules and areas (L22, #134).
+        "HarvestController.Catalog",
     };
 
     // ===== The pinned categories =====

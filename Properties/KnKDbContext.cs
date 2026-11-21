@@ -3615,6 +3615,88 @@ public partial class KnKDbContext : DbContext
         });
         // ---- end item delivery ----
 
+        // ---- Player harvesting P8a (PandiO/knk-workspace#685, PRODUCTION_KINDS.md § 6-7), one contiguous block ----
+        // Harvest rules per kind, one resource pool per area, the harvest history and the unpaid fractions per player
+        // and rule; the kind's pool floor and the cycle record's pool factor. No DbSet properties (coordinator note):
+        // use Set<HarvestRule>() and so on. Rules and accruals go with their kind (Cascade); a rule with harvests is
+        // Restrict (409: switch it off instead). Pools go with their area. Harvests keep plain area and structure ids.
+        modelBuilder.Entity<ProductionKind>(entity =>
+        {
+            entity.Property(e => e.PoolFloor).HasPrecision(9, 6).HasDefaultValue(ProductionKind.DefaultPoolFloor);
+        });
+        modelBuilder.Entity<ProductionCycleRecord>(entity =>
+        {
+            entity.Property(e => e.PoolFactor).HasPrecision(18, 6).HasDefaultValue(1m);
+        });
+        modelBuilder.Entity<HarvestRule>(entity =>
+        {
+            entity.ToTable("harvest_rules");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(HarvestRule.NameMaxLength);
+            entity.Property(e => e.TargetKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.TargetsJson).IsRequired().HasMaxLength(HarvestRule.TargetsMaxLength);
+            entity.Property(e => e.RequiredPermission).HasMaxLength(HarvestRule.PermissionMaxLength);
+            entity.Property(e => e.ToolClass).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.MinToolTier).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.Placeholder).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.PlaceholderMaterial).HasMaxLength(HarvestRule.MaterialMaxLength);
+            entity.Property(e => e.Note).HasMaxLength(HarvestRule.NoteMaxLength);
+            entity.Property(e => e.YieldPerBreak).HasPrecision(18, 6);
+            entity.Property(e => e.FortuneBonusPerLevel).HasPrecision(9, 6);
+            entity.Property(e => e.WorkerShare).HasPrecision(9, 6);
+            entity.Property(e => e.PoolCost).HasPrecision(18, 6);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.ProductionKindId, e.Name }).IsUnique();
+            entity.HasOne(e => e.ProductionKind).WithMany(k => k.HarvestRules).HasForeignKey(e => e.ProductionKindId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.YieldItemBlueprint).WithMany().HasForeignKey(e => e.YieldItemBlueprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.MinTitleBracket).WithMany().HasForeignKey(e => e.MinTitleBracketId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+        modelBuilder.Entity<ResourcePool>(entity =>
+        {
+            entity.ToTable("resource_pools");
+            foreach (var p in new[] { nameof(ResourcePool.Capacity), nameof(ResourcePool.Current), nameof(ResourcePool.RegenPerHour) })
+                entity.Property(p).HasPrecision(18, 6);
+            entity.Property(e => e.LastRegenAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.ProductionAreaId).IsUnique();
+            entity.HasIndex(e => e.ProductionStructureId);
+            entity.HasOne(e => e.ProductionArea).WithMany().HasForeignKey(e => e.ProductionAreaId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<PlayerHarvest>(entity =>
+        {
+            entity.ToTable("player_harvests");
+            entity.Property(e => e.IdempotencyKey).IsRequired().HasMaxLength(PlayerHarvest.KeyMaxLength).UseCollation("utf8mb4_bin");
+            entity.Property(e => e.RequestHash).IsRequired().HasColumnType("char(64)");
+            entity.Property(e => e.ShortfallReason).HasMaxLength(PlayerHarvest.ReasonMaxLength);
+            foreach (var p in new[] { nameof(PlayerHarvest.YieldUnits), nameof(PlayerHarvest.PoolBefore), nameof(PlayerHarvest.PoolAfter),
+                         nameof(PlayerHarvest.PoolCapacity) })
+                entity.Property(p).HasPrecision(18, 6);
+            entity.Property(e => e.WorkerShare).HasPrecision(9, 6);
+            entity.Property(e => e.HarvestedAt).HasColumnType("datetime(6)");
+            entity.Property(e => e.ReceivedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => e.IdempotencyKey).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.ReceivedAt });
+            entity.HasIndex(e => new { e.ProductionStructureId, e.ReceivedAt });
+            entity.HasIndex(e => new { e.ProductionAreaId, e.ReceivedAt });
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.HarvestRule).WithMany().HasForeignKey(e => e.HarvestRuleId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<HarvestAccrual>(entity =>
+        {
+            entity.ToTable("harvest_accruals");
+            entity.Property(e => e.WorkerAccrued).HasPrecision(18, 6);
+            entity.Property(e => e.TownAccrued).HasPrecision(18, 6);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(6)");
+            entity.HasIndex(e => new { e.UserId, e.HarvestRuleId }).IsUnique();
+            entity.HasIndex(e => e.HarvestRuleId);
+            entity.HasOne(e => e.HarvestRule).WithMany().HasForeignKey(e => e.HarvestRuleId).OnDelete(DeleteBehavior.Cascade);
+        });
+        // ---- end player harvesting ----
+
         OnModelCreatingPartial(modelBuilder);
     }
 

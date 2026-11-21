@@ -1,0 +1,64 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "f33f9213-6d50-5017-ae9b-07dbab94c3dd",
+  "entityTypeName": "ResourcePool",
+  "name": "ResourcePool - Default (seed v1)",
+  "description": "A production area's shared pool of harvestable units (player harvesting P8a, #685). Player harvests draw from it, regeneration refills it, and the structure produces at floor + (1 − floor) × fill (the kind's floor, 0.5 by default). The first harvest in an area makes its pool; make one here to set it up beforehand.",
+  "steps": [
+    {
+      "stepGuid": "62131029-8fa7-57ac-ac81-496053a27016",
+      "stepName": "Pool",
+      "description": "The area and its numbers.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ebf919c1-e845-51d6-ae61-c43230f2515f",
+          "fieldName": "ProductionAreaId",
+          "label": "Production area",
+          "description": "One pool per area.",
+          "fieldType": "Object",
+          "objectType": "ProductionArea",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "f8011319-35c6-5715-a098-a128dbe30cc9",
+          "fieldName": "Capacity",
+          "label": "Capacity",
+          "description": "The harvestable units. Empty on create = the latest survey's total units, else the default (game setting production.harvest).",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b0d9939f-be9b-50fd-ac10-2950bc751da4",
+          "fieldName": "Current",
+          "label": "Units left",
+          "description": "Empty on create = full.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6ce1083e-d8e3-5014-a73f-00c24113bcb4",
+          "fieldName": "RegenPerHour",
+          "label": "Regeneration per hour",
+          "description": "Units added per hour, up to the capacity. Empty on create = capacity ÷ the default hours to full.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "37570553-32cb-5c48-8bd1-f6e50ac0cc30",
+          "fieldName": "CapacityFromSurvey",
+          "label": "Capacity from surveys",
+          "description": "On: each new survey of the area sets the capacity to its total units (the fill is kept).",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

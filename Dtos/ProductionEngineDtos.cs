@@ -71,6 +71,11 @@ namespace knkwebapi_v2.Dtos
 
         /// <summary>Replaces the stored primary outputs when sent.</summary>
         [JsonPropertyName("primaryOutputs")] public List<ProductionKindPrimaryOutputDto>? PrimaryOutputs { get; set; }
+
+        // ---- P8a (#685) ----
+
+        /// <summary>The lowest pool factor (0-1, default 0.5, P-D6): heavy harvesting slows the structure to this, never more.</summary>
+        [JsonPropertyName("poolFloor")] public decimal? PoolFloor { get; set; }
     }
 
     public class ProductionKindListDto
@@ -371,6 +376,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("workersPresent")] public int WorkersPresent { get; set; }
         [JsonPropertyName("workersTotal")] public int WorkersTotal { get; set; }
         [JsonPropertyName("workerFactor")] public decimal WorkerFactor { get; set; }
+
+        /// <summary>P8a (#685): the structure's ResourcePool factor at the settle (1 without pools).</summary>
+        [JsonPropertyName("poolFactor")] public decimal PoolFactor { get; set; } = 1m;
         [JsonPropertyName("effectiveRatePerHour")] public decimal EffectiveRatePerHour { get; set; }
         [JsonPropertyName("accruedBefore")] public decimal AccruedBefore { get; set; }
         [JsonPropertyName("accruedAfter")] public decimal AccruedAfter { get; set; }
@@ -415,6 +423,9 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("modifiers")] public List<AppliedModifierDto> Modifiers { get; set; } = new();
         [JsonPropertyName("unlockFactor")] public decimal UnlockFactor { get; set; }
         [JsonPropertyName("workerFactor")] public decimal WorkerFactor { get; set; }
+
+        /// <summary>P8a (#685): the structure's ResourcePool factor (1 without pools).</summary>
+        [JsonPropertyName("poolFactor")] public decimal PoolFactor { get; set; } = 1m;
         [JsonPropertyName("effectiveRatePerHour")] public decimal EffectiveRatePerHour { get; set; }
 
         /// <summary>Why this line produces nothing (or less) right now; empty = producing at the rate shown.</summary>
