@@ -85,8 +85,15 @@ namespace knkwebapi_v2.Services.Logistics
         /// <summary>Consumer storages: (storage id, structure id, purpose).</summary>
         public List<(int StorageId, int StructureId, StoragePurpose Purpose)> ConsumerStorages { get; init; } = new();
         public List<LogisticsReservation> OpenReservations { get; init; } = new();
+        /// <summary>Units on the way to consumer storages in open collection orders, per order.</summary>
+        public List<(int OrderId, int Storage, int Blueprint, long Left)> InboundLines { get; init; } = new();
+
+        /// <summary>Orders the planner released this run (their reservations expired): they don't count as on the way.</summary>
+        public HashSet<int> DroppedOrders { get; } = new();
+
         /// <summary>(consumer storage, blueprint) → units on the way in open collection orders.</summary>
-        public Dictionary<(int Storage, int Blueprint), long> Inbound { get; init; } = new();
+        public long InboundOf(int storage, int blueprint) =>
+            InboundLines.Where(l => l.Storage == storage && l.Blueprint == blueprint && !DroppedOrders.Contains(l.OrderId)).Sum(l => Math.Max(0L, l.Left));
         /// <summary>(warehouse id, blueprint) → units that left the town's warehouses over the window, and came in.</summary>
         public Dictionary<(int Warehouse, int Blueprint), long> Outflow { get; init; } = new();
         public Dictionary<(int Warehouse, int Blueprint), long> Inflow { get; init; } = new();
@@ -153,8 +160,8 @@ namespace knkwebapi_v2.Services.Logistics
             var inboundRows = await db.TransportStopLines.AsNoTracking()
                 .Where(l => consumerIds.Contains(l.TransportStop.StorageId) && l.TransportStop.TransportOrder.Origin == TransportOrigin.Distribution
                     && l.TransportStop.TransportOrder.NextActionAt != null)
-                .Select(l => new { l.TransportStop.StorageId, l.ItemBlueprintId, Left = l.Planned - l.Delivered }).ToListAsync(ct);
-            var inbound = inboundRows.GroupBy(r => (r.StorageId, r.ItemBlueprintId)).ToDictionary(g => g.Key, g => Math.Max(0L, g.Sum(x => x.Left)));
+                .Select(l => new { l.TransportStop.TransportOrderId, l.TransportStop.StorageId, l.ItemBlueprintId, Left = l.Planned - l.Delivered }).ToListAsync(ct);
+            var inbound = inboundRows.Select(r => (r.TransportOrderId, r.StorageId, r.ItemBlueprintId, r.Left)).ToList();
 
             var since = now.AddDays(-windowDays);
             var whStorageIds = warehouseOf.Keys.ToList();
@@ -177,7 +184,7 @@ namespace knkwebapi_v2.Services.Logistics
 
             var blueprintIds = stock.Keys.Select(k => k.ItemBlueprintId)
                 .Concat(open.Select(r => r.ItemBlueprintId)).Concat(settings.Select(s => s.ItemBlueprintId))
-                .Concat(inputRates.Values.SelectMany(v => v.Keys)).Concat(inbound.Keys.Select(k => k.ItemBlueprintId))
+                .Concat(inputRates.Values.SelectMany(v => v.Keys)).Concat(inbound.Select(k => k.ItemBlueprintId))
                 .Concat(ruleSet.Rules.Where(r => r.ItemBlueprintId.HasValue).Select(r => r.ItemBlueprintId!.Value))
                 .Distinct().ToList();
             var items = await ItemsAsync(db, blueprintIds, ct);
@@ -195,7 +202,7 @@ namespace knkwebapi_v2.Services.Logistics
                 Places = places,
                 ConsumerStorages = consumerStorages,
                 OpenReservations = open,
-                Inbound = inbound,
+                InboundLines = inbound,
                 Outflow = outRows.GroupBy(r => (warehouseOf[r.FromStorageId], r.Blueprint)).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount)),
                 Inflow = inRows.GroupBy(r => (warehouseOf[r.ToStorageId], r.Blueprint)).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount)),
                 WindowDays = windowDays,

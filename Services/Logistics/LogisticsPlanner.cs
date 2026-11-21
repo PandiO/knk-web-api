@@ -252,6 +252,7 @@ namespace knkwebapi_v2.Services.Logistics
                 }
                 if (to == null) continue;
                 closed.Add(r.Id);
+                if (to != LogisticsReservationStatus.Collected && order != null) state.DroppedOrders.Add(order.Id);
                 if (to != LogisticsReservationStatus.Collected)
                     plan.Released.Add(new LogisticsReleasedDto { ReservationId = r.Id, Status = to.Value.ToString(), Reason = reason });
                 if (!write) continue;
@@ -331,7 +332,7 @@ namespace knkwebapi_v2.Services.Logistics
                 foreach (var d in state.DemandSettings(storageId, structureId, purpose, s))
                 {
                     long stock = state.Stock.GetValueOrDefault((storageId, d.Blueprint));
-                    long inbound = state.Inbound.GetValueOrDefault((storageId, d.Blueprint));
+                    long inbound = state.InboundOf(storageId, d.Blueprint);
                     var (pc, prule, pwhy) = state.Priority(d, structureId);
                     var e = new LogisticsPlanEntryDto
                     {
@@ -422,6 +423,12 @@ namespace knkwebapi_v2.Services.Logistics
                         .SelectMany(g => g.Order.Lines).Sum(l => l.Amount * (state.Items.GetValueOrDefault(l.ItemBlueprintId)?.Weight ?? 1m));
                     need = Math.Min(need, (long)Math.Floor(Math.Max(0m, room.Value - planned) / weight));
                 }
+                if (need <= 0)
+                {
+                    e.Outcome = nameof(LogisticsPlanOutcome.NoRoom);
+                    e.Explanation = $"{e.Explanation}. Its storage has no room left after this run's other collections.";
+                    continue;
+                }
                 var (townReserve, townRule) = state.TownReserve(d.Blueprint);
                 long townAvail = Math.Max(0, state.TownStock(d.Blueprint) - townReserve - HeldTown(d.Blueprint));
                 if (townRule != null) e.RuleIds.Add(townRule.Id);
@@ -445,13 +452,15 @@ namespace knkwebapi_v2.Services.Logistics
                     notes.Add($"{c.W.Name} ({c.How}): {whStock} in stock, {(whRule == null ? "no local reserve" : $"local reserve {whReserve} (rule #{whRule.Id})")}, {Math.Max(0, whAvail)} free");
                     if (whRule != null && !e.RuleIds.Contains(whRule.Id)) e.RuleIds.Add(whRule.Id);
                     if (c.Rule != null && !e.RuleIds.Contains(c.Rule.Id)) e.RuleIds.Add(c.Rule.Id);
-                    if (take > 0)
+                    // The first candidate (service area first, then by road) that covers the whole need; else the one
+                    // that covers most.
+                    if (take > best)
                     {
                         best = take;
                         chosen = c;
                         chosenStorage = storages[0].st;
-                        break;
                     }
+                    if (take >= need) break;
                 }
                 if (best <= 0)
                 {
@@ -508,7 +517,8 @@ namespace knkwebapi_v2.Services.Logistics
                 string limit = carry >= e.Shortfall ? "" : carry < best ? $" (its worker carries at most {capacity})"
                     : $" (only {best} free: {reserveText}{(need < e.Shortfall ? $"; room for {need}" : "")})";
                 e.Explanation = $"{e.Explanation}. Reserved {carry} of {e.Shortfall} at {chosen.W.Name}, {chosen.How}{limit}; {reserveText}; "
-                    + $"collected by its own worker.";
+                    + $"collected by its own worker."
+                    + (chosen.W.Id == cands[0].W.Id ? "" : $" Warehouses: {string.Join("; ", notes)}.");
                 group.Reservations.Add((e, new LogisticsReservation
                 {
                     TownId = state.TownId, WarehouseId = chosen.W.Id, WarehouseStorageId = chosenStorage, ConsumerStructureId = place.Id,
@@ -736,7 +746,7 @@ namespace knkwebapi_v2.Services.Logistics
                     var line = new ConsumerDemandLineDto
                     {
                         ItemBlueprintId = d.Blueprint, ItemBlueprintName = state.ItemName(d.Blueprint), Stock = state.Stock.GetValueOrDefault((storageId, d.Blueprint)),
-                        Inbound = state.Inbound.GetValueOrDefault((storageId, d.Blueprint)), ReorderPoint = d.ReorderPoint, TargetLevel = d.TargetLevel,
+                        Inbound = state.InboundOf(storageId, d.Blueprint), ReorderPoint = d.ReorderPoint, TargetLevel = d.TargetLevel,
                         PriorityClass = pc.ToString(), SettingSource = d.Source, ConsumerReplenishmentId = d.SettingId,
                     };
                     if (d.Rule != null) line.RuleIds.Add(d.Rule.Id);
