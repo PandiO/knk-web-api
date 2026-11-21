@@ -30,6 +30,7 @@ namespace knkwebapi_v2.Services.Territory
             dto.Delivery ??= new ProductionDeliverySettingsDto();
             dto.Harvest ??= new ProductionHarvestSettingsDto();
             dto.Logistics ??= new ProductionLogisticsSettingsDto();
+            dto.Shops ??= new ProductionShopSettingsDto();
             return dto;
         }
 
@@ -44,7 +45,23 @@ namespace knkwebapi_v2.Services.Territory
             Delivery = ValidateDelivery(dto.Delivery ?? stored?.Delivery),
             Harvest = ValidateHarvest(dto.Harvest ?? stored?.Harvest),
             Logistics = ValidateLogistics(dto.Logistics ?? stored?.Logistics),
+            Shops = ValidateShops(dto.Shops ?? stored?.Shops),
         };
+
+        private static ProductionShopSettingsDto ValidateShops(ProductionShopSettingsDto? s)
+        {
+            s ??= new ProductionShopSettingsDto();
+            const string p = "production.shops.";
+            if (s.EnchantmentPercentPerLevel is < 0 or > 1000)
+                throw new System.ArgumentException($"{p}enchantmentPercentPerLevel must be 0 to 1000.");
+            if (s.StatsLookbackHours is < 0 or > 168)
+                throw new System.ArgumentException($"{p}statsLookbackHours must be 0 to 168.");
+            return new ProductionShopSettingsDto
+            {
+                EnchantmentPercentPerLevel = s.EnchantmentPercentPerLevel,
+                StatsLookbackHours = s.StatsLookbackHours,
+            };
+        }
 
         private static ProductionLogisticsSettingsDto ValidateLogistics(ProductionLogisticsSettingsDto? l)
         {

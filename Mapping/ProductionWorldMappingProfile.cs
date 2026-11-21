@@ -48,6 +48,18 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(d => d.productionEnabled, o => o.MapFrom(s => s.ProductionEnabled))
                 .ForMember(d => d.roadConnection, o => o.MapFrom(s => s.RoadConnection.ToString()))
                 .ForMember(d => d.yieldSource, o => o.MapFrom(s => s.YieldSource.ToString()));
+
+            // Shops P10 (#248): a TPT subtype of ProductionStructure.
+            CreateMap<Shop, ProductionStructureDto>().IncludeBase<ProductionStructure, ProductionStructureDto>();
+            CreateMap<Shop, ProductionWorldListDto>().IncludeBase<ProductionStructure, ProductionWorldListDto>();
+            CreateMap<Shop, ShopDto>()
+                .IncludeBase<Structure, StructureDto>()
+                .ForMember(d => d.Kind, o => o.MapFrom(s => s.Kind.ToString()))
+                .ForMember(d => d.ShopType, o => o.MapFrom(s => s.ShopType == null ? null
+                    : new NamedRefDto { Id = s.ShopType.Id, Name = s.ShopType.Name }))
+                .ForMember(d => d.Storages, o => o.Ignore())
+                .ForMember(d => d.EffectiveTownId, o => o.Ignore())
+                .ForMember(d => d.CatalogueEntryCount, o => o.Ignore());
         }
     }
 }

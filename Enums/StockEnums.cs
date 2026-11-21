@@ -138,6 +138,8 @@ namespace knkwebapi_v2.Enums
         Gift,
         Admin,
         Other,
+        /// <summary>A shop purchase delivered to the inbox (shops P10, #248).</summary>
+        ShopPurchase,
     }
 
     /// <summary>What a delivery did when it arrived: everything in the inbox, part lost at the cap, or all lost.</summary>
