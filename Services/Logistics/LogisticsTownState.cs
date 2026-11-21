@@ -102,6 +102,9 @@ namespace knkwebapi_v2.Services.Logistics
         public List<ConsumerReplenishment> Settings { get; init; } = new();
         /// <summary>Consumer structure → blueprint → input units per hour (enabled production lines).</summary>
         public Dictionary<int, Dictionary<int, decimal>> InputRates { get; init; } = new();
+        /// <summary>Shops P10 (#248): shop → its stocked catalogue blueprints and its level's default reorder point and
+        /// target level (shops DESIGN § 2.4, TOWN_LOGISTICS § 3), for its Merchandise storage.</summary>
+        public Dictionary<int, (IReadOnlyList<int> Blueprints, long ReorderPoint, long TargetLevel)> ShopDefaults { get; init; } = new();
 
         public decimal DailyOutflowTown(int blueprint) =>
             WindowDays <= 0 ? 0m : (decimal)Outflow.Where(o => o.Key.Blueprint == blueprint).Sum(o => o.Value) / WindowDays;
@@ -182,7 +185,22 @@ namespace knkwebapi_v2.Services.Logistics
             var inputRates = inputs.GroupBy(i => i.ProductionStructureId)
                 .ToDictionary(g => g.Key, g => g.GroupBy(x => x.ItemBlueprintId).ToDictionary(x => x.Key, x => x.Sum(y => y.AmountPerHour)));
 
+            // Shops P10 (#248): the level's default min/max for each stocked catalogue blueprint.
+            var shopRows = await db.Set<Shop>().AsNoTracking().Where(s => consumerStructureIds.Contains(s.Id))
+                .Select(s => new { s.Id, s.ShopTypeId, s.Level }).ToListAsync(ct);
+            var shopDefaults = new Dictionary<int, (IReadOnlyList<int>, long, long)>();
+            foreach (var shop in shopRows)
+            {
+                var level = await knkwebapi_v2.Services.Shops.ShopLevels.FindAsync(db, shop.ShopTypeId, shop.Level, ct);
+                if (level?.TargetUnits is not > 0) continue;
+                var stocked = await db.Set<ShopCatalogueEntry>().AsNoTracking()
+                    .Where(e => e.ShopId == shop.Id && e.Enabled && e.ItemInstanceId == null && e.StockMode == ShopStockMode.Stocked)
+                    .Select(e => e.ItemBlueprintId).Distinct().OrderBy(b => b).ToListAsync(ct);
+                if (stocked.Count > 0) shopDefaults[shop.Id] = (stocked, level.ReorderPointUnits ?? 0, level.TargetUnits.Value);
+            }
+
             var blueprintIds = stock.Keys.Select(k => k.ItemBlueprintId)
+                .Concat(shopDefaults.Values.SelectMany(v => v.Item1))
                 .Concat(open.Select(r => r.ItemBlueprintId)).Concat(settings.Select(s => s.ItemBlueprintId))
                 .Concat(inputRates.Values.SelectMany(v => v.Keys)).Concat(inbound.Select(k => k.ItemBlueprintId))
                 .Concat(ruleSet.Rules.Where(r => r.ItemBlueprintId.HasValue).Select(r => r.ItemBlueprintId!.Value))
@@ -209,6 +227,7 @@ namespace knkwebapi_v2.Services.Logistics
                 Items = items,
                 Settings = settings,
                 InputRates = inputRates,
+                ShopDefaults = shopDefaults,
             };
         }
 
@@ -294,7 +313,8 @@ namespace knkwebapi_v2.Services.Logistics
         }
 
         /// <summary>A consumer storage's demand lines: its replenishment settings, else Replenishment rules (a blueprint
-        /// target, or category, tag and Any for the blueprints its lines consume), else the line inputs × the default hours.</summary>
+        /// target, or category, tag and Any for the blueprints its lines consume or a shop stocks), else a shop level's
+        /// default min/max for its stocked catalogue blueprints (Merchandise, P10), else the line inputs × the default hours.</summary>
         public List<DemandSetting> DemandSettings(int storageId, int structureId, StoragePurpose purpose, ProductionLogisticsSettingsDto s)
         {
             var result = new Dictionary<int, DemandSetting>();
@@ -305,13 +325,18 @@ namespace knkwebapi_v2.Services.Logistics
                 long target = Math.Max(reorder, (long)Math.Ceiling(rate * s.DefaultTargetHours));
                 if (target > 0) result[bid] = new DemandSetting(bid, reorder, target, null, "Inputs", null, null);
             }
-            var candidates = rates.Keys.Concat(RuleSet.Of(LogisticsRuleType.Replenishment).Where(r => r.TargetKind == LogisticsTargetKind.Blueprint && r.ItemBlueprintId.HasValue)
+            if (purpose == StoragePurpose.Merchandise && ShopDefaults.TryGetValue(structureId, out var shop))
+                foreach (var bid in shop.Blueprints)
+                    result[bid] = new DemandSetting(bid, shop.ReorderPoint, Math.Max(shop.ReorderPoint, shop.TargetLevel), null, "ShopLevel", null, null);
+            var shopBlueprints = purpose == StoragePurpose.Merchandise && ShopDefaults.TryGetValue(structureId, out var sd)
+                ? sd.Blueprints : (IReadOnlyList<int>)Array.Empty<int>();
+            var candidates = rates.Keys.Concat(shopBlueprints).Concat(RuleSet.Of(LogisticsRuleType.Replenishment).Where(r => r.TargetKind == LogisticsTargetKind.Blueprint && r.ItemBlueprintId.HasValue)
                 .Select(r => r.ItemBlueprintId!.Value)).Distinct();
             foreach (var bid in candidates)
             {
                 var rule = BestFor(LogisticsRuleType.Replenishment, structureId, bid);
                 if (rule == null) continue;
-                if (rule.TargetKind != LogisticsTargetKind.Blueprint && !rates.ContainsKey(bid)) continue;
+                if (rule.TargetKind != LogisticsTargetKind.Blueprint && !rates.ContainsKey(bid) && !shopBlueprints.Contains(bid)) continue;
                 result[bid] = new DemandSetting(bid, rule.ReorderPoint ?? 0, rule.TargetLevel ?? 0, null, "Rule", null, rule);
             }
             foreach (var st in Settings.Where(x => x.StorageId == storageId))

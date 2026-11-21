@@ -60,6 +60,10 @@ public class DashboardChangeAccessRulesTests
         ("TransportLanesController", "Create", "TransportLane"), ("TransportLanesController", "Update", "TransportLane"),
         ("LogisticsPoliciesController", "Create", "LogisticsPolicy"), ("LogisticsPoliciesController", "Update", "LogisticsPolicy"),
         ("ConsumerReplenishmentsController", "Create", "ConsumerReplenishment"), ("ConsumerReplenishmentsController", "Update", "ConsumerReplenishment"),
+        ("ShopTypesController", "Create", "ShopType"), ("ShopTypesController", "Update", "ShopType"), // shops P10 (#248)
+        ("ShopTypeLevelsController", "Create", "ShopTypeLevel"), ("ShopTypeLevelsController", "Update", "ShopTypeLevel"),
+        ("ShopsController", "Create", "Shop"), ("ShopsController", "Update", "Shop"),
+        ("ShopCatalogueEntriesController", "Create", "ShopCatalogueEntry"), ("ShopCatalogueEntriesController", "Update", "ShopCatalogueEntry"),
         ("StorageContainersController", "Create", "StorageContainer"), ("StorageContainersController", "Update", "StorageContainer"),
         ("ProductionYieldOverridesController", "Create", "ProductionYieldOverride"), ("ProductionYieldOverridesController", "Update", "ProductionYieldOverride"),
         ("HarvestRulesController", "Create", "HarvestRule"), ("HarvestRulesController", "Update", "HarvestRule"),

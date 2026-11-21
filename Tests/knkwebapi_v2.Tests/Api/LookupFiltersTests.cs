@@ -228,6 +228,11 @@ public class LookupFiltersTests : IAsyncLifetime
             ["ConsumerReplenishment"] = "structureId:Id, storageId:Id",
             ["LogisticsReservation"] = "townId:Id, consumerStructureId:Id",
             ["LogisticsPlannerRun"] = "townId:Id",
+            ["ShopTypeLevel"] = "shopTypeId:Id", // shops P10 (#248)
+            ["Shop"] = "townId:Id, districtId:Id, shopTypeId:Id",
+            ["ShopCatalogueEntry"] = "shopId:Id, itemBlueprintId:Id",
+            ["ShopTradeStat"] = "shopId:Id, itemBlueprintId:Id",
+            ["TownAccount"] = "townId:Id",
             ["StorageContainer"] = "storageId:Id",
             ["ProductionYieldOverride"] = "productionStructureId:Id, itemBlueprintId:Id",
             ["HarvestRule"] = "productionKindId:Id", // player harvesting P8a (#685)
