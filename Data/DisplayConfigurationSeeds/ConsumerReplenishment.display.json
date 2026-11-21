@@ -1,0 +1,85 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "66099f50-749d-5aa9-9bca-8793f18c3edd",
+  "entityTypeName": "ConsumerReplenishment",
+  "name": "ConsumerReplenishment - Default (seed v1)",
+  "description": "A consumer's replenishment setting (town logistics P9, #127). GET api/Logistics/consumers/{structureId} shows every line the planner sees for the structure, with where its min and max came from.",
+  "sections": [
+    {
+      "sectionGuid": "bcc047b4-fd1d-5d57-81a4-5dfd48b8c30b",
+      "sectionName": "Setting",
+      "description": "The storage, the blueprint and its min and max.",
+      "fields": [
+        {
+          "fieldGuid": "5956c0bc-07cc-5af7-8b7e-2e8f46034a65",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Structure",
+          "relatedEntityTypeName": "Structure",
+          "label": "Structure",
+          "description": "The consumer.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "e56deda8-2cfc-533b-975d-30bde056e0e6",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Storage",
+          "relatedEntityTypeName": "Storage",
+          "label": "Storage",
+          "description": "Its Input or Merchandise storage.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "5a0b8187-7121-5c35-b375-bb0e1ec9ae35",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Blueprint",
+          "description": "What it needs.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b6c775de-e9b3-5f65-8612-76ad34552b58",
+          "fieldName": "ReorderPoint",
+          "label": "Min",
+          "description": "Reorder point.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "50bc193f-0196-5082-aeae-03b6aad3c74a",
+          "fieldName": "TargetLevel",
+          "label": "Max",
+          "description": "Target level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "48a50138-6ea4-5aa6-ab6b-6df5d3235590",
+          "fieldName": "PriorityClass",
+          "label": "Priority class",
+          "description": "Empty = the policy's rules.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "a1b1c6b7-db9d-5bfc-8322-77f869f99e34",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off: ignored.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "b6a776ac-cc8c-5562-9704-1639ecfc698a",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Optional.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "5a31754c-25f4-5bb9-8a06-b5e6af7b23a5",
+          "fieldName": "UpdatedAt",
+          "label": "Updated",
+          "description": "Last change.",
+          "fieldType": "DateTime"
+        }
+      ]
+    }
+  ]
+}

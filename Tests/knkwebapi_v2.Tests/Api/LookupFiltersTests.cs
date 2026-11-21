@@ -223,6 +223,11 @@ public class LookupFiltersTests : IAsyncLifetime
             ["ProductionCycleRecord"] = "productionStructureId:Id, productionLineId:Id", // #838
             ["TransportOrder"] = "sourceStructureId:Id, structureId:Id", // transport core P5 (#79)
             ["TransportLane"] = "structureId:Id",
+            ["LogisticsPolicy"] = "townId:Id, warehouseId:Id", // town logistics P9 (#127)
+            ["LogisticsRule"] = "logisticsPolicyId:Id",
+            ["ConsumerReplenishment"] = "structureId:Id, storageId:Id",
+            ["LogisticsReservation"] = "townId:Id, consumerStructureId:Id",
+            ["LogisticsPlannerRun"] = "townId:Id",
             ["StorageContainer"] = "storageId:Id",
             ["ProductionYieldOverride"] = "productionStructureId:Id, itemBlueprintId:Id",
             ["HarvestRule"] = "productionKindId:Id", // player harvesting P8a (#685)

@@ -1,0 +1,196 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "191cb743-4532-507e-ad75-24fdc17f6637",
+  "entityTypeName": "LogisticsPlannerRun",
+  "name": "LogisticsPlannerRun - Default (seed v1)",
+  "description": "A planner run with its plan explanation (town logistics P9, #127): per consumer storage and blueprint with demand, the shortfall, the priority, the warehouse, the rules and the outcome (\"why did or didn't the bakery get flour\").",
+  "sections": [
+    {
+      "sectionGuid": "bb9f2989-a7be-56e2-b675-c446c5a36759",
+      "sectionName": "Run",
+      "description": "When, which policy, what it did.",
+      "fields": [
+        {
+          "fieldGuid": "e29b7b58-88b6-59cc-a0b7-91a24178485f",
+          "fieldName": "Id",
+          "label": "Run",
+          "description": "The number.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "56f1a5cb-2d5e-5458-816f-3ab5d96de623",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Town",
+          "relatedEntityTypeName": "Town",
+          "label": "Town",
+          "description": "The town.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "a92e92a5-cc16-5d89-8462-19ec7e6a8b6e",
+          "fieldName": "Trigger",
+          "label": "Trigger",
+          "description": "Scheduled or Manual.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "8b8b58e3-6f0b-566a-a8ad-1af2376dcbc9",
+          "fieldName": "StartedAt",
+          "label": "Started",
+          "description": "When it ran.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "94b6769d-6881-5287-b869-df9162df551b",
+          "fieldName": "FinishedAt",
+          "label": "Finished",
+          "description": "When it ended.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "9bad5e9e-1e2c-5b09-a535-d678430248a9",
+          "fieldName": "LogisticsPolicyId",
+          "label": "Policy",
+          "description": "The policy version id it used.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d62e0343-96e3-59bd-8a80-b3bb895943d7",
+          "fieldName": "PolicyVersion",
+          "label": "Policy version",
+          "description": "Its version number.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "8f4802ba-d15a-5075-8f1c-db4430767cff",
+          "fieldName": "DemandLines",
+          "label": "Demand lines",
+          "description": "Lines at or below their reorder point.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "07d3cd8f-b736-55e1-8dd3-4c9d7b2ac1fb",
+          "fieldName": "ReservationsCreated",
+          "label": "Reservations",
+          "description": "Made.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "a617f8ed-1b21-5559-8ba7-f5f3c1ced3d0",
+          "fieldName": "OrdersCreated",
+          "label": "Collection orders",
+          "description": "Made.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "472b23cf-5105-51d1-9fd1-2b5478574855",
+          "fieldName": "ReservationsReleased",
+          "label": "Released",
+          "description": "Expired or ended without loading.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "203b3ab5-869d-520e-b116-2c117faa4139",
+          "fieldName": "ReservationsCollected",
+          "label": "Collected",
+          "description": "Loaded by their worker since the last run.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "f195c3ff-c8fb-568e-bcba-d11027e73ca5",
+          "fieldName": "Shortfalls",
+          "label": "Short",
+          "description": "Lines that got less than they needed.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "2de220b1-0ea0-5dda-bedd-611a2df758d7",
+          "fieldName": "Summary",
+          "label": "Summary",
+          "description": "What it did.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "e6b0a16e-449e-5685-b0b5-f522f25de70e",
+      "sectionName": "Plan explanation",
+      "description": "One entry per consumer storage and blueprint with demand.",
+      "relatedEntityPropertyName": "Entries",
+      "relatedEntityTypeName": "LogisticsPlanEntry",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "018176b4-ea5f-59a7-8862-d84df9045ef6",
+          "fieldName": "ConsumerStructureId",
+          "label": "Consumer",
+          "description": "The structure id.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "6a1f93d9-6fae-5dcd-b8a2-d32fe769ff55",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint",
+          "description": "The blueprint id.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c65a6b25-473b-521c-912e-24adec5caeec",
+          "fieldName": "PriorityClass",
+          "label": "Priority",
+          "description": "The class.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "92253db6-f94f-5d98-af5f-77bb5328d9b5",
+          "fieldName": "Stock",
+          "label": "Stock",
+          "description": "In stock plus on the way.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "35bf8910-cb31-5bf3-aafa-7410839cd3a8",
+          "fieldName": "ReorderPoint",
+          "label": "Min",
+          "description": "Reorder point.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d1c81ba1-4113-592d-9ccc-b8b5ff65535d",
+          "fieldName": "TargetLevel",
+          "label": "Max",
+          "description": "Target level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "737740e9-f986-5826-932f-c80f10ca730d",
+          "fieldName": "Shortfall",
+          "label": "Short",
+          "description": "Max minus stock.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "f0f30f29-ed7a-5a72-b770-4934040c3df4",
+          "fieldName": "Reserved",
+          "label": "Reserved",
+          "description": "Units reserved.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "05f8bcad-2e65-51dc-9d3c-33567d6cb1b3",
+          "fieldName": "Outcome",
+          "label": "Outcome",
+          "description": "Reserved, PartlyReserved, AlreadyReserved, NoStock, HeldByReserve, NoWarehouse, NoWorker, NoRoom, NotConnected or CarrierFull.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "6f761321-ed5f-5103-89cf-e25524e158a3",
+          "fieldName": "Explanation",
+          "label": "Explanation",
+          "description": "Which rule, which shortfall, which priority.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

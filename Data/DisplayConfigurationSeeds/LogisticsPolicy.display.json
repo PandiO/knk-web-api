@@ -1,0 +1,177 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "47e0bf8a-a5aa-5cf1-98ed-a9a038fc78ef",
+  "entityTypeName": "LogisticsPolicy",
+  "name": "LogisticsPolicy - Default (seed v1)",
+  "description": "A logistics policy version with its rules (town logistics P9, #127). GET api/LogisticsPolicies/{id}/versions lists the history; the web app's policy editor saves new versions.",
+  "sections": [
+    {
+      "sectionGuid": "14f4c89f-82b8-56f2-b74f-9b8ca8be3e3f",
+      "sectionName": "Policy",
+      "description": "What it is for and which version this is.",
+      "fields": [
+        {
+          "fieldGuid": "de93ee66-42cc-5aa7-9d9f-837873078186",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The policy.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "5e0d1ffa-4c36-5ee4-a89f-a110cec228df",
+          "fieldName": "Scope",
+          "label": "Scope",
+          "description": "Town, Warehouse or Template.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "438b1794-5baa-5a12-b2fd-7aa417037a8e",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Town",
+          "relatedEntityTypeName": "Town",
+          "label": "Town",
+          "description": "Town scope.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "4963a06a-ddf6-52e2-bbe0-90a5bf3d1ea6",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Warehouse",
+          "relatedEntityTypeName": "Warehouse",
+          "label": "Warehouse",
+          "description": "Warehouse scope.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b6a3e8d2-9909-5a7e-846c-965c7dd12f06",
+          "fieldName": "Specialization",
+          "label": "Specialization",
+          "description": "Templates: the town specialization.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "a17b6005-2e57-5b01-a4f9-f5717a544b4b",
+          "fieldName": "TownSize",
+          "label": "Town size",
+          "description": "Templates: the town size.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "453cbb63-2247-52e4-8ae6-9c5a540a1635",
+          "fieldName": "IsDefaultTemplate",
+          "label": "Default template",
+          "description": "Used for towns without a policy.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "450730e8-ab02-5b3a-ba29-d030df331128",
+          "fieldName": "Version",
+          "label": "Version",
+          "description": "1, 2, ... within the policy.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "4cb1c4b7-a724-5008-abf7-07c8a830def8",
+          "fieldName": "SupersededAt",
+          "label": "Superseded",
+          "description": "Empty while this is the current version.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "a5ca5a55-a549-503c-b62c-0bbc3a1d8915",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Why this version was made.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6ed2c835-0bc7-5d89-b39e-bd669601c577",
+          "fieldName": "Author",
+          "label": "Author",
+          "description": "Admin (later the clan council).",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "d19cf4b8-bd10-5922-ad45-37906eb6d0b1",
+          "fieldName": "CreatedAt",
+          "label": "Created",
+          "description": "When this version was saved.",
+          "fieldType": "DateTime"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "1bc69606-46b6-558c-a626-c0e5211437f5",
+      "sectionName": "Rules",
+      "description": "The version's rules in editor order.",
+      "relatedEntityPropertyName": "Rules",
+      "relatedEntityTypeName": "LogisticsRule",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "0b6077be-99b8-5a69-a844-cf41d38b541e",
+          "fieldName": "Sequence",
+          "label": "#",
+          "description": "Editor order.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "d68241b4-5a92-5b44-97b1-4ee4c59bfe47",
+          "fieldName": "Type",
+          "label": "Type",
+          "description": "Reserve, PriorityClass, ServiceArea or Replenishment.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "bc9a7cc6-9e67-5d43-8807-5139c6f294cd",
+          "fieldName": "Scope",
+          "label": "Scope",
+          "description": "Town-wide or one warehouse.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "178d4d81-4739-5822-896b-5b4b895bf6f5",
+          "fieldName": "Units",
+          "label": "Units",
+          "description": "Reserve: units to keep.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "88b107f0-c71c-5de9-8d29-078123ee1f64",
+          "fieldName": "DaysOfCover",
+          "label": "Days of cover",
+          "description": "Reserve: days to keep.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "7093effd-d30e-5212-808e-0a71dfaf6e3e",
+          "fieldName": "PriorityClass",
+          "label": "Priority",
+          "description": "PriorityClass: the class.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "d20f88da-a5d3-5138-a0be-9d308e473990",
+          "fieldName": "ReorderPoint",
+          "label": "Min",
+          "description": "Replenishment: reorder point.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "68a82731-8b63-57c2-af9d-27c6e65844da",
+          "fieldName": "TargetLevel",
+          "label": "Max",
+          "description": "Replenishment: target level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "7edcf818-fa27-5b45-8f3d-9617378b7170",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Shown in the planner's explanation.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

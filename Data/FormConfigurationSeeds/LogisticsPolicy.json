@@ -1,0 +1,107 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "812fb313-e046-55bc-8f8c-0f2d70adf88f",
+  "entityTypeName": "LogisticsPolicy",
+  "name": "LogisticsPolicy - Default (seed v1)",
+  "description": "A town logistics policy (town logistics P9, #127, TOWN_LOGISTICS § 4): a town's, a warehouse's, or a default template per town size and specialization (D-L3). Every save makes a new version (the old one stays for the history). The rules are edited in the web app's policy editor (or PUT api/LogisticsPolicies/{id} with the whole rule list); a template is copied into a town with POST api/LogisticsPolicies/{id}/apply.",
+  "steps": [
+    {
+      "stepGuid": "61b1eb78-125b-5f99-bc2d-df448859583c",
+      "stepName": "Policy",
+      "description": "What it is for. Town and warehouse can't change later.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "affddafc-c05f-5662-b848-0697dda46446",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Shown in lists and in the planner's explanation.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a7b3b4be-26e2-5387-ac60-fa5fb7d96058",
+          "fieldName": "Scope",
+          "label": "Scope",
+          "description": "Town (one per town), Warehouse (local reserves and service areas of one warehouse) or Template.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsPolicyScope",
+          "settingsJson": "{\"enumValues\": [\"Town\", \"Warehouse\", \"Template\"]}",
+          "isReadOnly": false,
+          "isRequired": true,
+          "defaultValue": "Town"
+        },
+        {
+          "fieldGuid": "2edb4410-bb33-5a51-9235-8b86992b942f",
+          "fieldName": "TownId",
+          "label": "Town",
+          "description": "Town scope: the town.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "73e3a1d3-5de1-5f16-9dff-c64e6abcbfd9",
+          "fieldName": "WarehouseId",
+          "label": "Warehouse",
+          "description": "Warehouse scope: the warehouse.",
+          "fieldType": "Object",
+          "objectType": "Warehouse",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "474e5e46-22f8-5271-8c19-b8c41fbc3c5f",
+      "stepName": "Template",
+      "description": "Templates only.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "ec995d09-b1b6-5a81-b513-781ca15ff834",
+          "fieldName": "Specialization",
+          "label": "Specialization",
+          "description": "The town specialization the template is made for; empty = general.",
+          "fieldType": "Enum",
+          "enumType": "ResourceCategory",
+          "settingsJson": "{\"enumValues\": [\"Crops\", \"Wood\", \"Stone\", \"Ore\", \"Fish\", \"Flowers\", \"Animals\"]}",
+          "isReadOnly": false,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "640d83dc-6cda-5caf-be0a-a706810283a9",
+          "fieldName": "TownSize",
+          "label": "Town size",
+          "description": "The town size the template is made for; empty = any.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsTownSize",
+          "settingsJson": "{\"enumValues\": [\"Village\", \"Town\", \"City\"]}",
+          "isReadOnly": false,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "c93e9d0a-0732-5691-a318-7d5a16a85336",
+          "fieldName": "IsDefaultTemplate",
+          "label": "Default template",
+          "description": "Used by the planner for a town without a policy of its own (one default at a time).",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "18014cda-e075-5c7c-9396-e703abbaf1c1",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Why this version is made (kept in the history).",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

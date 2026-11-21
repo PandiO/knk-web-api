@@ -1,0 +1,92 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "21287e58-d252-50a7-8f06-1ef54e805e35",
+  "entityTypeName": "LogisticsPlannerRun",
+  "name": "LogisticsPlannerRun - Default (seed v1)",
+  "description": "A run of a town's logistics planner (town logistics P9, #127, TOWN_LOGISTICS § 5): every 10 minutes per town while Production:Enabled is on, or POST api/Logistics/towns/{townId}/run-now. Read only. A dry run (POST api/Logistics/towns/{townId}/dry-run) is not stored.",
+  "steps": [
+    {
+      "stepGuid": "4f111934-88de-5e16-b5ab-79b9e171067e",
+      "stepName": "Run",
+      "description": "Every field is read only.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "1e0e4dc8-7da5-5668-9f5b-c9319fe712f4",
+          "fieldName": "TownId",
+          "label": "Town",
+          "description": "The town planned.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "0c54873d-aff8-5926-9b6c-23706b663978",
+          "fieldName": "Trigger",
+          "label": "Trigger",
+          "description": "The schedule or a run now.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsRunTrigger",
+          "settingsJson": "{\"enumValues\": [\"Scheduled\", \"Manual\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "c37f44f1-e525-5438-9936-8d854a3802fc",
+          "fieldName": "StartedAt",
+          "label": "Started",
+          "description": "When it ran.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "d8bae789-7a2e-5715-a612-ba58ee3b2bf7",
+          "fieldName": "PolicyVersion",
+          "label": "Policy version",
+          "description": "The version of the policy it used.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "0e793c47-f25f-5908-936f-f57208bcf485",
+          "fieldName": "DemandLines",
+          "label": "Demand lines",
+          "description": "Consumer lines at or below their reorder point.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "e1f7d4fa-66aa-500c-8331-35625eaba61a",
+          "fieldName": "ReservationsCreated",
+          "label": "Reservations",
+          "description": "Reservations made.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "be5085aa-23d0-5dd7-bde1-32df1a30fc88",
+          "fieldName": "OrdersCreated",
+          "label": "Collection orders",
+          "description": "Orders made.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "df55d73d-85ab-5461-9d8c-61b05f0f3995",
+          "fieldName": "Summary",
+          "label": "Summary",
+          "description": "What it did.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        }
+      ]
+    }
+  ]
+}

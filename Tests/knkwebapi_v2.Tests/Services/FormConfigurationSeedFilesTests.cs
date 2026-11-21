@@ -145,6 +145,7 @@ public class FormConfigurationSeedFilesTests
         // Stock core P1 (#97): the ledger is written by the stock service only; its seed form is read only.
         ["StockTransaction"] = new() { ["RequestHash"] = "written by the stock service; the form is read only" },
         ["ItemDelivery"] = new() { ["RequestHash"] = "written by the delivery service (P7, #60); the form is read only" },
+        ["ConsumerReplenishment"] = new() { ["StructureId"] = "set from the storage's holder on save (town logistics P9, #127)" },
         ["GateDoor"] = new()
         {
             ["PassThroughConditionsJson"] = "not read by the plugin",

@@ -1,0 +1,145 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "e9a3177b-1dec-5873-82a6-22921b10b9c3",
+  "entityTypeName": "LogisticsReservation",
+  "name": "LogisticsReservation - Default (seed v1)",
+  "description": "A planner reservation (town logistics P9, #127, TOWN_LOGISTICS § 5.1): warehouse stock held for one consumer storage until the consumer's worker collects it, released at the next run after it expires (F11). Written by the planner; read only here. Staff release one with POST api/LogisticsReservations/{id}/release.",
+  "steps": [
+    {
+      "stepGuid": "f2240453-8593-500e-af41-f4c8a1ebd6b1",
+      "stepName": "Reservation",
+      "description": "Every field is read only.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "90a728ef-bfa7-5a3a-b17a-e54ae63105e5",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Open until collected, released or cancelled.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsReservationStatus",
+          "settingsJson": "{\"enumValues\": [\"Open\", \"Collected\", \"Released\", \"Cancelled\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "472ffb26-735c-5388-bf81-23660b7cadef",
+          "fieldName": "TownId",
+          "label": "Town",
+          "description": "The town.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "baddee86-4f8e-514b-8d85-ced7d4ee82fe",
+          "fieldName": "WarehouseId",
+          "label": "Warehouse",
+          "description": "Where the stock is held.",
+          "fieldType": "Object",
+          "objectType": "Warehouse",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "05e19d3d-3d95-5e70-94fe-e83c18bb144a",
+          "fieldName": "WarehouseStorageId",
+          "label": "Warehouse storage",
+          "description": "The storage it is collected from.",
+          "fieldType": "Object",
+          "objectType": "Storage",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "dadf4a60-0b2c-5914-8c4a-874dedfe0990",
+          "fieldName": "ConsumerStructureId",
+          "label": "Consumer",
+          "description": "Who collects it.",
+          "fieldType": "Object",
+          "objectType": "Structure",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "f2c0b798-2ef6-58f9-9f21-071a3de2fb67",
+          "fieldName": "ConsumerStorageId",
+          "label": "Consumer storage",
+          "description": "Where it goes.",
+          "fieldType": "Object",
+          "objectType": "Storage",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "740351a7-c131-5114-a707-0fe210a266b1",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint",
+          "description": "What is held.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "29f881c7-bac9-538d-a500-d6f4aa656225",
+          "fieldName": "Amount",
+          "label": "Amount",
+          "description": "Units held.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "664c6024-e48a-57d8-838c-f4e2e57608df",
+          "fieldName": "Collected",
+          "label": "Collected",
+          "description": "Units the worker loaded.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "6a241767-302a-591b-a633-83c7359960af",
+          "fieldName": "PriorityClass",
+          "label": "Priority class",
+          "description": "The class it was planned with.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsPriorityClass",
+          "settingsJson": "{\"enumValues\": [\"Critical\", \"High\", \"Normal\", \"Low\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "98499bcb-98d6-5afa-981d-c3c64e5682c3",
+          "fieldName": "TransportOrderId",
+          "label": "Collection order",
+          "description": "The order the consumer's worker carries.",
+          "fieldType": "Object",
+          "objectType": "TransportOrder",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "11546e17-af02-56d3-abbc-6ca1617763fc",
+          "fieldName": "ExpiresAt",
+          "label": "Expires",
+          "description": "Released at the next run after this when not collected.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "4f30ff6f-845d-588f-8484-8647f7de37e7",
+          "fieldName": "Explanation",
+          "label": "Explanation",
+          "description": "Why the planner made it.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        }
+      ]
+    }
+  ]
+}

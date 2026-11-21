@@ -1,0 +1,186 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "1d9a48cd-aa85-5adf-8cfc-da97d533fdee",
+  "entityTypeName": "LogisticsRule",
+  "name": "LogisticsRule - Default (seed v1)",
+  "description": "A logistics rule (town logistics P9, #127): type, scope, target, parameters, window and reason.",
+  "sections": [
+    {
+      "sectionGuid": "0a30ef52-65cc-5a07-928e-df3134dc7650",
+      "sectionName": "Rule",
+      "description": "What it does.",
+      "fields": [
+        {
+          "fieldGuid": "e37e9039-a125-578d-bd04-2755df487ceb",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "LogisticsPolicy",
+          "relatedEntityTypeName": "LogisticsPolicy",
+          "label": "Policy",
+          "description": "The policy version it belongs to.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "a230938b-aada-5cbe-be40-267d75aeb2b5",
+          "fieldName": "Sequence",
+          "label": "#",
+          "description": "Editor order.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "54d20d89-9c9e-55cb-8ba4-f5fb4f729fb0",
+          "fieldName": "Type",
+          "label": "Type",
+          "description": "Reserve, PriorityClass, ServiceArea or Replenishment.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "2c815ec9-efd8-5d18-b296-3622e3491b07",
+          "fieldName": "Scope",
+          "label": "Scope",
+          "description": "Town-wide or one warehouse.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "3e73f915-1e69-5d6d-8a9c-5b9802a82c4b",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Warehouse",
+          "relatedEntityTypeName": "Warehouse",
+          "label": "Warehouse",
+          "description": "Local reserve or service area warehouse.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "dc2f179e-5970-5c16-8003-430968e0d2cf",
+          "fieldName": "TargetKind",
+          "label": "Items",
+          "description": "Any, Blueprint, Category or Tag.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "0891b6d7-2a1c-5009-a0bc-17b4e31983b7",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Blueprint",
+          "description": "Items: the blueprint.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "89bf698c-33a9-5df0-82aa-d04338552922",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Category",
+          "relatedEntityTypeName": "Category",
+          "label": "Category",
+          "description": "Items: the category.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "e61bf2a0-cacf-5fed-a075-78a94dba60da",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Tag",
+          "relatedEntityTypeName": "Tag",
+          "label": "Tag",
+          "description": "Items: the tag.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "a09c7e1d-ab52-5328-9521-06d4654ea18b",
+          "fieldName": "ConsumerKind",
+          "label": "Consumers",
+          "description": "Any, Structure or ProductionKind.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "9fd51eb7-fd7c-599d-a423-ba6a2eb61568",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Structure",
+          "relatedEntityTypeName": "Structure",
+          "label": "Structure",
+          "description": "The consumer or service area structure.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "3716bea4-853f-54b5-b824-300355d728d8",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ProductionKind",
+          "relatedEntityTypeName": "ProductionKind",
+          "label": "Production kind",
+          "description": "Every consumer of this kind.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "c7b06cbf-b526-531a-9945-4dbf96aece3f",
+          "fieldName": "AreaKind",
+          "label": "Service area",
+          "description": "District, Rural or Structure.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "021e1e7a-ef6d-583b-b3a5-86688ae0d632",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "District",
+          "relatedEntityTypeName": "District",
+          "label": "District",
+          "description": "Service area district.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b3610938-5e92-53aa-80fd-9d6c7f806463",
+          "fieldName": "Units",
+          "label": "Units",
+          "description": "Reserve units.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "26e75bb6-d050-5542-b0c6-4edec11891c7",
+          "fieldName": "DaysOfCover",
+          "label": "Days of cover",
+          "description": "Reserve days.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "16e8b5c6-5b49-5fc2-a6e9-c4c37de10259",
+          "fieldName": "ReorderPoint",
+          "label": "Min",
+          "description": "Replenishment reorder point.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "bc422b83-3799-536c-809a-6cd22c454f5d",
+          "fieldName": "TargetLevel",
+          "label": "Max",
+          "description": "Replenishment target level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "7caacebc-483b-5195-bf55-67d87e92e01b",
+          "fieldName": "PriorityClass",
+          "label": "Priority",
+          "description": "The class.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "814e6895-8d5c-576a-b449-914409f22d8d",
+          "fieldName": "ActiveFrom",
+          "label": "Active from",
+          "description": "Empty = always.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "2234b78a-094c-5938-92dd-4123eaab1a37",
+          "fieldName": "ActiveUntil",
+          "label": "Active until",
+          "description": "Empty = always.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "5830eadd-0a1d-51c6-bc99-eb07c9496f3b",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Shown in the planner's explanation.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

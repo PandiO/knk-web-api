@@ -306,6 +306,15 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Production.IResourcePoolService, knkwebapi_v2.Services.Production.ResourcePoolService>();
             services.AddScoped<knkwebapi_v2.Services.Production.IHarvestService, knkwebapi_v2.Services.Production.HarvestService>();
             services.AddHostedService<knkwebapi_v2.Services.Production.TransportSweepService>();
+            // Town logistics P9 (PandiO/knk-workspace#127): versioned policies, consumer replenishment, the planner
+            // (reservations and collection orders) and its 10-minute schedule (A21: nothing while Production:Enabled is off).
+            services.AddScoped<knkwebapi_v2.Services.Logistics.ILogisticsPolicyService, knkwebapi_v2.Services.Logistics.LogisticsPolicyService>();
+            services.AddScoped<knkwebapi_v2.Services.Logistics.IConsumerReplenishmentService, knkwebapi_v2.Services.Logistics.ConsumerReplenishmentService>();
+            services.AddScoped<knkwebapi_v2.Services.Logistics.LogisticsRecordsService>();
+            services.AddScoped<knkwebapi_v2.Services.Logistics.ILogisticsReservationService>(sp => sp.GetRequiredService<knkwebapi_v2.Services.Logistics.LogisticsRecordsService>());
+            services.AddScoped<knkwebapi_v2.Services.Logistics.ILogisticsPlannerRunService>(sp => sp.GetRequiredService<knkwebapi_v2.Services.Logistics.LogisticsRecordsService>());
+            services.AddScoped<knkwebapi_v2.Services.Logistics.ILogisticsPlanner, knkwebapi_v2.Services.Logistics.LogisticsPlanner>();
+            services.AddHostedService<knkwebapi_v2.Services.Logistics.LogisticsPlannerSweepService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();
             services.AddScoped<IBannerDesignService, BannerDesignService>();
