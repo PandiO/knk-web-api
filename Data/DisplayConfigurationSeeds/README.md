@@ -381,3 +381,13 @@ GUIDs: configuration uuid5(URL namespace, "knk-displayconfig:<Entity>:seed-v1"),
 "section:<section>"), fields uuid5(configuration, "field:<section>:<field>[:<related property>]"); v3 as for v2
 (configuration uuid5(v2 configuration GUID, "seed-v3"), kept sections/fields uuid5(v2 configuration GUID, their v2
 GUID), the new field uuid5(v3 configuration GUID, "field:PoolFloor")).
+
+**Town logistics P9 display seeds v1 (PandiO/knk-workspace#127, 2026-11-21):** `LogisticsPolicy` (scope, town or
+warehouse, template labels, version and reason, with its rules), `LogisticsRule` (type, scope, items, consumers,
+service area, parameters, window, reason), `ConsumerReplenishment` (structure, storage, blueprint, min, max, priority),
+`LogisticsReservation` (warehouse and storage, consumer and storage, blueprint, amount, collected, status, order,
+expiry, explanation) and `LogisticsPlannerRun` (trigger, policy version, counts, summary, with its plan explanation:
+`LogisticsPlanEntry` rows). The town supply view, the service areas and a consumer's view are API views
+(`GET api/Logistics/towns/{id}/supply`, `.../service-areas`, `GET api/Logistics/consumers/{id}`) for the web app.
+GUIDs: configuration uuid5(URL namespace, "knk-displayconfig:<Entity>:seed-v1"), sections uuid5(configuration,
+"section:<section>"), fields uuid5(configuration, "field:<section>:<field>[:<related property>]").

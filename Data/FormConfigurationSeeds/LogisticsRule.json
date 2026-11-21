@@ -1,0 +1,226 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "a2d353b6-7543-584a-b73a-84dd1dd07224",
+  "entityTypeName": "LogisticsRule",
+  "name": "LogisticsRule - Default (seed v1)",
+  "description": "A rule of a logistics policy version (town logistics P9, #127, TOWN_LOGISTICS § 4). Read only here: rules are edited inside their policy, and a save makes a new version.",
+  "steps": [
+    {
+      "stepGuid": "b1ab3578-1363-538e-8972-2026af2cebe7",
+      "stepName": "Rule",
+      "description": "Every field is read only.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "24d60541-890b-53f0-a580-15cd7c7ec862",
+          "fieldName": "LogisticsPolicyId",
+          "label": "Policy version",
+          "description": "The policy version it belongs to.",
+          "fieldType": "Object",
+          "objectType": "LogisticsPolicy",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "5a76f05a-fd26-5ecf-ba62-b924f7bb46c7",
+          "fieldName": "Type",
+          "label": "Type",
+          "description": "The V1 rule types (the Later ones are #324).",
+          "fieldType": "Enum",
+          "enumType": "LogisticsRuleType",
+          "settingsJson": "{\"enumValues\": [\"Reserve\", \"PriorityClass\", \"ServiceArea\", \"Replenishment\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "d1c3efaf-006c-5118-be35-b34fd8a96ad3",
+          "fieldName": "Scope",
+          "label": "Scope",
+          "description": "Town-wide or one warehouse.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsRuleScope",
+          "settingsJson": "{\"enumValues\": [\"Town\", \"Warehouse\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "bb3589ba-cbea-53de-824d-92e990e5d338",
+          "fieldName": "WarehouseId",
+          "label": "Warehouse",
+          "description": "A local reserve's warehouse, or the warehouse a service area maps to.",
+          "fieldType": "Object",
+          "objectType": "Warehouse",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "6ea8b328-c97d-5af7-b3f2-71118479cf0d",
+          "fieldName": "TargetKind",
+          "label": "Items",
+          "description": "Which items it is about.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsTargetKind",
+          "settingsJson": "{\"enumValues\": [\"Any\", \"Blueprint\", \"Category\", \"Tag\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "04ac9fd3-e7d2-5726-90eb-82451aa8c498",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint",
+          "description": "Items: one blueprint.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "f63559d4-5dbd-5527-9f56-e817a004fb12",
+          "fieldName": "CategoryId",
+          "label": "Category",
+          "description": "Items: a category (and its sub-categories).",
+          "fieldType": "Object",
+          "objectType": "Category",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "f53e5767-ff31-550d-a46f-5198895da5af",
+          "fieldName": "TagId",
+          "label": "Tag",
+          "description": "Items: a tag.",
+          "fieldType": "Object",
+          "objectType": "Tag",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "5e1e6ef5-326b-5612-a8e2-a7b6f99c3b6f",
+          "fieldName": "ConsumerKind",
+          "label": "Consumers",
+          "description": "Which consumers a priority or replenishment rule is about.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsConsumerKind",
+          "settingsJson": "{\"enumValues\": [\"Any\", \"Structure\", \"ProductionKind\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "e2283380-aa1e-5707-b209-66261c8b5c44",
+          "fieldName": "StructureId",
+          "label": "Structure",
+          "description": "One consumer, or the structure of a service area.",
+          "fieldType": "Object",
+          "objectType": "Structure",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "1f8105d7-e998-522b-a031-28ae019e6609",
+          "fieldName": "ProductionKindId",
+          "label": "Production kind",
+          "description": "Every consumer of this kind.",
+          "fieldType": "Object",
+          "objectType": "ProductionKind",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "e07a9242-5b71-5669-bf3a-abc08d872e52",
+          "fieldName": "AreaKind",
+          "label": "Service area",
+          "description": "What the service area maps.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsAreaKind",
+          "settingsJson": "{\"enumValues\": [\"District\", \"Rural\", \"Structure\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "5a5ccd5f-2605-5ac5-bcab-b8c272f2bec7",
+          "fieldName": "DistrictId",
+          "label": "District",
+          "description": "Service area: the district.",
+          "fieldType": "Object",
+          "objectType": "District",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "662a4792-20e1-5c9f-8796-e126b765e79b",
+          "fieldName": "Units",
+          "label": "Units",
+          "description": "Reserve: units to keep.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "02aaef92-0e8b-5b2b-81d6-37c14eb00e93",
+          "fieldName": "DaysOfCover",
+          "label": "Days of cover",
+          "description": "Reserve: days of average outflow to keep.",
+          "fieldType": "Decimal",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "e4d1bfa3-cb2f-5038-84a9-4f6afc396b49",
+          "fieldName": "ReorderPoint",
+          "label": "Min",
+          "description": "Replenishment: reserve when stock falls to this.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "3f21c347-bf82-5a5d-84d0-9c6b58c8ffbe",
+          "fieldName": "TargetLevel",
+          "label": "Max",
+          "description": "Replenishment: reserve up to this.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "d5121f1c-e51d-55dd-88aa-bfe3a54711ec",
+          "fieldName": "PriorityClass",
+          "label": "Priority",
+          "description": "PriorityClass: higher classes are served first under scarcity.",
+          "fieldType": "Enum",
+          "enumType": "LogisticsPriorityClass",
+          "settingsJson": "{\"enumValues\": [\"Critical\", \"High\", \"Normal\", \"Low\"]}",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "8e2a9e56-10d1-5af6-8ae5-b63fa99721a8",
+          "fieldName": "ActiveFrom",
+          "label": "Active from",
+          "description": "Empty = always.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "99e219ce-fcf7-57c9-b650-ee9c6801b98b",
+          "fieldName": "ActiveUntil",
+          "label": "Active until",
+          "description": "Empty = always.",
+          "fieldType": "DateTime",
+          "isRequired": false,
+          "isReadOnly": true
+        },
+        {
+          "fieldGuid": "0e1845e9-6afe-5c97-b51f-787ffdab4a00",
+          "fieldName": "Reason",
+          "label": "Reason",
+          "description": "Shown in the planner's explanation.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": true
+        }
+      ]
+    }
+  ]
+}

@@ -288,7 +288,7 @@ namespace knkwebapi_v2.Services.Logistics
             await SaveAsync(ct);
             head.LineageId = head.Id;
             head.CurrentKey = LogisticsPolicy.KeyFor(head.Scope, head.TownId, head.WarehouseId, head.Id);
-            if (head.IsDefaultTemplate) await ClearOtherDefaultsAsync(head.LineageId, ct);
+            if (head.IsDefaultTemplate) await ClearOtherDefaultsAsync(head.LineageId, head.Id, ct);
             await SaveAsync(ct);
             if (tx != null) await tx.CommitAsync(ct);
             _db.ChangeTracker.Clear();
@@ -336,7 +336,7 @@ namespace knkwebapi_v2.Services.Logistics
             _db.Set<LogisticsPolicy>().Add(head);
             await SaveAsync(ct);
             tracked.SupersededByPolicyId = head.Id;
-            if (head.IsDefaultTemplate) await ClearOtherDefaultsAsync(head.LineageId, ct);
+            if (head.IsDefaultTemplate) await ClearOtherDefaultsAsync(head.LineageId, head.Id, ct);
             await SaveAsync(ct);
             if (tx != null) await tx.CommitAsync(ct);
             _db.ChangeTracker.Clear();
@@ -408,10 +408,10 @@ namespace knkwebapi_v2.Services.Logistics
             }
         }
 
-        private async Task ClearOtherDefaultsAsync(int lineageId, CancellationToken ct)
+        private async Task ClearOtherDefaultsAsync(int lineageId, int keepId, CancellationToken ct)
         {
             var others = await _db.Set<LogisticsPolicy>()
-                .Where(p => p.Scope == LogisticsPolicyScope.Template && p.IsDefaultTemplate && p.CurrentKey != null && p.LineageId != lineageId)
+                .Where(p => p.Scope == LogisticsPolicyScope.Template && p.IsDefaultTemplate && p.CurrentKey != null && p.LineageId != lineageId && p.Id != keepId)
                 .ToListAsync(ct);
             foreach (var o in others) o.IsDefaultTemplate = false;
         }

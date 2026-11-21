@@ -431,3 +431,24 @@ needed to set one up beforehand. `PlayerHarvest` (the harvest history) is read o
 seeds uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields uuid5(that, "step:"/"field:" + name);
 v3 uuid5(v2 configuration GUID, "seed-v3"), every kept step/field uuid5(v2 configuration GUID, its v2 GUID), the new
 field uuid5(v3 configuration GUID, "field:PoolFloor").
+
+**Town logistics P9 seeds (PandiO/knk-workspace#127, 2026-11-21):** five new seeds with display seeds in
+`DisplayConfigurationSeeds/` (G17). Import in any order.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `LogisticsPolicy` | LogisticsPolicy - Default (seed v1) | — |
+| `ConsumerReplenishment` | ConsumerReplenishment - Default (seed v1) | — |
+| `LogisticsRule` | LogisticsRule - Default (seed v1) | — (read only) |
+| `LogisticsReservation` | LogisticsReservation - Default (seed v1) | — (read only) |
+| `LogisticsPlannerRun` | LogisticsPlannerRun - Default (seed v1) | — (read only) |
+
+`LogisticsPolicy` asks for the name and scope (Town, Warehouse or Template) with the town or warehouse, and for templates
+the specialization (a resource category), town size and the default flag. A policy is versioned: every save is a new
+version, so its rules are edited in the web app's policy editor (#686) or with `PUT api/LogisticsPolicies/{id}` and the
+whole rule list, not in this form; `LogisticsRule` is read only. `ConsumerReplenishment` asks for a structure's Input or
+Merchandise storage, the blueprint, min (reorder point), max (target level), an optional priority class and the switch;
+the structure is taken from the storage. Reservations and planner runs are written by the planner, so their forms are
+read only; `LogisticsPlanEntry` (a run's explanation lines) is listed on the run's page and has no seed (child rows,
+developer clarification 2026-11-19). GUIDs: uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields
+uuid5(that, "step:"/"field:" + name).

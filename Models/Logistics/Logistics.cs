@@ -108,7 +108,10 @@ public class LogisticsRule
 
     public int Id { get; set; }
 
+    [NavigationPair(nameof(LogisticsPolicy))]
+    [RelatedEntityField(typeof(LogisticsPolicy))]
     public int LogisticsPolicyId { get; set; }
+    [RelatedEntityField(typeof(LogisticsPolicy))]
     public LogisticsPolicy LogisticsPolicy { get; set; } = null!;
 
     /// <summary>1, 2, ...: the order the editor shows.</summary>

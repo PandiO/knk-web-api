@@ -1,0 +1,154 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "1040754f-c6b3-5d11-aa48-02ea5f93faa9",
+  "entityTypeName": "LogisticsReservation",
+  "name": "LogisticsReservation - Default (seed v1)",
+  "description": "A planner reservation (town logistics P9, #127): what is held where, for whom, and why.",
+  "sections": [
+    {
+      "sectionGuid": "8080c1d4-a639-591c-bdb4-fa78799db6b5",
+      "sectionName": "Reservation",
+      "description": "What is held where, for whom.",
+      "fields": [
+        {
+          "fieldGuid": "ed8c4a0c-151d-54bb-b339-7c7cb294c1bd",
+          "fieldName": "Id",
+          "label": "Reservation",
+          "description": "The number.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "07690da3-fcc7-504b-a1a7-62e2dc57cb5b",
+          "fieldName": "Status",
+          "label": "Status",
+          "description": "Open, Collected, Released or Cancelled.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "33a91353-04f8-50a9-b864-087f2441aa29",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Town",
+          "relatedEntityTypeName": "Town",
+          "label": "Town",
+          "description": "The town.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "c24f0280-7f45-5756-a6b2-f65b37c2759b",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Warehouse",
+          "relatedEntityTypeName": "Warehouse",
+          "label": "Warehouse",
+          "description": "Where the stock is held.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "b8c28e72-a2a5-537b-85d1-b19e4d65df83",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "WarehouseStorage",
+          "relatedEntityTypeName": "Storage",
+          "label": "Warehouse storage",
+          "description": "The storage it is collected from.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "2da3b998-c142-503d-bcef-8c6e88ff4536",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ConsumerStructure",
+          "relatedEntityTypeName": "Structure",
+          "label": "Consumer",
+          "description": "Who collects it.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "1f298b76-eba6-5437-8794-333e6c331258",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ConsumerStorage",
+          "relatedEntityTypeName": "Storage",
+          "label": "Consumer storage",
+          "description": "Where it goes.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6888eccf-ac38-5ff7-b6e7-fd051e5f1c5f",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ItemBlueprint",
+          "relatedEntityTypeName": "ItemBlueprint",
+          "label": "Blueprint",
+          "description": "What is held.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "d97cc06c-289d-56e7-ae04-03e1a149478a",
+          "fieldName": "Amount",
+          "label": "Amount",
+          "description": "Units held.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "a0ab0cdf-2642-52e0-add8-8bb5610c3819",
+          "fieldName": "Collected",
+          "label": "Collected",
+          "description": "Units loaded.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "ca9ba807-b69b-5673-86a8-e503f7047e03",
+          "fieldName": "PriorityClass",
+          "label": "Priority class",
+          "description": "The class it was planned with.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "12673b9d-ed82-5e2e-9cf9-ee3fd4368e51",
+          "fieldName": "TransportOrderId",
+          "label": "Collection order",
+          "description": "The order number.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "8d82ddaa-9465-51dd-a12a-4b7d51500d9b",
+          "fieldName": "PlannerRunId",
+          "label": "Planner run",
+          "description": "The run that made it.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "b8ce8831-6aee-5c1c-9089-99cbfefa787f",
+          "fieldName": "CreatedAt",
+          "label": "Created",
+          "description": "When it was made.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "62fb1087-7f0a-558f-b980-b0be40233864",
+          "fieldName": "ExpiresAt",
+          "label": "Expires",
+          "description": "Released at the next run after this.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "2ed378bc-aee6-5e96-a432-d501c87a2d0e",
+          "fieldName": "ClosedAt",
+          "label": "Closed",
+          "description": "When it was collected or released.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "cbd30b75-3fb0-5eda-8d83-4fe799aae8be",
+          "fieldName": "Explanation",
+          "label": "Explanation",
+          "description": "Why the planner made it.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "7eb57341-8e3a-5f64-a2c5-0e23305dbe75",
+          "fieldName": "StatusReason",
+          "label": "Status reason",
+          "description": "Why it was released or cancelled.",
+          "fieldType": "String"
+        }
+      ]
+    }
+  ]
+}

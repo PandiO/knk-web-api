@@ -1,0 +1,85 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "0229d356-e9ae-5d4a-9b43-c6fe6d1772f0",
+  "entityTypeName": "ConsumerReplenishment",
+  "name": "ConsumerReplenishment - Default (seed v1)",
+  "description": "A consumer's replenishment setting (town logistics P9, #127, TOWN_LOGISTICS § 3): min and max of one blueprint in one Input or Merchandise storage of a structure, and an optional priority class. When stock (with what is on the way) falls to the min, the planner reserves up to the max at a warehouse and the consumer's own worker collects it. Without a setting the policy's Replenishment rules apply, then the structure's line inputs (game setting production.logistics).",
+  "steps": [
+    {
+      "stepGuid": "a0ec619d-6564-53e3-a3aa-12e8d5a9012c",
+      "stepName": "Setting",
+      "description": "The storage, the blueprint and its min and max.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a382ceb9-2802-5af1-864a-03eb145e77c6",
+          "fieldName": "StorageId",
+          "label": "Consumer storage",
+          "description": "An Input or Merchandise storage of a structure (not a warehouse).",
+          "fieldType": "Object",
+          "objectType": "Storage",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "b979d33d-6338-59d3-a564-70f47fd56157",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint",
+          "description": "What it needs.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9f487d0b-e2a5-541a-b6f9-6cba79c6a459",
+          "fieldName": "ReorderPoint",
+          "label": "Min (reorder point)",
+          "description": "Reserve when stock falls to this.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "e8ce5915-390d-5352-9340-a7db294cbeac",
+          "fieldName": "TargetLevel",
+          "label": "Max (target level)",
+          "description": "Reserve up to this (at least the min, above 0).",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "caacb76b-8f16-5d81-8fe9-e7f8117c9ef0",
+          "fieldName": "PriorityClass",
+          "label": "Priority class",
+          "description": "Under scarcity, higher classes are served first; empty = the policy's priority rules (Normal without one).",
+          "fieldType": "Enum",
+          "enumType": "LogisticsPriorityClass",
+          "settingsJson": "{\"enumValues\": [\"Critical\", \"High\", \"Normal\", \"Low\"]}",
+          "isReadOnly": false,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "e5344d93-b66e-5be4-8843-457872348876",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off: the planner ignores this setting.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1fc29014-801e-5e34-8206-1641d58e63ab",
+          "fieldName": "Note",
+          "label": "Note",
+          "description": "Optional.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}
