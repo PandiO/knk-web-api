@@ -153,6 +153,7 @@ public class ReadAccessRulesTests
         ["LogisticsPoliciesController.GetById"] = "F LogisticsPolicy",
         ["LogisticsPoliciesController.Search"] = "F LogisticsPolicy",
         ["LogisticsPoliciesController.Versions"] = "F LogisticsPolicy",
+        ["LogisticsPoliciesController.TownProfile"] = "F LogisticsPolicy", // #928
         ["LogisticsRulesController.GetById"] = "F LogisticsRule",
         ["LogisticsRulesController.Search"] = "F LogisticsRule",
         ["ConsumerReplenishmentsController.GetById"] = "F ConsumerReplenishment",

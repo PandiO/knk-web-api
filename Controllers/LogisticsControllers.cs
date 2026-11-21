@@ -72,6 +72,21 @@ namespace KnKWebAPI.Controllers
             return NoContent();
         });
 
+        /// <summary>The town's size and specialization (the labels the templates key on) and the template that fits them
+        /// best (#928).</summary>
+        [HttpGet("towns/{townId:int}/profile")]
+        public Task<IActionResult> TownProfile(int townId, CancellationToken ct) =>
+            LogisticsErrors.Run(async () => Ok(await _service.GetTownProfileAsync(townId, ct)));
+
+        /// <summary>Sets the town's size and specialization: a null field is left as it is, an empty string clears it.
+        /// Same rule as applying a template: knk.admin.world or the plugin key.</summary>
+        [HttpPut("towns/{townId:int}/profile")]
+        public Task<IActionResult> UpdateTownProfile(int townId, [FromBody] TownLogisticsProfileDto dto, CancellationToken ct) => LogisticsErrors.Run(async () =>
+        {
+            if (dto == null) return BadRequest();
+            return Ok(await _service.UpdateTownProfileAsync(townId, dto, ct));
+        });
+
         /// <summary>Copies a template's rules into a town's policy (a new version of it, or its version 1).</summary>
         [HttpPost("{id:int}/apply")]
         public Task<IActionResult> ApplyTemplate(int id, [FromBody] LogisticsApplyTemplateDto dto, CancellationToken ct) => LogisticsErrors.Run(async () =>

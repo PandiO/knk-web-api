@@ -60,6 +60,9 @@ namespace knkwebapi_v2.Mapping
                 .ForMember(dest => dest.Kingdom, src => src.Ignore())
                 .ForMember(dest => dest.ProvinceId, src => src.Ignore())
                 .ForMember(dest => dest.Province, src => src.Ignore())
+                // Town logistics labels (#928): set through the logistics profile endpoint only.
+                .ForMember(dest => dest.LogisticsTownSize, src => src.Ignore())
+                .ForMember(dest => dest.LogisticsSpecialization, src => src.Ignore())
                 .IgnoreTeleportSettings()
                 .IgnoreNavigationDefault();
 

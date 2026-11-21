@@ -1872,6 +1872,9 @@ public partial class KnKDbContext : DbContext
         modelBuilder.Entity<Town>(entity =>
         {
             entity.ToTable("towns");
+            // Town logistics labels (#928): stored as names, like the template labels on logistics_policies.
+            entity.Property(e => e.LogisticsTownSize).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.LogisticsSpecialization).HasConversion<string>().HasMaxLength(16);
         });
 
         // #409: Town.Streets is not mapped; it is computed from District.Streets (the TownStreet table was dropped).

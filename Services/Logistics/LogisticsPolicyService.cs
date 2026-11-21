@@ -38,6 +38,12 @@ namespace knkwebapi_v2.Services.Logistics
 
         Task<LogisticsRuleDto?> GetRuleAsync(int id, CancellationToken ct = default);
 
+        /// <summary>The town's size and specialization labels with the template that fits them (#928). 404 for an unknown town.</summary>
+        Task<TownLogisticsProfileDto> GetTownProfileAsync(int townId, CancellationToken ct = default);
+
+        /// <summary>Sets the town's labels: a null field is left as it is, an empty string clears it. 400 on an unknown label.</summary>
+        Task<TownLogisticsProfileDto> UpdateTownProfileAsync(int townId, TownLogisticsProfileDto dto, CancellationToken ct = default);
+
         /// <summary>Rules across policies (dashboard): filters logisticsPolicyId, townId, type, current (true by default).</summary>
         Task<PagedResultDto<LogisticsRuleListDto>> SearchRulesAsync(PagedQueryDto query, CancellationToken ct = default);
     }
@@ -416,6 +422,53 @@ namespace knkwebapi_v2.Services.Logistics
             foreach (var o in others) o.IsDefaultTemplate = false;
         }
 
+        // ================= Town profile (#928 point 1) =================
+
+        public async Task<TownLogisticsProfileDto> GetTownProfileAsync(int townId, CancellationToken ct = default)
+        {
+            var town = await _db.Towns.AsNoTracking().Where(t => t.Id == townId)
+                .Select(t => new { t.Id, t.Name, t.LogisticsTownSize, t.LogisticsSpecialization }).FirstOrDefaultAsync(ct)
+                ?? throw new KeyNotFoundException($"Town {townId} not found.");
+            var dto = new TownLogisticsProfileDto
+            {
+                TownId = town.Id, TownName = town.Name, TownSize = town.LogisticsTownSize?.ToString(), Specialization = town.LogisticsSpecialization?.ToString(),
+            };
+            var (template, match) = await SuggestTemplateAsync(town.LogisticsTownSize, town.LogisticsSpecialization, ct);
+            dto.SuggestedTemplateId = template?.Id;
+            dto.SuggestedTemplateName = template?.Name;
+            dto.SuggestedTemplateMatch = match;
+            return dto;
+        }
+
+        public async Task<TownLogisticsProfileDto> UpdateTownProfileAsync(int townId, TownLogisticsProfileDto dto, CancellationToken ct = default)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+            if (dto.TownId != 0 && dto.TownId != townId) throw new ArgumentException("townId can't change.");
+            var town = await _db.Towns.FirstOrDefaultAsync(t => t.Id == townId, ct) ?? throw new KeyNotFoundException($"Town {townId} not found.");
+            if (dto.TownSize != null) town.LogisticsTownSize = ParseTownSize(dto.TownSize);
+            if (dto.Specialization != null) town.LogisticsSpecialization = ParseSpecialization(dto.Specialization);
+            await SaveAsync(ct);
+            _db.ChangeTracker.Clear();
+            return await GetTownProfileAsync(townId, ct);
+        }
+
+        /// <summary>The current template for a size and specialization: both labels equal (Exact), else the same size with a
+        /// general specialization (Size), else the default template (Default); the oldest lineage wins a tie.</summary>
+        private async Task<(LogisticsPolicy? Template, string Match)> SuggestTemplateAsync(LogisticsTownSize? size, ResourceCategory? spec, CancellationToken ct)
+        {
+            var templates = await _db.Set<LogisticsPolicy>().AsNoTracking()
+                .Where(p => p.Scope == LogisticsPolicyScope.Template && p.CurrentKey != null).OrderBy(p => p.LineageId).ToListAsync(ct);
+            if (size != null || spec != null)
+            {
+                var exact = templates.FirstOrDefault(p => p.TownSize == size && p.Specialization == spec);
+                if (exact != null) return (exact, "Exact");
+                if (size != null && spec != null && templates.FirstOrDefault(p => p.TownSize == size && p.Specialization == null) is { } bySize)
+                    return (bySize, "Size");
+            }
+            var fallback = templates.FirstOrDefault(p => p.IsDefaultTemplate);
+            return fallback == null ? (null, "None") : (fallback, "Default");
+        }
+
         // ================= Validation =================
 
         private async Task<LogisticsPolicy> ValidateHeadAsync(LogisticsPolicyDto dto, LogisticsPolicy? old, CancellationToken ct)
@@ -452,24 +505,33 @@ namespace knkwebapi_v2.Services.Logistics
                     break;
                 default:
                     if (dto.TownId.HasValue || dto.WarehouseId.HasValue) throw new ArgumentException("A template has no town or warehouse.");
-                    if (!string.IsNullOrWhiteSpace(dto.Specialization))
-                    {
-                        if (!Enum.TryParse<ResourceCategory>(dto.Specialization.Trim(), true, out var spec) || !Enum.IsDefined(spec))
-                            throw new ArgumentException($"specialization must be one of {string.Join(", ", Enum.GetNames<ResourceCategory>())} (or empty for general).");
-                        head.Specialization = spec;
-                    }
-                    if (!string.IsNullOrWhiteSpace(dto.TownSize))
-                    {
-                        if (!Enum.TryParse<LogisticsTownSize>(dto.TownSize.Trim(), true, out var size) || !Enum.IsDefined(size))
-                            throw new ArgumentException("townSize must be Village, Town or City (or empty).");
-                        head.TownSize = size;
-                    }
+                    // #928: like name, a label left out (null) keeps the current version's value; an empty string clears it.
+                    head.Specialization = dto.Specialization == null ? old?.Specialization : ParseSpecialization(dto.Specialization);
+                    head.TownSize = dto.TownSize == null ? old?.TownSize : ParseTownSize(dto.TownSize);
                     head.IsDefaultTemplate = dto.IsDefaultTemplate ?? old?.IsDefaultTemplate ?? false;
                     break;
             }
             if (scope != LogisticsPolicyScope.Template && (!string.IsNullOrWhiteSpace(dto.Specialization) || !string.IsNullOrWhiteSpace(dto.TownSize) || dto.IsDefaultTemplate == true))
                 throw new ArgumentException("specialization, townSize and isDefaultTemplate are for templates only.");
             return head;
+        }
+
+        /// <summary>A specialization label: empty = general (null); otherwise a <see cref="ResourceCategory"/> name.</summary>
+        internal static ResourceCategory? ParseSpecialization(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            if (!Enum.TryParse<ResourceCategory>(value.Trim(), true, out var spec) || !Enum.IsDefined(spec))
+                throw new ArgumentException($"specialization must be one of {string.Join(", ", Enum.GetNames<ResourceCategory>())} (or empty for general).");
+            return spec;
+        }
+
+        /// <summary>A town size label: empty = none (null); otherwise Village, Town or City.</summary>
+        internal static LogisticsTownSize? ParseTownSize(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            if (!Enum.TryParse<LogisticsTownSize>(value.Trim(), true, out var size) || !Enum.IsDefined(size))
+                throw new ArgumentException("townSize must be Village, Town or City (or empty).");
+            return size;
         }
 
         /// <summary>The town a policy's places must be in (null for templates).</summary>
