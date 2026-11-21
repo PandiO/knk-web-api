@@ -92,12 +92,31 @@ namespace knkwebapi_v2.Dtos
         public int? TeleportSpawnCooldownSeconds { get; set; }
 
         /// <summary>
-        /// Default /navigate route mode of the group's members (PandiO/knk-workspace#852): "shortest", "efficient"
-        /// or "preferred", null = no default. Read: always the stored value (lowercase or null). Write: omitted
-        /// (null) keeps the stored value, "" clears it (see Services.PermissionGroupRouteMode).
+        /// Default /navigate route mode of the group's members (PandiO/knk-workspace#852): "Shortest", "Efficient"
+        /// or "Preferred" (read in any case), null = no default. Read: always the stored value. Write: a name sets
+        /// it; null or "" (the form's "None" option) clears it; another word is a 400 from the JSON binding; a body
+        /// without the property keeps the stored value (<see cref="DefaultRouteModeSent"/>), so a client or an
+        /// imported form configuration that predates the field can't wipe it.
         /// </summary>
         [JsonPropertyName("defaultRouteMode")]
-        public string? DefaultRouteMode { get; set; }
+        public RouteMode? DefaultRouteMode
+        {
+            get => _defaultRouteMode;
+            set
+            {
+                _defaultRouteMode = value;
+                DefaultRouteModeSent = true;
+            }
+        }
+
+        private RouteMode? _defaultRouteMode;
+
+        /// <summary>
+        /// True once <see cref="DefaultRouteMode"/> was set, which the JSON binding does only when the body has the
+        /// property (null and "" included); false for a body without it.
+        /// </summary>
+        [JsonIgnore]
+        public bool DefaultRouteModeSent { get; private set; }
 
         [JsonPropertyName("parentGroupId")]
         public int? ParentGroupId { get; set; }
@@ -144,7 +163,7 @@ namespace knkwebapi_v2.Dtos
         public string? nameColor { get; set; }
         /// <summary>Default /navigate route mode (PandiO/knk-workspace#852), null = no default.</summary>
         [JsonPropertyName("defaultRouteMode")]
-        public string? defaultRouteMode { get; set; }
+        public RouteMode? defaultRouteMode { get; set; }
         [JsonPropertyName("parentGroupId")]
         public int? parentGroupId { get; set; }
         [JsonPropertyName("parentGroupName")]

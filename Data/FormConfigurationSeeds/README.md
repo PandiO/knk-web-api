@@ -336,6 +336,13 @@ gets it by adding the field in the form designer with the same field name, type 
 the form leaves the stored value alone (an omitted value is kept). Field GUID: uuid5 of the configuration GUID and
 `Group/DefaultRouteMode`.
 
+**DefaultRouteMode as an Enum field (PandiO/knk-workspace#852 follow-up, developer decision 2026-11-21):** the
+entity property is now the enum `RouteMode` (`Shortest`, `Efficient`, `Preferred`), so the field is an **Enum** field
+(the publish check compares the field type with the entity's). Same field GUID, step and label, in
+place. Settings JSON: `{"enumValues": ["Shortest", "Efficient", "Preferred"], "emptyOptionLabel": "None (default:
+Preferred)"}`; the values must be the enum names, because an edit pre-selects the stored name. A database that added
+the String field by hand changes its type to Enum and its settings to these in the form designer.
+
 **Transport core P5 seeds v1 (PandiO/knk-workspace#79, 2026-11-20):** new seeds for the two major P5 entities, each
 with a display seed in `DisplayConfigurationSeeds/` (G17). Import in any order.
 

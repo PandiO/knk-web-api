@@ -34,3 +34,18 @@ public enum NavigationCompassNameMatch
     Exact,
     Contains
 }
+
+/// <summary>
+/// A permission group's default <c>/navigate</c> route mode (PandiO/knk-workspace#852, on top of the route modes of
+/// #707): the mode the plugin uses for members who type no mode word. The names match the plugin's mode words
+/// (knk-core <c>RouteMode</c>, which reads them in any case). Stored as a string, serialized by name.
+/// </summary>
+public enum RouteMode
+{
+    /// <summary>Length only.</summary>
+    Shortest,
+    /// <summary>Walking effort: stairs, ladders, doors, water and the road class.</summary>
+    Efficient,
+    /// <summary>Efficient plus the road and landmark preference weights (the route without a mode word).</summary>
+    Preferred
+}
