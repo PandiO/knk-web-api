@@ -64,7 +64,7 @@
     {
       "stepGuid": "f92c3cf0-67ae-5198-a56f-ee956e870ffe",
       "stepName": "Area",
-      "description": "Optional. Where the landmark counts as reached: inside a WorldGuard region, or within a radius of the point.",
+      "description": "Optional. Where the landmark counts as reached: inside a WorldGuard region (draw one with Send to Minecraft or name an existing one), or within a radius of the point. A drawn region becomes landmark_<id> when you save.",
       "isManyToManyRelationship": false,
       "fields": [
         {
@@ -82,11 +82,12 @@
         {
           "fieldGuid": "2c6887da-3d3f-5bbd-a917-74fa4bf69b6a",
           "fieldName": "RegionId",
-          "label": "Region id",
-          "description": "The WorldGuard region id, for Area = Region (at most 128 characters).",
+          "label": "Region",
+          "description": "For Area = Region: draw a new region with Send to Minecraft, or type the id of an existing WorldGuard region (at most 128 characters). A region you draw here is renamed to landmark_<id> when you save and keeps exactly the outline and Y range you drew, so the server keeps it; running this step again on a saved landmark replaces that region. An existing region (a domain's, or one given to /knk landmark create <name> region <id>) is used as it is. The region must be in the world of the landmark's point.",
           "fieldType": "String",
           "isRequired": false,
-          "isReadOnly": false
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
         },
         {
           "fieldGuid": "f7efe92a-a360-5c2e-b5f6-d3f0b09826f9",
