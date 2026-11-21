@@ -11944,6 +11944,14 @@ namespace knkwebapi_v2.Migrations
                     b.Property<int?>("KingdomId")
                         .HasColumnType("int");
 
+                    b.Property<string>("LogisticsSpecialization")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("LogisticsTownSize")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
                     b.Property<int>("Power")
                         .HasColumnType("int");
 
