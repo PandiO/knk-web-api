@@ -1,0 +1,46 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "b2ae925c-7bb5-56b8-9952-5098046702ab",
+  "entityTypeName": "TownAccount",
+  "name": "TownAccount - Default (seed v1)",
+  "description": "A town's account (shops P10). Its ledger is GET api/TownAccounts/{id}/ledger.",
+  "sections": [
+    {
+      "sectionGuid": "e1dc8e73-a75a-577e-a470-577ba765dfd9",
+      "sectionName": "Account",
+      "description": "The balance.",
+      "fields": [
+        {
+          "fieldGuid": "feb86c23-c7aa-5ad5-9b0b-d9df115c8361",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "Town",
+          "relatedEntityTypeName": "Town",
+          "label": "Town",
+          "description": "The town.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "38084cfa-9e58-5d32-a51e-9f2fd1c46767",
+          "fieldName": "Coins",
+          "label": "Coins",
+          "description": "The balance.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "37e87353-a1d5-5bfa-a504-aa0cafbd73a6",
+          "fieldName": "CreatedAt",
+          "label": "Opened",
+          "description": "First posting.",
+          "fieldType": "DateTime"
+        },
+        {
+          "fieldGuid": "e7835890-2541-5592-9b9c-460d8c2e31c8",
+          "fieldName": "UpdatedAt",
+          "label": "Updated",
+          "description": "Last posting.",
+          "fieldType": "DateTime"
+        }
+      ]
+    }
+  ]
+}

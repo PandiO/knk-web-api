@@ -1,0 +1,89 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "c8809e54-c675-5a71-b61a-a21f141253dd",
+  "entityTypeName": "ShopType",
+  "name": "ShopType - Default (seed v1)",
+  "description": "A shop type with its accepted categories and levels (shops P10, #248).",
+  "sections": [
+    {
+      "sectionGuid": "85ee6bdd-b91f-5c73-8ca9-8f7b4c4e0e28",
+      "sectionName": "Shop type",
+      "description": "Name, default kind and switch.",
+      "fields": [
+        {
+          "fieldGuid": "ea389841-891d-56ae-84d5-969d95114645",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "The type.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "20f43a70-9f97-559c-af72-df682f102209",
+          "fieldName": "DefaultKind",
+          "label": "Default kind",
+          "description": "Trading or Processing.",
+          "fieldType": "Enum"
+        },
+        {
+          "fieldGuid": "a4385d98-0a90-5903-ad14-2d969f5f70fd",
+          "fieldName": "IsActive",
+          "label": "Active",
+          "description": "Offered for new shops.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "879bcb91-47c1-5ca5-9f27-9dcda26b3bed",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "Optional.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "64fa092e-a18d-5bd5-abfc-13edd8a8d8ce",
+      "sectionName": "Levels",
+      "description": "Speed, yield, input cost, price multiplier, caps and restocking defaults per level.",
+      "relatedEntityPropertyName": "Levels",
+      "relatedEntityTypeName": "ShopTypeLevel",
+      "isCollection": true,
+      "fields": [
+        {
+          "fieldGuid": "617c153b-006d-5ad8-8374-1df761259c80",
+          "fieldName": "Level",
+          "label": "Level",
+          "description": "The level.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "4068f51b-4c51-540f-a82e-5ac305103613",
+          "fieldName": "PriceMultiplier",
+          "label": "Price ×",
+          "description": "Shop level modifier of the sell price.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "b3e3f6a2-0b3a-536e-a716-ab06a5375e09",
+          "fieldName": "CycleSpeedMultiplier",
+          "label": "Speed ×",
+          "description": "Processing cycle speed.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "9c3dfb54-3356-5a79-a203-7464e367812c",
+          "fieldName": "YieldMultiplier",
+          "label": "Yield ×",
+          "description": "Processing yield.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "5d914045-3908-50ef-b27a-f403ced4229c",
+          "fieldName": "MerchandiseMaxUnits",
+          "label": "Merchandise cap",
+          "description": "Raw units.",
+          "fieldType": "Integer"
+        }
+      ]
+    }
+  ]
+}

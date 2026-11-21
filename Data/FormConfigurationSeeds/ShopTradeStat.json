@@ -1,0 +1,109 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "60cc8943-175c-5cb1-9f32-75d28453f9eb",
+  "entityTypeName": "ShopTradeStat",
+  "name": "ShopTradeStat - Default (seed v1)",
+  "description": "Hourly trade stats of one shop, blueprint and UTC hour (shops DESIGN § 9.1), rolled up from the ledger; read only (POST api/ShopTradeStats/rebuild recomputes a range).",
+  "steps": [
+    {
+      "stepGuid": "24126388-6f74-5045-ac13-0620a2320b46",
+      "stepName": "Hour",
+      "description": "Read only.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "9ec1200b-1c8b-597c-b387-f1fb0aa617dd",
+          "fieldName": "ShopId",
+          "label": "Shop",
+          "description": "The shop.",
+          "fieldType": "Object",
+          "objectType": "Shop",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "cb67a508-e645-55ce-8333-151de46b4c60",
+          "fieldName": "ItemBlueprintId",
+          "label": "Blueprint",
+          "description": "The item.",
+          "fieldType": "Object",
+          "objectType": "ItemBlueprint",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "5bea9e90-5589-53ff-981c-8f443d47c83c",
+          "fieldName": "HourStart",
+          "label": "Hour",
+          "description": "UTC.",
+          "fieldType": "DateTime",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "daeeff41-690e-5c69-a89f-b6c36fca7108",
+          "fieldName": "UnitsSold",
+          "label": "Units sold",
+          "description": "To players.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "6a3ce0a4-6c27-59b0-9e3e-bf2d936715d0",
+          "fieldName": "Revenue",
+          "label": "Revenue",
+          "description": "Coins.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "ad48acec-1272-5983-89d5-e2de88383a98",
+          "fieldName": "UnitsBoughtBack",
+          "label": "Units bought back",
+          "description": "From players.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "40fac4dd-1ab2-565f-8e77-089393523a8c",
+          "fieldName": "BuyBackPaid",
+          "label": "Buy-back paid",
+          "description": "Coins.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "04f788dd-fe13-5226-bf3b-49260b393ade",
+          "fieldName": "UnitsSupplied",
+          "label": "Units supplied",
+          "description": "Collections and processing output.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "a7a10780-c3f0-5743-b4f7-e216839bee2d",
+          "fieldName": "DistinctCustomers",
+          "label": "Customers",
+          "description": "Distinct buyers.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "12526d0d-0c8b-5a65-b08f-d1c38a70b30e",
+          "fieldName": "StockAtEnd",
+          "label": "Stock at end",
+          "description": "Units in Merchandise.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

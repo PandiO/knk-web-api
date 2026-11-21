@@ -1,0 +1,45 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "df047500-fcd3-5df4-b669-270310a9d825",
+  "entityTypeName": "TownAccount",
+  "name": "TownAccount - Default (seed v1)",
+  "description": "A town's account (currency AccountKind.Town, shops P10, TOWN_LOGISTICS D-L5): shop income goes in, buy-backs are paid from it. Read only: the balance changes through the currency ledger only (GET api/TownAccounts/{id}/ledger).",
+  "steps": [
+    {
+      "stepGuid": "c7ed5ece-d691-5909-ab0e-a6b0f2d32c3e",
+      "stepName": "Account",
+      "description": "Read only.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "44c0023a-8c3d-5806-aa9a-b5226e779846",
+          "fieldName": "TownId",
+          "label": "Town",
+          "description": "The town.",
+          "fieldType": "Object",
+          "objectType": "Town",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "f3562f4b-02aa-52f0-b60a-05ffdf5e07f7",
+          "fieldName": "Coins",
+          "label": "Coins",
+          "description": "The balance.",
+          "fieldType": "Integer",
+          "isReadOnly": true,
+          "isRequired": false
+        },
+        {
+          "fieldGuid": "c172c782-3988-5ef7-af74-a2d5405dd3f7",
+          "fieldName": "UpdatedAt",
+          "label": "Updated",
+          "description": "Last posting.",
+          "fieldType": "DateTime",
+          "isReadOnly": true,
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

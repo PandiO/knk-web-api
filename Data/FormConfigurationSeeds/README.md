@@ -452,3 +452,27 @@ the structure is taken from the storage. Reservations and planner runs are writt
 read only; `LogisticsPlanEntry` (a run's explanation lines) is listed on the run's page and has no seed (child rows,
 developer clarification 2026-11-19). GUIDs: uuid5(URL namespace, "knk-formconfig:<Entity>:seed-v1"), steps and fields
 uuid5(that, "step:"/"field:" + name).
+
+**Shops P10 seeds (PandiO/knk-workspace#248, 2026-11-21):** six new seeds with display seeds in
+`DisplayConfigurationSeeds/` (G17). Import `ShopType` before `ShopTypeLevel` and `Shop`, `Shop` before
+`ShopCatalogueEntry`.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `ShopType` | ShopType - Default (seed v1) | — |
+| `ShopTypeLevel` | ShopTypeLevel - Default (seed v1) | `ShopType` |
+| `Shop` | Shop - Default (seed v1) | `ShopType` |
+| `ShopCatalogueEntry` | ShopCatalogueEntry - Default (seed v1) | `Shop` |
+| `ShopTradeStat` | ShopTradeStat - Default (seed v1) | — (read only) |
+| `TownAccount` | TownAccount - Default (seed v1) | — (read only) |
+
+`Shop` copies the `Warehouse` form's general, placement, region, spawn and sub-region steps (with its two placement
+rules) and replaces the warehouse step by the shop step: type, kind (empty = the type's default), level, tax modifier,
+buy-back percentage, workers, processing switch, hide sold-out and the shopkeeper spawn location. A shop type's
+accepted categories are a join list (`ShopTypeCategory`, no seed, developer clarification 2026-11-19): they are set
+with `acceptedCategoryIds` on `api/ShopTypes` (the web app's shop type editor, #688). `ShopCatalogueEntry` asks for the
+shop, a blueprint or a unique item instance, the static price (empty = the formula), Stocked or Unlimited, pin, order
+and the switch. Trade stats are rolled up from the ledger and town accounts change only through the currency ledger,
+so both forms are read only. GUIDs: uuid5(namespace `6f1d2c58-3b0e-5a8e-9c49-2f2b8a4d0248`, "form/<Entity>"), steps
+and fields uuid5(that namespace, "form/<Entity>/<step>[/<field>]"); the copied `Shop` steps and fields
+uuid5(namespace, "form/Shop/<Warehouse GUID>").
