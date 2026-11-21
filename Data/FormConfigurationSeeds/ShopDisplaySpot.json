@@ -1,0 +1,121 @@
+{
+  "format": "knk-formconfig/1",
+  "configurationGuid": "867e0b6f-a1c7-5f0d-9dbb-ba55ffa45417",
+  "entityTypeName": "ShopDisplaySpot",
+  "name": "ShopDisplaySpot - Default (seed v1)",
+  "description": "A display spot of a shop (display stalls P12, #250, shops DESIGN § 7): a shelf or stall block where the game server shows one of the shop's items as a floating item with its price. Right-click shows the item information, shift-right-click a quick buy (always confirmed). Spots are filled in sort order: a spot's own pin first, then the catalogue's pinned entries, then in-stock items and best sellers; sold-out items are greyed out, or hidden when the shop hides sold-out items. In game, look at the block and use /knk shop display add <shop id> instead.",
+  "steps": [
+    {
+      "stepGuid": "cac69818-1ae5-53f7-b3c4-f497112781de",
+      "stepName": "Spot",
+      "description": "The shop and what the spot shows.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "661874cb-2ed7-5411-a348-e283eba2e22a",
+          "fieldName": "ShopId",
+          "label": "Shop",
+          "description": "The shop whose items the spot shows.",
+          "fieldType": "Object",
+          "objectType": "Shop",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "2d6ed629-9964-5f5d-a903-e7ebd6e1b395",
+          "fieldName": "Label",
+          "label": "Label",
+          "description": "An optional name for staff, such as Front shelf left.",
+          "fieldType": "String",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "d29b7126-1322-5d2e-8b14-acf259420c01",
+          "fieldName": "PinnedCatalogueEntryId",
+          "label": "Pinned catalogue entry",
+          "description": "An entry of the same shop this spot always shows. Empty: the game server chooses.",
+          "fieldType": "Object",
+          "objectType": "ShopCatalogueEntry",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "622380c7-330b-5bc4-9c27-5ce149072856",
+          "fieldName": "SortOrder",
+          "label": "Order",
+          "description": "Spots are filled lowest first. Empty: after the shop's last spot.",
+          "fieldType": "Integer",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9b685519-c354-543c-9cde-6759cb3d48f4",
+          "fieldName": "Enabled",
+          "label": "Enabled",
+          "description": "Off: nothing is shown on the spot.",
+          "fieldType": "Boolean",
+          "defaultValue": "true",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "ea201172-041e-598a-8761-967a6cdddd75",
+      "stepName": "Block",
+      "description": "The block in the world. The item floats on top of it.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "25ddc80a-65bb-56f2-be06-ead99481e95c",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The Minecraft world.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "3b3298f0-3682-589c-a984-2c9705ef9a53",
+          "fieldName": "X",
+          "label": "X",
+          "description": "Block X.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "beaaae1d-f277-5f09-b569-8ab5995b31bc",
+          "fieldName": "Y",
+          "label": "Y",
+          "description": "Block Y (-64 to 320).",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "6036dfb2-10d0-5611-aa08-80d2c2536db0",
+          "fieldName": "Z",
+          "label": "Z",
+          "description": "Block Z.",
+          "fieldType": "Integer",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "ce5436c7-0c93-528b-8c6f-fa62b28328be",
+          "fieldName": "Facing",
+          "label": "Facing",
+          "description": "The way the item faces: towards the players standing in front of the stall.",
+          "fieldType": "Enum",
+          "enumType": "ShopDisplayFacing",
+          "defaultValue": "South",
+          "settingsJson": "{\"enumValues\": [\"North\", \"East\", \"South\", \"West\"]}",
+          "isRequired": true,
+          "isReadOnly": false
+        }
+      ]
+    }
+  ]
+}

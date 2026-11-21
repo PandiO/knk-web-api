@@ -244,6 +244,56 @@ namespace KnKWebAPI.Controllers
         });
     }
 
+    /// <summary>Display spots of shops (display stalls P12, PandiO/knk-workspace#250, shops DESIGN § 7): one block per spot,
+    /// registered explicitly (in game with <c>/knk shop display add</c>, or the web app). The game server chooses what each
+    /// spot shows from the offer and the trade stats. Same rules as the catalogue; the plugin key registers and removes
+    /// spots from game.</summary>
+    [ApiController]
+    [Route("api/ShopDisplaySpots")]
+    [RequireServiceOrPermissionForWrites(StaffPermissions.ManageWorld)]
+    [DashboardReads("ShopDisplaySpot")]
+    public class ShopDisplaySpotsController : ControllerBase
+    {
+        private readonly IShopDisplaySpotService _service;
+
+        public ShopDisplaySpotsController(IShopDisplaySpotService service) => _service = service;
+
+        [HttpGet("{id:int}", Name = "GetShopDisplaySpotById")]
+        public async Task<IActionResult> GetById(int id, CancellationToken ct)
+        {
+            var item = await _service.GetByIdAsync(id, ct);
+            return item == null ? NotFound() : Ok(item);
+        }
+
+        /// <summary>Filters shopId, enabled, worldName; search term = label or shop name.</summary>
+        [HttpPost("search")]
+        public async Task<ActionResult<PagedResultDto<ShopDisplaySpotListDto>>> Search([FromBody] PagedQueryDto query, CancellationToken ct) =>
+            Ok(await _service.SearchAsync(query, ct));
+
+        /// <summary>409 when the block is already a spot or the shop has its maximum.</summary>
+        [RequireDashboardChange("ShopDisplaySpot")]
+        [HttpPost]
+        public Task<IActionResult> Create([FromBody] ShopDisplaySpotDto dto, CancellationToken ct) => ShopErrors.Run(async () =>
+        {
+            if (dto == null) return BadRequest();
+            var created = await _service.CreateAsync(dto, HttpContext.GetKnkCaller().ActorUserId, ct);
+            return CreatedAtRoute("GetShopDisplaySpotById", new { id = created.Id }, created);
+        });
+
+        [RequireDashboardChange("ShopDisplaySpot")]
+        [HttpPut("{id:int}")]
+        public Task<IActionResult> Update(int id, [FromBody] ShopDisplaySpotDto dto, CancellationToken ct) => ShopErrors.Run(async () =>
+            dto == null ? BadRequest() : Ok(await _service.UpdateAsync(id, dto, ct)));
+
+        [RequireServiceOrPermission(StaffPermissions.Delete)]
+        [HttpDelete("{id:int}")]
+        public Task<IActionResult> Delete(int id, CancellationToken ct) => ShopErrors.Run(async () =>
+        {
+            await _service.DeleteAsync(id, ct);
+            return NoContent();
+        });
+    }
+
     /// <summary>Hourly trade stats per shop, blueprint and hour, rolled up from the ledger; read only, plus a rebuild.</summary>
     [ApiController]
     [Route("api/ShopTradeStats")]

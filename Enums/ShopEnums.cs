@@ -28,4 +28,14 @@ namespace knkwebapi_v2.Enums
         /// <c>SYS_ADJUSTMENT</c> → <c>SYS_WORLD</c>. Blueprint entries only.</summary>
         Unlimited,
     }
+
+    /// <summary>Which way a display spot's item faces (display stalls P12, PandiO/knk-workspace#250): towards the player
+    /// standing in front of it. In game it is taken from the admin's facing at registration (they look at the block).</summary>
+    public enum ShopDisplayFacing
+    {
+        North,
+        East,
+        South,
+        West,
+    }
 }

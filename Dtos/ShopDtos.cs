@@ -145,6 +145,49 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("enabled")] public bool Enabled { get; set; }
     }
 
+    // ================= Display spots (display stalls P12, #250) =================
+
+    /// <summary>A shop's display spot: a block where the game server shows one of the shop's items.</summary>
+    public class ShopDisplaySpotDto
+    {
+        [JsonPropertyName("id")] public int? Id { get; set; }
+        [JsonPropertyName("shopId")] public int? ShopId { get; set; }
+        [JsonPropertyName("shop")] public NamedRefDto? Shop { get; set; }
+        [JsonPropertyName("worldName")] public string? WorldName { get; set; }
+        [JsonPropertyName("x")] public int? X { get; set; }
+        [JsonPropertyName("y")] public int? Y { get; set; }
+        [JsonPropertyName("z")] public int? Z { get; set; }
+        /// <summary>North, East, South or West (default South).</summary>
+        [JsonPropertyName("facing")] public string? Facing { get; set; }
+        /// <summary>A catalogue entry of the same shop this spot always shows; 0 clears it.</summary>
+        [JsonPropertyName("pinnedCatalogueEntryId")] public int? PinnedCatalogueEntryId { get; set; }
+        /// <summary>Read only: the pinned entry's item.</summary>
+        [JsonPropertyName("pinnedCatalogueEntry")] public NamedRefDto? PinnedCatalogueEntry { get; set; }
+        [JsonPropertyName("sortOrder")] public int? SortOrder { get; set; }
+        /// <summary>An optional name for staff; empty clears it.</summary>
+        [JsonPropertyName("label")] public string? Label { get; set; }
+        [JsonPropertyName("enabled")] public bool? Enabled { get; set; }
+        [JsonPropertyName("createdByUserId")] public int? CreatedByUserId { get; set; }
+        [JsonPropertyName("createdAt")] public DateTime? CreatedAt { get; set; }
+        [JsonPropertyName("updatedAt")] public DateTime? UpdatedAt { get; set; }
+    }
+
+    public class ShopDisplaySpotListDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("shopId")] public int ShopId { get; set; }
+        [JsonPropertyName("shopName")] public string? ShopName { get; set; }
+        [JsonPropertyName("worldName")] public string WorldName { get; set; } = string.Empty;
+        [JsonPropertyName("x")] public int X { get; set; }
+        [JsonPropertyName("y")] public int Y { get; set; }
+        [JsonPropertyName("z")] public int Z { get; set; }
+        [JsonPropertyName("facing")] public string Facing { get; set; } = string.Empty;
+        [JsonPropertyName("pinnedCatalogueEntryId")] public int? PinnedCatalogueEntryId { get; set; }
+        [JsonPropertyName("sortOrder")] public int SortOrder { get; set; }
+        [JsonPropertyName("label")] public string? Label { get; set; }
+        [JsonPropertyName("enabled")] public bool Enabled { get; set; }
+    }
+
     /// <summary>
     /// What a shop offers now (the shop menu, display stalls, the web app): its catalogue entries and what is in its
     /// Merchandise storage without an entry (restocked goods, bought-back items), each with its current price and stock.

@@ -64,6 +64,7 @@ public class DashboardChangeAccessRulesTests
         ("ShopTypeLevelsController", "Create", "ShopTypeLevel"), ("ShopTypeLevelsController", "Update", "ShopTypeLevel"),
         ("ShopsController", "Create", "Shop"), ("ShopsController", "Update", "Shop"),
         ("ShopCatalogueEntriesController", "Create", "ShopCatalogueEntry"), ("ShopCatalogueEntriesController", "Update", "ShopCatalogueEntry"),
+        ("ShopDisplaySpotsController", "Create", "ShopDisplaySpot"), ("ShopDisplaySpotsController", "Update", "ShopDisplaySpot"), // P12 (#250)
         ("StorageContainersController", "Create", "StorageContainer"), ("StorageContainersController", "Update", "StorageContainer"),
         ("ProductionYieldOverridesController", "Create", "ProductionYieldOverride"), ("ProductionYieldOverridesController", "Update", "ProductionYieldOverride"),
         ("HarvestRulesController", "Create", "HarvestRule"), ("HarvestRulesController", "Update", "HarvestRule"),

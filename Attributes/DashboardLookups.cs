@@ -120,6 +120,9 @@ namespace knkwebapi_v2.Attributes
             ["ShopCatalogueEntry"] = Of<knkwebapi_v2.Services.Shops.IShopCatalogueService>((s, id) => s.GetByIdAsync(id),
                 o => Join(Text(o, "Shop"), Text(o, "ItemBlueprint")), o => Text(o, "StaticPrice") is { } p ? p + " coins" : "formula price",
                 filters: new[] { IdFilter("shopId"), IdFilter("itemBlueprintId") }),
+            ["ShopDisplaySpot"] = Of<knkwebapi_v2.Services.Shops.IShopDisplaySpotService>((s, id) => s.GetByIdAsync(id), // P12 (#250)
+                o => Text(o, "Label") ?? Join(Text(o, "Shop"), "spot " + Text(o, "Id")), o => Join(Text(o, "WorldName"), Text(o, "X"), Text(o, "Y"), Text(o, "Z")),
+                filters: new[] { IdFilter("shopId") }),
             ["ShopTradeStat"] = Of<knkwebapi_v2.Services.Shops.IShopTradeStatService>((s, id) => s.GetByIdAsync(id),
                 o => Join(Text(o, "Shop"), Text(o, "ItemBlueprint")), o => Text(o, "HourStart"),
                 filters: new[] { IdFilter("shopId"), IdFilter("itemBlueprintId") }),

@@ -399,6 +399,10 @@ namespace knkwebapi_v2.Attributes
             Type("ShopCatalogueEntry", DashboardArea.World, World,
                 Del<knkwebapi_v2.Services.Shops.IShopCatalogueService>((s, id) => s.DeleteAsync(id)),
                 Lists<knkwebapi_v2.Services.Shops.IShopCatalogueService, knkwebapi_v2.Dtos.ShopCatalogueEntryListDto>((s, q) => s.SearchAsync(q))),
+            // Display stalls P12 (#250): a shop's display spots.
+            Type("ShopDisplaySpot", DashboardArea.World, World,
+                Del<knkwebapi_v2.Services.Shops.IShopDisplaySpotService>((s, id) => s.DeleteAsync(id)),
+                Lists<knkwebapi_v2.Services.Shops.IShopDisplaySpotService, knkwebapi_v2.Dtos.ShopDisplaySpotListDto>((s, q) => s.SearchAsync(q))),
             Type("ShopTradeStat", DashboardArea.World, World, null,
                 Lists<knkwebapi_v2.Services.Shops.IShopTradeStatService, knkwebapi_v2.Dtos.ShopTradeStatListDto>((s, q) => s.SearchAsync(q)),
                 bulk: false),

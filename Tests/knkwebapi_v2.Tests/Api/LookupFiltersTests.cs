@@ -231,6 +231,7 @@ public class LookupFiltersTests : IAsyncLifetime
             ["ShopTypeLevel"] = "shopTypeId:Id", // shops P10 (#248)
             ["Shop"] = "townId:Id, districtId:Id, shopTypeId:Id",
             ["ShopCatalogueEntry"] = "shopId:Id, itemBlueprintId:Id",
+            ["ShopDisplaySpot"] = "shopId:Id", // display stalls P12 (#250)
             ["ShopTradeStat"] = "shopId:Id, itemBlueprintId:Id",
             ["TownAccount"] = "townId:Id",
             ["StorageContainer"] = "storageId:Id",
