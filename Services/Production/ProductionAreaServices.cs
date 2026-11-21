@@ -700,6 +700,9 @@ namespace knkwebapi_v2.Services.Production
             {
                 tracked.LastSurveyId = survey.Id;
                 tracked.LastSurveyedAt = surveyedAt;
+                // P8a (#685): the area's resource pool takes its capacity from the newest survey (PRODUCTION_KINDS § 6.3).
+                var pool = await _db.Set<ResourcePool>().FirstOrDefaultAsync(p => p.ProductionAreaId == areaId);
+                if (pool != null) ResourcePoolService.ApplySurvey(pool, survey.TotalUnits, survey.Id, now);
             }
             if (tracked.SurveyRequestedAt != null && tracked.SurveyRequestedAt <= now)
             {

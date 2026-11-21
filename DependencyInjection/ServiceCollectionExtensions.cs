@@ -301,6 +301,10 @@ namespace knkwebapi_v2.DependencyInjection
             services.AddScoped<knkwebapi_v2.Services.Production.IStructureMenuService, knkwebapi_v2.Services.Production.StructureMenuService>();
             // Item delivery and reward inbox P7 (PandiO/knk-workspace#60): deliveries, claims, stash, hourly expiry.
             services.AddScoped<knkwebapi_v2.Services.Stock.IItemDeliveryService, knkwebapi_v2.Services.Stock.ItemDeliveryService>();
+            // Player harvesting P8a (#685): harvest rules, resource pools, harvest reports and the catalogue.
+            services.AddScoped<knkwebapi_v2.Services.Production.IHarvestRuleService, knkwebapi_v2.Services.Production.HarvestRuleService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IResourcePoolService, knkwebapi_v2.Services.Production.ResourcePoolService>();
+            services.AddScoped<knkwebapi_v2.Services.Production.IHarvestService, knkwebapi_v2.Services.Production.HarvestService>();
             services.AddHostedService<knkwebapi_v2.Services.Production.TransportSweepService>();
             // Siege Phase 1 — banner + minimal clan
             services.AddScoped<IBannerDesignRepository, BannerDesignRepository>();

@@ -33,6 +33,11 @@ namespace knkwebapi_v2.Dtos
         /// keep the stored values.</summary>
         [JsonPropertyName("delivery")]
         public ProductionDeliverySettingsDto? Delivery { get; set; }
+
+        /// <summary>Player harvesting (P8a, PandiO/knk-workspace#685). Null in stored JSON = the defaults; null on a save =
+        /// keep the stored values.</summary>
+        [JsonPropertyName("harvest")]
+        public ProductionHarvestSettingsDto? Harvest { get; set; }
     }
 
     /// <summary>
