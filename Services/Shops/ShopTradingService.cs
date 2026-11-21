@@ -367,7 +367,12 @@ namespace knkwebapi_v2.Services.Shops
                     Note = $"Bought by user {request.UserId} for {quote.TotalPrice} coins ({posting.PublicId})", IdempotencyKey = key,
                 }, StockMoveMode.AllOrNothing, ct);
                 if (moved.Status != StockResultStatus.Applied)
-                    throw new ShopRefusedException("NotEnoughStock", "The item sold out meanwhile; nothing was taken.");
+                {
+                    bool locked = moved.Lines.Any(l => l.RejectReason == StockRejectReason.Locked);
+                    throw locked
+                        ? new ShopRefusedException("StorageLocked", "The shop's Merchandise storage is locked; nothing was taken.")
+                        : new ShopRefusedException("NotEnoughStock", "The item sold out meanwhile; nothing was taken.");
+                }
                 result.StockTransactionId = moved.TransactionId;
 
                 if (item.InstanceId is { } owned)
@@ -564,7 +569,9 @@ namespace knkwebapi_v2.Services.Shops
                         Note = $"Sold by user {request.UserId} for {q.LinePrice} coins ({posting.PublicId})", IdempotencyKey = key,
                     }, StockMoveMode.AllOrNothing, ct);
                     if (moved.Status != StockResultStatus.Applied)
-                        throw new ShopRefusedException("NoRoom", $"Line {q.LineNo}: the shop's Merchandise storage is full; nothing was sold.");
+                        throw moved.Lines.Any(l => l.RejectReason == StockRejectReason.Locked)
+                            ? new ShopRefusedException("StorageLocked", $"Line {q.LineNo}: the shop's Merchandise storage is locked; nothing was sold.")
+                            : new ShopRefusedException("NoRoom", $"Line {q.LineNo}: the shop's Merchandise storage is full; nothing was sold.");
                     result.StockTransactionIds.Add(moved.TransactionId!.Value);
                     if (q.ItemInstanceId is { } sold)
                     {
