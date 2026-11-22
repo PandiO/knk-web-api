@@ -595,18 +595,26 @@ namespace knkwebapi_v2.Services
             return (nodes, enabled);
         }
 
-        /// <summary>Loads the parents (District, Town) of every node not loaded yet.</summary>
+        /// <summary>
+        /// Deepest parent chain followed: Structure -> District -> Town is two levels; a landmark (PandiO/knk-workspace#984)
+        /// adds its own chain on top (a landmark in a landmark in a structure ...). The bound also ends a cycle.
+        /// </summary>
+        internal const int MaxAncestorDepth = 8;
+
+        /// <summary>Loads the parents (District, Town, a landmark's parent) of every node not loaded yet.</summary>
         private async Task LoadAncestorsAsync(Dictionary<int, DiscoveryDomainNode> nodes)
         {
-            // Structure -> District -> Town: at most two levels.
-            for (var level = 0; level < 2; level++)
+            // A parent that is no node (a crown land above a landmark) is asked for once, not once per level.
+            var asked = new HashSet<int>();
+            for (var level = 0; level < MaxAncestorDepth; level++)
             {
                 var missing = nodes.Values
-                    .Where(n => n.ParentId.HasValue && !nodes.ContainsKey(n.ParentId.Value))
+                    .Where(n => n.ParentId.HasValue && !nodes.ContainsKey(n.ParentId.Value) && !asked.Contains(n.ParentId.Value))
                     .Select(n => n.ParentId!.Value)
                     .Distinct()
                     .ToList();
                 if (missing.Count == 0) return;
+                asked.UnionWith(missing);
                 foreach (var parent in await _repo.GetDomainNodesAsync(missing))
                 {
                     nodes[parent.Id] = parent;
@@ -631,7 +639,7 @@ namespace knkwebapi_v2.Services
         private static IEnumerable<DiscoveryDomainNode> Ancestors(DiscoveryDomainNode node, IReadOnlyDictionary<int, DiscoveryDomainNode> nodes)
         {
             var current = node;
-            for (var depth = 0; depth < 3 && current.ParentId.HasValue && nodes.TryGetValue(current.ParentId.Value, out var parent); depth++)
+            for (var depth = 0; depth < MaxAncestorDepth && current.ParentId.HasValue && nodes.TryGetValue(current.ParentId.Value, out var parent); depth++)
             {
                 yield return parent;
                 current = parent;

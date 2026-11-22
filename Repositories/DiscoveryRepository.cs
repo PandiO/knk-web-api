@@ -88,7 +88,7 @@ namespace knkwebapi_v2.Repositories
 
         public Task<List<DiscoveryDomainNode>> GetAllDomainNodesAsync() => LoadNodesAsync(null);
 
-        // Domain is TPT (domains -> towns/districts/structures -> gate_structures). One small
+        // Domain is TPT (domains -> towns/districts/structures/landmarks -> gate_structures). One small
         // projection per subtype keeps the SQL simple on both MySQL and the in-memory provider.
         private async Task<List<DiscoveryDomainNode>> LoadNodesAsync(List<int>? ids)
         {
@@ -102,6 +102,13 @@ namespace knkwebapi_v2.Repositories
                 .Select(s => new { s.Id, s.Name, s.WgRegionId, s.WorldName, s.DistrictId })
                 .ToListAsync();
             var gateIds = (await Filter(_context.GateStructures, ids).Select(g => g.Id).ToListAsync()).ToHashSet();
+            // Landmark domain LD15 (PandiO/knk-workspace#984): only a landmark with its own region is a node. A point
+            // has nothing to walk into, and one that uses its parent's area is discovered as that parent (DESIGN § 5
+            // rule 6). Its parent is any domain (LD09), also another landmark.
+            var landmarks = await Filter(_context.Landmarks, ids)
+                .Where(l => l.AreaKind == LandmarkAreaKind.OwnRegion)
+                .Select(l => new { l.Id, l.Name, l.WgRegionId, l.WorldName, l.ParentDomainId })
+                .ToListAsync();
 
             var nodes = new List<DiscoveryDomainNode>(towns.Count + districts.Count + structures.Count);
             nodes.AddRange(towns.Select(t => new DiscoveryDomainNode(t.Id, t.Name, t.WgRegionId, DiscoveryRewardRule.Town, null, t.WorldName)));
@@ -111,6 +118,8 @@ namespace knkwebapi_v2.Repositories
                 gateIds.Contains(s.Id) ? DiscoveryRewardRule.GateStructure : DiscoveryRewardRule.Structure,
                 // A rural structure (P2, #91) has no parent node, as its region has no parent.
                 s.DistrictId > 0 ? s.DistrictId : null, s.WorldName)));
+            nodes.AddRange(landmarks.Select(l => new DiscoveryDomainNode(l.Id, l.Name, l.WgRegionId, DiscoveryRewardRule.Landmark,
+                l.ParentDomainId, l.WorldName)));
             return nodes;
         }
 

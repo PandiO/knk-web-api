@@ -43,13 +43,15 @@ public class DiscoveryConfigurationServiceTests : IDisposable
     };
 
     [Fact]
-    public async Task GetRules_ListsAllFourTypesTopDownAndAMissingRowAsDisabled()
+    public async Task GetRules_ListsAllTypesTopDownAndAMissingRowAsDisabled()
     {
         var rules = await _service.GetRulesAsync();
 
-        Assert.Equal(new[] { "Town", "District", "Structure", "GateStructure" }, rules.Select(r => r.DomainType));
+        // Landmark last (PandiO/knk-workspace#984).
+        Assert.Equal(new[] { "Town", "District", "Structure", "GateStructure", "Landmark" }, rules.Select(r => r.DomainType));
         Assert.Equal((1m, 4m, 5, 15), (rules[0].ExpUnitsMin, rules[0].ExpUnitsMax, rules[0].GemsMin, rules[0].GemsMax));
         Assert.False(rules[3].IsEnabled); // no GateStructure row seeded in this test
+        Assert.False(rules[4].IsEnabled); // nor a Landmark row
     }
 
     [Fact]

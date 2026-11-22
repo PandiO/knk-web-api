@@ -72,6 +72,29 @@ public class ConfigEntityEventTests
     }
 
     [Fact]
+    public void Map_ALandmarkChange_IsSentLikeTheOtherDomains_KeyedByItsOwnRegion()
+    {
+        // Landmark domain LD22, A16 API side (PandiO/knk-workspace#984).
+        var events = RealtimeEntityChangeMap.Map(new[]
+        {
+            Change(typeof(Landmark), RealtimeEntityState.Added, null, ("Id", 12), ("WgRegionId", "domain_12")),
+            Modified(typeof(Landmark), new[] { nameof(Landmark.Preference) }, ("Id", 13), ("WgRegionId", null)),
+            Change(typeof(Landmark), RealtimeEntityState.Deleted, null, ("Id", 14), ("WgRegionId", null)),
+        });
+
+        var payloads = events.Where(e => e.Type == ConfigEventTypes.EntityChanged).Select(e => (EntityChangedPayload)e.Payload!).ToList();
+        Assert.Equal(new[]
+        {
+            new EntityChangedPayload("Landmark", 12, EntityChangeOps.Created, "domain_12"),
+            new EntityChangedPayload("Landmark", 13, EntityChangeOps.Updated),
+            new EntityChangedPayload("Landmark", 14, EntityChangeOps.Deleted),
+        }, payloads);
+        // A whole landmark (added or deleted) also changes the access rules, as for every domain.
+        Assert.Equal(new[] { 12, 14 }, events.Where(e => e.Type == ConfigEventTypes.DomainAccessChanged)
+            .Select(e => ((DomainAccessChangedPayload)e.Payload!).DomainId).ToArray());
+    }
+
+    [Fact]
     public void Map_TypeOutsideTheAllowList_SendsNothing()
     {
         Assert.Empty(RealtimeEntityChangeMap.Map(new[] { Modified(typeof(Street), new[] { "Name" }, ("Id", 1)) }));
@@ -251,6 +274,28 @@ public class ConfigEntityEventTests
             && Equals(g.Payload, new EntityChangedPayload("Town", town.Id, EntityChangeOps.Created, "town_a")));
         Assert.Contains(f.Publisher.Game, g => g.Type == ConfigEventTypes.DomainAccessChanged
             && Equals(g.Payload, new DomainAccessChangedPayload(town.Id)));
+    }
+
+    [Fact]
+    public async Task Interceptor_ALandmarkSave_SendsEntityChangedLandmark()
+    {
+        using var f = new Fixture();
+        var landmark = new Landmark
+        {
+            Name = "Old Tower", Description = "", AreaKind = LandmarkAreaKind.OwnRegion, WgRegionId = "domain_tower",
+            AllowEntry = true, AllowExit = true,
+        };
+        f.Db.Add(landmark);
+        await f.Db.SaveChangesAsync();
+
+        Assert.Contains(f.Publisher.Game, g => g.Type == ConfigEventTypes.EntityChanged
+            && Equals(g.Payload, new EntityChangedPayload("Landmark", landmark.Id, EntityChangeOps.Created, "domain_tower")));
+
+        f.Publisher.Game.Clear();
+        landmark.Name = "Ruined Tower";
+        await f.Db.SaveChangesAsync();
+        Assert.Equal(new[] { ConfigEventTypes.EntityChanged }, f.Publisher.Game.Select(g => g.Type).ToArray());
+        Assert.Equal(new EntityChangedPayload("Landmark", landmark.Id, EntityChangeOps.Updated, "domain_tower"), f.Publisher.Game[0].Payload);
     }
 
     [Fact]

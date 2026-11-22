@@ -5,7 +5,8 @@ namespace knkwebapi_v2.Models;
 /// <summary>
 /// Discovery reward settings for one domain type (docs/specs/domain-discovery/DESIGN.md §3.1),
 /// keyed by the CLR type name DomainMappingProfile already uses as the domain type string:
-/// Town, District, Structure, GateStructure. Seeded by the AddDomainDiscovery migration;
+/// Town, District, Structure, GateStructure, Landmark. Seeded by the AddDomainDiscovery migration (Landmark by
+/// AddLandmarkDiscoveryRule, disabled: landmark domain LD15, PandiO/knk-workspace#984);
 /// <see cref="DomainDiscoveryOverride"/> can change any field for a single domain.
 /// </summary>
 public class DiscoveryRewardRule
@@ -14,9 +15,10 @@ public class DiscoveryRewardRule
     public const string District = nameof(Models.District);
     public const string Structure = nameof(Models.Structure);
     public const string GateStructure = nameof(Models.GateStructure);
+    public const string Landmark = nameof(Models.Landmark);
 
     /// <summary>Every discoverable domain type, top-down: the order grants are made and messaged in.</summary>
-    public static readonly string[] DomainTypes = { Town, District, Structure, GateStructure };
+    public static readonly string[] DomainTypes = { Town, District, Structure, GateStructure, Landmark };
 
     public string DomainType { get; set; } = null!;
 

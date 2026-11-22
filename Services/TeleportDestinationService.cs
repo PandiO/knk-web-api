@@ -51,7 +51,8 @@ namespace knkwebapi_v2.Services
 
         private static readonly Regex KeyPattern = new("^[A-Za-z0-9:_.\\-]{1,100}$", RegexOptions.Compiled);
 
-        private static readonly string[] TypeOrder = { "Town", "District", "Structure", "GateStructure" };
+        // Landmarks (LD21, PandiO/knk-workspace#984) come after the structures; /warp shows them with the type word "landmark".
+        private static readonly string[] TypeOrder = { "Town", "District", "Structure", "GateStructure", "Landmark" };
 
         private const string WarpPurpose = "to teleport to this location";
         private const string RequestPurpose = "to send this teleport request";
@@ -512,6 +513,7 @@ namespace knkwebapi_v2.Services
             Structure => "Structure",
             District => "District",
             Town => "Town",
+            Landmark => "Landmark",
             _ => "Domain"
         };
 
