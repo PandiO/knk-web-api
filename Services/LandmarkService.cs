@@ -133,8 +133,8 @@ namespace knkwebapi_v2.Services
             existing.Name = name;
             if (dto.Description != null) existing.Description = dto.Description.Trim();
             existing.WorldName = pin.World;
+            // Only the key: EF fixes the loaded navigation up from it (setting the navigation too could override the key).
             existing.ParentDomainId = parent?.Id;
-            existing.ParentDomain = parent == null ? null : existing.ParentDomain?.Id == parent.Id ? existing.ParentDomain : null;
             existing.AreaKind = area.Kind;
             existing.WgRegionId = area.RegionId;
             existing.AllowEntry = dto.AllowEntry ?? existing.AllowEntry;

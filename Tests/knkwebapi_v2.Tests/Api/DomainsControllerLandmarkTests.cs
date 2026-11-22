@@ -71,7 +71,8 @@ public class DomainsControllerLandmarkTests
         var update = await Controller(ServiceAuthTestHelper.WebUser(LandmarkStaff)).Update(10, Rename("Hall"));
         var delete = await Controller(ServiceAuthTestHelper.WebUser(LandmarkStaff)).Delete(10);
 
-        Assert.IsType<OkObjectResult>(update);
+        // The landmark DTO, not the tracked entity (whose loaded sub-regions point back at it).
+        Assert.Equal(10, Assert.IsType<LandmarkReadDto>(Assert.IsType<OkObjectResult>(update).Value).Id);
         Assert.IsType<NoContentResult>(delete);
         _landmarks.Verify(s => s.UpdateFromDomainAsync(10, It.Is<Domain>(d => d.Name == "Hall")), Times.Once);
         _landmarks.Verify(s => s.DeleteAsync(10), Times.Once);

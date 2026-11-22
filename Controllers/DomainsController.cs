@@ -96,12 +96,13 @@ namespace KnKWebAPI.Controllers
             if (domain == null) return BadRequest();
             try
             {
-                // LD19: a landmark needs the landmark rights and is saved through the landmark rules.
+                // LD19: a landmark needs the landmark rights and is saved through the landmark rules. The answer is the
+                // landmark DTO: the tracked entity now has its sub-regions loaded, whose Domain back-reference would make
+                // the entity's JSON a cycle.
                 if (await _service.GetByIdAsync(id) is Landmark)
                 {
                     if (await LandmarkWriteDeniedAsync() is IActionResult denied) return denied;
-                    await _landmarks.UpdateFromDomainAsync(id, domain);
-                    return Ok(await _service.GetByIdAsync(id));
+                    return Ok(await _landmarks.UpdateFromDomainAsync(id, domain));
                 }
 
                 if (string.IsNullOrWhiteSpace(domain.WgRegionId)) return BadRequest(RegionRequired);
