@@ -7,6 +7,7 @@ using knkwebapi_v2.Properties;
 using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Tests.Services.Regions;
 using Xunit;
 
 namespace knkwebapi_v2.Tests.Services;
@@ -269,70 +270,132 @@ public class SiegeWeaponServiceTests : IAsyncLifetime
 
     // ---- Weapon spots ----
 
-    private static SiegeWeaponSpotUpsertDto Spot(int teamId = 202) => new()
+    // #988: the spot is a WorldGuard region; the stand-in game server knows these boxes.
+    private readonly FakeGameRegionQueryClient _game = new FakeGameRegionQueryClient()
+        .Box("spot_large", 0, 64, 0, 8, 80, 14)      // 9 along x, 17 high, 15 along z: large facing north
+        .Box("spot_small", 0, 64, 0, 6, 68, 8)       // 7 x 5 x 9: small facing north
+        .Box("spot_tiny", 0, 64, 0, 4, 68, 4)        // 5 x 5 x 5: smaller than small
+        .Box("spot_poly", 0, 64, 0, 8, 80, 14, shape: "polygon");
+
+    private SiegeWeaponService SpotService(IDomainRegionNameFinalizer? names = null) =>
+        new(new SiegeWeaponRepository(_context), SiegeTestData.Mapper(), _game, names);
+
+    private static SiegeWeaponSpotUpsertDto Spot(int teamId = 202, string? region = "spot_large") => new()
     {
-        // 9 along x, 17 high, 15 along z: large facing north (phase 2 works the class out from bounds and facing).
-        SiegeTeamId = teamId, Name = "North wall", Facing = SiegeWeaponFacing.North, SizeClass = SiegeWeaponSizeClass.Large,
-        MinX = 0, MinY = 64, MinZ = 0, MaxX = 8, MaxY = 80, MaxZ = 14
+        SiegeTeamId = teamId, Name = "North wall", Facing = SiegeWeaponFacing.North, SizeClass = SiegeWeaponSizeClass.Small,
+        WgRegionId = region
     };
 
-    // ---- Phase 2 (#783): size class from bounds and facing (W70, A02-A03) ----
+    // ---- #988: size class from the region's bounds and the facing (W70, A02-A03) ----
 
     [Fact]
-    public async Task Spot_SizeClass_IsWorkedOutFromTheBoundsAndFacing_NotTheTypedValue()
+    public async Task Spot_SizeClass_IsWorkedOutFromTheRegionAndFacing_NotTheGivenValue()
     {
-        // 7 along x, 5 high, 9 along z: small facing north, whatever was typed.
-        var small = Spot();
-        small.MaxX = 6; small.MaxY = 68; small.MaxZ = 8;
+        var small = Spot(region: "spot_small");
         small.SizeClass = SiegeWeaponSizeClass.Large;
-        Assert.Equal(SiegeWeaponSizeClass.Small, (await Service().CreateSpotAsync(100, small)).SizeClass);
+        Assert.Equal(SiegeWeaponSizeClass.Small, (await SpotService().CreateSpotAsync(100, small)).SizeClass);
 
         // The large footprint turned east is 15 wide x 9 long: medium.
         var east = Spot();
         east.Facing = SiegeWeaponFacing.East;
-        Assert.Equal(SiegeWeaponSizeClass.Medium, (await Service().CreateSpotAsync(100, east)).SizeClass);
-        Assert.Equal(SiegeWeaponSizeClass.Large, (await Service().CreateSpotAsync(100, Spot())).SizeClass);
+        Assert.Equal(SiegeWeaponSizeClass.Medium, (await SpotService().CreateSpotAsync(100, east)).SizeClass);
+        Assert.Equal(SiegeWeaponSizeClass.Large, (await SpotService().CreateSpotAsync(100, Spot())).SizeClass);
+        // A polygon counts as its bounding box.
+        Assert.Equal(SiegeWeaponSizeClass.Large, (await SpotService().CreateSpotAsync(100, Spot(region: "spot_poly"))).SizeClass);
+    }
+
+    [Fact]
+    public async Task Spot_AsksTheGameServerInTheScenariosWorld()
+    {
+        var town = await _context.Towns.FirstAsync(t => t.Id == 1);
+        town.WorldName = "siege_world";
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+
+        await SpotService().CreateSpotAsync(100, Spot());
+        Assert.Equal(("spot_large", (string?)"siege_world"), _game.Asked.Single());
     }
 
     [Fact]
     public async Task Spot_ChangingTheFacing_WorksTheClassOutAgain()
     {
-        var created = await Service().CreateSpotAsync(100, Spot());
+        var created = await SpotService().CreateSpotAsync(100, Spot());
         _context.ChangeTracker.Clear();
         var turned = Spot();
         turned.Facing = SiegeWeaponFacing.West;
-        await Service().UpdateSpotAsync(created.Id, turned);
+        turned.SizeClass = created.SizeClass;
+        await SpotService().UpdateSpotAsync(created.Id, turned);
         _context.ChangeTracker.Clear();
-        var read = (await Service().GetSpotByIdAsync(created.Id))!;
+        var read = (await SpotService().GetSpotByIdAsync(created.Id))!;
         Assert.Equal(SiegeWeaponFacing.West, read.Facing);
         Assert.Equal(SiegeWeaponSizeClass.Medium, read.SizeClass);
     }
 
     [Fact]
-    public async Task Spot_BoundsSmallerThanTheSmallClass_AreRefused()
+    public async Task Spot_RegionSmallerThanTheSmallClass_IsRefused()
     {
-        var tiny = Spot();
-        tiny.MaxX = 4; tiny.MaxY = 68; tiny.MaxZ = 4;
-        var error = await Assert.ThrowsAsync<ArgumentException>(() => Service().CreateSpotAsync(100, tiny));
-        Assert.Equal("The bounds are too small for a weapon facing North: 5 wide x 5 long x 5 high, the small class "
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => SpotService().CreateSpotAsync(100, Spot(region: "spot_tiny")));
+        Assert.Equal("The region is too small for a weapon facing North: 5 wide x 5 long x 5 high, the small class "
             + "needs at least 7 wide x 9 long x 5 high.", error.Message);
 
         // 7 x 9 facing east is 9 wide x 7 long: too short along the facing.
-        var sideways = Spot();
-        sideways.MaxX = 6; sideways.MaxY = 68; sideways.MaxZ = 8; sideways.Facing = SiegeWeaponFacing.East;
-        await Assert.ThrowsAsync<ArgumentException>(() => Service().CreateSpotAsync(100, sideways));
+        var sideways = Spot(region: "spot_small");
+        sideways.Facing = SiegeWeaponFacing.East;
+        await Assert.ThrowsAsync<ArgumentException>(() => SpotService().CreateSpotAsync(100, sideways));
         _context.ChangeTracker.Clear();
         Assert.Empty(_context.SiegeWeaponSpots);
     }
 
     [Fact]
-    public async Task Spot_WithoutBounds_KeepsTheTypedClass()
+    public async Task Spot_RegionTheGameServerDoesntKnow_IsRefused()
     {
-        var none = Spot();
-        none.MinX = none.MinY = none.MinZ = none.MaxX = none.MaxY = none.MaxZ = null;
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => SpotService().CreateSpotAsync(100, Spot(region: "nowhere")));
+        Assert.Contains("nowhere", error.Message);
+    }
+
+    [Fact]
+    public async Task Spot_GameServerOffline_KeepsTheGivenClass_AndSaves()
+    {
+        // #988 open point 1: not checked now; L3 (#784) works the class out again before it places a weapon.
+        _game.Offline = true;
+        var dto = Spot(region: "spot_tiny");
+        dto.SizeClass = SiegeWeaponSizeClass.Medium;
+        var created = await SpotService().CreateSpotAsync(100, dto);
+        Assert.Equal(SiegeWeaponSizeClass.Medium, created.SizeClass);
+        Assert.Equal("spot_tiny", created.WgRegionId);
+    }
+
+    [Fact]
+    public async Task Spot_WithoutARegion_KeepsTheGivenClass_AndAsksNothing()
+    {
+        var none = Spot(region: null);
         none.SizeClass = SiegeWeaponSizeClass.Medium;
-        none.Facing = SiegeWeaponFacing.East;
-        Assert.Equal(SiegeWeaponSizeClass.Medium, (await Service().CreateSpotAsync(100, none)).SizeClass);
+        Assert.Equal(SiegeWeaponSizeClass.Medium, (await SpotService().CreateSpotAsync(100, none)).SizeClass);
+        Assert.Empty(_game.Asked);
+    }
+
+    [Fact]
+    public async Task Spot_DrawnRegion_IsGivenItsFinalNameOnSave_AndAReRunReplacesTheOldOne()
+    {
+        var names = new Mock<IDomainRegionNameFinalizer>();
+        _game.Box("tempregion_worldtask_7", 0, 64, 0, 8, 80, 14).Box("tempregion_worldtask_8", 0, 64, 0, 6, 68, 8);
+        var created = await SpotService(names.Object).CreateSpotAsync(100, Spot(region: "tempregion_worldtask_7"));
+        names.Verify(n => n.FinalizeSiegeWeaponSpotAsync(It.Is<SiegeWeaponSpot>(w => w.Id == created.Id), null), Times.Once);
+        _context.ChangeTracker.Clear();
+
+        await SpotService(names.Object).UpdateSpotAsync(created.Id, Spot(region: "tempregion_worldtask_8"));
+        names.Verify(n => n.FinalizeSiegeWeaponSpotAsync(It.Is<SiegeWeaponSpot>(w => w.WgRegionId == "tempregion_worldtask_8"),
+            "tempregion_worldtask_7"), Times.Once);
+
+        // A region that isn't temp-named (picked, not drawn) is used as it is.
+        await SpotService(names.Object).CreateSpotAsync(100, Spot());
+        names.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public void FinalName_IsSiegeSpotAndId()
+    {
+        Assert.Equal("siege_spot_12", DomainRegionNameFinalizer.FinalSiegeWeaponSpotNameFor(12));
     }
 
     [Theory]
@@ -357,12 +420,12 @@ public class SiegeWeaponServiceTests : IAsyncLifetime
     [Fact]
     public async Task Spot_IsCreatedUnderItsScenario_AndShowsOnTheScenario()
     {
-        var created = await Service().CreateSpotAsync(100, Spot());
+        var created = await SpotService().CreateSpotAsync(100, Spot());
         Assert.Equal(0, created.SortOrder);
         Assert.Equal("Raiders", created.SiegeTeamName);
         _context.ChangeTracker.Clear();
 
-        var second = await Service().CreateSpotAsync(100, Spot());
+        var second = await SpotService().CreateSpotAsync(100, Spot());
         Assert.Equal(1, second.SortOrder);
         _context.ChangeTracker.Clear();
 
@@ -372,48 +435,31 @@ public class SiegeWeaponServiceTests : IAsyncLifetime
         Assert.Equal(SiegeWeaponFacing.North, spot.Facing);
         Assert.Equal(SiegeWeaponSizeClass.Large, spot.SizeClass);
         Assert.Equal(202, spot.SiegeTeamId);
-        Assert.Equal(14, spot.MaxZ);
+        Assert.Equal("spot_large", spot.WgRegionId);
     }
 
     [Fact]
     public async Task Spot_TeamMustBelongToTheScenario()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => Service().CreateSpotAsync(100, Spot(teamId: 999)));
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => Service().CreateSpotAsync(12345, Spot()));
-    }
-
-    [Fact]
-    public async Task Spot_BoundsAreAllOrNothing_AndOrdered()
-    {
-        var partial = Spot();
-        partial.MaxZ = null;
-        await Assert.ThrowsAsync<ArgumentException>(() => Service().CreateSpotAsync(100, partial));
-
-        var reversed = Spot();
-        reversed.MinX = 10;
-        await Assert.ThrowsAsync<ArgumentException>(() => Service().CreateSpotAsync(100, reversed));
-
-        var none = Spot();
-        none.MinX = none.MinY = none.MinZ = none.MaxX = none.MaxY = none.MaxZ = null;
-        var created = await Service().CreateSpotAsync(100, none);
-        Assert.Null(created.MinX);
+        await Assert.ThrowsAsync<ArgumentException>(() => SpotService().CreateSpotAsync(100, Spot(teamId: 999)));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => SpotService().CreateSpotAsync(12345, Spot()));
     }
 
     [Fact]
     public async Task Spot_CantMoveToAnotherScenario()
     {
-        var created = await Service().CreateSpotAsync(100, Spot());
+        var created = await SpotService().CreateSpotAsync(100, Spot());
         _context.ChangeTracker.Clear();
         var dto = Spot();
         dto.SiegeScenarioId = 101;
-        await Assert.ThrowsAsync<ArgumentException>(() => Service().UpdateSpotAsync(created.Id, dto));
+        await Assert.ThrowsAsync<ArgumentException>(() => SpotService().UpdateSpotAsync(created.Id, dto));
     }
 
     [Fact]
     public async Task DeletingTheTeam_DeletesItsSpots_DeletingTheScenario_DeletesTheRest()
     {
-        await Service().CreateSpotAsync(100, Spot(teamId: 202));
-        await Service().CreateSpotAsync(100, Spot(teamId: 201));
+        await SpotService().CreateSpotAsync(100, Spot(teamId: 202));
+        await SpotService().CreateSpotAsync(100, Spot(teamId: 201));
         _context.ChangeTracker.Clear();
 
         await ScenarioService().DeleteTeamAsync(202);

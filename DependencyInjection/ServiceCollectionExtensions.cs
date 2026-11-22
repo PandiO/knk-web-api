@@ -176,6 +176,16 @@ namespace knkwebapi_v2.DependencyInjection
             // Overview map L7 (#741): live gate commands (Map:GateCommands:Enabled, off by default); results wait in the singleton.
             services.AddSingleton<knkwebapi_v2.Services.Map.GateCommandWaiter>();
             services.AddScoped<knkwebapi_v2.Services.Map.IGateCommandService, knkwebapi_v2.Services.Map.GateCommandService>();
+            // #988: region queries to the game server over the game hub (RegionQueries:Enabled, on by default); answers wait
+            // in the singletons.
+            if (configuration != null)
+            {
+                services.Configure<knkwebapi_v2.Configuration.RegionQueryOptions>(
+                    configuration.GetSection(knkwebapi_v2.Configuration.RegionQueryOptions.SectionName));
+            }
+            services.AddSingleton<knkwebapi_v2.Services.Regions.RegionQueryWaiter<knkwebapi_v2.Realtime.Contracts.RegionGeometryResultDto>>();
+            services.AddSingleton<knkwebapi_v2.Services.Regions.RegionQueryWaiter<knkwebapi_v2.Realtime.Contracts.SpotSiteCheckResultDto>>();
+            services.AddScoped<knkwebapi_v2.Services.Regions.IGameRegionQueryClient, knkwebapi_v2.Services.Regions.GameRegionQueryClient>();
             services.AddScoped<IMinecraftMaterialRefRepository, MinecraftMaterialRefRepository>();
             services.AddScoped<IMinecraftMaterialRefService, MinecraftMaterialRefService>();
             services.AddScoped<IMinecraftBlockRefRepository, MinecraftBlockRefRepository>();
@@ -554,6 +564,8 @@ namespace knkwebapi_v2.DependencyInjection
             // P2 (PandiO/knk-workspace#91): placement rules P-2/P-3, a territory lookup on the game server.
             services.AddScoped<IValidationMethod, InsideTerritoryValidator>();
             services.AddScoped<IValidationMethod, knkwebapi_v2.Services.ValidationMethods.ProductionAreaPlacementValidator>(); // P-3 (#883)
+            services.AddScoped<IValidationMethod, knkwebapi_v2.Services.ValidationMethods.SiegeWeaponSpotSizeValidator>(); // #988
+            services.AddScoped<IValidationMethod, knkwebapi_v2.Services.ValidationMethods.SiegeWeaponSpotSiteValidator>(); // #988
             services.AddScoped<IValidationMethod, ConditionalRequiredValidator>();
             services.AddScoped<IValidationMethod, ConditionalValueMatchValidator>();
 

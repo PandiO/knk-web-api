@@ -80,6 +80,14 @@ namespace knkwebapi_v2.Services
         /// outline and Y range kept), a re-run replaces it, and an existing region the area names is kept. Never throws.
         /// </summary>
         Task<bool> FinalizeProductionAreaAsync(ProductionArea area, string? previousRegionId);
+
+        /// <summary>
+        /// PandiO/knk-workspace#988: the same for a siege weapon spot: a region drawn through the spot form's region task
+        /// becomes <c>siege_spot_&lt;id&gt;</c> in the scenario's world (its town's, else its hub location's; no managed-region
+        /// setup, the drawn box and Y range kept), a re-run replaces it, and an existing region the spot names is kept. Until
+        /// the generic region lifecycle (#989) this is the per-entity pattern of #34/#946. Never throws.
+        /// </summary>
+        Task<bool> FinalizeSiegeWeaponSpotAsync(SiegeWeaponSpot spot, string? previousRegionId);
     }
 
     /// <summary>
@@ -91,6 +99,7 @@ namespace knkwebapi_v2.Services
         LootboxSpawnArea,
         Landmark,
         ProductionArea,
+        SiegeWeaponSpot,
     }
 
     public sealed record TempRegionFinalizeResult(int Found, int Renamed, IReadOnlyList<string> Failed);
@@ -163,6 +172,9 @@ namespace knkwebapi_v2.Services
         /// a region id, and the plugin refuses to rename onto a region that already holds the name.
         /// </summary>
         public static string FinalProductionAreaNameFor(int areaId) => $"production_area_{areaId}";
+
+        /// <summary>#988: the final name of a siege weapon spot's region drawn through its form.</summary>
+        public static string FinalSiegeWeaponSpotNameFor(int spotId) => $"siege_spot_{spotId}";
 
         /// <summary>The concrete type name the plugin's managed-region policy understands; null for a bare Domain.</summary>
         public static string? DomainTypeOf(Domain domain) => domain switch
@@ -336,6 +348,23 @@ namespace knkwebapi_v2.Services
             return ids.Count == 0 ? null : ids[0];
         }
 
+        /// <summary>
+        /// #988: the id of a siege weapon spot (other than <paramref name="exceptSpotId"/>) whose region is
+        /// <paramref name="regionId"/>, or null. Spots are matched in any world (their world is their scenario's).
+        /// </summary>
+        private async Task<int?> SiegeWeaponSpotUsingAsync(string regionId, int? exceptSpotId)
+        {
+            string loweredRegion = regionId.Trim().ToLower();
+            int self = exceptSpotId ?? 0;
+            var ids = await _context.SiegeWeaponSpots.AsNoTracking()
+                .Where(w => w.Id != self && w.WgRegionId != null && w.WgRegionId.ToLower() == loweredRegion)
+                .OrderBy(w => w.Id)
+                .Select(w => w.Id)
+                .Take(1)
+                .ToListAsync();
+            return ids.Count == 0 ? null : ids[0];
+        }
+
         /// <summary>#946: one row of <see cref="RegionOwnerKind"/>, to leave it out when asking who else uses a region.</summary>
         private readonly record struct RegionOwnerRef(RegionOwnerKind Kind, int Id);
 
@@ -357,6 +386,10 @@ namespace knkwebapi_v2.Services
             if (await ProductionAreaUsingAsync(regionId, world, Except(RegionOwnerKind.ProductionArea)) is int productionAreaId)
             {
                 return $"production area {productionAreaId}";
+            }
+            if (await SiegeWeaponSpotUsingAsync(regionId, Except(RegionOwnerKind.SiegeWeaponSpot)) is int spotId)
+            {
+                return $"siege weapon spot {spotId}";
             }
             return null;
         }
@@ -456,8 +489,15 @@ namespace knkwebapi_v2.Services
                 .ToListAsync();
             renamed += await FinalizeEachAsync(productionAreas, a => FinalizeProductionAreaAsync(a, null),
                 a => $"{nameof(ProductionArea)} {a.Id} ({a.WgRegionId})", failed);
+            // #988: and the siege weapon spots.
+            var spots = await _context.SiegeWeaponSpots
+                .Where(w => w.WgRegionId != null && w.WgRegionId.StartsWith(TempRegionPrefix))
+                .OrderBy(w => w.Id)
+                .ToListAsync();
+            renamed += await FinalizeEachAsync(spots, w => FinalizeSiegeWeaponSpotAsync(w, null),
+                w => $"{nameof(SiegeWeaponSpot)} {w.Id} ({w.WgRegionId})", failed);
 
-            int found = domains.Count + subRegions.Count + areas.Count + landmarks.Count + productionAreas.Count;
+            int found = domains.Count + subRegions.Count + areas.Count + landmarks.Count + productionAreas.Count + spots.Count;
             _logger.LogInformation("Temp region finalize pass: found {Found}, renamed {Renamed}, failed {Failed}",
                 found, renamed, failed.Count);
             return new TempRegionFinalizeResult(found, renamed, failed);
@@ -628,6 +668,34 @@ namespace knkwebapi_v2.Services
             name => StoreOwnedRegionIdAsync(area, (a, n) => a.WgRegionId = n,
                 () => _context.ProductionAreas.FirstOrDefaultAsync(a => a.Id == area.Id), name),
             name => area.WgRegionId = name);
+
+        private OwnedRegion SiegeWeaponSpotOwner(SiegeWeaponSpot spot, string finalName, string? world) => new(
+            new RegionOwnerRef(RegionOwnerKind.SiegeWeaponSpot, spot.Id), $"siege weapon spot {spot.Id}", spot.WgRegionId,
+            finalName, world, _regionService.RenameSiegeWeaponSpotRegionAsync,
+            name => StoreOwnedRegionIdAsync(spot, (w, n) => w.WgRegionId = n,
+                () => _context.SiegeWeaponSpots.FirstOrDefaultAsync(w => w.Id == spot.Id), name),
+            name => spot.WgRegionId = name);
+
+        public async Task<bool> FinalizeSiegeWeaponSpotAsync(SiegeWeaponSpot spot, string? previousRegionId)
+        {
+            if (spot == null || spot.Id <= 0 || !IsTemporary(spot.WgRegionId))
+            {
+                return false;
+            }
+            string? world;
+            try
+            {
+                world = await knkwebapi_v2.Services.ValidationMethods.SiegeScenarioWorld.OfAsync(_context, spot.SiegeScenarioId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finalizing region name for siege weapon spot {SpotId} ({TempName}): its world could not be read",
+                    spot.Id, spot.WgRegionId);
+                return false;
+            }
+            return await FinalizeOwnedRegionAsync(SiegeWeaponSpotOwner(spot, FinalSiegeWeaponSpotNameFor(spot.Id), world),
+                previousRegionId);
+        }
 
         public async Task<bool> FinalizeLootboxAreaAsync(LootboxSpawnArea area, string? previousRegionId)
         {

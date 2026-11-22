@@ -12,7 +12,7 @@ namespace knkwebapi_v2.Realtime.Hubs;
 /// <c>/api/hubs/game</c> (DESIGN §4.1): one connection per game server, authenticated with the plugin key
 /// (<c>X-API-Key</c> = <c>Security:PluginApiKey</c>, the <see cref="RealtimeSetup.GameServerPolicy"/> on the endpoint)
 /// and named by <c>X-Knk-Server-Id</c>. Groups <c>servers</c> and <c>server:{id}</c>. Client-to-server methods are
-/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>, since overview map L1 (#735) <see cref="ReportRegionOutlines"/>, since L4 (#738) <see cref="ReportMapPlayers"/>, since L7 (#741) <see cref="GateCommandResult"/>; nothing else is written over the hub
+/// presence (DESIGN §6.4), since WT2 (#181) <see cref="WorldTaskOfferResult"/> and since S3 (#182) <see cref="ReportWorlds"/>, since overview map L1 (#735) <see cref="ReportRegionOutlines"/>, since L4 (#738) <see cref="ReportMapPlayers"/>, since L7 (#741) <see cref="GateCommandResult"/>, since #988 <see cref="RegionGeometryResult"/> and <see cref="SpotSiteCheckResult"/>; nothing else is written over the hub
 /// (P1). A joining player's waiting notifications are pushed to their server (S2, #179), and tasks still offered or queued
 /// for them are offered again (WT2, DESIGN §8.4).
 /// </summary>
@@ -257,6 +257,35 @@ public sealed partial class GameServerHub : Hub
         var matched = waiter?.Complete(result) == true;
         _logger.LogInformation("Game server {ServerId} answered gate command {CommandId}: {Result}{Ignored}", serverId,
             result.CommandId, result.Result, matched ? string.Empty : " (nothing waits for it; ignored)");
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// PandiO/knk-workspace#988: the game server's answer to a <c>RegionGeometryQuery</c>. Handed to the waiting query
+    /// through <see cref="knkwebapi_v2.Services.Regions.RegionQueryWaiter{TAnswer}"/>; the first answer per query id wins, a
+    /// late or unknown one is ignored. Ignored while <c>RegionQueries:Enabled</c> is off. Access: like every method on this
+    /// hub, only a connection holding the plugin key reaches it. Nothing is answered.
+    /// </summary>
+    public Task RegionGeometryResult(RegionGeometryResultDto? result) =>
+        CompleteRegionQuery(result, RegionQueryEventTypes.RegionGeometryQuery, result?.Result);
+
+    /// <summary>
+    /// PandiO/knk-workspace#988: the game server's answer to a <c>SpotSiteCheckQuery</c> (siege weapon spot floor and
+    /// space), as <see cref="RegionGeometryResult"/>. Only a game server with <c>siege.weapons.enabled</c> answers.
+    /// </summary>
+    public Task SpotSiteCheckResult(SpotSiteCheckResultDto? result) =>
+        CompleteRegionQuery(result, RegionQueryEventTypes.SpotSiteCheckQuery, result?.Result);
+
+    private Task CompleteRegionQuery<TAnswer>(TAnswer? result, string type, string? outcome)
+        where TAnswer : class, IRegionQueryAnswer
+    {
+        if (ServerId is not { } serverId || result == null) return Task.CompletedTask;
+        var options = _services?.GetService<IOptionsMonitor<knkwebapi_v2.Configuration.RegionQueryOptions>>();
+        if (options?.CurrentValue.Enabled != true) return Task.CompletedTask;
+        var waiter = _services?.GetService<knkwebapi_v2.Services.Regions.RegionQueryWaiter<TAnswer>>();
+        var matched = waiter?.Complete(result) == true;
+        _logger.LogDebug("Game server {ServerId} answered {Type} {QueryId}: {Result}{Ignored}", serverId, type,
+            result.QueryId, outcome, matched ? string.Empty : " (nothing waits for it; ignored)");
         return Task.CompletedTask;
     }
 

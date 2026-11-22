@@ -159,30 +159,19 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("siegeTeamName")] public string? SiegeTeamName { get; set; }
         [JsonPropertyName("sortOrder")] public int SortOrder { get; set; }
         [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
-        [JsonPropertyName("minX")] public int? MinX { get; set; }
-        [JsonPropertyName("minY")] public int? MinY { get; set; }
-        [JsonPropertyName("minZ")] public int? MinZ { get; set; }
-        [JsonPropertyName("maxX")] public int? MaxX { get; set; }
-        [JsonPropertyName("maxY")] public int? MaxY { get; set; }
-        [JsonPropertyName("maxZ")] public int? MaxZ { get; set; }
         [JsonPropertyName("wgRegionId")] public string? WgRegionId { get; set; }
         [JsonPropertyName("facing")] public SiegeWeaponFacing Facing { get; set; }
         [JsonPropertyName("sizeClass")] public SiegeWeaponSizeClass SizeClass { get; set; }
     }
 
-    // SortOrder null on create = after the existing spots; null on update = keep.
+    // SortOrder null on create = after the existing spots; null on update = keep. SizeClass is kept only when the game
+    // server can't be asked for the region's bounds (#988); otherwise the API works it out.
     public class SiegeWeaponSpotUpsertDto
     {
         [JsonPropertyName("siegeScenarioId")] public int? SiegeScenarioId { get; set; }
         [JsonPropertyName("siegeTeamId")] public int SiegeTeamId { get; set; }
         [JsonPropertyName("sortOrder")] public int? SortOrder { get; set; }
         [Required][JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
-        [JsonPropertyName("minX")] public int? MinX { get; set; }
-        [JsonPropertyName("minY")] public int? MinY { get; set; }
-        [JsonPropertyName("minZ")] public int? MinZ { get; set; }
-        [JsonPropertyName("maxX")] public int? MaxX { get; set; }
-        [JsonPropertyName("maxY")] public int? MaxY { get; set; }
-        [JsonPropertyName("maxZ")] public int? MaxZ { get; set; }
         [JsonPropertyName("wgRegionId")] public string? WgRegionId { get; set; }
         [JsonPropertyName("facing")] public SiegeWeaponFacing Facing { get; set; } = SiegeWeaponFacing.North;
         [JsonPropertyName("sizeClass")] public SiegeWeaponSizeClass SizeClass { get; set; } = SiegeWeaponSizeClass.Small;

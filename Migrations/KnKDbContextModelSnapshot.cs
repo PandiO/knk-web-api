@@ -9742,24 +9742,6 @@ namespace knkwebapi_v2.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("varchar(10)");
 
-                    b.Property<int?>("MaxX")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("MaxY")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("MaxZ")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("MinX")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("MinY")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("MinZ")
-                        .HasColumnType("int");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
