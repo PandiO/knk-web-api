@@ -447,7 +447,8 @@ namespace knkwebapi_v2.Services
             foreach (var subRegion in subRegions)
             {
                 string currentName = subRegion.WgRegionId;
-                if (await FinalizeSubRegionAsync(subRegion, null))
+                // #952: the row already stands on this region, so a temp-named one is a finalize that failed before.
+                if (await FinalizeSubRegionAsync(subRegion, currentName))
                 {
                     renamed++;
                 }
@@ -459,24 +460,26 @@ namespace knkwebapi_v2.Services
 
             // #34, #946: then the lootbox spawn areas and production areas still on a region drawn through their form (rename
             // failed or the server was down at the save). Landmarks are domains (#983) and went with the domains above.
+            // #952: each passes its current region as the previous one, so a final-named region an earlier failed re-run
+            // left behind is redefined in place (HealableFinalNameAsync).
             var areas = await _context.LootboxSpawnAreas
                 .Where(a => a.WgRegionId.StartsWith(TempRegionPrefix))
                 .OrderBy(a => a.Id)
                 .ToListAsync();
-            renamed += await FinalizeEachAsync(areas, a => FinalizeLootboxAreaAsync(a, null),
+            renamed += await FinalizeEachAsync(areas, a => FinalizeLootboxAreaAsync(a, a.WgRegionId),
                 a => $"{nameof(LootboxSpawnArea)} {a.Id} ({a.WgRegionId})", failed);
             var productionAreas = await _context.ProductionAreas
                 .Where(a => a.Shape == ProductionAreaShape.Region && a.WgRegionId != null && a.WgRegionId.StartsWith(TempRegionPrefix))
                 .OrderBy(a => a.Id)
                 .ToListAsync();
-            renamed += await FinalizeEachAsync(productionAreas, a => FinalizeProductionAreaAsync(a, null),
+            renamed += await FinalizeEachAsync(productionAreas, a => FinalizeProductionAreaAsync(a, a.WgRegionId),
                 a => $"{nameof(ProductionArea)} {a.Id} ({a.WgRegionId})", failed);
             // #988: and the siege weapon spots.
             var spots = await _context.SiegeWeaponSpots
                 .Where(w => w.WgRegionId != null && w.WgRegionId.StartsWith(TempRegionPrefix))
                 .OrderBy(w => w.Id)
                 .ToListAsync();
-            renamed += await FinalizeEachAsync(spots, w => FinalizeSiegeWeaponSpotAsync(w, null),
+            renamed += await FinalizeEachAsync(spots, w => FinalizeSiegeWeaponSpotAsync(w, w.WgRegionId),
                 w => $"{nameof(SiegeWeaponSpot)} {w.Id} ({w.WgRegionId})", failed);
 
             int found = domains.Count + subRegions.Count + areas.Count + productionAreas.Count + spots.Count;
@@ -533,7 +536,8 @@ namespace knkwebapi_v2.Services
             try
             {
                 string? domainType = DomainTypeOf(domain);
-                replaceRegionId = await ReplaceableSubRegionAsync(subRegion, previousRegionId, finalName, domain.WorldName);
+                replaceRegionId = await ReplaceableSubRegionAsync(subRegion, previousRegionId, finalName, domain.WorldName)
+                    ?? await HealableSubRegionFinalNameAsync(subRegion, previousRegionId, finalName, domain.WorldName);
                 _logger.LogInformation("Finalizing sub-region {SubRegionId} of {DomainType} {DomainId}: {CurrentName} -> {FinalName} (copy of {MainRegion}, world {World}, replacing {ReplaceRegionId})",
                     subRegion.Id, domainType ?? nameof(Domain), domain.Id, currentName, finalName, domain.WgRegionId, domain.WorldName, replaceRegionId ?? "nothing");
 
@@ -619,6 +623,63 @@ namespace knkwebapi_v2.Services
                 return null;
             }
             return previous;
+        }
+
+        /// <summary>
+        /// PandiO/knk-workspace#952: true when this finalize is a retry for a row already stored on its temp-named region
+        /// (an update that kept it, <paramref name="previousRegionId"/> equal to <paramref name="currentRegionId"/>, or the
+        /// <see cref="FinalizeAllAsync"/> pass). A first save passes no previous region and never heals.
+        /// </summary>
+        private static bool IsRetryOnTempRegion(string? currentRegionId, string? previousRegionId) =>
+            IsTemporary(currentRegionId) && !string.IsNullOrWhiteSpace(previousRegionId)
+            && previousRegionId.Trim().Equals(currentRegionId!.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// #952: a sub-region left on a temp name after a failed re-run of its world task, whose old
+        /// <c>domain_&lt;id&gt;_sub_&lt;n&gt;</c> may still be in the world. On a retry (<see cref="IsRetryOnTempRegion"/>)
+        /// its own final name is passed as the region to replace, so the plugin redefines that region in place with the new
+        /// shape (or renames plainly when it no longer exists), unless another domain, sub-region, lootbox spawn area,
+        /// production area or siege weapon spot names it. The <c>_sub_</c> scheme is v3's own (KNG-254), so no legacy region
+        /// carries it; <c>domain_&lt;id&gt;</c> is not healed this way (managed-worldguard-regions.md § 8 item 9).
+        /// </summary>
+        public async Task<string?> HealableSubRegionFinalNameAsync(DomainSubRegion subRegion, string? previousRegionId, string finalName, string? world)
+        {
+            if (!IsRetryOnTempRegion(subRegion.WgRegionId, previousRegionId))
+            {
+                return null;
+            }
+            string? takenBy = await DomainRegionOwnership.TakenByAsync(_context, finalName, world, exceptSubRegionId: subRegion.Id);
+            if (takenBy == null && await OwnedRegionUserAsync(finalName, world, null) is string user)
+            {
+                takenBy = $"{user} stands on it";
+            }
+            if (takenBy != null)
+            {
+                _logger.LogWarning("Sub-region {SubRegionId} does not replace its final name {FinalName}: {TakenBy}", subRegion.Id, finalName, takenBy);
+                return null;
+            }
+            return finalName;
+        }
+
+        /// <summary>
+        /// #952: as <see cref="HealableSubRegionFinalNameAsync"/> for a lootbox spawn area, production area or siege weapon
+        /// spot left on a temp name: on a retry its own final name (<c>lootbox_area_&lt;id&gt;</c>,
+        /// <c>production_area_&lt;id&gt;</c>, <c>siege_spot_&lt;id&gt;</c>, names only the API creates) is passed as the
+        /// region to replace, unless a domain, a sub-region or another such row names it.
+        /// </summary>
+        private async Task<string?> HealableOwnedFinalNameAsync(OwnedRegion owner, string? previousRegionId)
+        {
+            if (!IsRetryOnTempRegion(owner.RegionId, previousRegionId))
+            {
+                return null;
+            }
+            string? takenBy = await OtherUserOfRegionAsync(owner.FinalName, owner.World, owner.Self);
+            if (takenBy != null)
+            {
+                _logger.LogWarning("{Owner} does not replace its final name {FinalName}: {TakenBy}", owner.Label, owner.FinalName, takenBy);
+                return null;
+            }
+            return owner.FinalName;
         }
 
         /// <summary>
@@ -719,7 +780,8 @@ namespace knkwebapi_v2.Services
                     return false;
                 }
 
-                replaceRegionId = await ReplaceableOwnedRegionAsync(owner, previousRegionId);
+                replaceRegionId = await ReplaceableOwnedRegionAsync(owner, previousRegionId)
+                    ?? await HealableOwnedFinalNameAsync(owner, previousRegionId);
                 _logger.LogInformation("Finalizing region name for {Owner}: {TempName} -> {FinalName} (world {World}, replacing {ReplaceRegionId})",
                     owner.Label, tempName, finalName, world, replaceRegionId ?? "nothing");
                 if (!await owner.Rename(tempName, finalName, world, replaceRegionId))

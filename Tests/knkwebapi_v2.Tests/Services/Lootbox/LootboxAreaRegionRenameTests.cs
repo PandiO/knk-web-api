@@ -157,7 +157,9 @@ public class LootboxAreaRegionRenameTests : IDisposable
     }
 
     [Fact]
-    public async Task Update_WithTheSameTempRegion_RetriesTheRename_WithoutReplacing()
+    // #952: a retry on the same temp region names the area's own final name, so the plugin redefines a lootbox_area_<id>
+    // that a failed re-run left behind (or renames plainly when there is none).
+    public async Task Update_WithTheSameTempRegion_RetriesTheRename_ReplacingItsOwnFinalName()
     {
         _pluginRenames = false;
         var service = Service(_finalizer);
@@ -167,7 +169,7 @@ public class LootboxAreaRegionRenameTests : IDisposable
 
         await service.UpdateAsync(created.Id, Area("tempregion_worldtask_62"));
 
-        _renames.Should().Equal(("tempregion_worldtask_62", $"lootbox_area_{created.Id}", "world", (string?)null));
+        _renames.Should().Equal(("tempregion_worldtask_62", $"lootbox_area_{created.Id}", "world", (string?)$"lootbox_area_{created.Id}"));
         (await StoredRegionAsync(created.Id)).Should().Be($"lootbox_area_{created.Id}");
     }
 
@@ -234,7 +236,8 @@ public class LootboxAreaRegionRenameTests : IDisposable
 
         result.Found.Should().Be(1);
         result.Renamed.Should().Be(1);
-        _renames.Should().Equal(("tempregion_worldtask_90", "lootbox_area_5", "world", (string?)null));
+        // #952: the pass names the area's own final name, so one a failed re-run left behind is redefined in place.
+        _renames.Should().Equal(("tempregion_worldtask_90", "lootbox_area_5", "world", (string?)"lootbox_area_5"));
         (await StoredRegionAsync(5)).Should().Be("lootbox_area_5");
     }
 
