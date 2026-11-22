@@ -197,6 +197,17 @@ re-run, while an existing region id is used as it is; the step description says 
 knk-web-api and knk-plugin change of the same issues. A fresh import has it; a database that imported the seed earlier
 keeps its configuration (import never overwrites), so add the world task to the field in the form designer there.
 
+**Landmark seed v3 (landmark-domain, PandiO/knk-workspace#1003, 2026-11-22):** a new `configurationGuid` and name
+("Landmark - Default (seed v3)"), so it imports next to an imported v1 or v2 (seed v2 of #983, the landmark as a domain,
+never over it); import it and make it the default for Landmark, then delete or keep the older ones by hand (v2 need not
+be imported first). It is seed v2 plus one display condition group "AreaKind Equals `OwnRegion`" on the Area step's
+`WgRegionId` field and on the steps "Access and messages", "Warp destination" and "Sub-regions" (acceptance A17 of
+knk-workspace `docs/specs/landmark-domain/DESIGN.md` § 10), so a point landmark or one linked to its parent's area shows
+none of them. Whether a point landmark should keep the warp step is open on #1003; dropping the condition from that step
+in this file (and in the form designer of a database that imported v3) makes it unconditional. GUIDs: configuration
+uuid5(v2 configuration GUID, "seed-v3"), every step/field uuid5(v2 configuration GUID, its v2 GUID); the conditions read
+v3's own AreaKind field.
+
 **Siege weapons phase 1 (PandiO/knk-workspace#782, 2026-11-19):** new seeds `SiegeAmmoType`,
 `SiegeWeaponTemplateAmmoType.join`, `SiegeWeaponTemplate`, `SiegeWeaponSpot` and `UserSiegeWeaponUnlock` (seed v1 each),
 and two in-place additions, without a new `configurationGuid`, because other seeds refer to these configurations by
