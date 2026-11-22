@@ -1,37 +1,46 @@
 {
   "format": "knk-formconfig/1",
-  "configurationGuid": "33de13e6-579c-5860-9976-f01e9d638219",
+  "configurationGuid": "cda35514-ee6d-596c-a739-fc15de6efd89",
   "entityTypeName": "Landmark",
-  "name": "Landmark - Default (seed v1)",
-  "description": "A named place for /navigate, made by staff: a pin with a name, optionally in a domain and with an area (off-road navigation, phase 5.1).",
+  "name": "Landmark - Default (seed v2)",
+  "description": "A named place made by staff, a domain since landmark-domain phase 1 (PandiO/knk-workspace#983): a pin with a name, an optional parent, and an area that is the point, its own region with sub-regions, or the parent's area. Replaces seed v1, whose Extent, Region id and Radius fields are gone.",
   "steps": [
     {
-      "stepGuid": "c6260c69-5f72-5eef-9d3e-a46400e7d9c1",
+      "stepGuid": "f41c859f-c993-5079-acd5-36e1e39310b0",
       "stepName": "Landmark",
-      "description": "Name the place, as players will type it after /navigate (\"Throne room\", \"Northern gate\").",
+      "description": "Name the place, as players will type it after /navigate (\"Throne room\", \"Northern gate\"), and link it to the domain it belongs to.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "9f1a0055-711a-52ea-b8f1-31373e84b74a",
+          "fieldGuid": "d3a4e5e3-aa62-5c7b-89e6-558a8528e0d0",
           "fieldName": "Name",
           "label": "Name",
-          "description": "Unique in its world, at most 100 characters. Players see it in /navigate and its tab completion.",
+          "description": "Unique among the landmarks of its world, at most 100 characters. Players see it in /navigate and its tab completion.",
           "fieldType": "String",
           "isRequired": true,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "5652ab66-a516-59cf-ba2c-6b06fa263c3f",
-          "fieldName": "DomainId",
-          "label": "Domain",
-          "description": "Optional. The town, district or structure the place is in; /navigate shows \"in <domain>\" next to the name. Deleting the domain only removes this link.",
+          "fieldGuid": "8fefa115-92b4-582b-aa12-01d1da409ac1",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "A short line for staff, as every domain has.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "9fe6cbe6-9672-5079-ac42-d872f524d0ec",
+          "fieldName": "ParentDomainId",
+          "label": "Parent",
+          "description": "Optional. The domain the place belongs to: a town, district, structure, gate, crown land or another landmark (a throne room in a palace). It is the landmark's parent in the domain hierarchy: /navigate shows \"in <parent>\", and the landmark's own region gets the parent's main region as WorldGuard parent and inherits its flags, also where it reaches outside the parent (nothing checks that it is inside). Deleting the parent only removes this link.",
           "fieldType": "Object",
           "objectType": "Domain",
           "isRequired": false,
           "isReadOnly": false
         },
         {
-          "fieldGuid": "46fc75f6-78ee-59e6-9650-785ec947cac2",
+          "fieldGuid": "7a064216-45f9-5498-8ca0-2f17a1c56b4f",
           "fieldName": "NavigationEnabled",
           "label": "Offer in /navigate",
           "description": "Off keeps the landmark without offering it as a destination.",
@@ -43,16 +52,16 @@
       ]
     },
     {
-      "stepGuid": "e2acb2ac-dcb2-52ab-8cc7-2bbdfc9e3465",
+      "stepGuid": "eedfa987-2388-5215-9ad0-8726c47c852e",
       "stepName": "Location",
-      "description": "Stand on the spot in game and use Send to Minecraft. Without an area, navigation ends within the arrival distance of this point.",
+      "description": "Stand on the spot in game and use Send to Minecraft. Without an area, navigation ends within the arrival distance of this point. A point another domain already uses (a town's spawn) is copied for the landmark.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "fe6a35f6-a752-5471-88c8-876644ea714d",
+          "fieldGuid": "a8132f76-325b-5f72-be57-1e40faf40564",
           "fieldName": "LocationId",
           "label": "Location",
-          "description": "The landmark's point and world.",
+          "description": "The landmark's point and world. The landmark is in this world.",
           "fieldType": "Object",
           "objectType": "Location",
           "isRequired": true,
@@ -62,44 +71,35 @@
       ]
     },
     {
-      "stepGuid": "f92c3cf0-67ae-5198-a56f-ee956e870ffe",
+      "stepGuid": "ffeea085-4c2f-5540-a5eb-d6cdb5272615",
       "stepName": "Area",
-      "description": "Optional. Where the landmark counts as reached: inside a WorldGuard region (draw one with Send to Minecraft or name an existing one), or within a radius of the point. A drawn region becomes landmark_<id> when you save.",
+      "description": "Where the landmark counts as reached and what its area is. A round area is a cylinder region: select it with //sel cyl before you confirm the region in game.",
       "isManyToManyRelationship": false,
       "fields": [
         {
-          "fieldGuid": "6738435b-c515-5df7-a174-f682cfac8dc2",
-          "fieldName": "ExtentKind",
+          "fieldGuid": "11b2f868-53c0-5168-96a1-22188216ba5f",
+          "fieldName": "AreaKind",
           "label": "Area",
-          "description": "None = the point only; Region = inside the region below; Radius = within the radius below (a cylinder).",
+          "description": "None = the point only (no region). OwnRegion = the landmark's own region below, with sub-regions, entry and exit rules and its own messages. LinkedDomain = the parent's region and sub-regions (needs a parent that has a region); the landmark owns no region then, and the parent's entry rules, messages and discovery apply there.",
           "fieldType": "Enum",
-          "enumType": "LandmarkExtentKind",
+          "enumType": "LandmarkAreaKind",
           "defaultValue": "None",
           "isRequired": false,
           "isReadOnly": false,
-          "settingsJson": "{\"enumValues\": [\"None\", \"Region\", \"Radius\"]}"
+          "settingsJson": "{\"enumValues\": [\"None\", \"OwnRegion\", \"LinkedDomain\"]}"
         },
         {
-          "fieldGuid": "2c6887da-3d3f-5bbd-a917-74fa4bf69b6a",
-          "fieldName": "RegionId",
+          "fieldGuid": "206949c6-52e2-51c5-a5ef-2eb0740fd33c",
+          "fieldName": "WgRegionId",
           "label": "Region",
-          "description": "For Area = Region: draw a new region with Send to Minecraft, or type the id of an existing WorldGuard region (at most 128 characters). A region you draw here is renamed to landmark_<id> when you save and keeps exactly the outline and Y range you drew, so the server keeps it; running this step again on a saved landmark replaces that region. An existing region (a domain's, or one given to /knk landmark create <name> region <id>) is used as it is. The region must be in the world of the landmark's point.",
+          "description": "For Area = OwnRegion: draw the region with Send to Minecraft, or type the id of an existing WorldGuard region no other domain uses (at most 128 characters). A region you draw here is renamed to domain_<id> when you save, like every domain's; running this step again on a saved landmark replaces it. Leave empty for the other areas.",
           "fieldType": "String",
           "isRequired": false,
           "isReadOnly": false,
           "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
         },
         {
-          "fieldGuid": "f7efe92a-a360-5c2e-b5f6-d3f0b09826f9",
-          "fieldName": "Radius",
-          "label": "Radius (blocks)",
-          "description": "For Area = Radius: above 0, at most 512.",
-          "fieldType": "Decimal",
-          "isRequired": false,
-          "isReadOnly": false
-        },
-        {
-          "fieldGuid": "424cf354-1e98-5391-a557-404a9ab11b62",
+          "fieldGuid": "c356b361-9522-5bc6-b913-e21859fed987",
           "fieldName": "Preference",
           "label": "Route preference",
           "description": "0.25 to 4.0, default 1. Below 1 routes prefer walking through the area, above 1 they avoid it (used once landmark weights are on).",
@@ -107,6 +107,123 @@
           "defaultValue": "1",
           "isRequired": false,
           "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "a36424e1-be4e-50d3-8ec7-aaf54526a26d",
+      "stepName": "Access and messages",
+      "description": "For Area = OwnRegion: what the landmark's own region does to players. Nothing happens by default: entry and exit are allowed and no message shows.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "9e0ca9fe-fef5-516e-aa99-3311670cba6b",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the landmark's region. Off keeps everyone out except staff with the region bypass permission.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "1bd2bda7-a65a-5311-bf76-4b125cabd5e7",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players inside the landmark's region may walk out of it.",
+          "fieldType": "Boolean",
+          "defaultValue": "True",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "96331551-40f8-5fb2-a836-7a8fbccd1a84",
+          "fieldName": "ShowEnterLeaveMessages",
+          "label": "Show enter and leave messages",
+          "description": "On: players see the landmark's name when they enter and leave its region (once per crossing, not between its sub-regions). Off by default.",
+          "fieldType": "Boolean",
+          "defaultValue": "False",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "d13b87b4-5de6-55b4-b1ea-22b00f15f448",
+      "stepName": "Warp destination",
+      "description": "Whether players can /warp to the landmark's point, and what that requires. Off by default. Requirements are checked in this order: title, premium tier, discovery, price.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "a8045c84-73d6-5c75-a63c-a06705c73ea7",
+          "fieldName": "TeleportEnabled",
+          "label": "Warp destination",
+          "description": "Lists the landmark in /warp and the teleport menu. Off keeps the settings below but doesn't use them.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "daaa6c01-8f65-5d39-bd40-fa428b6adc17",
+          "fieldName": "TeleportPriceGems",
+          "label": "Price (gems)",
+          "description": "Gems charged per warp, after the warmup. 0 = free.",
+          "fieldType": "Integer",
+          "defaultValue": "0",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "a68e98fb-c1c9-5ef9-9925-a3a31f724292",
+          "fieldName": "TeleportMinTitleBracketId",
+          "label": "Minimum title",
+          "description": "Players whose experience is below this title can't warp here. Empty = no title needed.",
+          "fieldType": "Object",
+          "objectType": "TitleBracket",
+          "isRequired": false,
+          "isReadOnly": false
+        },
+        {
+          "fieldGuid": "805aaa76-ed8c-5676-9d3e-0d8aa1b861b7",
+          "fieldName": "TeleportMinPremiumGroupId",
+          "label": "Minimum premium tier",
+          "description": "Only players whose highest premium tier has at least this group's weight may warp here. Only premium-tier groups can be picked. Empty = everyone.",
+          "fieldType": "Object",
+          "objectType": "PermissionGroup",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"pickerFilters\": {\"isPremiumTier\": \"true\"}}"
+        },
+        {
+          "fieldGuid": "f1aae776-2298-5701-a0a9-ba715b787ffb",
+          "fieldName": "TeleportRequiresDiscovery",
+          "label": "Discovered landmarks only",
+          "description": "Only players who have discovered the landmark may warp here. Landmark discovery is off unless it is switched on for this landmark.",
+          "fieldType": "Boolean",
+          "defaultValue": "false",
+          "isRequired": false,
+          "isReadOnly": false
+        }
+      ]
+    },
+    {
+      "stepGuid": "54ddc92e-cf5a-5690-b0a5-36bf57e4d556",
+      "stepName": "Sub-regions",
+      "description": "For Area = OwnRegion: extra WorldGuard regions of the landmark besides its main region; the landmark is the union of its regions. Save the landmark first (Submit), then Edit it to add sub-regions; each one is drawn in game and becomes domain_<id>_sub_<n>.",
+      "isManyToManyRelationship": false,
+      "fields": [
+        {
+          "fieldGuid": "f6d4bf51-00dd-58ec-a0a1-2085e5590c52",
+          "fieldName": "SubRegions",
+          "label": "Sub-regions",
+          "description": "One entry per extra region. Each gets the main region's flags, owners, members and priority from the game server. A removed sub-region's WorldGuard region is deleted 14 days later; so are the sub-regions of a landmark whose area stops being its own region.",
+          "fieldType": "List",
+          "objectType": "DomainSubRegion",
+          "elementType": "Object",
+          "isRequired": false,
+          "isReadOnly": false,
+          "settingsJson": "{\"ownedChildCollection\": true}"
         }
       ]
     }

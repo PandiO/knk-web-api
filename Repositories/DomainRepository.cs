@@ -69,26 +69,8 @@ namespace knkwebapi_v2.Repositories
 
             await _context.Entry(domain).Collection(d => d.SubRegions).LoadAsync();
 
-            // Explicitly load the entire ParentDomain chain (unknown depth)
-            Domain? current = domain;
-            while (current != null)
-            {
-                if (current is Town) {
-                    break;
-                } else if (current is District district)
-                {
-                    await _context.Entry(district).Reference(d => d.Town).LoadAsync();
-                    if (district.TownId <= 0) break;
-                    current = district.Town;
-                    continue;
-                }  else if (current is Structure structure) {
-                    await _context.Entry(structure).Reference(s => s.District).LoadAsync();
-                    if (structure.DistrictId is not > 0) break; // a rural structure (P2, #91) has no parent
-                    current = structure.District;
-                    continue;
-                }
-                break;
-            }
+            // The whole parent chain, through the one parent walk of every domain type (LD23, PandiO/knk-workspace#981).
+            await knkwebapi_v2.Services.DomainParents.LoadAncestorsAsync(_context, domain);
 
             return new DomainRegionMatch(domain, matchedSubRegion?.Id);
         }

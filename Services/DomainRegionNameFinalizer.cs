@@ -16,8 +16,9 @@ namespace knkwebapi_v2.Services
     /// Domain is saved, the region is renamed to <c>domain_&lt;id&gt;</c> (all share Domain's id sequence) and the plugin
     /// sets it up as that type: parent region, priority and flags. See knk-workspace
     /// <c>docs/architecture/managed-worldguard-regions.md</c> §7 (KNG-43). The same rename on save covers domain sub-regions
-    /// (KNG-254), lootbox spawn areas (PandiO/knk-workspace#34), landmarks (PandiO/knk-workspace#945) and production areas
-    /// (PandiO/knk-workspace#946), the last three through one path (<see cref="RegionOwnerKind"/>).
+    /// (KNG-254), lootbox spawn areas (PandiO/knk-workspace#34) and production areas (PandiO/knk-workspace#946), the last two
+    /// through one path (<see cref="RegionOwnerKind"/>). A landmark is a domain (PandiO/knk-workspace#983, LD14): its
+    /// drawn region becomes <c>domain_&lt;id&gt;</c> and its sub-regions <c>domain_&lt;id&gt;_sub_&lt;n&gt;</c>.
     /// </summary>
     public interface IDomainRegionNameFinalizer
     {
@@ -63,18 +64,6 @@ namespace knkwebapi_v2.Services
         Task<bool> FinalizeLootboxAreaAsync(LootboxSpawnArea area, string? previousRegionId);
 
         /// <summary>
-        /// PandiO/knk-workspace#945: gives a landmark's region drawn through the form's region task its final name
-        /// <c>landmark_&lt;id&gt;</c> after the landmark is saved, so the 14-day temp-region cleanup keeps it, exactly as
-        /// <see cref="FinalizeLootboxAreaAsync"/> does for a lootbox spawn area. The region keeps the outline and Y range it
-        /// was drawn with and gets no managed-region setup. Only a temp-named region is renamed; an existing region the
-        /// landmark names (a domain's, a hand-made one, one given to <c>/knk landmark create &lt;name&gt; region &lt;id&gt;</c>)
-        /// is left as it is. <paramref name="previousRegionId"/> is the landmark's RegionId before this save: on a re-run of
-        /// the region task its previous <c>landmark_&lt;id&gt;</c> is redefined in place, a previous temp-named region removed
-        /// (KNG-103). The world is the one of the landmark's pin. Never throws.
-        /// </summary>
-        Task<bool> FinalizeLandmarkAsync(Landmark landmark, string? previousRegionId);
-
-        /// <summary>
         /// PandiO/knk-workspace#946: the same for a Region-shaped production area: a region drawn through the area form's
         /// region task becomes <c>production_area_&lt;id&gt;</c> in the area's world (no managed-region setup, the drawn
         /// outline and Y range kept), a re-run replaces it, and an existing region the area names is kept. Never throws.
@@ -92,12 +81,12 @@ namespace knkwebapi_v2.Services
 
     /// <summary>
     /// #946: the rows besides domains and domain sub-regions that stand on a region drawn through their form's region task
-    /// and get a final name for it (#34, #945, #946).
+    /// and get a final name for it (#34, #946). Landmarks are domains since PandiO/knk-workspace#983 (LD14): their regions
+    /// take the domain path (<c>domain_&lt;id&gt;</c>).
     /// </summary>
     public enum RegionOwnerKind
     {
         LootboxSpawnArea,
-        Landmark,
         ProductionArea,
         SiegeWeaponSpot,
     }
@@ -163,13 +152,6 @@ namespace knkwebapi_v2.Services
         public static string FinalLootboxAreaNameFor(int areaId) => $"lootbox_area_{areaId}";
 
         /// <summary>
-        /// #945: the final name of a landmark's drawn region. No landmark name is reserved for it: a landmark's name never
-        /// becomes a region id (the in-game command only takes an existing region), and the plugin refuses to rename onto
-        /// a region that already holds the name unless it is the one being replaced.
-        /// </summary>
-        public static string FinalLandmarkNameFor(int landmarkId) => $"landmark_{landmarkId}";
-
-        /// <summary>
         /// #946: the final name of a production area's drawn region. No area name is reserved: an area's name never becomes
         /// a region id, and the plugin refuses to rename onto a region that already holds the name.
         /// </summary>
@@ -181,6 +163,9 @@ namespace knkwebapi_v2.Services
         /// <summary>The concrete type name the plugin's managed-region policy understands; null for a bare Domain.</summary>
         public static string? DomainTypeOf(Domain domain) => domain switch
         {
+            // LD13: the plugin's LANDMARK managed-region kind (L3, #985); before L3 the plugin treats an unknown type as
+            // STRUCTURE.
+            Landmark => nameof(Landmark),
             GateStructure => nameof(GateStructure),
             // PandiO/knk-workspace#991: the subtypes the startup repair reads under their own name (DomainMappingProfile's
             // GetType().Name), so a new region is set up as the repair would set it up: ProductionStructure as
@@ -305,7 +290,7 @@ namespace knkwebapi_v2.Services
                     domain.Id, previous, other.Id);
                 return null;
             }
-            // #34, #945, #946: a temp-named previous region is removed; a lootbox spawn area, landmark or production area
+            // #34, #946: a temp-named previous region is removed; a lootbox spawn area or production area
             // standing on it would lose its region.
             if (IsTemporary(previous) && await OwnedRegionUserAsync(previous, world, null) is string user)
             {
@@ -330,26 +315,6 @@ namespace knkwebapi_v2.Services
                     && (loweredWorld == null || a.World.ToLower() == loweredWorld))
                 .OrderBy(a => a.Id)
                 .Select(a => a.Id)
-                .Take(1)
-                .ToListAsync();
-            return ids.Count == 0 ? null : ids[0];
-        }
-
-        /// <summary>
-        /// #945: the id of a landmark (other than <paramref name="exceptLandmarkId"/>) whose extent is
-        /// <paramref name="regionId"/> with its pin in <paramref name="world"/>, or null. Without a world, a landmark in any
-        /// world counts.
-        /// </summary>
-        private async Task<int?> LandmarkUsingAsync(string regionId, string? world, int? exceptLandmarkId)
-        {
-            string loweredRegion = regionId.Trim().ToLower();
-            string? loweredWorld = string.IsNullOrWhiteSpace(world) ? null : world.Trim().ToLower();
-            int self = exceptLandmarkId ?? 0;
-            var ids = await _context.Landmarks.AsNoTracking()
-                .Where(l => l.Id != self && l.RegionId != null && l.RegionId.ToLower() == loweredRegion
-                    && (loweredWorld == null || (l.Location.World != null && l.Location.World.ToLower() == loweredWorld)))
-                .OrderBy(l => l.Id)
-                .Select(l => l.Id)
                 .Take(1)
                 .ToListAsync();
             return ids.Count == 0 ? null : ids[0];
@@ -395,8 +360,8 @@ namespace knkwebapi_v2.Services
         private readonly record struct RegionOwnerRef(RegionOwnerKind Kind, int Id);
 
         /// <summary>
-        /// #34, #945, #946: the lootbox spawn area, landmark or production area (other than <paramref name="self"/>) that
-        /// stands on <paramref name="regionId"/> in <paramref name="world"/>, as "landmark 5", or null.
+        /// #34, #946: the lootbox spawn area or production area (other than <paramref name="self"/>) that stands on
+        /// <paramref name="regionId"/> in <paramref name="world"/>, as "production area 5", or null.
         /// </summary>
         private async Task<string?> OwnedRegionUserAsync(string regionId, string? world, RegionOwnerRef? self)
         {
@@ -404,10 +369,6 @@ namespace knkwebapi_v2.Services
             if (await LootboxAreaUsingAsync(regionId, world, Except(RegionOwnerKind.LootboxSpawnArea)) is int areaId)
             {
                 return $"lootbox spawn area {areaId}";
-            }
-            if (await LandmarkUsingAsync(regionId, world, Except(RegionOwnerKind.Landmark)) is int landmarkId)
-            {
-                return $"landmark {landmarkId}";
             }
             if (await ProductionAreaUsingAsync(regionId, world, Except(RegionOwnerKind.ProductionArea)) is int productionAreaId)
             {
@@ -421,7 +382,7 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>
-        /// What else (a domain, a domain sub-region, or a lootbox spawn area, landmark or production area other than
+        /// What else (a domain, a domain sub-region, or a lootbox spawn area or production area other than
         /// <paramref name="self"/>) stands on <paramref name="regionId"/> in <paramref name="world"/>, or null.
         /// </summary>
         private async Task<string?> OtherUserOfRegionAsync(string regionId, string? world, RegionOwnerRef? self)
@@ -458,14 +419,15 @@ namespace knkwebapi_v2.Services
         public async Task<TempRegionFinalizeResult> FinalizeAllAsync()
         {
             var domains = await _context.Domains
-                .Where(d => d.WgRegionId.StartsWith(TempRegionPrefix))
+                .Where(d => d.WgRegionId != null && d.WgRegionId.StartsWith(TempRegionPrefix))
                 .ToListAsync();
 
             int renamed = 0;
             var failed = new List<string>();
-            foreach (var domain in domains.OrderBy(HierarchyLevel).ThenBy(d => d.Id))
+            var parents = domains.Count == 0 ? new Dictionary<int, int?>() : await DomainParents.ParentIdMapAsync(_context);
+            foreach (var domain in domains.OrderBy(d => HierarchyLevel(d, parents)).ThenBy(d => d.Id))
             {
-                string tempName = domain.WgRegionId;
+                string tempName = domain.WgRegionId!;
                 if (await FinalizeAsync(domain))
                 {
                     renamed++;
@@ -495,20 +457,14 @@ namespace knkwebapi_v2.Services
                 }
             }
 
-            // #34, #945, #946: then the lootbox spawn areas, landmarks and production areas still on a region drawn through
-            // their form (rename failed or the server was down at the save).
+            // #34, #946: then the lootbox spawn areas and production areas still on a region drawn through their form (rename
+            // failed or the server was down at the save). Landmarks are domains (#983) and went with the domains above.
             var areas = await _context.LootboxSpawnAreas
                 .Where(a => a.WgRegionId.StartsWith(TempRegionPrefix))
                 .OrderBy(a => a.Id)
                 .ToListAsync();
             renamed += await FinalizeEachAsync(areas, a => FinalizeLootboxAreaAsync(a, null),
                 a => $"{nameof(LootboxSpawnArea)} {a.Id} ({a.WgRegionId})", failed);
-            var landmarks = await _context.Landmarks
-                .Where(l => l.RegionId != null && l.RegionId.StartsWith(TempRegionPrefix))
-                .OrderBy(l => l.Id)
-                .ToListAsync();
-            renamed += await FinalizeEachAsync(landmarks, l => FinalizeLandmarkAsync(l, null),
-                l => $"{nameof(Landmark)} {l.Id} ({l.RegionId})", failed);
             var productionAreas = await _context.ProductionAreas
                 .Where(a => a.Shape == ProductionAreaShape.Region && a.WgRegionId != null && a.WgRegionId.StartsWith(TempRegionPrefix))
                 .OrderBy(a => a.Id)
@@ -523,7 +479,7 @@ namespace knkwebapi_v2.Services
             renamed += await FinalizeEachAsync(spots, w => FinalizeSiegeWeaponSpotAsync(w, null),
                 w => $"{nameof(SiegeWeaponSpot)} {w.Id} ({w.WgRegionId})", failed);
 
-            int found = domains.Count + subRegions.Count + areas.Count + landmarks.Count + productionAreas.Count + spots.Count;
+            int found = domains.Count + subRegions.Count + areas.Count + productionAreas.Count + spots.Count;
             _logger.LogInformation("Temp region finalize pass: found {Found}, renamed {Renamed}, failed {Failed}",
                 found, renamed, failed.Count);
             return new TempRegionFinalizeResult(found, renamed, failed);
@@ -681,13 +637,6 @@ namespace knkwebapi_v2.Services
                 () => _context.LootboxSpawnAreas.FirstOrDefaultAsync(a => a.Id == area.Id), name),
             name => area.WgRegionId = name);
 
-        private OwnedRegion LandmarkOwner(Landmark landmark, string finalName, string? world) => new(
-            new RegionOwnerRef(RegionOwnerKind.Landmark, landmark.Id), $"landmark {landmark.Id}", landmark.RegionId,
-            finalName, world, _regionService.RenameLandmarkRegionAsync,
-            name => StoreOwnedRegionIdAsync(landmark, (l, n) => l.RegionId = n,
-                () => _context.Landmarks.FirstOrDefaultAsync(l => l.Id == landmark.Id), name),
-            name => landmark.RegionId = name);
-
         private OwnedRegion ProductionAreaOwner(ProductionArea area, string finalName, string? world) => new(
             new RegionOwnerRef(RegionOwnerKind.ProductionArea, area.Id), $"production area {area.Id}", area.WgRegionId,
             finalName, world, _regionService.RenameProductionAreaRegionAsync,
@@ -733,26 +682,6 @@ namespace knkwebapi_v2.Services
                 previousRegionId);
         }
 
-        public async Task<bool> FinalizeLandmarkAsync(Landmark landmark, string? previousRegionId)
-        {
-            if (landmark == null || landmark.Id <= 0 || !IsTemporary(landmark.RegionId))
-            {
-                return false;
-            }
-            string? world;
-            try
-            {
-                world = await LandmarkWorldAsync(landmark);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error finalizing region name for landmark {LandmarkId} ({TempName}): its world could not be read",
-                    landmark.Id, landmark.RegionId);
-                return false;
-            }
-            return await FinalizeOwnedRegionAsync(LandmarkOwner(landmark, FinalLandmarkNameFor(landmark.Id), world), previousRegionId);
-        }
-
         public async Task<bool> FinalizeProductionAreaAsync(ProductionArea area, string? previousRegionId)
         {
             if (area == null || area.Shape != ProductionAreaShape.Region)
@@ -764,7 +693,7 @@ namespace knkwebapi_v2.Services
         }
 
         /// <summary>
-        /// #34, #945, #946: the rename on save of a lootbox spawn area's, landmark's or production area's drawn region.
+        /// #34, #946: the rename on save of a lootbox spawn area's or production area's drawn region.
         /// Only a temp-named region is renamed; one someone else (a domain, a sub-region, another such row) also stands on
         /// is kept on its temp name, which the cleanup keeps. A failed rename never throws; storing after a successful
         /// rename failing renames the region back.
@@ -851,7 +780,7 @@ namespace knkwebapi_v2.Services
         /// <summary>
         /// #34, #945, #946: as <see cref="ReplaceableRegionAsync"/> for a row whose region task was run again. Only its own
         /// final name (redefined in place) or a temp-named region (removed) qualify. A temp-named one is kept when a domain,
-        /// domain sub-region or other lootbox spawn area, landmark or production area in the world uses it; the own final
+        /// domain sub-region or other lootbox spawn area or production area in the world uses it; the own final
         /// name when a domain, sub-region or other lootbox area holds it (<see cref="RegionHolderAsync"/>). Anything else
         /// it named before (a borrowed region, a hand-made one, an in-game <c>lootbox_&lt;name&gt;</c>) is kept.
         /// </summary>
@@ -874,7 +803,7 @@ namespace knkwebapi_v2.Services
             }
             // A temp-named previous region is removed: whoever else stands on it keeps it. The row's own final name is
             // redefined in place: only a domain, a sub-region or another lootbox area holding it keeps it (as before #945);
-            // a landmark or production area that names it just follows the new shape.
+            // a production area that names it just follows the new shape.
             bool removed = !previous.Equals(owner.FinalName, StringComparison.OrdinalIgnoreCase);
             string? takenBy = removed
                 ? await OtherUserOfRegionAsync(previous, owner.World, owner.Self)
@@ -889,8 +818,8 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// #945: who holds <paramref name="regionId"/> so that it may not be redefined under them: a domain, a domain
-        /// sub-region or a lootbox spawn area other than <paramref name="self"/>; or null. Landmarks and production areas
-        /// only read a region's shape, so they never hold one.
+        /// sub-region (a landmark's included, it is a domain) or a lootbox spawn area other than <paramref name="self"/>; or
+        /// null. Production areas only read a region's shape, so they never hold one.
         /// </summary>
         private async Task<string?> RegionHolderAsync(string regionId, string? world, RegionOwnerRef self)
         {
@@ -907,46 +836,32 @@ namespace knkwebapi_v2.Services
         public Task<string?> ReplaceableLootboxAreaRegionAsync(LootboxSpawnArea area, string? previousRegionId, string finalName, string? world) =>
             ReplaceableOwnedRegionAsync(LootboxAreaOwner(area, finalName, world), previousRegionId);
 
-        /// <summary>#945: <see cref="ReplaceableOwnedRegionAsync"/> for a landmark.</summary>
-        public Task<string?> ReplaceableLandmarkRegionAsync(Landmark landmark, string? previousRegionId, string finalName, string? world) =>
-            ReplaceableOwnedRegionAsync(LandmarkOwner(landmark, finalName, world), previousRegionId);
-
         /// <summary>#946: <see cref="ReplaceableOwnedRegionAsync"/> for a production area.</summary>
         public Task<string?> ReplaceableProductionAreaRegionAsync(ProductionArea area, string? previousRegionId, string finalName, string? world) =>
             ReplaceableOwnedRegionAsync(ProductionAreaOwner(area, finalName, world), previousRegionId);
 
-        /// <summary>#945: the world of the landmark's pin (its Location), or null when it has none.</summary>
-        private async Task<string?> LandmarkWorldAsync(Landmark landmark)
-        {
-            string? world = landmark.Location?.World;
-            if (string.IsNullOrWhiteSpace(world) && landmark.LocationId > 0)
-            {
-                world = await _context.Locations.AsNoTracking()
-                    .Where(l => l.Id == landmark.LocationId)
-                    .Select(l => l.World)
-                    .FirstOrDefaultAsync();
-            }
-            return WorldOrNull(world);
-        }
-
-        private static int HierarchyLevel(Domain domain) => domain switch
+        /// <summary>
+        /// The order of the finalize pass, parents first: towns, districts, structures, the other types, then landmarks
+        /// (a landmark's parent may be any domain), a landmark under another landmark after it (LD23's walk over
+        /// <paramref name="parents"/>).
+        /// </summary>
+        private static int HierarchyLevel(Domain domain, IReadOnlyDictionary<int, int?> parents) => domain switch
         {
             Town => 0,
             District => 1,
             Structure => 2,
+            Landmark => 4 + DomainParents.Depth(domain.Id, id => parents.TryGetValue(id, out var parent) ? parent : null),
             _ => 3
         };
 
+        /// <summary>
+        /// The WorldGuard parent of the domain's region: its parent's main region through the one parent walk (LD23). A
+        /// rural structure (P2, #91) has none (no district, and territory is not a region); a landmark has its parent's
+        /// main region (LD13), none at top level or under a parent without a region.
+        /// </summary>
         private async Task<string?> ParentRegionIdAsync(Domain domain)
         {
-            int parentId = domain switch
-            {
-                District district => district.TownId,
-                // A rural structure (P2, #91) has no parent region: no district, and territory is not a region.
-                Structure structure => structure.DistrictId ?? 0,
-                _ => 0
-            };
-            if (parentId <= 0)
+            if (DomainParents.ParentIdOf(domain) is not int parentId)
             {
                 return null;
             }

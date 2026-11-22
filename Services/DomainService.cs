@@ -66,11 +66,13 @@ namespace knkwebapi_v2.Services
 
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Domain with id {id} not found.");
+            // LD19: a landmark is saved through LandmarkService (DomainsController checks the landmark rights first).
+            if (existing is Landmark) throw new ArgumentException(LandmarkWriteMessage(id), nameof(id));
             // KNG-78: this path can also rename a GateStructure; 'here' is reserved for gates only.
             if (existing is GateStructure)
                 GateNameRules.EnsureNotReserved(domain.Name, "gate structure", "/gate", nameof(domain));
 
-            string oldRegionId = existing.WgRegionId;
+            string? oldRegionId = existing.WgRegionId;
             string worldName = await _worlds.ResolveAsync(new DomainWorldRequest
             {
                 DomainId = id,
@@ -104,9 +106,15 @@ namespace knkwebapi_v2.Services
             if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
             var existing = await _repo.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Domain with id {id} not found.");
+            // LD19: a landmark is deleted through LandmarkService (DomainsController checks the landmark rights first);
+            // other callers (the dashboard's bulk delete of type Domain) get this refusal.
+            if (existing is Landmark) throw new ArgumentException(LandmarkWriteMessage(id), nameof(id));
 
             await _repo.DeleteDomainAsync(id);
         }
+
+        private static string LandmarkWriteMessage(int id) =>
+            $"Domain {id} is a landmark: change it as a landmark (api/landmarks, {Attributes.StaffPermissions.LandmarkManage}).";
 
         public async Task<DomainRegionDecisionDto?> GetByWgRegionNameAsync(string regionName, string? worldName = null)
         {
@@ -218,6 +226,10 @@ namespace knkwebapi_v2.Services
             // A GateStructure is a Structure (gates, Keep Gate): left out, the game server never saw its entry rule
             // (live test 2026-10-09: the navigator walked players into the Keep Gate the border then refused).
             var structureDecision = domainDecisions.FirstOrDefault(d => d.DomainType == "Structure" || d.DomainType == "GateStructure");
+            // Landmark-domain A05 (PandiO/knk-workspace#983): a landmark region (its main region or a sub-region) comes
+            // back as the innermost entry, after the structure, with its parent chain. Without a landmark in the request
+            // the keys are as before.
+            var landmarkDecision = domainDecisions.FirstOrDefault(d => d.DomainType == nameof(Landmark));
             int hierarchyIndex = 0;
             if (queryDto.TopDownHierarchy == true)
             {
@@ -234,10 +246,15 @@ namespace knkwebapi_v2.Services
                 {
                     result.Add(hierarchyIndex++, structureDecision);
                 }
+                if (landmarkDecision != null)
+                {
+                    result.Add(hierarchyIndex++, landmarkDecision);
+                }
             }
             else
             {
-                hierarchyIndex = 3;
+                // Bottom-up: the innermost has the lowest key. With a landmark the keys start one higher, so none is below 0.
+                hierarchyIndex = landmarkDecision != null ? 4 : 3;
                 if (townDecision != null)
                 {
                     result.Add(--hierarchyIndex, townDecision);
@@ -249,6 +266,10 @@ namespace knkwebapi_v2.Services
                 if (structureDecision != null)
                 {
                     result.Add(--hierarchyIndex, structureDecision);
+                }
+                if (landmarkDecision != null)
+                {
+                    result.Add(--hierarchyIndex, landmarkDecision);
                 }
             }
 

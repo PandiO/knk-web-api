@@ -1,6 +1,7 @@
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Properties;
 using knkwebapi_v2.Repositories.Interfaces;
+using knkwebapi_v2.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace knkwebapi_v2.Repositories
@@ -15,7 +16,7 @@ namespace knkwebapi_v2.Repositories
         }
 
         private IQueryable<Landmark> WithRelations() =>
-            _context.Landmarks.Include(l => l.Location).Include(l => l.Domain);
+            _context.Landmarks.Include(l => l.Location).Include(l => l.ParentDomain).Include(l => l.SubRegions);
 
         public async Task<IReadOnlyList<Landmark>> GetAllAsync(string? world = null)
         {
@@ -23,7 +24,7 @@ namespace knkwebapi_v2.Repositories
             if (!string.IsNullOrWhiteSpace(world))
             {
                 var worldLower = world.Trim().ToLower();
-                queryable = queryable.Where(l => l.Location.World != null && l.Location.World.ToLower() == worldLower);
+                queryable = queryable.Where(l => l.Location != null && l.Location.World != null && l.Location.World.ToLower() == worldLower);
             }
             return await queryable.OrderBy(l => l.Name).ThenBy(l => l.Id).ToListAsync();
         }
@@ -40,7 +41,7 @@ namespace knkwebapi_v2.Repositories
         public async Task UpdateAsync(Landmark entity)
         {
             // A landmark loaded by GetByIdAsync is tracked: save only its own changes. Update() would also mark the
-            // loaded Location and Domain as modified.
+            // loaded Location and parent as modified.
             if (_context.Entry(entity).State == EntityState.Detached)
             {
                 _context.Landmarks.Update(entity);
@@ -50,6 +51,14 @@ namespace knkwebapi_v2.Repositories
 
         public async Task DeleteAsync(Landmark entity)
         {
+            // LD09: the landmarks that have this one as parent become top level (the database's SET NULL does the same
+            // for rows this context has not loaded).
+            var children = await _context.Landmarks.Where(l => l.ParentDomainId == entity.Id).ToListAsync();
+            foreach (var child in children)
+            {
+                child.ParentDomainId = null;
+                if (child.AreaKind == LandmarkAreaKind.LinkedDomain) child.AreaKind = LandmarkAreaKind.None;
+            }
             _context.Landmarks.Remove(entity);
             await _context.SaveChangesAsync();
         }
@@ -61,18 +70,25 @@ namespace knkwebapi_v2.Repositories
             if (query.Filters != null)
             {
                 var filters = new Dictionary<string, string>(query.Filters, StringComparer.OrdinalIgnoreCase);
-                if (filters.TryGetValue("domainId", out var domainText) && int.TryParse(domainText, out var domainId) && domainId > 0)
+                // `domainId` is the #708 name of the parent filter (the web app's domain panel until L4); both work.
+                if ((filters.TryGetValue("parentDomainId", out var parentText) || filters.TryGetValue("domainId", out parentText))
+                    && int.TryParse(parentText, out var parentId) && parentId > 0)
                 {
-                    queryable = queryable.Where(l => l.DomainId == domainId);
+                    queryable = queryable.Where(l => l.ParentDomainId == parentId);
                 }
                 if (filters.TryGetValue("world", out var world) && !string.IsNullOrWhiteSpace(world))
                 {
                     var worldLower = world.Trim().ToLower();
-                    queryable = queryable.Where(l => l.Location.World != null && l.Location.World.ToLower() == worldLower);
+                    queryable = queryable.Where(l => l.Location != null && l.Location.World != null && l.Location.World.ToLower() == worldLower);
                 }
                 if (filters.TryGetValue("navigationEnabled", out var navText) && bool.TryParse(navText, out var navigationEnabled))
                 {
                     queryable = queryable.Where(l => l.NavigationEnabled == navigationEnabled);
+                }
+                if (filters.TryGetValue("areaKind", out var areaText)
+                    && Enum.TryParse<LandmarkAreaKind>(areaText?.Trim(), true, out var areaKind) && Enum.IsDefined(areaKind))
+                {
+                    queryable = queryable.Where(l => l.AreaKind == areaKind);
                 }
             }
 
@@ -80,8 +96,8 @@ namespace knkwebapi_v2.Repositories
             {
                 var searchLower = query.SearchTerm.Trim().ToLower();
                 queryable = queryable.Where(l => l.Name.ToLower().Contains(searchLower)
-                    || (l.Location.World != null && l.Location.World.ToLower().Contains(searchLower))
-                    || (l.Domain != null && l.Domain.Name.ToLower().Contains(searchLower)));
+                    || (l.Location != null && l.Location.World != null && l.Location.World.ToLower().Contains(searchLower))
+                    || (l.ParentDomain != null && l.ParentDomain.Name.ToLower().Contains(searchLower)));
             }
 
             var totalCount = await queryable.CountAsync();
@@ -89,10 +105,12 @@ namespace knkwebapi_v2.Repositories
             queryable = (query.SortBy ?? string.Empty).ToLowerInvariant() switch
             {
                 "name" => query.SortDescending ? queryable.OrderByDescending(l => l.Name) : queryable.OrderBy(l => l.Name),
-                "world" => query.SortDescending ? queryable.OrderByDescending(l => l.Location.World) : queryable.OrderBy(l => l.Location.World),
-                "domainname" => query.SortDescending
-                    ? queryable.OrderByDescending(l => l.Domain != null ? l.Domain.Name : null)
-                    : queryable.OrderBy(l => l.Domain != null ? l.Domain.Name : null),
+                "world" => query.SortDescending
+                    ? queryable.OrderByDescending(l => l.Location != null ? l.Location.World : null)
+                    : queryable.OrderBy(l => l.Location != null ? l.Location.World : null),
+                "domainname" or "parentdomainname" => query.SortDescending
+                    ? queryable.OrderByDescending(l => l.ParentDomain != null ? l.ParentDomain.Name : null)
+                    : queryable.OrderBy(l => l.ParentDomain != null ? l.ParentDomain.Name : null),
                 _ => query.SortDescending ? queryable.OrderByDescending(l => l.Id) : queryable.OrderBy(l => l.Id)
             };
 
@@ -118,10 +136,34 @@ namespace knkwebapi_v2.Repositories
             var worldLower = world.Trim().ToLower();
             return _context.Landmarks.AnyAsync(l => (exceptId == null || l.Id != exceptId)
                 && l.Name.ToLower() == nameLower
-                && l.Location.World != null && l.Location.World.ToLower() == worldLower);
+                && l.Location != null && l.Location.World != null && l.Location.World.ToLower() == worldLower);
         }
 
         public Task<Domain?> GetDomainAsync(int id) =>
             _context.Domains.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id);
+
+        public Task<string?> RegionTakenByAsync(string regionId, string? world, int? exceptDomainId) =>
+            DomainRegionOwnership.TakenByAsync(_context, regionId, world, exceptDomainId: exceptDomainId);
+
+        public Task<bool> LocationUsedByOtherDomainAsync(int locationId, int? exceptDomainId)
+        {
+            int self = exceptDomainId ?? 0;
+            return _context.Domains.AnyAsync(d => d.LocationId == locationId && d.Id != self);
+        }
+
+        public async Task<IReadOnlyList<int>> AncestorIdsAsync(int domainId)
+        {
+            // LD23: the parents of every domain type, one step at a time, with a cycle guard.
+            var parents = await DomainParents.ParentIdMapAsync(_context);
+            return DomainParents.AncestorIds(domainId, id => parents.TryGetValue(id, out var parent) ? parent : null);
+        }
+
+        public async Task RemoveSubRegionsAsync(int domainId)
+        {
+            var rows = await _context.DomainSubRegions.Where(s => s.DomainId == domainId).ToListAsync();
+            if (rows.Count == 0) return;
+            _context.DomainSubRegions.RemoveRange(rows);
+            await _context.SaveChangesAsync();
+        }
     }
 }

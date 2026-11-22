@@ -31,7 +31,11 @@ public class Domain
 
     public bool AllowExit { get; set; } = true;
 
-    public string WgRegionId { get; set; } = null!;
+    /// <summary>
+    /// The domain's main WorldGuard region. Null only for a landmark without a region of its own (landmark-domain DESIGN
+    /// LD02, LD11, PandiO/knk-workspace#983): every other type's service, and the generic domain writes, still require one.
+    /// </summary>
+    public string? WgRegionId { get; set; }
 
     /// <summary>
     /// The Minecraft world this domain (and its WorldGuard region) lives in, by world name (KNG-111). The region id is
