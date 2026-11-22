@@ -164,7 +164,9 @@ namespace knkwebapi_v2.Services
             {
                 ValidationType = string.Join(";", withMetadata.Select(m => m.ValidationType).Distinct()),
                 ExecutedAt = oldest.ExecutedAt,
-                FromCache = withMetadata.All(m => m.FromCache)
+                FromCache = withMetadata.All(m => m.FromCache),
+                // #988: a rule that couldn't check but passes so it never blocks (the weapon spot rules) keeps saying so.
+                FailureReason = withMetadata.Select(m => m.FailureReason).FirstOrDefault(r => r != null)
             };
         }
 

@@ -218,6 +218,22 @@ handles only with `siege.weapons.enabled`; the completed task fills the six boun
 `WgRegionId` and shows warnings. The step and field descriptions say so. A database that imported the seed earlier
 gets the task by turning on "Requires in-game action" on Min X with type `SiegeWeaponSpot` in the form designer.
 
+**SiegeWeaponSpot as a WorldGuard region (PandiO/knk-workspace#988, 2026-11-22):** a second in-place change of
+`SiegeWeaponSpot` seed v1 (still only in `next`, so still no new `configurationGuid`). It replaces the #799 task above:
+the spot keeps only its region. On "Place and size", `WgRegionId` (label "Region", now required) gets the normal region
+world task `ReagionCreate` (`settingsJson` `worldTask`, as `LootboxSpawnArea.json`) and tells the admin to draw a box;
+the six bounds fields `MinX` to `MaxZ` are gone; `Facing` stays an Enum field picked in the form (like `GateDoor`'s
+`FaceDirection`); `SizeClass` is read-only, because the API works it out from the region on save. Two validation rules
+sit on `WgRegionId`: `SiegeWeaponSpotSize` (depends on `Facing`, blocking: shows the class or "too small") and
+`SiegeWeaponSpotSite` (warning: the floor under the region isn't solid or its space isn't clear). Both ask the game
+server over the game hub (`RegionQueries:Enabled`); one that can't be asked says so and doesn't block the save; the site
+check is answered only with the plugin's `siege.weapons.enabled` on. A database that imported the seed earlier
+(a `next` test database) either re-imports it (delete the old "SiegeWeaponSpot - Default (seed v1)" first) or, in the
+form designer: delete the fields Min X to Max Z; on WorldGuard region turn on "Requires in-game action" with type
+`ReagionCreate` and make it required; make Size class read-only; add the two rules on the region field
+(`SiegeWeaponSpotSize`, dependency Facing, blocking, message `{sizeReason}`; `SiegeWeaponSpotSite`, not blocking,
+message `{siteReason}`).
+
 | Seed | Configuration | Import after |
 |---|---|---|
 | `SiegeAmmoType` | SiegeAmmoType - Default (seed v1) | — |

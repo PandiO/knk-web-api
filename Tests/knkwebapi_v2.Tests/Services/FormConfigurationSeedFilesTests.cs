@@ -5,6 +5,7 @@ using knkwebapi_v2.Repositories;
 using knkwebapi_v2.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using knkwebapi_v2.Services.ValidationMethods;
 using Xunit;
 
 namespace knkwebapi_v2.Tests.Services;
@@ -241,26 +242,52 @@ public class FormConfigurationSeedFilesTests
     }
 
     /// <summary>
-    /// PandiO/knk-workspace#799: the weapon spot form starts the SiegeWeaponSpot world task from its Min X field (a field
-    /// without a plugin handler of its own, so the plugin never runs another task for it with siege.weapons off), and
-    /// the type is one the import knows, so the seed imports without a warning.
+    /// PandiO/knk-workspace#988: the weapon spot form draws the spot's region through the normal region world task on
+    /// WgRegionId (no custom spot task, no bounds fields), Facing is a plain Enum field, SizeClass is read-only, and the two
+    /// spot rules sit on the region field: the size check (blocking, depends on Facing) and the site check (a warning).
     /// </summary>
     [Fact]
-    public void SiegeWeaponSpotSeed_StartsTheSpotWorldTaskFromMinX()
+    public void SiegeWeaponSpotSeed_DrawsItsRegionThroughTheRegionTask_WithTheSizeAndSiteRules()
     {
         using var file = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(SeedDirectory(), "SiegeWeaponSpot.json")));
         var fields = file.RootElement.GetProperty("steps").EnumerateArray()
             .SelectMany(step => step.GetProperty("fields").EnumerateArray()).ToList();
+        var names = fields.Select(f => f.GetProperty("fieldName").GetString()!).ToList();
+        foreach (var gone in new[] { "MinX", "MinY", "MinZ", "MaxX", "MaxY", "MaxZ" }) Assert.DoesNotContain(gone, names);
+
         var withTask = fields.Where(f => f.TryGetProperty("settingsJson", out var settings)
             && settings.GetString()!.Contains("worldTask")).ToList();
+        var region = Assert.Single(withTask);
+        Assert.Equal("WgRegionId", region.GetProperty("fieldName").GetString());
+        Assert.True(region.GetProperty("isRequired").GetBoolean());
+        Assert.Contains("box", region.GetProperty("description").GetString());
+        Assert.Contains("siege_spot_<id>", region.GetProperty("description").GetString());
+        using (var settings = System.Text.Json.JsonDocument.Parse(region.GetProperty("settingsJson").GetString()!))
+        {
+            var worldTask = settings.RootElement.GetProperty("worldTask");
+            Assert.True(worldTask.GetProperty("enabled").GetBoolean());
+            Assert.Equal("ReagionCreate", worldTask.GetProperty("taskType").GetString());
+            Assert.True(TempRegionReleases.IsRegionTaskType("ReagionCreate"));
+        }
+        Assert.DoesNotContain("SiegeWeaponSpot", FormConfigurationPortabilityService.KnownWorldTaskTypes);
 
-        var minX = Assert.Single(withTask);
-        Assert.Equal("MinX", minX.GetProperty("fieldName").GetString());
-        using var settings = System.Text.Json.JsonDocument.Parse(minX.GetProperty("settingsJson").GetString()!);
-        var worldTask = settings.RootElement.GetProperty("worldTask");
-        Assert.True(worldTask.GetProperty("enabled").GetBoolean());
-        Assert.Equal(WorldTaskTypes.SiegeWeaponSpot, worldTask.GetProperty("taskType").GetString());
-        Assert.Contains(WorldTaskTypes.SiegeWeaponSpot, FormConfigurationPortabilityService.KnownWorldTaskTypes);
+        var facing = fields.Single(f => f.GetProperty("fieldName").GetString() == "Facing");
+        Assert.Equal("Enum", facing.GetProperty("fieldType").GetString());
+        var sizeClass = fields.Single(f => f.GetProperty("fieldName").GetString() == "SizeClass");
+        Assert.True(sizeClass.GetProperty("isReadOnly").GetBoolean());
+
+        var rules = file.RootElement.GetProperty("validationRules").EnumerateArray().ToList();
+        var regionGuid = region.GetProperty("fieldGuid").GetString();
+        var size = rules.Single(r => r.GetProperty("validationType").GetString() == SiegeWeaponSpotSizeValidator.Type);
+        Assert.Equal(regionGuid, size.GetProperty("fieldGuid").GetString());
+        Assert.True(size.GetProperty("isBlocking").GetBoolean());
+        Assert.Equal(facing.GetProperty("fieldGuid").GetString(), size.GetProperty("dependsOn").GetProperty("fieldGuid").GetString());
+        var site = rules.Single(r => r.GetProperty("validationType").GetString() == SiegeWeaponSpotSiteValidator.Type);
+        Assert.Equal(regionGuid, site.GetProperty("fieldGuid").GetString());
+        Assert.False(site.GetProperty("isBlocking").GetBoolean());
+        // Two placeholder names: the API merges the placeholders of every rule on a field.
+        Assert.Equal("{sizeReason}", size.GetProperty("errorMessage").GetString());
+        Assert.Equal("{siteReason}", site.GetProperty("errorMessage").GetString());
     }
 
     /// <summary>
