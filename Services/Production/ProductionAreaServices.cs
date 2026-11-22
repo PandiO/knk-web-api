@@ -201,8 +201,12 @@ namespace knkwebapi_v2.Services.Production
         private readonly TimeProvider _clock;
         private readonly ISavedEntityRuleValidator? _rules;
 
+        // PandiO/knk-workspace#946: renames a region drawn through the area form's region task (optional: tests run without one).
+        private readonly IDomainRegionNameFinalizer? _regionNames;
+
         public ProductionAreaService(KnKDbContext db, IProductionSettingsReader settings, IProductionEngine engine,
-            IProductionYieldService yield, TimeProvider? clock = null, ISavedEntityRuleValidator? rules = null)
+            IProductionYieldService yield, TimeProvider? clock = null, ISavedEntityRuleValidator? rules = null,
+            IDomainRegionNameFinalizer? regionNames = null)
         {
             _db = db;
             _settings = settings;
@@ -210,6 +214,24 @@ namespace knkwebapi_v2.Services.Production
             _yield = yield;
             _clock = clock ?? TimeProvider.System;
             _rules = rules;
+            _regionNames = regionNames;
+        }
+
+        /// <summary>
+        /// #946: a Region-shaped area's region drawn through the form's region task is still
+        /// <c>tempregion_worldtask_&lt;n&gt;</c>, which the plugin's 14-day cleanup would delete, after which the survey
+        /// finds no region; it becomes <c>production_area_&lt;id&gt;</c> now (managed-worldguard-regions.md § 7), as a
+        /// domain's, a lootbox spawn area's and a landmark's do. An existing region id is kept as it is. A failed rename
+        /// never fails the save: the area keeps the temp name, which the cleanup keeps, and
+        /// <c>POST api/Regions/finalize-temp-names</c> or the next save tries again. Runs after the save, on a clean tracker.
+        /// </summary>
+        private async Task FinalizeDrawnRegionAsync(int areaId, string? previousRegionId)
+        {
+            if (_regionNames == null) return;
+            var area = await _db.ProductionAreas.FirstOrDefaultAsync(a => a.Id == areaId);
+            if (area == null || area.Shape != ProductionAreaShape.Region || !DomainRegionNameFinalizer.IsTemporary(area.WgRegionId)) return;
+            await _regionNames.FinalizeProductionAreaAsync(area, previousRegionId);
+            _db.ChangeTracker.Clear();
         }
 
         /// <summary>
@@ -315,6 +337,7 @@ namespace knkwebapi_v2.Services.Production
             _db.ProductionAreas.Add(area);
             await _db.SaveChangesAsync();
             _db.ChangeTracker.Clear();
+            await FinalizeDrawnRegionAsync(area.Id, null);
             var created = (await GetByIdAsync(area.Id))!;
             created.PlacementWarnings = warnings;
             return created;
@@ -334,6 +357,8 @@ namespace knkwebapi_v2.Services.Production
             var structure = await _db.ProductionStructures.AsNoTracking().Include(s => s.ProductionKind).Include(s => s.Location)
                 .FirstAsync(s => s.Id == area.ProductionStructureId);
             var before = (area.Shape, area.WorldName, area.WgRegionId, area.PointsJson, area.MinX, area.MinY, area.MinZ, area.MaxX, area.MaxY, area.MaxZ);
+            // #946: the region before this save, replaced when the region task was run again.
+            var previousRegionId = area.WgRegionId;
             await ApplyAsync(area, dto, structure, isCreate: false);
             var after = (area.Shape, area.WorldName, area.WgRegionId, area.PointsJson, area.MinX, area.MinY, area.MinZ, area.MaxX, area.MaxY, area.MaxZ);
             if (before != after && structure.YieldSource != ProductionRateSource.Configured && area.Enabled)
@@ -344,6 +369,7 @@ namespace knkwebapi_v2.Services.Production
             var warnings = await CheckPlacementAsync(area);
             await _db.SaveChangesAsync();
             _db.ChangeTracker.Clear();
+            await FinalizeDrawnRegionAsync(id, previousRegionId);
             var updated = (await GetByIdAsync(id))!;
             updated.PlacementWarnings = warnings;
             return updated;

@@ -52,7 +52,11 @@ public class Landmark
     /// <summary>How arrival is measured: within <c>arrive-distance</c> of the pin, inside <see cref="RegionId"/>, or within <see cref="Radius"/>.</summary>
     public LandmarkExtentKind ExtentKind { get; set; } = LandmarkExtentKind.None;
 
-    /// <summary>The WorldGuard region id when <see cref="ExtentKind"/> is <c>Region</c>; null otherwise.</summary>
+    /// <summary>
+    /// The WorldGuard region id when <see cref="ExtentKind"/> is <c>Region</c>; null otherwise. Either an existing region
+    /// (kept as it is) or one drawn through the form's region task, which is renamed from
+    /// <c>tempregion_worldtask_&lt;n&gt;</c> to <c>landmark_&lt;id&gt;</c> on save (PandiO/knk-workspace#945).
+    /// </summary>
     [MaxLength(RegionIdMaxLength)]
     public string? RegionId { get; set; }
 

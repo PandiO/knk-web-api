@@ -262,4 +262,32 @@ public class FormConfigurationSeedFilesTests
         Assert.Equal(WorldTaskTypes.SiegeWeaponSpot, worldTask.GetProperty("taskType").GetString());
         Assert.Contains(WorldTaskTypes.SiegeWeaponSpot, FormConfigurationPortabilityService.KnownWorldTaskTypes);
     }
+
+    /// <summary>
+    /// PandiO/knk-workspace#944/#945: the Landmark form draws its region through the region world task on its RegionId
+    /// field (the plugin finds the handler by task type), the only world task besides the pin's, and the type is one the
+    /// import knows and the release service treats as a region task.
+    /// </summary>
+    [Fact]
+    public void LandmarkSeed_DrawsItsRegionThroughTheRegionTaskOnRegionId()
+    {
+        using var file = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(SeedDirectory(), "Landmark.json")));
+        var fields = file.RootElement.GetProperty("steps").EnumerateArray()
+            .SelectMany(step => step.GetProperty("fields").EnumerateArray()).ToList();
+        var tasks = fields.Where(f => f.TryGetProperty("settingsJson", out var settings)
+                && settings.GetString()!.Contains("worldTask"))
+            .ToDictionary(f => f.GetProperty("fieldName").GetString()!, f =>
+            {
+                using var settings = System.Text.Json.JsonDocument.Parse(f.GetProperty("settingsJson").GetString()!);
+                var worldTask = settings.RootElement.GetProperty("worldTask");
+                Assert.True(worldTask.GetProperty("enabled").GetBoolean());
+                return worldTask.GetProperty("taskType").GetString()!;
+            });
+
+        Assert.Equal(new Dictionary<string, string> { ["LocationId"] = "LocationSelection", ["RegionId"] = "ReagionCreate" }, tasks);
+        Assert.Contains("ReagionCreate", FormConfigurationPortabilityService.KnownWorldTaskTypes);
+        Assert.True(TempRegionReleases.IsRegionTaskType(tasks["RegionId"]));
+        var regionField = fields.Single(f => f.GetProperty("fieldName").GetString() == "RegionId");
+        Assert.Contains("landmark_<id>", regionField.GetProperty("description").GetString());
+    }
 }

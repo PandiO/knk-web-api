@@ -13,7 +13,8 @@ namespace knkwebapi_v2.Services
     /// (<c>Region</c> needs a region id, <c>Radius</c> a radius above 0 and at most <see cref="MaxRadius"/>, and the other
     /// extent field is cleared); a preference from 0.25 to 4.0; the kind <c>General</c>. Everything is checked before an
     /// embedded Location is written, so a refused request leaves nothing behind. Deleting a landmark leaves its Location to
-    /// the Location retention check (KNG-80), as deleting a domain does.
+    /// the Location retention check (KNG-80), as deleting a domain does. A region drawn through the form's region task gets
+    /// its final name <c>landmark_&lt;id&gt;</c> on save, like a domain's (PandiO/knk-workspace#945).
     /// </summary>
     public class LandmarkService : ILandmarkService
     {
@@ -25,12 +26,17 @@ namespace knkwebapi_v2.Services
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
 
-        public LandmarkService(ILandmarkRepository repo, ILocationRepository locationRepo, ILocationService locationService, IMapper mapper)
+        // PandiO/knk-workspace#945: renames a region drawn through the form's region task (optional: tests run without one).
+        private readonly IDomainRegionNameFinalizer? _regionNames;
+
+        public LandmarkService(ILandmarkRepository repo, ILocationRepository locationRepo, ILocationService locationService, IMapper mapper,
+            IDomainRegionNameFinalizer? regionNames = null)
         {
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
             _mapper = mapper;
+            _regionNames = regionNames;
         }
 
         public async Task<IReadOnlyList<LandmarkReadDto>> GetAllAsync(string? world = null)
@@ -71,6 +77,7 @@ namespace knkwebapi_v2.Services
                 Kind = kind,
             };
             await _repo.AddAsync(entity);
+            await FinalizeDrawnRegionAsync(entity, null);
 
             return (await GetByIdAsync(entity.Id))!;
         }
@@ -90,6 +97,8 @@ namespace knkwebapi_v2.Services
             var extent = Extent(dto, existing);
             var preference = Preference(dto.Preference, existing.Preference);
             var kind = Kind(dto.Kind, existing.Kind);
+            // #945: the region before this save, replaced when the region task was run again.
+            var previousRegionId = existing.RegionId;
 
             existing.LocationId = await SavePinAsync(dto, pin, name);
             existing.Name = name;
@@ -102,7 +111,22 @@ namespace knkwebapi_v2.Services
             existing.Kind = kind;
 
             await _repo.UpdateAsync(existing);
+            await FinalizeDrawnRegionAsync(existing, previousRegionId);
             return (await GetByIdAsync(id))!;
+        }
+
+        /// <summary>
+        /// #945: a region drawn through the form's region task is still <c>tempregion_worldtask_&lt;n&gt;</c>, which the
+        /// plugin's 14-day cleanup would delete; it becomes <c>landmark_&lt;id&gt;</c> now (managed-worldguard-regions.md
+        /// §7), as a domain's and a lootbox spawn area's do. An existing region id (any other name) is kept as it is. A
+        /// failed rename never fails the save: the landmark keeps the temp name, which the cleanup keeps, and
+        /// <c>POST api/Regions/finalize-temp-names</c> or the next save tries again.
+        /// </summary>
+        private async Task FinalizeDrawnRegionAsync(Landmark landmark, string? previousRegionId)
+        {
+            if (_regionNames == null || landmark.ExtentKind != LandmarkExtentKind.Region
+                || !DomainRegionNameFinalizer.IsTemporary(landmark.RegionId)) return;
+            await _regionNames.FinalizeLandmarkAsync(landmark, previousRegionId);
         }
 
         public async Task DeleteAsync(int id)
