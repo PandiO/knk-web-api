@@ -215,7 +215,8 @@ public class DomainSubRegionTests : IDisposable
         var result = await _finalizer.FinalizeAllAsync();
 
         Assert.Equal((1, 1), (result.Found, result.Renamed));
-        Assert.Equal(("tempregion_worldtask_77", "domain_10_sub_7", (string?)null), Pick(Assert.Single(_subRenames)));
+        // #952: a sub-region still on a temp name names its own final name, so one a failed re-run left behind is redefined.
+        Assert.Equal(("tempregion_worldtask_77", "domain_10_sub_7", (string?)"domain_10_sub_7"), Pick(Assert.Single(_subRenames)));
     }
 
     [Fact]
