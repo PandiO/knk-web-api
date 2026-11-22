@@ -58,6 +58,10 @@ public static class RealtimeEntityChangeMap
         [typeof(Town)] = "WgRegionId",
         [typeof(District)] = "WgRegionId",
         [typeof(Structure)] = "WgRegionId",
+        // Landmark domain LD22 (PandiO/knk-workspace#984): a landmark change reaches the plugin's catalogue, region
+        // cache and navigation model like the other domains'; the key is its own region, null for a point or a
+        // landmark that uses its parent's area.
+        [typeof(Landmark)] = "WgRegionId",
         [typeof(DomainSubRegion)] = "WgRegionId",
         [typeof(ItemBlueprint)] = null,
         [typeof(EnchantmentDefinition)] = null,
