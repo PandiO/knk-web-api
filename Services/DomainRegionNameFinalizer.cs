@@ -119,7 +119,9 @@ namespace knkwebapi_v2.Services
         {
             try
             {
-                var types = new[] { DomainTypeOf(domain) ?? nameof(Domain), nameof(Domain) }.Distinct().ToList();
+                // #991: every type name along the chain, not only the one sent to the plugin (a Shop form's results are
+                // stored as "Shop", which DomainTypeOf used to send as "Structure").
+                var types = TypeNamesOf(domain);
                 var keys = types.Select(t => $"{t}:{domain.Id}").ToList();
                 var rows = await _context.FieldValidationRunLogs
                     .Where(r => (types.Contains(r.SubjectType) && r.SubjectId == domain.Id) || (r.DependencyKey != null && keys.Contains(r.DependencyKey)))
@@ -168,11 +170,35 @@ namespace knkwebapi_v2.Services
         public static string? DomainTypeOf(Domain domain) => domain switch
         {
             GateStructure => nameof(GateStructure),
+            // PandiO/knk-workspace#991: the subtypes the startup repair reads under their own name (DomainMappingProfile's
+            // GetType().Name), so a new region is set up as the repair would set it up: ProductionStructure as
+            // RESOURCE_PRODUCTION and Warehouse as STRUCTURE with the plugin's production.enabled, Shop as STRUCTURE, and
+            // CrownLand as CROWN_LAND (only with production.enabled, as the repair). Shop before ProductionStructure, its
+            // base type.
+            Shop => nameof(Shop),
+            ProductionStructure => nameof(ProductionStructure),
+            Warehouse => nameof(Warehouse),
             Structure => nameof(Structure),
             District => nameof(District),
             Town => nameof(Town),
+            CrownLand => nameof(CrownLand),
             _ => null
         };
+
+        /// <summary>
+        /// PandiO/knk-workspace#991: the domain's type name and its base types' names down to <c>Domain</c> (a shop:
+        /// Shop, ProductionStructure, Structure, Domain). Stored validation results carry the form's entity name as their
+        /// subject type and the related field's object type in their dependency key, which can be any of these.
+        /// </summary>
+        public static List<string> TypeNamesOf(Domain domain)
+        {
+            var names = new List<string>();
+            for (var type = domain.GetType(); type != null && typeof(Domain).IsAssignableFrom(type); type = type.BaseType)
+            {
+                names.Add(type.Name);
+            }
+            return names;
+        }
 
         public Task<bool> FinalizeAsync(Domain domain) => FinalizeAsync(domain, null);
 
