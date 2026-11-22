@@ -1,0 +1,189 @@
+{
+  "format": "knk-displayconfig/1",
+  "configurationGuid": "d5460488-59dc-5955-b211-25b92f309554",
+  "entityTypeName": "Landmark",
+  "name": "Landmark - Default (seed v2)",
+  "description": "A named place made by staff, a domain since landmark-domain phase 1 (PandiO/knk-workspace#983). Ships as v2 with the Landmark form seed v2; there was no v1 display seed.",
+  "sections": [
+    {
+      "sectionGuid": "0b322b3b-2e84-50cf-be7a-01243e375198",
+      "sectionName": "Landmark",
+      "description": "The place and where it belongs.",
+      "fields": [
+        {
+          "fieldGuid": "6cdbf940-888f-5cae-ba63-adf2bda7e0ca",
+          "fieldName": "Name",
+          "label": "Name",
+          "description": "Unique among the landmarks of its world; players type it after /navigate.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "6186e6a1-2a9a-5e7e-af7a-e6d21edb0345",
+          "fieldName": "Description",
+          "label": "Description",
+          "description": "For staff.",
+          "fieldType": "String",
+          "isEditableInDisplay": true
+        },
+        {
+          "fieldGuid": "93fc38fc-87ce-5bd5-a6a2-bbf13054959b",
+          "fieldName": "Name",
+          "relatedEntityPropertyName": "ParentDomain",
+          "relatedEntityTypeName": "Domain",
+          "label": "Parent",
+          "description": "The domain the landmark belongs to (its parent); empty at top level.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "09a93d85-6471-523a-b452-16dd6f2af641",
+          "fieldName": "NavigationEnabled",
+          "label": "Offer in /navigate",
+          "description": "Off keeps the landmark without offering it as a destination.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "ed3071b1-a4e2-52c1-8c23-f44eb7e470f9",
+          "fieldName": "Preference",
+          "label": "Route preference",
+          "description": "0.25 to 4.0; below 1 routes prefer the area, above 1 they avoid it.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "7e7105f1-f6b9-5bb3-b150-42b2a8698521",
+          "fieldName": "Kind",
+          "label": "Kind",
+          "description": "General (the only kind for now).",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "ad457149-f9d5-5457-9827-e47e81b91ced",
+      "sectionName": "Location",
+      "description": "The landmark's point.",
+      "fields": [
+        {
+          "fieldGuid": "c3dc4008-22ce-54cf-a5b2-5272c24f953a",
+          "fieldName": "World",
+          "relatedEntityPropertyName": "Location",
+          "relatedEntityTypeName": "Location",
+          "label": "World",
+          "description": "The world of the point; the landmark is in this world.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "aba19034-7a5d-5a5f-84c2-632d866fb424",
+          "fieldName": "X",
+          "relatedEntityPropertyName": "Location",
+          "relatedEntityTypeName": "Location",
+          "label": "X",
+          "description": "Block coordinate of the point.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "5c512ba9-6014-5830-b30d-edb1ba4e7d76",
+          "fieldName": "Y",
+          "relatedEntityPropertyName": "Location",
+          "relatedEntityTypeName": "Location",
+          "label": "Y",
+          "description": "Block coordinate of the point.",
+          "fieldType": "Decimal"
+        },
+        {
+          "fieldGuid": "46c8a8a3-0359-5d8e-bc09-3b1f8d083e1e",
+          "fieldName": "Z",
+          "relatedEntityPropertyName": "Location",
+          "relatedEntityTypeName": "Location",
+          "label": "Z",
+          "description": "Block coordinate of the point.",
+          "fieldType": "Decimal"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "b431e39d-89b5-5086-ac34-93b5399d9de6",
+      "sectionName": "Area",
+      "description": "What the landmark's area is.",
+      "fields": [
+        {
+          "fieldGuid": "ca2c4974-4f23-5a33-9fb6-ead19d0448f3",
+          "fieldName": "AreaKind",
+          "label": "Area",
+          "description": "None = the point only; OwnRegion = its own region and sub-regions; LinkedDomain = the parent's area.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "6c47c34c-1131-5c60-b126-9124443d4d7c",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The landmark's own region (domain_<id> once drawn); empty unless the area is OwnRegion.",
+          "fieldType": "String"
+        },
+        {
+          "fieldGuid": "a20b47fe-4a11-5b18-9e14-92421b5a45c3",
+          "fieldName": "WorldName",
+          "label": "World",
+          "description": "The world of the landmark and its region.",
+          "fieldType": "String"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "dc71178f-bf79-542b-b75f-720641f6cb5d",
+      "sectionName": "Access and messages",
+      "description": "What the landmark's own region does to players (OwnRegion only).",
+      "fields": [
+        {
+          "fieldGuid": "9fd0ea98-42d2-5b64-b46e-afd31b9decc1",
+          "fieldName": "AllowEntry",
+          "label": "Allow entry",
+          "description": "Players may walk into the region.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "ee725e6a-a188-5bef-8ec5-3345c473108e",
+          "fieldName": "AllowExit",
+          "label": "Allow exit",
+          "description": "Players may walk out of the region.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "23341ead-101d-5676-bcdc-f19c33a6c609",
+          "fieldName": "ShowEnterLeaveMessages",
+          "label": "Enter and leave messages",
+          "description": "Players see the landmark's name when they cross its border.",
+          "fieldType": "Boolean"
+        }
+      ]
+    },
+    {
+      "sectionGuid": "aed59752-f570-5528-b882-6296584f1093",
+      "sectionName": "Warp destination",
+      "description": "Whether players can /warp to the landmark's point.",
+      "fields": [
+        {
+          "fieldGuid": "27e7b462-135c-50f3-9d7e-3810ca3eac92",
+          "fieldName": "TeleportEnabled",
+          "label": "Warp destination",
+          "description": "Listed in /warp and the teleport menu.",
+          "fieldType": "Boolean"
+        },
+        {
+          "fieldGuid": "546cc330-ea4b-51cd-a4c5-c617c70c64bd",
+          "fieldName": "TeleportPriceGems",
+          "label": "Price (gems)",
+          "description": "0 = free.",
+          "fieldType": "Integer"
+        },
+        {
+          "fieldGuid": "c9d7c182-3db0-5333-8f98-8f17d774c309",
+          "fieldName": "TeleportRequiresDiscovery",
+          "label": "Discovered landmarks only",
+          "description": "Only players who discovered the landmark may warp here.",
+          "fieldType": "Boolean"
+        }
+      ]
+    }
+  ]
+}

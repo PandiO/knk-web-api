@@ -1326,7 +1326,6 @@ namespace knkwebapi_v2.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("WgRegionId")
-                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<string>("WorldName")
@@ -3501,66 +3500,6 @@ namespace knkwebapi_v2.Migrations
                         .IsUnique();
 
                     b.ToTable("kit_purchases", (string)null);
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.Landmark", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("DomainId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ExtentKind")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)");
-
-                    b.Property<int>("LocationId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<bool>("NavigationEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<double>("Preference")
-                        .HasColumnType("double");
-
-                    b.Property<double?>("Radius")
-                        .HasColumnType("double");
-
-                    b.Property<string>("RegionId")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
-
-                    b.HasKey("Id")
-                        .HasName("PRIMARY");
-
-                    b.HasIndex("DomainId");
-
-                    b.HasIndex("LocationId");
-
-                    b.HasIndex("Name");
-
-                    b.ToTable("landmarks", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_landmarks_Preference_Range", "`Preference` >= 0.25 AND `Preference` <= 4");
-                        });
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshot", b =>
@@ -11951,6 +11890,42 @@ namespace knkwebapi_v2.Migrations
                         });
                 });
 
+            modelBuilder.Entity("knkwebapi_v2.Models.Landmark", b =>
+                {
+                    b.HasBaseType("knkwebapi_v2.Models.Domain");
+
+                    b.Property<string>("AreaKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<bool>("NavigationEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("ParentDomainId")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Preference")
+                        .HasColumnType("double");
+
+                    b.Property<bool>("ShowEnterLeaveMessages")
+                        .HasColumnType("tinyint(1)");
+
+                    b.HasIndex("ParentDomainId");
+
+                    b.ToTable("landmarks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_domains_TeleportPriceGems_Range", "`TeleportPriceGems` >= 0 AND `TeleportPriceGems` <= 999999");
+
+                            t.HasCheckConstraint("CK_landmarks_Preference_Range", "`Preference` >= 0.25 AND `Preference` <= 4");
+                        });
+                });
+
             modelBuilder.Entity("knkwebapi_v2.Models.Structure", b =>
                 {
                     b.HasBaseType("knkwebapi_v2.Models.Domain");
@@ -13439,24 +13414,6 @@ namespace knkwebapi_v2.Migrations
                     b.Navigation("Kit");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("knkwebapi_v2.Models.Landmark", b =>
-                {
-                    b.HasOne("knkwebapi_v2.Models.Domain", "Domain")
-                        .WithMany()
-                        .HasForeignKey("DomainId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("knkwebapi_v2.Models.Location", "Location")
-                        .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Domain");
-
-                    b.Navigation("Location");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.LeaderboardSnapshotEntry", b =>
@@ -15319,6 +15276,22 @@ namespace knkwebapi_v2.Migrations
                         .IsRequired();
 
                     b.Navigation("Town");
+                });
+
+            modelBuilder.Entity("knkwebapi_v2.Models.Landmark", b =>
+                {
+                    b.HasOne("knkwebapi_v2.Models.Domain", null)
+                        .WithOne()
+                        .HasForeignKey("knkwebapi_v2.Models.Landmark", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("knkwebapi_v2.Models.Domain", "ParentDomain")
+                        .WithMany()
+                        .HasForeignKey("ParentDomainId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ParentDomain");
                 });
 
             modelBuilder.Entity("knkwebapi_v2.Models.Structure", b =>

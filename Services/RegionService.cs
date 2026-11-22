@@ -58,14 +58,6 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameLootboxAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId);
 
         /// <summary>
-        /// PandiO/knk-workspace#945: renames a landmark's region drawn through the form's region task to its final name, as
-        /// <see cref="RenameLootboxAreaRegionAsync"/> does for a lootbox spawn area: no domain type (a landmark's region is
-        /// only an extent for navigation, not a managed region: priority, parent and flags stay as drawn), the drawn
-        /// outline and Y range kept, <paramref name="replaceRegionId"/> as for a domain (KNG-103).
-        /// </summary>
-        Task<bool> RenameLandmarkRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId);
-
-        /// <summary>
         /// PandiO/knk-workspace#946: the same for a production area's drawn region (no managed-region setup: the area is
         /// not a domain; the survey reads the region's shape from WorldGuard).
         /// </summary>
@@ -305,11 +297,6 @@ namespace knkwebapi_v2.Services
         }
 
         public Task<bool> RenameLootboxAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId)
-        {
-            return RenameAsync(oldRegionId, newRegionId, null, null, world, replaceRegionId, null);
-        }
-
-        public Task<bool> RenameLandmarkRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId)
         {
             return RenameAsync(oldRegionId, newRegionId, null, null, world, replaceRegionId, null);
         }

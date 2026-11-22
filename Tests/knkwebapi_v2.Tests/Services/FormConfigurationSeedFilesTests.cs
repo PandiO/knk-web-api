@@ -264,16 +264,27 @@ public class FormConfigurationSeedFilesTests
     }
 
     /// <summary>
-    /// PandiO/knk-workspace#944/#945: the Landmark form draws its region through the region world task on its RegionId
-    /// field (the plugin finds the handler by task type), the only world task besides the pin's, and the type is one the
-    /// import knows and the release service treats as a region task.
+    /// Landmark-domain LD25 (PandiO/knk-workspace#983): the Landmark form ships as seed v2, a new configuration GUID so it
+    /// imports next to v1 (never over it). It draws the landmark's own region through the region world task on
+    /// <c>WgRegionId</c> (renamed to domain_&lt;id&gt; on save, LD14), the only world task besides the pin's, offers the
+    /// three area kinds of LD16 and none of v1's Extent, Region id or Radius fields.
     /// </summary>
     [Fact]
-    public void LandmarkSeed_DrawsItsRegionThroughTheRegionTaskOnRegionId()
+    public void LandmarkSeed_IsV2_WithTheAreaKinds_AndDrawsItsRegionOnWgRegionId()
     {
         using var file = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(SeedDirectory(), "Landmark.json")));
+        Assert.Equal("Landmark - Default (seed v2)", file.RootElement.GetProperty("name").GetString());
+        Assert.NotEqual("33de13e6-579c-5860-9976-f01e9d638219", file.RootElement.GetProperty("configurationGuid").GetString());
         var fields = file.RootElement.GetProperty("steps").EnumerateArray()
             .SelectMany(step => step.GetProperty("fields").EnumerateArray()).ToList();
+        var names = fields.Select(f => f.GetProperty("fieldName").GetString()!).ToList();
+        Assert.DoesNotContain("ExtentKind", names);
+        Assert.DoesNotContain("RegionId", names);
+        Assert.DoesNotContain("Radius", names);
+        Assert.DoesNotContain("DomainId", names);
+        Assert.Contains("ParentDomainId", names);
+        Assert.Contains("SubRegions", names);
+
         var tasks = fields.Where(f => f.TryGetProperty("settingsJson", out var settings)
                 && settings.GetString()!.Contains("worldTask"))
             .ToDictionary(f => f.GetProperty("fieldName").GetString()!, f =>
@@ -284,10 +295,16 @@ public class FormConfigurationSeedFilesTests
                 return worldTask.GetProperty("taskType").GetString()!;
             });
 
-        Assert.Equal(new Dictionary<string, string> { ["LocationId"] = "LocationSelection", ["RegionId"] = "ReagionCreate" }, tasks);
+        Assert.Equal(new Dictionary<string, string> { ["LocationId"] = "LocationSelection", ["WgRegionId"] = "ReagionCreate" }, tasks);
         Assert.Contains("ReagionCreate", FormConfigurationPortabilityService.KnownWorldTaskTypes);
-        Assert.True(TempRegionReleases.IsRegionTaskType(tasks["RegionId"]));
-        var regionField = fields.Single(f => f.GetProperty("fieldName").GetString() == "RegionId");
-        Assert.Contains("landmark_<id>", regionField.GetProperty("description").GetString());
+        Assert.True(TempRegionReleases.IsRegionTaskType(tasks["WgRegionId"]));
+        var regionField = fields.Single(f => f.GetProperty("fieldName").GetString() == "WgRegionId");
+        Assert.Contains("domain_<id>", regionField.GetProperty("description").GetString());
+
+        var area = fields.Single(f => f.GetProperty("fieldName").GetString() == "AreaKind");
+        Assert.Equal("LandmarkAreaKind", area.GetProperty("enumType").GetString());
+        using var areaSettings = System.Text.Json.JsonDocument.Parse(area.GetProperty("settingsJson").GetString()!);
+        Assert.Equal(Enum.GetNames<knkwebapi_v2.Models.LandmarkAreaKind>(),
+            areaSettings.RootElement.GetProperty("enumValues").EnumerateArray().Select(v => v.GetString()!).ToArray());
     }
 }

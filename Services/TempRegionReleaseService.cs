@@ -30,7 +30,7 @@ namespace knkwebapi_v2.Services
         /// <summary>
         /// The releases game server <paramref name="serverId"/> may act on now: past the grace period, their task closed
         /// (or gone), not a Completed task of a draft that still exists, and no domain, domain sub-region, lootbox area
-        /// (its region or exclusions), landmark (#945), production area (#946), road edge or draft names the region. Drops releases older than the keep period.
+        /// (its region or exclusions), production area (#946), road edge or draft names the region (a landmark is a domain, #983). Drops releases older than the keep period.
         /// The due rows are read in pages of <c>ScanLimit</c> (oldest first) until <paramref name="max"/> are listed or no due
         /// row is left, so rows that keep waiting (#399) never hide later releases.
         /// </summary>
@@ -48,7 +48,7 @@ namespace knkwebapi_v2.Services
 
         /// <summary>
         /// PandiO/knk-workspace#944: the task types the plugin's region handler is registered for, on any field (the
-        /// Landmark form's <c>RegionId</c>, for one). <c>ReagionCreate</c> is the seeded spelling.
+        /// Landmark form v1's <c>RegionId</c>, for one). <c>ReagionCreate</c> is the seeded spelling.
         /// </summary>
         public static readonly IReadOnlyList<string> RegionTaskTypes = new[] { "ReagionCreate", "RegionCreate", "RegionClaim" };
 
@@ -376,9 +376,6 @@ namespace knkwebapi_v2.Services
             if (await _db.LootboxSpawnAreas.AsNoTracking().AnyAsync(a => (a.WgRegionId != null && a.WgRegionId.ToLower() == lowered)
                     || (a.ExcludedRegionIds != null && a.ExcludedRegionIds.ToLower().Contains(lowered)), ct))
                 return "a lootbox spawn area uses or excludes it";
-            // #945: a landmark's region drawn through its form, still on the temp name when its rename failed.
-            if (await _db.Landmarks.AsNoTracking().AnyAsync(l => l.RegionId != null && l.RegionId.ToLower() == lowered, ct))
-                return "a landmark uses it";
             // #946: a production area's region drawn through its form, still on the temp name when its rename failed.
             if (await _db.ProductionAreas.AsNoTracking().AnyAsync(a => a.WgRegionId != null && a.WgRegionId.ToLower() == lowered, ct))
                 return "a production area uses it";

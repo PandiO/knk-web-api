@@ -100,7 +100,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("description")]
         public string Description { get; set; } = null!;
         [JsonPropertyName("wgRegionId")]
-        public string WgRegionId { get; set; } = null!;
+        public string? WgRegionId { get; set; } // null only for a landmark without a region (LD11)
 
         // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
         [JsonPropertyName("worldName")]
@@ -139,7 +139,7 @@ namespace knkwebapi_v2.Dtos
         [JsonPropertyName("description")]
         public string Description { get; set; } = null!;
         [JsonPropertyName("wgRegionId")]
-        public string WgRegionId { get; set; } = null!;
+        public string? WgRegionId { get; set; } // null only for a landmark without a region (LD11)
 
         // KNG-111: the Minecraft world of the domain and its region (region ids are unique per world).
         [JsonPropertyName("worldName")]

@@ -173,9 +173,10 @@ public class ProductionAreaRegionRenameTests : IDisposable
     public async Task Rerun_KeepsARegionTheFormDidNotDraw_AndOneSomeoneElseUses()
     {
         var area = new ProductionArea { Id = 5, Name = "a5", WorldName = "world", Shape = ProductionAreaShape.Region, WgRegionId = "tempregion_worldtask_70" };
+        // A landmark is a domain (PandiO/knk-workspace#983): its own region counts like any domain's.
         _y.T.Db.Landmarks.Add(new Landmark
         {
-            Name = "Mill", ExtentKind = LandmarkExtentKind.Region, RegionId = "tempregion_worldtask_71",
+            Name = "Mill", Description = "", AreaKind = LandmarkAreaKind.OwnRegion, WgRegionId = "tempregion_worldtask_71", WorldName = "world",
             Location = new Location { Name = "Mill", X = 1, Y = 64, Z = 2, World = "world" },
         });
         _y.T.Db.LootboxSpawnAreas.Add(new LootboxSpawnArea { Id = 2, Name = "a2", World = "world", WgRegionId = "tempregion_worldtask_72" });

@@ -1,5 +1,6 @@
 using AutoMapper;
 using knkwebapi_v2.Dtos;
+using knkwebapi_v2.Mapping;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
@@ -7,36 +8,54 @@ using knkwebapi_v2.Services.Interfaces;
 namespace knkwebapi_v2.Services
 {
     /// <summary>
-    /// The rules of a landmark (off-road DESIGN § 6.3, PandiO/knk-workspace#708): a name of at most 100 characters,
-    /// unique per world (the world of the pin, ignoring case); a pin (an existing Location, or one embedded in the request
-    /// and created or updated here, like a domain's spawn point); an optional domain that must exist; the extent
-    /// (<c>Region</c> needs a region id, <c>Radius</c> a radius above 0 and at most <see cref="MaxRadius"/>, and the other
-    /// extent field is cleared); a preference from 0.25 to 4.0; the kind <c>General</c>. Everything is checked before an
-    /// embedded Location is written, so a refused request leaves nothing behind. Deleting a landmark leaves its Location to
-    /// the Location retention check (KNG-80), as deleting a domain does. A region drawn through the form's region task gets
-    /// its final name <c>landmark_&lt;id&gt;</c> on save, like a domain's (PandiO/knk-workspace#945).
+    /// The rules of a landmark, a <see cref="Domain"/> subtype (landmark-domain DESIGN § 5, PandiO/knk-workspace#983; first
+    /// built by off-road #708):
+    /// <list type="number">
+    ///   <item>Name: at most 100 characters, unique per world among landmarks (the world of the pin, ignoring case), on top
+    ///     of the domain name rules (LD18).</item>
+    ///   <item>Pin: an existing Location, or one embedded in the request and created or updated here. A Location another
+    ///     domain already has (a town's spawn) is copied, because a Location belongs to one domain (LD17). The domain's
+    ///     world is the pin's world.</item>
+    ///   <item>Parent (LD09, LD23): any existing domain, never the landmark itself or one of its descendants; no
+    ///     containment check.</item>
+    ///   <item>Area (LD06–LD08, LD16): <c>None</c> (no region), <c>OwnRegion</c> (a region no other domain holds, under
+    ///     the one-owner rule; a drawn one becomes <c>domain_&lt;id&gt;</c> on save, LD14) or <c>LinkedDomain</c> (needs a
+    ///     parent with a region; the landmark owns none). Leaving <c>OwnRegion</c> drops the sub-region rows, so their
+    ///     regions fall under the orphan rules (rule 3.4).</item>
+    ///   <item>Access, messages and warp: entry and exit allowed, messages off, warp off by default (LD24); the warp
+    ///     settings are checked like a domain's.</item>
+    ///   <item>Preference 0.25 to 4.0, kind <c>General</c>.</item>
+    /// </list>
+    /// Everything is checked before an embedded Location is written, so a refused request leaves nothing behind. Deleting a
+    /// landmark leaves its Location to the Location retention check (KNG-80), as deleting a domain does.
+    /// <para>
+    /// Compatibility (agent decision of L1): until knk-plugin moves to this model (L3, #985), the #708 fields are still
+    /// read when the new ones are not sent: <c>domainId</c> for the parent, <c>extentKind</c> <c>None</c> or
+    /// <c>Region</c> with <c>regionId</c> for the area (a <c>Region</c> that names the area's current main region keeps
+    /// the stored area, so the plugin's read-modify-write of a <c>LinkedDomain</c> landmark changes nothing), and a
+    /// radius is refused (LD08).
+    /// </para>
     /// </summary>
     public class LandmarkService : ILandmarkService
     {
-        /// <summary>The largest radius extent in blocks (an agent default; a castle or a town square fits well inside).</summary>
-        public const double MaxRadius = 512;
-
         private readonly ILandmarkRepository _repo;
         private readonly ILocationRepository _locationRepo;
         private readonly ILocationService _locationService;
         private readonly IMapper _mapper;
 
-        // PandiO/knk-workspace#945: renames a region drawn through the form's region task (optional: tests run without one).
+        // Optional so the rules can be tested without them: the region rename on save (LD14) and the warp checks.
         private readonly IDomainRegionNameFinalizer? _regionNames;
+        private readonly ITeleportDestinationService? _teleports;
 
         public LandmarkService(ILandmarkRepository repo, ILocationRepository locationRepo, ILocationService locationService, IMapper mapper,
-            IDomainRegionNameFinalizer? regionNames = null)
+            IDomainRegionNameFinalizer? regionNames = null, ITeleportDestinationService? teleports = null)
         {
             _repo = repo;
             _locationRepo = locationRepo;
             _locationService = locationService;
             _mapper = mapper;
             _regionNames = regionNames;
+            _teleports = teleports;
         }
 
         public async Task<IReadOnlyList<LandmarkReadDto>> GetAllAsync(string? world = null)
@@ -59,23 +78,31 @@ namespace knkwebapi_v2.Services
             var name = ValidName(dto.Name);
             var pin = await PinAsync(dto, null);
             await CheckNameFreeAsync(name, pin.World, null);
-            await CheckDomainAsync(dto.DomainId);
-            var extent = Extent(dto, null);
+            var parent = await ParentAsync(RequestedParentId(dto), null);
+            var area = await AreaAsync(dto, null, parent, pin.World);
             var preference = Preference(dto.Preference, Landmark.DefaultPreference);
             var kind = Kind(dto.Kind, LandmarkKind.General);
+            if (_teleports != null) await _teleports.ValidateSettingsAsync(dto);
 
             var entity = new Landmark
             {
                 Name = name,
-                LocationId = await SavePinAsync(dto, pin, name),
-                DomainId = dto.DomainId is > 0 ? dto.DomainId : null,
-                ExtentKind = extent.Kind,
-                RegionId = extent.RegionId,
-                Radius = extent.Radius,
+                Description = dto.Description?.Trim() ?? string.Empty,
+                CreatedAt = DateTime.UtcNow,
+                WorldName = pin.World,
+                ParentDomainId = parent?.Id,
+                AreaKind = area.Kind,
+                WgRegionId = area.RegionId,
+                AllowEntry = dto.AllowEntry ?? true,
+                AllowExit = dto.AllowExit ?? true,
+                ShowEnterLeaveMessages = dto.ShowEnterLeaveMessages ?? false,
                 Preference = preference,
                 NavigationEnabled = dto.NavigationEnabled ?? true,
                 Kind = kind,
             };
+            DomainTeleportSettings.Apply(entity, dto);
+            entity.LocationId = await SavePinAsync(dto, pin, name, null);
+
             await _repo.AddAsync(entity);
             await FinalizeDrawnRegionAsync(entity, null);
 
@@ -93,40 +120,77 @@ namespace knkwebapi_v2.Services
             var name = ValidName(dto.Name);
             var pin = await PinAsync(dto, existing);
             await CheckNameFreeAsync(name, pin.World, id);
-            await CheckDomainAsync(dto.DomainId);
-            var extent = Extent(dto, existing);
+            var parent = await ParentAsync(RequestedParentId(dto), id);
+            var area = await AreaAsync(dto, existing, parent, pin.World);
             var preference = Preference(dto.Preference, existing.Preference);
             var kind = Kind(dto.Kind, existing.Kind);
-            // #945: the region before this save, replaced when the region task was run again.
-            var previousRegionId = existing.RegionId;
+            if (_teleports != null) await _teleports.ValidateSettingsAsync(dto);
+            // KNG-103: the region before this save, replaced when the region task was run again.
+            var previousRegionId = existing.WgRegionId;
+            bool leavesOwnRegion = existing.AreaKind == LandmarkAreaKind.OwnRegion && area.Kind != LandmarkAreaKind.OwnRegion;
 
-            existing.LocationId = await SavePinAsync(dto, pin, name);
+            existing.LocationId = await SavePinAsync(dto, pin, name, id);
             existing.Name = name;
-            existing.DomainId = dto.DomainId is > 0 ? dto.DomainId : null;
-            existing.ExtentKind = extent.Kind;
-            existing.RegionId = extent.RegionId;
-            existing.Radius = extent.Radius;
+            if (dto.Description != null) existing.Description = dto.Description.Trim();
+            existing.WorldName = pin.World;
+            existing.ParentDomainId = parent?.Id;
+            existing.ParentDomain = parent == null ? null : existing.ParentDomain?.Id == parent.Id ? existing.ParentDomain : null;
+            existing.AreaKind = area.Kind;
+            existing.WgRegionId = area.RegionId;
+            existing.AllowEntry = dto.AllowEntry ?? existing.AllowEntry;
+            existing.AllowExit = dto.AllowExit ?? existing.AllowExit;
+            existing.ShowEnterLeaveMessages = dto.ShowEnterLeaveMessages ?? existing.ShowEnterLeaveMessages;
+            DomainTeleportSettings.Apply(existing, dto);
             existing.Preference = preference;
             existing.NavigationEnabled = dto.NavigationEnabled ?? existing.NavigationEnabled;
             existing.Kind = kind;
 
             await _repo.UpdateAsync(existing);
+            // Rule 3.4: away from its own region, the landmark's sub-regions become orphans (domain sub-regions § 8).
+            if (leavesOwnRegion) await _repo.RemoveSubRegionsAsync(id);
             await FinalizeDrawnRegionAsync(existing, previousRegionId);
             return (await GetByIdAsync(id))!;
         }
 
+        public async Task<LandmarkReadDto> UpdateFromDomainAsync(int id, Domain domain)
+        {
+            if (domain == null) throw new ArgumentNullException(nameof(domain));
+            if (id <= 0) throw new ArgumentException("Invalid id.", nameof(id));
+            var existing = await _repo.GetByIdAsync(id);
+            if (existing == null) throw new KeyNotFoundException($"Landmark with id {id} not found.");
+
+            // LD19: the domain dashboard's edit sends the domain fields only. The region it sends is the area's: a region
+            // keeps (or makes) it OwnRegion; none keeps LinkedDomain and makes anything else a point.
+            string? region = string.IsNullOrWhiteSpace(domain.WgRegionId) ? null : domain.WgRegionId.Trim();
+            string areaKind = region != null
+                ? nameof(LandmarkAreaKind.OwnRegion)
+                : existing.AreaKind == LandmarkAreaKind.LinkedDomain ? nameof(LandmarkAreaKind.LinkedDomain) : nameof(LandmarkAreaKind.None);
+            return await UpdateAsync(id, new LandmarkUpdateDto
+            {
+                Name = domain.Name,
+                Description = domain.Description,
+                LocationId = domain.LocationId is > 0 ? domain.LocationId : existing.LocationId,
+                ParentDomainId = existing.ParentDomainId,
+                AreaKind = areaKind,
+                WgRegionId = region,
+                AllowEntry = domain.AllowEntry,
+                AllowExit = domain.AllowExit,
+            });
+        }
+
         /// <summary>
-        /// #945: a region drawn through the form's region task is still <c>tempregion_worldtask_&lt;n&gt;</c>, which the
-        /// plugin's 14-day cleanup would delete; it becomes <c>landmark_&lt;id&gt;</c> now (managed-worldguard-regions.md
-        /// §7), as a domain's and a lootbox spawn area's do. An existing region id (any other name) is kept as it is. A
-        /// failed rename never fails the save: the landmark keeps the temp name, which the cleanup keeps, and
-        /// <c>POST api/Regions/finalize-temp-names</c> or the next save tries again.
+        /// LD14: a region drawn through the form's region task is still <c>tempregion_worldtask_&lt;n&gt;</c>, which the
+        /// plugin's 14-day cleanup would delete; it becomes <c>domain_&lt;id&gt;</c> now, like every domain's
+        /// (managed-worldguard-regions.md § 7), and its sub-regions <c>domain_&lt;id&gt;_sub_&lt;n&gt;</c> through the
+        /// sub-region path. An existing region id (any other name) is kept as it is. A failed rename never fails the save:
+        /// the landmark keeps the temp name, which the cleanup keeps, and <c>POST api/Regions/finalize-temp-names</c> or the
+        /// next save tries again.
         /// </summary>
         private async Task FinalizeDrawnRegionAsync(Landmark landmark, string? previousRegionId)
         {
-            if (_regionNames == null || landmark.ExtentKind != LandmarkExtentKind.Region
-                || !DomainRegionNameFinalizer.IsTemporary(landmark.RegionId)) return;
-            await _regionNames.FinalizeLandmarkAsync(landmark, previousRegionId);
+            if (_regionNames == null || landmark.AreaKind != LandmarkAreaKind.OwnRegion
+                || !DomainRegionNameFinalizer.IsTemporary(landmark.WgRegionId)) return;
+            await _regionNames.FinalizeAsync(landmark, previousRegionId);
         }
 
         public async Task DeleteAsync(int id)
@@ -149,8 +213,7 @@ namespace knkwebapi_v2.Services
 
         private static string ValidName(string? name)
         {
-            var trimmed = name?.Trim();
-            if (string.IsNullOrEmpty(trimmed)) throw new ArgumentException("Name is required.", nameof(name));
+            var trimmed = DomainNameRules.RequireName(name, nameof(Landmark), nameof(name));
             if (trimmed.Length > Landmark.NameMaxLength)
                 throw new ArgumentException($"Name can be at most {Landmark.NameMaxLength} characters.", nameof(name));
             return trimmed;
@@ -186,24 +249,51 @@ namespace knkwebapi_v2.Services
                 return new Pin(location.Id, location.World.Trim());
             }
 
-            if (existing != null)
+            if (existing?.LocationId is int storedId)
             {
-                return new Pin(existing.LocationId, existing.Location?.World ?? string.Empty);
+                return new Pin(storedId, existing.Location?.World?.Trim() ?? existing.WorldName ?? string.Empty);
             }
 
             throw new ArgumentException("A landmark needs a Location (locationId or location).", nameof(dto));
         }
 
-        /// <summary>Writes an embedded Location (create without id, update with id) and returns the id to store.</summary>
-        private async Task<int> SavePinAsync(LandmarkCreateDto dto, Pin pin, string landmarkName)
+        /// <summary>
+        /// Writes an embedded Location (create without id, update with id) and returns the id to store. LD17: a Location
+        /// another domain has is never shared (it is unique per domain); the landmark gets a copy of it.
+        /// </summary>
+        private async Task<int> SavePinAsync(LandmarkCreateDto dto, Pin pin, string landmarkName, int? selfId)
         {
-            if (dto.Location == null) return pin.ExistingId!.Value;
+            bool shared = pin.ExistingId is int pinId && await _repo.LocationUsedByOtherDomainAsync(pinId, selfId);
+
+            if (dto.Location == null)
+            {
+                if (!shared) return pin.ExistingId!.Value;
+                var original = await _locationRepo.GetByIdAsync(pin.ExistingId!.Value)
+                    ?? throw new ArgumentException($"Location with id {pin.ExistingId} not found.", nameof(dto));
+                var copy = await _locationService.CreateAsync(new LocationDto
+                {
+                    Name = string.IsNullOrWhiteSpace(original.Name) ? landmarkName : original.Name,
+                    X = original.X, Y = original.Y, Z = original.Z, Yaw = original.Yaw, Pitch = original.Pitch,
+                    World = pin.World,
+                });
+                return copy.Id!.Value;
+            }
 
             var location = dto.Location;
             if (string.IsNullOrWhiteSpace(location.Name)) location.Name = landmarkName;
             location.World = pin.World;
-            if (pin.ExistingId == null)
+            if (pin.ExistingId == null || shared)
             {
+                if (shared)
+                {
+                    // The embedded values on a copy; fields it leaves out come from the shared Location.
+                    var original = await _locationRepo.GetByIdAsync(pin.ExistingId!.Value);
+                    location.X ??= original?.X;
+                    location.Y ??= original?.Y;
+                    location.Z ??= original?.Z;
+                    location.Yaw ??= original?.Yaw;
+                    location.Pitch ??= original?.Pitch;
+                }
                 location.Id = null;
                 var created = await _locationService.CreateAsync(location);
                 return created.Id!.Value;
@@ -219,43 +309,90 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException($"A landmark named \"{name}\" already exists in world {world}.", nameof(name));
         }
 
-        private async Task CheckDomainAsync(int? domainId)
+        /// <summary>The parent the request names: <c>parentDomainId</c>, else the #708 <c>domainId</c>; null for none.</summary>
+        private static int? RequestedParentId(LandmarkCreateDto dto)
         {
-            if (domainId is not > 0) return;
-            if (await _repo.GetDomainAsync(domainId.Value) == null)
-                throw new ArgumentException($"Domain with id {domainId} not found.", nameof(domainId));
+            int? id = dto.ParentDomainId ?? dto.DomainId;
+            return id is > 0 ? id : null;
         }
 
-        private sealed record ExtentValue(LandmarkExtentKind Kind, string? RegionId, double? Radius);
-
-        private static ExtentValue Extent(LandmarkCreateDto dto, Landmark? existing)
+        /// <summary>LD09, LD23: the parent must exist and may not be the landmark itself or one of its descendants.</summary>
+        private async Task<Domain?> ParentAsync(int? parentId, int? selfId)
         {
-            if (string.IsNullOrWhiteSpace(dto.ExtentKind))
-            {
-                // Create: no extent. Update: keep the stored one.
-                return existing == null
-                    ? new ExtentValue(LandmarkExtentKind.None, null, null)
-                    : new ExtentValue(existing.ExtentKind, existing.RegionId, existing.Radius);
-            }
+            if (parentId is not int id) return null;
+            if (selfId == id) throw new ArgumentException("A landmark can't be its own parent.", nameof(parentId));
+            var parent = await _repo.GetDomainAsync(id)
+                ?? throw new ArgumentException($"Domain with id {id} not found.", nameof(parentId));
+            if (selfId is int self && (await _repo.AncestorIdsAsync(id)).Contains(self))
+                throw new ArgumentException($"Domain {parent.Name} (#{id}) is inside this landmark: a landmark can't be its own ancestor.", nameof(parentId));
+            return parent;
+        }
 
-            if (!Enum.TryParse<LandmarkExtentKind>(dto.ExtentKind.Trim(), true, out var kind) || !Enum.IsDefined(kind))
-                throw new ArgumentException("Extent must be None, Region or Radius.", nameof(dto));
+        private sealed record AreaValue(LandmarkAreaKind Kind, string? RegionId);
 
-            switch (kind)
+        private async Task<AreaValue> AreaAsync(LandmarkCreateDto dto, Landmark? existing, Domain? parent, string world)
+        {
+            var requested = RequestedArea(dto, existing);
+
+            switch (requested.Kind)
             {
-                case LandmarkExtentKind.Region:
-                    var regionId = dto.RegionId?.Trim();
-                    if (string.IsNullOrEmpty(regionId)) throw new ArgumentException("A region extent needs a region id.", nameof(dto));
+                case LandmarkAreaKind.OwnRegion:
+                    var regionId = requested.RegionId?.Trim();
+                    if (string.IsNullOrEmpty(regionId))
+                        throw new ArgumentException("Area Own region needs a region: draw one or name an existing region.", nameof(dto));
                     if (regionId.Length > Landmark.RegionIdMaxLength)
                         throw new ArgumentException($"The region id can be at most {Landmark.RegionIdMaxLength} characters.", nameof(dto));
-                    return new ExtentValue(kind, regionId, null);
-                case LandmarkExtentKind.Radius:
-                    if (dto.Radius is not { } radius || double.IsNaN(radius) || radius <= 0 || radius > MaxRadius)
-                        throw new ArgumentException($"A radius extent needs a radius above 0 and at most {MaxRadius} blocks.", nameof(dto));
-                    return new ExtentValue(kind, null, radius);
+                    // One region belongs to at most one domain per world (DomainRegionOwnership), the landmark included.
+                    var takenBy = await _repo.RegionTakenByAsync(regionId, world, existing?.Id);
+                    if (takenBy != null) throw new ArgumentException(takenBy, nameof(dto));
+                    return new AreaValue(LandmarkAreaKind.OwnRegion, regionId);
+                case LandmarkAreaKind.LinkedDomain:
+                    if (parent == null || string.IsNullOrWhiteSpace(parent.WgRegionId))
+                        throw new ArgumentException("Area Linked domain's area needs a parent with a region.", nameof(dto));
+                    return new AreaValue(LandmarkAreaKind.LinkedDomain, null);
                 default:
-                    return new ExtentValue(LandmarkExtentKind.None, null, null);
+                    return new AreaValue(LandmarkAreaKind.None, null);
             }
+        }
+
+        /// <summary>The area the request asks for, before the checks: the new fields first, then the #708 ones.</summary>
+        private static AreaValue RequestedArea(LandmarkCreateDto dto, Landmark? existing)
+        {
+            if (dto.Radius != null || string.Equals(dto.ExtentKind?.Trim(), "Radius", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("The radius area is gone: draw a round region with //sel cyl instead.", nameof(dto));
+
+            if (!string.IsNullOrWhiteSpace(dto.AreaKind))
+            {
+                if (!Enum.TryParse<LandmarkAreaKind>(dto.AreaKind.Trim(), true, out var kind) || !Enum.IsDefined(kind))
+                    throw new ArgumentException("Area must be None, OwnRegion or LinkedDomain.", nameof(dto));
+                return new AreaValue(kind, dto.WgRegionId ?? dto.RegionId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.ExtentKind))
+            {
+                // Compatibility with knk-plugin before L3: "None" or "Region" with regionId.
+                switch (dto.ExtentKind.Trim().ToLowerInvariant())
+                {
+                    case "none":
+                        return new AreaValue(LandmarkAreaKind.None, null);
+                    case "region":
+                        var region = dto.RegionId ?? dto.WgRegionId;
+                        if (existing != null && region != null
+                            && string.Equals(region.Trim(), LandmarkMappingProfile.AreaMainRegion(existing), StringComparison.OrdinalIgnoreCase))
+                            return new AreaValue(existing.AreaKind, existing.WgRegionId);
+                        return new AreaValue(LandmarkAreaKind.OwnRegion, region);
+                    default:
+                        throw new ArgumentException("Extent must be None or Region.", nameof(dto));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.WgRegionId))
+                return new AreaValue(LandmarkAreaKind.OwnRegion, dto.WgRegionId);
+
+            // Create: a point. Update: keep the stored area.
+            return existing == null
+                ? new AreaValue(LandmarkAreaKind.None, null)
+                : new AreaValue(existing.AreaKind, existing.WgRegionId);
         }
 
         private static double Preference(double? value, double fallback)

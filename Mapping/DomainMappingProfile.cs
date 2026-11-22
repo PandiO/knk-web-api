@@ -44,38 +44,27 @@ public class DomainMappingProfile : Profile
             .ForMember(dest => dest.MatchedSubRegionId, opt => opt.Ignore());
     }
 
+    /// <summary>
+    /// The domain's parent chain, nearest first, through the one parent walk of every domain type (landmark-domain
+    /// LD23, PandiO/knk-workspace#981): a district's town, a structure's district (a rural structure has none), a
+    /// landmark's parent (any domain). A town, a crown land, a bare domain and a top-level landmark have none. The walk
+    /// stops at a parent that is not loaded and never repeats a domain, so it always ends.
+    /// </summary>
     private static Collection<DomainRegionDecisionDto> GetParentDomainDecisions(Domain domain)
     {
         var decisions = new Collection<DomainRegionDecisionDto>();
-
-        Domain? current = domain;
-        while (current != null)
+        foreach (var parent in knkwebapi_v2.Services.DomainParents.LoadedAncestors(domain))
         {
-
-            if (current is Town) {
-                break;
-            } else if (current is District district)
-            {
-                if (district.TownId <= 0) break;
-                current = district.Town;
-                // continue;
-            }  else if (current is Structure structure) {
-                // A rural structure (P2, #91) has no parent region: the chain ends here.
-                if (structure.DistrictId is not > 0 || structure.District == null) break;
-                current = structure.District;
-                // continue;
-            }
             decisions.Add(new DomainRegionDecisionDto
             {
-                Id = current.Id,
-                Name = current.Name,
-                WgRegionId = current.WgRegionId,
-                WorldName = current.WorldName,
-                AllowEntry = current.AllowEntry,
-                AllowExit = current.AllowExit,
-                DomainType = current.GetType().Name
+                Id = parent.Id,
+                Name = parent.Name,
+                WgRegionId = parent.WgRegionId,
+                WorldName = parent.WorldName,
+                AllowEntry = parent.AllowEntry,
+                AllowExit = parent.AllowExit,
+                DomainType = parent.GetType().Name
             });
-            // break;
         }
         return decisions;
     }

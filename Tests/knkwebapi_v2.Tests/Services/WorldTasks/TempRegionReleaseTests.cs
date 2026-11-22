@@ -381,10 +381,10 @@ public class TempRegionReleaseTests
                     db.LootboxSpawnAreas.Add(new LootboxSpawnArea { Name = "a", World = "knk_hub", WgRegionId = "lootbox_a", ExcludedRegionIds = $"spawn,{region}" });
                     break;
                 case "landmark":
-                    // #945: a landmark whose drawn region kept its temp name (its rename failed).
+                    // A landmark (a domain since #983) whose drawn region kept its temp name (its rename failed).
                     db.Landmarks.Add(new Landmark
                     {
-                        Name = "Throne room", ExtentKind = LandmarkExtentKind.Region, RegionId = region,
+                        Name = "Throne room", Description = "", AreaKind = LandmarkAreaKind.OwnRegion, WgRegionId = region, WorldName = "knk_hub",
                         Location = new Location { Name = "Throne room", X = 1, Y = 64, Z = 2, World = "knk_hub" }
                     });
                     break;

@@ -9,6 +9,7 @@ using knkwebapi_v2.Attributes;
 using knkwebapi_v2.Dtos;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Services;
+using knkwebapi_v2.Services.Interfaces;
 
 namespace KnKWebAPI.Controllers
 {
@@ -23,13 +24,35 @@ namespace KnKWebAPI.Controllers
         private readonly IMapper _mapper;
         private readonly IDomainWorldResolver _worlds;
         private readonly IDomainWorldBackfill _worldBackfill;
+        private readonly ILandmarkService _landmarks;
+        private readonly IPermissionResolutionService _permissions;
 
-        public DomainsController(IDomainService service, IMapper mapper, IDomainWorldResolver worlds, IDomainWorldBackfill worldBackfill)
+        public DomainsController(IDomainService service, IMapper mapper, IDomainWorldResolver worlds, IDomainWorldBackfill worldBackfill,
+            ILandmarkService landmarks, IPermissionResolutionService permissions)
         {
             _service = service;
             _mapper = mapper;
             _worlds = worlds;
             _worldBackfill = worldBackfill;
+            _landmarks = landmarks;
+            _permissions = permissions;
+        }
+
+        /// <summary>LD11: the answer to a domain write without a region (every type but a landmark needs one).</summary>
+        public const string RegionRequired = "WgRegionId is required.";
+
+        /// <summary>
+        /// Landmark-domain LD19 (PandiO/knk-workspace#983): a write on a landmark through this controller also needs the
+        /// landmark write node, <c>knk.admin.world.landmark</c> (the game server's key passes, as for api/landmarks).
+        /// Null when the caller may; otherwise the 403.
+        /// </summary>
+        private async Task<IActionResult?> LandmarkWriteDeniedAsync()
+        {
+            var caller = HttpContext.GetKnkCaller();
+            if (caller.IsPluginService) return null;
+            if (caller.WebUserId is int userId && (await _permissions.CheckAsync(userId, StaffPermissions.LandmarkManage))?.Allowed == true)
+                return null;
+            return PluginServiceAuth.Forbidden($"This domain is a landmark: changing it requires the {StaffPermissions.LandmarkManage} permission.");
         }
 
         [HttpGet]
@@ -52,6 +75,9 @@ namespace KnKWebAPI.Controllers
         public async Task<IActionResult> Create([FromBody] Domain domain)
         {
             if (domain == null) return BadRequest();
+            // LD11: Domain.WgRegionId is nullable for landmarks only; this body is a plain domain, which still needs one
+            // (the model binding refused a missing region while the property was not nullable).
+            if (string.IsNullOrWhiteSpace(domain.WgRegionId)) return BadRequest(RegionRequired);
             try
             {
                 var created = await _service.CreateAsync(domain);
@@ -70,6 +96,15 @@ namespace KnKWebAPI.Controllers
             if (domain == null) return BadRequest();
             try
             {
+                // LD19: a landmark needs the landmark rights and is saved through the landmark rules.
+                if (await _service.GetByIdAsync(id) is Landmark)
+                {
+                    if (await LandmarkWriteDeniedAsync() is IActionResult denied) return denied;
+                    await _landmarks.UpdateFromDomainAsync(id, domain);
+                    return Ok(await _service.GetByIdAsync(id));
+                }
+
+                if (string.IsNullOrWhiteSpace(domain.WgRegionId)) return BadRequest(RegionRequired);
                 await _service.UpdateAsync(id, domain);
                 // Return the updated entity instead of 204
                 var updated = await _service.GetByIdAsync(id);
@@ -92,6 +127,14 @@ namespace KnKWebAPI.Controllers
         {
             try
             {
+                // LD19: a landmark needs the landmark rights and is deleted through LandmarkService.
+                if (await _service.GetByIdAsync(id) is Landmark)
+                {
+                    if (await LandmarkWriteDeniedAsync() is IActionResult denied) return denied;
+                    await _landmarks.DeleteAsync(id);
+                    return NoContent();
+                }
+
                 await _service.DeleteAsync(id);
                 return NoContent();
             }

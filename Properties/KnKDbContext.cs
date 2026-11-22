@@ -313,28 +313,21 @@ public partial class KnKDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // Off-road navigation phase 5.1 (PandiO/knk-workspace#708, DESIGN § 6.3): staff-made landmarks. Additive table; the
-        // pin's Location can't be deleted while a landmark uses it (like a domain's, KNG-118 D3); deleting the domain
-        // only drops the link. The name is unique per world (the Location's), checked by LandmarkService.
+        // Landmarks (landmark-domain DESIGN § 6.1, PandiO/knk-workspace#983; first built by off-road #708): a TPT subtype
+        // of Domain, table landmarks keyed by the domain id. The name, the pin (Domain.LocationId, its own Location) and
+        // the region live on domains. The parent is any domain (another landmark too); deleting it only drops the link.
+        // The name is unique per world (the pin's), checked by LandmarkService.
         modelBuilder.Entity<Landmark>(entity =>
         {
             entity.ToTable("landmarks", t =>
                 t.HasCheckConstraint("CK_landmarks_Preference_Range",
                     $"`Preference` >= {Landmark.PreferenceMin.ToString(System.Globalization.CultureInfo.InvariantCulture)} AND `Preference` <= {Landmark.PreferenceMax.ToString(System.Globalization.CultureInfo.InvariantCulture)}"));
-            entity.HasKey(e => e.Id).HasName("PRIMARY");
-            entity.Property(e => e.Name).HasMaxLength(Landmark.NameMaxLength).IsRequired();
-            entity.Property(e => e.RegionId).HasMaxLength(Landmark.RegionIdMaxLength);
-            entity.Property(e => e.ExtentKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.AreaKind).HasConversion<string>().HasMaxLength(16);
             entity.Property(e => e.Kind).HasConversion<string>().HasMaxLength(16);
-            entity.HasIndex(e => e.Name);
-            entity.HasIndex(e => e.DomainId);
-            entity.HasOne(e => e.Location)
+            entity.HasIndex(e => e.ParentDomainId);
+            entity.HasOne(e => e.ParentDomain)
                 .WithMany()
-                .HasForeignKey(e => e.LocationId)
-                .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Domain)
-                .WithMany()
-                .HasForeignKey(e => e.DomainId)
+                .HasForeignKey(e => e.ParentDomainId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
