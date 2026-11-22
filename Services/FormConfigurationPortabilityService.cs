@@ -47,7 +47,7 @@ namespace knkwebapi_v2.Services
         {
             "ReagionCreate", "LocationSelection", "LocationCapture", "RegionClaim", "VerifyLocation",
             "VerifyStructure", "VerifyPlacement", "VerifyResource", "VerifyBoundary", "GateBlockScan",
-            "GateOpenedBlockScan", "ItemScan", "KitScan", "SiegeWeaponSpot", "CaptureRadius", "Custom"
+            "GateOpenedBlockScan", "ItemScan", "KitScan", "CaptureRadius", "Custom"
         };
 
         private static readonly Regex SeedNamePattern = new("^[A-Za-z0-9][A-Za-z0-9_.-]*$", RegexOptions.Compiled);

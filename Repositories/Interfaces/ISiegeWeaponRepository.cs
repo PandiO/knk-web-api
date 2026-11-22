@@ -30,6 +30,8 @@ namespace knkwebapi_v2.Repositories.Interfaces
 
         // Weapon spots (owned by a scenario)
         Task<SiegeScenario?> GetScenarioWithTeamsAndSpotsAsync(int siegeScenarioId);
+        /// <summary>#988: the scenario's world (its town's, else its hub location's), or null.</summary>
+        Task<string?> GetScenarioWorldAsync(int siegeScenarioId);
         Task<List<SiegeWeaponSpot>> GetSpotsAsync(int siegeScenarioId);
         Task<SiegeWeaponSpot?> GetSpotByIdAsync(int id);
         Task AddSpotAsync(SiegeWeaponSpot spot);

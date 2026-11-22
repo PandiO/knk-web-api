@@ -91,6 +91,11 @@ public sealed class RealtimeHubTests : IAsyncLifetime
         builder.Services.AddSingleton(_gateAudit.Object);
         builder.Services.AddScoped<knkwebapi_v2.Repositories.IUserRepository, knkwebapi_v2.Repositories.UserRepository>();
         builder.Services.AddScoped<knkwebapi_v2.Services.Map.IGateCommandService, knkwebapi_v2.Services.Map.GateCommandService>();
+        // #988: region queries round trip over the game hub.
+        builder.Services.Configure<knkwebapi_v2.Configuration.RegionQueryOptions>(o => o.TimeoutSeconds = 5);
+        builder.Services.AddSingleton<knkwebapi_v2.Services.Regions.RegionQueryWaiter<knkwebapi_v2.Realtime.Contracts.RegionGeometryResultDto>>();
+        builder.Services.AddSingleton<knkwebapi_v2.Services.Regions.RegionQueryWaiter<knkwebapi_v2.Realtime.Contracts.SpotSiteCheckResultDto>>();
+        builder.Services.AddScoped<knkwebapi_v2.Services.Regions.IGameRegionQueryClient, knkwebapi_v2.Services.Regions.GameRegionQueryClient>();
         _app = builder.Build();
         _app.UseRouting();
         _app.UseAuthentication();
@@ -634,6 +639,102 @@ public sealed class RealtimeHubTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<Microsoft.AspNetCore.SignalR.HubException>(() =>
             connection.InvokeAsync("GateCommandResult", new { commandId = "c-web", result = "done" }));
+
+        Assert.False(pending.Result.IsCompleted);
+    }
+
+    // #988: region queries over the game hub. The client publishes RegionGeometryQuery / SpotSiteCheckQuery to the
+    // connected game server, which answers with RegionGeometryResult / SpotSiteCheckResult; the client returns that answer.
+    [Fact]
+    public async Task GameHub_RegionGeometryQuery_RoundTrip_TheResultAnswersTheClient()
+    {
+        await using var connection = GameConnection();
+        var received = new List<JsonElement>();
+        connection.On<JsonElement>("RegionGeometryQuery", envelope =>
+        {
+            received.Add(envelope);
+            var payload = envelope.GetProperty("payload");
+            _ = connection.InvokeAsync("RegionGeometryResult", new
+            {
+                queryId = payload.GetProperty("queryId").GetString(),
+                result = "found",
+                world = "siege",
+                shape = "cuboid",
+                minX = 0, minY = 64, minZ = 0, maxX = 8, maxY = 80, maxZ = 14,
+                points = Array.Empty<object>(),
+            });
+        });
+        await connection.StartAsync();
+        await Eventually(() => Task.FromResult(_app.Services.GetRequiredService<RealtimeConnections>().Count(RealtimeHubKind.Game) > 0), "the game server");
+
+        using var scope = _app.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Regions.IGameRegionQueryClient>();
+        var answer = await client.GetGeometryAsync("siege_spot_3", "siege");
+
+        Assert.Equal(knkwebapi_v2.Services.Regions.RegionQueryStatus.Found, answer.Status);
+        Assert.Equal((0, 64, 0, 8, 80, 14), (answer.Geometry!.MinX, answer.Geometry.MinY, answer.Geometry.MinZ,
+            answer.Geometry.MaxX, answer.Geometry.MaxY, answer.Geometry.MaxZ));
+        Assert.True(answer.Geometry.IsCuboid);
+        var sent = Assert.Single(received).GetProperty("payload");
+        Assert.Equal(("siege_spot_3", "siege"), (sent.GetProperty("regionId").GetString(), sent.GetProperty("world").GetString()));
+    }
+
+    [Fact]
+    public async Task GameHub_SpotSiteCheckQuery_RoundTrip()
+    {
+        await using var connection = GameConnection();
+        connection.On<JsonElement>("SpotSiteCheckQuery", envelope =>
+        {
+            var payload = envelope.GetProperty("payload");
+            _ = connection.InvokeAsync("SpotSiteCheckResult", new
+            {
+                queryId = payload.GetProperty("queryId").GetString(),
+                result = "found",
+                floorBlocks = 63, openFloor = 4, volumeChecked = true, blockedVolume = 0,
+                warnings = new[] { "The floor isn't solid: 4 of 63 blocks under the spot are air or not solid, so a weapon would hang in the air." },
+            });
+        });
+        await connection.StartAsync();
+        await Eventually(() => Task.FromResult(_app.Services.GetRequiredService<RealtimeConnections>().Count(RealtimeHubKind.Game) > 0), "the game server");
+
+        using var scope = _app.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<knkwebapi_v2.Services.Regions.IGameRegionQueryClient>();
+        var answer = await client.CheckSpotSiteAsync("siege_spot_3", null);
+
+        Assert.Equal(knkwebapi_v2.Services.Regions.RegionQueryStatus.Found, answer.Status);
+        Assert.True(answer.HasWarnings);
+        Assert.Equal(4, answer.OpenFloor);
+        Assert.StartsWith("The floor isn't solid", Assert.Single(answer.Warnings));
+    }
+
+    // RegionQueries:Enabled off: an answer is ignored.
+    [Fact]
+    public async Task GameHub_RegionQueryResult_IgnoredWhileOff()
+    {
+        var options = _app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<knkwebapi_v2.Configuration.RegionQueryOptions>>();
+        options.CurrentValue.Enabled = false;
+        var waiter = _app.Services.GetRequiredService<knkwebapi_v2.Services.Regions.RegionQueryWaiter<knkwebapi_v2.Realtime.Contracts.RegionGeometryResultDto>>();
+        using var pending = waiter.Register("q-off");
+        await using var connection = GameConnection();
+        await connection.StartAsync();
+
+        await connection.InvokeAsync("RegionGeometryResult", new { queryId = "q-off", result = "found" });
+
+        Assert.False(pending.Result.IsCompleted);
+        options.CurrentValue.Enabled = true;
+    }
+
+    // Access rule (#988): only the plugin-key game hub has the methods; a web login cannot answer a region query.
+    [Fact]
+    public async Task WebHub_CannotAnswerARegionQuery()
+    {
+        var waiter = _app.Services.GetRequiredService<knkwebapi_v2.Services.Regions.RegionQueryWaiter<knkwebapi_v2.Realtime.Contracts.SpotSiteCheckResultDto>>();
+        using var pending = waiter.Register("q-web");
+        await using var connection = WebConnection(bearer: Jwt(42));
+        await connection.StartAsync();
+
+        await Assert.ThrowsAsync<Microsoft.AspNetCore.SignalR.HubException>(() =>
+            connection.InvokeAsync("SpotSiteCheckResult", new { queryId = "q-web", result = "found" }));
 
         Assert.False(pending.Result.IsCompleted);
     }

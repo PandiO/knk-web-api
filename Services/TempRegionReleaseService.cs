@@ -379,6 +379,9 @@ namespace knkwebapi_v2.Services
             // #946: a production area's region drawn through its form, still on the temp name when its rename failed.
             if (await _db.ProductionAreas.AsNoTracking().AnyAsync(a => a.WgRegionId != null && a.WgRegionId.ToLower() == lowered, ct))
                 return "a production area uses it";
+            // #988: a siege weapon spot's region drawn through its form, still on the temp name when its rename failed.
+            if (await _db.SiegeWeaponSpots.AsNoTracking().AnyAsync(w => w.WgRegionId != null && w.WgRegionId.ToLower() == lowered, ct))
+                return "a siege weapon spot uses it";
             if (await _db.RoadEdges.AsNoTracking().AnyAsync(e => e.RegionIdsJson != null && e.RegionIdsJson.ToLower().Contains(lowered), ct))
                 return "a road edge names it";
             if (await _db.FormSubmissionProgresses.AsNoTracking().AnyAsync(p =>

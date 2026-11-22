@@ -4,6 +4,7 @@ using knkwebapi_v2.Enums;
 using knkwebapi_v2.Models;
 using knkwebapi_v2.Repositories.Interfaces;
 using knkwebapi_v2.Services.Interfaces;
+using knkwebapi_v2.Services.Regions;
 
 namespace knkwebapi_v2.Services
 {
@@ -19,11 +20,20 @@ namespace knkwebapi_v2.Services
 
         private readonly ISiegeWeaponRepository _repo;
         private readonly IMapper _mapper;
+        private readonly IGameRegionQueryClient? _regions;
+        private readonly IDomainRegionNameFinalizer? _regionNames;
+        private readonly ILogger<SiegeWeaponService>? _logger;
 
-        public SiegeWeaponService(ISiegeWeaponRepository repo, IMapper mapper)
+        /// <param name="regions">#988: asks the game server for a spot region's bounds; null = never asked (the typed class stays).</param>
+        /// <param name="regionNames">#988: gives a spot region drawn in the form its final name on save; null = not renamed.</param>
+        public SiegeWeaponService(ISiegeWeaponRepository repo, IMapper mapper, IGameRegionQueryClient? regions = null,
+            IDomainRegionNameFinalizer? regionNames = null, ILogger<SiegeWeaponService>? logger = null)
         {
             _repo = repo;
             _mapper = mapper;
+            _regions = regions;
+            _regionNames = regionNames;
+            _logger = logger;
         }
 
         // ==== Templates ====
@@ -288,11 +298,12 @@ namespace knkwebapi_v2.Services
 
             var scenario = await RequireScenarioAsync(siegeScenarioId);
             var spot = new SiegeWeaponSpot { SiegeScenarioId = siegeScenarioId };
-            ApplySpot(spot, dto, scenario);
+            await ApplySpotAsync(spot, dto, scenario);
             spot.SortOrder = dto.SortOrder ?? NextSortOrder(scenario.WeaponSpots.Select(w => w.SortOrder));
             if (spot.SortOrder < 0) throw new ArgumentException("sortOrder can't be negative.");
 
             await _repo.AddSpotAsync(spot);
+            await FinalizeDrawnRegionAsync(spot, null);
             var created = await _repo.GetSpotByIdAsync(spot.Id);
             return _mapper.Map<SiegeWeaponSpotReadDto>(created ?? spot);
         }
@@ -307,13 +318,16 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("A weapon spot can't be moved to another scenario; delete it and add it there instead.");
 
             var scenario = await RequireScenarioAsync(spot.SiegeScenarioId);
-            ApplySpot(spot, dto, scenario);
+            // #988: the region before this save, replaced when the region task was run again.
+            var previousRegionId = spot.WgRegionId;
+            await ApplySpotAsync(spot, dto, scenario);
             if (dto.SortOrder.HasValue)
             {
                 if (dto.SortOrder.Value < 0) throw new ArgumentException("sortOrder can't be negative.");
                 spot.SortOrder = dto.SortOrder.Value;
             }
             await _repo.UpdateSpotAsync(spot);
+            await FinalizeDrawnRegionAsync(spot, previousRegionId);
         }
 
         public async Task DeleteSpotAsync(int id)
@@ -324,7 +338,7 @@ namespace knkwebapi_v2.Services
             await _repo.DeleteSpotAsync(spot);
         }
 
-        private static void ApplySpot(SiegeWeaponSpot target, SiegeWeaponSpotUpsertDto dto, SiegeScenario scenario)
+        private async Task ApplySpotAsync(SiegeWeaponSpot target, SiegeWeaponSpotUpsertDto dto, SiegeScenario scenario)
         {
             var name = RequireText(dto.Name, "Name", 100);
             if (dto.SiegeTeamId <= 0) throw new ArgumentException("A weapon spot needs a team.");
@@ -332,44 +346,59 @@ namespace knkwebapi_v2.Services
                 throw new ArgumentException("siegeTeamId must be a team of this scenario.");
             if (!Enum.IsDefined(dto.Facing)) throw new ArgumentException($"Unknown facing '{dto.Facing}'.");
             if (!Enum.IsDefined(dto.SizeClass)) throw new ArgumentException($"Unknown size class '{dto.SizeClass}'.");
-
-            // Bounds: the selection's two corners, all six coordinates or none (the world task fills them, phase 2).
-            var corners = new[] { dto.MinX, dto.MinY, dto.MinZ, dto.MaxX, dto.MaxY, dto.MaxZ };
-            if (corners.Any(c => c.HasValue) && !corners.All(c => c.HasValue))
-                throw new ArgumentException("Give all six bound coordinates (min and max x, y, z) or none.");
-            if (corners.All(c => c.HasValue) && (dto.MinX > dto.MaxX || dto.MinY > dto.MaxY || dto.MinZ > dto.MaxZ))
-                throw new ArgumentException("Each min bound must be at most its max bound.");
-
-            // Phase 2 (PandiO/knk-workspace#783, W70, § 4.3): with bounds the size class is worked out from them and the
-            // facing (width across x length along x height), so changing the facing changes the class; bounds smaller
-            // than the small class are refused (A03). Without bounds the typed class stays (phase 1 behaviour).
-            var sizeClass = dto.SizeClass;
-            if (corners.All(c => c.HasValue))
-            {
-                var derived = SiegeWeaponSpotSizing.ClassFor(dto.MinX!.Value, dto.MinY!.Value, dto.MinZ!.Value,
-                    dto.MaxX!.Value, dto.MaxY!.Value, dto.MaxZ!.Value, dto.Facing);
-                if (derived == null)
-                {
-                    var (width, length, height) = SiegeWeaponSpotSizing.Footprint(dto.MinX.Value, dto.MinY.Value,
-                        dto.MinZ.Value, dto.MaxX.Value, dto.MaxY.Value, dto.MaxZ.Value, dto.Facing);
-                    throw new ArgumentException($"The bounds are too small for a weapon facing {dto.Facing}: " +
-                        $"{width} wide x {length} long x {height} high, the small class needs at least " +
-                        $"{SiegeWeaponSpotSizing.Describe(SiegeWeaponSizeClass.Small)}.");
-                }
-                sizeClass = derived.Value;
-            }
+            var region = OptionalText(dto.WgRegionId, "wgRegionId", 255);
 
             target.Name = name;
             target.SiegeTeamId = dto.SiegeTeamId;
-            target.MinX = dto.MinX;
-            target.MinY = dto.MinY;
-            target.MinZ = dto.MinZ;
-            target.MaxX = dto.MaxX;
-            target.MaxY = dto.MaxY;
-            target.MaxZ = dto.MaxZ;
-            target.WgRegionId = OptionalText(dto.WgRegionId, "wgRegionId", 255);
+            target.WgRegionId = region;
             target.Facing = dto.Facing;
-            target.SizeClass = sizeClass;
+            target.SizeClass = await SizeClassAsync(region, dto.Facing, dto.SizeClass, scenario.Id);
+        }
+
+        /// <summary>
+        /// #988 (W70, A02, § 4.3): the size class from the region's bounds, which the game server is asked for, and the
+        /// facing (width across x length along x height; a polygon counts as its bounding box). A region smaller than the
+        /// small class, or one the game server says doesn't exist, is refused. Open point 1 of #988: when the game server
+        /// can't be asked (off, not connected, no answer in time) the given class stays and the save goes on; L3 (#784)
+        /// works the class out again from the region before it places a weapon. Without a region the given class stays.
+        /// </summary>
+        private async Task<SiegeWeaponSizeClass> SizeClassAsync(string? region, SiegeWeaponFacing facing,
+            SiegeWeaponSizeClass given, int siegeScenarioId)
+        {
+            if (region == null || _regions == null) return given;
+            var world = await _repo.GetScenarioWorldAsync(siegeScenarioId);
+            var answer = await _regions.GetGeometryAsync(region, world);
+            if (answer.Status == RegionQueryStatus.Unavailable)
+            {
+                _logger?.LogWarning("Weapon spot region {RegionId}: size class not checked ({Reason}); kept {SizeClass}",
+                    region, answer.Message, given);
+                return given;
+            }
+            if (answer.Status == RegionQueryStatus.NotFound || answer.Geometry == null)
+                throw new ArgumentException(answer.Message);
+            var g = answer.Geometry;
+            var derived = SiegeWeaponSpotSizing.ClassFor(g.MinX, g.MinY, g.MinZ, g.MaxX, g.MaxY, g.MaxZ, facing);
+            if (derived == null)
+            {
+                var (width, length, height) = SiegeWeaponSpotSizing.Footprint(g.MinX, g.MinY, g.MinZ, g.MaxX, g.MaxY, g.MaxZ, facing);
+                throw new ArgumentException($"The region is too small for a weapon facing {facing}: " +
+                    $"{width} wide x {length} long x {height} high, the small class needs at least " +
+                    $"{SiegeWeaponSpotSizing.Describe(SiegeWeaponSizeClass.Small)}.");
+            }
+            return derived.Value;
+        }
+
+        /// <summary>
+        /// #988: a region drawn through the spot form's region task is still <c>tempregion_worldtask_&lt;n&gt;</c>, which the
+        /// plugin's temp-region cleanup would delete; it becomes <c>siege_spot_&lt;id&gt;</c> now, as lootbox spawn areas do
+        /// (#34). A failed rename never fails the save: the spot keeps the temp name, which the cleanup keeps, and
+        /// <c>POST api/Regions/finalize-temp-names</c> or the next save tries again. Deleting a spot leaves its region
+        /// behind until the generic region lifecycle (#989).
+        /// </summary>
+        private async Task FinalizeDrawnRegionAsync(SiegeWeaponSpot spot, string? previousRegionId)
+        {
+            if (_regionNames == null || !DomainRegionNameFinalizer.IsTemporary(spot.WgRegionId)) return;
+            await _regionNames.FinalizeSiegeWeaponSpotAsync(spot, previousRegionId);
         }
 
         private async Task<SiegeScenario> RequireScenarioAsync(int siegeScenarioId)

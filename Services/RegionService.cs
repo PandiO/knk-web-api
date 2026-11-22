@@ -64,6 +64,12 @@ namespace knkwebapi_v2.Services
         Task<bool> RenameProductionAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId);
 
         /// <summary>
+        /// PandiO/knk-workspace#988: the same for a siege weapon spot's drawn region (no managed-region setup: the spot is
+        /// not a domain; the drawn box and Y range are kept).
+        /// </summary>
+        Task<bool> RenameSiegeWeaponSpotRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId);
+
+        /// <summary>
         /// Check whether a location (x,z) lies inside the specified region.
         /// </summary>
         Task<bool> IsLocationInsideRegionAsync(string regionId, double x, double z, bool allowBoundary = false);
@@ -302,6 +308,11 @@ namespace knkwebapi_v2.Services
         }
 
         public Task<bool> RenameProductionAreaRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId)
+        {
+            return RenameAsync(oldRegionId, newRegionId, null, null, world, replaceRegionId, null);
+        }
+
+        public Task<bool> RenameSiegeWeaponSpotRegionAsync(string oldRegionId, string newRegionId, string? world, string? replaceRegionId)
         {
             return RenameAsync(oldRegionId, newRegionId, null, null, world, replaceRegionId, null);
         }

@@ -162,6 +162,9 @@ namespace knkwebapi_v2.Repositories
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == siegeScenarioId);
 
+        public Task<string?> GetScenarioWorldAsync(int siegeScenarioId) =>
+            knkwebapi_v2.Services.ValidationMethods.SiegeScenarioWorld.OfAsync(_context, siegeScenarioId);
+
         public async Task<List<SiegeWeaponSpot>> GetSpotsAsync(int siegeScenarioId) =>
             await _context.SiegeWeaponSpots
                 .Include(w => w.SiegeTeam).ThenInclude(t => t.Clan)

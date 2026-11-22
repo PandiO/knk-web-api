@@ -55,14 +55,24 @@
     {
       "stepGuid": "e57fe647-21ca-539f-83b9-f13c38b9ca59",
       "stepName": "Place and size",
-      "description": "Where the weapon goes. Send the task on Min X to Minecraft and claim it in game: it reads a WorldEdit selection or WorldGuard region, takes the facing from your look direction (you can change it) and fills the bounds, facing, size class and region here (needs siege.weapons.enabled on the game server). You can also type or correct them; with bounds the size class is worked out from them and the facing on save.",
+      "description": "Where the weapon goes. Draw a box-shaped WorldGuard region for the spot with the region task (or pick an existing region) and choose the way the weapon faces. The size class is worked out from the region and the facing, and the region's floor and space are checked; both need the Minecraft server (the floor and space check also siege.weapons.enabled). A region you draw is renamed to siege_spot_<id> when you save.",
       "isManyToManyRelationship": false,
       "fields": [
+        {
+          "fieldGuid": "26fb2ac8-9e8c-5866-9e9a-45e89f690d76",
+          "fieldName": "WgRegionId",
+          "label": "Region",
+          "description": "The spot's WorldGuard region. Draw a box (a cuboid selection) exactly as big as the weapon may be, with its bottom on the layer the weapon stands on: Small 7 x 9 x 5, Medium 7 x 9 x 8, Large 9 x 15 x 16 (width across x length along the facing x height). A polygon counts as its bounding box. A region you draw is renamed to siege_spot_<id> when you save; running this step again on a saved spot replaces that region. A region you select is used as it is.",
+          "fieldType": "String",
+          "isRequired": true,
+          "isReadOnly": false,
+          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"ReagionCreate\"}}"
+        },
         {
           "fieldGuid": "4577571d-9dfa-5a17-a10b-c3210b52255c",
           "fieldName": "Facing",
           "label": "Facing",
-          "description": "The direction the weapon points; it is rotated to face this way.",
+          "description": "The direction the weapon points (the way it shoots); it is rotated to face this way. The size class is measured across and along this direction, so changing it can change the class.",
           "fieldType": "Enum",
           "defaultValue": "North",
           "isRequired": true,
@@ -73,79 +83,35 @@
           "fieldGuid": "c8c0dc8c-1b84-5827-a6b5-fba5d6cabd6b",
           "fieldName": "SizeClass",
           "label": "Size class",
-          "description": "The largest weapon class that fits: Small 7 x 9 x 5, Medium 7 x 9 x 8, Large 9 x 15 x 16 (width across x length along the facing x height). With all six bounds the API works it out from them and the facing; bounds smaller than Small are refused.",
+          "description": "Worked out on save from the region's bounds and the facing: the largest class that fits (Small 7 x 9 x 5, Medium 7 x 9 x 8, Large 9 x 15 x 16, width across x length along the facing x height). A region smaller than Small is refused. When the Minecraft server can't be asked, the class stays as it was and is checked again when a weapon is placed.",
           "fieldType": "Enum",
           "defaultValue": "Small",
           "isRequired": true,
-          "isReadOnly": false,
+          "isReadOnly": true,
           "settingsJson": "{\"enumValues\": [\"Small\", \"Medium\", \"Large\"]}"
-        },
-        {
-          "fieldGuid": "26fb2ac8-9e8c-5866-9e9a-45e89f690d76",
-          "fieldName": "WgRegionId",
-          "label": "WorldGuard region",
-          "description": "Optional: the region the spot was taken from.",
-          "fieldType": "String",
-          "isRequired": false,
-          "isReadOnly": false
-        },
-        {
-          "fieldGuid": "f59a8d8c-c576-5412-8d41-0fd8cdc2fd8d",
-          "fieldName": "MinX",
-          "label": "Min X",
-          "description": "Selection corner; give all six coordinates or none. Capturing in Minecraft fills all six, the facing, the size class and the region, and shows warnings for a floor that isn't solid or a volume that isn't clear.",
-          "fieldType": "Integer",
-          "isRequired": false,
-          "isReadOnly": false,
-          "settingsJson": "{\"worldTask\": {\"enabled\": true, \"taskType\": \"SiegeWeaponSpot\"}}"
-        },
-        {
-          "fieldGuid": "67b21159-5263-500f-a301-56f7cd43b8ac",
-          "fieldName": "MinY",
-          "label": "Min Y",
-          "description": "",
-          "fieldType": "Integer",
-          "isRequired": false,
-          "isReadOnly": false
-        },
-        {
-          "fieldGuid": "debd1e4b-ad65-5816-a628-3b260ea1c990",
-          "fieldName": "MinZ",
-          "label": "Min Z",
-          "description": "",
-          "fieldType": "Integer",
-          "isRequired": false,
-          "isReadOnly": false
-        },
-        {
-          "fieldGuid": "d7033cf8-fc75-52d3-8c06-0d70aedb99a2",
-          "fieldName": "MaxX",
-          "label": "Max X",
-          "description": "Opposite corner; each max must be at least its min.",
-          "fieldType": "Integer",
-          "isRequired": false,
-          "isReadOnly": false
-        },
-        {
-          "fieldGuid": "04997c5f-14da-5e87-baa4-f0f762ace4b7",
-          "fieldName": "MaxY",
-          "label": "Max Y",
-          "description": "",
-          "fieldType": "Integer",
-          "isRequired": false,
-          "isReadOnly": false
-        },
-        {
-          "fieldGuid": "350b351b-677e-5637-90a6-2f31c9680a3c",
-          "fieldName": "MaxZ",
-          "label": "Max Z",
-          "description": "",
-          "fieldType": "Integer",
-          "isRequired": false,
-          "isReadOnly": false
         }
       ]
     }
   ],
-  "validationRules": []
+  "validationRules": [
+    {
+      "fieldGuid": "26fb2ac8-9e8c-5866-9e9a-45e89f690d76",
+      "validationType": "SiegeWeaponSpotSize",
+      "dependsOn": {
+        "fieldGuid": "4577571d-9dfa-5a17-a10b-c3210b52255c"
+      },
+      "configJson": "{}",
+      "errorMessage": "{sizeReason}",
+      "isBlocking": true,
+      "requiresDependencyFilled": false
+    },
+    {
+      "fieldGuid": "26fb2ac8-9e8c-5866-9e9a-45e89f690d76",
+      "validationType": "SiegeWeaponSpotSite",
+      "configJson": "{}",
+      "errorMessage": "{siteReason}",
+      "isBlocking": false,
+      "requiresDependencyFilled": false
+    }
+  ]
 }
