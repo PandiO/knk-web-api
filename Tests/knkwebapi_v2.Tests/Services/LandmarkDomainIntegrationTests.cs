@@ -278,6 +278,27 @@ public class LandmarkDomainIntegrationTests : IDisposable
         Assert.DoesNotContain(destinations, d => d.DomainId == Palace);
     }
 
+    /// <summary>
+    /// LD26 (developer decision 2026-11-24, PandiO/knk-workspace#1003): the warp is for every area kind, so a point
+    /// landmark (no region) and a landmark on its parent's area are destinations too, at their pins, like the v1 warp
+    /// points. The Landmark form seed v4 shows the warp step for every area kind accordingly.
+    /// </summary>
+    [Fact]
+    public async Task APointLandmark_AndALinkedOne_WithTheirWarpOn_AreDestinations_AtTheirPins()
+    {
+        Warp(Well, priceGems: 2);
+        Warp(Square, priceGems: 0);
+
+        var destinations = await Teleports().ListForUserAsync(UserId);
+
+        Assert.Equal(new[] { (Well, "Landmark"), (Square, "Landmark") },
+            destinations.Select(d => (d.DomainId, d.DomainType)).OrderBy(d => d.DomainId).ToArray());
+        var well = destinations.Single(d => d.DomainId == Well);
+        Assert.Equal((2, true), (well.PriceGems, well.Available));
+        Assert.Equal(("world", (double)Well, (double)-Well), (well.Location.World, well.Location.X, well.Location.Z));
+        Assert.True(destinations.Single(d => d.DomainId == Square).Available);
+    }
+
     [Fact]
     public async Task RequiresDiscovery_StaysLockedWhileDiscoveryIsOff_AndUnlocksAfterTheDiscovery()
     {

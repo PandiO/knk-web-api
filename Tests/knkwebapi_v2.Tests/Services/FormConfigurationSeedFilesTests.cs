@@ -291,18 +291,25 @@ public class FormConfigurationSeedFilesTests
     }
 
     /// <summary>
-    /// Landmark-domain LD25 (PandiO/knk-workspace#983), seed v3 since PandiO/knk-workspace#1003: the Landmark form ships
-    /// with a new configuration GUID so it imports next to v1 and v2 (never over them). It draws the landmark's own region through the region world task on
+    /// Landmark-domain LD25 (PandiO/knk-workspace#983), seed v4 since PandiO/knk-workspace#1003 (v3, then v4 for LD26):
+    /// the Landmark form ships with a new configuration GUID so it imports next to v1, v2 and v3 (never over them). Its
+    /// GUID is uuid5(v3 configuration GUID, "seed-v4"), as the seeds README derives every new version. It draws the
+    /// landmark's own region through the region world task on
     /// <c>WgRegionId</c> (renamed to domain_&lt;id&gt; on save, LD14), the only world task besides the pin's, offers the
     /// three area kinds of LD16 and none of v1's Extent, Region id or Radius fields.
     /// </summary>
     [Fact]
-    public void LandmarkSeed_IsV3_WithTheAreaKinds_AndDrawsItsRegionOnWgRegionId()
+    public void LandmarkSeed_IsV4_WithTheAreaKinds_AndDrawsItsRegionOnWgRegionId()
     {
         using var file = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(SeedDirectory(), "Landmark.json")));
-        Assert.Equal("Landmark - Default (seed v3)", file.RootElement.GetProperty("name").GetString());
-        Assert.NotEqual("33de13e6-579c-5860-9976-f01e9d638219", file.RootElement.GetProperty("configurationGuid").GetString());
-        Assert.NotEqual("cda35514-ee6d-596c-a739-fc15de6efd89", file.RootElement.GetProperty("configurationGuid").GetString());
+        Assert.Equal("Landmark - Default (seed v4)", file.RootElement.GetProperty("name").GetString());
+        Assert.Equal("0e58df82-02fb-59c1-9969-5a0a6ce15194", file.RootElement.GetProperty("configurationGuid").GetString());
+        Assert.DoesNotContain(file.RootElement.GetProperty("configurationGuid").GetString(), new[]
+        {
+            "33de13e6-579c-5860-9976-f01e9d638219", // v1
+            "cda35514-ee6d-596c-a739-fc15de6efd89", // v2
+            "8cefaf90-b32d-543b-b16f-73b5254c07f9", // v3
+        });
         var fields = file.RootElement.GetProperty("steps").EnumerateArray()
             .SelectMany(step => step.GetProperty("fields").EnumerateArray()).ToList();
         var names = fields.Select(f => f.GetProperty("fieldName").GetString()!).ToList();
@@ -335,13 +342,16 @@ public class FormConfigurationSeedFilesTests
         Assert.Equal(Enum.GetNames<knkwebapi_v2.Models.LandmarkAreaKind>(),
             areaSettings.RootElement.GetProperty("enumValues").EnumerateArray().Select(v => v.GetString()!).ToArray());
     }
+
     /// <summary>
-    /// PandiO/knk-workspace#1003 (landmark-domain DESIGN § 10 A17): seed v3 shows the region field and the "Access and
-    /// messages", "Warp destination" and "Sub-regions" steps only when the AreaKind field of the same file is OwnRegion,
-    /// one display condition group each (as GateDoor.json does it); no other step or field has a condition.
+    /// PandiO/knk-workspace#1003 (landmark-domain DESIGN § 10 A17 and LD26): seed v4 shows the region field and the
+    /// "Access and messages" and "Sub-regions" steps only when the AreaKind field of the same file is OwnRegion, one
+    /// display condition group each (as GateDoor.json does it). The "Warp destination" step carries no condition, so a
+    /// point landmark and a linked one can be warp destinations too (LD26; seed v3 hid it without an own region). No
+    /// other step or field has a condition.
     /// </summary>
     [Fact]
-    public void LandmarkSeed_V3_ShowsTheOwnRegionParts_OnlyForAnOwnRegion()
+    public void LandmarkSeed_V4_ShowsTheOwnRegionParts_OnlyForAnOwnRegion_AndTheWarpStepForEveryArea()
     {
         using var file = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(SeedDirectory(), "Landmark.json")));
         var steps = file.RootElement.GetProperty("steps").EnumerateArray().ToList();
@@ -366,7 +376,11 @@ public class FormConfigurationSeedFilesTests
             }
         }
 
-        Assert.Equal(new[] { "field:Area/WgRegionId", "step:Access and messages", "step:Warp destination", "step:Sub-regions" }, conditioned);
+        Assert.Equal(new[] { "field:Area/WgRegionId", "step:Access and messages", "step:Sub-regions" }, conditioned);
+        var warp = steps.Single(step => step.GetProperty("stepName").GetString() == "Warp destination");
+        Assert.False(warp.TryGetProperty("displayConditionGroups", out _));
+        Assert.All(warp.GetProperty("fields").EnumerateArray(),
+            field => Assert.False(field.TryGetProperty("displayConditionGroups", out _)));
         Assert.Contains(nameof(knkwebapi_v2.Models.LandmarkAreaKind.OwnRegion), Enum.GetNames<knkwebapi_v2.Models.LandmarkAreaKind>());
     }
 

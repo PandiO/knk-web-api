@@ -206,7 +206,21 @@ knk-workspace `docs/specs/landmark-domain/DESIGN.md` § 10), so a point landmark
 none of them. Whether a point landmark should keep the warp step is open on #1003; dropping the condition from that step
 in this file (and in the form designer of a database that imported v3) makes it unconditional. GUIDs: configuration
 uuid5(v2 configuration GUID, "seed-v3"), every step/field uuid5(v2 configuration GUID, its v2 GUID); the conditions read
-v3's own AreaKind field.
+v3's own AreaKind field. Superseded by seed v4 below; the file now holds v4.
+
+**Landmark seed v4 (landmark-domain LD26, PandiO/knk-workspace#1003, 2026-11-24):** a new `configurationGuid` and name
+("Landmark - Default (seed v4)"), so it imports next to an imported v1, v2 or v3 (never over them); import it and make
+it the default for Landmark, then switch the older ones off as default and delete or keep them by hand (v3 need not be
+imported first). It is seed v3 without the display condition group on the "Warp destination" step: the developer
+decided on #1003 that the warp step shows for every area kind, so a point landmark and a `LinkedDomain` landmark can be
+warp destinations too, like the v1 warp points (DESIGN LD26). The Area step's `WgRegionId` field and the steps "Access
+and messages" and "Sub-regions" keep "AreaKind Equals `OwnRegion`". A database that imported v3 can instead delete that
+step's condition in the form designer. GUIDs: configuration uuid5(v3 configuration GUID, "seed-v4"), every step/field
+uuid5(v3 configuration GUID, its v3 GUID); the conditions read v4's own AreaKind field.
+
+| Seed | Configuration | Import after |
+|---|---|---|
+| `Landmark` | Landmark - Default (seed v4) | — (replaces v3) |
 
 **Siege weapons phase 1 (PandiO/knk-workspace#782, 2026-11-19):** new seeds `SiegeAmmoType`,
 `SiegeWeaponTemplateAmmoType.join`, `SiegeWeaponTemplate`, `SiegeWeaponSpot` and `UserSiegeWeaponUnlock` (seed v1 each),
